@@ -1,0 +1,5 @@
+{
+  "name": "ERP Modular Platform",
+  "description": "A scalable, Clean Architecture ERP system with React Frontend and Node.js/Firebase Backend.",
+  "requestFramePermissions": []
+}
