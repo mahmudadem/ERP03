@@ -50,8 +50,28 @@ export const accountingApi = {
     });
   },
 
+  // --- WORKFLOW ACTIONS ---
+
+  sendVoucherToApproval: async (id: string) => {
+    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/send-to-approval`, {
+      method: 'POST'
+    });
+  },
+
   approveVoucher: async (id: string) => {
-    return httpClient<{success: boolean}>(`/accounting/vouchers/${id}/approve`, {
+    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/approve`, {
+      method: 'POST'
+    });
+  },
+
+  lockVoucher: async (id: string) => {
+    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/lock`, {
+      method: 'POST'
+    });
+  },
+
+  cancelVoucher: async (id: string) => {
+    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/cancel`, {
       method: 'POST'
     });
   }

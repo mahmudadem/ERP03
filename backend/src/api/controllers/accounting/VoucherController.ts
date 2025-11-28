@@ -5,6 +5,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { 
   CreateVoucherUseCase, 
+  SendVoucherToApprovalUseCase,
   ApproveVoucherUseCase, 
   LockVoucherUseCase,
   CancelVoucherUseCase,
@@ -26,7 +27,6 @@ export class VoucherController {
       
       const useCase = new CreateVoucherUseCase(diContainer.voucherRepository);
       
-      // Convert date string to Date object
       const payload = {
         ...(req as any).body,
         date: new Date((req as any).body.date),
@@ -35,11 +35,6 @@ export class VoucherController {
       };
 
       const voucher = await useCase.execute(payload);
-
-      // Recalculate totals immediately (since CreateUseCase in MVP calculates but Recalc is cleaner)
-      // or we trust CreateUseCase. 
-      // Let's assume CreateUseCase returned the Header.
-      // In a real app we'd save lines here too.
 
       (res as any).status(201).json({
         success: true,
@@ -60,7 +55,6 @@ export class VoucherController {
 
       await useCase.execute(id, updateData);
 
-      // If lines were sent, we'd update them and recalculate totals
       if ((req as any).body.lines) {
         const recalc = new RecalculateVoucherTotalsUseCase(diContainer.voucherRepository);
         await recalc.execute(id, (req as any).body.lines);
@@ -72,11 +66,29 @@ export class VoucherController {
     }
   }
 
+  static async sendToApproval(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new SendVoucherToApprovalUseCase(diContainer.voucherRepository);
+      const voucher = await useCase.execute((req as any).params.id);
+      (res as any).status(200).json({ 
+        success: true, 
+        message: 'Voucher sent to approval',
+        data: AccountingDTOMapper.toVoucherDTO(voucher) 
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async approveVoucher(req: Request, res: Response, next: NextFunction) {
     try {
       const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository);
-      await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ success: true, message: 'Voucher approved' });
+      const voucher = await useCase.execute((req as any).params.id);
+      (res as any).status(200).json({ 
+        success: true, 
+        message: 'Voucher approved',
+        data: AccountingDTOMapper.toVoucherDTO(voucher)
+      });
     } catch (error) {
       next(error);
     }
@@ -85,8 +97,12 @@ export class VoucherController {
   static async lockVoucher(req: Request, res: Response, next: NextFunction) {
     try {
       const useCase = new LockVoucherUseCase(diContainer.voucherRepository);
-      await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ success: true, message: 'Voucher locked' });
+      const voucher = await useCase.execute((req as any).params.id);
+      (res as any).status(200).json({ 
+        success: true, 
+        message: 'Voucher locked',
+        data: AccountingDTOMapper.toVoucherDTO(voucher)
+      });
     } catch (error) {
       next(error);
     }
@@ -95,8 +111,12 @@ export class VoucherController {
   static async cancelVoucher(req: Request, res: Response, next: NextFunction) {
     try {
       const useCase = new CancelVoucherUseCase(diContainer.voucherRepository);
-      await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ success: true, message: 'Voucher cancelled' });
+      const voucher = await useCase.execute((req as any).params.id);
+      (res as any).status(200).json({ 
+        success: true, 
+        message: 'Voucher cancelled',
+        data: AccountingDTOMapper.toVoucherDTO(voucher)
+      });
     } catch (error) {
       next(error);
     }
@@ -106,10 +126,6 @@ export class VoucherController {
     try {
       const useCase = new GetVoucherUseCase(diContainer.voucherRepository);
       const voucher = await useCase.execute((req as any).params.id);
-      
-      // In MVP, Voucher Entity doesn't hold lines. 
-      // We would fetch lines from a separate repo or assume they are embedded if using NoSQL.
-      // For this step, we'll return empty lines array if not implemented in repo.
       
       (res as any).status(200).json({
         success: true,

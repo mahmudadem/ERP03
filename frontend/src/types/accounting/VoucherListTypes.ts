@@ -10,7 +10,8 @@ export interface VoucherListItem {
   type: string; // e.g., 'INV', 'REC'
   date: string; // ISO String
   currency: string;
-  status: 'DRAFT' | 'PENDING' | 'POSTED' | 'LOCKED' | 'VOID';
+  // Updated status types to lowercase to match new backend logic
+  status: 'draft' | 'pending' | 'approved' | 'locked' | 'cancelled';
   totalDebit: number;
   totalCredit: number;
   reference?: string;

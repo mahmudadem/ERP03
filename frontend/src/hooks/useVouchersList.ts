@@ -1,4 +1,3 @@
-
 /**
  * useVouchersList.ts
  */
@@ -33,7 +32,7 @@ export const useVouchersList = () => {
     setIsLoading(true);
     setError(undefined);
 
-    // Cancel previous request if active (if API supported signals, currently just logic placeholder)
+    // Cancel previous request if active
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -46,9 +45,9 @@ export const useVouchersList = () => {
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Failed to fetch vouchers:', err);
-      // Handle array fallback if backend isn't paginated yet during dev
-      if (Array.isArray(err)) {
-         setError('Invalid API response format (Expected pagination object)');
+      // Fallback for mocked backend if it returns array instead of paginated object
+      if (Array.isArray(err)) { 
+         setError('Invalid API response format');
       } else {
          setError(err.message || 'Failed to load vouchers.');
       }
@@ -69,7 +68,6 @@ export const useVouchersList = () => {
   const setFilters = (partial: Partial<VoucherListFilters>) => {
     setFiltersState(prev => {
       const newState = { ...prev, ...partial };
-      
       // If any filter other than page/pageSize changes, reset to page 1
       const isPaginationChange = 
         Object.keys(partial).length === 1 && 

@@ -1,6 +1,6 @@
 
 export type VoucherType = 'JOURNAL' | 'INVOICE' | 'BILL' | 'PAYMENT' | 'RECEIPT';
-export type VoucherStatus = 'DRAFT' | 'POSTED' | 'VOID';
+export type VoucherStatus = 'draft' | 'pending' | 'approved' | 'locked' | 'cancelled';
 
 export class Voucher {
   constructor(
@@ -19,5 +19,22 @@ export class Voucher {
 
   public isBalanced(): boolean {
     return Math.abs(this.totalDebit - this.totalCredit) < 0.01;
+  }
+
+  public canTransitionTo(newStatus: VoucherStatus): boolean {
+    switch (this.status) {
+      case 'draft':
+        return newStatus === 'pending' || newStatus === 'cancelled';
+      case 'pending':
+        return newStatus === 'approved' || newStatus === 'cancelled' || newStatus === 'draft';
+      case 'approved':
+        return newStatus === 'locked' || newStatus === 'cancelled'; 
+      case 'locked':
+        return false; // Terminal state
+      case 'cancelled':
+        return false; // Terminal state
+      default:
+        return false;
+    }
   }
 }

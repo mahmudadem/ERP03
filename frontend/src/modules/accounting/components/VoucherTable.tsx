@@ -21,11 +21,11 @@ interface Props {
 
 const getStatusVariant = (status: string) => {
   switch (status) {
-    case 'POSTED': return 'success';
-    case 'PENDING': return 'warning';
-    case 'DRAFT': return 'default';
-    case 'VOID': return 'error';
-    case 'LOCKED': return 'info';
+    case 'approved': return 'success';
+    case 'pending': return 'warning';
+    case 'draft': return 'default';
+    case 'cancelled': return 'error';
+    case 'locked': return 'info';
     default: return 'default';
   }
 };
@@ -79,7 +79,7 @@ export const VoucherTable: React.FC<Props> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge variant={getStatusVariant(voucher.status)}>
-                      {voucher.status}
+                      {voucher.status.toUpperCase()}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
