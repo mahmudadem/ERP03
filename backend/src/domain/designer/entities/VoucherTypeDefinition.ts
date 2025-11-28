@@ -10,6 +10,7 @@ export class VoucherTypeDefinition {
   constructor(
     public id: string,
     public name: string,
+    public code: string,
     public module: string,
     public headerFields: FieldDefinition[],
     public tableColumns: TableColumn[],

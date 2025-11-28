@@ -9,6 +9,7 @@ export interface FormSection {
 export class FormDefinition {
   constructor(
     public id: string,
+    public name: string,
     public module: string,
     public type: string, // e.g. 'INVOICE_FORM'
     public fields: FieldDefinition[],

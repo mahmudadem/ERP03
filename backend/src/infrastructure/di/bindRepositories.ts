@@ -1,46 +1,69 @@
 
-/**
- * bindRepositories.ts
- * 
- * Purpose:
- * Central Dependency Injection setup.
- * Determines which Repository Implementation (Firestore vs Postgres) to use.
- */
 import * as admin from 'firebase-admin';
 import { db } from '../firestore/config/firebase.config';
 
-// Interfaces
+// Import All Interfaces
 import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRepository';
 import { IUserRepository } from '../../repository/interfaces/core/IUserRepository';
-import { IAccountRepository } from '../../repository/interfaces/accounting';
-import { IVoucherRepository } from '../../repository/interfaces/accounting';
+import { ICompanyUserRepository } from '../../repository/interfaces/core/ICompanyUserRepository';
+import * as SysRepo from '../../repository/interfaces/system';
+import * as AccRepo from '../../repository/interfaces/accounting';
+import * as InvRepo from '../../repository/interfaces/inventory';
+import * as HrRepo from '../../repository/interfaces/hr';
+import * as PosRepo from '../../repository/interfaces/pos';
+import * as DesRepo from '../../repository/interfaces/designer';
 
-// Firestore Implementations
+// Import All Firestore Implementations
 import { FirestoreCompanyRepository } from '../firestore/repositories/core/FirestoreCompanyRepository';
 import { FirestoreUserRepository } from '../firestore/repositories/core/FirestoreUserRepository';
+import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/FirestoreCompanyUserRepository';
+import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
 import { FirestoreAccountRepository } from '../firestore/repositories/accounting/FirestoreAccountRepository';
 import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
+import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
+import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
+import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
+import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
+import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
 
-// Helper to ensure DB is init
 const getDb = () => {
     if (!admin.apps.length) admin.initializeApp();
     return admin.firestore();
 };
 
 export const diContainer = {
-  get companyRepository(): ICompanyRepository {
-    return new FirestoreCompanyRepository(getDb());
-  },
+  // CORE
+  get companyRepository(): ICompanyRepository { return new FirestoreCompanyRepository(getDb()); },
+  get userRepository(): IUserRepository { return new FirestoreUserRepository(getDb()); },
+  get companyUserRepository(): ICompanyUserRepository { return new FirestoreCompanyUserRepository(getDb()); },
 
-  get userRepository(): IUserRepository {
-    return new FirestoreUserRepository(getDb());
-  },
+  // SYSTEM
+  get moduleRepository(): SysRepo.IModuleRepository { return new FirestoreModuleRepository(getDb()); },
+  get roleRepository(): SysRepo.IRoleRepository { return new FirestoreRoleRepository(getDb()); },
+  get permissionRepository(): SysRepo.IPermissionRepository { return new FirestorePermissionRepository(getDb()); },
+  get notificationRepository(): SysRepo.INotificationRepository { return new FirestoreNotificationRepository(getDb()); },
+  get auditLogRepository(): SysRepo.IAuditLogRepository { return new FirestoreAuditLogRepository(getDb()); },
 
-  get accountRepository(): IAccountRepository {
-    return new FirestoreAccountRepository(getDb());
-  },
+  // ACCOUNTING
+  get accountRepository(): AccRepo.IAccountRepository { return new FirestoreAccountRepository(getDb()); },
+  get voucherRepository(): AccRepo.IVoucherRepository { return new FirestoreVoucherRepository(getDb()); },
+  get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
+  get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
 
-  get voucherRepository(): IVoucherRepository {
-    return new FirestoreVoucherRepository(getDb());
-  }
+  // INVENTORY
+  get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },
+  get warehouseRepository(): InvRepo.IWarehouseRepository { return new FirestoreWarehouseRepository(getDb()); },
+  get stockMovementRepository(): InvRepo.IStockMovementRepository { return new FirestoreStockMovementRepository(getDb()); },
+
+  // HR
+  get employeeRepository(): HrRepo.IEmployeeRepository { return new FirestoreEmployeeRepository(getDb()); },
+  get attendanceRepository(): HrRepo.IAttendanceRepository { return new FirestoreAttendanceRepository(getDb()); },
+
+  // POS
+  get posShiftRepository(): PosRepo.IPosShiftRepository { return new FirestorePosShiftRepository(getDb()); },
+  get posOrderRepository(): PosRepo.IPosOrderRepository { return new FirestorePosOrderRepository(getDb()); },
+
+  // DESIGNER
+  get formDefinitionRepository(): DesRepo.IFormDefinitionRepository { return new FirestoreFormDefinitionRepository(getDb()); },
+  get voucherTypeDefinitionRepository(): DesRepo.IVoucherTypeDefinitionRepository { return new FirestoreVoucherTypeDefinitionRepository(getDb()); }
 };

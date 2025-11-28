@@ -5,7 +5,12 @@
  */
 import { Router } from 'express';
 import coreRoutes from '../routes/core.routes';
-// import accountingRoutes from '../routes/accounting.routes';
+import systemRoutes from '../routes/system.routes';
+import accountingRoutes from '../routes/accounting.routes';
+import inventoryRoutes from '../routes/inventory.routes';
+import hrRoutes from '../routes/hr.routes';
+import posRoutes from '../routes/pos.routes';
+import designerRoutes from '../routes/designer.routes';
 
 const router = Router();
 
@@ -15,7 +20,12 @@ router.get('/health', (req, res) => {
 });
 
 // Module Routes
-router.use('/', coreRoutes); // Mounts /companies/create, etc.
-// router.use('/', accountingRoutes);
+router.use('/core', coreRoutes);
+router.use('/system', systemRoutes);
+router.use('/accounting', accountingRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/hr', hrRoutes);
+router.use('/pos', posRoutes);
+router.use('/designer', designerRoutes);
 
 export default router;
