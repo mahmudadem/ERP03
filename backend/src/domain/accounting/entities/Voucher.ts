@@ -1,4 +1,6 @@
 
+import { VoucherLine } from './VoucherLine';
+
 export type VoucherType = 'JOURNAL' | 'INVOICE' | 'BILL' | 'PAYMENT' | 'RECEIPT';
 export type VoucherStatus = 'draft' | 'pending' | 'approved' | 'locked' | 'cancelled';
 
@@ -14,7 +16,8 @@ export class Voucher {
     public totalDebit: number,
     public totalCredit: number,
     public createdBy: string,
-    public reference?: string
+    public reference?: string,
+    public lines: VoucherLine[] = []
   ) {}
 
   public isBalanced(): boolean {

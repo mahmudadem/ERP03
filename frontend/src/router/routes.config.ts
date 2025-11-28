@@ -9,6 +9,7 @@ const CompaniesPage = lazy(() => import('../modules/core/pages/CompaniesPage'));
 const AccountingHomePage = lazy(() => import('../modules/accounting/pages/AccountingHomePage'));
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
+const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
 
 // Inventory
 const InventoryHomePage = lazy(() => import('../modules/inventory/pages/InventoryHomePage'));
@@ -47,6 +48,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting', label: 'Overview', component: AccountingHomePage, section: 'ACCOUNTING' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true },
+  { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING' },
 
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY' },

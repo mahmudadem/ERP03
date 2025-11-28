@@ -1,5 +1,6 @@
 
 import { Voucher, VoucherType, VoucherStatus } from '../../../domain/accounting/entities/Voucher';
+import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 import { IVoucherRepository } from '../../../repository/interfaces/accounting';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 
@@ -34,6 +35,30 @@ export class CreateVoucherUseCase {
     const initialStatus: VoucherStatus = settings.strictApprovalMode ? 'draft' : 'approved';
 
     const voucherId = `vch_${Date.now()}`;
+    
+    // 3. Build Lines & Totals
+    let totalDebit = 0;
+    let totalCredit = 0;
+    const voucherLines: VoucherLine[] = [];
+
+    data.lines.forEach((lineData, idx) => {
+      const baseAmount = lineData.fxAmount * data.exchangeRate;
+      if (baseAmount > 0) totalDebit += baseAmount;
+      else totalCredit += Math.abs(baseAmount);
+
+      voucherLines.push(new VoucherLine(
+        `${voucherId}_l${idx}`,
+        voucherId,
+        lineData.accountId,
+        lineData.description,
+        lineData.fxAmount,
+        baseAmount,
+        data.exchangeRate,
+        lineData.costCenterId
+      ));
+    });
+
+    // 4. Create Entity
     const voucher = new Voucher(
       voucherId,
       data.companyId,
@@ -42,23 +67,12 @@ export class CreateVoucherUseCase {
       data.currency,
       data.exchangeRate,
       initialStatus,
-      0, 
-      0,
+      totalDebit, 
+      totalCredit,
       data.createdBy,
-      data.reference
+      data.reference,
+      voucherLines
     );
-
-    let totalDebit = 0;
-    let totalCredit = 0;
-
-    data.lines.forEach(line => {
-      const baseAmount = line.fxAmount * data.exchangeRate;
-      if (baseAmount > 0) totalDebit += baseAmount;
-      else totalCredit += Math.abs(baseAmount);
-    });
-
-    voucher.totalDebit = totalDebit;
-    voucher.totalCredit = totalCredit;
 
     await this.voucherRepo.createVoucher(voucher);
     return voucher;

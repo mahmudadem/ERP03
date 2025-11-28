@@ -1,3 +1,4 @@
+
 /**
  * AccountingMappers.ts
  * 
@@ -7,6 +8,7 @@
 import * as admin from 'firebase-admin';
 import { Account } from '../../../domain/accounting/entities/Account';
 import { Voucher } from '../../../domain/accounting/entities/Voucher';
+import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 
 export class AccountMapper {
   static toDomain(data: any): Account {
@@ -38,6 +40,17 @@ export class AccountMapper {
 
 export class VoucherMapper {
   static toDomain(data: any): Voucher {
+    const lines = (data.lines || []).map((l: any) => new VoucherLine(
+      l.id,
+      l.voucherId,
+      l.accountId,
+      l.description,
+      l.fxAmount,
+      l.baseAmount,
+      l.rateAccToBase,
+      l.costCenterId
+    ));
+
     return new Voucher(
       data.id,
       data.companyId,
@@ -49,11 +62,23 @@ export class VoucherMapper {
       data.totalDebit,
       data.totalCredit,
       data.createdBy,
-      data.reference
+      data.reference,
+      lines
     );
   }
 
   static toPersistence(entity: Voucher): any {
+    const lines = entity.lines.map(l => ({
+      id: l.id,
+      voucherId: l.voucherId,
+      accountId: l.accountId,
+      description: l.description,
+      fxAmount: l.fxAmount,
+      baseAmount: l.baseAmount,
+      rateAccToBase: l.rateAccToBase,
+      costCenterId: l.costCenterId || null
+    }));
+
     return {
       id: entity.id,
       companyId: entity.companyId,
@@ -65,7 +90,8 @@ export class VoucherMapper {
       totalDebit: entity.totalDebit,
       totalCredit: entity.totalCredit,
       createdBy: entity.createdBy,
-      reference: entity.reference || null
+      reference: entity.reference || null,
+      lines: lines
     };
   }
 }

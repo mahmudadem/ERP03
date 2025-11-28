@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { AccountingController } from '../controllers/accounting/AccountingController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
+import { AccountingReportsController } from '../controllers/accounting/AccountingReportsController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionsMiddleware } from '../middlewares/permissionsMiddleware';
 
@@ -22,5 +23,8 @@ router.post('/vouchers/:id/send-to-approval', permissionsMiddleware('accounting.
 router.post('/vouchers/:id/approve', permissionsMiddleware('accounting.vouchers.approve'), VoucherController.approveVoucher);
 router.post('/vouchers/:id/lock', permissionsMiddleware('accounting.vouchers.lock'), VoucherController.lockVoucher);
 router.post('/vouchers/:id/cancel', permissionsMiddleware('accounting.vouchers.cancel'), VoucherController.cancelVoucher);
+
+// Reports
+router.get('/reports/trial-balance', permissionsMiddleware('accounting.reports.view'), AccountingReportsController.getTrialBalance);
 
 export default router;

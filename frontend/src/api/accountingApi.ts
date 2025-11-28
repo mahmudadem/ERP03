@@ -13,6 +13,16 @@ export interface VoucherDetailDTO extends VoucherListItem {
   lines?: any[];
 }
 
+export interface TrialBalanceLine {
+  accountId: string;
+  code: string;
+  name: string;
+  type: string;
+  totalDebit: number;
+  totalCredit: number;
+  netBalance: number;
+}
+
 export const accountingApi = {
   
   listVouchers: async (filters: VoucherListFilters): Promise<VoucherListResponse> => {
@@ -74,5 +84,10 @@ export const accountingApi = {
     return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/cancel`, {
       method: 'POST'
     });
+  },
+
+  // --- REPORTS ---
+  getTrialBalance: async () => {
+    return httpClient<TrialBalanceLine[]>('/accounting/reports/trial-balance');
   }
 };
