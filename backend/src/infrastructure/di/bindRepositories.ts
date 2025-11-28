@@ -6,6 +6,7 @@ import { db } from '../firestore/config/firebase.config';
 import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRepository';
 import { IUserRepository } from '../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository } from '../../repository/interfaces/core/ICompanyUserRepository';
+import { ICompanySettingsRepository } from '../../repository/interfaces/core/ICompanySettingsRepository';
 import * as SysRepo from '../../repository/interfaces/system';
 import * as AccRepo from '../../repository/interfaces/accounting';
 import * as InvRepo from '../../repository/interfaces/inventory';
@@ -17,6 +18,7 @@ import * as DesRepo from '../../repository/interfaces/designer';
 import { FirestoreCompanyRepository } from '../firestore/repositories/core/FirestoreCompanyRepository';
 import { FirestoreUserRepository } from '../firestore/repositories/core/FirestoreUserRepository';
 import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/FirestoreCompanyUserRepository';
+import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
 import { FirestoreAccountRepository } from '../firestore/repositories/accounting/FirestoreAccountRepository';
 import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
@@ -36,6 +38,7 @@ export const diContainer = {
   get companyRepository(): ICompanyRepository { return new FirestoreCompanyRepository(getDb()); },
   get userRepository(): IUserRepository { return new FirestoreUserRepository(getDb()); },
   get companyUserRepository(): ICompanyUserRepository { return new FirestoreCompanyUserRepository(getDb()); },
+  get companySettingsRepository(): ICompanySettingsRepository { return new FirestoreCompanySettingsRepository(getDb()); },
 
   // SYSTEM
   get moduleRepository(): SysRepo.IModuleRepository { return new FirestoreModuleRepository(getDb()); },

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { DynamicVoucherRenderer } from '../../../designer-engine/components/DynamicVoucherRenderer';
 import { accountingApi } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
@@ -12,12 +13,13 @@ const VoucherEditorPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
+  const { settings: companySettings } = useCompanySettings();
   const typeCode = searchParams.get('type') || 'INV';
   const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(typeCode);
   
   const [initialValues, setInitialValues] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
-  const [currentVoucher, setCurrentVoucher] = useState<any>(null); // To store meta like status
+  const [currentVoucher, setCurrentVoucher] = useState<any>(null); 
 
   useEffect(() => {
     if (id && id !== 'new') {
@@ -77,15 +79,13 @@ const VoucherEditorPage: React.FC = () => {
       } else {
         await accountingApi.updateVoucher(id!, payload);
         alert('Voucher Updated');
-        loadVoucherData(id!); // Refresh state
+        loadVoucherData(id!);
       }
     } catch (err: any) {
       console.error(err);
       alert(`Error: ${err.message}`);
     }
   };
-
-  // --- WORKFLOW ACTIONS ---
 
   const handleWorkflowAction = async (action: 'sendToApproval' | 'approve' | 'lock' | 'cancel') => {
     if (!id || id === 'new') return;
@@ -127,8 +127,6 @@ const VoucherEditorPage: React.FC = () => {
     return <div className="p-8 text-center text-red-500">Error: {defError || 'Definition not found'}</div>;
   }
 
-  // --- RENDER HELPERS ---
-
   const renderStatusBadge = () => {
     if (!currentVoucher) return <Badge variant="info">New</Badge>;
     const map: Record<string, 'default' | 'warning' | 'success' | 'info' | 'error'> = {
@@ -142,18 +140,20 @@ const VoucherEditorPage: React.FC = () => {
   };
 
   const renderActionButtons = () => {
-    if (id === 'new' || !currentVoucher) return null;
+    if (id === 'new' || !currentVoucher || !companySettings) return null;
 
     const status = currentVoucher.status;
+    const isStrict = companySettings.strictApprovalMode;
 
     return (
       <div className="flex gap-2">
-        {status === 'draft' && (
+        {status === 'draft' && isStrict && (
           <Button onClick={() => handleWorkflowAction('sendToApproval')} variant="secondary" size="sm">
             Send for Approval
           </Button>
         )}
-        {status === 'pending' && (
+        
+        {status === 'pending' && isStrict && (
           <>
             <Button onClick={() => handleWorkflowAction('approve')} variant="primary" size="sm">
               Approve
@@ -163,6 +163,7 @@ const VoucherEditorPage: React.FC = () => {
             </Button>
           </>
         )}
+
         {status === 'approved' && (
           <>
             <Button onClick={() => handleWorkflowAction('lock')} variant="secondary" size="sm">
@@ -173,7 +174,6 @@ const VoucherEditorPage: React.FC = () => {
             </Button>
           </>
         )}
-        {/* Locked and Cancelled states have no actions */}
       </div>
     );
   };
@@ -182,7 +182,6 @@ const VoucherEditorPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
-      {/* Header Bar */}
       <div className="flex justify-between items-center bg-white p-4 rounded border border-gray-200 shadow-sm">
         <div className="flex items-center gap-4">
            <div>
@@ -202,7 +201,7 @@ const VoucherEditorPage: React.FC = () => {
       <DynamicVoucherRenderer 
         definition={definition} 
         initialValues={initialValues}
-        onSubmit={isReadOnly ? () => {} : handleSave} // Disable submit if locked
+        onSubmit={isReadOnly ? () => {} : handleSave} 
       />
       
       {isReadOnly && (

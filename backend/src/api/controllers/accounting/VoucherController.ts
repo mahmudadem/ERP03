@@ -1,7 +1,4 @@
 
-/**
- * VoucherController.ts
- */
 import { Request, Response, NextFunction } from 'express';
 import { 
   CreateVoucherUseCase, 
@@ -25,7 +22,10 @@ export class VoucherController {
     try {
       validateCreateVoucherInput((req as any).body);
       
-      const useCase = new CreateVoucherUseCase(diContainer.voucherRepository);
+      const useCase = new CreateVoucherUseCase(
+        diContainer.voucherRepository,
+        diContainer.companySettingsRepository
+      );
       
       const payload = {
         ...(req as any).body,
@@ -68,7 +68,10 @@ export class VoucherController {
 
   static async sendToApproval(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new SendVoucherToApprovalUseCase(diContainer.voucherRepository);
+      const useCase = new SendVoucherToApprovalUseCase(
+        diContainer.voucherRepository,
+        diContainer.companySettingsRepository
+      );
       const voucher = await useCase.execute((req as any).params.id);
       (res as any).status(200).json({ 
         success: true, 
@@ -82,7 +85,10 @@ export class VoucherController {
 
   static async approveVoucher(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository);
+      const useCase = new ApproveVoucherUseCase(
+        diContainer.voucherRepository,
+        diContainer.companySettingsRepository
+      );
       const voucher = await useCase.execute((req as any).params.id);
       (res as any).status(200).json({ 
         success: true, 

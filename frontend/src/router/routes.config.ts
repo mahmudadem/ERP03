@@ -1,3 +1,4 @@
+
 import { lazy, ComponentType } from 'react';
 
 // Core
@@ -24,6 +25,7 @@ const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
+const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
 
 // Designer
 const DesignerEngine = lazy(() => import('../designer-engine/index'));
@@ -61,6 +63,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings', label: 'General', component: SettingsHomePage, section: 'SETTINGS' },
   { path: '/settings/appearance', label: 'Appearance', component: AppearanceSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
+  { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS' },
 
   // DESIGNER
   { path: '/designer', label: 'Form Designer', component: DesignerEngine, section: 'SETTINGS' },

@@ -1,6 +1,7 @@
 
 import { Voucher, VoucherType, VoucherStatus } from '../../../domain/accounting/entities/Voucher';
 import { IVoucherRepository } from '../../../repository/interfaces/accounting';
+import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 
 // --- SHARED HELPER ---
 const validateTransition = (voucher: Voucher, targetStatus: VoucherStatus) => {
@@ -10,7 +11,10 @@ const validateTransition = (voucher: Voucher, targetStatus: VoucherStatus) => {
 };
 
 export class CreateVoucherUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private settingsRepo: ICompanySettingsRepository
+  ) {}
 
   async execute(data: { 
     companyId: string; 
@@ -23,6 +27,12 @@ export class CreateVoucherUseCase {
     lines: Array<{ accountId: string; description: string; fxAmount: number; costCenterId?: string }>;
   }): Promise<Voucher> {
     
+    // 1. Load Settings
+    const settings = await this.settingsRepo.getSettings(data.companyId);
+    
+    // 2. Determine Initial Status
+    const initialStatus: VoucherStatus = settings.strictApprovalMode ? 'draft' : 'approved';
+
     const voucherId = `vch_${Date.now()}`;
     const voucher = new Voucher(
       voucherId,
@@ -31,7 +41,7 @@ export class CreateVoucherUseCase {
       data.date,
       data.currency,
       data.exchangeRate,
-      'draft',
+      initialStatus,
       0, 
       0,
       data.createdBy,
@@ -71,11 +81,19 @@ export class UpdateVoucherDraftUseCase {
 }
 
 export class SendVoucherToApprovalUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private settingsRepo: ICompanySettingsRepository
+  ) {}
 
   async execute(id: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+
+    const settings = await this.settingsRepo.getSettings(voucher.companyId);
+    if (!settings.strictApprovalMode) {
+      throw new Error("Approval workflow is disabled for this company.");
+    }
 
     validateTransition(voucher, 'pending');
 
@@ -91,12 +109,20 @@ export class SendVoucherToApprovalUseCase {
 }
 
 export class ApproveVoucherUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private settingsRepo: ICompanySettingsRepository
+  ) {}
 
   async execute(id: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
     
+    const settings = await this.settingsRepo.getSettings(voucher.companyId);
+    if (!settings.strictApprovalMode) {
+      throw new Error("Approval workflow is disabled for this company.");
+    }
+
     validateTransition(voucher, 'approved');
 
     voucher.status = 'approved';
