@@ -1,0 +1,9 @@
+
+import { CompanyUser } from '../../../domain/rbac/CompanyUser';
+
+export interface ICompanyUserRepository {
+  getByUserAndCompany(userId: string, companyId: string): Promise<CompanyUser | null>;
+  getByCompany(companyId: string): Promise<CompanyUser[]>;
+  assignRole(companyUser: CompanyUser): Promise<void>;
+  removeRole(userId: string, companyId: string): Promise<void>;
+}

@@ -9,4 +9,5 @@ export interface IRoleRepository {
   updateRole(roleId: string, data: Partial<Role>): Promise<void>;
   getRole(roleId: string): Promise<Role | null>;
   getCompanyRoles(companyId: string): Promise<Role[]>;
+  listSystemRoleTemplates?(): Promise<Role[]>;
 }

@@ -3,6 +3,7 @@ import React from 'react';
 import { useCompanyContext } from '../hooks/useCompanyContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { Button } from '../components/ui/Button';
+import { SwitchCompanyButton } from '../components/company/SwitchCompanyButton';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -39,6 +40,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
              Theme
            </Button>
         </div>
+
+        <SwitchCompanyButton />
 
         <div className="h-8 w-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-sm">
           A

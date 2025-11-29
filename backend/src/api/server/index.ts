@@ -7,6 +7,7 @@ import * as cors from 'cors';
 import router from './router';
 import { errorHandler } from '../errors/errorHandler';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
+import { impersonationMiddleware } from '../middlewares/impersonationMiddleware';
 
 const app = express();
 
@@ -14,6 +15,9 @@ const app = express();
 // Fix: cast to any to resolve NextHandleFunction vs RequestHandler type mismatch errors
 app.use(cors({ origin: true }) as any);
 app.use(express.json() as any);
+
+// Apply Impersonation Middleware first (checks X-Impersonation-Token header)
+app.use(impersonationMiddleware as any);
 
 // Apply Company Context Middleware globally (or per route if preferred)
 app.use(companyContextMiddleware as any);

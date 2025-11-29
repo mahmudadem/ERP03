@@ -1,5 +1,5 @@
 
-import { User } from '../../../domain/core/entities/User';
+import { User, UserRole } from '../../../domain/core/entities/User';
 
 /**
  * Interface for User data access.
@@ -24,4 +24,11 @@ export interface IUserRepository {
    * @param data Partial data to update.
    */
   updateUser(userId: string, data: Partial<User>): Promise<void>;
+
+  /**
+   * Updates a user's global role (SUPER_ADMIN or USER).
+   * @param userId The ID of the user.
+   * @param newRole The new global role.
+   */
+  updateGlobalRole(userId: string, newRole: UserRole): Promise<void>;
 }

@@ -50,7 +50,7 @@ export class UserMapper {
       data.id,
       data.email,
       data.name,
-      data.role,
+      data.globalRole || data.role || 'USER',
       data.createdAt?.toDate?.() || new Date(data.createdAt),
       data.pictureUrl
     );
@@ -61,7 +61,7 @@ export class UserMapper {
       id: entity.id,
       email: entity.email,
       name: entity.name,
-      role: entity.role,
+      globalRole: entity.globalRole,
       createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
       pictureUrl: entity.pictureUrl || null
     };

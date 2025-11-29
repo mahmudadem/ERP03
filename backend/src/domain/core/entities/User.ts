@@ -6,12 +6,12 @@ export class User {
     public id: string,
     public email: string,
     public name: string,
-    public role: UserRole,
+    public globalRole: UserRole,
     public createdAt: Date,
     public pictureUrl?: string
   ) {}
 
   public isAdmin(): boolean {
-    return this.role === 'SUPER_ADMIN';
+    return this.globalRole === 'SUPER_ADMIN';
   }
 }

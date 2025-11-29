@@ -1,8 +1,11 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { createHashRouter } from 'react-router-dom';
 import { AppShell } from '../layout/AppShell';
 import { routesConfig } from './routes.config';
 import { Navigate } from 'react-router-dom';
+import { ProtectedRoute } from '../components/auth/ProtectedRoute';
+
+const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
 
 // Loading Component
 const PageLoader = () => (
@@ -23,10 +26,24 @@ const routes = [
         index: route.path === '/',
         element: (
           <Suspense fallback={<PageLoader />}>
-            <route.component />
+            <ProtectedRoute 
+              requiredPermission={route.requiredPermission}
+              requiredGlobalRole={route.requiredGlobalRole}
+              requiredModule={route.requiredModule}
+            >
+              <route.component />
+            </ProtectedRoute>
           </Suspense>
         ),
       })),
+      {
+        path: 'forbidden',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ForbiddenPage />
+          </Suspense>
+        ),
+      },
       {
         path: '*',
         element: <Navigate to="/" replace />,

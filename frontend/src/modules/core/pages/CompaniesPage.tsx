@@ -2,13 +2,21 @@
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { useNavigate } from 'react-router-dom';
 
 const CompaniesPage: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">My Companies</h1>
-        <Button>+ Create New Company</Button>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={() => navigate('/company-wizard')}>
+            If you do not have a company, click here to create one
+          </Button>
+          <Button>+ Create New Company</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

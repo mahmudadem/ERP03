@@ -45,6 +45,10 @@ export class FirestoreRoleRepository extends BaseFirestoreRepository<Role> imple
     const snapshot = await this.db.collection(this.collectionName).where('companyId', '==', companyId).get();
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }
+  async listSystemRoleTemplates?(): Promise<Role[]> {
+    const snapshot = await this.db.collection(this.collectionName).get();
+    return snapshot.docs.map(doc => this.toDomain(doc.data()));
+  }
 }
 
 export class FirestorePermissionRepository extends BaseFirestoreRepository<Permission> implements IPermissionRepository {

@@ -11,6 +11,14 @@ import inventoryRoutes from '../routes/inventory.routes';
 import hrRoutes from '../routes/hr.routes';
 import posRoutes from '../routes/pos.routes';
 import designerRoutes from '../routes/designer.routes';
+import rbacRoutes from '../routes/system.rbac.routes';
+import superAdminRoutes from '../routes/super-admin.routes';
+import companyWizardRoutes from '../routes/super-admin.company-wizard.routes';
+import impersonationRoutes from '../routes/impersonation.routes';
+import userCompaniesRoutes from '../routes/user.companies.routes';
+import systemModuleSettingsRoutes from '../routes/system.moduleSettings.routes';
+import companyModuleSettingsRoutes from '../routes/company.moduleSettings.routes';
+import systemPermissionsRoutes from '../routes/system.permissions.routes';
 
 const router = Router();
 
@@ -22,6 +30,14 @@ router.get('/health', (req, res) => {
 // Module Routes
 router.use('/core', coreRoutes);
 router.use('/system', systemRoutes);
+router.use('/rbac', rbacRoutes);
+router.use('/company-wizard', companyWizardRoutes);
+router.use('/super-admin', superAdminRoutes);
+router.use('/impersonate', impersonationRoutes);
+router.use(userCompaniesRoutes);
+router.use(systemModuleSettingsRoutes);
+router.use(companyModuleSettingsRoutes);
+router.use(systemPermissionsRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/hr', hrRoutes);
@@ -29,3 +45,5 @@ router.use('/pos', posRoutes);
 router.use('/designer', designerRoutes);
 
 export default router;
+
+

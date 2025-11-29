@@ -6,7 +6,7 @@
  */
 import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { IUserRepository } from '../../../../repository/interfaces/core/IUserRepository';
-import { User } from '../../../../domain/core/entities/User';
+import { User, UserRole } from '../../../../domain/core/entities/User';
 import { UserMapper } from '../../mappers/CoreMappers';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
@@ -36,6 +36,14 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
       await this.db.collection(this.collectionName).doc(userId).update(data);
     } catch (error) {
       throw new InfrastructureError('Error updating user', error);
+    }
+  }
+
+  async updateGlobalRole(userId: string, newRole: UserRole): Promise<void> {
+    try {
+      await this.db.collection(this.collectionName).doc(userId).update({ globalRole: newRole });
+    } catch (error) {
+      throw new InfrastructureError('Error updating user global role', error);
     }
   }
 }

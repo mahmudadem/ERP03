@@ -3,11 +3,14 @@ import React from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { CompanySettingsProvider } from './context/CompanySettingsContext';
+import { CompanyAccessProvider } from './context/CompanyAccessContext';
 
 const App: React.FC = () => {
   return (
     <CompanySettingsProvider>
-      <RouterProvider router={router} />
+      <CompanyAccessProvider>
+        <RouterProvider router={router} />
+      </CompanyAccessProvider>
     </CompanySettingsProvider>
   );
 };

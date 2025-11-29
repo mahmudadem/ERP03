@@ -13,6 +13,10 @@ import * as InvRepo from '../../repository/interfaces/inventory';
 import * as HrRepo from '../../repository/interfaces/hr';
 import * as PosRepo from '../../repository/interfaces/pos';
 import * as DesRepo from '../../repository/interfaces/designer';
+import { IPermissionRepository as IRbacPermissionRepository } from '../../repository/interfaces/rbac/IPermissionRepository';
+import { ISystemRoleTemplateRepository } from '../../repository/interfaces/rbac/ISystemRoleTemplateRepository';
+import { ICompanyRoleRepository } from '../../repository/interfaces/rbac/ICompanyRoleRepository';
+import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../repository/interfaces/rbac/ICompanyUserRepository';
 
 // Import All Firestore Implementations
 import { FirestoreCompanyRepository } from '../firestore/repositories/core/FirestoreCompanyRepository';
@@ -27,6 +31,29 @@ import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMo
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
+import { FirestorePermissionRepository as FirestoreRbacPermissionRepository } from '../firestore/repositories/rbac/FirestorePermissionRepository';
+import { FirestoreSystemRoleTemplateRepository } from '../firestore/repositories/rbac/FirestoreSystemRoleTemplateRepository';
+import { FirestoreCompanyRoleRepository } from '../firestore/repositories/rbac/FirestoreCompanyRoleRepository';
+import { FirestoreCompanyUserRepository as FirestoreRbacCompanyUserRepository } from '../firestore/repositories/rbac/FirestoreCompanyUserRepository';
+import { IImpersonationRepository } from '../../repository/interfaces/impersonation/IImpersonationRepository';
+import { FirestoreImpersonationRepository } from '../firestore/repositories/impersonation/FirestoreImpersonationRepository';
+import { ICompanyWizardTemplateRepository } from '../../repository/interfaces/company-wizard/ICompanyWizardTemplateRepository';
+import { ICompanyCreationSessionRepository } from '../../repository/interfaces/company-wizard/ICompanyCreationSessionRepository';
+import { IChartOfAccountsTemplateRepository } from '../../repository/interfaces/company-wizard/IChartOfAccountsTemplateRepository';
+import { ICurrencyRepository } from '../../repository/interfaces/company-wizard/ICurrencyRepository';
+import { IInventoryTemplateRepository } from '../../repository/interfaces/company-wizard/IInventoryTemplateRepository';
+import { FirestoreCompanyWizardTemplateRepository } from '../firestore/repositories/company-wizard/FirestoreCompanyWizardTemplateRepository';
+import { FirestoreCompanyCreationSessionRepository } from '../firestore/repositories/company-wizard/FirestoreCompanyCreationSessionRepository';
+import { FirestoreChartOfAccountsTemplateRepository } from '../firestore/repositories/company-wizard/FirestoreChartOfAccountsTemplateRepository';
+import { FirestoreCurrencyRepository } from '../firestore/repositories/company-wizard/FirestoreCurrencyRepository';
+import { FirestoreInventoryTemplateRepository } from '../firestore/repositories/company-wizard/FirestoreInventoryTemplateRepository';
+import { IModuleSettingsDefinitionRepository } from '../../repository/interfaces/system/IModuleSettingsDefinitionRepository';
+import { FirestoreModuleSettingsDefinitionRepository } from '../firestore/repositories/system/FirestoreModuleSettingsDefinitionRepository';
+import { ICompanyModuleSettingsRepository } from '../../repository/interfaces/system/ICompanyModuleSettingsRepository';
+import { FirestoreCompanyModuleSettingsRepository } from '../firestore/repositories/system/FirestoreCompanyModuleSettingsRepository';
+import { IModulePermissionsDefinitionRepository } from '../../repository/interfaces/system/IModulePermissionsDefinitionRepository';
+import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository';
+
 
 const getDb = () => {
     if (!admin.apps.length) admin.initializeApp();
@@ -66,7 +93,32 @@ export const diContainer = {
   get posShiftRepository(): PosRepo.IPosShiftRepository { return new FirestorePosShiftRepository(getDb()); },
   get posOrderRepository(): PosRepo.IPosOrderRepository { return new FirestorePosOrderRepository(getDb()); },
 
+
   // DESIGNER
   get formDefinitionRepository(): DesRepo.IFormDefinitionRepository { return new FirestoreFormDefinitionRepository(getDb()); },
-  get voucherTypeDefinitionRepository(): DesRepo.IVoucherTypeDefinitionRepository { return new FirestoreVoucherTypeDefinitionRepository(getDb()); }
+  get voucherTypeDefinitionRepository(): DesRepo.IVoucherTypeDefinitionRepository { return new FirestoreVoucherTypeDefinitionRepository(getDb()); },
+
+  // RBAC
+  get rbacPermissionRepository(): IRbacPermissionRepository { return new FirestoreRbacPermissionRepository(getDb()); },
+  get systemRoleTemplateRepository(): ISystemRoleTemplateRepository { return new FirestoreSystemRoleTemplateRepository(getDb()); },
+  get companyRoleRepository(): ICompanyRoleRepository { return new FirestoreCompanyRoleRepository(getDb()); },
+  get rbacCompanyUserRepository(): IRbacCompanyUserRepository { return new FirestoreRbacCompanyUserRepository(getDb()); },
+
+  // IMPERSONATION
+  get impersonationRepository(): IImpersonationRepository { return new FirestoreImpersonationRepository(getDb()); },
+
+  // COMPANY WIZARD
+  get companyWizardTemplateRepository(): ICompanyWizardTemplateRepository { return new FirestoreCompanyWizardTemplateRepository(getDb()); },
+  get companyCreationSessionRepository(): ICompanyCreationSessionRepository { return new FirestoreCompanyCreationSessionRepository(getDb()); },
+  get chartOfAccountsTemplateRepository(): IChartOfAccountsTemplateRepository { return new FirestoreChartOfAccountsTemplateRepository(getDb()); },
+  get currencyRepository(): ICurrencyRepository { return new FirestoreCurrencyRepository(getDb()); },
+  get inventoryTemplateRepository(): IInventoryTemplateRepository { return new FirestoreInventoryTemplateRepository(getDb()); }
+
+  // MODULE SETTINGS
+  get moduleSettingsDefinitionRepository(): IModuleSettingsDefinitionRepository { return new FirestoreModuleSettingsDefinitionRepository(getDb()); },
+  get companyModuleSettingsRepository(): ICompanyModuleSettingsRepository { return new FirestoreCompanyModuleSettingsRepository(getDb()); },
+
+  // MODULE PERMISSIONS
+  get modulePermissionsDefinitionRepository(): IModulePermissionsDefinitionRepository { return new FirestoreModulePermissionsDefinitionRepository(getDb()); }
 };
+

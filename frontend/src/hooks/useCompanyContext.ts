@@ -12,6 +12,7 @@ export const useCompanyContext = () => {
 
   return {
     company,
+    activeCompanyModules: (window as any)?.activeModules || [],
     isAuthenticated: true, // Mock auth status
   };
 };

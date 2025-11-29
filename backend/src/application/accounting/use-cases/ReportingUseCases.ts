@@ -1,5 +1,6 @@
 
 import { IAccountRepository, IVoucherRepository } from '../../../repository/interfaces/accounting';
+import { PermissionChecker } from '../../rbac/PermissionChecker';
 
 export interface TrialBalanceLine {
   accountId: string;
@@ -14,10 +15,18 @@ export interface TrialBalanceLine {
 export class GetTrialBalanceUseCase {
   constructor(
     private accountRepo: IAccountRepository,
-    private voucherRepo: IVoucherRepository
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string): Promise<TrialBalanceLine[]> {
+  async execute(companyId: string, userId: string): Promise<TrialBalanceLine[]> {
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      companyId,
+      'accounting.reports.trialBalance.view'
+    );
+
     // 1. Fetch all accounts to map names and codes
     const accounts = await this.accountRepo.getAccounts(companyId);
     const accountMap = new Map(accounts.map(a => [a.id, a]));

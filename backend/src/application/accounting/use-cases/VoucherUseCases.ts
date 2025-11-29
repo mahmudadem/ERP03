@@ -3,6 +3,7 @@ import { Voucher, VoucherType, VoucherStatus } from '../../../domain/accounting/
 import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 import { IVoucherRepository } from '../../../repository/interfaces/accounting';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
+import { PermissionChecker } from '../../rbac/PermissionChecker';
 
 // --- SHARED HELPER ---
 const validateTransition = (voucher: Voucher, targetStatus: VoucherStatus) => {
@@ -14,7 +15,8 @@ const validateTransition = (voucher: Voucher, targetStatus: VoucherStatus) => {
 export class CreateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository
+    private settingsRepo: ICompanySettingsRepository,
+    private permissionChecker: PermissionChecker
   ) {}
 
   async execute(data: { 
@@ -27,6 +29,13 @@ export class CreateVoucherUseCase {
     reference?: string;
     lines: Array<{ accountId: string; description: string; fxAmount: number; costCenterId?: string }>;
   }): Promise<Voucher> {
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      data.createdBy,
+      data.companyId,
+      'accounting.vouchers.create'
+    );
     
     // 1. Load Settings
     const settings = await this.settingsRepo.getSettings(data.companyId);
@@ -80,11 +89,21 @@ export class CreateVoucherUseCase {
 }
 
 export class UpdateVoucherDraftUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
 
-  async execute(id: string, data: Partial<Voucher>): Promise<void> {
+  async execute(id: string, data: Partial<Voucher>, userId: string): Promise<void> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.edit'
+    );
     
     if (voucher.status !== 'draft') {
       throw new Error('Only Draft vouchers can be updated');
@@ -97,12 +116,20 @@ export class UpdateVoucherDraftUseCase {
 export class SendVoucherToApprovalUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository
+    private settingsRepo: ICompanySettingsRepository,
+    private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string): Promise<Voucher> {
+  async execute(id: string, userId: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.edit'
+    );
 
     const settings = await this.settingsRepo.getSettings(voucher.companyId);
     if (!settings.strictApprovalMode) {
@@ -125,12 +152,20 @@ export class SendVoucherToApprovalUseCase {
 export class ApproveVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository
+    private settingsRepo: ICompanySettingsRepository,
+    private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string): Promise<Voucher> {
+  async execute(id: string, userId: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.approve'
+    );
     
     const settings = await this.settingsRepo.getSettings(voucher.companyId);
     if (!settings.strictApprovalMode) {
@@ -147,11 +182,21 @@ export class ApproveVoucherUseCase {
 }
 
 export class LockVoucherUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
 
-  async execute(id: string): Promise<Voucher> {
+  async execute(id: string, userId: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.lock'
+    );
     
     validateTransition(voucher, 'locked');
     
@@ -163,11 +208,21 @@ export class LockVoucherUseCase {
 }
 
 export class CancelVoucherUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
 
-  async execute(id: string): Promise<Voucher> {
+  async execute(id: string, userId: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.cancel'
+    );
     
     validateTransition(voucher, 'cancelled');
     
@@ -179,19 +234,40 @@ export class CancelVoucherUseCase {
 }
 
 export class GetVoucherUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
   
-  async execute(id: string): Promise<Voucher> {
+  async execute(id: string, userId: string): Promise<Voucher> {
     const voucher = await this.voucherRepo.getVoucher(id);
     if (!voucher) throw new Error('Voucher not found');
+    
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      voucher.companyId,
+      'accounting.vouchers.view'
+    );
+    
     return voucher;
   }
 }
 
 export class ListVouchersUseCase {
-  constructor(private voucherRepo: IVoucherRepository) {}
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
 
-  async execute(companyId: string, filters?: any): Promise<Voucher[]> {
+  async execute(companyId: string, userId: string, filters?: any): Promise<Voucher[]> {
+    // RBAC: Check permission
+    await this.permissionChecker.assertOrThrow(
+      userId,
+      companyId,
+      'accounting.vouchers.view'
+    );
+    
     return this.voucherRepo.getVouchers(companyId, filters);
   }
 }

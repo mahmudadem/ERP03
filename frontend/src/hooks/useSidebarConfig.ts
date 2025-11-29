@@ -1,27 +1,54 @@
 
 import { useMemo } from 'react';
-import { routesConfig } from '../router/routes.config';
+import { useCompanyAccess } from '../context/CompanyAccessContext';
+import { useRBAC } from '../api/rbac/useRBAC';
+import { moduleMenuMap } from '../config/moduleMenuMap';
+
+type SidebarSection = {
+  label: string;
+  icon?: string;
+  path?: string;
+  children?: Array<{ label: string; path: string }>;
+};
 
 export const useSidebarConfig = () => {
+  const { permissions, isSuperAdmin } = useCompanyAccess();
+  const { hasPermission } = useRBAC();
+
   const sidebarSections = useMemo(() => {
-    // Group routes by section
-    const groups: Record<string, any[]> = {
-      CORE: [],
-      ACCOUNTING: [],
-      INVENTORY: [],
-      HR: [],
-      POS: [],
-      SETTINGS: []
+    const sections: Record<string, SidebarSection[]> = {
+      MODULES: [],
+      SETTINGS: [],
+      SUPER_ADMIN: []
     };
 
-    routesConfig.forEach(route => {
-      if (!route.hideInMenu && groups[route.section]) {
-        groups[route.section].push(route);
+    const activeModules: string[] = (window as any)?.activeModules || [];
+
+    activeModules.forEach((moduleId) => {
+      const def = moduleMenuMap[moduleId] || {
+        label: moduleId,
+        icon: 'Package',
+        items: []
+      };
+      const items = def.items.filter((item) => hasPermission(item.permission));
+      if (items.length > 0) {
+        sections.MODULES.push({
+          label: def.label,
+          icon: def.icon,
+          children: items.map((i) => ({ label: i.label, path: i.path }))
+        });
       }
     });
 
-    return groups;
-  }, []);
+    if (isSuperAdmin) {
+      sections.SUPER_ADMIN.push({
+        label: 'Super Admin',
+        path: '/super-admin/overview'
+      });
+    }
+
+    return sections;
+  }, [permissions, isSuperAdmin]);
 
   return sidebarSections;
 };
