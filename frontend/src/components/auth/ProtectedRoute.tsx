@@ -12,12 +12,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredPermission, requiredGlobalRole, requiredModule }: ProtectedRouteProps) {
-  const { permissions, isSuperAdmin, loading, companyId } = useCompanyAccess();
+  const { isSuperAdmin, loading, companyId, moduleBundles } = useCompanyAccess();
   const { hasPermission } = useRBAC();
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
   const isWizardFlow = path.startsWith('/company-wizard') || path.startsWith('/company-selector');
-  const activeModules = (window as any)?.activeModules || [];
+  const activeModules = moduleBundles || [];
 
   if (loading) {
     return <div className="p-6">Loading...</div>;

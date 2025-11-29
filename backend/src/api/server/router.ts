@@ -19,6 +19,8 @@ import userCompaniesRoutes from '../routes/user.companies.routes';
 import systemModuleSettingsRoutes from '../routes/system.moduleSettings.routes';
 import companyModuleSettingsRoutes from '../routes/company.moduleSettings.routes';
 import systemPermissionsRoutes from '../routes/system.permissions.routes';
+import systemRolesRoutes from '../routes/system.roles.routes';
+import authRoutes from '../routes/auth.routes';
 
 const router = Router();
 
@@ -38,6 +40,8 @@ router.use(userCompaniesRoutes);
 router.use(systemModuleSettingsRoutes);
 router.use(companyModuleSettingsRoutes);
 router.use(systemPermissionsRoutes);
+router.use(systemRolesRoutes);
+router.use(authRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/hr', hrRoutes);

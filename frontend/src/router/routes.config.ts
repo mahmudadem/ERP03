@@ -45,6 +45,10 @@ const CompaniesListPage = lazy(() => import('../modules/super-admin/pages/Compan
 const SelectModelPage = lazy(() => import('../modules/super-admin/company-wizard/pages/SelectModelPage'));
 const DynamicWizardPage = lazy(() => import('../modules/super-admin/company-wizard/pages/DynamicWizardPage'));
 const CompanySelectorPage = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
+const ModulePermissionsListPage = lazy(() => import('../modules/super-admin/permissions-manager/ModulePermissionsListPage'));
+const EditModulePermissionsPage = lazy(() => import('../modules/super-admin/permissions-manager/EditModulePermissionsPage'));
+const RolePermissionsListPage = lazy(() => import('../modules/super-admin/permissions-manager/RolePermissionsListPage'));
+const EditRolePage = lazy(() => import('../modules/super-admin/permissions-manager/EditRolePage'));
 
 export interface AppRoute {
   path: string;
@@ -97,6 +101,10 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/users', label: 'All Users', component: UsersListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies', label: 'All Companies', component: CompaniesListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/permissions/:moduleId', label: 'Edit Module Permissions', component: EditModulePermissionsPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/roles', label: 'Roles', component: RolePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/roles/:roleId', label: 'Edit Role', component: EditRolePage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
 
   // Company Wizard (user accessible)
   { path: '/company-wizard', label: 'Company Wizard', component: SelectModelPage, section: 'CORE' },

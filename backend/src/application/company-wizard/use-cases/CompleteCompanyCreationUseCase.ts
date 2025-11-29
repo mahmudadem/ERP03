@@ -5,6 +5,7 @@ import { ICompanyCreationSessionRepository } from '../../../repository/interface
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
+import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 
 interface Input {
   sessionId: string;
@@ -17,7 +18,8 @@ export class CompleteCompanyCreationUseCase {
     private templateRepo: ICompanyWizardTemplateRepository,
     private companyRepo: ICompanyRepository,
     private userRepo: IUserRepository,
-    private rbacCompanyUserRepo: IRbacCompanyUserRepository
+    private rbacCompanyUserRepo: IRbacCompanyUserRepository,
+    private rbacCompanyRoleRepo: ICompanyRoleRepository
   ) {}
 
   private filter(steps: CompanyWizardStep[], model: string) {
@@ -83,6 +85,24 @@ export class CompleteCompanyCreationUseCase {
       isOwner: true,
       createdAt: now
     });
+    // Update default roles with module bundles if provided
+    const modules: string[] = (session.data.modules as any) || [];
+    if (modules.length > 0) {
+      const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
+      const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');
+      if (ownerRole) {
+        await this.rbacCompanyRoleRepo.update(company.id, ownerRole.id, {
+          moduleBundles: Array.from(new Set([...(ownerRole.moduleBundles || []), ...modules])),
+          resolvedPermissions: ownerRole.resolvedPermissions,
+        });
+      }
+      if (adminRole) {
+        await this.rbacCompanyRoleRepo.update(company.id, adminRole.id, {
+          moduleBundles: Array.from(new Set([...(adminRole.moduleBundles || []), ...modules])),
+          resolvedPermissions: adminRole.resolvedPermissions,
+        });
+      }
+    }
     await this.userRepo.updateActiveCompany(session.userId, company.id);
     await this.sessionRepo.delete(session.id);
 

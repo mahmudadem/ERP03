@@ -12,7 +12,7 @@ type SidebarSection = {
 };
 
 export const useSidebarConfig = () => {
-  const { permissions, isSuperAdmin } = useCompanyAccess();
+  const { isSuperAdmin, moduleBundles } = useCompanyAccess();
   const { hasPermission } = useRBAC();
 
   const sidebarSections = useMemo(() => {
@@ -22,7 +22,7 @@ export const useSidebarConfig = () => {
       SUPER_ADMIN: []
     };
 
-    const activeModules: string[] = (window as any)?.activeModules || [];
+    const activeModules: string[] = (window as any)?.activeModules || moduleBundles || [];
 
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {

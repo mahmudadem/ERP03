@@ -7,12 +7,12 @@
  */
 import * as admin from 'firebase-admin';
 import { Account } from '../../../domain/accounting/entities/Account';
-import { Voucher } from '../../../domain/accounting/entities/Voucher';
-import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
+import { Voucher, VoucherLine } from '../../../domain/accounting/models/Voucher';
 
 export class AccountMapper {
   static toDomain(data: any): Account {
     return new Account(
+      data.companyId,
       data.id,
       data.code,
       data.name,
@@ -20,12 +20,15 @@ export class AccountMapper {
       data.currency,
       data.isProtected,
       data.active,
-      data.parentId
+      data.parentId,
+      data.createdAt?.toDate?.() || data.createdAt,
+      data.updatedAt?.toDate?.() || data.updatedAt
     );
   }
 
   static toPersistence(entity: Account): any {
     return {
+      companyId: entity.companyId,
       id: entity.id,
       code: entity.code,
       name: entity.name,
@@ -33,7 +36,9 @@ export class AccountMapper {
       currency: entity.currency,
       isProtected: entity.isProtected,
       active: entity.active,
-      parentId: entity.parentId || null
+      parentId: entity.parentId || null,
+      createdAt: entity.createdAt ? admin.firestore.Timestamp.fromDate(entity.createdAt) : admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: entity.updatedAt ? admin.firestore.Timestamp.fromDate(entity.updatedAt) : admin.firestore.FieldValue.serverTimestamp()
     };
   }
 }

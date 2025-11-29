@@ -1,30 +1,32 @@
 
 import { Router } from 'express';
-import { AccountingController } from '../controllers/accounting/AccountingController';
+import { Router } from 'express';
+import { AccountController } from '../controllers/accounting/AccountController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
-import { AccountingReportsController } from '../controllers/accounting/AccountingReportsController';
+import { ReportingController } from '../controllers/accounting/ReportingController';
 import { authMiddleware } from '../middlewares/authMiddleware';
-import { permissionsMiddleware } from '../middlewares/permissionsMiddleware';
 
 const router = Router();
 router.use(authMiddleware);
 
 // Accounts
-router.post('/accounts', permissionsMiddleware('accounting.accounts.create'), AccountingController.createAccount);
+router.get('/accounts', AccountController.list);
+router.post('/accounts', AccountController.create);
+router.put('/accounts/:id', AccountController.update);
+router.delete('/accounts/:id', AccountController.deactivate);
 
-// Vouchers CRUD
-router.post('/vouchers', permissionsMiddleware('accounting.vouchers.create'), VoucherController.createVoucher);
-router.get('/vouchers', permissionsMiddleware('accounting.vouchers.view'), VoucherController.listVouchers);
-router.get('/vouchers/:id', permissionsMiddleware('accounting.vouchers.view'), VoucherController.getVoucher);
-router.put('/vouchers/:id', permissionsMiddleware('accounting.vouchers.edit'), VoucherController.updateVoucherDraft);
-
-// Voucher Workflow Actions
-router.post('/vouchers/:id/send-to-approval', permissionsMiddleware('accounting.vouchers.edit'), VoucherController.sendToApproval);
-router.post('/vouchers/:id/approve', permissionsMiddleware('accounting.vouchers.approve'), VoucherController.approveVoucher);
-router.post('/vouchers/:id/lock', permissionsMiddleware('accounting.vouchers.lock'), VoucherController.lockVoucher);
-router.post('/vouchers/:id/cancel', permissionsMiddleware('accounting.vouchers.cancel'), VoucherController.cancelVoucher);
+// Vouchers
+router.get('/vouchers', VoucherController.list);
+router.get('/vouchers/:id', VoucherController.get);
+router.post('/vouchers', VoucherController.create);
+router.put('/vouchers/:id', VoucherController.update);
+router.post('/vouchers/:id/approve', VoucherController.approve);
+router.post('/vouchers/:id/lock', VoucherController.lock);
+router.post('/vouchers/:id/cancel', VoucherController.cancel);
 
 // Reports
-router.get('/reports/trial-balance', permissionsMiddleware('accounting.reports.view'), AccountingReportsController.getTrialBalance);
+router.get('/reports/trial-balance', ReportingController.trialBalance);
+router.get('/reports/general-ledger', ReportingController.generalLedger);
+router.get('/reports/journal', ReportingController.journal);
 
 export default router;

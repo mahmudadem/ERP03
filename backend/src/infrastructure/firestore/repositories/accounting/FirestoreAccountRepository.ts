@@ -21,38 +21,63 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
     return AccountMapper.toPersistence(entity);
   }
 
-  async createAccount(account: Account): Promise<void> {
-    return this.save(account);
+  private col(companyId: string) {
+    return this.db.collection('companies').doc(companyId).collection(this.collectionName);
   }
 
-  async updateAccount(id: string, data: Partial<Account>): Promise<void> {
+  async createAccount(account: Account, companyId?: string): Promise<void> {
     try {
-      await this.db.collection(this.collectionName).doc(id).update(data);
+      const cid = companyId || (account as any).companyId;
+      if (!cid) throw new Error('companyId required');
+      await this.col(cid).doc(account.id).set(this.toPersistence({ ...account, companyId: cid } as any));
+    } catch (error) {
+      throw new InfrastructureError('Error creating account', error);
+    }
+  }
+
+  async updateAccount(id: string, data: Partial<Account>, companyId?: string): Promise<void> {
+    try {
+      if (!companyId) throw new Error('companyId required');
+      await this.col(companyId).doc(id).update(data);
     } catch (error) {
       throw new InfrastructureError('Error updating account', error);
     }
   }
 
-  async deactivateAccount(id: string): Promise<void> {
+  async deactivateAccount(id: string, companyId?: string): Promise<void> {
     try {
-      await this.db.collection(this.collectionName).doc(id).update({ active: false });
+      if (!companyId) throw new Error('companyId required');
+      const children = await this.col(companyId).where('parentId', '==', id).get();
+      if (!children.empty) throw new Error('Cannot deactivate account with children');
+      await this.col(companyId).doc(id).update({ active: false });
     } catch (error) {
       throw new InfrastructureError('Error deactivating account', error);
     }
   }
 
-  async getAccount(id: string): Promise<Account | null> {
-    return this.findById(id);
+  async getAccount(id: string, companyId?: string): Promise<Account | null> {
+    if (!companyId) return null;
+    const doc = await this.col(companyId).doc(id).get();
+    if (!doc.exists) return null;
+    return this.toDomain(doc.data());
   }
 
   async getAccounts(companyId: string): Promise<Account[]> {
     try {
-      const snapshot = await this.db.collection(this.collectionName)
-        .where('companyId', '==', companyId) // Note: Need to ensure Account entity has companyId in real impl
-        .get();
+      const snapshot = await this.col(companyId).get();
       return snapshot.docs.map(doc => this.toDomain(doc.data()));
     } catch (error) {
       throw new InfrastructureError('Error fetching accounts', error);
+    }
+  }
+
+  async getByCode(companyId: string, code: string): Promise<Account | null> {
+    try {
+      const snap = await this.col(companyId).where('code', '==', code).limit(1).get();
+      if (snap.empty) return null;
+      return this.toDomain(snap.docs[0].data());
+    } catch (error) {
+      throw new InfrastructureError('Error getting account by code', error);
     }
   }
 }

@@ -1,18 +1,20 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { rbacApi } from '../api/rbac';
 import { queryClient } from '../queryClient';
 import { companySelectorApi } from '../modules/company-selector/api';
+import { authApi } from '../api/auth';
 
 export interface CompanyAccessContextValue {
   companyId: string;
   permissions: string[];
+  resolvedPermissions: string[];
+  moduleBundles: string[];
   isSuperAdmin: boolean;
   loading: boolean;
   setCompanyId: (companyId: string) => void;
   loadActiveCompany: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
-  refreshPermissions: (companyId?: string) => Promise<void>;
+  refreshPermissions: () => Promise<void>;
+  loadPermissionsForActiveCompany: () => Promise<void>;
 }
 
 const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined>(undefined);
@@ -20,33 +22,40 @@ const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined
 export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const [companyId, setCompanyIdState] = useState<string>('');
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [resolvedPermissions, setResolvedPermissions] = useState<string[]>([]);
+  const [moduleBundles, setModuleBundles] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [roleId, setRoleId] = useState<string | null>(null);
+  const [roleName, setRoleName] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
-  const isSuperAdmin = permissions.includes('*');
+  const isSuperAdmin = permissions.includes('*') || resolvedPermissions.includes('*');
 
-  const refreshPermissions = async (targetCompanyId?: string) => {
-    const target = targetCompanyId || companyId;
-    if (!target) {
-      setPermissions([]);
-      return;
-    }
+  const setCompanyId = (newCompanyId: string) => setCompanyIdState(newCompanyId);
 
+  const loadPermissionsForActiveCompany = async () => {
     setLoading(true);
     try {
-      const perms = await rbacApi.getCurrentUserPermissions(target);
-      setPermissions(perms);
-    } catch (error) {
-      console.error('Failed to load permissions:', error);
+      const data = await authApi.getMyPermissions();
+      setPermissions(data.resolvedPermissions || []);
+      setResolvedPermissions(data.resolvedPermissions || []);
+      setModuleBundles(data.moduleBundles || []);
+      setRoleId(data.roleId || null);
+      setRoleName(data.roleName || null);
+    } catch (err) {
+      console.error('Failed to load permissions', err);
       setPermissions([]);
+      setResolvedPermissions([]);
+      setModuleBundles([]);
+      setRoleId(null);
+      setRoleName(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const setCompanyId = (newCompanyId: string) => {
-    setCompanyIdState(newCompanyId);
+  const refreshPermissions = async () => {
+    await loadPermissionsForActiveCompany();
   };
 
   const loadActiveCompany = async () => {
@@ -55,17 +64,23 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
       setRoleId(data.roleId || null);
+      setRoleName(data.roleName || null);
       setIsOwner(!!data.isOwner);
       if (activeId) {
-        await refreshPermissions(activeId);
+        await loadPermissionsForActiveCompany();
       } else {
         setPermissions([]);
+        setResolvedPermissions([]);
+        setModuleBundles([]);
       }
     } catch (error) {
       console.error('Failed to load active company', error);
       setCompanyIdState('');
       setPermissions([]);
+      setResolvedPermissions([]);
+      setModuleBundles([]);
       setRoleId(null);
+      setRoleName(null);
       setIsOwner(false);
     }
   };
@@ -75,7 +90,10 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     await queryClient.clear();
     setCompanyIdState('');
     setPermissions([]);
+    setResolvedPermissions([]);
+    setModuleBundles([]);
     setRoleId(null);
+    setRoleName(null);
     setIsOwner(false);
     localStorage.setItem('activeCompanyId', newCompanyId);
     await loadActiveCompany();
@@ -106,12 +124,15 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       value={{
         companyId,
         permissions,
+        resolvedPermissions,
+        moduleBundles,
         isSuperAdmin,
         loading,
         setCompanyId,
         loadActiveCompany,
         switchCompany,
-        refreshPermissions
+        refreshPermissions,
+        loadPermissionsForActiveCompany,
       }}
     >
       {children}

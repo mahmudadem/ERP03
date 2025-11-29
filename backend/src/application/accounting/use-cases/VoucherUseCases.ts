@@ -1,183 +1,129 @@
-
-import { Voucher, VoucherType, VoucherStatus } from '../../../domain/accounting/entities/Voucher';
-import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
-import { IVoucherRepository } from '../../../repository/interfaces/accounting';
-import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
+import { Voucher, VoucherLine } from '../../../domain/accounting/models/Voucher';
+import { IVoucherRepository, IAccountRepository, ILedgerRepository } from '../../../repository/interfaces/accounting';
+import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
 
-// --- SHARED HELPER ---
-const validateTransition = (voucher: Voucher, targetStatus: VoucherStatus) => {
-  if (!voucher.canTransitionTo(targetStatus)) {
-    throw new Error(`Invalid status transition from '${voucher.status}' to '${targetStatus}'`);
+const assertBalanced = (voucher: Voucher) => {
+  if (Math.abs((voucher.totalDebitBase || 0) - (voucher.totalCreditBase || 0)) > 0.0001) {
+    throw new Error('Voucher not balanced');
   }
 };
 
 export class CreateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository,
+    private accountRepo: IAccountRepository,
+    private settingsRepo: ICompanyModuleSettingsRepository,
+    private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(data: { 
-    companyId: string; 
-    type: VoucherType; 
-    date: Date; 
-    currency: string; 
-    exchangeRate: number; 
-    createdBy: string;
-    reference?: string;
-    lines: Array<{ accountId: string; description: string; fxAmount: number; costCenterId?: string }>;
-  }): Promise<Voucher> {
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      data.createdBy,
-      data.companyId,
-      'accounting.vouchers.create'
-    );
-    
-    // 1. Load Settings
-    const settings = await this.settingsRepo.getSettings(data.companyId);
-    
-    // 2. Determine Initial Status
-    const initialStatus: VoucherStatus = settings.strictApprovalMode ? 'draft' : 'approved';
+  async execute(companyId: string, userId: string, payload: Partial<Voucher>): Promise<Voucher> {
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+    const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
+    const baseCurrency = settings?.baseCurrency || payload.baseCurrency || payload.currency;
+    const autoNumbering = settings?.autoNumbering !== false;
 
-    const voucherId = `vch_${Date.now()}`;
-    
-    // 3. Build Lines & Totals
-    let totalDebit = 0;
-    let totalCredit = 0;
-    const voucherLines: VoucherLine[] = [];
+    const voucherId = payload.id || `vch_${Date.now()}`;
+    const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
+    const lines = (payload.lines || []).map((l, idx) => ({
+      id: l.id || `${voucherId}_l${idx}`,
+      accountId: l.accountId!,
+      debitFx: l.debitFx || 0,
+      creditFx: l.creditFx || 0,
+      debitBase: l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1),
+      creditBase: l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1),
+      description: l.description,
+      costCenterId: l.costCenterId,
+      lineCurrency: l.lineCurrency || payload.currency,
+      exchangeRate: l.exchangeRate || payload.exchangeRate || 1,
+    })) as VoucherLine[];
 
-    data.lines.forEach((lineData, idx) => {
-      const baseAmount = lineData.fxAmount * data.exchangeRate;
-      if (baseAmount > 0) totalDebit += baseAmount;
-      else totalCredit += Math.abs(baseAmount);
+    for (const line of lines) {
+      const acc = await this.accountRepo.getAccount(line.accountId, companyId);
+      if (!acc || acc.active === false) throw new Error(`Account ${line.accountId} invalid`);
+    }
 
-      voucherLines.push(new VoucherLine(
-        `${voucherId}_l${idx}`,
-        voucherId,
-        lineData.accountId,
-        lineData.description,
-        lineData.fxAmount,
-        baseAmount,
-        data.exchangeRate,
-        lineData.costCenterId
-      ));
-    });
+    const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
+    const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
 
-    // 4. Create Entity
-    const voucher = new Voucher(
-      voucherId,
-      data.companyId,
-      data.type,
-      data.date,
-      data.currency,
-      data.exchangeRate,
-      initialStatus,
-      totalDebit, 
-      totalCredit,
-      data.createdBy,
-      data.reference,
-      voucherLines
-    );
+    const voucher: Voucher = {
+      id: voucherId,
+      voucherNo,
+      type: payload.type || 'journal',
+      date: payload.date || new Date().toISOString(),
+      description: payload.description,
+      companyId,
+      status: settings?.strictApprovalMode === false ? 'approved' : 'draft',
+      currency: payload.currency || baseCurrency,
+      exchangeRate: payload.exchangeRate || 1,
+      baseCurrency,
+      totalDebitBase,
+      totalCreditBase,
+      lines,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
+    assertBalanced(voucher);
     await this.voucherRepo.createVoucher(voucher);
+
+    // Auto-approved path writes ledger
+    if (voucher.status === 'approved') {
+      await this.ledgerRepo.recordForVoucher(voucher);
+    }
+
     return voucher;
   }
 }
 
-export class UpdateVoucherDraftUseCase {
+export class UpdateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
+    private accountRepo: IAccountRepository,
+    private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string, data: Partial<Voucher>, userId: string): Promise<void> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.edit'
-    );
-    
-    if (voucher.status !== 'draft') {
-      throw new Error('Only Draft vouchers can be updated');
-    }
-    
-    await this.voucherRepo.updateVoucher(id, data);
-  }
-}
+  async execute(companyId: string, userId: string, voucherId: string, payload: Partial<Voucher>): Promise<void> {
+    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
+    if (voucher.status !== 'draft') throw new Error('Only draft vouchers can be updated');
 
-export class SendVoucherToApprovalUseCase {
-  constructor(
-    private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository,
-    private permissionChecker: PermissionChecker
-  ) {}
-
-  async execute(id: string, userId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.edit'
-    );
-
-    const settings = await this.settingsRepo.getSettings(voucher.companyId);
-    if (!settings.strictApprovalMode) {
-      throw new Error("Approval workflow is disabled for this company.");
+    if (payload.lines) {
+      for (const l of payload.lines) {
+        const acc = await this.accountRepo.getAccount(l.accountId!, companyId);
+        if (!acc || acc.active === false) throw new Error(`Account ${l.accountId} invalid`);
+      }
+      const totalDebitBase = payload.lines.reduce((s, l) => s + (l.debitBase || 0), 0);
+      const totalCreditBase = payload.lines.reduce((s, l) => s + (l.creditBase || 0), 0);
+      payload.totalDebitBase = totalDebitBase;
+      payload.totalCreditBase = totalCreditBase;
+      if (Math.abs(totalDebitBase - totalCreditBase) > 0.0001) throw new Error('Voucher not balanced');
     }
 
-    validateTransition(voucher, 'pending');
-
-    if (!voucher.isBalanced()) {
-      throw new Error(`Voucher is not balanced. Debit: ${voucher.totalDebit}, Credit: ${voucher.totalCredit}`);
-    }
-
-    voucher.status = 'pending';
-    await this.voucherRepo.updateVoucher(id, { status: 'pending' });
-    
-    return voucher;
+    payload.updatedAt = new Date().toISOString();
+    await this.voucherRepo.updateVoucher(voucherId, payload);
   }
 }
 
 export class ApproveVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
-    private settingsRepo: ICompanySettingsRepository,
+    private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string, userId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.approve'
-    );
-    
-    const settings = await this.settingsRepo.getSettings(voucher.companyId);
-    if (!settings.strictApprovalMode) {
-      throw new Error("Approval workflow is disabled for this company.");
-    }
-
-    validateTransition(voucher, 'approved');
-
-    voucher.status = 'approved';
-    await this.voucherRepo.updateVoucher(id, { status: 'approved' });
-    
-    return voucher;
+  async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
+    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
+    if (!['draft', 'pending'].includes(voucher.status)) throw new Error('Cannot approve from this status');
+    assertBalanced(voucher);
+    await this.ledgerRepo.recordForVoucher(voucher);
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() });
   }
 }
 
@@ -187,49 +133,29 @@ export class LockVoucherUseCase {
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string, userId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.lock'
-    );
-    
-    validateTransition(voucher, 'locked');
-    
-    voucher.status = 'locked';
-    await this.voucherRepo.updateVoucher(id, { status: 'locked' });
-    
-    return voucher;
+  async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
+    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.lock');
+    if (voucher.status !== 'approved') throw new Error('Only approved vouchers can be locked');
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() });
   }
 }
 
 export class CancelVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
+    private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(id: string, userId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.cancel'
-    );
-    
-    validateTransition(voucher, 'cancelled');
-    
-    voucher.status = 'cancelled';
-    await this.voucherRepo.updateVoucher(id, { status: 'cancelled' });
-    
-    return voucher;
+  async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
+    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
+    if (!['draft', 'pending', 'approved'].includes(voucher.status)) throw new Error('Cannot cancel from this status');
+    await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() });
   }
 }
 
@@ -238,18 +164,11 @@ export class GetVoucherUseCase {
     private voucherRepo: IVoucherRepository,
     private permissionChecker: PermissionChecker
   ) {}
-  
-  async execute(id: string, userId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(id);
-    if (!voucher) throw new Error('Voucher not found');
-    
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      voucher.companyId,
-      'accounting.vouchers.view'
-    );
-    
+
+  async execute(companyId: string, userId: string, voucherId: string): Promise<Voucher> {
+    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');
     return voucher;
   }
 }
@@ -261,13 +180,7 @@ export class ListVouchersUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, filters?: any): Promise<Voucher[]> {
-    // RBAC: Check permission
-    await this.permissionChecker.assertOrThrow(
-      userId,
-      companyId,
-      'accounting.vouchers.view'
-    );
-    
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');
     return this.voucherRepo.getVouchers(companyId, filters);
   }
 }

@@ -17,10 +17,24 @@ export class ModuleMapper {
 
 export class RoleMapper {
   static toDomain(data: any): Role {
-    return new Role(data.id, data.name, data.permissions || []);
+    return new Role(
+      data.id,
+      data.name,
+      data.permissions || [],
+      data.moduleBundles || [],
+      data.explicitPermissions || [],
+      data.resolvedPermissions || []
+    );
   }
   static toPersistence(entity: Role): any {
-    return { id: entity.id, name: entity.name, permissions: entity.permissions };
+    return {
+      id: entity.id,
+      name: entity.name,
+      permissions: entity.permissions,
+      moduleBundles: (entity as any).moduleBundles || [],
+      explicitPermissions: (entity as any).explicitPermissions || [],
+      resolvedPermissions: (entity as any).resolvedPermissions || [],
+    };
   }
 }
 

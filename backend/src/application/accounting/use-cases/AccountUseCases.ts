@@ -7,6 +7,7 @@ export class CreateAccountUseCase {
 
   async execute(data: { code: string; name: string; type: AccountType; currency: string; companyId: string }): Promise<Account> {
     const account = new Account(
+      data.companyId,
       `acc_${Date.now()}`,
       data.code,
       data.name,
@@ -14,9 +15,10 @@ export class CreateAccountUseCase {
       data.currency,
       false, // isProtected
       true,  // active
+      undefined,
+      undefined
     );
-    // Note: Assuming repo handles companyId context or Entity needs update to include companyId (which it usually does)
-    await this.accountRepo.createAccount(account);
+    await this.accountRepo.createAccount(account, data.companyId);
     return account;
   }
 }
@@ -32,11 +34,11 @@ export class UpdateAccountUseCase {
 export class DeactivateAccountUseCase {
   constructor(private accountRepo: IAccountRepository) {}
 
-  async execute(accountId: string): Promise<void> {
-    const account = await this.accountRepo.getAccount(accountId);
+  async execute(accountId: string, companyId: string): Promise<void> {
+    const account = await this.accountRepo.getAccount(accountId, companyId);
     if (account && account.isProtected) {
       throw new Error('Cannot deactivate a system protected account');
     }
-    await this.accountRepo.deactivateAccount(accountId);
+    await this.accountRepo.deactivateAccount(accountId, companyId);
   }
 }

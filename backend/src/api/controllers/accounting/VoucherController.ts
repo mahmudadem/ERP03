@@ -1,161 +1,112 @@
-
 import { Request, Response, NextFunction } from 'express';
-import { 
-  CreateVoucherUseCase, 
-  SendVoucherToApprovalUseCase,
-  ApproveVoucherUseCase, 
+import { diContainer } from '../../../infrastructure/di/bindRepositories';
+import {
+  CreateVoucherUseCase,
+  UpdateVoucherUseCase,
+  ApproveVoucherUseCase,
   LockVoucherUseCase,
   CancelVoucherUseCase,
   GetVoucherUseCase,
   ListVouchersUseCase,
-  UpdateVoucherDraftUseCase
 } from '../../../application/accounting/use-cases/VoucherUseCases';
-import { RecalculateVoucherTotalsUseCase } from '../../../application/accounting/use-cases/VoucherLineUseCases';
-import { diContainer } from '../../../infrastructure/di/bindRepositories';
-import { AccountingDTOMapper } from '../../dtos/AccountingDTOs';
-import { validateCreateVoucherInput } from '../../validators/accounting.validators';
-import { ApiError } from '../../errors/ApiError';
+import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
+import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+
+const permissionChecker = new PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase(diContainer.rbacPermissionRepository, diContainer.rbacCompanyUserRepository));
 
 export class VoucherController {
-  
-  static async createVoucher(req: Request, res: Response, next: NextFunction) {
+  static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      validateCreateVoucherInput((req as any).body);
-      
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new ListVouchersUseCase(diContainer.voucherRepository, permissionChecker);
+      const vouchers = await useCase.execute(companyId, userId, req.query);
+      res.json({ success: true, data: vouchers });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async get(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new GetVoucherUseCase(diContainer.voucherRepository, permissionChecker);
+      const voucher = await useCase.execute(companyId, userId, req.params.id);
+      res.json({ success: true, data: voucher });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
       const useCase = new CreateVoucherUseCase(
         diContainer.voucherRepository,
-        diContainer.companySettingsRepository
+        diContainer.accountRepository,
+        diContainer.companyModuleSettingsRepository,
+        diContainer.ledgerRepository,
+        permissionChecker
       );
-      
-      const payload = {
-        ...(req as any).body,
-        date: new Date((req as any).body.date),
-        exchangeRate: (req as any).body.exchangeRate || 1,
-        createdBy: (req as any).user?.uid || 'system'
-      };
-
-      const voucher = await useCase.execute(payload);
-
-      (res as any).status(201).json({
-        success: true,
-        data: AccountingDTOMapper.toVoucherDTO(voucher)
-      });
-    } catch (error) {
-      next(error);
+      const voucher = await useCase.execute(companyId, userId, req.body);
+      res.json({ success: true, data: voucher });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async updateVoucherDraft(req: Request, res: Response, next: NextFunction) {
+  static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = (req as any).params.id;
-      const useCase = new UpdateVoucherDraftUseCase(diContainer.voucherRepository);
-      
-      const updateData = { ... (req as any).body };
-      if (updateData.date) updateData.date = new Date(updateData.date);
-
-      await useCase.execute(id, updateData);
-
-      if ((req as any).body.lines) {
-        const recalc = new RecalculateVoucherTotalsUseCase(diContainer.voucherRepository);
-        await recalc.execute(id, (req as any).body.lines);
-      }
-
-      (res as any).status(200).json({ success: true, message: 'Voucher updated' });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async sendToApproval(req: Request, res: Response, next: NextFunction) {
-    try {
-      const useCase = new SendVoucherToApprovalUseCase(
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new UpdateVoucherUseCase(
         diContainer.voucherRepository,
-        diContainer.companySettingsRepository
+        diContainer.accountRepository,
+        diContainer.ledgerRepository,
+        permissionChecker
       );
-      const voucher = await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ 
-        success: true, 
-        message: 'Voucher sent to approval',
-        data: AccountingDTOMapper.toVoucherDTO(voucher) 
-      });
-    } catch (error) {
-      next(error);
+      await useCase.execute(companyId, userId, req.params.id, req.body);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async approveVoucher(req: Request, res: Response, next: NextFunction) {
+  static async approve(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new ApproveVoucherUseCase(
-        diContainer.voucherRepository,
-        diContainer.companySettingsRepository
-      );
-      const voucher = await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ 
-        success: true, 
-        message: 'Voucher approved',
-        data: AccountingDTOMapper.toVoucherDTO(voucher)
-      });
-    } catch (error) {
-      next(error);
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository, diContainer.ledgerRepository, permissionChecker);
+      await useCase.execute(companyId, userId, req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async lockVoucher(req: Request, res: Response, next: NextFunction) {
+  static async lock(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new LockVoucherUseCase(diContainer.voucherRepository);
-      const voucher = await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ 
-        success: true, 
-        message: 'Voucher locked',
-        data: AccountingDTOMapper.toVoucherDTO(voucher)
-      });
-    } catch (error) {
-      next(error);
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new LockVoucherUseCase(diContainer.voucherRepository, permissionChecker);
+      await useCase.execute(companyId, userId, req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async cancelVoucher(req: Request, res: Response, next: NextFunction) {
+  static async cancel(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new CancelVoucherUseCase(diContainer.voucherRepository);
-      const voucher = await useCase.execute((req as any).params.id);
-      (res as any).status(200).json({ 
-        success: true, 
-        message: 'Voucher cancelled',
-        data: AccountingDTOMapper.toVoucherDTO(voucher)
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async getVoucher(req: Request, res: Response, next: NextFunction) {
-    try {
-      const useCase = new GetVoucherUseCase(diContainer.voucherRepository);
-      const voucher = await useCase.execute((req as any).params.id);
-      
-      (res as any).status(200).json({
-        success: true,
-        data: AccountingDTOMapper.toVoucherDTO(voucher, []) 
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async listVouchers(req: Request, res: Response, next: NextFunction) {
-    try {
-      const companyId = (req as any).companyId;
-      if (!companyId) throw ApiError.badRequest('Company Context Missing');
-
-      const useCase = new ListVouchersUseCase(diContainer.voucherRepository);
-      const vouchers = await useCase.execute(companyId, (req as any).query);
-
-      (res as any).status(200).json({
-        success: true,
-        data: vouchers.map(v => AccountingDTOMapper.toVoucherDTO(v))
-      });
-    } catch (error) {
-      next(error);
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const useCase = new CancelVoucherUseCase(diContainer.voucherRepository, diContainer.ledgerRepository, permissionChecker);
+      await useCase.execute(companyId, userId, req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
     }
   }
 }

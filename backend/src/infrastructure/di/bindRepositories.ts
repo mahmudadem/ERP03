@@ -27,6 +27,7 @@ import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermission
 import { FirestoreAccountRepository } from '../firestore/repositories/accounting/FirestoreAccountRepository';
 import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
+import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
@@ -79,6 +80,7 @@ export const diContainer = {
   get voucherRepository(): AccRepo.IVoucherRepository { return new FirestoreVoucherRepository(getDb()); },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
+  get ledgerRepository(): AccRepo.ILedgerRepository { return new FirestoreLedgerRepository(getDb()); },
 
   // INVENTORY
   get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },
