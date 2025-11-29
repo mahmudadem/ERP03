@@ -1,6 +1,6 @@
 import { firestore } from 'firebase-admin';
 import { Account } from '../../../domain/accounting/models/Account';
-import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../domain/accounting/repositories/IAccountRepository';
+import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
 
 export class AccountRepositoryFirestore implements IAccountRepository {
     constructor(private db: firestore.Firestore) { }

@@ -10,6 +10,7 @@ export const moduleMenuMap: Record<
     label: 'Accounting',
     icon: 'Calculator',
     items: [
+      { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'coa.view' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'voucher.list' },
       { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'coa.view' },
       { label: 'Currencies', path: '/accounting/currencies', permission: 'currency.view' },

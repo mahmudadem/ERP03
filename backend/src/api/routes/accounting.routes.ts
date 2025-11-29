@@ -1,6 +1,5 @@
 
 import { Router } from 'express';
-import { Router } from 'express';
 import { AccountController } from '../controllers/accounting/AccountController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
@@ -11,6 +10,7 @@ router.use(authMiddleware);
 
 // Accounts
 router.get('/accounts', AccountController.list);
+router.get('/accounts/:id', AccountController.getById);
 router.post('/accounts', AccountController.create);
 router.put('/accounts/:id', AccountController.update);
 router.delete('/accounts/:id', AccountController.deactivate);
