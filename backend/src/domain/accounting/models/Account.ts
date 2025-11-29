@@ -3,11 +3,11 @@ export interface Account {
   companyId: string;
   code: string;
   name: string;
-  type: string;
-  parentId?: string;
+  type: "asset" | "liability" | "equity" | "revenue" | "expense" | string;
+  parentId?: string | null;
   isActive: boolean;
   isProtected: boolean;
-  currency?: string;
+  currency?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -46,4 +46,12 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
       throw new InfrastructureError('Error updating user global role', error);
     }
   }
+
+  async updateActiveCompany(userId: string, companyId: string): Promise<void> {
+    try {
+      await this.db.collection(this.collectionName).doc(userId).update({ activeCompanyId: companyId });
+    } catch (error) {
+      throw new InfrastructureError('Error updating user active company', error);
+    }
+  }
 }

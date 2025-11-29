@@ -10,6 +10,12 @@ import { ListCompanyUsersWithRolesUseCase } from '../../../application/rbac/use-
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { ApiError } from '../../errors/ApiError';
+import { CompanyRolePermissionResolver } from '../../../application/rbac/CompanyRolePermissionResolver';
+
+const resolver = new CompanyRolePermissionResolver(
+  diContainer.modulePermissionsDefinitionRepository,
+  diContainer.companyRoleRepository
+);
 
 export class RbacController {
 
@@ -46,7 +52,7 @@ export class RbacController {
     try {
       const companyId = (req as any).params.companyId;
       const actorId = (req as any).user.uid;
-      
+
       const useCase = new CreateCompanyRoleUseCase(
         diContainer.companyRoleRepository,
         RbacController.getPermissionChecker()
@@ -58,7 +64,10 @@ export class RbacController {
         ...req.body
       });
 
-      res.status(201).json({ success: true, data: role });
+      await resolver.resolveRoleById(companyId, role.id);
+      const saved = await diContainer.companyRoleRepository.getById(companyId, role.id);
+
+      res.status(201).json({ success: true, data: saved });
     } catch (error) {
       next(error);
     }
@@ -81,7 +90,10 @@ export class RbacController {
         updates: req.body
       });
 
-      res.json({ success: true, message: 'Role updated' });
+      await resolver.resolveRoleById(companyId, roleId);
+      const saved = await diContainer.companyRoleRepository.getById(companyId, roleId);
+
+      res.json({ success: true, message: 'Role updated', data: saved });
     } catch (error) {
       next(error);
     }
@@ -166,21 +178,21 @@ export class RbacController {
 
   static async getCurrentUserPermissions(req: Request, res: Response, next: NextFunction) {
     try {
-        const companyId = (req as any).query.companyId as string;
-        const userId = (req as any).user.uid;
+      const companyId = (req as any).query.companyId as string;
+      const userId = (req as any).user.uid;
 
-        if (!companyId) throw ApiError.badRequest('Company ID is required');
+      if (!companyId) throw ApiError.badRequest('Company ID is required');
 
-        const useCase = new GetCurrentUserPermissionsForCompanyUseCase(
-            diContainer.userRepository,
-            diContainer.rbacCompanyUserRepository,
-            diContainer.companyRoleRepository
-        );
+      const useCase = new GetCurrentUserPermissionsForCompanyUseCase(
+        diContainer.userRepository,
+        diContainer.rbacCompanyUserRepository,
+        diContainer.companyRoleRepository
+      );
 
-        const permissions = await useCase.execute({ userId, companyId });
-        res.json({ success: true, data: permissions });
+      const permissions = await useCase.execute({ userId, companyId });
+      res.json({ success: true, data: permissions });
     } catch (error) {
-        next(error);
+      next(error);
     }
   }
 }

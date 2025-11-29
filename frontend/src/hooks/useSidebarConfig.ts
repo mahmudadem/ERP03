@@ -48,7 +48,7 @@ export const useSidebarConfig = () => {
     }
 
     return sections;
-  }, [permissions, isSuperAdmin]);
+  }, [hasPermission, isSuperAdmin, moduleBundles]);
 
   return sidebarSections;
 };

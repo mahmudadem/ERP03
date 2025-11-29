@@ -31,4 +31,11 @@ export interface IUserRepository {
    * @param newRole The new global role.
    */
   updateGlobalRole(userId: string, newRole: UserRole): Promise<void>;
+
+  /**
+   * Updates the user's active company.
+   * @param userId The ID of the user.
+   * @param companyId The ID of the company to set as active.
+   */
+  updateActiveCompany(userId: string, companyId: string): Promise<void>;
 }

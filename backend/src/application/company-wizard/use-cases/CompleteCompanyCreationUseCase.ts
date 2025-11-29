@@ -6,6 +6,7 @@ import { ICompanyRepository } from '../../../repository/interfaces/core/ICompany
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
+import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
 
 interface Input {
   sessionId: string;
@@ -19,8 +20,9 @@ export class CompleteCompanyCreationUseCase {
     private companyRepo: ICompanyRepository,
     private userRepo: IUserRepository,
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
-    private rbacCompanyRoleRepo: ICompanyRoleRepository
-  ) {}
+    private rbacCompanyRoleRepo: ICompanyRoleRepository,
+    private rolePermissionResolver: CompanyRolePermissionResolver
+  ) { }
 
   private filter(steps: CompanyWizardStep[], model: string) {
     return steps
@@ -102,6 +104,9 @@ export class CompleteCompanyCreationUseCase {
           resolvedPermissions: adminRole.resolvedPermissions,
         });
       }
+      // Resolve permissions for both roles
+      await this.rolePermissionResolver.resolveRoleById(company.id, 'OWNER');
+      await this.rolePermissionResolver.resolveRoleById(company.id, 'ADMIN');
     }
     await this.userRepo.updateActiveCompany(session.userId, company.id);
     await this.sessionRepo.delete(session.id);

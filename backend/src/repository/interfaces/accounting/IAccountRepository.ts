@@ -1,12 +1,28 @@
+import { Account } from '../../../domain/accounting/models/Account';
 
-import { Account } from '../../../domain/accounting/entities/Account';
+export interface NewAccountInput {
+  code: string;
+  name: string;
+  type: string;
+  parentId?: string | null;
+  currency?: string | null;
+}
+
+export interface UpdateAccountInput {
+  code?: string;
+  name?: string;
+  type?: string;
+  parentId?: string | null;
+  isActive?: boolean;
+  currency?: string | null;
+}
 
 export interface IAccountRepository {
-  createAccount(account: Account, companyId?: string): Promise<void>;
-  updateAccount(id: string, data: Partial<Account>, companyId?: string): Promise<void>;
-  deactivateAccount(id: string, companyId?: string): Promise<void>;
-  getAccount(id: string, companyId?: string): Promise<Account | null>;
-  getAccounts(companyId: string): Promise<Account[]>;
-  getByCode?(companyId: string, code: string): Promise<Account | null>;
-  list?(companyId: string): Promise<Account[]>;
+  list(companyId: string): Promise<Account[]>;
+  getById(companyId: string, accountId: string): Promise<Account | null>;
+  getByCode(companyId: string, code: string): Promise<Account | null>;
+  create(companyId: string, data: NewAccountInput): Promise<Account>;
+  update(companyId: string, accountId: string, data: UpdateAccountInput): Promise<Account>;
+  deactivate(companyId: string, accountId: string): Promise<void>;
+  hasChildren(companyId: string, accountId: string): Promise<boolean>;
 }

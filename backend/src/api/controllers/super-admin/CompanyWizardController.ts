@@ -7,6 +7,12 @@ import { GetNextWizardStepUseCase } from '../../../application/company-wizard/us
 import { SubmitWizardStepUseCase } from '../../../application/company-wizard/use-cases/SubmitWizardStepUseCase';
 import { GetOptionsForFieldUseCase } from '../../../application/company-wizard/use-cases/GetOptionsForFieldUseCase';
 import { CompleteCompanyCreationUseCase } from '../../../application/company-wizard/use-cases/CompleteCompanyCreationUseCase';
+import { CompanyRolePermissionResolver } from '../../../application/rbac/CompanyRolePermissionResolver';
+
+const resolver = new CompanyRolePermissionResolver(
+  diContainer.modulePermissionsDefinitionRepository,
+  diContainer.companyRoleRepository
+);
 
 export class CompanyWizardController {
   static async getModels(req: Request, res: Response, next: NextFunction) {
@@ -94,7 +100,7 @@ export class CompanyWizardController {
         .filter((s) => !s.modelKey || s.modelKey === session.model)
         .sort((a, b) => a.order - b.order);
 
-      const field = steps.flatMap((s) => s.fields).find((f) => f.id === fieldId);
+      const field = steps.reduce((acc: any[], s) => acc.concat(s.fields), []).find((f: any) => f.id === fieldId);
       if (!field) throw new Error('Field not found');
 
       const useCase = new GetOptionsForFieldUseCase(
@@ -119,7 +125,9 @@ export class CompanyWizardController {
         diContainer.companyWizardTemplateRepository,
         diContainer.companyRepository,
         diContainer.userRepository,
-        diContainer.rbacCompanyUserRepository
+        diContainer.rbacCompanyUserRepository,
+        diContainer.companyRoleRepository,
+        resolver
       );
       const result = await useCase.execute({ sessionId, userId });
       res.json({ success: true, data: result });

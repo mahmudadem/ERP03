@@ -28,6 +28,7 @@ import { FirestoreAccountRepository } from '../firestore/repositories/accounting
 import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
+import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
@@ -57,8 +58,8 @@ import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/rep
 
 
 const getDb = () => {
-    if (!admin.apps.length) admin.initializeApp();
-    return admin.firestore();
+  if (!admin.apps.length) admin.initializeApp();
+  return admin.firestore();
 };
 
 export const diContainer = {
@@ -76,7 +77,7 @@ export const diContainer = {
   get auditLogRepository(): SysRepo.IAuditLogRepository { return new FirestoreAuditLogRepository(getDb()); },
 
   // ACCOUNTING
-  get accountRepository(): AccRepo.IAccountRepository { return new FirestoreAccountRepository(getDb()); },
+  get accountRepository(): AccRepo.IAccountRepository { return new AccountRepositoryFirestore(getDb()); },
   get voucherRepository(): AccRepo.IVoucherRepository { return new FirestoreVoucherRepository(getDb()); },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
