@@ -4,7 +4,13 @@ import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase, GetJournalUseCase } fr
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 
-const permissionChecker = new PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase(diContainer.rbacPermissionRepository, diContainer.rbacCompanyUserRepository));
+const permissionChecker = new PermissionChecker(
+  new GetCurrentUserPermissionsForCompanyUseCase(
+    diContainer.userRepository,
+    diContainer.rbacCompanyUserRepository,
+    diContainer.companyRoleRepository
+  )
+);
 
 export class ReportingController {
   static async trialBalance(req: Request, res: Response, next: NextFunction) {

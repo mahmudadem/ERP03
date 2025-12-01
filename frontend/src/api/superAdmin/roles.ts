@@ -1,16 +1,10 @@
-import { httpClient } from '../httpClient';
+import client from '../client';
 
 export const superAdminRolesApi = {
-  listRoles: () => httpClient<any[]>('/system/roles'),
-  getRole: (roleId: string) => httpClient<any>(`/system/roles/${roleId}`),
-  createRole: (payload: any) =>
-    httpClient<void>('/system/roles', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateRole: (roleId: string, payload: any) =>
-    httpClient<void>(`/system/roles/${roleId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+  listRoles: (): Promise<any[]> => client.get('/system/roles'),
+  getRole: (roleId: string): Promise<any> => client.get(`/system/roles/${roleId}`),
+  createRole: (payload: any): Promise<void> =>
+    client.post('/system/roles', payload),
+  updateRole: (roleId: string, payload: any): Promise<void> =>
+    client.put(`/system/roles/${roleId}`, payload),
 };

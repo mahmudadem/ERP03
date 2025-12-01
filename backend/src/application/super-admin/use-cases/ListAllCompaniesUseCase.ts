@@ -6,8 +6,10 @@ import { Company } from '../../../domain/core/entities/Company';
 export class ListAllCompaniesUseCase {
   constructor(
     private userRepo: IUserRepository,
-    private companyRepo: ICompanyRepository
-  ) {}
+    private _companyRepo: ICompanyRepository
+  ) {
+    void this._companyRepo;
+  }
 
   async execute(actorId: string): Promise<Company[]> {
     const actor = await this.userRepo.getUserById(actorId);

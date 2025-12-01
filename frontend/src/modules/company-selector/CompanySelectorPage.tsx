@@ -7,16 +7,28 @@ import { companySelectorApi } from './api';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
+import { useUserPreferences } from '../../hooks/useUserPreferences';
 
 const CompanySelectorPage: React.FC = () => {
   const { companies, loading, error, refresh } = useCompanies();
   const navigate = useNavigate();
-  const { switchCompany } = useCompanyAccess();
+  const { switchCompany, companyId, loading: companyAccessLoading } = useCompanyAccess();
+  const { setUiMode } = useUserPreferences();
+
+  // If a company is already active, redirect out of the selector
+  React.useEffect(() => {
+    if (!companyAccessLoading && companyId) {
+      navigate('/');
+    }
+  }, [companyAccessLoading, companyId, navigate]);
 
   const handleEnter = async (companyId: string) => {
     try {
       await switchCompany(companyId);
-      navigate('/');
+      // Force classic mode so the main router outlet renders instead of window manager
+      setUiMode('classic');
+      // Hard reload to ensure all contexts pick up the new active company
+      window.location.href = '/#/';
     } catch (err: any) {
       window.alert(err?.message || 'Failed to switch company');
     }

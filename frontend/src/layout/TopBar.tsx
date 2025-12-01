@@ -1,9 +1,11 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCompanyContext } from '../hooks/useCompanyContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { Button } from '../components/ui/Button';
 import { SwitchCompanyButton } from '../components/company/SwitchCompanyButton';
+import { useAuth } from '../context/AuthContext';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -11,7 +13,9 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { company } = useCompanyContext();
-  const { uiMode, toggleUiMode, toggleTheme } = useUserPreferences();
+  const { uiMode, toggleUiMode, toggleTheme, setUiMode } = useUserPreferences();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="h-16 bg-white border-b shadow-sm flex items-center justify-between px-4 sticky top-0 z-20">
@@ -39,9 +43,27 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
            <Button variant="ghost" size="sm" onClick={toggleTheme}>
              Theme
            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setUiMode('classic');
+                navigate('/company-wizard');
+              }}
+            >
+              + Create Company
+            </Button>
+           <Button variant="ghost" size="sm" onClick={logout}>
+              Logout
+            </Button>
         </div>
 
         <SwitchCompanyButton />
+        {/* Always-visible quick create button for smaller viewports */}
+        <Button variant="secondary" size="sm" className="md:hidden" onClick={() => navigate('/company-wizard')}>
+          + Create Company
+        </Button>
 
         <div className="h-8 w-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-sm">
           A

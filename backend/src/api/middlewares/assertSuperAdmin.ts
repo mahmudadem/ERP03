@@ -4,6 +4,11 @@ import { diContainer } from '../../infrastructure/di/bindRepositories';
 
 export async function assertSuperAdmin(req: Request, res: Response, next: NextFunction) {
   try {
+    // Never block auth self-check endpoints
+    if (req.path.startsWith('/auth/me/')) {
+      return next();
+    }
+
     const userId = (req as any).user?.uid;
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -14,8 +19,8 @@ export async function assertSuperAdmin(req: Request, res: Response, next: NextFu
       return res.status(403).json({ success: false, message: 'Forbidden: SUPER_ADMIN access required' });
     }
 
-    next();
+    return next();
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }

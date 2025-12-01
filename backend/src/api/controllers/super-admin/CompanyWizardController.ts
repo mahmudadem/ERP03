@@ -8,6 +8,7 @@ import { SubmitWizardStepUseCase } from '../../../application/company-wizard/use
 import { GetOptionsForFieldUseCase } from '../../../application/company-wizard/use-cases/GetOptionsForFieldUseCase';
 import { CompleteCompanyCreationUseCase } from '../../../application/company-wizard/use-cases/CompleteCompanyCreationUseCase';
 import { CompanyRolePermissionResolver } from '../../../application/rbac/CompanyRolePermissionResolver';
+import { ApiError } from '../../errors/ApiError';
 
 const resolver = new CompanyRolePermissionResolver(
   diContainer.modulePermissionsDefinitionRepository,
@@ -40,6 +41,9 @@ export class CompanyWizardController {
     try {
       const userId = (req as any).user.uid;
       const { companyName, model } = req.body;
+      if (!userId) {
+        throw new Error('Unauthorized');
+      }
       const useCase = new StartCompanyCreationWizardUseCase(
         diContainer.userRepository,
         diContainer.companyWizardTemplateRepository,
@@ -57,6 +61,9 @@ export class CompanyWizardController {
     try {
       const sessionId = String(req.query.sessionId || '');
       const userId = (req as any).user.uid;
+      if (!sessionId) {
+        throw ApiError.badRequest('sessionId is required');
+      }
       const useCase = new GetNextWizardStepUseCase(
         diContainer.companyCreationSessionRepository,
         diContainer.companyWizardTemplateRepository

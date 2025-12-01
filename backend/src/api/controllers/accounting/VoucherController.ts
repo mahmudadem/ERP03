@@ -12,7 +12,13 @@ import {
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 
-const permissionChecker = new PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase(diContainer.rbacPermissionRepository, diContainer.rbacCompanyUserRepository));
+const permissionChecker = new PermissionChecker(
+  new GetCurrentUserPermissionsForCompanyUseCase(
+    diContainer.userRepository,
+    diContainer.rbacCompanyUserRepository,
+    diContainer.companyRoleRepository
+  )
+);
 
 export class VoucherController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -64,7 +70,6 @@ export class VoucherController {
       const useCase = new UpdateVoucherUseCase(
         diContainer.voucherRepository,
         diContainer.accountRepository,
-        diContainer.ledgerRepository,
         permissionChecker
       );
       await useCase.execute(companyId, userId, req.params.id, req.body);

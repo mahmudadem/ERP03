@@ -17,8 +17,9 @@ export const SwitchCompanyButton: React.FC = () => {
     const load = async () => {
       try {
         const mod = await import('../../modules/company-selector/api');
-        const list = await mod.companySelectorApi.getUserCompanies();
-        setCompanies(list);
+        const resp = await mod.companySelectorApi.getUserCompanies();
+        const list = Array.isArray((resp as any)?.data) ? (resp as any).data : resp;
+        setCompanies(Array.isArray(list) ? list : []);
       } catch (err) {
         console.error('Failed to load companies', err);
       }

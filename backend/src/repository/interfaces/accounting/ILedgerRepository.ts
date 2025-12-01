@@ -1,5 +1,5 @@
 import { LedgerEntry } from '../../../domain/accounting/models/LedgerEntry';
-import { Voucher } from '../../../domain/accounting/models/Voucher';
+import { Voucher } from '../../../domain/accounting/entities/Voucher';
 
 export interface TrialBalanceRow {
   accountId: string;

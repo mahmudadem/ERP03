@@ -18,7 +18,13 @@ export class CreateAccountUseCase {
       undefined,
       undefined
     );
-    await this.accountRepo.createAccount(account, data.companyId);
+    await this.accountRepo.create(data.companyId, {
+      code: account.code,
+      name: account.name,
+      type: account.type,
+      currency: account.currency,
+      parentId: account.parentId || null
+    });
     return account;
   }
 }
@@ -27,7 +33,17 @@ export class UpdateAccountUseCase {
   constructor(private accountRepo: IAccountRepository) {}
 
   async execute(accountId: string, data: Partial<Account>): Promise<void> {
-    await this.accountRepo.updateAccount(accountId, data);
+    if (!data.companyId) {
+      throw new Error('companyId is required for update');
+    }
+    await this.accountRepo.update(data.companyId, accountId, {
+      code: data.code,
+      name: data.name,
+      type: data.type as any,
+      parentId: data.parentId,
+      isActive: data.isActive,
+      currency: data.currency
+    });
   }
 }
 
@@ -35,10 +51,10 @@ export class DeactivateAccountUseCase {
   constructor(private accountRepo: IAccountRepository) {}
 
   async execute(accountId: string, companyId: string): Promise<void> {
-    const account = await this.accountRepo.getAccount(accountId, companyId);
+    const account = await this.accountRepo.getById(companyId, accountId);
     if (account && account.isProtected) {
       throw new Error('Cannot deactivate a system protected account');
     }
-    await this.accountRepo.deactivateAccount(accountId, companyId);
+    await this.accountRepo.deactivate(companyId, accountId);
   }
 }

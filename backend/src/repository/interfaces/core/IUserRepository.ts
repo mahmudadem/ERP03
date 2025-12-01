@@ -38,4 +38,9 @@ export interface IUserRepository {
    * @param companyId The ID of the company to set as active.
    */
   updateActiveCompany(userId: string, companyId: string): Promise<void>;
+
+  /**
+   * Retrieves the user's active company id if set.
+   */
+  getUserActiveCompany(userId: string): Promise<string | null>;
 }

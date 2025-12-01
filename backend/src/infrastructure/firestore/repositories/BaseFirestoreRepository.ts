@@ -33,8 +33,13 @@ export abstract class BaseFirestoreRepository<T> {
       if (!id) throw new Error("Entity missing ID");
       
       await this.db.collection(this.collectionName).doc(id).set(data);
-    } catch (error) {
-      throw new InfrastructureError(`Failed to save to ${this.collectionName}`, error);
+    } catch (error: any) {
+      // eslint-disable-next-line no-console
+      console.error(`[INFRA] Failed to save to ${this.collectionName}`, error);
+      const message = error && typeof error === 'object' && 'message' in error
+        ? String((error as any).message)
+        : `Failed to save to ${this.collectionName}`;
+      throw new InfrastructureError(message, error);
     }
   }
 

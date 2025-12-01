@@ -21,9 +21,9 @@ export class UserCompaniesController {
           };
         })
       );
-      res.json({ success: true, data });
+      return res.json({ success: true, data });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -34,9 +34,9 @@ export class UserCompaniesController {
       const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, companyId);
       if (!membership) throw new Error('Not a member of this company');
       await diContainer.userRepository.updateActiveCompany(userId, companyId);
-      res.json({ success: true, activeCompanyId: companyId });
+      return res.json({ success: true, activeCompanyId: companyId });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -49,7 +49,7 @@ export class UserCompaniesController {
       }
       const company = await diContainer.companyRepository.findById(activeCompanyId);
       const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, activeCompanyId);
-      res.json({
+      return res.json({
         success: true,
         data: {
           activeCompanyId,
@@ -59,7 +59,7 @@ export class UserCompaniesController {
         },
       });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 }

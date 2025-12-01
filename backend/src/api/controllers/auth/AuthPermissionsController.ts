@@ -17,9 +17,9 @@ export class AuthPermissionsController {
         return res.json({ success: true, data: { roleId: null, roleName: null, moduleBundles: [], explicitPermissions: [], resolvedPermissions: [], isSuperAdmin } });
       }
 
-      const role = await diContainer.rbacCompanyRoleRepository.getById(companyId, membership.roleId);
+      const role = await diContainer.companyRoleRepository.getById(companyId, membership.roleId);
       const resolvedPermissions = role?.resolvedPermissions || role?.permissions || [];
-      res.json({
+      return res.json({
         success: true,
         data: {
           roleId: membership.roleId,
@@ -31,7 +31,7 @@ export class AuthPermissionsController {
         },
       });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 }

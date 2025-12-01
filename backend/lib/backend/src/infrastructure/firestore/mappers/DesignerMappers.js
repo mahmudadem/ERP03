@@ -1,0 +1,40 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VoucherTypeDefinitionMapper = exports.FormDefinitionMapper = void 0;
+const FormDefinition_1 = require("../../../domain/designer/entities/FormDefinition");
+const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
+class FormDefinitionMapper {
+    static toDomain(data) {
+        // Assuming simple JSON storage for complex nested objects
+        return new FormDefinition_1.FormDefinition(data.id, data.name || 'Untitled Form', data.module, data.type, data.fields || [], data.sections || []);
+    }
+    static toPersistence(entity) {
+        return {
+            id: entity.id,
+            name: entity.name,
+            module: entity.module,
+            type: entity.type,
+            fields: entity.fields,
+            sections: entity.sections
+        };
+    }
+}
+exports.FormDefinitionMapper = FormDefinitionMapper;
+class VoucherTypeDefinitionMapper {
+    static toDomain(data) {
+        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {});
+    }
+    static toPersistence(entity) {
+        return {
+            id: entity.id,
+            name: entity.name,
+            code: entity.code,
+            module: entity.module,
+            headerFields: entity.headerFields,
+            tableColumns: entity.tableColumns,
+            layout: entity.layout
+        };
+    }
+}
+exports.VoucherTypeDefinitionMapper = VoucherTypeDefinitionMapper;
+//# sourceMappingURL=DesignerMappers.js.map

@@ -13,6 +13,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredPermission, requiredGlobalRole, requiredModule }: ProtectedRouteProps) {
   const { isSuperAdmin, loading, companyId, moduleBundles } = useCompanyAccess();
+  const companyIdFallback = companyId || localStorage.getItem('activeCompanyId') || '';
   const { hasPermission } = useRBAC();
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
@@ -23,7 +24,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!isWizardFlow && !companyId) {
+  if (!isWizardFlow && !companyIdFallback) {
     return <Navigate to="/company-selector" replace />;
   }
 

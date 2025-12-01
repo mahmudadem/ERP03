@@ -1,0 +1,1 @@
+{"version":3,"file":"CompanySettingsDTO.js","sourceRoot":"","sources":["../../../../../src/api/dtos/CompanySettingsDTO.ts"],"names":[],"mappings":";;;AAQA,MAAa,wBAAwB;IACnC,MAAM,CAAC,KAAK,CAAC,QAAyB;QACpC,OAAO;YACL,SAAS,EAAE,QAAQ,CAAC,SAAS;YAC7B,kBAAkB,EAAE,QAAQ,CAAC,kBAAkB;SAChD,CAAC;IACJ,CAAC;CACF;AAPD,4DAOC"}

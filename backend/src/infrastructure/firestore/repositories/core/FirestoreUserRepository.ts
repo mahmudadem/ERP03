@@ -54,4 +54,11 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
       throw new InfrastructureError('Error updating user active company', error);
     }
   }
+
+  async getUserActiveCompany(userId: string): Promise<string | null> {
+    const doc = await this.db.collection(this.collectionName).doc(userId).get();
+    if (!doc.exists) return null;
+    const data = doc.data() as any;
+    return data?.activeCompanyId || null;
+  }
 }

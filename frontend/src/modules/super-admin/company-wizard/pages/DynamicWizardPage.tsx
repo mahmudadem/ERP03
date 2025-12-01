@@ -31,19 +31,24 @@ const WizardRunner: React.FC = () => {
       await submitStep(values);
       setValues({});
     } catch (err: any) {
-      setError(err.message || 'Failed to submit step');
+      setError(err?.response?.data?.error?.message || err.message || 'Failed to submit step');
     }
   };
 
   const handleFinish = async () => {
     try {
       setError(null);
+      // If we are on the last step and have unsaved values, persist them first
+      if (Object.keys(values).length > 0) {
+        await submitStep(values);
+        setValues({});
+      }
       const result = await completeWizard();
       window.alert('Company created successfully');
       navigate('/');
       return result.companyId;
     } catch (err: any) {
-      setError(err.message || 'Failed to complete wizard');
+      setError(err?.response?.data?.error?.message || err.message || 'Failed to complete wizard');
     }
   };
 

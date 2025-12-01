@@ -14,4 +14,6 @@ export interface ModuleSettingsDefinition {
   fields: ModuleSettingField[];
   createdBy: string;
   updatedAt: Date;
+  permissionsDefined?: boolean;
+  autoAttachToRoles?: string[];
 }

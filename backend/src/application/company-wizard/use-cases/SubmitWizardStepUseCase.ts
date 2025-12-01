@@ -40,8 +40,8 @@ export class SubmitWizardStepUseCase {
     if (session.userId !== input.userId) {
       throw new Error('Forbidden');
     }
-
-    if (session.currentStepId !== input.stepId) {
+    // Allow re-submission of the current/final step even if currentStepId was cleared previously
+    if (session.currentStepId && session.currentStepId !== input.stepId) {
       throw new Error('Step mismatch');
     }
 
@@ -59,11 +59,7 @@ export class SubmitWizardStepUseCase {
     session.updatedAt = new Date();
 
     const nextStep = steps[currentIndex + 1];
-    if (nextStep) {
-      session.currentStepId = nextStep.id;
-    } else {
-      session.currentStepId = '';
-    }
+    session.currentStepId = nextStep ? nextStep.id : input.stepId;
 
     await this.sessionRepo.update(session);
 

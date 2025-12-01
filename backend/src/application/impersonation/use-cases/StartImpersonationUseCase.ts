@@ -1,7 +1,6 @@
 
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { IImpersonationRepository } from '../../../repository/interfaces/impersonation/IImpersonationRepository';
-import { ImpersonationSession } from '../../../domain/impersonation/ImpersonationSession';
 
 export class StartImpersonationUseCase {
   constructor(

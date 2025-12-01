@@ -1,5 +1,4 @@
-
-const API_BASE = '/api/v1';
+import client from '../client';
 
 export interface Permission {
   id: string;
@@ -39,65 +38,40 @@ export interface CompanyUser {
 }
 
 export const rbacApi = {
-  async getPermissions(): Promise<Permission[]> {
-    const res = await fetch(`${API_BASE}/rbac/permissions`);
-    const data = await res.json();
-    return data.data;
+  getPermissions: (): Promise<Permission[]> => {
+    return client.get('/rbac/permissions');
   },
 
-  async getSystemRoleTemplates(): Promise<SystemRoleTemplate[]> {
-    const res = await fetch(`${API_BASE}/rbac/system-role-templates`);
-    const data = await res.json();
-    return data.data;
+  getSystemRoleTemplates: (): Promise<SystemRoleTemplate[]> => {
+    return client.get('/rbac/system-role-templates');
   },
 
-  async getCurrentUserPermissions(companyId: string): Promise<string[]> {
-    const res = await fetch(`${API_BASE}/rbac/current-user-permissions?companyId=${companyId}`);
-    const data = await res.json();
-    return data.data;
+  getCurrentUserPermissions: (companyId: string): Promise<string[]> => {
+    return client.get(`/rbac/current-user-permissions?companyId=${companyId}`);
   },
 
-  async listCompanyRoles(companyId: string): Promise<CompanyRole[]> {
-    const res = await fetch(`${API_BASE}/rbac/companies/${companyId}/roles`);
-    const data = await res.json();
-    return data.data;
+  listCompanyRoles: (companyId: string): Promise<CompanyRole[]> => {
+    return client.get(`/rbac/companies/${companyId}/roles`);
   },
 
-  async createCompanyRole(companyId: string, role: Partial<CompanyRole>): Promise<CompanyRole> {
-    const res = await fetch(`${API_BASE}/rbac/companies/${companyId}/roles`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(role)
-    });
-    const data = await res.json();
-    return data.data;
+  createCompanyRole: (companyId: string, role: Partial<CompanyRole>): Promise<CompanyRole> => {
+    return client.post(`/rbac/companies/${companyId}/roles`, role);
   },
 
-  async updateCompanyRole(companyId: string, roleId: string, updates: Partial<CompanyRole>): Promise<void> {
-    await fetch(`${API_BASE}/rbac/companies/${companyId}/roles/${roleId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
+  updateCompanyRole: (companyId: string, roleId: string, updates: Partial<CompanyRole>): Promise<void> => {
+    return client.patch(`/rbac/companies/${companyId}/roles/${roleId}`, updates);
   },
 
-  async deleteCompanyRole(companyId: string, roleId: string): Promise<void> {
-    await fetch(`${API_BASE}/rbac/companies/${companyId}/roles/${roleId}`, {
-      method: 'DELETE'
-    });
+  deleteCompanyRole: (companyId: string, roleId: string): Promise<void> => {
+    return client.delete(`/rbac/companies/${companyId}/roles/${roleId}`);
   },
 
-  async listCompanyUsers(companyId: string): Promise<CompanyUser[]> {
-    const res = await fetch(`${API_BASE}/rbac/companies/${companyId}/users`);
-    const data = await res.json();
-    return data.data;
+  listCompanyUsers: (companyId: string): Promise<CompanyUser[]> => {
+    return client.get(`/rbac/companies/${companyId}/users`);
   },
 
-  async assignRoleToUser(companyId: string, userId: string, roleId: string): Promise<void> {
-    await fetch(`${API_BASE}/rbac/companies/${companyId}/users/${userId}/assign-role`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roleId })
-    });
+  assignRoleToUser: (companyId: string, userId: string, roleId: string): Promise<void> => {
+    return client.post(`/rbac/companies/${companyId}/users/${userId}/assign-role`, { roleId });
   }
 };
+

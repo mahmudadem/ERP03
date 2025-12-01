@@ -25,4 +25,5 @@ export interface IAccountRepository {
   update(companyId: string, accountId: string, data: UpdateAccountInput): Promise<Account>;
   deactivate(companyId: string, accountId: string): Promise<void>;
   hasChildren(companyId: string, accountId: string): Promise<boolean>;
+  getAccounts?(companyId: string): Promise<Account[]>; // alias for legacy use-cases
 }

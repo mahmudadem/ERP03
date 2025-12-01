@@ -1,5 +1,5 @@
 
-import { httpClient } from './httpClient';
+import client from './client';
 
 export interface CompanySettings {
   companyId: string;
@@ -7,14 +7,11 @@ export interface CompanySettings {
 }
 
 export const companyApi = {
-  getSettings: async (): Promise<CompanySettings> => {
-    return httpClient<CompanySettings>('/company/settings');
+  getSettings: (companyId: string): Promise<CompanySettings> => {
+    return client.get(`/core/company/settings?companyId=${encodeURIComponent(companyId)}`);
   },
 
-  updateSettings: async (settings: Partial<CompanySettings>): Promise<void> => {
-    return httpClient<void>('/company/settings', {
-      method: 'POST',
-      body: JSON.stringify(settings)
-    });
+  updateSettings: (companyId: string, settings: Partial<CompanySettings>): Promise<void> => {
+    return client.post('/core/company/settings', { ...settings, companyId });
   }
 };

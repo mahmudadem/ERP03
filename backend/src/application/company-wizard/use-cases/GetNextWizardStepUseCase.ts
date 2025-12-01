@@ -1,6 +1,7 @@
 import { CompanyWizardStep } from '../../../domain/company-wizard';
 import { ICompanyCreationSessionRepository } from '../../../repository/interfaces/company-wizard/ICompanyCreationSessionRepository';
 import { ICompanyWizardTemplateRepository } from '../../../repository/interfaces/company-wizard/ICompanyWizardTemplateRepository';
+import { ApiError } from '../../../api/errors/ApiError';
 
 interface Input {
   sessionId: string;
@@ -21,16 +22,22 @@ export class GetNextWizardStepUseCase {
 
   async execute({ sessionId, userId }: Input): Promise<CompanyWizardStep> {
     const session = await this.sessionRepo.getById(sessionId);
-    if (!session) throw new Error('Session not found');
-    if (session.userId !== userId) throw new Error('Forbidden');
+    if (!session) {
+      throw ApiError.notFound('Session not found');
+    }
+    if (session.userId !== userId) {
+      throw ApiError.forbidden();
+    }
 
     const template = await this.templateRepo.getById(session.templateId);
-    if (!template) throw new Error('Template not found for session');
+    if (!template) {
+      throw ApiError.notFound('Template not found for session');
+    }
 
     const steps = this.filter(template.steps, session.model);
     const step = steps.find((s) => s.id === session.currentStepId);
     if (!step) {
-      throw new Error('No further steps available');
+      throw ApiError.notFound('No further steps available');
     }
 
     return step;

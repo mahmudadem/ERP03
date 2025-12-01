@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { StartImpersonationUseCase } from '../../../application/impersonation/use-cases/StartImpersonationUseCase';
 import { StopImpersonationUseCase } from '../../../application/impersonation/use-cases/StopImpersonationUseCase';
-import { ValidateImpersonationSessionUseCase } from '../../../application/impersonation/use-cases/ValidateImpersonationSessionUseCase';
 
 export class ImpersonationController {
   
@@ -23,7 +22,7 @@ export class ImpersonationController {
 
       const impersonationToken = await useCase.execute(superAdminId, companyId);
 
-      res.json({ 
+      return res.json({ 
         success: true, 
         data: { 
           impersonationToken,
@@ -31,7 +30,7 @@ export class ImpersonationController {
         } 
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -46,9 +45,9 @@ export class ImpersonationController {
 
       await useCase.execute(superAdminId);
 
-      res.json({ success: true, message: 'Impersonation stopped' });
+      return res.json({ success: true, message: 'Impersonation stopped' });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -62,7 +61,7 @@ export class ImpersonationController {
         return res.json({ success: true, data: { active: false } });
       }
 
-      res.json({ 
+      return res.json({ 
         success: true, 
         data: { 
           active: true,
@@ -72,7 +71,7 @@ export class ImpersonationController {
         } 
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

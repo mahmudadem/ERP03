@@ -8,7 +8,13 @@ import { DeactivateAccountUseCase } from '../../../application/accounting/use-ca
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 
-const permissionChecker = new PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase(diContainer.rbacPermissionRepository, diContainer.rbacCompanyUserRepository));
+const permissionChecker = new PermissionChecker(
+  new GetCurrentUserPermissionsForCompanyUseCase(
+    diContainer.userRepository,
+    diContainer.rbacCompanyUserRepository,
+    diContainer.companyRoleRepository
+  )
+);
 
 export class AccountController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -21,9 +27,9 @@ export class AccountController {
       const useCase = new ListAccountsUseCase(diContainer.accountRepository);
       const accounts = await useCase.execute(companyId);
 
-      res.json({ success: true, data: accounts });
+      return res.json({ success: true, data: accounts });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -42,9 +48,9 @@ export class AccountController {
         return res.status(404).json({ success: false, error: 'Account not found' });
       }
 
-      res.json({ success: true, data: account });
+      return res.json({ success: true, data: account });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -58,9 +64,9 @@ export class AccountController {
       const useCase = new CreateAccountUseCase(diContainer.accountRepository);
       const account = await useCase.execute(companyId, req.body);
 
-      res.json({ success: true, data: account });
+      return res.json({ success: true, data: account });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -75,9 +81,9 @@ export class AccountController {
       const useCase = new UpdateAccountUseCase(diContainer.accountRepository);
       const account = await useCase.execute(companyId, id, req.body);
 
-      res.json({ success: true, data: account });
+      return res.json({ success: true, data: account });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 
@@ -92,9 +98,9 @@ export class AccountController {
       const useCase = new DeactivateAccountUseCase(diContainer.accountRepository);
       await useCase.execute(companyId, id);
 
-      res.json({ success: true });
+      return res.json({ success: true });
     } catch (err) {
-      next(err);
+      return next(err);
     }
   }
 }

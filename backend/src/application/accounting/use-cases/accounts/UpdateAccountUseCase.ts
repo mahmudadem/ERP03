@@ -1,5 +1,5 @@
 import { IAccountRepository, UpdateAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
-import { Account } from '../../../domain/accounting/models/Account';
+import { Account } from '../../../../domain/accounting/models/Account';
 
 export class UpdateAccountUseCase {
     constructor(private accountRepo: IAccountRepository) { }

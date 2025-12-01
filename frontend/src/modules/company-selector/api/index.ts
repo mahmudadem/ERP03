@@ -1,4 +1,4 @@
-import { httpClient } from '../../../api/httpClient';
+import client from '../../../api/client';
 
 export interface UserCompany {
   id: string;
@@ -10,14 +10,14 @@ export interface UserCompany {
 }
 
 export const companySelectorApi = {
-  getUserCompanies: () => httpClient<UserCompany[]>('/users/me/companies'),
-  switchCompany: (companyId: string) =>
-    httpClient<void>('/users/me/switch-company', {
-      method: 'POST',
-      body: JSON.stringify({ companyId }),
-    }),
-  getActiveCompany: () =>
-    httpClient<{ activeCompanyId: string | null; company?: any; roleId?: string; isOwner?: boolean }>(
-      '/users/me/active-company'
-    ),
+  getUserCompanies: async (): Promise<UserCompany[]> => {
+    const resp = await client.get<any>('/users/me/companies');
+    if (Array.isArray(resp)) return resp;
+    if (resp && Array.isArray(resp.data)) return resp.data;
+    return [];
+  },
+  switchCompany: (companyId: string): Promise<void> =>
+    client.post('/users/me/switch-company', { companyId }),
+  getActiveCompany: (): Promise<{ activeCompanyId: string | null; company?: any; roleId?: string; isOwner?: boolean }> =>
+    client.get('/users/me/active-company'),
 };

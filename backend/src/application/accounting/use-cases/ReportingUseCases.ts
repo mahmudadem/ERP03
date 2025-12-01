@@ -28,7 +28,9 @@ export class GetTrialBalanceUseCase {
     );
 
     // 1. Fetch all accounts to map names and codes
-    const accounts = await this.accountRepo.getAccounts(companyId);
+    const accounts = this.accountRepo.getAccounts
+      ? await this.accountRepo.getAccounts(companyId)
+      : await this.accountRepo.list(companyId);
     const accountMap = new Map(accounts.map(a => [a.id, a]));
     
     // 2. Fetch all Approved or Locked vouchers

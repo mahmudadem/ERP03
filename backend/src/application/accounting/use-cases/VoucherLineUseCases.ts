@@ -29,11 +29,15 @@ export class RecalculateVoucherTotalsUseCase {
 }
 
 export class AddVoucherLineUseCase {
-    constructor(private voucherRepo: IVoucherRepository) {}
+    constructor(private _voucherRepo: IVoucherRepository) {
+      void this._voucherRepo;
+    }
     async execute() { /* Placeholder for future specific line logic */ }
 }
 
 export class RemoveVoucherLineUseCase {
-    constructor(private voucherRepo: IVoucherRepository) {}
+    constructor(private _voucherRepo: IVoucherRepository) {
+      void this._voucherRepo;
+    }
     async execute() { /* Placeholder */ }
 }

@@ -47,7 +47,26 @@ export class FirestoreCompanyWizardTemplateRepository implements ICompanyWizardT
         .limit(1)
         .get();
 
-      if (snapshot.empty) return null;
+      if (snapshot.empty) {
+        // Fallback default template for local/dev when none exists in Firestore
+        return {
+          id: 'default-wizard',
+          name: 'Default Wizard',
+          models: [model],
+          steps: [
+            {
+              id: 'basic-info',
+              titleEn: 'Basic Info',
+              titleAr: 'معلومات أساسية',
+              titleTr: 'Temel Bilgi',
+              order: 1,
+              modelKey: model,
+              fields: []
+            }
+          ],
+          isDefault: true
+        };
+      }
       return this.mapDoc(snapshot.docs[0]);
     } catch (error) {
       throw new InfrastructureError('Failed to load default company wizard template', error);
@@ -57,7 +76,28 @@ export class FirestoreCompanyWizardTemplateRepository implements ICompanyWizardT
   async getById(id: string): Promise<CompanyWizardTemplate | null> {
     try {
       const doc = await this.db.collection(this.collectionName).doc(id).get();
-      if (!doc.exists) return null;
+      if (!doc.exists) {
+        if (id === 'default-wizard') {
+          return {
+            id: 'default-wizard',
+            name: 'Default Wizard',
+            models: [],
+            steps: [
+              {
+                id: 'basic-info',
+                titleEn: 'Basic Info',
+                titleAr: 'معلومات أساسية',
+                titleTr: 'Temel Bilgi',
+                order: 1,
+                modelKey: null,
+                fields: []
+              }
+            ],
+            isDefault: true
+          };
+        }
+        return null;
+      }
       return this.mapDoc(doc);
     } catch (error) {
       throw new InfrastructureError('Failed to load company wizard template', error);

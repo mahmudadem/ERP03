@@ -39,7 +39,7 @@ export class CoreDTOMapper {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: (user as any).globalRole || (user as any).role || 'USER',
     };
   }
 }

@@ -1,6 +1,5 @@
 
 import * as admin from 'firebase-admin';
-import { db } from '../firestore/config/firebase.config';
 
 // Import All Interfaces
 import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRepository';
@@ -24,7 +23,6 @@ import { FirestoreUserRepository } from '../firestore/repositories/core/Firestor
 import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/FirestoreCompanyUserRepository';
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
-import { FirestoreAccountRepository } from '../firestore/repositories/accounting/FirestoreAccountRepository';
 import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
@@ -115,7 +113,7 @@ export const diContainer = {
   get companyCreationSessionRepository(): ICompanyCreationSessionRepository { return new FirestoreCompanyCreationSessionRepository(getDb()); },
   get chartOfAccountsTemplateRepository(): IChartOfAccountsTemplateRepository { return new FirestoreChartOfAccountsTemplateRepository(getDb()); },
   get currencyRepository(): ICurrencyRepository { return new FirestoreCurrencyRepository(getDb()); },
-  get inventoryTemplateRepository(): IInventoryTemplateRepository { return new FirestoreInventoryTemplateRepository(getDb()); }
+  get inventoryTemplateRepository(): IInventoryTemplateRepository { return new FirestoreInventoryTemplateRepository(getDb()); },
 
   // MODULE SETTINGS
   get moduleSettingsDefinitionRepository(): IModuleSettingsDefinitionRepository { return new FirestoreModuleSettingsDefinitionRepository(getDb()); },

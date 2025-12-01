@@ -1,4 +1,4 @@
-import { httpClient } from '../httpClient';
+import client from '../client';
 
 export interface Account {
     id: string;
@@ -33,9 +33,10 @@ export interface UpdateAccountInput {
 
 export const accountingApi = {
     // Accounts
-    getAccounts: () => httpClient<Account[]>('/accounting/accounts'),
-    getAccount: (id: string) => httpClient<Account>(`/accounting/accounts/${id}`),
-    createAccount: (payload: NewAccountInput) => httpClient<Account>('/accounting/accounts', { method: 'POST', body: JSON.stringify(payload) }),
-    updateAccount: (id: string, payload: UpdateAccountInput) => httpClient<Account>(`/accounting/accounts/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-    deactivateAccount: (id: string) => httpClient<void>(`/accounting/accounts/${id}`, { method: 'DELETE' }),
+    getAccounts: (): Promise<Account[]> => client.get('/accounting/accounts'),
+    getAccount: (id: string): Promise<Account> => client.get(`/accounting/accounts/${id}`),
+    createAccount: (payload: NewAccountInput): Promise<Account> => client.post('/accounting/accounts', payload),
+    updateAccount: (id: string, payload: UpdateAccountInput): Promise<Account> => client.put(`/accounting/accounts/${id}`, payload),
+    deactivateAccount: (id: string): Promise<void> => client.delete(`/accounting/accounts/${id}`),
 };
+

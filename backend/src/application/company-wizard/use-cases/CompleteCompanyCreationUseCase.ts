@@ -44,6 +44,11 @@ export class CompleteCompanyCreationUseCase {
     return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  private safeDate(input: any): Date {
+    const d = input ? new Date(input) : new Date();
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
   async execute(input: Input): Promise<{ companyId: string; activeCompanyId: string }> {
     const session = await this.sessionRepo.getById(input.sessionId);
     if (!session) throw new Error('Session not found');
@@ -60,9 +65,11 @@ export class CompleteCompanyCreationUseCase {
 
     const steps = this.filter(template.steps, session.model);
     this.validateAllRequired(steps, session.data);
+    // Normalize common aliases to what creation expects
+    const baseCurrency = session.data.currency || session.data.baseCurrency || 'USD';
 
     const now = new Date();
-    const fiscalYearStart = session.data.fiscalYearStart ? new Date(session.data.fiscalYearStart) : now;
+    const fiscalYearStart = this.safeDate(session.data.fiscalYearStart);
     const fiscalYearEnd = new Date(fiscalYearStart);
     fiscalYearEnd.setFullYear(fiscalYearEnd.getFullYear() + 1);
 
@@ -72,14 +79,18 @@ export class CompleteCompanyCreationUseCase {
       session.userId,
       now,
       now,
-      session.data.baseCurrency || 'USD',
+      baseCurrency,
       fiscalYearStart,
       fiscalYearEnd,
       [session.model],
       ''
     );
 
-    await this.companyRepo.save(company);
+    try {
+      await this.companyRepo.save(company);
+    } catch (err: any) {
+      throw new Error(`Failed to create company: ${err?.message || err}`);
+    }
     await this.rbacCompanyUserRepo.assignRole({
       userId: session.userId,
       companyId: company.id,

@@ -1,22 +1,14 @@
-import { httpClient } from '../httpClient';
+import client from '../client';
 
 export const superAdminPermissionsApi = {
-  listModulesWithPermissions: () =>
-    httpClient<any[]>('/system/permissions/modules'),
-  getModulePermissions: (moduleId: string) =>
-    httpClient<any>(`/system/permissions/${moduleId}`),
-  updateModulePermissions: (moduleId: string, payload: any) =>
-    httpClient<void>(`/system/permissions/${moduleId}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
-  createModulePermissions: (moduleId: string, payload: any) =>
-    httpClient<void>(`/system/permissions/${moduleId}`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  deleteModulePermissions: (moduleId: string) =>
-    httpClient<void>(`/system/permissions/${moduleId}`, {
-      method: 'DELETE',
-    }),
+  listModulesWithPermissions: (): Promise<any[]> =>
+    client.get('/system/permissions/modules'),
+  getModulePermissions: (moduleId: string): Promise<any> =>
+    client.get(`/system/permissions/${moduleId}`),
+  updateModulePermissions: (moduleId: string, payload: any): Promise<void> =>
+    client.put(`/system/permissions/${moduleId}`, payload),
+  createModulePermissions: (moduleId: string, payload: any): Promise<void> =>
+    client.post(`/system/permissions/${moduleId}`, payload),
+  deleteModulePermissions: (moduleId: string): Promise<void> =>
+    client.delete(`/system/permissions/${moduleId}`),
 };

@@ -1,4 +1,4 @@
-import { httpClient } from '../httpClient';
+import client from '../client';
 
 export interface SystemOverview {
   totalUsers: number;
@@ -26,21 +26,21 @@ export interface SuperAdminCompany {
 }
 
 export const superAdminApi = {
-  getSystemOverview: () => httpClient<SystemOverview>('/system/overview'),
+  getSystemOverview: (): Promise<SystemOverview> => 
+    client.get('/super-admin/overview'),
 
-  getAllUsers: () => httpClient<SuperAdminUser[]>('/system/users'),
+  getAllUsers: (): Promise<SuperAdminUser[]> => 
+    client.get('/super-admin/users'),
 
-  promoteUser: (userId: string) =>
-    httpClient<void>(`/system/users/${userId}/promote`, { method: 'PATCH' }),
+  promoteUser: (userId: string): Promise<void> =>
+    client.patch(`/super-admin/users/${userId}/promote`),
 
-  demoteUser: (userId: string) =>
-    httpClient<void>(`/system/users/${userId}/demote`, { method: 'PATCH' }),
+  demoteUser: (userId: string): Promise<void> =>
+    client.patch(`/super-admin/users/${userId}/demote`),
 
-  getAllCompanies: () => httpClient<SuperAdminCompany[]>('/system/companies'),
+  getAllCompanies: (): Promise<SuperAdminCompany[]> => 
+    client.get('/super-admin/companies'),
 
-  startImpersonation: (companyId: string) =>
-    httpClient<{ impersonationToken: string }>(`/system/impersonate/start`, {
-      method: 'POST',
-      body: JSON.stringify({ companyId }),
-    }),
+  startImpersonation: (companyId: string): Promise<{ impersonationToken: string }> =>
+    client.post('/impersonate/start', { companyId }),
 };

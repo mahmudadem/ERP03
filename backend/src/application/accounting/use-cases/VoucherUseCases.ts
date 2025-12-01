@@ -1,4 +1,5 @@
-import { Voucher, VoucherLine } from '../../../domain/accounting/models/Voucher';
+import { Voucher } from '../../../domain/accounting/entities/Voucher';
+import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 import { IVoucherRepository, IAccountRepository, ILedgerRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
@@ -14,7 +15,7 @@ export class CreateVoucherUseCase {
     private voucherRepo: IVoucherRepository,
     private accountRepo: IAccountRepository,
     private settingsRepo: ICompanyModuleSettingsRepository,
-    private ledgerRepo: ILedgerRepository,
+    private _ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
@@ -26,52 +27,61 @@ export class CreateVoucherUseCase {
 
     const voucherId = payload.id || `vch_${Date.now()}`;
     const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
-    const lines = (payload.lines || []).map((l, idx) => ({
-      id: l.id || `${voucherId}_l${idx}`,
-      accountId: l.accountId!,
-      debitFx: l.debitFx || 0,
-      creditFx: l.creditFx || 0,
-      debitBase: l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1),
-      creditBase: l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1),
-      description: l.description,
-      costCenterId: l.costCenterId,
-      lineCurrency: l.lineCurrency || payload.currency,
-      exchangeRate: l.exchangeRate || payload.exchangeRate || 1,
-    })) as VoucherLine[];
+    const lines = (payload.lines || []).map((l, idx) => {
+      const line = new VoucherLine(
+        l.id || `${voucherId}_l${idx}`,
+        voucherId,
+        l.accountId!,
+        l.description ?? null
+      );
+      line.debitFx = l.debitFx || 0;
+      line.creditFx = l.creditFx || 0;
+      line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
+      line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
+      line.costCenterId = l.costCenterId;
+      line.lineCurrency = l.lineCurrency || payload.currency;
+      line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
+      line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
+      line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
+      return line;
+    });
 
     for (const line of lines) {
-      const acc = await this.accountRepo.getAccount(line.accountId, companyId);
+      const acc = await this.accountRepo.getById(companyId, line.accountId);
       if (!acc || acc.active === false) throw new Error(`Account ${line.accountId} invalid`);
     }
 
     const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
     const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
 
-    const voucher: Voucher = {
-      id: voucherId,
-      voucherNo,
-      type: payload.type || 'journal',
-      date: payload.date || new Date().toISOString(),
-      description: payload.description,
+    const voucher = new Voucher(
+      voucherId,
       companyId,
-      status: settings?.strictApprovalMode === false ? 'approved' : 'draft',
-      currency: payload.currency || baseCurrency,
-      exchangeRate: payload.exchangeRate || 1,
-      baseCurrency,
+      payload.type || 'journal',
+      payload.date ? new Date(payload.date) : new Date(),
+      payload.currency || baseCurrency,
+      payload.exchangeRate || 1,
+      settings?.strictApprovalMode === false ? 'approved' : 'draft',
       totalDebitBase,
       totalCreditBase,
-      lines,
-      createdBy: userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      userId,
+      payload.reference ?? null,
+      lines
+    );
+    voucher.voucherNo = voucherNo;
+    voucher.baseCurrency = baseCurrency;
+    voucher.totalDebitBase = totalDebitBase;
+    voucher.totalCreditBase = totalCreditBase;
+    voucher.createdAt = new Date().toISOString();
+    voucher.updatedAt = new Date().toISOString();
+    voucher.description = payload.description ?? null;
 
     assertBalanced(voucher);
     await this.voucherRepo.createVoucher(voucher);
 
     // Auto-approved path writes ledger
     if (voucher.status === 'approved') {
-      await this.ledgerRepo.recordForVoucher(voucher);
+      await this._ledgerRepo.recordForVoucher(voucher);
     }
 
     return voucher;
@@ -82,7 +92,6 @@ export class UpdateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
     private accountRepo: IAccountRepository,
-    private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
@@ -94,7 +103,7 @@ export class UpdateVoucherUseCase {
 
     if (payload.lines) {
       for (const l of payload.lines) {
-        const acc = await this.accountRepo.getAccount(l.accountId!, companyId);
+        const acc = await this.accountRepo.getById(companyId, l.accountId!);
         if (!acc || acc.active === false) throw new Error(`Account ${l.accountId} invalid`);
       }
       const totalDebitBase = payload.lines.reduce((s, l) => s + (l.debitBase || 0), 0);
@@ -105,7 +114,10 @@ export class UpdateVoucherUseCase {
     }
 
     payload.updatedAt = new Date().toISOString();
-    await this.voucherRepo.updateVoucher(voucherId, payload);
+    if (typeof payload.date === 'string') {
+      payload.date = new Date(payload.date);
+    }
+    await this.voucherRepo.updateVoucher(voucherId, payload as any);
   }
 }
 
@@ -123,7 +135,7 @@ export class ApproveVoucherUseCase {
     if (!['draft', 'pending'].includes(voucher.status)) throw new Error('Cannot approve from this status');
     assertBalanced(voucher);
     await this.ledgerRepo.recordForVoucher(voucher);
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() });
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() } as any);
   }
 }
 
@@ -138,7 +150,7 @@ export class LockVoucherUseCase {
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.lock');
     if (voucher.status !== 'approved') throw new Error('Only approved vouchers can be locked');
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() });
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() } as any);
   }
 }
 
@@ -155,7 +167,7 @@ export class CancelVoucherUseCase {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
     if (!['draft', 'pending', 'approved'].includes(voucher.status)) throw new Error('Cannot cancel from this status');
     await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() });
+    await this.voucherRepo.updateVoucher(voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() } as any);
   }
 }
 

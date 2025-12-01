@@ -2,7 +2,7 @@
 /**
  * accountingApi.ts
  */
-import { httpClient } from './httpClient';
+import client from './client';
 import { VoucherListFilters, VoucherListResponse, VoucherListItem } from '../types/accounting/VoucherListTypes';
 
 // Re-export types for convenience
@@ -25,7 +25,7 @@ export interface TrialBalanceLine {
 
 export const accountingApi = {
   
-  listVouchers: async (filters: VoucherListFilters): Promise<VoucherListResponse> => {
+  listVouchers: (filters: VoucherListFilters): Promise<VoucherListResponse> => {
     // Construct Query String
     const params = new URLSearchParams();
     
@@ -39,55 +39,42 @@ export const accountingApi = {
     params.append('page', filters.page.toString());
     params.append('pageSize', filters.pageSize.toString());
 
-    return httpClient<VoucherListResponse>(`/accounting/vouchers?${params.toString()}`);
+    return client.get(`/accounting/vouchers?${params.toString()}`);
   },
 
-  getVoucher: async (id: string) => {
-    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}`);
+  getVoucher: (id: string): Promise<VoucherDetailDTO> => {
+    return client.get(`/accounting/vouchers/${id}`);
   },
 
-  createVoucher: async (payload: any) => {
-    return httpClient<VoucherDetailDTO>('/accounting/vouchers', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
+  createVoucher: (payload: any): Promise<VoucherDetailDTO> => {
+    return client.post('/accounting/vouchers', payload);
   },
 
-  updateVoucher: async (id: string, payload: any) => {
-    return httpClient<{success: boolean}>(`/accounting/vouchers/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
+  updateVoucher: (id: string, payload: any): Promise<{success: boolean}> => {
+    return client.put(`/accounting/vouchers/${id}`, payload);
   },
 
   // --- WORKFLOW ACTIONS ---
 
-  sendVoucherToApproval: async (id: string) => {
-    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/send-to-approval`, {
-      method: 'POST'
-    });
+  sendVoucherToApproval: (id: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/accounting/vouchers/${id}/approve`);
   },
 
-  approveVoucher: async (id: string) => {
-    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/approve`, {
-      method: 'POST'
-    });
+  approveVoucher: (id: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/accounting/vouchers/${id}/approve`);
   },
 
-  lockVoucher: async (id: string) => {
-    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/lock`, {
-      method: 'POST'
-    });
+  lockVoucher: (id: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/accounting/vouchers/${id}/lock`);
   },
 
-  cancelVoucher: async (id: string) => {
-    return httpClient<VoucherDetailDTO>(`/accounting/vouchers/${id}/cancel`, {
-      method: 'POST'
-    });
+  cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/accounting/vouchers/${id}/cancel`);
   },
 
   // --- REPORTS ---
-  getTrialBalance: async () => {
-    return httpClient<TrialBalanceLine[]>('/accounting/reports/trial-balance');
+  getTrialBalance: (): Promise<TrialBalanceLine[]> => {
+    return client.get('/accounting/reports/trial-balance');
   }
 };
+

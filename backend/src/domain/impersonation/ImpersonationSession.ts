@@ -1,4 +1,3 @@
-
 export class ImpersonationSession {
   constructor(
     public id: string,

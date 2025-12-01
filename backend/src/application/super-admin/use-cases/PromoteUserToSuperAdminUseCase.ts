@@ -1,6 +1,5 @@
 
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
-import { UserRole } from '../../../domain/core/entities/User';
 
 export class PromoteUserToSuperAdminUseCase {
   constructor(private userRepo: IUserRepository) {}

@@ -8,6 +8,7 @@ import { Notification } from '../../../../domain/system/entities/Notification';
 import { AuditLog } from '../../../../domain/system/entities/AuditLog';
 import { ModuleMapper, RoleMapper, PermissionMapper, NotificationMapper, AuditLogMapper } from '../../mappers/SystemMappers';
 import * as admin from 'firebase-admin';
+void admin;
 
 export class FirestoreModuleRepository extends BaseFirestoreRepository<Module> implements IModuleRepository {
   protected collectionName = 'modules';

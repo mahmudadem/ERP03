@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
-import { Voucher } from '../../../../domain/accounting/models/Voucher';
+import { Voucher } from '../../../../domain/accounting/entities/Voucher';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
 export class FirestoreLedgerRepository implements ILedgerRepository {

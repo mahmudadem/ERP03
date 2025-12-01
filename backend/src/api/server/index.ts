@@ -2,8 +2,8 @@
  * server/index.ts
  * Purpose: Configures the Express Application.
  */
-import * as express from 'express';
-import * as cors from 'cors';
+import express from 'express';
+import cors from 'cors';
 import router from './router';
 import { errorHandler } from '../errors/errorHandler';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';

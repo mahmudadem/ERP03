@@ -11,6 +11,14 @@ import { User } from '../../../domain/core/entities/User';
 import { CompanyUser } from '../../../domain/core/entities/CompanyUser';
 
 export class CompanyMapper {
+  private static toTimestamp(date: Date) {
+    if (admin?.firestore?.Timestamp) {
+      return admin.firestore.Timestamp.fromDate(date);
+    }
+    // Fallback to plain Date if Timestamp is unavailable
+    return date;
+  }
+
   static toDomain(data: any): Company {
     return new Company(
       data.id,
@@ -35,11 +43,11 @@ export class CompanyMapper {
       taxId: entity.taxId,
       address: entity.address || null,
       baseCurrency: entity.baseCurrency,
-      fiscalYearStart: admin.firestore.Timestamp.fromDate(entity.fiscalYearStart),
-      fiscalYearEnd: admin.firestore.Timestamp.fromDate(entity.fiscalYearEnd),
+      fiscalYearStart: this.toTimestamp(entity.fiscalYearStart),
+      fiscalYearEnd: this.toTimestamp(entity.fiscalYearEnd),
       modules: entity.modules,
-      createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
-      updatedAt: admin.firestore.Timestamp.fromDate(entity.updatedAt),
+      createdAt: this.toTimestamp(entity.createdAt),
+      updatedAt: this.toTimestamp(entity.updatedAt),
     };
   }
 }

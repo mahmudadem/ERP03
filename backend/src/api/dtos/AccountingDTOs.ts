@@ -17,10 +17,10 @@ export interface AccountDTO {
 export interface VoucherLineDTO {
   id: string;
   accountId: string;
-  description: string;
+  description: string | null;
   fxAmount: number;
   baseAmount: number;
-  costCenterId?: string;
+  costCenterId?: string | null;
 }
 
 export interface VoucherDTO {
@@ -33,7 +33,7 @@ export interface VoucherDTO {
   status: string;
   totalDebit: number;
   totalCredit: number;
-  reference?: string;
+  reference?: string | null;
   lines?: VoucherLineDTO[]; // Optional in list view, required in detail
   createdBy: string;
 }
@@ -82,7 +82,7 @@ export class AccountingDTOMapper {
       id: voucher.id,
       companyId: voucher.companyId,
       type: voucher.type,
-      date: voucher.date.toISOString(),
+      date: new Date(voucher.date as any).toISOString(),
       currency: voucher.currency,
       exchangeRate: voucher.exchangeRate,
       status: voucher.status,

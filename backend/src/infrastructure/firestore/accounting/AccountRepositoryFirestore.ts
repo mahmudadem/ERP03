@@ -1,6 +1,7 @@
 import { firestore } from 'firebase-admin';
 import { Account } from '../../../domain/accounting/models/Account';
-import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
+import { AccountType } from '../../../domain/accounting/entities/Account';
+import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../repository/interfaces/accounting/IAccountRepository';
 
 export class AccountRepositoryFirestore implements IAccountRepository {
     constructor(private db: firestore.Firestore) { }
@@ -29,13 +30,17 @@ export class AccountRepositoryFirestore implements IAccountRepository {
 
     async create(companyId: string, data: NewAccountInput): Promise<Account> {
         const ref = this.getCollection(companyId).doc();
-        const now = new Date().toISOString();
+        const now = new Date();
         const account: Account = {
             id: ref.id,
             companyId,
             ...data,
+            type: data.type as AccountType,
+            active: true,
             isActive: true,
             isProtected: false,
+            currency: data.currency || '',
+            parentId: data.parentId || undefined,
             createdAt: now,
             updatedAt: now,
         };
@@ -47,7 +52,7 @@ export class AccountRepositoryFirestore implements IAccountRepository {
         const ref = this.getCollection(companyId).doc(accountId);
         const updates = {
             ...data,
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date() as any,
         };
         await ref.update(updates);
         const updated = await ref.get();
@@ -58,12 +63,16 @@ export class AccountRepositoryFirestore implements IAccountRepository {
         const ref = this.getCollection(companyId).doc(accountId);
         await ref.update({
             isActive: false,
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date() as any,
         });
     }
 
     async hasChildren(companyId: string, accountId: string): Promise<boolean> {
         const snapshot = await this.getCollection(companyId).where('parentId', '==', accountId).limit(1).get();
         return !snapshot.empty;
+    }
+
+    async getAccounts(companyId: string): Promise<Account[]> {
+        return this.list(companyId);
     }
 }

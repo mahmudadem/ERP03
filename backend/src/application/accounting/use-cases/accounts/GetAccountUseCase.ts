@@ -1,5 +1,5 @@
 import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
-import { Account } from '../../../domain/accounting/models/Account';
+import { Account } from '../../../../domain/accounting/models/Account';
 
 export class GetAccountUseCase {
     constructor(private accountRepo: IAccountRepository) { }

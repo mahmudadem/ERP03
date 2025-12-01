@@ -41,7 +41,7 @@ export const WizardSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const loadCurrentStep = useCallback(
-    async (sessionIdParam?: string) => {
+    async (sessionIdParam?: string, metaOverride?: WizardStepMeta[]) => {
       const sid = sessionIdParam || sessionId;
       if (!sid) return;
       setLoading(true);
@@ -49,7 +49,15 @@ export const WizardSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const step = await wizardApi.getCurrentStep(sid);
         setCurrentStep(step);
         setCurrentStepId(step.id);
-        setIsLastStep(computeIsLast(step.id, stepsMeta));
+        const meta = metaOverride && metaOverride.length ? metaOverride : stepsMeta;
+        if (!meta.length && step) {
+          // Seed metadata but do not assume this is the last step when we only know about one step
+          const seeded = [{ id: step.id, titleEn: step.titleEn, titleAr: step.titleAr, titleTr: step.titleTr, order: step.order }];
+          setStepsMeta(seeded);
+          setIsLastStep(false);
+        } else {
+          setIsLastStep(meta.length > 1 ? computeIsLast(step.id, meta) : false);
+        }
       } finally {
         setLoading(false);
       }
@@ -62,12 +70,21 @@ export const WizardSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(true);
       try {
         const result = await wizardApi.startWizard({ companyName, model: modelKey });
+        if (!result?.sessionId) {
+          throw new Error('Failed to start wizard session');
+        }
+        // Normalize metadata: prefer full steps list for the selected model
+        const stepsForModel = await wizardApi.getStepsForModel(modelKey).catch(() => result.stepsMeta || []);
+        const meta = stepsForModel && stepsForModel.length
+          ? stepsForModel.map((s) => ({ id: s.id, titleEn: s.titleEn, titleAr: s.titleAr, titleTr: s.titleTr, order: s.order }))
+          : (result.stepsMeta || []);
+
         setSessionId(result.sessionId);
         setModel(result.model);
-        setStepsMeta(result.stepsMeta || []);
+        setStepsMeta(meta);
         setCurrentStepId(result.currentStepId);
-        setIsLastStep(computeIsLast(result.currentStepId, result.stepsMeta || []));
-        await loadCurrentStep(result.sessionId);
+        setIsLastStep(meta.length > 1 ? computeIsLast(result.currentStepId, meta) : false);
+        await loadCurrentStep(result.sessionId, meta);
         return result.sessionId;
       } finally {
         setLoading(false);
@@ -100,8 +117,8 @@ export const WizardSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           setCurrentStepId(result.nextStepId);
           await loadCurrentStep(sessionId);
         } else {
-          setCurrentStep(null);
-          setCurrentStepId(null);
+          // Stay on the same step; allow finish to proceed
+          setCurrentStepId(currentStepId);
         }
         return result;
       } finally {

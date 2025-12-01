@@ -43,8 +43,8 @@ const UsersListPage = lazy(() => import('../modules/super-admin/pages/UsersListP
 const CompaniesListPage = lazy(() => import('../modules/super-admin/pages/CompaniesListPage'));
 
 // Company Wizard (user-level)
-const SelectModelPage = lazy(() => import('../modules/super-admin/company-wizard/pages/SelectModelPage'));
-const DynamicWizardPage = lazy(() => import('../modules/super-admin/company-wizard/pages/DynamicWizardPage'));
+const SelectModelPage = lazy(() => import('../modules/company-wizard/pages/SelectModelPage'));
+const DynamicWizardPage = lazy(() => import('../modules/company-wizard/pages/DynamicWizardPage'));
 const CompanySelectorPage = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
 const ModulePermissionsListPage = lazy(() => import('../modules/super-admin/permissions-manager/ModulePermissionsListPage'));
 const EditModulePermissionsPage = lazy(() => import('../modules/super-admin/permissions-manager/EditModulePermissionsPage'));

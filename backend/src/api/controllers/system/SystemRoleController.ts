@@ -10,9 +10,10 @@ const resolver = new RolePermissionResolver(
 export class SystemRoleController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const roles = await diContainer.roleRepository.listSystemRoleTemplates
-        ? await diContainer.roleRepository.listSystemRoleTemplates()
-        : await diContainer.roleRepository.getCompanyRoles('');
+      const repo: any = diContainer.roleRepository;
+      const roles = repo.listSystemRoleTemplates
+        ? await repo.listSystemRoleTemplates()
+        : await repo.getCompanyRoles('');
       res.json({ success: true, data: roles });
     } catch (err) {
       next(err);

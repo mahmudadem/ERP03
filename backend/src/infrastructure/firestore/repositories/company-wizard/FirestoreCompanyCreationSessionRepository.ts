@@ -10,12 +10,12 @@ export class FirestoreCompanyCreationSessionRepository implements ICompanyCreati
 
   private mapDoc(doc: admin.firestore.DocumentSnapshot): CompanyCreationSession {
     const data = doc.data() || {};
-    const createdAt = data.createdAt instanceof admin.firestore.Timestamp
-      ? data.createdAt.toDate()
-      : data.createdAt ? new Date(data.createdAt) : new Date();
-    const updatedAt = data.updatedAt instanceof admin.firestore.Timestamp
-      ? data.updatedAt.toDate()
-      : data.updatedAt ? new Date(data.updatedAt) : new Date();
+    const normalizeDate = (value: any) => {
+      if (value && typeof value.toDate === 'function') return value.toDate();
+      return value ? new Date(value) : new Date();
+    };
+    const createdAt = normalizeDate(data.createdAt);
+    const updatedAt = normalizeDate(data.updatedAt);
 
     return {
       id: data.id || doc.id,

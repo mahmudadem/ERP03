@@ -14,5 +14,9 @@ export class Account {
     public parentId?: string,
     public createdAt?: Date,
     public updatedAt?: Date
-  ) {}
+  ) {
+    this.isActive = active;
+  }
+
+  public isActive: boolean;
 }

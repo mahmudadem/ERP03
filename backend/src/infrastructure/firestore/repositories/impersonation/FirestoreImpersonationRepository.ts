@@ -1,8 +1,8 @@
 
-import { IImpersonationRepository } from '../../../repository/interfaces/impersonation/IImpersonationRepository';
-import { ImpersonationSession } from '../../../domain/impersonation/ImpersonationSession';
-import { ImpersonationMapper } from '../mappers/ImpersonationMapper';
-import { InfrastructureError } from '../../errors/InfrastructureError';
+import { IImpersonationRepository } from '../../../../repository/interfaces/impersonation/IImpersonationRepository';
+import { ImpersonationSession } from '../../../../domain/impersonation/ImpersonationSession';
+import { ImpersonationMapper } from '../../mappers/ImpersonationMapper';
+import { InfrastructureError } from '../../../errors/InfrastructureError';
 import * as admin from 'firebase-admin';
 
 export class FirestoreImpersonationRepository implements IImpersonationRepository {

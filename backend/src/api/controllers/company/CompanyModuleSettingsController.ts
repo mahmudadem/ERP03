@@ -6,7 +6,6 @@ export class CompanyModuleSettingsController {
   static async getSettings(req: Request, res: Response, next: NextFunction) {
     try {
       const { companyId, moduleId } = req.params as any;
-      const userId = (req as any).user.uid;
 
       await diContainer.companyModuleSettingsRepository.ensureModuleIsActivated(companyId, moduleId);
       const def = await diContainer.moduleSettingsDefinitionRepository.getDefinition(moduleId);

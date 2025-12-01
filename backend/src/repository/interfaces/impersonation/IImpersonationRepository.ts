@@ -1,5 +1,5 @@
 
-import { ImpersonationSession } from '../../domain/impersonation/ImpersonationSession';
+import { ImpersonationSession } from '../../../domain/impersonation/ImpersonationSession';
 
 export interface IImpersonationRepository {
   startSession(superAdminId: string, companyId: string): Promise<ImpersonationSession>;

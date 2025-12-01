@@ -30,6 +30,8 @@ router.get('/health', (req, res) => {
 });
 
 // Module Routes
+// Auth first so it can't be shadowed and avoids any super-admin middleware ordering issues
+router.use(authRoutes);
 router.use('/core', coreRoutes);
 router.use('/system', systemRoutes);
 router.use('/rbac', rbacRoutes);
@@ -41,7 +43,6 @@ router.use(systemModuleSettingsRoutes);
 router.use(companyModuleSettingsRoutes);
 router.use(systemPermissionsRoutes);
 router.use(systemRolesRoutes);
-router.use(authRoutes);
 router.use('/accounting', accountingRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/hr', hrRoutes);

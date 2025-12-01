@@ -1,13 +1,18 @@
 import React, { Suspense, lazy } from 'react';
-import { createHashRouter } from 'react-router-dom';
+import { createHashRouter, Navigate } from 'react-router-dom';
+
 import { AppShell } from '../layout/AppShell';
 import { routesConfig } from './routes.config';
-import { Navigate } from 'react-router-dom';
+
+// Auth & Security
+import { LoginPage } from '../pages/LoginPage';
+import { RequireAuth } from '../components/auth/RequireAuth';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
+// Lazy pages
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
 
-// Loading Component
+// Loading component
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[400px] text-gray-400">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
@@ -15,18 +20,26 @@ const PageLoader = () => (
   </div>
 );
 
-// Map config to Router objects
+// Routes
 const routes = [
   {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
     path: '/',
-    element: <AppShell />,
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
     children: [
       ...routesConfig.map((route) => ({
-        path: route.path === '/' ? undefined : route.path.replace(/^\//, ''), // Handle root index vs paths
+        path: route.path === '/' ? undefined : route.path.replace(/^\//, ''),
         index: route.path === '/',
         element: (
           <Suspense fallback={<PageLoader />}>
-            <ProtectedRoute 
+            <ProtectedRoute
               requiredPermission={route.requiredPermission}
               requiredGlobalRole={route.requiredGlobalRole}
               requiredModule={route.requiredModule}
@@ -36,6 +49,7 @@ const routes = [
           </Suspense>
         ),
       })),
+
       {
         path: 'forbidden',
         element: (
@@ -44,10 +58,11 @@ const routes = [
           </Suspense>
         ),
       },
+
       {
         path: '*',
         element: <Navigate to="/" replace />,
-      }
+      },
     ],
   },
 ];

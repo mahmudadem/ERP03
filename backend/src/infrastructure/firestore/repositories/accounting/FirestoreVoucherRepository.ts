@@ -7,7 +7,7 @@
 import * as admin from 'firebase-admin';
 import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { IVoucherRepository } from '../../../../repository/interfaces/accounting';
-import { Voucher } from '../../../../domain/accounting/models/Voucher';
+import { Voucher } from '../../../../domain/accounting/entities/Voucher';
 import { VoucherMapper } from '../../mappers/AccountingMappers';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
