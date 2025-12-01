@@ -12,7 +12,10 @@ export interface MyPermissionsResponse {
 export const authApi = {
   getMyPermissions: async (): Promise<MyPermissionsResponse> => {
     const resp = await client.get<any>('/auth/me/permissions');
-    return resp?.data ?? resp;
+    if (resp && resp.success && resp.data) {
+      return resp.data as MyPermissionsResponse;
+    }
+    return resp as MyPermissionsResponse;
   },
   
   getActiveCompany: () =>

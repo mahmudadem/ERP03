@@ -5,6 +5,10 @@ const bindRepositories_1 = require("../../infrastructure/di/bindRepositories");
 async function assertSuperAdmin(req, res, next) {
     var _a;
     try {
+        // Guardrail: only enforce on super-admin routes
+        if (!req.originalUrl.includes('/super-admin')) {
+            return next();
+        }
         // Never block auth self-check endpoints
         if (req.path.startsWith('/auth/me/')) {
             return next();

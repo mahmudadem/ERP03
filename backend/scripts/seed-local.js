@@ -83,7 +83,7 @@ async function seedCompanyRole({ companyId, roleId, name, permissions }) {
     permissions,
     resolvedPermissions: permissions,
     explicitPermissions: permissions,
-    moduleBundles: [],
+    moduleBundles: ['accounting', 'inventory', 'hr', 'pos', 'sales', 'purchases'],
     isDefaultForNewUsers: true,
   };
   await db.collection('companies').doc(companyId).collection('roles').doc(roleId).set(role, { merge: true });

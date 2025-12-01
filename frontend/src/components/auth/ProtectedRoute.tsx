@@ -12,13 +12,14 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredPermission, requiredGlobalRole, requiredModule }: ProtectedRouteProps) {
-  const { isSuperAdmin, loading, companyId, moduleBundles } = useCompanyAccess();
+  const { isSuperAdmin, loading, companyId, moduleBundles, resolvedPermissions } = useCompanyAccess();
   const companyIdFallback = companyId || localStorage.getItem('activeCompanyId') || '';
   const { hasPermission } = useRBAC();
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
   const isWizardFlow = path.startsWith('/company-wizard') || path.startsWith('/company-selector');
   const activeModules = moduleBundles || [];
+  const hasWildcard = resolvedPermissions.includes('*') || isSuperAdmin;
 
   if (loading) {
     return <div className="p-6">Loading...</div>;
@@ -33,7 +34,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
     return <Navigate to="/forbidden" replace />;
   }
 
-  if (requiredModule && !activeModules.includes(requiredModule)) {
+  if (requiredModule && !hasWildcard && !activeModules.includes(requiredModule)) {
     return <Navigate to="/forbidden" replace />;
   }
 
