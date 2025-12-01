@@ -12,7 +12,7 @@ type SidebarSection = {
 };
 
 export const useSidebarConfig = () => {
-  const { isSuperAdmin, moduleBundles } = useCompanyAccess();
+  const { isSuperAdmin, moduleBundles, resolvedPermissions } = useCompanyAccess();
   const { hasPermission } = useRBAC();
 
   const sidebarSections = useMemo(() => {
@@ -22,7 +22,32 @@ export const useSidebarConfig = () => {
       SUPER_ADMIN: []
     };
 
-    const activeModules: string[] = (window as any)?.activeModules || moduleBundles || [];
+    let cachedPerms: string[] = [];
+    try {
+      const rawPerms = localStorage.getItem('resolvedPermissions');
+      if (rawPerms) cachedPerms = JSON.parse(rawPerms);
+    } catch (e) {
+      cachedPerms = [];
+    }
+    const effectivePermissions = resolvedPermissions.length ? resolvedPermissions : cachedPerms;
+    const hasWildcard = effectivePermissions.includes('*');
+    let persistedModules: string[] = [];
+    try {
+      const raw = localStorage.getItem('activeModules');
+      if (raw) persistedModules = JSON.parse(raw);
+    } catch (e) {
+      persistedModules = [];
+    }
+
+    const bundleList =
+      (window as any)?.activeModules ||
+      (moduleBundles && moduleBundles.length ? moduleBundles : persistedModules.length ? persistedModules : hasWildcard ? Object.keys(moduleMenuMap) : []);
+
+    const mapped = bundleList.flatMap((m) => {
+      if (m === 'financial') return ['accounting'];
+      return [m];
+    });
+    const activeModules: string[] = Array.from(new Set(mapped));
 
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {
@@ -48,7 +73,7 @@ export const useSidebarConfig = () => {
     }
 
     return sections;
-  }, [hasPermission, isSuperAdmin, moduleBundles]);
+  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions]);
 
   return sidebarSections;
 };

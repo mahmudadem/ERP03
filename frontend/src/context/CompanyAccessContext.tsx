@@ -23,9 +23,33 @@ const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined
 export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [companyId, setCompanyIdState] = useState<string>(() => localStorage.getItem('activeCompanyId') || '');
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [resolvedPermissions, setResolvedPermissions] = useState<string[]>([]);
-  const [moduleBundles, setModuleBundles] = useState<string[]>([]);
+  const [permissions, setPermissions] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('resolvedPermissions');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      /* ignore */
+    }
+    return [];
+  });
+  const [resolvedPermissions, setResolvedPermissions] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('resolvedPermissions');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      /* ignore */
+    }
+    return [];
+  });
+  const [moduleBundles, setModuleBundles] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('activeModules');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {
+      /* ignore */
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [roleId, setRoleId] = useState<string | null>(null);
   const [roleName, setRoleName] = useState<string | null>(null);
@@ -43,12 +67,17 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       setPermissions(data.resolvedPermissions || []);
       setResolvedPermissions(data.resolvedPermissions || []);
       setModuleBundles((prev) => (data.moduleBundles && data.moduleBundles.length ? data.moduleBundles : prev));
+      localStorage.setItem('resolvedPermissions', JSON.stringify(data.resolvedPermissions || []));
+      if (data.moduleBundles && data.moduleBundles.length) {
+        localStorage.setItem('activeModules', JSON.stringify(data.moduleBundles));
+      }
       setRoleId(data.roleId || null);
       setRoleName(data.roleName || null);
     } catch (err) {
       console.error('Failed to load permissions', err);
-      setPermissions([]);
-      setResolvedPermissions([]);
+      // Keep previous permissions on error to avoid clearing sidebar
+      setPermissions((prev) => prev);
+      setResolvedPermissions((prev) => prev);
       setModuleBundles((prev) => prev);
       setRoleId(null);
       setRoleName(null);
@@ -74,6 +103,9 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       // Pre-seed module bundles from the active company record so ProtectedRoute can use them
       const modules = (data.company && Array.isArray((data.company as any).modules)) ? (data.company as any).modules : [];
       setModuleBundles(modules);
+      if (modules.length) {
+        localStorage.setItem('activeModules', JSON.stringify(modules));
+      }
       if (activeId) {
         await loadPermissionsForActiveCompany();
       } else {
@@ -96,12 +128,6 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       await queryClient.clear();
       // Optimistically set the active company so ProtectedRoute doesn't bounce us back
       setCompanyIdState(newCompanyId);
-      setPermissions([]);
-      setResolvedPermissions([]);
-      setModuleBundles([]);
-      setRoleId(null);
-      setRoleName(null);
-      setIsOwner(false);
       localStorage.setItem('activeCompanyId', newCompanyId);
       await loadActiveCompany();
     } finally {
