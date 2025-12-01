@@ -4,6 +4,18 @@ import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
 import { Voucher } from '../../../../domain/accounting/entities/Voucher';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
+const serverTimestamp = () => {
+  const fv: any = (admin.firestore as any)?.FieldValue;
+  return fv?.serverTimestamp ? fv.serverTimestamp() : new Date();
+};
+
+const toTimestamp = (val: any) => {
+  if (!val) return serverTimestamp();
+  const date = val instanceof Date ? val : new Date(val);
+  const tsCtor: any = (admin.firestore as any)?.Timestamp;
+  return tsCtor?.fromDate ? tsCtor.fromDate(date) : date;
+};
+
 export class FirestoreLedgerRepository implements ILedgerRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
@@ -25,10 +37,10 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           accountId: line.accountId,
           voucherId: voucher.id,
           voucherLineId: line.id,
-          date: voucher.date,
+          date: toTimestamp(voucher.date),
           debit,
           credit,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: serverTimestamp(),
         });
       });
       await batch.commit();
@@ -64,8 +76,9 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
   async getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]> {
     try {
+      const end = toTimestamp(asOfDate);
       const snap = await this.col(companyId)
-        .where('date', '<=', asOfDate)
+        .where('date', '<=', end)
         .get();
       const map: Record<string, TrialBalanceRow> = {};
       snap.docs.forEach((d) => {

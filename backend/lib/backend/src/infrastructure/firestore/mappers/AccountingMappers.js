@@ -34,6 +34,16 @@ const admin = __importStar(require("firebase-admin"));
 const Account_1 = require("../../../domain/accounting/entities/Account");
 const Voucher_1 = require("../../../domain/accounting/entities/Voucher");
 const VoucherLine_1 = require("../../../domain/accounting/entities/VoucherLine");
+const toTimestamp = (val) => {
+    var _a, _b;
+    if (!val)
+        return admin.firestore.FieldValue.serverTimestamp();
+    const date = val instanceof Date ? val : new Date(val);
+    // In emulators Timestamp can be undefined; fall back to raw Date
+    return ((_b = (_a = admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp) === null || _b === void 0 ? void 0 : _b.fromDate)
+        ? admin.firestore.Timestamp.fromDate(date)
+        : date;
+};
 class AccountMapper {
     static toDomain(data) {
         var _a, _b, _c, _d;
@@ -50,8 +60,8 @@ class AccountMapper {
             isProtected: entity.isProtected,
             active: entity.active,
             parentId: entity.parentId || null,
-            createdAt: entity.createdAt ? admin.firestore.Timestamp.fromDate(entity.createdAt) : admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: entity.updatedAt ? admin.firestore.Timestamp.fromDate(entity.updatedAt) : admin.firestore.FieldValue.serverTimestamp()
+            createdAt: toTimestamp(entity.createdAt),
+            updatedAt: toTimestamp(entity.updatedAt)
         };
     }
 }
@@ -107,7 +117,7 @@ class VoucherMapper {
             id: entity.id,
             companyId: entity.companyId,
             type: entity.type,
-            date: entity.date instanceof Date ? admin.firestore.Timestamp.fromDate(entity.date) : entity.date,
+            date: toTimestamp(entity.date),
             currency: entity.currency,
             exchangeRate: entity.exchangeRate,
             status: entity.status,
@@ -122,8 +132,8 @@ class VoucherMapper {
             lockedBy: entity.lockedBy || null,
             reference: entity.reference || null,
             description: (_j = entity.description) !== null && _j !== void 0 ? _j : null,
-            createdAt: entity.createdAt ? admin.firestore.Timestamp.fromDate(new Date(entity.createdAt)) : admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: entity.updatedAt ? admin.firestore.Timestamp.fromDate(new Date(entity.updatedAt)) : admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: toTimestamp(entity.createdAt),
+            updatedAt: toTimestamp(entity.updatedAt),
             lines: lines
         };
     }

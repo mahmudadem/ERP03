@@ -5,7 +5,9 @@ const Voucher_1 = require("../../../domain/accounting/entities/Voucher");
 const VoucherLine_1 = require("../../../domain/accounting/entities/VoucherLine");
 const assertBalanced = (voucher) => {
     if (Math.abs((voucher.totalDebitBase || 0) - (voucher.totalCreditBase || 0)) > 0.0001) {
-        throw new Error('Voucher not balanced');
+        const err = new Error('Voucher not balanced');
+        err.statusCode = 400;
+        throw err;
     }
 };
 class CreateVoucherUseCase {
@@ -86,8 +88,11 @@ class UpdateVoucherUseCase {
             const totalCreditBase = payload.lines.reduce((s, l) => s + (l.creditBase || 0), 0);
             payload.totalDebitBase = totalDebitBase;
             payload.totalCreditBase = totalCreditBase;
-            if (Math.abs(totalDebitBase - totalCreditBase) > 0.0001)
-                throw new Error('Voucher not balanced');
+            if (Math.abs(totalDebitBase - totalCreditBase) > 0.0001) {
+                const err = new Error('Voucher not balanced');
+                err.statusCode = 400;
+                throw err;
+            }
         }
         payload.updatedAt = new Date().toISOString();
         if (typeof payload.date === 'string') {

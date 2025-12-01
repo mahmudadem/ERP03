@@ -9,9 +9,18 @@ class CreateAccountUseCase {
         // Check if account code already exists
         const existing = await this.accountRepo.getByCode(companyId, data.code);
         if (existing) {
-            throw new Error(`Account with code ${data.code} already exists`);
+            const err = new Error(`Account with code ${data.code} already exists`);
+            err.statusCode = 409;
+            throw err;
         }
-        return await this.accountRepo.create(companyId, data);
+        const sanitized = {
+            code: data.code,
+            name: data.name,
+            type: (data.type || 'ASSET').toUpperCase(),
+            parentId: data.parentId ? data.parentId : null,
+            currency: data.currency || null
+        };
+        return await this.accountRepo.create(companyId, sanitized);
     }
 }
 exports.CreateAccountUseCase = CreateAccountUseCase;

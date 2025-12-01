@@ -26,6 +26,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreLedgerRepository = void 0;
 const admin = __importStar(require("firebase-admin"));
 const InfrastructureError_1 = require("../../../errors/InfrastructureError");
+const serverTimestamp = () => {
+    var _a;
+    const fv = (_a = admin.firestore) === null || _a === void 0 ? void 0 : _a.FieldValue;
+    return (fv === null || fv === void 0 ? void 0 : fv.serverTimestamp) ? fv.serverTimestamp() : new Date();
+};
+const toTimestamp = (val) => {
+    var _a;
+    if (!val)
+        return serverTimestamp();
+    const date = val instanceof Date ? val : new Date(val);
+    const tsCtor = (_a = admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp;
+    return (tsCtor === null || tsCtor === void 0 ? void 0 : tsCtor.fromDate) ? tsCtor.fromDate(date) : date;
+};
 class FirestoreLedgerRepository {
     constructor(db) {
         this.db = db;
@@ -47,10 +60,10 @@ class FirestoreLedgerRepository {
                     accountId: line.accountId,
                     voucherId: voucher.id,
                     voucherLineId: line.id,
-                    date: voucher.date,
+                    date: toTimestamp(voucher.date),
                     debit,
                     credit,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: serverTimestamp(),
                 });
             });
             await batch.commit();
@@ -86,8 +99,9 @@ class FirestoreLedgerRepository {
     }
     async getTrialBalance(companyId, asOfDate) {
         try {
+            const end = toTimestamp(asOfDate);
             const snap = await this.col(companyId)
-                .where('date', '<=', asOfDate)
+                .where('date', '<=', end)
                 .get();
             const map = {};
             snap.docs.forEach((d) => {

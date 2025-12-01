@@ -26,6 +26,18 @@ const errorHandler = (err, req, res, next) => {
         });
         return;
     }
+    // Handle errors with explicit statusCode (e.g., validation conflicts)
+    const anyErr = err;
+    if (anyErr === null || anyErr === void 0 ? void 0 : anyErr.statusCode) {
+        res.status(anyErr.statusCode).json({
+            success: false,
+            error: {
+                code: anyErr.statusCode === 400 ? 'BAD_REQUEST' : anyErr.statusCode === 409 ? 'CONFLICT' : 'ERROR',
+                message: err.message,
+            },
+        });
+        return;
+    }
     // Fallback for unhandled errors
     res.status(500).json({
         success: false,

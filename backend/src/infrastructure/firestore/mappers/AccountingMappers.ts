@@ -10,6 +10,15 @@ import { Account } from '../../../domain/accounting/entities/Account';
 import { Voucher } from '../../../domain/accounting/entities/Voucher';
 import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 
+const toTimestamp = (val?: any) => {
+  if (!val) return admin.firestore.FieldValue.serverTimestamp();
+  const date = val instanceof Date ? val : new Date(val);
+  // In emulators Timestamp can be undefined; fall back to raw Date
+  return (admin.firestore as any)?.Timestamp?.fromDate
+    ? admin.firestore.Timestamp.fromDate(date)
+    : date;
+};
+
 export class AccountMapper {
   static toDomain(data: any): Account {
     return new Account(
@@ -38,8 +47,8 @@ export class AccountMapper {
       isProtected: entity.isProtected,
       active: entity.active,
       parentId: entity.parentId || null,
-      createdAt: entity.createdAt ? admin.firestore.Timestamp.fromDate(entity.createdAt) : admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: entity.updatedAt ? admin.firestore.Timestamp.fromDate(entity.updatedAt) : admin.firestore.FieldValue.serverTimestamp()
+      createdAt: toTimestamp(entity.createdAt),
+      updatedAt: toTimestamp(entity.updatedAt)
     };
   }
 }
@@ -114,7 +123,7 @@ export class VoucherMapper {
       id: entity.id,
       companyId: entity.companyId,
       type: entity.type,
-      date: entity.date instanceof Date ? admin.firestore.Timestamp.fromDate(entity.date) : entity.date,
+      date: toTimestamp(entity.date),
       currency: entity.currency,
       exchangeRate: entity.exchangeRate,
       status: entity.status,
@@ -129,8 +138,8 @@ export class VoucherMapper {
       lockedBy: entity.lockedBy || null,
       reference: entity.reference || null,
       description: entity.description ?? null,
-      createdAt: entity.createdAt ? admin.firestore.Timestamp.fromDate(new Date(entity.createdAt)) : admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: entity.updatedAt ? admin.firestore.Timestamp.fromDate(new Date(entity.updatedAt)) : admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: toTimestamp(entity.createdAt),
+      updatedAt: toTimestamp(entity.updatedAt),
       lines: lines
     };
   }

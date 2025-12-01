@@ -37,6 +37,19 @@ export const errorHandler = (
     return;
   }
 
+  // Handle errors with explicit statusCode (e.g., validation conflicts)
+  const anyErr = err as any;
+  if (anyErr?.statusCode) {
+    (res as any).status(anyErr.statusCode).json({
+      success: false,
+      error: {
+        code: anyErr.statusCode === 400 ? 'BAD_REQUEST' : anyErr.statusCode === 409 ? 'CONFLICT' : 'ERROR',
+        message: err.message,
+      },
+    });
+    return;
+  }
+
   // Fallback for unhandled errors
   (res as any).status(500).json({
     success: false,
