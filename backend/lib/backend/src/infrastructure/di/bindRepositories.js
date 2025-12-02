@@ -52,10 +52,17 @@ const FirestoreInventoryTemplateRepository_1 = require("../firestore/repositorie
 const FirestoreModuleSettingsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModuleSettingsDefinitionRepository");
 const FirestoreCompanyModuleSettingsRepository_1 = require("../firestore/repositories/system/FirestoreCompanyModuleSettingsRepository");
 const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository");
+// Ensure Firestore settings are applied only once to avoid emulator runtime errors
+let firestoreConfigured = false;
 const getDb = () => {
     if (!admin.apps.length)
         admin.initializeApp();
-    return admin.firestore();
+    const db = admin.firestore();
+    if (!firestoreConfigured) {
+        db.settings({ ignoreUndefinedProperties: true });
+        firestoreConfigured = true;
+    }
+    return db;
 };
 exports.diContainer = {
     // CORE

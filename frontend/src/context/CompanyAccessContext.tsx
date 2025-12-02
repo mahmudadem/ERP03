@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { queryClient } from '../queryClient';
 import { companySelectorApi } from '../modules/company-selector/api';
 import { authApi } from '../api/auth';
@@ -52,9 +52,6 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     return [];
   });
   const [loading, setLoading] = useState(true);
-  const [roleId, setRoleId] = useState<string | null>(null);
-  const [roleName, setRoleName] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false);
   const [permissionsLoaded, setPermissionsLoaded] = useState<boolean>(() => {
     try {
       const cached = localStorage.getItem('resolvedPermissions');
@@ -85,8 +82,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       if (data.moduleBundles && data.moduleBundles.length) {
         localStorage.setItem('activeModules', JSON.stringify(data.moduleBundles));
       }
-      setRoleId(data.roleId || null);
-      setRoleName(data.roleName || null);
+      // roleId and roleName from permissions endpoint are used instead
       setPermissionsLoaded(true);
     } catch (err) {
       console.error('Failed to load permissions', err);
@@ -94,8 +90,6 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       setPermissions((prev) => prev);
       setResolvedPermissions((prev) => prev);
       setModuleBundles((prev) => prev);
-      setRoleId(null);
-      setRoleName(null);
       setPermissionsLoaded(true);
     } finally {
       setLoading(false);
@@ -119,9 +113,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const data = await companySelectorApi.getActiveCompany();
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
-      setRoleId(data.roleId || null);
-      setRoleName(data.roleName || null);
-      setIsOwner(!!data.isOwner);
+      // roleId, roleName, and isOwner are available in the response but not currently used in context
       // Pre-seed module bundles from the active company record so ProtectedRoute can use them
       const modules = (data.company && Array.isArray((data.company as any).modules)) ? (data.company as any).modules : [];
       setModuleBundles(modules);

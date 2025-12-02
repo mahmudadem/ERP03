@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FieldListPanel } from './components/FieldListPanel';
 import { FieldPropertiesPanel } from './components/FieldPropertiesPanel';
 import { SectionEditor } from './components/SectionEditor';

@@ -1,0 +1,1 @@
+const fetch=require('node-fetch'); const run=async()= res=await fetch('http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'superadmin@example.com',password:'SuperPass123!',returnSecureToken:true})}); const j=await res.json(); console.log(j.idToken

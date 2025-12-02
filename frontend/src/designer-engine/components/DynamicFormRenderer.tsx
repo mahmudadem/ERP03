@@ -3,7 +3,7 @@
  * Orchestrates rendering a full form from a FormDefinition.
  * Handles state, rules, and validation.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FormDefinition } from '../types/FormDefinition';
 import { DynamicSectionRenderer } from './DynamicSectionRenderer';
 import { evaluateVisibility } from '../utils/evaluateRules';

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -112,7 +112,7 @@ const VoucherEditorPage: React.FC = () => {
       
       if (updatedVoucher) {
         setCurrentVoucher(updatedVoucher);
-        setInitialValues(prev => ({ ...prev, header: { ...prev.header, status: updatedVoucher.status } }));
+        setInitialValues((prev: any) => ({ ...prev, header: { ...prev.header, status: updatedVoucher.status } }));
       }
     } catch (err: any) {
       alert(`Action Failed: ${err.message}`);

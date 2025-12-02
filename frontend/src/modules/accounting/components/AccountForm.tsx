@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Account, NewAccountInput, UpdateAccountInput } from '../../../api/accounting';
 
 interface AccountFormProps {
     mode: 'create' | 'edit';
     initialValues?: Account;
     accounts?: Account[];
-    onSubmit: (data: NewAccountInput | UpdateAccountInput) => Promise<void>;
+    onSubmit: (data: NewAccountInput) => Promise<any>;
     onCancel: () => void;
 }
 
 const ACCOUNT_TYPES = [
-    { value: 'asset', label: 'Asset' },
-    { value: 'liability', label: 'Liability' },
-    { value: 'equity', label: 'Equity' },
-    { value: 'revenue', label: 'Revenue' },
-    { value: 'expense', label: 'Expense' },
+    { value: 'ASSET', label: 'Asset' },
+    { value: 'LIABILITY', label: 'Liability' },
+    { value: 'EQUITY', label: 'Equity' },
+    { value: 'INCOME', label: 'Income' },
+    { value: 'EXPENSE', label: 'Expense' },
 ];
 
 export const AccountForm: React.FC<AccountFormProps> = ({
@@ -27,7 +27,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     const [formData, setFormData] = useState({
         code: initialValues?.code || '',
         name: initialValues?.name || '',
-        type: initialValues?.type || 'asset',
+        type: (initialValues?.type as string) || 'ASSET',
         parentId: initialValues?.parentId || '',
         currency: initialValues?.currency || '',
     });
@@ -42,11 +42,11 @@ export const AccountForm: React.FC<AccountFormProps> = ({
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const payload = {
+            const payload: NewAccountInput = {
                 code: formData.code,
                 name: formData.name,
-                type: formData.type,
-                parentId: formData.parentId || null,
+                type: (formData.type || '').toUpperCase(),
+                parentId: formData.parentId ? formData.parentId : null,
                 currency: formData.currency || null,
             };
             await onSubmit(payload);

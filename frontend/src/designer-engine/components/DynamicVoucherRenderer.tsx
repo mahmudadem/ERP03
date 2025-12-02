@@ -2,7 +2,7 @@
  * DynamicVoucherRenderer.tsx
  * Renders a full voucher document (Header Form + Line Items Table).
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { VoucherTypeDefinition } from '../types/VoucherTypeDefinition';
 import { DynamicSectionRenderer } from './DynamicSectionRenderer';
 import { DynamicTableRenderer } from './DynamicTableRenderer';

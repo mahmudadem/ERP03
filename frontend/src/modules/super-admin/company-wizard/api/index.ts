@@ -30,7 +30,7 @@ export interface CompanyWizardStep {
 
 export const wizardApi = {
   getAvailableModels: async (): Promise<Array<{ id: string; labelEn: string; labelAr: string; labelTr: string }>> => {
-    const resp = await client.get<any>('/company-wizard/models');
+    const resp = await client.get<any>('/company-wizard/models') as any;
     if (Array.isArray(resp)) return resp;
     if (resp && Array.isArray(resp.data)) return resp.data;
     if (resp && Array.isArray(resp.models)) return resp.models;
@@ -41,24 +41,24 @@ export const wizardApi = {
   startWizard: async (
     body: { companyName: string; model: string }
   ): Promise<{ sessionId: string; currentStepId: string; stepsMeta: WizardStepMeta[]; model: string; templateId: string }> => {
-    const resp = await client.post<any>('/company-wizard/start', body);
+    const resp = await client.post<any>('/company-wizard/start', body) as any;
     return resp?.data ?? resp;
   },
 
   getStepsForModel: async (model: string): Promise<CompanyWizardStep[]> => {
-    const resp = await client.get<any>(`/company-wizard/steps?model=${encodeURIComponent(model)}`);
+    const resp = await client.get<any>(`/company-wizard/steps?model=${encodeURIComponent(model)}`) as any;
     return resp?.data ?? resp ?? [];
   },
 
   getCurrentStep: async (sessionId: string): Promise<CompanyWizardStep> => {
-    const resp = await client.get<any>(`/company-wizard/step?sessionId=${encodeURIComponent(sessionId)}`);
+    const resp = await client.get<any>(`/company-wizard/step?sessionId=${encodeURIComponent(sessionId)}`) as any;
     return resp?.data ?? resp;
   },
 
   submitStep: async (
     body: { sessionId: string; stepId: string; values: Record<string, any> }
   ): Promise<{ nextStepId?: string; isLastStep: boolean }> => {
-    const resp = await client.post<any>('/company-wizard/step', body);
+    const resp = await client.post<any>('/company-wizard/step', body) as any;
     // Support either { success, data } envelope or bare object
     if (resp && typeof resp === 'object' && 'data' in resp) {
       return resp.data;
@@ -69,12 +69,12 @@ export const wizardApi = {
   getOptions: async (sessionId: string, fieldId: string): Promise<Array<{ id: string; label: string }> | null> => {
     const resp = await client.get<any>(
       `/company-wizard/options?sessionId=${encodeURIComponent(sessionId)}&fieldId=${encodeURIComponent(fieldId)}`
-    );
+    ) as any;
     return resp?.data ?? resp ?? null;
   },
 
   completeWizard: async (sessionId: string): Promise<{ companyId: string; activeCompanyId: string }> => {
-    const resp = await client.post<any>('/company-wizard/complete', { sessionId });
+    const resp = await client.post<any>('/company-wizard/complete', { sessionId }) as any;
     return resp?.data ?? resp;
   },
 };

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { createHashRouter, Navigate } from 'react-router-dom';
 
 import { AppShell } from '../layout/AppShell';

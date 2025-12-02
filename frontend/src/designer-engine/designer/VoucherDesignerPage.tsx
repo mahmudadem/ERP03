@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { VoucherTypeDefinition } from '../types/VoucherTypeDefinition';
 import { FieldDefinition, FieldType } from '../types/FieldDefinition';
 import { SectionDefinition } from '../types/SectionDefinition';

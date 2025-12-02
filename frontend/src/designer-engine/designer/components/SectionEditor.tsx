@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { SectionDefinition } from '../../types/SectionDefinition';
 import { Button } from '../../../components/ui/Button';
 

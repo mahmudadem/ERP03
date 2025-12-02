@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CompanyWizardField } from './api';
 import { useWizardSession } from './context/WizardSessionContext';
 import { Button } from '../../../components/ui/Button';

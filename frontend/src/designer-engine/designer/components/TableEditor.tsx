@@ -3,7 +3,7 @@
  * TableEditor.tsx
  * Component to configure dynamic table columns.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { TableDefinition } from '../../types/TableDefinition';
 import { Button } from '../../../components/ui/Button';
 import { FieldType } from '../../types/FieldDefinition';

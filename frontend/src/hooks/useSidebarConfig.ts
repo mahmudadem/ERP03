@@ -43,7 +43,7 @@ export const useSidebarConfig = () => {
       (window as any)?.activeModules ||
       (moduleBundles && moduleBundles.length ? moduleBundles : persistedModules.length ? persistedModules : hasWildcard ? Object.keys(moduleMenuMap) : []);
 
-    const mapped = bundleList.flatMap((m) => {
+    const mapped = bundleList.flatMap((m: string) => {
       if (m === 'financial') return ['accounting'];
       return [m];
     });

@@ -31,11 +31,13 @@ const getStatusVariant = (status: string) => {
 };
 
 export const VoucherTable: React.FC<Props> = ({ 
-  vouchers, 
+  vouchers = [], 
   pagination, 
   onPageChange,
   onRowClick
 }) => {
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+  const pageInfo = pagination || { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 };
   
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col">
@@ -53,14 +55,14 @@ export const VoucherTable: React.FC<Props> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {vouchers.length === 0 ? (
+            {safeVouchers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-12 text-center text-gray-500 text-sm">
                   No vouchers found matching your filters.
                 </td>
               </tr>
             ) : (
-              vouchers.map((voucher) => (
+              safeVouchers.map((voucher) => (
                 <tr 
                   key={voucher.id} 
                   onClick={() => onRowClick && onRowClick(voucher.id)}
@@ -101,22 +103,22 @@ export const VoucherTable: React.FC<Props> = ({
       {/* Pagination Footer */}
       <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
          <div className="text-sm text-gray-500">
-            Showing page <span className="font-medium">{pagination.page}</span> of <span className="font-medium">{pagination.totalPages || 1}</span> ({pagination.totalItems} items)
+            Showing page <span className="font-medium">{pageInfo.page}</span> of <span className="font-medium">{pageInfo.totalPages || 1}</span> ({pageInfo.totalItems} items)
          </div>
          <div className="flex gap-2">
             <Button 
               variant="secondary" 
               size="sm" 
-              disabled={pagination.page <= 1}
-              onClick={() => onPageChange(pagination.page - 1)}
+              disabled={pageInfo.page <= 1}
+              onClick={() => onPageChange(pageInfo.page - 1)}
             >
               Previous
             </Button>
             <Button 
               variant="secondary" 
               size="sm" 
-              disabled={pagination.page >= pagination.totalPages}
-              onClick={() => onPageChange(pagination.page + 1)}
+              disabled={pageInfo.page >= pageInfo.totalPages}
+              onClick={() => onPageChange(pageInfo.page + 1)}
             >
               Next
             </Button>

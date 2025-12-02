@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback } from 'react';
 import { companyApi, CompanySettings } from '../api/companyApi';
 import { useAuth } from './AuthContext';
 import { useCompanyAccess } from './CompanyAccessContext';

@@ -12,7 +12,7 @@ export const useCompanyContext = () => {
 
   return {
     company,
-    activeCompanyModules: [],
+    activeCompanyModules: [] as string[],
     isAuthenticated: true, // Mock auth status
   };
 };

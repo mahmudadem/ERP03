@@ -1,5 +1,5 @@
 
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 
 interface RequirePermissionProps {

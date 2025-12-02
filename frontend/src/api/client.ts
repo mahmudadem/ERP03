@@ -45,7 +45,10 @@ client.interceptors.request.use(
 // Response Interceptor
 client.interceptors.response.use(
   (response) => {
-    return response.data;
+    // Unwrap common { success, data } envelopes while preserving plain responses
+    return (response.data && response.data.data !== undefined)
+      ? response.data.data
+      : response.data;
   },
   (error) => {
     return Promise.reject(error);

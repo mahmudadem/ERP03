@@ -1,0 +1,1 @@
+const payload={email:'superadmin@example.com',password:'SuperPass123!',returnSecureToken:true}; fetch('http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=

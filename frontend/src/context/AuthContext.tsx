@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { AuthContextType, CurrentUser, LoginCredentials } from '../types/auth.types';
@@ -7,14 +7,14 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 // Convenience hook so consumers can import from this module directly
 export const useAuth = () => {
-  const ctx = React.useContext(AuthContext);
+  const ctx = useContext(AuthContext);
   if (!ctx) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return ctx;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
 

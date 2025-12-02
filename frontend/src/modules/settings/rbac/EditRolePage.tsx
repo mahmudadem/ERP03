@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { rbacApi, CompanyRole, Permission, SystemRoleTemplate } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';

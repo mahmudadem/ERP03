@@ -26,15 +26,31 @@ class AccountRepositoryFirestore {
         return Object.assign({ id: doc.id }, doc.data());
     }
     async create(companyId, data) {
+        var _a, _b;
         const ref = this.getCollection(companyId).doc();
         const now = new Date();
-        const account = Object.assign(Object.assign({ id: ref.id, companyId }, data), { type: data.type, active: true, isActive: true, isProtected: false, currency: data.currency || '', parentId: data.parentId || undefined, createdAt: now, updatedAt: now });
-        await ref.set(account);
+        const account = Object.assign(Object.assign({ id: ref.id, companyId }, data), { type: data.type, active: true, isActive: true, isProtected: false, currency: data.currency || '', parentId: (_a = data.parentId) !== null && _a !== void 0 ? _a : null, createdAt: now, updatedAt: now });
+        const payload = Object.assign(Object.assign({}, account), { parentId: (_b = account.parentId) !== null && _b !== void 0 ? _b : null, updatedAt: account.updatedAt || now, createdAt: account.createdAt || now });
+        // Strip any lingering undefined properties to placate Firestore
+        Object.keys(payload).forEach((key) => {
+            if (payload[key] === undefined) {
+                delete payload[key];
+            }
+        });
+        await ref.set(payload);
         return account;
     }
     async update(companyId, accountId, data) {
         const ref = this.getCollection(companyId).doc(accountId);
         const updates = Object.assign(Object.assign({}, data), { updatedAt: new Date() });
+        // Normalize parentId and drop undefined values to satisfy Firestore
+        if (updates.parentId === '')
+            updates.parentId = null;
+        Object.keys(updates).forEach((key) => {
+            if (updates[key] === undefined) {
+                delete updates[key];
+            }
+        });
         await ref.update(updates);
         const updated = await ref.get();
         return Object.assign({ id: updated.id }, updated.data());

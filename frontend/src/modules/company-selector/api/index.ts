@@ -18,6 +18,6 @@ export const companySelectorApi = {
   },
   switchCompany: (companyId: string): Promise<void> =>
     client.post('/users/me/switch-company', { companyId }),
-  getActiveCompany: (): Promise<{ activeCompanyId: string | null; company?: any; roleId?: string; isOwner?: boolean }> =>
+  getActiveCompany: (): Promise<{ activeCompanyId: string | null; company?: any; roleId?: string; roleName?: string; isOwner?: boolean }> =>
     client.get('/users/me/active-company'),
 };

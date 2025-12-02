@@ -11,11 +11,8 @@ export const moduleMenuMap: Record<
     icon: 'Calculator',
     items: [
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'coa.view' },
-      { label: 'Vouchers', path: '/accounting/vouchers', permission: 'voucher.list' },
-      { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'coa.view' },
-      { label: 'Currencies', path: '/accounting/currencies', permission: 'currency.view' },
-      { label: 'Reports', path: '/accounting/reports', permission: 'report.view' },
-      { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings' }
+      { label: 'Vouchers', path: '/accounting/vouchers', permission: 'voucher.view' },
+      { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view' }
     ]
   },
   inventory: {

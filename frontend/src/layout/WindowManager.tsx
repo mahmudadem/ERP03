@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { WindowFrame } from './WindowFrame';
 
 // Mock Component for demonstration

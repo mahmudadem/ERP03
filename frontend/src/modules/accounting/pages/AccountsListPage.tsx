@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountingApi, Account } from '../../../api/accounting';
 import { AccountForm } from '../components/AccountForm';
@@ -63,7 +63,8 @@ export default function AccountsListPage() {
         }, []);
     };
 
-    const accountTree = buildTree(accounts);
+    const safeAccounts = Array.isArray(accounts) ? accounts : [];
+    const accountTree = buildTree(safeAccounts);
     const flatAccounts = flattenTree(accountTree);
 
     if (isLoading) {
@@ -149,7 +150,7 @@ export default function AccountsListPage() {
                         <h2 className="text-xl font-bold mb-4">Create New Account</h2>
                         <AccountForm
                             mode="create"
-                            accounts={accounts}
+                            accounts={safeAccounts}
                             onSubmit={(data) => createMutation.mutateAsync(data)}
                             onCancel={() => setIsCreateModalOpen(false)}
                         />
@@ -165,7 +166,7 @@ export default function AccountsListPage() {
                         <AccountForm
                             mode="edit"
                             initialValues={editingAccount}
-                            accounts={accounts}
+                            accounts={safeAccounts}
                             onSubmit={(data) => updateMutation.mutateAsync({ id: editingAccount.id, data })}
                             onCancel={() => setEditingAccount(null)}
                         />

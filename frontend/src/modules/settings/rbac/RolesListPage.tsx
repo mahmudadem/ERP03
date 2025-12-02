@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { rbacApi, CompanyRole } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 

@@ -25,6 +25,14 @@ if (!admin.apps.length) {
 
 const auth = admin.auth();
 const db = admin.firestore();
+// Reuse compiled RBAC seeder to avoid duplicating permissions
+let seedRbacData;
+try {
+  seedRbacData = require('../lib/backend/src/infrastructure/firestore/seeds/seedRbacData').seedRbacData;
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('Could not load compiled seedRbacData; run `npm run build` before seeding.');
+}
 
 async function seedAuthUser({ uid, email, password, displayName }) {
   try {
@@ -148,6 +156,32 @@ async function seedWizardTemplate() {
   console.log(`Seeded wizard template ${docId}`);
 }
 
+async function seedCurrencies() {
+  const currencies = [
+    { id: 'USD', name: 'US Dollar' },
+    { id: 'EUR', name: 'Euro' },
+    { id: 'SAR', name: 'Saudi Riyal' },
+    { id: 'AED', name: 'UAE Dirham' },
+    { id: 'TRY', name: 'Turkish Lira' },
+  ];
+  for (const cur of currencies) {
+    await db.collection('system_currencies').doc(cur.id).set(cur, { merge: true });
+  }
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${currencies.length} currencies`);
+}
+
+async function seedChartOfAccountsTemplate() {
+  const tpl = {
+    id: 'basic-coa',
+    name: 'Basic Chart of Accounts',
+    description: 'Minimal COA for quick start',
+  };
+  await db.collection('chart_of_accounts_templates').doc(tpl.id).set(tpl, { merge: true });
+  // eslint-disable-next-line no-console
+  console.log('Seeded chart of accounts template basic-coa');
+}
+
 async function run() {
   const uid = 'seed-user';
   const email = 'seed@example.com';
@@ -155,15 +189,44 @@ async function run() {
   const companyId = 'seed-company';
   const roleId = 'admin';
 
+  // Super admin user
+  const superUid = 'seed-superadmin';
+  const superEmail = 'superadmin@example.com';
+  const superPassword = 'SuperPass123!';
+
   await seedAuthUser({ uid, email, password, displayName: 'Seed User' });
   await seedCompany({ companyId, ownerId: uid });
   await seedCompanyRole({ companyId, roleId, name: 'Admin', permissions: ['*'] });
   await seedCompanyUser({ companyId, userId: uid, roleId });
   await seedUserProfile({ uid, email, name: 'Seed User', activeCompanyId: companyId });
   await seedWizardTemplate();
+  await seedCurrencies();
+  await seedChartOfAccountsTemplate();
+  if (seedRbacData) {
+    await seedRbacData();
+  }
+
+  // Seed super admin auth user + profile with globalRole SUPER_ADMIN
+  await seedAuthUser({ uid: superUid, email: superEmail, password: superPassword, displayName: 'Seed Super Admin' });
+  await auth.setCustomUserClaims(superUid, { globalRole: 'SUPER_ADMIN' });
+  await db.collection('users').doc(superUid).set(
+    {
+      id: superUid,
+      email: superEmail,
+      name: 'Seed Super Admin',
+      globalRole: 'SUPER_ADMIN',
+      activeCompanyId: companyId,
+      createdAt: admin.firestore.Timestamp.fromDate(new Date()),
+    },
+    { merge: true }
+  );
+  // Add super admin as a company user with admin role (wildcard perms)
+  await seedCompanyUser({ companyId, userId: superUid, roleId });
 
   // eslint-disable-next-line no-console
-  console.log('Seeding complete. Login with seed@example.com / Passw0rd!');
+  console.log('Seeding complete.');
+  console.log('- Normal user: seed@example.com / Passw0rd!');
+  console.log('- Super admin: superadmin@example.com / SuperPass123!');
 }
 
 run()

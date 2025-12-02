@@ -18,7 +18,22 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
   const isWizardFlow = path.startsWith('/company-wizard') || path.startsWith('/company-selector');
-  const activeModules = moduleBundles || [];
+  let persistedModules: string[] = [];
+  try {
+    const raw = localStorage.getItem('activeModules');
+    if (raw) persistedModules = JSON.parse(raw);
+  } catch (e) {
+    persistedModules = [];
+  }
+
+  const activeModules = (() => {
+    const list = moduleBundles && moduleBundles.length ? moduleBundles : persistedModules;
+    return Array.from(
+      new Set(
+        (list || []).flatMap((m) => (m === 'financial' ? ['accounting'] : [m]))
+      )
+    );
+  })();
   const hasWildcard = resolvedPermissions.includes('*') || isSuperAdmin;
 
   if (loading) {

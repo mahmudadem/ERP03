@@ -55,9 +55,16 @@ import { IModulePermissionsDefinitionRepository } from '../../repository/interfa
 import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository';
 
 
+// Ensure Firestore settings are applied only once to avoid emulator runtime errors
+let firestoreConfigured = false;
 const getDb = () => {
   if (!admin.apps.length) admin.initializeApp();
-  return admin.firestore();
+  const db = admin.firestore();
+  if (!firestoreConfigured) {
+    db.settings({ ignoreUndefinedProperties: true } as any);
+    firestoreConfigured = true;
+  }
+  return db;
 };
 
 export const diContainer = {

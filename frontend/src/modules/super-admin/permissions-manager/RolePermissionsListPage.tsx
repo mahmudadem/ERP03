@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { superAdminRolesApi } from '../../../api/superAdmin/roles';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';

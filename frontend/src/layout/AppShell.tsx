@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom'; // Important for nested routing
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';

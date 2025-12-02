@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useCompanies } from './hooks/useCompanies';
 import { CompanyCard } from './CompanyCard';
 import { NewCompanyCard } from './NewCompanyCard';
-import { companySelectorApi } from './api';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';

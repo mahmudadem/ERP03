@@ -40,20 +40,41 @@ export class AccountRepositoryFirestore implements IAccountRepository {
             isActive: true,
             isProtected: false,
             currency: data.currency || '',
-            parentId: data.parentId || undefined,
+            parentId: data.parentId ?? null,
             createdAt: now,
             updatedAt: now,
         };
-        await ref.set(account);
+        const payload: any = {
+            ...account,
+            parentId: account.parentId ?? null,
+            updatedAt: account.updatedAt || now,
+            createdAt: account.createdAt || now
+        };
+        // Strip any lingering undefined properties to placate Firestore
+        Object.keys(payload).forEach((key) => {
+            if (payload[key] === undefined) {
+                delete payload[key];
+            }
+        });
+        await ref.set(payload);
         return account;
     }
 
     async update(companyId: string, accountId: string, data: UpdateAccountInput): Promise<Account> {
         const ref = this.getCollection(companyId).doc(accountId);
-        const updates = {
+        const updates: any = {
             ...data,
             updatedAt: new Date() as any,
         };
+
+        // Normalize parentId and drop undefined values to satisfy Firestore
+        if (updates.parentId === '') updates.parentId = null;
+        Object.keys(updates).forEach((key) => {
+            if (updates[key] === undefined) {
+                delete updates[key];
+            }
+        });
+
         await ref.update(updates);
         const updated = await ref.get();
         return { id: updated.id, ...updated.data() } as Account;
