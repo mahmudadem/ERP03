@@ -1,56 +1,31 @@
-
-/**
- * router.ts
- * Purpose: Aggregates all module routers into a single main router.
- */
 import { Router } from 'express';
-import coreRoutes from '../routes/core.routes';
-import systemRoutes from '../routes/system.routes';
-import accountingRoutes from '../routes/accounting.routes';
-import inventoryRoutes from '../routes/inventory.routes';
-import hrRoutes from '../routes/hr.routes';
-import posRoutes from '../routes/pos.routes';
-import designerRoutes from '../routes/designer.routes';
-import rbacRoutes from '../routes/system.rbac.routes';
-import superAdminRoutes from '../routes/super-admin.routes';
-import companyWizardRoutes from '../routes/super-admin.company-wizard.routes';
-import superAdminTemplatesRoutes from '../routes/super-admin.templates.routes';
-import impersonationRoutes from '../routes/impersonation.routes';
-import userCompaniesRoutes from '../routes/user.companies.routes';
-import systemModuleSettingsRoutes from '../routes/system.moduleSettings.routes';
-import companyModuleSettingsRoutes from '../routes/company.moduleSettings.routes';
-import systemPermissionsRoutes from '../routes/system.permissions.routes';
-import systemRolesRoutes from '../routes/system.roles.routes';
-import authRoutes from '../routes/auth.routes';
+import platformRouter from './platform.router';
+import tenantRouter from './tenant.router';
+import publicRouter from './public.router';
+import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Health Check
 router.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Module Routes
-// Auth first so it can't be shadowed and avoids any super-admin middleware ordering issues
-router.use(authRoutes);
-router.use('/core', coreRoutes);
-router.use('/system', systemRoutes);
-router.use('/rbac', rbacRoutes);
-router.use('/company-wizard', companyWizardRoutes);
-router.use('/super-admin', superAdminRoutes);
-router.use('/super-admin/templates', superAdminTemplatesRoutes);
-router.use('/impersonate', impersonationRoutes);
-router.use(userCompaniesRoutes);
-router.use(systemModuleSettingsRoutes);
-router.use(companyModuleSettingsRoutes);
-router.use(systemPermissionsRoutes);
-router.use(systemRolesRoutes);
-router.use('/accounting', accountingRoutes);
-router.use('/inventory', inventoryRoutes);
-router.use('/hr', hrRoutes);
-router.use('/pos', posRoutes);
-router.use('/designer', designerRoutes);
+// Public/User Context Routes
+// Note: Individual routes inside publicRouter must handle their own Auth if needed (e.g. coreRoutes does)
+router.use(publicRouter);
+
+// Platform Routes (Super Admin)
+// Most platform routes likely need Auth.
+// We assume existing routes handle auth or we can add it here if needed.
+// Given the previous structure, we'll rely on the routes themselves or add global auth if verified.
+// For safety, let's assume Platform routes are protected.
+// But wait, authRoutes (in publicRouter) has login.
+// If we put authMiddleware here, it won't affect publicRouter.
+router.use(platformRouter);
+
+// Tenant Routes (Company Context)
+// These REQUIRE Auth AND Company Context
+router.use(authMiddleware);
+router.use(tenantRouter);
 
 export default router;
-
-

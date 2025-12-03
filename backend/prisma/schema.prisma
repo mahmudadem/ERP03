@@ -1,0 +1,191 @@
+// Prisma schema for ERP-Enhanced
+// This defines the SQL database structure
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core Entities
+model Company {
+  id              String   @id
+  name            String
+  ownerId         String
+  taxId           String   @unique
+  address         String?
+  baseCurrency    String
+  fiscalYearStart DateTime
+  fiscalYearEnd   DateTime
+  modules         String[] // Array of enabled module IDs
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  users           CompanyUser[]
+  accounts        Account[]
+  vouchers        Voucher[]
+  roles           CompanyRole[]
+
+  @@index([ownerId])
+  @@map("companies")
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  companies CompanyUser[]
+
+  @@map("users")
+}
+
+model CompanyUser {
+  userId    String
+  companyId String
+  roleId    String
+  isOwner   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("company_users")
+}
+
+model CompanyRole {
+  id                  String   @id
+  companyId           String
+  name                String
+  moduleBundles       String[] // Array of bundle IDs
+  resolvedPermissions String[] // Array of permission IDs
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@map("company_roles")
+}
+
+// Accounting Module
+model Account {
+  id         String   @id
+  companyId  String
+  code       String
+  name       String
+  type       String
+  currency   String
+  isProtected Boolean @default(false)
+  active     Boolean  @default(true)
+  parentId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines   VoucherLine[]
+
+  @@unique([companyId, code])
+  @@index([companyId, type])
+  @@map("accounts")
+}
+
+model Voucher {
+  id               String   @id
+  companyId        String
+  type             String
+  voucherNo        String?
+  date             DateTime
+  currency         String
+  baseCurrency     String
+  exchangeRate     Float    @default(1.0)
+  status           String
+  totalDebit       Float    @default(0)
+  totalCredit      Float    @default(0)
+  totalDebitBase   Float    @default(0)
+  totalCreditBase  Float    @default(0)
+  createdBy        String
+  approvedBy       String?
+  lockedBy         String?
+  reference        String?
+  description      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines   VoucherLine[]
+
+  @@index([companyId, date])
+  @@index([companyId, status])
+  @@map("vouchers")
+}
+
+model VoucherLine {
+  id           String  @id
+  voucherId    String
+  accountId    String
+  description  String?
+  debitFx      Float   @default(0)
+  creditFx     Float   @default(0)
+  debitBase    Float   @default(0)
+  creditBase   Float   @default(0)
+  lineCurrency String
+  exchangeRate Float   @default(1.0)
+  costCenterId String?
+
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([voucherId])
+  @@index([accountId])
+  @@map("voucher_lines")
+}
+
+// Inventory Module
+model Item {
+  id          String   @id
+  companyId   String
+  code        String
+  name        String
+  description String?
+  category    String?
+  unit        String
+  price       Float    @default(0)
+  cost        Float    @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([companyId, code])
+  @@map("items")
+}
+
+// HR Module
+model Employee {
+  id         String   @id
+  companyId  String
+  code       String
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  position   String?
+  department String?
+  salary     Float?
+  hireDate   DateTime
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([companyId, code])
+  @@map("employees")
+}

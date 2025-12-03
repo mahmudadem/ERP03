@@ -14,8 +14,8 @@ export class FirestoreFormDefinitionRepository extends BaseFirestoreRepository<F
   async updateFormDefinition(id: string, data: Partial<FormDefinition>): Promise<void> { await this.db.collection(this.collectionName).doc(id).update(data); }
   async getFormDefinition(id: string): Promise<FormDefinition | null> { return this.findById(id); }
   async getDefinitionsForModule(module: string): Promise<FormDefinition[]> {
-      const snap = await this.db.collection(this.collectionName).where('module', '==', module).get();
-      return snap.docs.map(d => this.toDomain(d.data()));
+    const snap = await this.db.collection(this.collectionName).where('module', '==', module).get();
+    return snap.docs.map(d => this.toDomain(d.data()));
   }
 }
 
@@ -28,7 +28,35 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   async updateVoucherType(id: string, data: Partial<VoucherTypeDefinition>): Promise<void> { await this.db.collection(this.collectionName).doc(id).update(data); }
   async getVoucherType(id: string): Promise<VoucherTypeDefinition | null> { return this.findById(id); }
   async getVoucherTypesForModule(module: string): Promise<VoucherTypeDefinition[]> {
-      const snap = await this.db.collection(this.collectionName).where('module', '==', module).get();
-      return snap.docs.map(d => this.toDomain(d.data()));
+    const snap = await this.db.collection(this.collectionName).where('module', '==', module).get();
+    return snap.docs.map(d => this.toDomain(d.data()));
+  }
+
+  async getByCompanyId(companyId: string): Promise<VoucherTypeDefinition[]> {
+    const snap = await this.db.collection(this.collectionName).where('companyId', '==', companyId).get();
+    return snap.docs.map(d => this.toDomain(d.data()));
+  }
+
+  async getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null> {
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('code', '==', code)
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    return this.toDomain(snap.docs[0].data());
+  }
+
+  async updateLayout(companyId: string, code: string, layout: any): Promise<void> {
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('code', '==', code)
+      .limit(1)
+      .get();
+
+    if (!snap.empty) {
+      await snap.docs[0].ref.update({ layout });
+    }
   }
 }

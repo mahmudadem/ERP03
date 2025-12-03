@@ -54,6 +54,11 @@ import { FirestoreCompanyModuleSettingsRepository } from '../firestore/repositor
 import { IModulePermissionsDefinitionRepository } from '../../repository/interfaces/system/IModulePermissionsDefinitionRepository';
 import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository';
 
+// Import Prisma Implementations
+import { PrismaCompanyRepository } from '../prisma/repositories/PrismaCompanyRepository';
+import { PrismaVoucherRepository } from '../prisma/repositories/PrismaVoucherRepository';
+import { getPrismaClient } from '../prisma/prismaClient';
+
 
 // Ensure Firestore settings are applied only once to avoid emulator runtime errors
 let firestoreConfigured = false;
@@ -67,9 +72,16 @@ const getDb = () => {
   return db;
 };
 
+// Database type configuration
+const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
+
 export const diContainer = {
   // CORE
-  get companyRepository(): ICompanyRepository { return new FirestoreCompanyRepository(getDb()); },
+  get companyRepository(): ICompanyRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaCompanyRepository(getPrismaClient())
+      : new FirestoreCompanyRepository(getDb());
+  },
   get userRepository(): IUserRepository { return new FirestoreUserRepository(getDb()); },
   get companyUserRepository(): ICompanyUserRepository { return new FirestoreCompanyUserRepository(getDb()); },
   get companySettingsRepository(): ICompanySettingsRepository { return new FirestoreCompanySettingsRepository(getDb()); },
@@ -83,7 +95,11 @@ export const diContainer = {
 
   // ACCOUNTING
   get accountRepository(): AccRepo.IAccountRepository { return new AccountRepositoryFirestore(getDb()); },
-  get voucherRepository(): AccRepo.IVoucherRepository { return new FirestoreVoucherRepository(getDb()); },
+  get voucherRepository(): AccRepo.IVoucherRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaVoucherRepository(getPrismaClient())
+      : new FirestoreVoucherRepository(getDb());
+  },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
   get ledgerRepository(): AccRepo.ILedgerRepository { return new FirestoreLedgerRepository(getDb()); },

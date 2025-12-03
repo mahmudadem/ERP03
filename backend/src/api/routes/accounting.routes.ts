@@ -1,9 +1,14 @@
+/**
+ * accounting.routes.ts (Updated with designer routes)
+ */
 
 import { Router } from 'express';
 import { AccountController } from '../controllers/accounting/AccountController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
+import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { permissionsMiddleware } from '../middlewares/permissionsMiddleware';
 
 const router = Router();
 router.use(authMiddleware);
@@ -28,5 +33,10 @@ router.post('/vouchers/:id/cancel', VoucherController.cancel);
 router.get('/reports/trial-balance', ReportingController.trialBalance);
 router.get('/reports/general-ledger', ReportingController.generalLedger);
 router.get('/reports/journal', ReportingController.journal);
+
+// Designer (Module-specific)
+router.get('/designer/voucher-types', permissionsMiddleware('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);
+router.get('/designer/voucher-types/:code', permissionsMiddleware('accounting.designer.view'), AccountingDesignerController.getVoucherTypeByCode);
+router.put('/designer/voucher-types/:code/layout', permissionsMiddleware('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
 
 export default router;

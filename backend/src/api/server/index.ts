@@ -19,8 +19,8 @@ app.use(express.json() as any);
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware as any);
 
-// Apply Company Context Middleware globally (or per route if preferred)
-app.use(companyContextMiddleware as any);
+// Company Context is now handled by TenantRouter for specific routes
+// app.use(companyContextMiddleware as any);
 
 // Mount Routes
 app.use('/api/v1', router as any);
