@@ -53,6 +53,9 @@ import { ICompanyModuleSettingsRepository } from '../../repository/interfaces/sy
 import { FirestoreCompanyModuleSettingsRepository } from '../firestore/repositories/system/FirestoreCompanyModuleSettingsRepository';
 import { IModulePermissionsDefinitionRepository } from '../../repository/interfaces/system/IModulePermissionsDefinitionRepository';
 import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository';
+import { ICompanyAdminRepository } from '../../repository/interfaces/company-admin/ICompanyAdminRepository';
+import { FirestoreCompanyAdminRepository } from '../firestore/company-admin/FirestoreCompanyAdminRepository';
+import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaCompanyAdminRepository';
 
 // Import Prisma Implementations
 import { PrismaCompanyRepository } from '../prisma/repositories/PrismaCompanyRepository';
@@ -143,6 +146,13 @@ export const diContainer = {
   get companyModuleSettingsRepository(): ICompanyModuleSettingsRepository { return new FirestoreCompanyModuleSettingsRepository(getDb()); },
 
   // MODULE PERMISSIONS
-  get modulePermissionsDefinitionRepository(): IModulePermissionsDefinitionRepository { return new FirestoreModulePermissionsDefinitionRepository(getDb()); }
+  get modulePermissionsDefinitionRepository(): IModulePermissionsDefinitionRepository { return new FirestoreModulePermissionsDefinitionRepository(getDb()); },
+
+  // COMPANY ADMIN
+  get companyAdminRepository(): ICompanyAdminRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaCompanyAdminRepository(getPrismaClient())
+      : new FirestoreCompanyAdminRepository(getDb());
+  }
 };
 

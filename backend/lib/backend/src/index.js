@@ -30,10 +30,16 @@ exports.accountingModule = exports.api = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 const server_1 = __importDefault(require("./api/server"));
+const modules_1 = require("./modules");
+const ModuleRegistry_1 = require("./application/platform/ModuleRegistry");
 // Initialize Admin SDK if not already done
 if (!admin.apps.length) {
     admin.initializeApp();
 }
+// Register all modules
+(0, modules_1.registerAllModules)();
+// Initialize modules
+ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll().catch(console.error);
 // Expose the Express App as a Cloud Function
 exports.api = functions.https.onRequest(server_1.default);
 // Exports for other modules (Background triggers can be added here)

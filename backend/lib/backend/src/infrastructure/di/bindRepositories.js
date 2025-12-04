@@ -52,6 +52,10 @@ const FirestoreInventoryTemplateRepository_1 = require("../firestore/repositorie
 const FirestoreModuleSettingsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModuleSettingsDefinitionRepository");
 const FirestoreCompanyModuleSettingsRepository_1 = require("../firestore/repositories/system/FirestoreCompanyModuleSettingsRepository");
 const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository");
+// Import Prisma Implementations
+const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
+const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
+const prismaClient_1 = require("../prisma/prismaClient");
 // Ensure Firestore settings are applied only once to avoid emulator runtime errors
 let firestoreConfigured = false;
 const getDb = () => {
@@ -64,9 +68,15 @@ const getDb = () => {
     }
     return db;
 };
+// Database type configuration
+const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
 exports.diContainer = {
     // CORE
-    get companyRepository() { return new FirestoreCompanyRepository_1.FirestoreCompanyRepository(getDb()); },
+    get companyRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaCompanyRepository_1.PrismaCompanyRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreCompanyRepository_1.FirestoreCompanyRepository(getDb());
+    },
     get userRepository() { return new FirestoreUserRepository_1.FirestoreUserRepository(getDb()); },
     get companyUserRepository() { return new FirestoreCompanyUserRepository_1.FirestoreCompanyUserRepository(getDb()); },
     get companySettingsRepository() { return new FirestoreCompanySettingsRepository_1.FirestoreCompanySettingsRepository(getDb()); },
@@ -78,7 +88,11 @@ exports.diContainer = {
     get auditLogRepository() { return new FirestoreSystemRepositories_1.FirestoreAuditLogRepository(getDb()); },
     // ACCOUNTING
     get accountRepository() { return new AccountRepositoryFirestore_1.AccountRepositoryFirestore(getDb()); },
-    get voucherRepository() { return new FirestoreVoucherRepository_1.FirestoreVoucherRepository(getDb()); },
+    get voucherRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaVoucherRepository_1.PrismaVoucherRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreVoucherRepository_1.FirestoreVoucherRepository(getDb());
+    },
     get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(getDb()); },
     get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(getDb()); },
     get ledgerRepository() { return new FirestoreLedgerRepository_1.FirestoreLedgerRepository(getDb()); },

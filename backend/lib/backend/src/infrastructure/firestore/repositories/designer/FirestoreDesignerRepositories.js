@@ -33,6 +33,30 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
         const snap = await this.db.collection(this.collectionName).where('module', '==', module).get();
         return snap.docs.map(d => this.toDomain(d.data()));
     }
+    async getByCompanyId(companyId) {
+        const snap = await this.db.collection(this.collectionName).where('companyId', '==', companyId).get();
+        return snap.docs.map(d => this.toDomain(d.data()));
+    }
+    async getByCode(companyId, code) {
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('code', '==', code)
+            .limit(1)
+            .get();
+        if (snap.empty)
+            return null;
+        return this.toDomain(snap.docs[0].data());
+    }
+    async updateLayout(companyId, code, layout) {
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('code', '==', code)
+            .limit(1)
+            .get();
+        if (!snap.empty) {
+            await snap.docs[0].ref.update({ layout });
+        }
+    }
 }
 exports.FirestoreVoucherTypeDefinitionRepository = FirestoreVoucherTypeDefinitionRepository;
 //# sourceMappingURL=FirestoreDesignerRepositories.js.map

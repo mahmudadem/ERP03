@@ -5,7 +5,6 @@
  * or at the Company level (tenant-specific).
  */
 
-import { ICompanyModuleSettingsRepository } from '../../repository/interfaces/system/ICompanyModuleSettingsRepository';
 import { getBundleById } from '../../domain/platform/Bundle';
 
 export interface FeatureFlagConfig {
@@ -19,9 +18,7 @@ export class FeatureFlagService {
         'experimental.sqlBackend': false,
     };
 
-    constructor(
-        private companyModuleSettingsRepo: ICompanyModuleSettingsRepository
-    ) { }
+    constructor() { }
 
     /**
      * Check if a feature is enabled globally (platform-wide)

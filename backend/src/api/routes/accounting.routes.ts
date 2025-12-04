@@ -8,35 +8,41 @@ import { VoucherController } from '../controllers/accounting/VoucherController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { authMiddleware } from '../middlewares/authMiddleware';
-import { permissionsMiddleware } from '../middlewares/permissionsMiddleware';
+import { permissionGuard } from '../middlewares/guards/permissionGuard';
+import { featureFlagGuard } from '../middlewares/guards/featureFlagGuard';
 
 const router = Router();
+// authMiddleware should be applied at tenant router level, but keeping here for safety if mounted elsewhere
 router.use(authMiddleware);
 
 // Accounts
-router.get('/accounts', AccountController.list);
-router.get('/accounts/:id', AccountController.getById);
-router.post('/accounts', AccountController.create);
-router.put('/accounts/:id', AccountController.update);
-router.delete('/accounts/:id', AccountController.deactivate);
+router.get('/accounts', permissionGuard('accounting.account.view'), AccountController.list);
+router.get('/accounts/:id', permissionGuard('accounting.account.view'), AccountController.getById);
+router.post('/accounts', permissionGuard('accounting.account.create'), AccountController.create);
+router.put('/accounts/:id', permissionGuard('accounting.account.edit'), AccountController.update);
+router.delete('/accounts/:id', permissionGuard('accounting.account.delete'), AccountController.deactivate);
 
 // Vouchers
-router.get('/vouchers', VoucherController.list);
-router.get('/vouchers/:id', VoucherController.get);
-router.post('/vouchers', VoucherController.create);
-router.put('/vouchers/:id', VoucherController.update);
-router.post('/vouchers/:id/approve', VoucherController.approve);
-router.post('/vouchers/:id/lock', VoucherController.lock);
-router.post('/vouchers/:id/cancel', VoucherController.cancel);
+router.get('/vouchers', permissionGuard('accounting.voucher.view'), VoucherController.list);
+router.get('/vouchers/:id', permissionGuard('accounting.voucher.view'), VoucherController.get);
+router.post('/vouchers', 
+  permissionGuard('accounting.voucher.create'), 
+  featureFlagGuard('feature.multiCurrency'), 
+  VoucherController.create
+);
+router.put('/vouchers/:id', permissionGuard('accounting.voucher.edit'), VoucherController.update);
+router.post('/vouchers/:id/approve', permissionGuard('accounting.voucher.approve'), VoucherController.approve);
+router.post('/vouchers/:id/lock', permissionGuard('accounting.voucher.lock'), VoucherController.lock);
+router.post('/vouchers/:id/cancel', permissionGuard('accounting.voucher.cancel'), VoucherController.cancel);
 
 // Reports
-router.get('/reports/trial-balance', ReportingController.trialBalance);
-router.get('/reports/general-ledger', ReportingController.generalLedger);
-router.get('/reports/journal', ReportingController.journal);
+router.get('/reports/trial-balance', permissionGuard('accounting.report.view'), ReportingController.trialBalance);
+router.get('/reports/general-ledger', permissionGuard('accounting.report.view'), ReportingController.generalLedger);
+router.get('/reports/journal', permissionGuard('accounting.report.view'), ReportingController.journal);
 
 // Designer (Module-specific)
-router.get('/designer/voucher-types', permissionsMiddleware('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);
-router.get('/designer/voucher-types/:code', permissionsMiddleware('accounting.designer.view'), AccountingDesignerController.getVoucherTypeByCode);
-router.put('/designer/voucher-types/:code/layout', permissionsMiddleware('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
+router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);
+router.get('/designer/voucher-types/:code', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypeByCode);
+router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
 
 export default router;

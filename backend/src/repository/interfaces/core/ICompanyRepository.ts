@@ -37,4 +37,32 @@ export interface ICompanyRepository {
    * @param moduleName The module to enable.
    */
   enableModule(companyId: string, moduleName: string): Promise<void>;
+
+  /**
+   * Updates company profile fields.
+   * @param companyId The company ID.
+   * @param updates Partial company data to update.
+   */
+  update(companyId: string, updates: Partial<Company>): Promise<Company>;
+
+  /**
+   * Disables a module for a company.
+   * @param companyId The company ID.
+   * @param moduleName The module to disable.
+   */
+  disableModule(companyId: string, moduleName: string): Promise<void>;
+
+  /**
+   * Updates the company's bundle.
+   * @param companyId The company ID.
+   * @param bundleId The new bundle ID.
+   */
+  updateBundle(companyId: string, bundleId: string): Promise<Company>;
+
+  /**
+   * Updates the company's active features.
+   * @param companyId The company ID.
+   * @param features Array of feature names.
+   */
+  updateFeatures(companyId: string, features: string[]): Promise<void>;
 }

@@ -40,6 +40,12 @@ export interface IUserRepository {
   updateActiveCompany(userId: string, companyId: string): Promise<void>;
 
   /**
+   * Finds a user by their email address.
+   * @param email The user's email.
+   */
+  findByEmail(email: string): Promise<User | null>;
+
+  /**
    * Retrieves the user's active company id if set.
    */
   getUserActiveCompany(userId: string): Promise<string | null>;

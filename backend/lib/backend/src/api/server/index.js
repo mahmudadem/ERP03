@@ -11,7 +11,6 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const router_1 = __importDefault(require("./router"));
 const errorHandler_1 = require("../errors/errorHandler");
-const companyContextMiddleware_1 = require("../middlewares/companyContextMiddleware");
 const impersonationMiddleware_1 = require("../middlewares/impersonationMiddleware");
 const app = (0, express_1.default)();
 // Global Middlewares
@@ -20,8 +19,8 @@ app.use((0, cors_1.default)({ origin: true }));
 app.use(express_1.default.json());
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware_1.impersonationMiddleware);
-// Apply Company Context Middleware globally (or per route if preferred)
-app.use(companyContextMiddleware_1.companyContextMiddleware);
+// Company Context is now handled by TenantRouter for specific routes
+// app.use(companyContextMiddleware as any);
 // Mount Routes
 app.use('/api/v1', router_1.default);
 // Global Error Handler (Must be last)

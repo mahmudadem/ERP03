@@ -35,14 +35,12 @@ export class CompanyController {
 
   static async getUserCompanies(req: Request, res: Response, next: NextFunction) {
     try {
-      // Mock implementation until GetUserCompaniesUseCase is fully generated
-      // const userId = req.user!.uid;
-      // const useCase = new GetUserCompaniesUseCase(diContainer.companyRepository);
-      // const companies = await useCase.execute({ userId });
+      const userId = (req as any).user.uid;
+      const companies = await diContainer.companyRepository.getUserCompanies(userId);
       
       (res as any).status(200).json({
         success: true,
-        data: [], // Placeholder
+        data: companies.map(CoreDTOMapper.toCompanyDTO),
       });
     } catch (error) {
       next(error);
