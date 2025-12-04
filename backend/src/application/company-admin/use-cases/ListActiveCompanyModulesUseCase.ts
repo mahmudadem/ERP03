@@ -1,27 +1,29 @@
-import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
-import { IModuleRepository } from '../../../repository/interfaces/system/IModuleRepository';
-import { Module } from '../../../domain/system/Module';
+import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class ListActiveCompanyModulesUseCase {
     constructor(
-        private companyModuleSettingsRepository: ICompanyModuleSettingsRepository,
-        private moduleRepository: IModuleRepository
+        private companyRepository: ICompanyRepository
     ) { }
 
-    async execute(companyId: string): Promise<Module[]> {
-        // 1. Get all enabled module IDs for the company
-        const settings = await this.companyModuleSettingsRepository.findByCompanyId(companyId);
-        const enabledModuleIds = settings
-            .filter(s => s.isEnabled)
-            .map(s => s.moduleId);
-
-        if (enabledModuleIds.length === 0) {
-            return [];
+    async execute(input: { companyId: string }): Promise<any[]> {
+        // Validate companyId
+        if (!input.companyId) {
+            throw ApiError.badRequest("Missing companyId");
         }
 
-        // 2. Get full module details for enabled modules
-        // Optimally we would have a findByIds method, but findAll and filter works for small number of modules
-        const allModules = await this.moduleRepository.findAll();
-        return allModules.filter(m => enabledModuleIds.includes(m.id));
+        // Load company
+        const company = await this.companyRepository.findById(input.companyId);
+        if (!company) {
+            throw ApiError.notFound("Company not found");
+        }
+
+        // Active modules array
+        const active = company.modules || [];
+
+        // Return enriched output
+        return active.map(name => ({
+            moduleName: name
+        }));
     }
 }

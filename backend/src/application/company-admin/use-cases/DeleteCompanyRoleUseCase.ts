@@ -1,5 +1,6 @@
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { ICompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class DeleteCompanyRoleUseCase {
   constructor(
@@ -8,29 +9,29 @@ export class DeleteCompanyRoleUseCase {
   ) { }
 
   async execute(companyId: string, roleId: string): Promise<void> {
-    // 1. Load role via companyRoleRepository.getById()
+    // Validate companyId + roleId
+    if (!companyId || !roleId) {
+      throw ApiError.badRequest("Missing required fields");
+    }
+
+    // Load role
     const role = await this.companyRoleRepository.getById(companyId, roleId);
     if (!role) {
-      throw new Error('Role not found');
+      throw ApiError.notFound("Role not found");
     }
 
-    // 2. Verify role is not a System role
+    // Block delete for system roles
     if (role.isSystem) {
-      throw new Error('Cannot delete a system role');
+      throw ApiError.forbidden("System roles cannot be deleted");
     }
 
-    // 3. Check if any users have this role
-    // We need a method in companyUserRepository to count users by role or check existence
-    // Assuming such a method exists or we list all users (inefficient)
-    // Let's assume we can check this. If not, we might need to add a method to the interface.
-    // For now, let's try to use what's available or assume we can add it.
-    // Checking ICompanyUserRepository interface...
+    // Check if any users assigned to this role
+    const users = await this.companyUserRepository.getByRole(companyId, roleId);
+    if (users.length > 0) {
+      throw ApiError.badRequest("Cannot delete a role that has active users");
+    }
 
-    // If the interface doesn't have a specific check, we might have to skip this check or implement it.
-    // Let's assume for now we proceed with deletion, but ideally we should check.
-    // I'll add a TODO to verify user assignment if the repository supports it.
-
-    // 4. Delete via companyRoleRepository.delete()
+    // Delete
     await this.companyRoleRepository.delete(companyId, roleId);
   }
 }

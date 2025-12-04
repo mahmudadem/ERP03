@@ -18,16 +18,16 @@ export class CompanyRolesController {
    */
   static async listRoles(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
       const useCase = new ListCompanyRolesUseCase(diContainer.companyRoleRepository);
-      const roles = await useCase.execute(companyId);
+      const result = await useCase.execute({ companyId });
 
-      res.json({ success: true, data: roles });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -39,7 +39,7 @@ export class CompanyRolesController {
    */
   static async getRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       const { roleId } = req.params;
 
       if (!companyId) {
@@ -67,16 +67,20 @@ export class CompanyRolesController {
    */
   static async createRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
+      const { name, description, permissions } = req.body;
+
       const useCase = new CreateCompanyRoleUseCase(diContainer.companyRoleRepository);
       const role = await useCase.execute({
-        ...req.body,
-        companyId
+        companyId,
+        name,
+        description,
+        permissions
       });
 
       res.json({ success: true, data: role });
@@ -91,7 +95,7 @@ export class CompanyRolesController {
    */
   static async updateRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       const { roleId } = req.params;
 
       if (!companyId) {
@@ -99,11 +103,15 @@ export class CompanyRolesController {
         return;
       }
 
+      const { name, description, permissions } = req.body;
+
       const useCase = new UpdateCompanyRoleUseCase(diContainer.companyRoleRepository);
       await useCase.execute({
-        ...req.body,
         companyId,
-        roleId
+        roleId,
+        name,
+        description,
+        permissions
       });
 
       res.json({ success: true, message: 'Role updated successfully' });
@@ -118,7 +126,7 @@ export class CompanyRolesController {
    */
   static async deleteRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       const { roleId } = req.params;
 
       if (!companyId) {

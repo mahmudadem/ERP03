@@ -1,26 +1,43 @@
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { BUNDLES } from '../../../domain/platform/Bundle';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class UpgradeCompanyBundleUseCase {
   constructor(
     private companyRepository: ICompanyRepository
   ) { }
 
-  async execute(companyId: string, newBundleId: string): Promise<void> {
-    // 1. Verify company exists
-    const company = await this.companyRepository.findById(companyId);
-    if (!company) {
-      throw new Error('Company not found');
+  async execute(input: { companyId: string; bundleId: string }): Promise<any> {
+    // Validate companyId + bundleId
+    if (!input.companyId || !input.bundleId) {
+      throw ApiError.badRequest("Missing required fields");
     }
 
-    // 2. In a real system, we would:
-    //    - Verify the bundle exists
-    //    - Handle payment processing
-    //    - Update subscription status
+    // Confirm new bundle exists in registry
+    const bundle = BUNDLES.find(b => b.id === input.bundleId);
+    if (!bundle) {
+      throw ApiError.badRequest("Invalid bundle");
+    }
 
-    // For MVP, we just update the subscriptionPlan field
-    await this.companyRepository.update(companyId, {
-      subscriptionPlan: newBundleId,
-      updatedAt: new Date()
+    // Load company
+    const company = await this.companyRepository.findById(input.companyId);
+    if (!company) {
+      throw ApiError.notFound("Company not found");
+    }
+
+    // If already on this bundle → return early
+    if (company.subscriptionPlan === input.bundleId) {
+      return { bundleId: input.bundleId, status: 'already_active' };
+    }
+
+    // Update
+    await this.companyRepository.update(input.companyId, {
+      subscriptionPlan: input.bundleId,
+      modules: bundle.modules,
+      features: bundle.features
     });
+
+    // Return success DTO
+    return { bundleId: input.bundleId, status: 'upgraded' };
   }
 }

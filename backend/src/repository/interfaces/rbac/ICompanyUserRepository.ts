@@ -5,6 +5,7 @@ export interface ICompanyUserRepository {
   get(companyId: string, userId: string): Promise<CompanyUser | null>;
   getByUserAndCompany(userId: string, companyId: string): Promise<CompanyUser | null>;
   getByCompany(companyId: string): Promise<CompanyUser[]>;
+  getByRole(companyId: string, roleId: string): Promise<CompanyUser[]>;
   assignRole(companyUser: CompanyUser): Promise<void>;
   removeRole(userId: string, companyId: string): Promise<void>;
   create(companyUser: CompanyUser): Promise<void>;

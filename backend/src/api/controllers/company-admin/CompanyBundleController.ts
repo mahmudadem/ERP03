@@ -16,16 +16,16 @@ export class CompanyBundleController {
    */
   static async getCurrentBundle(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
       const useCase = new GetCompanyBundleUseCase(diContainer.companyRepository);
-      const bundle = await useCase.execute(companyId);
+      const result = await useCase.execute({ companyId });
 
-      res.json({ success: true, data: bundle });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -38,9 +38,9 @@ export class CompanyBundleController {
   static async listAvailableBundles(req: Request, res: Response, next: NextFunction) {
     try {
       const useCase = new ListAvailableBundlesUseCase();
-      const bundles = await useCase.execute();
+      const result = await useCase.execute();
 
-      res.json({ success: true, data: bundles });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -52,7 +52,7 @@ export class CompanyBundleController {
    */
   static async upgradeBundle(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       const { bundleId } = req.body;
 
       if (!companyId) {
@@ -65,9 +65,9 @@ export class CompanyBundleController {
       }
 
       const useCase = new UpgradeCompanyBundleUseCase(diContainer.companyRepository);
-      await useCase.execute(companyId, bundleId);
+      const result = await useCase.execute({ companyId, bundleId });
 
-      res.json({ success: true, message: 'Bundle upgraded successfully' });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

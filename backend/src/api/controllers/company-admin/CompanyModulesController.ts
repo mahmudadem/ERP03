@@ -17,16 +17,16 @@ export class CompanyModulesController {
    */
   static async listModules(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
-      const useCase = new ListCompanyModulesUseCase(diContainer.moduleRepository);
-      const modules = await useCase.execute(companyId);
+      const useCase = new ListCompanyModulesUseCase();
+      const result = await useCase.execute({ companyId });
 
-      res.json({ success: true, data: modules });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -38,19 +38,16 @@ export class CompanyModulesController {
    */
   static async listActiveModules(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
-      const useCase = new ListActiveCompanyModulesUseCase(
-        diContainer.companyModuleSettingsRepository,
-        diContainer.moduleRepository
-      );
-      const modules = await useCase.execute(companyId);
+      const useCase = new ListActiveCompanyModulesUseCase(diContainer.companyRepository);
+      const result = await useCase.execute({ companyId });
 
-      res.json({ success: true, data: modules });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -62,22 +59,22 @@ export class CompanyModulesController {
    */
   static async enableModule(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
-      const { moduleId } = req.body;
+      const companyId = (req as any).tenantContext?.companyId;
+      const { moduleName } = req.body;
 
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
-      if (!moduleId) {
-        res.status(400).json({ success: false, error: 'Module ID required' });
+      if (!moduleName) {
+        res.status(400).json({ success: false, error: 'Module name required' });
         return;
       }
 
-      const useCase = new EnableModuleForCompanyUseCase(diContainer.companyModuleSettingsRepository);
-      await useCase.execute(companyId, moduleId);
+      const useCase = new EnableModuleForCompanyUseCase(diContainer.companyRepository);
+      const result = await useCase.execute({ companyId, moduleName });
 
-      res.json({ success: true, message: 'Module enabled successfully' });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -89,22 +86,22 @@ export class CompanyModulesController {
    */
   static async disableModule(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
-      const { moduleId } = req.body;
+      const companyId = (req as any).tenantContext?.companyId;
+      const { moduleName } = req.body;
 
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
-      if (!moduleId) {
-        res.status(400).json({ success: false, error: 'Module ID required' });
+      if (!moduleName) {
+        res.status(400).json({ success: false, error: 'Module name required' });
         return;
       }
 
-      const useCase = new DisableModuleForCompanyUseCase(diContainer.companyModuleSettingsRepository);
-      await useCase.execute(companyId, moduleId);
+      const useCase = new DisableModuleForCompanyUseCase(diContainer.companyRepository);
+      const result = await useCase.execute({ companyId, moduleName });
 
-      res.json({ success: true, message: 'Module disabled successfully' });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

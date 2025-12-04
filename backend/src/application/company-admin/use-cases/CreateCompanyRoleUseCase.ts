@@ -1,13 +1,12 @@
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRole } from '../../../domain/rbac/CompanyRole';
-import { randomUUID } from 'crypto';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export interface CreateRoleInput {
   companyId: string;
   name: string;
   description?: string;
-  permissions: string[];
-  isSystem?: boolean;
+  permissions?: string[];
 }
 
 export class CreateCompanyRoleUseCase {
@@ -15,26 +14,37 @@ export class CreateCompanyRoleUseCase {
     private companyRoleRepository: ICompanyRoleRepository
   ) { }
 
-  async execute(input: CreateRoleInput): Promise<CompanyRole> {
-    // 1. Validate role name is unique (optional, but good practice)
-    // For now, we'll assume the repository or database constraints handle this or we allow duplicates with different IDs.
+  async execute(input: CreateRoleInput): Promise<any> {
+    // Validate
+    if (!input.companyId || !input.name) {
+      throw ApiError.badRequest("Missing required fields");
+    }
 
-    // 2. Create CompanyRole entity
-    const newRole: CompanyRole = {
-      id: randomUUID(),
+    // Generate roleId
+    const roleId = `role_${Date.now()}`;
+
+    // Create role object
+    const role: CompanyRole = {
+      id: roleId,
       companyId: input.companyId,
       name: input.name,
       description: input.description || '',
-      permissions: input.permissions,
-      isSystem: input.isSystem || false,
+      permissions: input.permissions || [],
+      isSystem: false,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    // 3. Save via companyRoleRepository.create()
-    await this.companyRoleRepository.create(newRole);
+    // Save
+    await this.companyRoleRepository.create(role);
 
-    // 4. Return created role
-    return newRole;
+    // Return DTO
+    return {
+      roleId: role.id,
+      name: role.name,
+      description: role.description,
+      permissions: role.permissions,
+      createdAt: role.createdAt
+    };
   }
 }

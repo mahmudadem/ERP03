@@ -16,16 +16,10 @@ export class CompanyFeaturesController {
    */
   static async listFeatures(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
-      if (!companyId) {
-        res.status(400).json({ success: false, error: 'Company ID required' });
-        return;
-      }
-
       const useCase = new ListCompanyFeaturesUseCase();
-      const features = await useCase.execute(companyId);
+      const result = await useCase.execute();
 
-      res.json({ success: true, data: features });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -37,16 +31,16 @@ export class CompanyFeaturesController {
    */
   static async listActiveFeatures(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
+      const companyId = (req as any).tenantContext?.companyId;
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
 
       const useCase = new ListActiveCompanyFeaturesUseCase(diContainer.companyRepository);
-      const features = await useCase.execute(companyId);
+      const result = await useCase.execute({ companyId });
 
-      res.json({ success: true, data: features });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -58,22 +52,26 @@ export class CompanyFeaturesController {
    */
   static async toggleFeature(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = req.user?.companyId;
-      const { featureId, enabled } = req.body;
+      const companyId = (req as any).tenantContext?.companyId;
+      const { featureName, enabled } = req.body;
 
       if (!companyId) {
         res.status(400).json({ success: false, error: 'Company ID required' });
         return;
       }
-      if (!featureId) {
-        res.status(400).json({ success: false, error: 'Feature ID required' });
+      if (!featureName) {
+        res.status(400).json({ success: false, error: 'Feature name required' });
         return;
       }
 
       const useCase = new ToggleFeatureFlagUseCase(diContainer.companyRepository);
-      await useCase.execute(companyId, featureId, enabled);
+      const result = await useCase.execute({
+        companyId,
+        featureName,
+        enabled
+      });
 
-      res.json({ success: true, message: 'Feature toggled successfully' });
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

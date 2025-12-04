@@ -1,27 +1,49 @@
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { Features } from '../../../domain/platform/FeatureRegistry';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class ToggleFeatureFlagUseCase {
   constructor(
     private companyRepository: ICompanyRepository
   ) { }
 
-  async execute(companyId: string, featureId: string, enabled: boolean): Promise<void> {
-    // 1. Verify company exists
-    const company = await this.companyRepository.findById(companyId);
-    if (!company) {
-      throw new Error('Company not found');
+  async execute(input: { companyId: string; featureName: string; enabled: boolean }): Promise<any> {
+    // Validate featureName exists in registry
+    const feature = Features[input.featureName];
+    if (!feature) {
+      throw ApiError.badRequest("Invalid feature");
     }
 
-    // 2. In a real system, we would update a features list on the company entity
-    // For MVP, we might not have a dedicated features field on Company yet, 
-    // or we might store it in settings.
-    // Let's assume we can't easily toggle features per company without a schema change 
-    // or a settings table.
+    // Load company
+    const company = await this.companyRepository.findById(input.companyId);
+    if (!company) {
+      throw ApiError.notFound("Company not found");
+    }
 
-    // For now, we'll log the action and maybe throw not implemented if we can't persist it
-    console.log(`Toggling feature ${featureId} to ${enabled} for company ${companyId}`);
+    // Ensure company.features exists
+    const features = ((company as any).features ?? []) as string[];
 
-    // If we had a settings repository, we would save it there.
-    // await this.companySettingsRepository.updateFeature(companyId, featureId, enabled);
+    // Toggle logic
+    if (input.enabled) {
+      if (!features.includes(input.featureName)) {
+        features.push(input.featureName);
+      }
+    } else {
+      const idx = features.indexOf(input.featureName);
+      if (idx !== -1) {
+        features.splice(idx, 1);
+      }
+    }
+
+    // Save
+    await this.companyRepository.update(input.companyId, { features } as any);
+
+    // Return
+    return {
+      companyId: input.companyId,
+      featureName: input.featureName,
+      enabled: input.enabled,
+      activeFeatures: features
+    };
   }
 }

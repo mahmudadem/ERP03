@@ -1,12 +1,21 @@
-import { IModuleRepository } from '../../../repository/interfaces/system/IModuleRepository';
-import { Module } from '../../../domain/system/Module';
+import { ModuleRegistry } from '../../platform/ModuleRegistry';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class ListCompanyModulesUseCase {
-    constructor(private moduleRepository: IModuleRepository) { }
+    async execute(input: { companyId: string }): Promise<any[]> {
+        // Validate companyId
+        if (!input.companyId) {
+            throw ApiError.badRequest("Missing companyId");
+        }
 
-    async execute(companyId: string): Promise<Module[]> {
-        // In a real scenario, we might filter modules based on the company's subscription bundle
-        // For now, we return all available modules in the system
-        return this.moduleRepository.findAll();
+        // Load all modules from ModuleRegistry
+        const modules = ModuleRegistry.getInstance().getAllModules();
+
+        // Return
+        return modules.map(m => ({
+            moduleName: m.metadata.name,
+            description: m.metadata.description || '',
+            permissions: m.metadata.permissions || []
+        }));
     }
 }

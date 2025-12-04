@@ -1,22 +1,41 @@
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
-// Assuming we have a Bundle entity or similar. For now, we'll return the bundle ID or object.
-// If Bundle entity doesn't exist, we might need to define it or use a generic type.
-// Let's assume we return the bundle ID string for now as per Company entity.
+import { BUNDLES } from '../../../domain/platform/Bundle';
+import { ApiError } from '../../../api/errors/ApiError';
 
 export class GetCompanyBundleUseCase {
     constructor(private companyRepository: ICompanyRepository) { }
 
-    async execute(companyId: string): Promise<any> {
-        const company = await this.companyRepository.findById(companyId);
-        if (!company) {
-            throw new Error('Company not found');
+    async execute(input: { companyId: string }): Promise<any> {
+        // Validate companyId
+        if (!input.companyId) {
+            throw ApiError.badRequest("Missing companyId");
         }
 
-        // In a real system, we would fetch the full Bundle object from a BundleRepository using company.bundleId
-        // For MVP, we'll return the bundleId and maybe some mock details or just the ID.
+        // Load company
+        const company = await this.companyRepository.findById(input.companyId);
+        if (!company) {
+            throw ApiError.notFound("Company not found");
+        }
+
+        // Bundle value is stored in company.subscriptionPlan
+        const bundleId = company.subscriptionPlan || 'starter';
+
+        // Load bundle metadata from Bundles registry
+        const bundle = BUNDLES.find(b => b.id === bundleId);
+
+        if (!bundle) {
+            // Fallback to starter if bundle not found
+            const starterBundle = BUNDLES.find(b => b.id === 'starter');
+            return {
+                bundleId: 'starter',
+                ...starterBundle
+            };
+        }
+
+        // Return
         return {
-            bundleId: company.subscriptionPlan || 'free', // Assuming subscriptionPlan holds the bundle ID
-            // Add more details if available
+            bundleId: bundle.id,
+            ...bundle
         };
     }
 }
