@@ -1,19 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
+import { diContainer } from '../../../infrastructure/di/bindRepositories';
+import { GetCompanyBundleUseCase } from '../../../application/company-admin/use-cases/GetCompanyBundleUseCase';
+import { ListAvailableBundlesUseCase } from '../../../application/company-admin/use-cases/ListAvailableBundlesUseCase';
+import { UpgradeCompanyBundleUseCase } from '../../../application/company-admin/use-cases/UpgradeCompanyBundleUseCase';
 
 /**
  * CompanyBundleController
  * Handles company bundle management
  */
 export class CompanyBundleController {
-  
+
   /**
    * GET /company-admin/bundle
    * Get current bundle
    */
   static async getCurrentBundle(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Implement get current bundle logic
-      res.json({ success: true, data: {} });
+      const companyId = req.user?.companyId;
+      if (!companyId) {
+        res.status(400).json({ success: false, error: 'Company ID required' });
+        return;
+      }
+
+      const useCase = new GetCompanyBundleUseCase(diContainer.companyRepository);
+      const bundle = await useCase.execute(companyId);
+
+      res.json({ success: true, data: bundle });
     } catch (error) {
       next(error);
     }
@@ -25,8 +37,10 @@ export class CompanyBundleController {
    */
   static async listAvailableBundles(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Implement list available bundles logic
-      res.json({ success: true, data: [] });
+      const useCase = new ListAvailableBundlesUseCase();
+      const bundles = await useCase.execute();
+
+      res.json({ success: true, data: bundles });
     } catch (error) {
       next(error);
     }
@@ -38,8 +52,22 @@ export class CompanyBundleController {
    */
   static async upgradeBundle(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Implement upgrade bundle logic
-      res.json({ success: true, data: {} });
+      const companyId = req.user?.companyId;
+      const { bundleId } = req.body;
+
+      if (!companyId) {
+        res.status(400).json({ success: false, error: 'Company ID required' });
+        return;
+      }
+      if (!bundleId) {
+        res.status(400).json({ success: false, error: 'Bundle ID required' });
+        return;
+      }
+
+      const useCase = new UpgradeCompanyBundleUseCase(diContainer.companyRepository);
+      await useCase.execute(companyId, bundleId);
+
+      res.json({ success: true, message: 'Bundle upgraded successfully' });
     } catch (error) {
       next(error);
     }

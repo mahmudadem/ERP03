@@ -15,6 +15,11 @@ export class FirestoreModuleRepository extends BaseFirestoreRepository<Module> i
   protected toDomain = ModuleMapper.toDomain;
   protected toPersistence = ModuleMapper.toPersistence;
 
+  async findAll(): Promise<Module[]> {
+    const snapshot = await this.db.collection(this.collectionName).get();
+    return snapshot.docs.map(doc => this.toDomain(doc.data()));
+  }
+
   async getEnabledModules(companyId: string): Promise<Module[]> {
     // In MVP, this might just query a modules collection or company.modules
     const snapshot = await this.db.collection(this.collectionName).where('enabled', '==', true).get();

@@ -10,4 +10,7 @@ export interface CompanyRole {
   resolvedPermissions?: string[];
   sourceTemplateId?: string;
   isDefaultForNewUsers?: boolean;
+  isSystem?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }

@@ -14,8 +14,9 @@ export class Company implements ICompany {
     public modules: string[],
     // Legacy support for MVP
     public taxId: string,
+    public subscriptionPlan?: string,
     public address?: string
-  ) {}
+  ) { }
 
   public isModuleEnabled(moduleName: string): boolean {
     return this.modules.includes(moduleName);

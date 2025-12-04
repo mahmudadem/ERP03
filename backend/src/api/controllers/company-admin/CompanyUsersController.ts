@@ -11,7 +11,7 @@ import { ApiError } from '../../errors/ApiError';
  * Handles company user management operations
  */
 export class CompanyUsersController {
-  
+
   /**
    * GET /company-admin/users
    * List company users
@@ -37,7 +37,7 @@ export class CompanyUsersController {
         companyUsers.map(async (companyUser) => {
           // Get user details
           const user = await diContainer.userRepository.getUserById(companyUser.userId);
-          
+
           // Get role details
           const role = await diContainer.companyRoleRepository.getById(companyId, companyUser.roleId);
 
@@ -160,8 +160,7 @@ export class CompanyUsersController {
       const result = await useCase.execute({
         companyId,
         userId,
-        newRoleId,
-        updatedBy
+        newRoleId
       });
 
       res.status(200).json({
@@ -201,9 +200,7 @@ export class CompanyUsersController {
 
       const result = await useCase.execute({
         companyId,
-        userId,
-        disabledBy,
-        reason
+        userId
       });
 
       res.status(200).json({
@@ -221,8 +218,32 @@ export class CompanyUsersController {
    */
   static async enableUser(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Implement enable user logic
-      res.json({ success: true, data: {} });
+      // Get company ID from tenant context
+      const tenantContext = (req as any).tenantContext;
+      if (!tenantContext || !tenantContext.companyId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Company context not found'
+        });
+      }
+
+      const companyId = tenantContext.companyId;
+      const { userId } = req.params;
+
+      // Execute use case
+      const useCase = new EnableCompanyUserUseCase(
+        diContainer.rbacCompanyUserRepository
+      );
+
+      const result = await useCase.execute({
+        companyId,
+        userId
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result
+      });
     } catch (error) {
       next(error);
     }

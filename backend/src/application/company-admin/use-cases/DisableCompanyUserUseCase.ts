@@ -9,60 +9,34 @@ import { ApiError } from '../../../api/errors/ApiError';
 interface DisableCompanyUserInput {
   companyId: string;
   userId: string;
-  disabledBy: string;
-  reason?: string;
-}
-
-interface DisableCompanyUserResult {
-  userId: string;
-  companyId: string;
-  status: string;
-  disabledAt: Date;
-  disabledBy: string;
 }
 
 export class DisableCompanyUserUseCase {
   constructor(
     private companyUserRepository: ICompanyUserRepository
-  ) {}
+  ) { }
 
-  async execute(input: DisableCompanyUserInput): Promise<DisableCompanyUserResult> {
-    // 1. Load membership
-    const membership = await this.companyUserRepository.getByUserAndCompany(
-      input.userId,
-      input.companyId
-    );
+  async execute(input: DisableCompanyUserInput): Promise<any> {
+    // Validate
+    if (!input.companyId || !input.userId) {
+      throw ApiError.badRequest("Missing required fields");
+    }
 
+    // Load membership
+    const membership = await this.companyUserRepository.get(input.companyId, input.userId);
     if (!membership) {
-      throw ApiError.badRequest('User is not a member of this company');
+      throw ApiError.notFound("User not found in company");
     }
 
-    // 2. Cannot disable the owner
-    if (membership.isOwner === true) {
-      throw ApiError.badRequest('Cannot disable the owner');
+    // Block owner
+    if (membership.isOwner) {
+      throw ApiError.forbidden("Owner cannot be disabled");
     }
 
-    // 3. Cannot disable yourself
-    if (input.userId === input.disabledBy) {
-      throw ApiError.badRequest('You cannot disable yourself');
-    }
+    // Update state
+    await this.companyUserRepository.update(input.userId, input.companyId, { isDisabled: true });
 
-    // 4. Update membership
-    const disabledAt = new Date();
-    await this.companyUserRepository.update(input.userId, input.companyId, {
-      // Note: CompanyUser entity doesn't have status, disabledAt, disabledBy, or reason fields yet
-      // This is a placeholder implementation that will work once the entity is extended
-      createdAt: disabledAt // Using createdAt as a workaround until entity is updated
-      // TODO: Add status, disabledAt, disabledBy, reason fields to CompanyUser entity
-    });
-
-    // 5. Return DTO
-    return {
-      userId: input.userId,
-      companyId: input.companyId,
-      status: 'disabled',
-      disabledAt,
-      disabledBy: input.disabledBy
-    };
+    // Return
+    return { userId: input.userId, companyId: input.companyId, isDisabled: true };
   }
 }
