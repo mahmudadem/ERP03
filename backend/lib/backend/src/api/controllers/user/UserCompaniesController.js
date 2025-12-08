@@ -4,23 +4,46 @@ exports.UserCompaniesController = void 0;
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 class UserCompaniesController {
     static async listUserCompanies(req, res, next) {
+        var _a, _b;
         try {
             const userId = req.user.uid;
-            const companies = await bindRepositories_1.diContainer.companyRepository.getUserCompanies(userId);
-            const data = await Promise.all(companies.map(async (c) => {
-                var _a;
-                const membership = await bindRepositories_1.diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, c.id);
-                return {
+            // Fetch memberships across all companies (owner or member)
+            const memberships = await bindRepositories_1.diContainer.rbacCompanyUserRepository.getMembershipsByUser(userId);
+            // Also fetch companies where this user is the owner (in case membership doc is missing)
+            const ownedCompanies = await bindRepositories_1.diContainer.companyRepository.getUserCompanies(userId);
+            const resultsMap = new Map();
+            // From memberships
+            for (const m of memberships) {
+                const c = await bindRepositories_1.diContainer.companyRepository.findById(m.companyId);
+                if (!c)
+                    continue;
+                resultsMap.set(c.id, {
                     id: c.id,
                     name: c.name,
                     baseCurrency: c.baseCurrency,
                     model: (_a = c.modules) === null || _a === void 0 ? void 0 : _a[0],
-                    roleId: (membership === null || membership === void 0 ? void 0 : membership.roleId) || 'MEMBER',
-                    isOwner: (membership === null || membership === void 0 ? void 0 : membership.isOwner) || false,
+                    roleId: m.roleId || 'MEMBER',
+                    isOwner: !!m.isOwner,
                     createdAt: c.createdAt,
                     updatedAt: c.updatedAt,
-                };
-            }));
+                });
+            }
+            // From ownership (if not already included)
+            for (const c of ownedCompanies) {
+                if (resultsMap.has(c.id))
+                    continue;
+                resultsMap.set(c.id, {
+                    id: c.id,
+                    name: c.name,
+                    baseCurrency: c.baseCurrency,
+                    model: (_b = c.modules) === null || _b === void 0 ? void 0 : _b[0],
+                    roleId: 'OWNER',
+                    isOwner: true,
+                    createdAt: c.createdAt,
+                    updatedAt: c.updatedAt,
+                });
+            }
+            const data = Array.from(resultsMap.values());
             return res.json({ success: true, data });
         }
         catch (err) {

@@ -10,6 +10,7 @@ export interface CompanyAccessContextValue {
   resolvedPermissions: string[];
   moduleBundles: string[];
   isSuperAdmin: boolean;
+  isOwner: boolean;
   loading: boolean;
    permissionsLoaded: boolean;
   setCompanyId: (companyId: string) => void;
@@ -24,6 +25,8 @@ const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined
 export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [companyId, setCompanyIdState] = useState<string>(() => localStorage.getItem('activeCompanyId') || '');
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [isSuperAdminState, setIsSuperAdminState] = useState<boolean>(false);
   const [permissions, setPermissions] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem('resolvedPermissions');
@@ -62,7 +65,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     return false;
   });
 
-  const isSuperAdmin = permissions.includes('*') || resolvedPermissions.includes('*');
+  const isSuperAdmin = isSuperAdminState || permissions.includes('*') || resolvedPermissions.includes('*');
+  const isOwnerOrWildcard = isSuperAdmin || isOwner;
 
   const setCompanyId = (newCompanyId: string) => setCompanyIdState(newCompanyId);
 
@@ -77,6 +81,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const data = await authApi.getMyPermissions();
       setPermissions(data.resolvedPermissions || []);
       setResolvedPermissions(data.resolvedPermissions || []);
+      setIsOwner(!!data.isOwner);
+      setIsSuperAdminState(!!data.isSuperAdmin);
       setModuleBundles((prev) => (data.moduleBundles && data.moduleBundles.length ? data.moduleBundles : prev));
       localStorage.setItem('resolvedPermissions', JSON.stringify(data.resolvedPermissions || []));
       if (data.moduleBundles && data.moduleBundles.length) {
@@ -90,6 +96,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       setPermissions((prev) => prev);
       setResolvedPermissions((prev) => prev);
       setModuleBundles((prev) => prev);
+      // leave isOwner as-is on error
       setPermissionsLoaded(true);
     } finally {
       setLoading(false);
@@ -114,6 +121,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
       // roleId, roleName, and isOwner are available in the response but not currently used in context
+      const isOwnerFlag = !!(data as any).isOwner;
+      setIsOwner(isOwnerFlag);
       // Pre-seed module bundles from the active company record so ProtectedRoute can use them
       const modules = (data.company && Array.isArray((data.company as any).modules)) ? (data.company as any).modules : [];
       setModuleBundles(modules);
@@ -181,7 +190,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
         permissions,
         resolvedPermissions,
         moduleBundles,
-        isSuperAdmin,
+        isSuperAdmin: isSuperAdminState,
+        isOwner: isOwnerOrWildcard,
         loading,
         permissionsLoaded,
         setCompanyId,

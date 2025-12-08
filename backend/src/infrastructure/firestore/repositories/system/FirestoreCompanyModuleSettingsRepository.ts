@@ -41,4 +41,19 @@ export class FirestoreCompanyModuleSettingsRepository implements ICompanyModuleS
       throw new InfrastructureError('Failed to verify module activation', error);
     }
   }
+
+  async findByCompanyId(companyId: string): Promise<any[]> {
+    const snap = await this.collection(companyId).get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  async create(settings: any): Promise<void> {
+    const { companyId, moduleId, ...rest } = settings;
+    if (!companyId || !moduleId) throw new InfrastructureError('Invalid settings payload');
+    await this.collection(companyId).doc(moduleId).set(rest, { merge: true });
+  }
+
+  async update(companyId: string, moduleId: string, settings: any): Promise<void> {
+    await this.collection(companyId).doc(moduleId).set(settings, { merge: true });
+  }
 }

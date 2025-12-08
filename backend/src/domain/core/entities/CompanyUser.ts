@@ -5,7 +5,8 @@ export class CompanyUser {
     public userId: string,
     public companyId: string,
     public role: string, // e.g., 'MANAGER', 'ACCOUNTANT'
-    public permissions: string[]
+    public permissions: string[],
+    public isDisabled: boolean = false
   ) {}
 
   public hasPermission(permissionCode: string): boolean {

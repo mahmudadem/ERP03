@@ -5,51 +5,37 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "functions": [
-    {
-      "source": "backend",
-      "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
-    }
-  ],
+  "functions": {
+    "source": "backend",
+    "runtime": "nodejs20"
+  },
   "storage": {
     "rules": "storage.rules"
   },
-  "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "database": {
-      "port": 9000
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "storage": {
-      "port": 9199
-    },
-    "ui": {
-      "enabled": true
-    },
-    "singleProjectMode": true
-  },
   "database": {
     "rules": "database.rules.json"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099,
+      "host": "127.0.0.1"
+    },
+    "firestore": {
+      "port": 8080,
+      "host": "127.0.0.1"
+    },
+    "functions": {
+      "port": 5001,
+      "host": "127.0.0.1"
+    },
+    "storage": {
+      "port": 9199,
+      "host": "127.0.0.1"
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
   }
 }

@@ -35,6 +35,10 @@ class FirestoreModuleRepository extends BaseFirestoreRepository_1.BaseFirestoreR
         this.toDomain = SystemMappers_1.ModuleMapper.toDomain;
         this.toPersistence = SystemMappers_1.ModuleMapper.toPersistence;
     }
+    async findAll() {
+        const snapshot = await this.db.collection(this.collectionName).get();
+        return snapshot.docs.map(doc => this.toDomain(doc.data()));
+    }
     async getEnabledModules(companyId) {
         // In MVP, this might just query a modules collection or company.modules
         const snapshot = await this.db.collection(this.collectionName).where('enabled', '==', true).get();

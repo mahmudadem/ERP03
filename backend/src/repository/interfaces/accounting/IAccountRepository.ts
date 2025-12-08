@@ -1,6 +1,7 @@
 import { Account } from '../../../domain/accounting/models/Account';
 
 export interface NewAccountInput {
+  id?: string;
   code: string;
   name: string;
   type: string;
@@ -19,7 +20,7 @@ export interface UpdateAccountInput {
 
 export interface IAccountRepository {
   list(companyId: string): Promise<Account[]>;
-  getById(companyId: string, accountId: string): Promise<Account | null>;
+  getById(companyId: string, accountId: string, transaction?: any): Promise<Account | null>;
   getByCode(companyId: string, code: string): Promise<Account | null>;
   create(companyId: string, data: NewAccountInput): Promise<Account>;
   update(companyId: string, accountId: string, data: UpdateAccountInput): Promise<Account>;

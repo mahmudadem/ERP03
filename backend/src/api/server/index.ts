@@ -15,6 +15,9 @@ const app = express();
 app.use(cors({ origin: true }) as any);
 app.use(express.json() as any);
 
+
+
+
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware as any);
 
@@ -23,6 +26,12 @@ app.use(impersonationMiddleware as any);
 
 // Mount Routes
 app.use('/api/v1', router as any);
+
+// Catch-all for 404
+app.use((req, res, next) => {
+  const { ApiError } = require('../errors/ApiError');
+  next(ApiError.notFound(`Endpoint not found: ${req.method} ${req.path}`));
+});
 
 // Global Error Handler (Must be last)
 app.use(errorHandler as any);

@@ -11,15 +11,24 @@ import { User } from '../../../domain/core/entities/User';
 import { CompanyUser } from '../../../domain/core/entities/CompanyUser';
 
 export class CompanyMapper {
-  private static toTimestamp(date: Date) {
+  private static toTimestamp(date: Date | number) {
+    const d = typeof date === 'number' ? new Date(date) : date;
     if (admin?.firestore?.Timestamp) {
-      return admin.firestore.Timestamp.fromDate(date);
+      return admin.firestore.Timestamp.fromDate(d);
     }
     // Fallback to plain Date if Timestamp is unavailable
-    return date;
+    return d;
   }
 
   static toDomain(data: any): Company {
+    const fiscalYearStart = (typeof data.fiscalYearStart === 'number' && data.fiscalYearStart <= 12) 
+        ? data.fiscalYearStart 
+        : (data.fiscalYearStart?.toDate?.() || new Date(data.fiscalYearStart));
+
+    const fiscalYearEnd = (typeof data.fiscalYearEnd === 'number' && data.fiscalYearEnd <= 12)
+        ? data.fiscalYearEnd
+        : (data.fiscalYearEnd?.toDate?.() || new Date(data.fiscalYearEnd));
+
     return new Company(
       data.id,
       data.name,
@@ -27,11 +36,16 @@ export class CompanyMapper {
       data.createdAt?.toDate?.() || new Date(data.createdAt),
       data.updatedAt?.toDate?.() || new Date(data.updatedAt),
       data.baseCurrency,
-      data.fiscalYearStart?.toDate?.() || new Date(data.fiscalYearStart),
-      data.fiscalYearEnd?.toDate?.() || new Date(data.fiscalYearEnd),
+      fiscalYearStart,
+      fiscalYearEnd,
       data.modules || [],
+      data.features || [],
       data.taxId,
-      data.address
+      data.subscriptionPlan,
+      data.address,
+      data.country,
+      data.logoUrl,
+      data.contactInfo
     );
   }
 
@@ -43,11 +57,16 @@ export class CompanyMapper {
       taxId: entity.taxId,
       address: entity.address || null,
       baseCurrency: entity.baseCurrency,
-      fiscalYearStart: this.toTimestamp(entity.fiscalYearStart),
-      fiscalYearEnd: this.toTimestamp(entity.fiscalYearEnd),
+      fiscalYearStart: typeof entity.fiscalYearStart === 'number' ? entity.fiscalYearStart : this.toTimestamp(entity.fiscalYearStart),
+      fiscalYearEnd: typeof entity.fiscalYearEnd === 'number' ? entity.fiscalYearEnd : this.toTimestamp(entity.fiscalYearEnd),
       modules: entity.modules,
+      features: entity.features,
+      subscriptionPlan: entity.subscriptionPlan || null,
       createdAt: this.toTimestamp(entity.createdAt),
       updatedAt: this.toTimestamp(entity.updatedAt),
+      country: entity.country,
+      logoUrl: entity.logoUrl,
+      contactInfo: entity.contactInfo
     };
   }
 }
@@ -83,7 +102,8 @@ export class CompanyUserMapper {
       data.userId,
       data.companyId,
       data.role,
-      data.permissions || []
+      data.permissions || [],
+      data.isDisabled || false
     );
   }
 
@@ -93,7 +113,8 @@ export class CompanyUserMapper {
       userId: entity.userId,
       companyId: entity.companyId,
       role: entity.role,
-      permissions: entity.permissions
+      permissions: entity.permissions,
+      isDisabled: entity.isDisabled
     };
   }
 }

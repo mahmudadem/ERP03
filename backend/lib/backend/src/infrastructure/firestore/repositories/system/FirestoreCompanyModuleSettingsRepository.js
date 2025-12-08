@@ -22,6 +22,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreCompanyModuleSettingsRepository = void 0;
 const admin = __importStar(require("firebase-admin"));
@@ -62,6 +73,19 @@ class FirestoreCompanyModuleSettingsRepository {
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to verify module activation', error);
         }
+    }
+    async findByCompanyId(companyId) {
+        const snap = await this.collection(companyId).get();
+        return snap.docs.map((d) => (Object.assign({ id: d.id }, d.data())));
+    }
+    async create(settings) {
+        const { companyId, moduleId } = settings, rest = __rest(settings, ["companyId", "moduleId"]);
+        if (!companyId || !moduleId)
+            throw new InfrastructureError_1.InfrastructureError('Invalid settings payload');
+        await this.collection(companyId).doc(moduleId).set(rest, { merge: true });
+    }
+    async update(companyId, moduleId, settings) {
+        await this.collection(companyId).doc(moduleId).set(settings, { merge: true });
     }
 }
 exports.FirestoreCompanyModuleSettingsRepository = FirestoreCompanyModuleSettingsRepository;

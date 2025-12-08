@@ -1,22 +1,15 @@
+import './firebaseAdmin';
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
-import server from './api/server';
 import { registerAllModules } from './modules';
 import { ModuleRegistry } from './application/platform/ModuleRegistry';
 
-// Initialize Admin SDK if not already done
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
-
-// Register all modules
+// Register modules before the server (and tenant router) are loaded
 registerAllModules();
+ModuleRegistry.getInstance().initializeAll().catch(() => {});
 
-// Initialize modules
-ModuleRegistry.getInstance().initializeAll().catch(console.error);
+// Load the server after modules are registered so tenant router can mount them
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const server = require('./api/server').default;
 
-// Expose the Express App as a Cloud Function
 export const api = functions.https.onRequest(server as any);
-
-// Exports for other modules (Background triggers can be added here)
 export const accountingModule = {};

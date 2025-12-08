@@ -9,13 +9,17 @@ export class Company implements ICompany {
     public createdAt: Date,
     public updatedAt: Date,
     public baseCurrency: string,
-    public fiscalYearStart: Date,
-    public fiscalYearEnd: Date,
+    public fiscalYearStart: Date | number,
+    public fiscalYearEnd: Date | number,
     public modules: string[],
+    public features: string[] = [],
     // Legacy support for MVP
-    public taxId: string,
+    public taxId: string = '',
     public subscriptionPlan?: string,
-    public address?: string
+    public address?: string,
+    public country?: string,
+    public logoUrl?: string,
+    public contactInfo?: any
   ) { }
 
   public isModuleEnabled(moduleName: string): boolean {

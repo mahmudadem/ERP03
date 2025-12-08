@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { CreateCompanyUseCase } from '../../application/core/use-cases/CreateCompany';
 import { FirestoreCompanyRepository } from '../../infrastructure/firestore/repositories/FirestoreCompanyRepository';
-import * as admin from 'firebase-admin';
+import admin from '../../firebaseAdmin';
 
 // In a real app, Dependency Injection container would handle this
 const db = admin.firestore();

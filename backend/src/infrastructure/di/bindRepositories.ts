@@ -1,5 +1,4 @@
-
-import * as admin from 'firebase-admin';
+import admin from '../../firebaseAdmin';
 
 // Import All Interfaces
 import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRepository';
@@ -57,16 +56,20 @@ import { ICompanyAdminRepository } from '../../repository/interfaces/company-adm
 import { FirestoreCompanyAdminRepository } from '../firestore/company-admin/FirestoreCompanyAdminRepository';
 import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaCompanyAdminRepository';
 
+
+
 // Import Prisma Implementations
 import { PrismaCompanyRepository } from '../prisma/repositories/PrismaCompanyRepository';
 import { PrismaVoucherRepository } from '../prisma/repositories/PrismaVoucherRepository';
 import { getPrismaClient } from '../prisma/prismaClient';
 
+import { ITransactionManager } from '../../repository/interfaces/shared/ITransactionManager';
+import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
+
 
 // Ensure Firestore settings are applied only once to avoid emulator runtime errors
 let firestoreConfigured = false;
 const getDb = () => {
-  if (!admin.apps.length) admin.initializeApp();
   const db = admin.firestore();
   if (!firestoreConfigured) {
     db.settings({ ignoreUndefinedProperties: true } as any);
@@ -153,6 +156,9 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaCompanyAdminRepository(getPrismaClient())
       : new FirestoreCompanyAdminRepository(getDb());
-  }
+  },
+
+  // SHARED
+  get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); }
 };
 

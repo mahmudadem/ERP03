@@ -1,4 +1,22 @@
+// Force Firestore Emulator usage for local seeding
+process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
+process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
+
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin for standalone execution
+if (!admin.apps.length) {
+    admin.initializeApp({
+        projectId: process.env.GCLOUD_PROJECT,
+    });
+}
+
+console.log(`🔧 Using Firestore Emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);
+console.log(`🔧 Project ID: ${process.env.GCLOUD_PROJECT}`);
+
 import { seedDemoCompany } from './demoCompanySeeder';
+import { seedSystemVoucherTypes } from './seedSystemVoucherTypes';
 import { diContainer } from '../infrastructure/di/bindRepositories';
 
 async function run() {
@@ -7,11 +25,15 @@ async function run() {
         console.log('        DEMO COMPANY SEEDER - ERP Enhanced');
         console.log('═══════════════════════════════════════════════════════\n');
 
+        // Seed System Templates first
+        await seedSystemVoucherTypes(diContainer.voucherTypeDefinitionRepository);
+
         const result = await seedDemoCompany({
             companyRepository: diContainer.companyRepository,
             companyRoleRepository: diContainer.companyRoleRepository,
             companyUserRepository: diContainer.rbacCompanyUserRepository,
-            userRepository: diContainer.userRepository
+            userRepository: diContainer.userRepository,
+            voucherTypeDefinitionRepository: diContainer.voucherTypeDefinitionRepository
         });
 
         console.log('═══════════════════════════════════════════════════════');
@@ -70,7 +92,13 @@ async function run() {
     } catch (error) {
         console.error('\n❌ SEEDER FAILED:');
         console.error('═══════════════════════════════════════════════════════');
-        console.error(error);
+        console.error('Error details:');
+        if (error instanceof Error) {
+            console.error('Message:', error.message);
+            console.error('Stack:', error.stack);
+        } else {
+            console.error(error);
+        }
         console.error('═══════════════════════════════════════════════════════\n');
         process.exit(1);
     }

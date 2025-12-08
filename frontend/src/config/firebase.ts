@@ -19,15 +19,15 @@ if (getApps().length > 0) {
 
 export const auth: Auth = getAuth(app);
 
-// Auto-connect to local Auth emulator when running on localhost (unless explicitly disabled)
+// Auto-connect to local Auth emulator when enabled
 if (typeof window !== 'undefined') {
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const emulatorDisabled = (import.meta as any).env?.VITE_DISABLE_AUTH_EMULATOR === 'true';
-  if (isLocalhost && !emulatorDisabled) {
+  const useEmulators = (import.meta as any).env?.VITE_USE_EMULATORS === 'true';
+  const emulatorHost = (import.meta as any).env?.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'http://127.0.0.1:9099';
+  if (useEmulators) {
     try {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      connectAuthEmulator(auth, emulatorHost, { disableWarnings: true });
       // eslint-disable-next-line no-console
-      console.info('Auth emulator connected at http://localhost:9099');
+      console.info(`Auth emulator connected at ${emulatorHost}`);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Auth emulator connection skipped/failed', e);
@@ -35,3 +35,9 @@ if (typeof window !== 'undefined') {
   }
 }
 export { app };
+
+if (typeof window !== 'undefined') {
+  // Expose firebase tools for debugging
+  (window as any).__auth = auth;
+  (window as any).__app = app;
+}

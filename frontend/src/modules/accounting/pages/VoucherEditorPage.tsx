@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -7,6 +6,7 @@ import { DynamicVoucherRenderer } from '../../../designer-engine/components/Dyna
 import { accountingApi } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
+import { AccountSelector } from '../../../components/accounting/AccountSelector';
 
 const VoucherEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,10 +27,13 @@ const VoucherEditorPage: React.FC = () => {
     } else {
       setInitialValues({
         header: {
-           date: new Date().toISOString(),
+           date: new Date().toISOString().split('T')[0],
            currency: 'USD'
         },
-        lines: []
+        lines: [
+          { accountId: '', description: '', debit: 0, credit: 0 },
+          { accountId: '', description: '', debit: 0, credit: 0 }
+        ]
       });
     }
   }, [id]);
@@ -59,17 +62,18 @@ const VoucherEditorPage: React.FC = () => {
 
   const handleSave = async (formData: any) => {
     try {
+      // For dynamic templates, we pass the formData directly to the backend.
+      // The backend Strategy will handle line generation.
+      // We ensure core fields are present.
+
       const payload = {
-        companyId: 'cmp_123',
+        ...formData, // Spread all dynamic fields (header fields, etc.)
+        companyId: 'current',
         type: definition?.code || 'INV',
-        date: formData.date,
-        currency: formData.currency || 'USD',
-        lines: formData.items.map((item: any) => ({
-           accountId: 'acc_123',
-           description: item.description,
-           fxAmount: Number(item.fxAmount || item.amount),
-           costCenterId: null
-        }))
+        date: formData.header?.date || formData.date || new Date().toISOString(),
+        currency: formData.header?.currency || formData.currency || 'USD',
+        // If the template uses a lines table, include it. If not, it might be undefined.
+        lines: formData.lines 
       };
 
       if (id === 'new') {
@@ -83,7 +87,7 @@ const VoucherEditorPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.message || 'Failed to save voucher'}`);
     }
   };
 
@@ -180,6 +184,10 @@ const VoucherEditorPage: React.FC = () => {
 
   const isReadOnly = currentVoucher && (currentVoucher.status === 'locked' || currentVoucher.status === 'cancelled');
 
+  const customComponents = {
+    'account-selector': AccountSelector
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       <div className="flex justify-between items-center bg-white p-4 rounded border border-gray-200 shadow-sm">
@@ -201,7 +209,8 @@ const VoucherEditorPage: React.FC = () => {
       <DynamicVoucherRenderer 
         definition={definition} 
         initialValues={initialValues}
-        onSubmit={isReadOnly ? () => {} : handleSave} 
+        onSubmit={isReadOnly ? () => {} : handleSave}
+        customComponents={customComponents} 
       />
       
       {isReadOnly && (

@@ -51,6 +51,13 @@ client.interceptors.response.use(
       : response.data;
   },
   (error) => {
+    // Normalize backend error messages for frontend consumption
+    if (error.response?.data?.error?.message) {
+      // Ensure error.response.data.message exists for hooks that look there
+      if (typeof error.response.data === 'object') {
+        error.response.data.message = error.response.data.error.message;
+      }
+    }
     return Promise.reject(error);
   }
 );

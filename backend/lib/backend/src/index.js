@@ -22,26 +22,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.accountingModule = exports.api = void 0;
+require("./firebaseAdmin");
 const functions = __importStar(require("firebase-functions"));
-const admin = __importStar(require("firebase-admin"));
-const server_1 = __importDefault(require("./api/server"));
 const modules_1 = require("./modules");
 const ModuleRegistry_1 = require("./application/platform/ModuleRegistry");
-// Initialize Admin SDK if not already done
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-// Register all modules
+// Register modules before the server (and tenant router) are loaded
 (0, modules_1.registerAllModules)();
-// Initialize modules
-ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll().catch(console.error);
-// Expose the Express App as a Cloud Function
-exports.api = functions.https.onRequest(server_1.default);
-// Exports for other modules (Background triggers can be added here)
+ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll().catch(() => { });
+// Load the server after modules are registered so tenant router can mount them
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const server = require('./api/server').default;
+exports.api = functions.https.onRequest(server);
 exports.accountingModule = {};
 //# sourceMappingURL=index.js.map

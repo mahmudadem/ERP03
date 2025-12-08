@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Company = void 0;
 class Company {
-    constructor(id, name, ownerId, createdAt, updatedAt, baseCurrency, fiscalYearStart, fiscalYearEnd, modules, 
+    constructor(id, name, ownerId, createdAt, updatedAt, baseCurrency, fiscalYearStart, fiscalYearEnd, modules, features = [], 
     // Legacy support for MVP
-    taxId, address) {
+    taxId = '', subscriptionPlan, address, country, logoUrl, contactInfo) {
         this.id = id;
         this.name = name;
         this.ownerId = ownerId;
@@ -14,8 +14,13 @@ class Company {
         this.fiscalYearStart = fiscalYearStart;
         this.fiscalYearEnd = fiscalYearEnd;
         this.modules = modules;
+        this.features = features;
         this.taxId = taxId;
+        this.subscriptionPlan = subscriptionPlan;
         this.address = address;
+        this.country = country;
+        this.logoUrl = logoUrl;
+        this.contactInfo = contactInfo;
     }
     isModuleEnabled(moduleName) {
         return this.modules.includes(moduleName);

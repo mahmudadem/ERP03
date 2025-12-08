@@ -2,7 +2,7 @@
  * DynamicVoucherRenderer.tsx
  * Renders a full voucher document (Header Form + Line Items Table).
  */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VoucherTypeDefinition } from '../types/VoucherTypeDefinition';
 import { DynamicSectionRenderer } from './DynamicSectionRenderer';
 import { DynamicTableRenderer } from './DynamicTableRenderer';
@@ -14,9 +14,10 @@ interface Props {
   definition: VoucherTypeDefinition;
   initialValues?: any;
   onSubmit: (data: any) => void;
+  customComponents?: Record<string, React.ComponentType<any>>;
 }
 
-export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialValues, onSubmit }) => {
+export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialValues, onSubmit, customComponents }) => {
   // Header State
   const [headerValues, setHeaderValues] = useState<any>(initialValues?.header || {});
   const [lines, setLines] = useState<any[]>(initialValues?.lines || []);
@@ -25,9 +26,11 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
   // Evaluate Rules (Header only for now)
   useEffect(() => {
-    const hidden = evaluateVisibility(definition.header.rules, headerValues);
-    setHiddenFieldIds(hidden);
-  }, [headerValues, definition.header.rules]);
+    if (definition?.header?.rules) {
+        const hidden = evaluateVisibility(definition.header.rules, headerValues);
+        setHiddenFieldIds(hidden);
+    }
+  }, [headerValues, definition?.header?.rules]);
 
   const handleHeaderChange = (field: string, val: any) => {
     setHeaderValues((prev: any) => ({ ...prev, [field]: val }));
@@ -35,11 +38,13 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
   const handleSave = () => {
     // Validate Header
-    const headerErrors = validateForm(definition.header, headerValues);
-    if (Object.keys(headerErrors).length > 0) {
-      setErrors(headerErrors);
-      alert('Please correct the errors in the header.');
-      return;
+    if (definition?.header) {
+        const headerErrors = validateForm(definition.header, headerValues);
+        if (Object.keys(headerErrors).length > 0) {
+        setErrors(headerErrors);
+        alert('Please correct the errors in the header.');
+        return;
+        }
     }
 
     // Prepare Payload
@@ -54,6 +59,8 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
   // Calculate Totals (Mock simple summation logic for now)
   const totalAmount = lines.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
 
+  if (!definition) return <div>Loading definition...</div>;
+
   return (
     <div className="space-y-6">
       {/* 1. Header Sections */}
@@ -64,7 +71,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         </div>
         
         <div className="p-6">
-          {definition.header.sections.map(section => (
+          {definition.header?.sections?.map(section => (
             <DynamicSectionRenderer
               key={section.id}
               section={section}
@@ -73,6 +80,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
               errors={errors}
               onChange={handleHeaderChange}
               hiddenFieldIds={hiddenFieldIds}
+              customComponents={customComponents}
             />
           ))}
         </div>
@@ -81,11 +89,14 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
       {/* 2. Line Items Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="font-bold text-gray-700 mb-2">Line Items</h3>
-        <DynamicTableRenderer
-          definition={definition.lines}
-          rows={lines}
-          onChange={setLines}
-        />
+        {definition.lines && (
+            <DynamicTableRenderer
+            definition={definition.lines}
+            rows={lines}
+            onChange={setLines}
+            customComponents={customComponents}
+            />
+        )}
         
         {/* Footer Totals */}
         <div className="flex justify-end mt-4 pt-4 border-t">

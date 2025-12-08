@@ -1,16 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeactivateAccountUseCase = exports.UpdateAccountUseCase = exports.CreateAccountUseCase = void 0;
+const crypto_1 = require("crypto");
 const Account_1 = require("../../../domain/accounting/entities/Account");
 class CreateAccountUseCase {
     constructor(accountRepo) {
         this.accountRepo = accountRepo;
     }
     async execute(data) {
-        const account = new Account_1.Account(data.companyId, `acc_${Date.now()}`, data.code, data.name, data.type, data.currency, false, // isProtected
+        const account = new Account_1.Account(data.companyId, (0, crypto_1.randomUUID)(), data.code, data.name, data.type, data.currency, false, // isProtected
         true, // active
         undefined, undefined);
         await this.accountRepo.create(data.companyId, {
+            id: account.id,
             code: account.code,
             name: account.name,
             type: account.type,

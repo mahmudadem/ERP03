@@ -51,6 +51,17 @@ const EditModulePermissionsPage = lazy(() => import('../modules/super-admin/perm
 const RolePermissionsListPage = lazy(() => import('../modules/super-admin/permissions-manager/RolePermissionsListPage'));
 const SuperAdminEditRolePage = lazy(() => import('../modules/super-admin/permissions-manager/EditRolePage'));
 const SuperAdminTemplatesPage = lazy(() => import('../modules/super-admin/templates/TemplatesPage'));
+const SuperAdminVoucherTemplatesPage = lazy(() => import('../pages/super-admin/pages/SuperAdminVoucherTemplatesPage').then(module => ({ default: module.SuperAdminVoucherTemplatesPage })));
+const VoucherTemplateEditorPage = lazy(() => import('../pages/super-admin/pages/VoucherTemplateEditorPage').then(module => ({ default: module.VoucherTemplateEditorPage })));
+
+// Company Admin
+const CompanyAdminOverviewPage = lazy(() => import('../pages/company-admin/pages/OverviewPage'));
+const CompanyAdminUsersPage = lazy(() => import('../pages/company-admin/pages/UsersPage'));
+const CompanyAdminRolesPage = lazy(() => import('../pages/company-admin/pages/RolesPage'));
+const CompanyAdminModulesPage = lazy(() => import('../pages/company-admin/pages/ModulesPage'));
+const CompanyAdminFeaturesPage = lazy(() => import('../pages/company-admin/pages/FeaturesPage'));
+const CompanyAdminBundlesPage = lazy(() => import('../pages/company-admin/pages/BundlesPage'));
+const CompanyAdminSettingsPage = lazy(() => import('../pages/company-admin/pages/SettingsPage'));
 
 export interface AppRoute {
   path: string;
@@ -109,10 +120,25 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/roles', label: 'Roles', component: RolePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/roles/:roleId', label: 'Edit Role', component: SuperAdminEditRolePage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/templates', label: 'Templates', component: SuperAdminTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/voucher-templates', label: 'Voucher Templates', component: SuperAdminVoucherTemplatesPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/voucher-templates/:id', label: 'Edit Voucher Template', component: VoucherTemplateEditorPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
 
   // Company Wizard (user accessible)
   { path: '/company-wizard', label: 'Company Wizard', component: SelectModelPage, section: 'CORE' },
   { path: '/company-wizard/run', label: 'Run Company Wizard', component: DynamicWizardPage, section: 'CORE', hideInMenu: true },
   { path: '/company-selector', label: 'Select Company', component: CompanySelectorPage, section: 'CORE', hideInMenu: true },
-];
 
+  // COMPANY ADMIN (UI-open; backend still enforces owner/permission)
+  { path: '/company-admin/overview', label: 'Company Admin Overview', component: CompanyAdminOverviewPage, section: 'SETTINGS' },
+  { path: '/company-admin/users', label: 'Company Users', component: CompanyAdminUsersPage, section: 'SETTINGS' },
+  { path: '/company-admin/roles', label: 'Company Roles', component: CompanyAdminRolesPage, section: 'SETTINGS' },
+  { path: '/company-admin/roles/create', label: 'Create Role', component: lazy(() => import('../pages/company-admin/pages/CreateRolePage')), section: 'SETTINGS', hideInMenu: true },
+  { path: '/company-admin/roles/:roleId', label: 'Edit Role', component: lazy(() => import('../pages/company-admin/pages/EditRolePage')), section: 'SETTINGS', hideInMenu: true },
+  { path: '/company-admin/modules', label: 'Company Modules', component: CompanyAdminModulesPage, section: 'SETTINGS' },
+  { path: '/company-admin/features', label: 'Company Features', component: CompanyAdminFeaturesPage, section: 'SETTINGS' },
+  { path: '/company-admin/bundles', label: 'Company Bundles', component: CompanyAdminBundlesPage, section: 'SETTINGS' },
+  { path: '/company-admin/settings', label: 'Company Settings', component: CompanyAdminSettingsPage, section: 'SETTINGS' },
+  
+  // USER PROFILE
+  { path: '/profile', label: 'My Profile', component: lazy(() => import('../modules/core/pages/ProfilePage')), section: 'CORE', hideInMenu: true },
+];

@@ -2,7 +2,6 @@ import { Router } from 'express';
 import platformRouter from './platform.router';
 import tenantRouter from './tenant.router';
 import publicRouter from './public.router';
-import { authMiddleware } from '../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -25,7 +24,6 @@ router.use(platformRouter);
 
 // Tenant Routes (Company Context)
 // These REQUIRE Auth AND Company Context
-router.use(authMiddleware);
-router.use(tenantRouter);
+router.use('/tenant', tenantRouter);
 
 export default router;

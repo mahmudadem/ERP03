@@ -60,12 +60,12 @@ export class CompanyUsersController {
         })
       );
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: enrichedUsers
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -116,12 +116,12 @@ export class CompanyUsersController {
         lastName
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: invitation
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -143,8 +143,6 @@ export class CompanyUsersController {
       const companyId = tenantContext.companyId;
       const { userId } = req.params;
       const { roleId: newRoleId } = req.body;
-      const user = (req as any).user;
-      const updatedBy = user?.uid || '';
 
       // Validate input
       if (!newRoleId || typeof newRoleId !== 'string') {
@@ -163,12 +161,12 @@ export class CompanyUsersController {
         newRoleId
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: result
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -189,9 +187,6 @@ export class CompanyUsersController {
 
       const companyId = tenantContext.companyId;
       const { userId } = req.params;
-      const { reason } = req.body;
-      const user = (req as any).user;
-      const disabledBy = user?.uid || '';
 
       // Execute use case
       const useCase = new DisableCompanyUserUseCase(
@@ -203,12 +198,12 @@ export class CompanyUsersController {
         userId
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: result
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -240,12 +235,12 @@ export class CompanyUsersController {
         userId
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: result
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

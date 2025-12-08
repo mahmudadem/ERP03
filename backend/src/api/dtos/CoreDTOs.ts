@@ -12,7 +12,11 @@ export interface CompanyDTO {
   taxId: string;
   address?: string;
   baseCurrency: string;
+  fiscalYearStart: number;
+  fiscalYearEnd: number;
+  subscriptionPlan?: string;
   modules: string[];
+  features: string[];
 }
 
 export interface UserDTO {
@@ -30,7 +34,11 @@ export class CoreDTOMapper {
       taxId: company.taxId,
       address: company.address,
       baseCurrency: company.baseCurrency,
+      fiscalYearStart: typeof company.fiscalYearStart === 'number' ? company.fiscalYearStart : 1,
+      fiscalYearEnd: typeof company.fiscalYearEnd === 'number' ? company.fiscalYearEnd : 12,
+      subscriptionPlan: company.subscriptionPlan,
       modules: company.modules,
+      features: company.features,
     };
   }
 

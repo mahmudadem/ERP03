@@ -11,9 +11,10 @@ interface Props {
   definition: TableDefinition;
   rows: any[];
   onChange: (newRows: any[]) => void;
+  customComponents?: Record<string, React.ComponentType<any>>;
 }
 
-export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChange }) => {
+export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChange, customComponents }) => {
   
   const handleRowChange = (index: number, fieldName: string, value: any) => {
     const updatedRows = [...rows];
@@ -63,6 +64,7 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
                        field={{ ...col, label: '' }} // Hide label in table cell
                        value={row[col.name]}
                        onChange={(val) => handleRowChange(index, col.name, val)}
+                       customComponents={customComponents}
                      />
                    </td>
                  ))}

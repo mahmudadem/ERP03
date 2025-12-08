@@ -32,6 +32,15 @@ export class FirestoreCompanyUserRepository implements ICompanyUserRepository {
     return snapshot.docs.map(doc => doc.data() as CompanyUser);
   }
 
+  async getMembershipsByUser(userId: string): Promise<Array<CompanyUser & { companyId: string }>> {
+    const snapshot = await this.db.collectionGroup('users').where('userId', '==', userId).get();
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as CompanyUser;
+      const companyId = doc.ref.parent.parent?.id || '';
+      return { ...data, companyId };
+    });
+  }
+
   async assignRole(companyUser: CompanyUser): Promise<void> {
     await this.getCollection(companyUser.companyId).doc(companyUser.userId).set(companyUser, { merge: true });
   }

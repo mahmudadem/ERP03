@@ -61,4 +61,14 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
     const data = doc.data() as any;
     return data?.activeCompanyId || null;
   }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const snap = await this.db
+      .collection(this.collectionName)
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    return this.toDomain(snap.docs[0].data());
+  }
 }

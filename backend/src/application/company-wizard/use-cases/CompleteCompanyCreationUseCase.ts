@@ -7,6 +7,8 @@ import { IUserRepository } from '../../../repository/interfaces/core/IUserReposi
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
+import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { randomUUID } from 'crypto';
 
 interface Input {
   sessionId: string;
@@ -21,7 +23,8 @@ export class CompleteCompanyCreationUseCase {
     private userRepo: IUserRepository,
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
-    private rolePermissionResolver: CompanyRolePermissionResolver
+    private rolePermissionResolver: CompanyRolePermissionResolver,
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository
   ) { }
 
   private filter(steps: CompanyWizardStep[], model: string) {
@@ -83,7 +86,10 @@ export class CompleteCompanyCreationUseCase {
       fiscalYearStart,
       fiscalYearEnd,
       [session.model],
-      ''
+      [],
+      session.data.taxId || '',
+      undefined,
+      session.data.address || undefined
     );
 
     try {
@@ -121,6 +127,23 @@ export class CompleteCompanyCreationUseCase {
     }
     await this.userRepo.updateActiveCompany(session.userId, company.id);
     await this.sessionRepo.delete(session.id);
+
+    // Copy System Voucher Templates
+    try {
+      const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
+      for (const template of systemTemplates) {
+        // Clone template for new company
+        const newTemplate = {
+          ...template,
+          id: randomUUID(),
+          companyId: company.id
+        };
+        await this.voucherTypeRepo.createVoucherType(newTemplate);
+      }
+    } catch (err) {
+      console.error('Failed to copy system voucher templates', err);
+      // Non-blocking error, proceed
+    }
 
     return { companyId: company.id, activeCompanyId: company.id };
   }

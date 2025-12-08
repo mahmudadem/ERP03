@@ -1,4 +1,5 @@
 
+import { randomUUID } from 'crypto';
 import { Account, AccountType } from '../../../domain/accounting/entities/Account';
 import { IAccountRepository } from '../../../repository/interfaces/accounting';
 
@@ -8,7 +9,7 @@ export class CreateAccountUseCase {
   async execute(data: { code: string; name: string; type: AccountType; currency: string; companyId: string }): Promise<Account> {
     const account = new Account(
       data.companyId,
-      `acc_${Date.now()}`,
+      randomUUID(),
       data.code,
       data.name,
       data.type,
@@ -19,6 +20,7 @@ export class CreateAccountUseCase {
       undefined
     );
     await this.accountRepo.create(data.companyId, {
+      id: account.id,
       code: account.code,
       name: account.name,
       type: account.type,

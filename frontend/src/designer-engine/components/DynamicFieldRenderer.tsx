@@ -10,9 +10,10 @@ interface Props {
   value: any;
   error?: string;
   onChange: (value: any) => void;
+  customComponents?: Record<string, React.ComponentType<any>>;
 }
 
-export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange }) => {
+export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents }) => {
   
   const baseInputClass = `
     w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors
@@ -21,6 +22,19 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
   `;
 
   const renderInput = () => {
+    if (customComponents && customComponents[field.type]) {
+      const Component = customComponents[field.type];
+      return (
+        <Component
+          value={value}
+          onChange={onChange}
+          field={field}
+          error={error}
+          disabled={field.readOnly}
+        />
+      );
+    }
+
     switch (field.type) {
       case 'TEXT':
       case 'RELATION': // For MVP, relation is just text
@@ -48,11 +62,18 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
         );
 
       case 'DATE':
+        let dateValue = '';
+        if (value) {
+          const d = new Date(value);
+          if (!isNaN(d.getTime())) {
+            dateValue = d.toISOString().split('T')[0];
+          }
+        }
         return (
           <input
             type="date"
             className={baseInputClass}
-            value={value ? new Date(value).toISOString().split('T')[0] : ''}
+            value={dateValue}
             onChange={(e) => onChange(e.target.value)}
             disabled={field.readOnly}
           />

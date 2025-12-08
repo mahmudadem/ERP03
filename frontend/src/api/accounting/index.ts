@@ -33,10 +33,10 @@ export interface UpdateAccountInput {
 
 export const accountingApi = {
     // Accounts
-    getAccounts: (): Promise<Account[]> => client.get('/accounting/accounts'),
-    getAccount: (id: string): Promise<Account> => client.get(`/accounting/accounts/${id}`),
-    createAccount: (payload: NewAccountInput): Promise<Account> => client.post('/accounting/accounts', payload),
-    updateAccount: (id: string, payload: UpdateAccountInput): Promise<Account> => client.put(`/accounting/accounts/${id}`, payload),
-    deactivateAccount: (id: string): Promise<void> => client.delete(`/accounting/accounts/${id}`),
+    getAccounts: (): Promise<Account[]> => client.get('/tenant/accounting/accounts'),
+    getAccount: (id: string): Promise<Account> => client.get(`/tenant/accounting/accounts/${id}`),
+    createAccount: (payload: NewAccountInput): Promise<Account> => client.post('/tenant/accounting/accounts', payload),
+    updateAccount: (id: string, payload: UpdateAccountInput): Promise<Account> => client.put(`/tenant/accounting/accounts/${id}`, payload),
+    deactivateAccount: (id: string): Promise<void> => client.delete(`/tenant/accounting/accounts/${id}`),
 };
 

@@ -1,11 +1,10 @@
-
-import React from 'react';
+import React, { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyContext } from '../hooks/useCompanyContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { Button } from '../components/ui/Button';
-import { SwitchCompanyButton } from '../components/company/SwitchCompanyButton';
 import { useAuth } from '../context/AuthContext';
+import { Menu, Transition } from '@headlessui/react';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -14,8 +13,10 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { company } = useCompanyContext();
   const { uiMode, toggleUiMode, toggleTheme, setUiMode } = useUserPreferences();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U');
 
   return (
     <header className="h-16 bg-white border-b shadow-sm flex items-center justify-between px-4 sticky top-0 z-20">
@@ -43,31 +44,76 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
            <Button variant="ghost" size="sm" onClick={toggleTheme}>
              Theme
            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              onClick={() => {
-                setUiMode('classic');
-                navigate('/company-wizard');
-              }}
-            >
-              + Create Company
-            </Button>
-           <Button variant="ghost" size="sm" onClick={logout}>
-              Logout
-            </Button>
         </div>
 
-        <SwitchCompanyButton />
-        {/* Always-visible quick create button for smaller viewports */}
-        <Button variant="secondary" size="sm" className="md:hidden" onClick={() => navigate('/company-wizard')}>
-          + Create Company
-        </Button>
+        <Menu as="div" className="relative ml-3">
+          <div>
+            <Menu.Button className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              <span className="sr-only">Open user menu</span>
+              <div className="h-8 w-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-sm hover:bg-blue-700 transition-colors">
+                {userInitial}
+              </div>
+            </Menu.Button>
+          </div>
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="px-4 py-2 border-b border-gray-100">
+                <p className="text-sm font-medium text-gray-900 truncate">{user?.displayName || 'User'}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              </div>
+              
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className={`${
+                      active ? 'bg-gray-100' : ''
+                    } block w-full px-4 py-2 text-left text-sm text-gray-700`}
+                  >
+                    Your Profile
+                  </button>
+                )}
+              </Menu.Item>
 
-        <div className="h-8 w-8 bg-blue-600 rounded-full text-white flex items-center justify-center font-bold text-sm">
-          A
-        </div>
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => {
+                        setUiMode('classic');
+                        navigate('/company-selector');
+                    }}
+                    className={`${
+                      active ? 'bg-gray-100' : ''
+                    } block w-full px-4 py-2 text-left text-sm text-gray-700`}
+                  >
+                    Switch Company
+                  </button>
+                )}
+              </Menu.Item>
+              
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={logout}
+                    className={`${
+                      active ? 'bg-gray-100' : ''
+                    } block w-full px-4 py-2 text-left text-sm text-gray-700`}
+                  >
+                    Sign out
+                  </button>
+                )}
+              </Menu.Item>
+            </Menu.Items>
+          </Transition>
+        </Menu>
       </div>
     </header>
   );

@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useRBAC } from '../api/rbac/useRBAC';
@@ -6,9 +5,7 @@ import { moduleMenuMap } from '../config/moduleMenuMap';
 
 type SidebarSection = {
   label: string;
-  icon?: string;
   path?: string;
-  children?: Array<{ label: string; path: string }>;
 };
 
 export const useSidebarConfig = () => {
@@ -18,10 +15,46 @@ export const useSidebarConfig = () => {
   const sidebarSections = useMemo(() => {
     const sections: Record<string, SidebarSection[]> = {
       MODULES: [],
+      COMPANY_ADMIN: [],
       SETTINGS: [],
       SUPER_ADMIN: []
     };
 
+    // 1. Super Admin View: ONLY Super Admin Menu
+    if (isSuperAdmin) {
+      sections.SUPER_ADMIN.push({
+        label: 'Super Admin',
+        path: '/super-admin/overview'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Users',
+        path: '/super-admin/users'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Companies',
+        path: '/super-admin/companies'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Permissions',
+        path: '/super-admin/permissions'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Roles',
+        path: '/super-admin/roles'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Templates',
+        path: '/super-admin/templates'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Voucher Types',
+        path: '/super-admin/voucher-templates'
+      });
+      
+      return sections;
+    }
+
+    // 2. Company User View
     let cachedPerms: string[] = [];
     try {
       const rawPerms = localStorage.getItem('resolvedPermissions');
@@ -49,27 +82,32 @@ export const useSidebarConfig = () => {
     });
     const activeModules: string[] = Array.from(new Set(mapped));
 
+    // Build MODULES section as flat items
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {
         label: moduleId,
-        icon: 'Package',
         items: []
       };
       const items = def.items.filter((item) => hasPermission(item.permission));
       if (items.length > 0) {
-        sections.MODULES.push({
-          label: def.label,
-          icon: def.icon,
-          children: items.map((i) => ({ label: i.label, path: i.path }))
+        items.forEach((i) => {
+          sections.MODULES.push({ label: `${def.label} • ${i.label}`, path: i.path });
         });
       }
     });
 
-    if (isSuperAdmin) {
-      sections.SUPER_ADMIN.push({
-        label: 'Super Admin',
-        path: '/super-admin/overview'
-      });
+    // Company Admin menu (Permission Gated)
+    if (hasPermission('manage_settings') || hasWildcard) {
+      const companyAdminItems: SidebarSection[] = [
+        { label: 'CA • Overview', path: '/company-admin/overview' },
+        { label: 'CA • Users', path: '/company-admin/users' },
+        { label: 'CA • Roles', path: '/company-admin/roles' },
+        { label: 'CA • Modules', path: '/company-admin/modules' },
+        { label: 'CA • Features', path: '/company-admin/features' },
+        { label: 'CA • Bundles', path: '/company-admin/bundles' },
+        { label: 'CA • Settings', path: '/company-admin/settings' }
+      ];
+      sections.COMPANY_ADMIN.push(...companyAdminItems);
     }
 
     return sections;

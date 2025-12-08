@@ -28,7 +28,7 @@ class FirestoreAccountRepository extends BaseFirestoreRepository_1.BaseFirestore
     async create(companyId, data) {
         var _a, _b;
         try {
-            const accountId = this.db.collection('tmp').doc().id;
+            const accountId = data.id || this.db.collection('tmp').doc().id;
             const account = new Account_1.Account(companyId, accountId, data.code, data.name, data.type, data.currency || '', (_a = data.isProtected) !== null && _a !== void 0 ? _a : false, (_b = data.isActive) !== null && _b !== void 0 ? _b : true, data.parentId || undefined, new Date(), new Date());
             await this.col(companyId).doc(account.id).set(this.toPersistence(Object.assign(Object.assign({}, account), { companyId })));
             return account;
@@ -58,8 +58,14 @@ class FirestoreAccountRepository extends BaseFirestoreRepository_1.BaseFirestore
             throw new InfrastructureError_1.InfrastructureError('Error deactivating account', error);
         }
     }
-    async getById(companyId, accountId) {
-        const doc = await this.col(companyId).doc(accountId).get();
+    async getById(companyId, accountId, transaction) {
+        let doc;
+        if (transaction) {
+            doc = await transaction.get(this.col(companyId).doc(accountId));
+        }
+        else {
+            doc = await this.col(companyId).doc(accountId).get();
+        }
         if (!doc.exists)
             return null;
         return this.toDomain(doc.data());

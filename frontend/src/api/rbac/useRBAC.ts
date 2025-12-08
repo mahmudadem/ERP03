@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 
 export const useRBAC = () => {
-  const { resolvedPermissions, isSuperAdmin } = useCompanyAccess();
+  const { resolvedPermissions, isSuperAdmin, isOwner } = useCompanyAccess();
 
   let cachedPerms: string[] = [];
   try {
@@ -16,18 +16,18 @@ export const useRBAC = () => {
 
   const hasPermission = (perm?: string) => {
     if (!perm) return true;
-    if (isSuperAdmin) return true;
+    if (isSuperAdmin || isOwner) return true;
     if (effectivePermissions.includes('*')) return true;
     return effectivePermissions.includes(perm);
   };
 
   const hasAnyPermission = (perms: string[]) => {
-    if (isSuperAdmin || effectivePermissions.includes('*')) return true;
+    if (isSuperAdmin || isOwner || effectivePermissions.includes('*')) return true;
     return perms.some((p) => effectivePermissions.includes(p));
   };
 
   const hasAllPermissions = (perms: string[]) => {
-    if (isSuperAdmin || effectivePermissions.includes('*')) return true;
+    if (isSuperAdmin || isOwner || effectivePermissions.includes('*')) return true;
     return perms.every((p) => effectivePermissions.includes(p));
   };
 
@@ -37,6 +37,6 @@ export const useRBAC = () => {
       hasAnyPermission,
       hasAllPermissions,
     }),
-    [effectivePermissions, isSuperAdmin]
+    [effectivePermissions, isSuperAdmin, isOwner]
   );
 };

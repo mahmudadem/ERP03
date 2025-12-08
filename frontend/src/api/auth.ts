@@ -7,6 +7,7 @@ export interface MyPermissionsResponse {
   explicitPermissions: string[];
   resolvedPermissions: string[];
   isSuperAdmin: boolean;
+  isOwner?: boolean;
 }
 
 export const authApi = {

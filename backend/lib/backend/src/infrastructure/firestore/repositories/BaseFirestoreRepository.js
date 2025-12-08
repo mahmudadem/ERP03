@@ -9,14 +9,19 @@ class BaseFirestoreRepository {
     /**
      * Saves an entity (Create or Update).
      */
-    async save(entity) {
+    async save(entity, transaction) {
         try {
             const data = this.toPersistence(entity);
             // specific logic relies on the entity having an 'id' field
             const id = entity.id;
             if (!id)
                 throw new Error("Entity missing ID");
-            await this.db.collection(this.collectionName).doc(id).set(data);
+            if (transaction) {
+                transaction.set(this.db.collection(this.collectionName).doc(id), data);
+            }
+            else {
+                await this.db.collection(this.collectionName).doc(id).set(data);
+            }
         }
         catch (error) {
             // eslint-disable-next-line no-console
@@ -30,9 +35,15 @@ class BaseFirestoreRepository {
     /**
      * Finds an entity by ID.
      */
-    async findById(id) {
+    async findById(id, transaction) {
         try {
-            const doc = await this.db.collection(this.collectionName).doc(id).get();
+            let doc;
+            if (transaction) {
+                doc = await transaction.get(this.db.collection(this.collectionName).doc(id));
+            }
+            else {
+                doc = await this.db.collection(this.collectionName).doc(id).get();
+            }
             if (!doc.exists)
                 return null;
             return this.toDomain(doc.data());
@@ -44,9 +55,14 @@ class BaseFirestoreRepository {
     /**
      * Deletes an entity by ID.
      */
-    async delete(id) {
+    async delete(id, transaction) {
         try {
-            await this.db.collection(this.collectionName).doc(id).delete();
+            if (transaction) {
+                transaction.delete(this.db.collection(this.collectionName).doc(id));
+            }
+            else {
+                await this.db.collection(this.collectionName).doc(id).delete();
+            }
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError(`Failed to delete in ${this.collectionName}`, error);

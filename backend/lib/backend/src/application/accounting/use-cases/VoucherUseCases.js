@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVouchersUseCase = exports.GetVoucherUseCase = exports.CancelVoucherUseCase = exports.LockVoucherUseCase = exports.ApproveVoucherUseCase = exports.UpdateVoucherUseCase = exports.CreateVoucherUseCase = void 0;
+const crypto_1 = require("crypto");
 const Voucher_1 = require("../../../domain/accounting/entities/Voucher");
 const VoucherLine_1 = require("../../../domain/accounting/entities/VoucherLine");
 const assertBalanced = (voucher) => {
@@ -11,57 +12,62 @@ const assertBalanced = (voucher) => {
     }
 };
 class CreateVoucherUseCase {
-    constructor(voucherRepo, accountRepo, settingsRepo, _ledgerRepo, permissionChecker) {
+    constructor(voucherRepo, accountRepo, settingsRepo, _ledgerRepo, permissionChecker, transactionManager) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.settingsRepo = settingsRepo;
         this._ledgerRepo = _ledgerRepo;
         this.permissionChecker = permissionChecker;
+        this.transactionManager = transactionManager;
     }
     async execute(companyId, userId, payload) {
-        var _a, _b;
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
-        const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
-        const baseCurrency = (settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || payload.baseCurrency || payload.currency;
-        const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
-        const voucherId = payload.id || `vch_${Date.now()}`;
-        const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
-        const lines = (payload.lines || []).map((l, idx) => {
-            var _a;
-            const line = new VoucherLine_1.VoucherLine(l.id || `${voucherId}_l${idx}`, voucherId, l.accountId, (_a = l.description) !== null && _a !== void 0 ? _a : null);
-            line.debitFx = l.debitFx || 0;
-            line.creditFx = l.creditFx || 0;
-            line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
-            line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
-            line.costCenterId = l.costCenterId;
-            line.lineCurrency = l.lineCurrency || payload.currency;
-            line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
-            line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
-            line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
-            return line;
+        return this.transactionManager.runTransaction(async (transaction) => {
+            var _a, _b;
+            const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
+            const baseCurrency = (settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || payload.baseCurrency || payload.currency;
+            const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
+            const voucherId = payload.id || (0, crypto_1.randomUUID)();
+            const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
+            const lines = (payload.lines || []).map((l, idx) => {
+                var _a;
+                const line = new VoucherLine_1.VoucherLine(l.id || `${voucherId}_l${idx}`, voucherId, l.accountId, (_a = l.description) !== null && _a !== void 0 ? _a : null);
+                line.debitFx = l.debitFx || 0;
+                line.creditFx = l.creditFx || 0;
+                line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
+                line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
+                line.costCenterId = l.costCenterId;
+                line.lineCurrency = l.lineCurrency || payload.currency;
+                line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
+                line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
+                line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
+                return line;
+            });
+            for (const line of lines) {
+                const acc = await this.accountRepo.getById(companyId, line.accountId, transaction);
+                if (!acc || acc.active === false)
+                    throw new Error(`Account ${line.accountId} invalid`);
+            }
+            const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
+            const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
+            const voucher = new Voucher_1.Voucher(voucherId, companyId, payload.type || 'journal', payload.date ? new Date(payload.date) : new Date(), payload.currency || baseCurrency, payload.exchangeRate || 1, (settings === null || settings === void 0 ? void 0 : settings.strictApprovalMode) === false ? 'approved' : 'draft', totalDebitBase, totalCreditBase, userId, (_a = payload.reference) !== null && _a !== void 0 ? _a : null, lines);
+            voucher.voucherNo = voucherNo;
+            voucher.baseCurrency = baseCurrency;
+            voucher.totalDebitBase = totalDebitBase;
+            voucher.totalCreditBase = totalCreditBase;
+            voucher.createdAt = new Date().toISOString();
+            voucher.updatedAt = new Date().toISOString();
+            voucher.description = (_b = payload.description) !== null && _b !== void 0 ? _b : null;
+            assertBalanced(voucher);
+            // Pass transaction to createVoucher
+            await this.voucherRepo.createVoucher(voucher, transaction);
+            // Auto-approved path writes ledger
+            if (voucher.status === 'approved') {
+                // Pass transaction to recordForVoucher
+                await this._ledgerRepo.recordForVoucher(voucher, transaction);
+            }
+            return voucher;
         });
-        for (const line of lines) {
-            const acc = await this.accountRepo.getById(companyId, line.accountId);
-            if (!acc || acc.active === false)
-                throw new Error(`Account ${line.accountId} invalid`);
-        }
-        const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
-        const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
-        const voucher = new Voucher_1.Voucher(voucherId, companyId, payload.type || 'journal', payload.date ? new Date(payload.date) : new Date(), payload.currency || baseCurrency, payload.exchangeRate || 1, (settings === null || settings === void 0 ? void 0 : settings.strictApprovalMode) === false ? 'approved' : 'draft', totalDebitBase, totalCreditBase, userId, (_a = payload.reference) !== null && _a !== void 0 ? _a : null, lines);
-        voucher.voucherNo = voucherNo;
-        voucher.baseCurrency = baseCurrency;
-        voucher.totalDebitBase = totalDebitBase;
-        voucher.totalCreditBase = totalCreditBase;
-        voucher.createdAt = new Date().toISOString();
-        voucher.updatedAt = new Date().toISOString();
-        voucher.description = (_b = payload.description) !== null && _b !== void 0 ? _b : null;
-        assertBalanced(voucher);
-        await this.voucherRepo.createVoucher(voucher);
-        // Auto-approved path writes ledger
-        if (voucher.status === 'approved') {
-            await this._ledgerRepo.recordForVoucher(voucher);
-        }
-        return voucher;
     }
 }
 exports.CreateVoucherUseCase = CreateVoucherUseCase;

@@ -31,7 +31,9 @@ export class CreateCompanyUseCase {
       new Date(currentYear, 0, 1), // Default Fiscal Year Start (Jan 1)
       new Date(currentYear, 11, 31), // Default Fiscal Year End (Dec 31)
       ['CORE'], // Default Modules
+      [], // features
       dto.taxId,
+      undefined,
       dto.address
     );
 

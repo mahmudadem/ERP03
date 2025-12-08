@@ -1,8 +1,11 @@
+import { randomUUID } from 'crypto';
 import { Voucher } from '../../../domain/accounting/entities/Voucher';
 import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 import { IVoucherRepository, IAccountRepository, ILedgerRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
+import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
+import { VoucherPostingStrategyFactory } from '../../../domain/accounting/factories/VoucherPostingStrategyFactory';
 
 const assertBalanced = (voucher: Voucher) => {
   if (Math.abs((voucher.totalDebitBase || 0) - (voucher.totalCreditBase || 0)) > 0.0001) {
@@ -18,75 +21,96 @@ export class CreateVoucherUseCase {
     private accountRepo: IAccountRepository,
     private settingsRepo: ICompanyModuleSettingsRepository,
     private _ledgerRepo: ILedgerRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private transactionManager: ITransactionManager
   ) {}
 
   async execute(companyId: string, userId: string, payload: Partial<Voucher>): Promise<Voucher> {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
-    const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
-    const baseCurrency = settings?.baseCurrency || payload.baseCurrency || payload.currency;
-    const autoNumbering = settings?.autoNumbering !== false;
+    
+    return this.transactionManager.runTransaction(async (transaction) => {
+      const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
+      const baseCurrency = settings?.baseCurrency || payload.baseCurrency || payload.currency;
+      const autoNumbering = settings?.autoNumbering !== false;
 
-    const voucherId = payload.id || `vch_${Date.now()}`;
-    const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
-    const lines = (payload.lines || []).map((l, idx) => {
-      const line = new VoucherLine(
-        l.id || `${voucherId}_l${idx}`,
+      const voucherId = payload.id || randomUUID();
+      const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
+
+      let lines: VoucherLine[] = [];
+      const strategy = VoucherPostingStrategyFactory.getStrategy(payload.type || 'JOURNAL');
+
+      if (strategy) {
+        lines = await strategy.generateLines(payload, companyId);
+        // Ensure IDs and voucherId are set
+        lines.forEach((l, idx) => {
+            if (!l.id) l.id = `${voucherId}_l${idx}`;
+            l.voucherId = voucherId;
+        });
+      } else {
+        // Fallback to manual lines (Journal / Manual Mode)
+        lines = (payload.lines || []).map((l, idx) => {
+            const line = new VoucherLine(
+            l.id || `${voucherId}_l${idx}`,
+            voucherId,
+            l.accountId!,
+            l.description ?? null
+            );
+            line.debitFx = l.debitFx || 0;
+            line.creditFx = l.creditFx || 0;
+            line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
+            line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
+            line.costCenterId = l.costCenterId;
+            line.lineCurrency = l.lineCurrency || payload.currency;
+            line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
+            line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
+            line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
+            return line;
+        });
+      }
+
+      for (const line of lines) {
+        const acc = await this.accountRepo.getById(companyId, line.accountId, transaction);
+        if (!acc || acc.active === false) throw new Error(`Account ${line.accountId} invalid`);
+      }
+
+      const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
+      const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
+
+      const voucher = new Voucher(
         voucherId,
-        l.accountId!,
-        l.description ?? null
+        companyId,
+        payload.type || 'journal',
+        payload.date ? new Date(payload.date) : new Date(),
+        payload.currency || baseCurrency,
+        payload.exchangeRate || 1,
+        settings?.strictApprovalMode === false ? 'approved' : 'draft',
+        totalDebitBase,
+        totalCreditBase,
+        userId,
+        payload.reference ?? null,
+        lines
       );
-      line.debitFx = l.debitFx || 0;
-      line.creditFx = l.creditFx || 0;
-      line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
-      line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
-      line.costCenterId = l.costCenterId;
-      line.lineCurrency = l.lineCurrency || payload.currency;
-      line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
-      line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
-      line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
-      return line;
+      voucher.voucherNo = voucherNo;
+      voucher.baseCurrency = baseCurrency;
+      voucher.totalDebitBase = totalDebitBase;
+      voucher.totalCreditBase = totalCreditBase;
+      voucher.createdAt = new Date().toISOString();
+      voucher.updatedAt = new Date().toISOString();
+      voucher.description = payload.description ?? null;
+
+      assertBalanced(voucher);
+      
+      // Pass transaction to createVoucher
+      await this.voucherRepo.createVoucher(voucher, transaction);
+
+      // Auto-approved path writes ledger
+      if (voucher.status === 'approved') {
+        // Pass transaction to recordForVoucher
+        await this._ledgerRepo.recordForVoucher(voucher, transaction);
+      }
+
+      return voucher;
     });
-
-    for (const line of lines) {
-      const acc = await this.accountRepo.getById(companyId, line.accountId);
-      if (!acc || acc.active === false) throw new Error(`Account ${line.accountId} invalid`);
-    }
-
-    const totalDebitBase = lines.reduce((s, l) => s + (l.debitBase || 0), 0);
-    const totalCreditBase = lines.reduce((s, l) => s + (l.creditBase || 0), 0);
-
-    const voucher = new Voucher(
-      voucherId,
-      companyId,
-      payload.type || 'journal',
-      payload.date ? new Date(payload.date) : new Date(),
-      payload.currency || baseCurrency,
-      payload.exchangeRate || 1,
-      settings?.strictApprovalMode === false ? 'approved' : 'draft',
-      totalDebitBase,
-      totalCreditBase,
-      userId,
-      payload.reference ?? null,
-      lines
-    );
-    voucher.voucherNo = voucherNo;
-    voucher.baseCurrency = baseCurrency;
-    voucher.totalDebitBase = totalDebitBase;
-    voucher.totalCreditBase = totalCreditBase;
-    voucher.createdAt = new Date().toISOString();
-    voucher.updatedAt = new Date().toISOString();
-    voucher.description = payload.description ?? null;
-
-    assertBalanced(voucher);
-    await this.voucherRepo.createVoucher(voucher);
-
-    // Auto-approved path writes ledger
-    if (voucher.status === 'approved') {
-      await this._ledgerRepo.recordForVoucher(voucher);
-    }
-
-    return voucher;
   }
 }
 

@@ -6,10 +6,11 @@ import { VoucherTypeDefinition } from '../../../domain/designer/entities/Voucher
  */
 export interface IVoucherTypeDefinitionRepository {
   createVoucherType(def: VoucherTypeDefinition): Promise<void>;
-  updateVoucherType(id: string, data: Partial<VoucherTypeDefinition>): Promise<void>;
-  getVoucherType(id: string): Promise<VoucherTypeDefinition | null>;
-  getVoucherTypesForModule(module: string): Promise<VoucherTypeDefinition[]>;
+  updateVoucherType(companyId: string, id: string, data: Partial<VoucherTypeDefinition>): Promise<void>;
+  getVoucherType(companyId: string, id: string): Promise<VoucherTypeDefinition | null>;
+  getVoucherTypesForModule(companyId: string, module: string): Promise<VoucherTypeDefinition[]>;
   getByCompanyId(companyId: string): Promise<VoucherTypeDefinition[]>;
   getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null>;
   updateLayout(companyId: string, code: string, layout: any): Promise<void>;
+  getSystemTemplates(): Promise<VoucherTypeDefinition[]>;
 }

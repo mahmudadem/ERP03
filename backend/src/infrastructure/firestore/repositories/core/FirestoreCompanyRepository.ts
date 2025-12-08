@@ -59,4 +59,71 @@ export class FirestoreCompanyRepository extends BaseFirestoreRepository<Company>
       throw new InfrastructureError('Error enabling module', error);
     }
   }
+
+  async update(companyId: string, updates: Partial<Company>): Promise<Company> {
+    try {
+      // Convert updates to persistence format if needed
+      const updateData: any = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.baseCurrency !== undefined) updateData.baseCurrency = updates.baseCurrency;
+      if (updates.fiscalYearStart !== undefined) updateData.fiscalYearStart = updates.fiscalYearStart;
+      if (updates.fiscalYearEnd !== undefined) updateData.fiscalYearEnd = updates.fiscalYearEnd;
+      if (updates.taxId !== undefined) updateData.taxId = updates.taxId;
+      if (updates.address !== undefined) updateData.address = updates.address;
+      if (updates.subscriptionPlan !== undefined) updateData.subscriptionPlan = updates.subscriptionPlan;
+      if (updates.modules !== undefined) updateData.modules = updates.modules;
+      if ((updates as any).features !== undefined) updateData.features = (updates as any).features;
+      
+      updateData.updatedAt = new Date();
+
+      await this.db.collection(this.collectionName).doc(companyId).update(updateData);
+      
+      // Fetch and return updated company
+      const updated = await this.findById(companyId);
+      if (!updated) {
+        throw new Error('Company not found after update');
+      }
+      return updated;
+    } catch (error) {
+      throw new InfrastructureError('Error updating company', error);
+    }
+  }
+
+  async disableModule(companyId: string, moduleName: string): Promise<void> {
+    try {
+      await this.db.collection(this.collectionName).doc(companyId).update({
+        modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+      });
+    } catch (error) {
+      throw new InfrastructureError('Error disabling module', error);
+    }
+  }
+
+  async updateBundle(companyId: string, bundleId: string): Promise<Company> {
+    try {
+      await this.db.collection(this.collectionName).doc(companyId).update({
+        subscriptionPlan: bundleId,
+        updatedAt: new Date()
+      });
+      
+      const updated = await this.findById(companyId);
+      if (!updated) {
+        throw new Error('Company not found after bundle update');
+      }
+      return updated;
+    } catch (error) {
+      throw new InfrastructureError('Error updating company bundle', error);
+    }
+  }
+
+  async updateFeatures(companyId: string, features: string[]): Promise<void> {
+    try {
+      await this.db.collection(this.collectionName).doc(companyId).update({
+        features: features,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      throw new InfrastructureError('Error updating company features', error);
+    }
+  }
 }

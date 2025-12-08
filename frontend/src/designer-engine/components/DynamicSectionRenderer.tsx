@@ -14,6 +14,7 @@ interface Props {
   errors: Record<string, string>;
   onChange: (fieldName: string, value: any) => void;
   hiddenFieldIds: Set<string>;
+  customComponents?: Record<string, React.ComponentType<any>>;
 }
 
 export const DynamicSectionRenderer: React.FC<Props> = ({ 
@@ -22,7 +23,8 @@ export const DynamicSectionRenderer: React.FC<Props> = ({
   values, 
   errors, 
   onChange,
-  hiddenFieldIds
+  hiddenFieldIds,
+  customComponents
 }) => {
   // Filter fields that belong to this section
   const sectionFields = section.fieldIds
@@ -48,13 +50,15 @@ export const DynamicSectionRenderer: React.FC<Props> = ({
           if (field.width === 'full') colSpan = 'col-span-1 md:col-span-2 lg:col-span-4';
           if (field.width === '1/2') colSpan = 'col-span-1 md:col-span-1 lg:col-span-2';
 
+          const fieldKey = field.name || field.id;
           return (
             <div key={field.id} className={colSpan}>
               <DynamicFieldRenderer
                 field={field}
-                value={values[field.name]}
-                error={errors[field.name]}
-                onChange={(val) => onChange(field.name, val)}
+                value={values[fieldKey]}
+                error={errors[fieldKey]}
+                onChange={(val) => onChange(fieldKey, val)}
+                customComponents={customComponents}
               />
             </div>
           );

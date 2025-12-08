@@ -1,30 +1,10 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.diContainer = void 0;
-const admin = __importStar(require("firebase-admin"));
+const firebaseAdmin_1 = __importDefault(require("../../firebaseAdmin"));
 // Import All Firestore Implementations
 const FirestoreCompanyRepository_1 = require("../firestore/repositories/core/FirestoreCompanyRepository");
 const FirestoreUserRepository_1 = require("../firestore/repositories/core/FirestoreUserRepository");
@@ -52,16 +32,17 @@ const FirestoreInventoryTemplateRepository_1 = require("../firestore/repositorie
 const FirestoreModuleSettingsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModuleSettingsDefinitionRepository");
 const FirestoreCompanyModuleSettingsRepository_1 = require("../firestore/repositories/system/FirestoreCompanyModuleSettingsRepository");
 const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository");
+const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/FirestoreCompanyAdminRepository");
+const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
 // Import Prisma Implementations
 const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
 const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
 const prismaClient_1 = require("../prisma/prismaClient");
+const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
 // Ensure Firestore settings are applied only once to avoid emulator runtime errors
 let firestoreConfigured = false;
 const getDb = () => {
-    if (!admin.apps.length)
-        admin.initializeApp();
-    const db = admin.firestore();
+    const db = firebaseAdmin_1.default.firestore();
     if (!firestoreConfigured) {
         db.settings({ ignoreUndefinedProperties: true });
         firestoreConfigured = true;
@@ -126,6 +107,14 @@ exports.diContainer = {
     get moduleSettingsDefinitionRepository() { return new FirestoreModuleSettingsDefinitionRepository_1.FirestoreModuleSettingsDefinitionRepository(getDb()); },
     get companyModuleSettingsRepository() { return new FirestoreCompanyModuleSettingsRepository_1.FirestoreCompanyModuleSettingsRepository(getDb()); },
     // MODULE PERMISSIONS
-    get modulePermissionsDefinitionRepository() { return new FirestoreModulePermissionsDefinitionRepository_1.FirestoreModulePermissionsDefinitionRepository(getDb()); }
+    get modulePermissionsDefinitionRepository() { return new FirestoreModulePermissionsDefinitionRepository_1.FirestoreModulePermissionsDefinitionRepository(getDb()); },
+    // COMPANY ADMIN
+    get companyAdminRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaCompanyAdminRepository_1.PrismaCompanyAdminRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreCompanyAdminRepository_1.FirestoreCompanyAdminRepository(getDb());
+    },
+    // SHARED
+    get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); }
 };
 //# sourceMappingURL=bindRepositories.js.map

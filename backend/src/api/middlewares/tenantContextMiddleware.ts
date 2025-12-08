@@ -58,6 +58,9 @@ export const tenantContextMiddleware = async (req: Request, res: Response, next:
         const features = bundle ? bundle.features : [];
 
         // 4. Set Tenant Context with ALL required fields
+        console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);
+        console.log(`[TenantContext] Permissions: ${JSON.stringify(permissions)}`);
+
         req.tenantContext = {
             userId: user.uid,
             companyId: companyId,

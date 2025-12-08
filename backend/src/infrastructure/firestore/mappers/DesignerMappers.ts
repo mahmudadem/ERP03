@@ -30,23 +30,27 @@ export class VoucherTypeDefinitionMapper {
   static toDomain(data: any): VoucherTypeDefinition {
     return new VoucherTypeDefinition(
       data.id,
+      data.companyId || '',
       data.name,
       data.code || 'UNKNOWN',
       data.module,
       data.headerFields || [],
       data.tableColumns || [],
-      data.layout || {}
+      data.layout || {},
+      data.workflow
     );
   }
   static toPersistence(entity: VoucherTypeDefinition): any {
     return {
       id: entity.id,
+      companyId: entity.companyId,
       name: entity.name,
       code: entity.code,
       module: entity.module,
-      headerFields: entity.headerFields,
+      headerFields: entity.headerFields.map(f => ({ ...f })),
       tableColumns: entity.tableColumns,
-      layout: entity.layout
+      layout: entity.layout,
+      workflow: entity.workflow
     };
   }
 }

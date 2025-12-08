@@ -44,3 +44,5 @@ export const superAdminApi = {
   startImpersonation: (companyId: string): Promise<{ impersonationToken: string }> =>
     client.post('/impersonate/start', { companyId }),
 };
+
+export * from './voucherTypes';

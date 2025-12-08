@@ -1,8 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AccountRepositoryFirestore = void 0;
+const firebaseAdmin_1 = __importDefault(require("../../../firebaseAdmin"));
 class AccountRepositoryFirestore {
-    constructor(db) {
+    constructor(db = firebaseAdmin_1.default.firestore()) {
         this.db = db;
     }
     getCollection(companyId) {

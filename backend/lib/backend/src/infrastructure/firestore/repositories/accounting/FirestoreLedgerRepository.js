@@ -46,15 +46,15 @@ class FirestoreLedgerRepository {
     col(companyId) {
         return this.db.collection('companies').doc(companyId).collection('ledger');
     }
-    async recordForVoucher(voucher) {
+    async recordForVoucher(voucher, transaction) {
         try {
-            const batch = this.db.batch();
+            const batch = !transaction ? this.db.batch() : null;
             voucher.lines.forEach((line) => {
                 const id = `${voucher.id}_${line.id}`;
                 const debit = line.debitBase || 0;
                 const credit = line.creditBase || 0;
                 const docRef = this.col(voucher.companyId).doc(id);
-                batch.set(docRef, {
+                const data = {
                     id,
                     companyId: voucher.companyId,
                     accountId: line.accountId,
@@ -64,20 +64,49 @@ class FirestoreLedgerRepository {
                     debit,
                     credit,
                     createdAt: serverTimestamp(),
-                });
+                };
+                if (transaction) {
+                    transaction.set(docRef, data);
+                }
+                else {
+                    batch.set(docRef, data);
+                }
             });
-            await batch.commit();
+            if (batch) {
+                await batch.commit();
+            }
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to record ledger for voucher', error);
         }
     }
-    async deleteForVoucher(companyId, voucherId) {
+    async deleteForVoucher(companyId, voucherId, transaction) {
         try {
-            const snap = await this.col(companyId).where('voucherId', '==', voucherId).get();
-            const batch = this.db.batch();
-            snap.docs.forEach((doc) => batch.delete(doc.ref));
-            await batch.commit();
+            // Note: In a transaction, we must READ before WRITE.
+            // But for delete, we might need to query first. 
+            // Queries in transactions are tricky. We need to run the query using the transaction?
+            // Firestore transactions don't support "query and delete" easily without reading.
+            // But wait, `transaction.get(query)` is supported in some SDKs.
+            // In Node.js admin SDK, `transaction.get(query)` works.
+            let snap;
+            if (transaction) {
+                snap = await transaction.get(this.col(companyId).where('voucherId', '==', voucherId));
+            }
+            else {
+                snap = await this.col(companyId).where('voucherId', '==', voucherId).get();
+            }
+            const batch = !transaction ? this.db.batch() : null;
+            snap.docs.forEach((doc) => {
+                if (transaction) {
+                    transaction.delete(doc.ref);
+                }
+                else {
+                    batch.delete(doc.ref);
+                }
+            });
+            if (batch) {
+                await batch.commit();
+            }
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to delete ledger for voucher', error);

@@ -22,20 +22,24 @@ export class FirestoreVoucherRepository extends BaseFirestoreRepository<Voucher>
     return VoucherMapper.toPersistence(entity);
   }
 
-  async createVoucher(voucher: Voucher): Promise<void> {
-    return this.save(voucher);
+  async createVoucher(voucher: Voucher, transaction?: admin.firestore.Transaction): Promise<void> {
+    return this.save(voucher, transaction);
   }
 
-  async updateVoucher(id: string, data: Partial<Voucher>): Promise<void> {
+  async updateVoucher(id: string, data: Partial<Voucher>, transaction?: admin.firestore.Transaction): Promise<void> {
     try {
-      await this.db.collection(this.collectionName).doc(id).update(data);
+      if (transaction) {
+        transaction.update(this.db.collection(this.collectionName).doc(id), data);
+      } else {
+        await this.db.collection(this.collectionName).doc(id).update(data);
+      }
     } catch (error) {
       throw new InfrastructureError('Error updating voucher', error);
     }
   }
 
-  async deleteVoucher(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteVoucher(id: string, transaction?: admin.firestore.Transaction): Promise<void> {
+    return this.delete(id, transaction);
   }
 
   async getVoucher(id: string): Promise<Voucher | null> {

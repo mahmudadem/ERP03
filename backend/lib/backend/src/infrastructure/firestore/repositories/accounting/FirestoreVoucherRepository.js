@@ -15,19 +15,24 @@ class FirestoreVoucherRepository extends BaseFirestoreRepository_1.BaseFirestore
     toPersistence(entity) {
         return AccountingMappers_1.VoucherMapper.toPersistence(entity);
     }
-    async createVoucher(voucher) {
-        return this.save(voucher);
+    async createVoucher(voucher, transaction) {
+        return this.save(voucher, transaction);
     }
-    async updateVoucher(id, data) {
+    async updateVoucher(id, data, transaction) {
         try {
-            await this.db.collection(this.collectionName).doc(id).update(data);
+            if (transaction) {
+                transaction.update(this.db.collection(this.collectionName).doc(id), data);
+            }
+            else {
+                await this.db.collection(this.collectionName).doc(id).update(data);
+            }
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error updating voucher', error);
         }
     }
-    async deleteVoucher(id) {
-        return this.delete(id);
+    async deleteVoucher(id, transaction) {
+        return this.delete(id, transaction);
     }
     async getVoucher(id) {
         return this.findById(id);

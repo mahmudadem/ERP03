@@ -11,15 +11,8 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 const CompanySelectorPage: React.FC = () => {
   const { companies, loading, error, refresh } = useCompanies();
   const navigate = useNavigate();
-  const { switchCompany, companyId, loading: companyAccessLoading } = useCompanyAccess();
+  const { switchCompany, companyId } = useCompanyAccess();
   const { setUiMode } = useUserPreferences();
-
-  // If a company is already active, redirect out of the selector
-  React.useEffect(() => {
-    if (!companyAccessLoading && companyId) {
-      navigate('/');
-    }
-  }, [companyAccessLoading, companyId, navigate]);
 
   const handleEnter = async (companyId: string) => {
     try {

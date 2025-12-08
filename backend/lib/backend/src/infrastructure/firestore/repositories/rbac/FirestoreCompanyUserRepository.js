@@ -38,27 +38,39 @@ class FirestoreCompanyUserRepository {
             return null;
         return doc.data();
     }
+    async get(companyId, userId) {
+        const doc = await this.getCollection(companyId).doc(userId).get();
+        if (!doc.exists)
+            return null;
+        return doc.data();
+    }
     async getByCompany(companyId) {
         const snapshot = await this.getCollection(companyId).get();
         return snapshot.docs.map(doc => doc.data());
     }
+    async getByRole(companyId, roleId) {
+        const snapshot = await this.getCollection(companyId).where('roleId', '==', roleId).get();
+        return snapshot.docs.map(doc => doc.data());
+    }
+    async getMembershipsByUser(userId) {
+        const snapshot = await this.db.collectionGroup('users').where('userId', '==', userId).get();
+        return snapshot.docs.map((doc) => {
+            var _a;
+            const data = doc.data();
+            const companyId = ((_a = doc.ref.parent.parent) === null || _a === void 0 ? void 0 : _a.id) || '';
+            return Object.assign(Object.assign({}, data), { companyId });
+        });
+    }
     async assignRole(companyUser) {
         await this.getCollection(companyUser.companyId).doc(companyUser.userId).set(companyUser, { merge: true });
     }
+    async create(companyUser) {
+        await this.getCollection(companyUser.companyId).doc(companyUser.userId).set(companyUser);
+    }
+    async update(userId, companyId, updates) {
+        await this.getCollection(companyId).doc(userId).update(updates);
+    }
     async removeRole(userId, companyId) {
-        // Removing role might mean setting roleId to null or deleting the record?
-        // The interface says removeRole. But CompanyUser usually implies membership.
-        // If we remove role, maybe we set it to a default or empty?
-        // For now, let's assume we update it.
-        // But wait, CompanyUser structure has roleId as string.
-        // If we remove it, maybe we delete the user from company? Or just clear role?
-        // The prompt says "Assign users to roles".
-        // I'll assume removeRole means unassigning, maybe setting to empty string or null if type allowed.
-        // But type is string.
-        // I'll implement it as update with empty role or similar, or maybe I won't implement it if not strictly required by use cases.
-        // Use cases: AssignRoleToCompanyUserUseCase. No RemoveRoleUseCase.
-        // But interface has it.
-        // I'll just update it to empty string for now.
         await this.getCollection(companyId).doc(userId).update({ roleId: admin.firestore.FieldValue.delete() });
     }
 }

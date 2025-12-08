@@ -10,7 +10,7 @@ import { CompanyRole } from '../../../domain/rbac/CompanyRole';
 
 export class FirestoreCompanyAdminRepository implements ICompanyAdminRepository {
   
-  constructor(private db: FirebaseFirestore.Firestore) {}
+  constructor(private _db: FirebaseFirestore.Firestore) { void this._db; }
   
   // ============================================================================
   // PROFILE MANAGEMENT

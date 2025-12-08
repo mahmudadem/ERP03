@@ -23,8 +23,23 @@ export interface TrialBalanceLine {
   netBalance: number;
 }
 
+export interface AccountDTO {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  category?: string;
+  currency?: string;
+  balance?: number;
+  isActive?: boolean;
+}
+
 export const accountingApi = {
   
+  getAccounts: (): Promise<AccountDTO[]> => {
+    return client.get('/tenant/accounting/accounts');
+  },
+
   listVouchers: (filters: VoucherListFilters): Promise<VoucherListResponse> => {
     // Construct Query String
     const params = new URLSearchParams();
@@ -39,42 +54,41 @@ export const accountingApi = {
     params.append('page', filters.page.toString());
     params.append('pageSize', filters.pageSize.toString());
 
-    return client.get(`/accounting/vouchers?${params.toString()}`);
+    return client.get(`/tenant/accounting/vouchers?${params.toString()}`);
   },
 
   getVoucher: (id: string): Promise<VoucherDetailDTO> => {
-    return client.get(`/accounting/vouchers/${id}`);
+    return client.get(`/tenant/accounting/vouchers/${id}`);
   },
 
   createVoucher: (payload: any): Promise<VoucherDetailDTO> => {
-    return client.post('/accounting/vouchers', payload);
+    return client.post('/tenant/accounting/vouchers', payload);
   },
 
   updateVoucher: (id: string, payload: any): Promise<{success: boolean}> => {
-    return client.put(`/accounting/vouchers/${id}`, payload);
+    return client.put(`/tenant/accounting/vouchers/${id}`, payload);
   },
 
   // --- WORKFLOW ACTIONS ---
 
   sendVoucherToApproval: (id: string): Promise<VoucherDetailDTO> => {
-    return client.post(`/accounting/vouchers/${id}/approve`);
+    return client.post(`/tenant/accounting/vouchers/${id}/approve`);
   },
 
   approveVoucher: (id: string): Promise<VoucherDetailDTO> => {
-    return client.post(`/accounting/vouchers/${id}/approve`);
+    return client.post(`/tenant/accounting/vouchers/${id}/approve`);
   },
 
   lockVoucher: (id: string): Promise<VoucherDetailDTO> => {
-    return client.post(`/accounting/vouchers/${id}/lock`);
+    return client.post(`/tenant/accounting/vouchers/${id}/lock`);
   },
 
   cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
-    return client.post(`/accounting/vouchers/${id}/cancel`);
+    return client.post(`/tenant/accounting/vouchers/${id}/cancel`);
   },
 
   // --- REPORTS ---
   getTrialBalance: (): Promise<TrialBalanceLine[]> => {
-    return client.get('/accounting/reports/trial-balance');
+    return client.get('/tenant/accounting/reports/trial-balance');
   }
 };
-

@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 
 export class PrismaCompanyAdminRepository implements ICompanyAdminRepository {
   
-  constructor(private prisma: PrismaClient) {}
+  constructor(private _prisma: PrismaClient) { void this._prisma; }
   
   // ============================================================================
   // PROFILE MANAGEMENT

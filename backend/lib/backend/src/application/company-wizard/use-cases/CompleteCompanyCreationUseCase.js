@@ -56,7 +56,7 @@ class CompleteCompanyCreationUseCase {
         const fiscalYearStart = this.safeDate(session.data.fiscalYearStart);
         const fiscalYearEnd = new Date(fiscalYearStart);
         fiscalYearEnd.setFullYear(fiscalYearEnd.getFullYear() + 1);
-        const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, [session.model], '');
+        const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, [session.model], [], session.data.taxId || '', undefined, session.data.address || undefined);
         try {
             await this.companyRepo.save(company);
         }

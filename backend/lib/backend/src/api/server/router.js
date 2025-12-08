@@ -7,7 +7,6 @@ const express_1 = require("express");
 const platform_router_1 = __importDefault(require("./platform.router"));
 const tenant_router_1 = __importDefault(require("./tenant.router"));
 const public_router_1 = __importDefault(require("./public.router"));
-const authMiddleware_1 = require("../middlewares/authMiddleware");
 const router = (0, express_1.Router)();
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -25,7 +24,6 @@ router.use(public_router_1.default);
 router.use(platform_router_1.default);
 // Tenant Routes (Company Context)
 // These REQUIRE Auth AND Company Context
-router.use(authMiddleware_1.authMiddleware);
-router.use(tenant_router_1.default);
+router.use('/tenant', tenant_router_1.default);
 exports.default = router;
 //# sourceMappingURL=router.js.map

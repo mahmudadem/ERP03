@@ -27,7 +27,7 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
 
   async create(companyId: string, data: NewAccountInput): Promise<Account> {
     try {
-      const accountId = this.db.collection('tmp').doc().id;
+      const accountId = data.id || this.db.collection('tmp').doc().id;
       const account = new Account(
         companyId,
         accountId,
@@ -68,8 +68,13 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
     }
   }
 
-  async getById(companyId: string, accountId: string): Promise<Account | null> {
-    const doc = await this.col(companyId).doc(accountId).get();
+  async getById(companyId: string, accountId: string, transaction?: any): Promise<Account | null> {
+    let doc;
+    if (transaction) {
+      doc = await transaction.get(this.col(companyId).doc(accountId));
+    } else {
+      doc = await this.col(companyId).doc(accountId).get();
+    }
     if (!doc.exists) return null;
     return this.toDomain(doc.data());
   }

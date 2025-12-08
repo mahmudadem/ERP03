@@ -82,6 +82,78 @@ class FirestoreCompanyRepository extends BaseFirestoreRepository_1.BaseFirestore
             throw new InfrastructureError_1.InfrastructureError('Error enabling module', error);
         }
     }
+    async update(companyId, updates) {
+        try {
+            // Convert updates to persistence format if needed
+            const updateData = {};
+            if (updates.name !== undefined)
+                updateData.name = updates.name;
+            if (updates.baseCurrency !== undefined)
+                updateData.baseCurrency = updates.baseCurrency;
+            if (updates.fiscalYearStart !== undefined)
+                updateData.fiscalYearStart = updates.fiscalYearStart;
+            if (updates.fiscalYearEnd !== undefined)
+                updateData.fiscalYearEnd = updates.fiscalYearEnd;
+            if (updates.taxId !== undefined)
+                updateData.taxId = updates.taxId;
+            if (updates.address !== undefined)
+                updateData.address = updates.address;
+            if (updates.subscriptionPlan !== undefined)
+                updateData.subscriptionPlan = updates.subscriptionPlan;
+            if (updates.modules !== undefined)
+                updateData.modules = updates.modules;
+            if (updates.features !== undefined)
+                updateData.features = updates.features;
+            updateData.updatedAt = new Date();
+            await this.db.collection(this.collectionName).doc(companyId).update(updateData);
+            // Fetch and return updated company
+            const updated = await this.findById(companyId);
+            if (!updated) {
+                throw new Error('Company not found after update');
+            }
+            return updated;
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error updating company', error);
+        }
+    }
+    async disableModule(companyId, moduleName) {
+        try {
+            await this.db.collection(this.collectionName).doc(companyId).update({
+                modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+            });
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error disabling module', error);
+        }
+    }
+    async updateBundle(companyId, bundleId) {
+        try {
+            await this.db.collection(this.collectionName).doc(companyId).update({
+                subscriptionPlan: bundleId,
+                updatedAt: new Date()
+            });
+            const updated = await this.findById(companyId);
+            if (!updated) {
+                throw new Error('Company not found after bundle update');
+            }
+            return updated;
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error updating company bundle', error);
+        }
+    }
+    async updateFeatures(companyId, features) {
+        try {
+            await this.db.collection(this.collectionName).doc(companyId).update({
+                features: features,
+                updatedAt: new Date()
+            });
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error updating company features', error);
+        }
+    }
 }
 exports.FirestoreCompanyRepository = FirestoreCompanyRepository;
 //# sourceMappingURL=FirestoreCompanyRepository.js.map

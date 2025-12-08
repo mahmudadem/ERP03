@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostgresCompanyRepository = void 0;
+const Company_1 = require("../../../../domain/core/entities/Company");
 const postgresClient_1 = require("../../config/postgresClient");
 class PostgresCompanyRepository {
     async save(company) {
@@ -21,6 +22,20 @@ class PostgresCompanyRepository {
     }
     async enableModule(companyId, moduleName) {
         // TODO: Implement JSONB array update
+    }
+    async update(companyId, updates) {
+        // TODO: Implement UPDATE; for now return a placeholder
+        return new Company_1.Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart || new Date(), updates.fiscalYearEnd || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address);
+    }
+    async disableModule(companyId, moduleName) {
+        // TODO: Implement
+    }
+    async updateBundle(companyId, bundleId) {
+        // TODO: Implement
+        return new Company_1.Company(companyId, '', '', new Date(), new Date(), 'USD', new Date(), new Date(), [], [], '', bundleId);
+    }
+    async updateFeatures(companyId, features) {
+        // TODO: Implement
     }
 }
 exports.PostgresCompanyRepository = PostgresCompanyRepository;

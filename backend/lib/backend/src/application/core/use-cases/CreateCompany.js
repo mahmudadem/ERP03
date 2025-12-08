@@ -19,7 +19,8 @@ class CreateCompanyUseCase {
         new Date(currentYear, 0, 1), // Default Fiscal Year Start (Jan 1)
         new Date(currentYear, 11, 31), // Default Fiscal Year End (Dec 31)
         ['CORE'], // Default Modules
-        dto.taxId, dto.address);
+        [], // features
+        dto.taxId, undefined, dto.address);
         if (!newCompany.isValid()) {
             throw new Error('Invalid company data.');
         }

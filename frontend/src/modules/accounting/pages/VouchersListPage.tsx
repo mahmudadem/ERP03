@@ -19,9 +19,22 @@ const VouchersListPage: React.FC = () => {
     error 
   } = useVouchersList();
 
+  const [types, setTypes] = React.useState<any[]>([]);
+  const [selectedType, setSelectedType] = React.useState<string>('');
+
+  React.useEffect(() => {
+    // Load available voucher types
+    import('../../../api/designerApi').then(({ designerApi }) => {
+      designerApi.listVoucherTypes().then(data => {
+        setTypes(data);
+        if (data.length > 0) setSelectedType(data[0].code);
+      }).catch(console.error);
+    });
+  }, []);
+
   const handleCreate = () => {
-    // Default to Invoice for new creation, user can change later or we could show a modal selector here
-    navigate('/accounting/vouchers/new?type=INV');
+    if (!selectedType) return;
+    navigate(`/accounting/vouchers/new?type=${selectedType}`);
   };
 
   const handleRowClick = (id: string) => {
@@ -36,8 +49,18 @@ const VouchersListPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-800">Vouchers</h1>
           <p className="text-sm text-gray-500 mt-1">Manage financial transactions</p>
         </div>
-        <div className="flex gap-3">
-           <Button onClick={handleCreate} className="shadow-sm">
+        <div className="flex gap-3 items-center">
+           <select 
+             className="border border-gray-300 rounded px-3 py-2 text-sm"
+             value={selectedType}
+             onChange={(e) => setSelectedType(e.target.value)}
+           >
+             <option value="" disabled>Select Type...</option>
+             {types.map(t => (
+               <option key={t.code} value={t.code}>{t.name}</option>
+             ))}
+           </select>
+           <Button onClick={handleCreate} className="shadow-sm" disabled={!selectedType}>
              + New Voucher
            </Button>
         </div>

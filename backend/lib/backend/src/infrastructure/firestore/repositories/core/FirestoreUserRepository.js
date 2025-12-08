@@ -60,6 +60,16 @@ class FirestoreUserRepository extends BaseFirestoreRepository_1.BaseFirestoreRep
         const data = doc.data();
         return (data === null || data === void 0 ? void 0 : data.activeCompanyId) || null;
     }
+    async findByEmail(email) {
+        const snap = await this.db
+            .collection(this.collectionName)
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+        if (snap.empty)
+            return null;
+        return this.toDomain(snap.docs[0].data());
+    }
 }
 exports.FirestoreUserRepository = FirestoreUserRepository;
 //# sourceMappingURL=FirestoreUserRepository.js.map

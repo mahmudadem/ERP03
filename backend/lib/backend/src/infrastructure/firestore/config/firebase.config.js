@@ -1,26 +1,6 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.convertTimestamps = exports.fcm = exports.db = void 0;
@@ -35,19 +15,16 @@ exports.convertTimestamps = exports.fcm = exports.db = void 0;
  * - Checks if app is already initialized to prevent hot-reload errors.
  * - Uses Application Default Credentials (ADC) or functions config.
  */
-const admin = __importStar(require("firebase-admin"));
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-exports.db = admin.firestore();
-exports.fcm = admin.messaging();
+const firebaseAdmin_1 = __importDefault(require("../../../firebaseAdmin"));
+exports.db = firebaseAdmin_1.default.firestore();
+exports.fcm = firebaseAdmin_1.default.messaging();
 /**
  * Helper to Convert Firestore Timestamps to JS Dates in objects
  */
 const convertTimestamps = (data) => {
     if (!data)
         return data;
-    if (data instanceof admin.firestore.Timestamp) {
+    if (data instanceof firebaseAdmin_1.default.firestore.Timestamp) {
         return data.toDate();
     }
     if (Array.isArray(data)) {

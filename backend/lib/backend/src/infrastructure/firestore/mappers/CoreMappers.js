@@ -38,15 +38,22 @@ const CompanyUser_1 = require("../../../domain/core/entities/CompanyUser");
 class CompanyMapper {
     static toTimestamp(date) {
         var _a;
+        const d = typeof date === 'number' ? new Date(date) : date;
         if ((_a = admin === null || admin === void 0 ? void 0 : admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp) {
-            return admin.firestore.Timestamp.fromDate(date);
+            return admin.firestore.Timestamp.fromDate(d);
         }
         // Fallback to plain Date if Timestamp is unavailable
-        return date;
+        return d;
     }
     static toDomain(data) {
         var _a, _b, _c, _d, _e, _f, _g, _h;
-        return new Company_1.Company(data.id, data.name, data.ownerId, ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt), ((_d = (_c = data.updatedAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || new Date(data.updatedAt), data.baseCurrency, ((_f = (_e = data.fiscalYearStart) === null || _e === void 0 ? void 0 : _e.toDate) === null || _f === void 0 ? void 0 : _f.call(_e)) || new Date(data.fiscalYearStart), ((_h = (_g = data.fiscalYearEnd) === null || _g === void 0 ? void 0 : _g.toDate) === null || _h === void 0 ? void 0 : _h.call(_g)) || new Date(data.fiscalYearEnd), data.modules || [], data.taxId, data.address);
+        const fiscalYearStart = (typeof data.fiscalYearStart === 'number' && data.fiscalYearStart <= 12)
+            ? data.fiscalYearStart
+            : (((_b = (_a = data.fiscalYearStart) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.fiscalYearStart));
+        const fiscalYearEnd = (typeof data.fiscalYearEnd === 'number' && data.fiscalYearEnd <= 12)
+            ? data.fiscalYearEnd
+            : (((_d = (_c = data.fiscalYearEnd) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || new Date(data.fiscalYearEnd));
+        return new Company_1.Company(data.id, data.name, data.ownerId, ((_f = (_e = data.createdAt) === null || _e === void 0 ? void 0 : _e.toDate) === null || _f === void 0 ? void 0 : _f.call(_e)) || new Date(data.createdAt), ((_h = (_g = data.updatedAt) === null || _g === void 0 ? void 0 : _g.toDate) === null || _h === void 0 ? void 0 : _h.call(_g)) || new Date(data.updatedAt), data.baseCurrency, fiscalYearStart, fiscalYearEnd, data.modules || [], data.features || [], data.taxId, data.subscriptionPlan, data.address, data.country, data.logoUrl, data.contactInfo);
     }
     static toPersistence(entity) {
         return {
@@ -56,11 +63,16 @@ class CompanyMapper {
             taxId: entity.taxId,
             address: entity.address || null,
             baseCurrency: entity.baseCurrency,
-            fiscalYearStart: this.toTimestamp(entity.fiscalYearStart),
-            fiscalYearEnd: this.toTimestamp(entity.fiscalYearEnd),
+            fiscalYearStart: typeof entity.fiscalYearStart === 'number' ? entity.fiscalYearStart : this.toTimestamp(entity.fiscalYearStart),
+            fiscalYearEnd: typeof entity.fiscalYearEnd === 'number' ? entity.fiscalYearEnd : this.toTimestamp(entity.fiscalYearEnd),
             modules: entity.modules,
+            features: entity.features,
+            subscriptionPlan: entity.subscriptionPlan || null,
             createdAt: this.toTimestamp(entity.createdAt),
             updatedAt: this.toTimestamp(entity.updatedAt),
+            country: entity.country,
+            logoUrl: entity.logoUrl,
+            contactInfo: entity.contactInfo
         };
     }
 }
@@ -84,7 +96,7 @@ class UserMapper {
 exports.UserMapper = UserMapper;
 class CompanyUserMapper {
     static toDomain(data) {
-        return new CompanyUser_1.CompanyUser(data.id, data.userId, data.companyId, data.role, data.permissions || []);
+        return new CompanyUser_1.CompanyUser(data.id, data.userId, data.companyId, data.role, data.permissions || [], data.isDisabled || false);
     }
     static toPersistence(entity) {
         return {
@@ -92,7 +104,8 @@ class CompanyUserMapper {
             userId: entity.userId,
             companyId: entity.companyId,
             role: entity.role,
-            permissions: entity.permissions
+            permissions: entity.permissions,
+            isDisabled: entity.isDisabled
         };
     }
 }

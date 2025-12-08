@@ -5,4 +5,5 @@ export interface CompanyUser {
   roleId: string;
   isOwner?: boolean;
   createdAt: Date;
+  isDisabled?: boolean;
 }

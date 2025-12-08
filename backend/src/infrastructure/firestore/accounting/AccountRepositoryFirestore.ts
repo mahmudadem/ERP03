@@ -1,10 +1,10 @@
-import { firestore } from 'firebase-admin';
+import admin from '../../../firebaseAdmin';
 import { Account } from '../../../domain/accounting/models/Account';
 import { AccountType } from '../../../domain/accounting/entities/Account';
 import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../repository/interfaces/accounting/IAccountRepository';
 
 export class AccountRepositoryFirestore implements IAccountRepository {
-    constructor(private db: firestore.Firestore) { }
+    constructor(private db: FirebaseFirestore.Firestore = admin.firestore()) { }
 
     private getCollection(companyId: string) {
         return this.db.collection(`companies/${companyId}/accounts`);

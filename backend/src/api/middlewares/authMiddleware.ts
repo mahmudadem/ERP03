@@ -3,7 +3,7 @@
  * Purpose: Verifies Firebase ID Tokens.
  */
 import { Request, Response, NextFunction } from 'express';
-import * as admin from 'firebase-admin';
+import admin from '../../firebaseAdmin';
 import { ApiError } from '../errors/ApiError';
 import { diContainer } from '../../infrastructure/di/bindRepositories';
 

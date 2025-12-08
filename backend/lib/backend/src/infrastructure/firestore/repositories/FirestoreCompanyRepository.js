@@ -32,6 +32,8 @@ class FirestoreCompanyRepository {
         this.db = dbInstance;
     }
     async save(company) {
+        const fiscalStart = company.fiscalYearStart instanceof Date ? company.fiscalYearStart : new Date(company.fiscalYearStart);
+        const fiscalEnd = company.fiscalYearEnd instanceof Date ? company.fiscalYearEnd : new Date(company.fiscalYearEnd);
         await this.db.collection(this.collectionName).doc(company.id).set({
             id: company.id,
             name: company.name,
@@ -39,8 +41,8 @@ class FirestoreCompanyRepository {
             taxId: company.taxId,
             address: company.address || null,
             baseCurrency: company.baseCurrency,
-            fiscalYearStart: admin.firestore.Timestamp.fromDate(company.fiscalYearStart),
-            fiscalYearEnd: admin.firestore.Timestamp.fromDate(company.fiscalYearEnd),
+            fiscalYearStart: admin.firestore.Timestamp.fromDate(fiscalStart),
+            fiscalYearEnd: admin.firestore.Timestamp.fromDate(fiscalEnd),
             modules: company.modules,
             createdAt: admin.firestore.Timestamp.fromDate(company.createdAt),
             updatedAt: admin.firestore.Timestamp.fromDate(company.updatedAt),
@@ -77,8 +79,30 @@ class FirestoreCompanyRepository {
             modules: admin.firestore.FieldValue.arrayUnion(moduleName)
         });
     }
+    async disableModule(companyId, moduleName) {
+        await this.db.collection(this.collectionName).doc(companyId).update({
+            modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+        });
+    }
+    async update(companyId, updates) {
+        await this.db.collection(this.collectionName).doc(companyId).set(updates, { merge: true });
+        const updated = await this.findById(companyId);
+        if (!updated)
+            throw new Error('Company not found after update');
+        return updated;
+    }
+    async updateBundle(companyId, bundleId) {
+        await this.db.collection(this.collectionName).doc(companyId).set({ subscriptionPlan: bundleId }, { merge: true });
+        const updated = await this.findById(companyId);
+        if (!updated)
+            throw new Error('Company not found after bundle update');
+        return updated;
+    }
+    async updateFeatures(companyId, features) {
+        await this.db.collection(this.collectionName).doc(companyId).set({ features }, { merge: true });
+    }
     mapToEntity(data) {
-        return new Company_1.Company(data.id, data.name, data.ownerId || 'legacy_owner', data.createdAt.toDate(), data.updatedAt.toDate(), data.baseCurrency || 'USD', data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1), data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31), data.modules || ['CORE'], data.taxId, data.address);
+        return new Company_1.Company(data.id, data.name, data.ownerId || 'legacy_owner', data.createdAt.toDate(), data.updatedAt.toDate(), data.baseCurrency || 'USD', data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1), data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31), data.modules || ['CORE'], data.features || [], data.taxId || '', data.subscriptionPlan, data.address, data.country, data.logoUrl, data.contactInfo);
     }
 }
 exports.FirestoreCompanyRepository = FirestoreCompanyRepository;

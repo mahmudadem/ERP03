@@ -13,9 +13,10 @@ export class ListCompanyModulesUseCase {
 
         // Return
         return modules.map(m => ({
-            moduleName: m.metadata.name,
+            id: m.metadata.id,
+            name: m.metadata.name,
             description: m.metadata.description || '',
-            permissions: m.metadata.permissions || []
+            permissions: m.permissions || []
         }));
     }
 }

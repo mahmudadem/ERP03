@@ -1,29 +1,18 @@
 import React, { useState } from 'react';
-import { Sidebar } from './Sidebar';
-import { NavItem } from '../../types';
+import { Sidebar } from '../../layout/Sidebar';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/' },
-  { label: 'Accounting', path: '/accounting' },
-  { label: 'Inventory', path: '/inventory' },
-  { label: 'HR', path: '/hr' },
-  { label: 'POS', path: '/pos' },
-  { label: 'Designer Engine', path: '/designer' },
-  { label: 'Settings', path: '/settings' },
-];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar navItems={NAV_ITEMS} isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} />
       
-      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-16'}`}>
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20 lg:ml-64'}`}>
         <header className="h-16 bg-white border-b shadow-sm flex items-center justify-between px-6 sticky top-0 z-10">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}

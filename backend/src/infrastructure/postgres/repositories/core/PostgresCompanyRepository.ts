@@ -33,4 +33,22 @@ export class PostgresCompanyRepository implements ICompanyRepository {
   async enableModule(companyId: string, moduleName: string): Promise<void> {
     // TODO: Implement JSONB array update
   }
+
+  async update(companyId: string, updates: Partial<Company>): Promise<Company> {
+    // TODO: Implement UPDATE; for now return a placeholder
+    return new Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart as any || new Date(), updates.fiscalYearEnd as any || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address);
+  }
+
+  async disableModule(companyId: string, moduleName: string): Promise<void> {
+    // TODO: Implement
+  }
+
+  async updateBundle(companyId: string, bundleId: string): Promise<Company> {
+    // TODO: Implement
+    return new Company(companyId, '', '', new Date(), new Date(), 'USD', new Date(), new Date(), [], [], '', bundleId);
+  }
+
+  async updateFeatures(companyId: string, features: string[]): Promise<void> {
+    // TODO: Implement
+  }
 }

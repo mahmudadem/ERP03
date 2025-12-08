@@ -37,12 +37,12 @@ export class CompanyProfileController {
       }
 
       // Return company profile
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: CoreDTOMapper.toCompanyDTO(company)
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -72,12 +72,12 @@ export class CompanyProfileController {
       });
 
       // Return updated profile
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: CoreDTOMapper.toCompanyDTO(updatedCompany)
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

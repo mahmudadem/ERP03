@@ -7,11 +7,11 @@ import { VoucherTypeDefinition } from '../designer-engine/types/VoucherTypeDefin
 
 export const designerApi = {
   getVoucherTypeByCode: (code: string): Promise<VoucherTypeDefinition> => {
-    return client.get(`/designer/voucher-types/${code}`);
+    return client.get(`/tenant/accounting/designer/voucher-types/${code}`);
   },
 
   listVoucherTypes: (): Promise<{id: string, code: string, name: string}[]> => {
-    return client.get('/designer/voucher-types');
+    return client.get('/tenant/accounting/designer/voucher-types');
   }
 };
 

@@ -9,11 +9,7 @@
  * - Checks if app is already initialized to prevent hot-reload errors.
  * - Uses Application Default Credentials (ADC) or functions config.
  */
-import * as admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+import admin from '../../../firebaseAdmin';
 
 export const db = admin.firestore();
 export const fcm = admin.messaging();

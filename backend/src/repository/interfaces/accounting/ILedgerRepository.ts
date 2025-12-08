@@ -18,8 +18,8 @@ export interface GLFilters {
 }
 
 export interface ILedgerRepository {
-  recordForVoucher(voucher: Voucher): Promise<void>;
-  deleteForVoucher(companyId: string, voucherId: string): Promise<void>;
+  recordForVoucher(voucher: Voucher, transaction?: any): Promise<void>;
+  deleteForVoucher(companyId: string, voucherId: string, transaction?: any): Promise<void>;
   getAccountLedger(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<LedgerEntry[]>;
   getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]>;
   getGeneralLedger(companyId: string, filters: GLFilters): Promise<LedgerEntry[]>;
