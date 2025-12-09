@@ -67,16 +67,8 @@ import { ITransactionManager } from '../../repository/interfaces/shared/ITransac
 import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
 
 
-// Ensure Firestore settings are applied only once to avoid emulator runtime errors
-let firestoreConfigured = false;
-const getDb = () => {
-  const db = admin.firestore();
-  if (!firestoreConfigured) {
-    db.settings({ ignoreUndefinedProperties: true } as any);
-    firestoreConfigured = true;
-  }
-  return db;
-};
+// Helper to get Firestore instance
+const getDb = () => admin.firestore();
 
 // Database type configuration
 const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'

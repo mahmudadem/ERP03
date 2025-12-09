@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VoucherWizard } from '../components/VoucherWizard';
 import { Button } from '../../../../components/ui/Button';
+import { RequirePermission } from '../../../../components/auth/RequirePermission';
 
 const VoucherTypeDesignerPage: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -30,9 +31,11 @@ const VoucherTypeDesignerPage: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Voucher Types</h1>
-        <Button variant="primary" onClick={handleCreateNew}>
-          + New Voucher Type
-        </Button>
+        <RequirePermission permission="designer.vouchers.modify">
+          <Button variant="primary" onClick={handleCreateNew}>
+            + New Voucher Type
+          </Button>
+        </RequirePermission>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">

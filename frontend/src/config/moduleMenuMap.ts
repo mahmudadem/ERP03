@@ -12,7 +12,8 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'coa.view' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'voucher.view' },
-      { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view' }
+      { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view' },
+      { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view' }
     ]
   },
   inventory: {

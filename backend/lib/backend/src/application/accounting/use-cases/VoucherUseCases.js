@@ -4,6 +4,7 @@ exports.ListVouchersUseCase = exports.GetVoucherUseCase = exports.CancelVoucherU
 const crypto_1 = require("crypto");
 const Voucher_1 = require("../../../domain/accounting/entities/Voucher");
 const VoucherLine_1 = require("../../../domain/accounting/entities/VoucherLine");
+const VoucherPostingStrategyFactory_1 = require("../../../domain/accounting/factories/VoucherPostingStrategyFactory");
 const assertBalanced = (voucher) => {
     if (Math.abs((voucher.totalDebitBase || 0) - (voucher.totalCreditBase || 0)) > 0.0001) {
         const err = new Error('Voucher not balanced');
@@ -29,20 +30,34 @@ class CreateVoucherUseCase {
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
             const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
-            const lines = (payload.lines || []).map((l, idx) => {
-                var _a;
-                const line = new VoucherLine_1.VoucherLine(l.id || `${voucherId}_l${idx}`, voucherId, l.accountId, (_a = l.description) !== null && _a !== void 0 ? _a : null);
-                line.debitFx = l.debitFx || 0;
-                line.creditFx = l.creditFx || 0;
-                line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
-                line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
-                line.costCenterId = l.costCenterId;
-                line.lineCurrency = l.lineCurrency || payload.currency;
-                line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
-                line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
-                line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
-                return line;
-            });
+            let lines = [];
+            const strategy = VoucherPostingStrategyFactory_1.VoucherPostingStrategyFactory.getStrategy(payload.type || 'JOURNAL');
+            if (strategy) {
+                lines = await strategy.generateLines(payload, companyId);
+                // Ensure IDs and voucherId are set
+                lines.forEach((l, idx) => {
+                    if (!l.id)
+                        l.id = `${voucherId}_l${idx}`;
+                    l.voucherId = voucherId;
+                });
+            }
+            else {
+                // Fallback to manual lines (Journal / Manual Mode)
+                lines = (payload.lines || []).map((l, idx) => {
+                    var _a;
+                    const line = new VoucherLine_1.VoucherLine(l.id || `${voucherId}_l${idx}`, voucherId, l.accountId, (_a = l.description) !== null && _a !== void 0 ? _a : null);
+                    line.debitFx = l.debitFx || 0;
+                    line.creditFx = l.creditFx || 0;
+                    line.debitBase = l.debitBase || (l.debitFx || 0) * (payload.exchangeRate || 1);
+                    line.creditBase = l.creditBase || (l.creditFx || 0) * (payload.exchangeRate || 1);
+                    line.costCenterId = l.costCenterId;
+                    line.lineCurrency = l.lineCurrency || payload.currency;
+                    line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
+                    line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
+                    line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
+                    return line;
+                });
+            }
             for (const line of lines) {
                 const acc = await this.accountRepo.getById(companyId, line.accountId, transaction);
                 if (!acc || acc.active === false)
@@ -78,7 +93,7 @@ class UpdateVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId, payload) {
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher || voucher.companyId !== companyId)
             throw new Error('Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
@@ -104,7 +119,7 @@ class UpdateVoucherUseCase {
         if (typeof payload.date === 'string') {
             payload.date = new Date(payload.date);
         }
-        await this.voucherRepo.updateVoucher(voucherId, payload);
+        await this.voucherRepo.updateVoucher(companyId, voucherId, payload);
     }
 }
 exports.UpdateVoucherUseCase = UpdateVoucherUseCase;
@@ -115,7 +130,7 @@ class ApproveVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher || voucher.companyId !== companyId)
             throw new Error('Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
@@ -123,7 +138,7 @@ class ApproveVoucherUseCase {
             throw new Error('Cannot approve from this status');
         assertBalanced(voucher);
         await this.ledgerRepo.recordForVoucher(voucher);
-        await this.voucherRepo.updateVoucher(voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() });
+        await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() });
     }
 }
 exports.ApproveVoucherUseCase = ApproveVoucherUseCase;
@@ -133,13 +148,13 @@ class LockVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher || voucher.companyId !== companyId)
             throw new Error('Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.lock');
         if (voucher.status !== 'approved')
             throw new Error('Only approved vouchers can be locked');
-        await this.voucherRepo.updateVoucher(voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() });
+        await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() });
     }
 }
 exports.LockVoucherUseCase = LockVoucherUseCase;
@@ -150,14 +165,14 @@ class CancelVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher || voucher.companyId !== companyId)
             throw new Error('Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
         if (!['draft', 'pending', 'approved'].includes(voucher.status))
             throw new Error('Cannot cancel from this status');
         await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
-        await this.voucherRepo.updateVoucher(voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() });
+        await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() });
     }
 }
 exports.CancelVoucherUseCase = CancelVoucherUseCase;
@@ -167,7 +182,7 @@ class GetVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher || voucher.companyId !== companyId)
             throw new Error('Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');

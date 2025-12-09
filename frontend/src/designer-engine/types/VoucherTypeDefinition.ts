@@ -8,20 +8,27 @@ import { TableDefinition } from './TableDefinition';
 import { FieldDefinition } from './FieldDefinition';
 
 export interface VoucherTypeDefinition {
-  id: string;
+  id?: string;
   companyId?: string;
-  name: string;
-  code: string; // e.g. 'INV'
-  module: 'ACCOUNTING' | 'INVENTORY' | 'POS';
-
-  // Backend structure
+  
+  // Identity
+  name: string; // Keeping name for backward comp. Prompt suggests translations but simple name is standard for now.
+  nameTranslations?: Record<string, string>;
+  code: string;
+  abbreviation: string;
+  color: string;
+  
+  // Configuration
+  mode: 'single-line' | 'multi-line';
+  
+  // UI Metadata
   headerFields: FieldDefinition[];
-  tableColumns: any[]; // TableColumn[]
+  tableFields: any[]; // Formerly tableColumns
   layout: Record<string, any>;
-  workflow?: any;
-
-  // Deprecated / Computed on frontend?
-  header?: FormDefinition; 
-  lines?: TableDefinition; 
-  summaryFields?: FieldDefinition[]; 
+  customFields?: any[]; // [{ key: string, type: string, label: any }]
+  
+  // Status
+  status?: 'ACTIVE' | 'DRAFT';
 }
+
+// Removed VoucherActions interface entirely

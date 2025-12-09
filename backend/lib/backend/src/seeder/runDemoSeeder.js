@@ -37,17 +37,21 @@ if (!admin.apps.length) {
 console.log(`🔧 Using Firestore Emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);
 console.log(`🔧 Project ID: ${process.env.GCLOUD_PROJECT}`);
 const demoCompanySeeder_1 = require("./demoCompanySeeder");
+const seedSystemVoucherTypes_1 = require("./seedSystemVoucherTypes");
 const bindRepositories_1 = require("../infrastructure/di/bindRepositories");
 async function run() {
     try {
         console.log('═══════════════════════════════════════════════════════');
         console.log('        DEMO COMPANY SEEDER - ERP Enhanced');
         console.log('═══════════════════════════════════════════════════════\n');
+        // Seed System Templates first
+        await (0, seedSystemVoucherTypes_1.seedSystemVoucherTypes)(bindRepositories_1.diContainer.voucherTypeDefinitionRepository);
         const result = await (0, demoCompanySeeder_1.seedDemoCompany)({
             companyRepository: bindRepositories_1.diContainer.companyRepository,
             companyRoleRepository: bindRepositories_1.diContainer.companyRoleRepository,
             companyUserRepository: bindRepositories_1.diContainer.rbacCompanyUserRepository,
-            userRepository: bindRepositories_1.diContainer.userRepository
+            userRepository: bindRepositories_1.diContainer.userRepository,
+            voucherTypeDefinitionRepository: bindRepositories_1.diContainer.voucherTypeDefinitionRepository
         });
         console.log('═══════════════════════════════════════════════════════');
         console.log('                   SEEDING COMPLETE');

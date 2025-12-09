@@ -11,10 +11,12 @@ db.settings({ ignoreUndefinedProperties: true, host: '127.0.0.1:8080', ssl: fals
 
 async function verify() {
     console.log('Verifying System Templates...');
-    const snapshot = await db.collection('companies').doc('SYSTEM').collection('voucher_types').get();
+    console.log('Collection: system_voucher_types (top-level)');
+    const snapshot = await db.collection('system_voucher_types').get();
     
     if (snapshot.empty) {
         console.log('❌ No system templates found!');
+        console.log('   Run the seeder to create system templates.');
     } else {
         console.log(`✅ Found ${snapshot.size} system templates:`);
         snapshot.docs.forEach(doc => {

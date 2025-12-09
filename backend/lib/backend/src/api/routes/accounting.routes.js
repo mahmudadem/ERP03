@@ -29,12 +29,15 @@ router.post('/vouchers/:id/approve', (0, permissionGuard_1.permissionGuard)('acc
 router.post('/vouchers/:id/lock', (0, permissionGuard_1.permissionGuard)('accounting.voucher.lock'), VoucherController_1.VoucherController.lock);
 router.post('/vouchers/:id/cancel', (0, permissionGuard_1.permissionGuard)('accounting.voucher.cancel'), VoucherController_1.VoucherController.cancel);
 // Reports
+router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accounting.reports.profitAndLoss.view'), ReportingController_1.ReportingController.profitAndLoss);
 router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.report.view'), ReportingController_1.ReportingController.trialBalance);
 router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.report.view'), ReportingController_1.ReportingController.generalLedger);
 router.get('/reports/journal', (0, permissionGuard_1.permissionGuard)('accounting.report.view'), ReportingController_1.ReportingController.journal);
 // Designer (Module-specific)
 router.get('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypes);
 router.get('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypeByCode);
+router.post('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), AccountingDesignerController_1.AccountingDesignerController.create);
+router.put('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.saveVoucherTypeLayout);
 exports.default = router;
 //# sourceMappingURL=accounting.routes.js.map

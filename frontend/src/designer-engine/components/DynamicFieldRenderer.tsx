@@ -15,10 +15,25 @@ interface Props {
 
 export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents }) => {
   
+  // Custom Styles from Definition
+  const style = field.style || {};
+  const customInputStyle = {
+    color: style.color,
+    backgroundColor: style.backgroundColor,
+    fontWeight: style.fontWeight as any,
+    fontSize: style.fontSize === 'sm' ? '0.875rem' : style.fontSize === 'lg' ? '1.125rem' : style.fontSize === 'xl' ? '1.25rem' : undefined,
+    padding: style.padding,
+    borderWidth: style.borderWidth,
+    borderColor: style.borderColor,
+    borderRadius: style.borderRadius,
+    textAlign: style.textAlign as any,
+    textTransform: style.textTransform as any,
+  };
+
   const baseInputClass = `
     w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors
-    ${error ? 'border-red-500 bg-red-50' : 'border-gray-300'}
-    ${field.readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'}
+    ${error ? 'border-red-500 bg-red-50' : (style.borderColor ? '' : 'border-gray-300')}
+    ${field.readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : (style.backgroundColor ? '' : 'bg-white')}
   `;
 
   const renderInput = () => {
@@ -37,11 +52,12 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
 
     switch (field.type) {
       case 'TEXT':
-      case 'RELATION': // For MVP, relation is just text
+      case 'RELATION': 
         return (
           <input
             type="text"
             className={baseInputClass}
+            style={customInputStyle}
             placeholder={field.placeholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
@@ -54,6 +70,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
           <input
             type="number"
             className={baseInputClass}
+            style={customInputStyle}
             placeholder={field.placeholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
@@ -73,6 +90,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
           <input
             type="date"
             className={baseInputClass}
+            style={customInputStyle}
             value={dateValue}
             onChange={(e) => onChange(e.target.value)}
             disabled={field.readOnly}
@@ -89,7 +107,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
               onChange={(e) => onChange(e.target.checked)}
               disabled={field.readOnly}
             />
-            <span className="ml-2 text-sm text-gray-700">{field.placeholder || 'Yes'}</span>
+            <span className="ml-2 text-sm text-gray-700" style={{ color: style.color }}>{field.placeholder || 'Yes'}</span>
           </div>
         );
 
@@ -97,6 +115,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
         return (
           <select
             className={baseInputClass}
+            style={customInputStyle}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={field.readOnly}
@@ -114,6 +133,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
         return (
           <textarea
             className={baseInputClass}
+            style={customInputStyle}
             rows={3}
             placeholder={field.placeholder}
             value={value || ''}
@@ -129,7 +149,17 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
 
   return (
     <div className={`flex flex-col ${field.hidden ? 'hidden' : ''}`}>
-      <label className="mb-1 text-xs font-medium text-gray-700">
+      <label 
+        className="mb-1 text-xs font-medium text-gray-700"
+        style={{
+            color: style.color, 
+            fontWeight: style.fontWeight,
+            fontSize: style.fontSize,
+            fontStyle: style.fontStyle,
+            textAlign: style.textAlign,
+            textTransform: style.textTransform
+        }}
+      >
         {field.label} {field.required && <span className="text-red-500">*</span>}
       </label>
       {renderInput()}

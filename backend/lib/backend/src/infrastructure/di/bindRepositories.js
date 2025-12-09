@@ -39,16 +39,8 @@ const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyR
 const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
 const prismaClient_1 = require("../prisma/prismaClient");
 const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
-// Ensure Firestore settings are applied only once to avoid emulator runtime errors
-let firestoreConfigured = false;
-const getDb = () => {
-    const db = firebaseAdmin_1.default.firestore();
-    if (!firestoreConfigured) {
-        db.settings({ ignoreUndefinedProperties: true });
-        firestoreConfigured = true;
-    }
-    return db;
-};
+// Helper to get Firestore instance
+const getDb = () => firebaseAdmin_1.default.firestore();
 // Database type configuration
 const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
 exports.diContainer = {

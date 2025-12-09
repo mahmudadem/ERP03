@@ -63,106 +63,373 @@ export const StepLayout: React.FC<Props> = ({ definition, updateDefinition }) =>
       </div>
 
       <div className="flex-1 flex gap-6 min-h-[500px]">
-        {/* Canvas Area */}
-        <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4 overflow-y-auto">
+        {/* Canvas Area with Live Preview */}
+        <div className={`flex-1 bg-gray-100 rounded-xl border border-gray-200 p-8 overflow-y-auto ${viewMode === 'windows' ? 'flex justify-center' : ''}`}>
           
-          {/* Header Section */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                Header Section
-              </div>
-              <div className="flex gap-1 text-gray-400">
-                <svg className="w-4 h-4 cursor-pointer hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                <svg className="w-4 h-4 cursor-pointer hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </div>
-            </div>
-            <div className="p-4 grid grid-cols-4 gap-4">
-              {headerFields.map(field => {
-                const colSpan = field.width === 'full' ? 'col-span-4' : field.width === '1/2' ? 'col-span-2' : 'col-span-1';
-                const isSelected = selectedFieldId === field.id;
-                
-                return (
-                  <div 
-                    key={field.id}
-                    className={`
-                      ${colSpan} relative group cursor-pointer
-                      border rounded-md p-3 transition-all duration-200
-                      ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm bg-white'}
-                    `}
-                    onClick={() => setSelectedFieldId(field.id)}
-                  >
-                    <div className="text-xs font-medium text-gray-500 mb-1">{field.label}</div>
-                    <div className="h-8 bg-gray-50 rounded border border-gray-100 w-full"></div>
-                    
-                    {/* Resize Handle (Visual Only) */}
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                );
-              })}
-              {headerFields.length === 0 && (
-                <div className="col-span-4 py-8 text-center text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
-                  No header fields defined. Go back to "Fields" step to add some.
+          {/* Live Preview Container */}
+          <div 
+            className={`
+              transition-all duration-300 ease-in-out
+              ${viewMode === 'windows' 
+                ? 'w-[900px] bg-white rounded-xl shadow-2xl border border-gray-200/50' 
+                : 'w-full bg-white rounded-lg shadow-sm border border-gray-200'
+              }
+            `}
+          >
+            {/* Content Area */}
+            <div className={`p-8 bg-white min-h-[600px] flex flex-col ${viewMode === 'windows' ? 'rounded-b-xl' : ''}`}>
+              
+                {/* Header Fields Section */}
+                <div className="mb-8">
+                    <div 
+                        className="grid grid-cols-4 gap-x-6 gap-y-6"
+                        onDragOver={(e) => e.preventDefault()}
+                    >
+                        {headerFields.map((field, index) => {
+                            const colSpan = field.width === 'full' ? 'col-span-4' : field.width === '1/2' ? 'col-span-2' : 'col-span-1';
+                            const isSelected = selectedFieldId === field.id;
+                            const style = field.style || {};
+
+                            return (
+                                <div 
+                                    key={field.id}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                                        const dropIndex = index;
+                                        
+                                        if (isNaN(dragIndex) || dragIndex === dropIndex) return;
+
+                                        const newFields = [...headerFields];
+                                        const [draggedItem] = newFields.splice(dragIndex, 1);
+                                        newFields.splice(dropIndex, 0, draggedItem);
+                                        
+                                        updateDefinition({ headerFields: newFields });
+                                    }}
+                                    onClick={() => setSelectedFieldId(field.id)}
+                                    className={`
+                                        ${colSpan} group cursor-pointer relative transition-all duration-200
+                                        ${isSelected ? 'ring-2 ring-indigo-500 rounded p-1 -m-1' : 'hover:scale-[1.01] active:scale-[0.99]'}
+                                    `}
+                                >
+                                    {/* Action Query: Move Buttons & Drag Handle */}
+                                    {isSelected && (
+                                        <div className="absolute -top-3 right-2 flex gap-1 z-20 bg-white shadow-sm border rounded-full px-1 py-0.5">
+                                             <button 
+                                                title="Move Backward"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (index === 0) return;
+                                                    const newFields = [...headerFields];
+                                                    const temp = newFields[index - 1];
+                                                    newFields[index - 1] = newFields[index];
+                                                    newFields[index] = temp;
+                                                    updateDefinition({ headerFields: newFields });
+                                                }}
+                                                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-indigo-600"
+                                             >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                             </button>
+                                             <button 
+                                                title="Drag to Move"
+                                                className="p-1 hover:bg-gray-100 rounded-full text-gray-400 cursor-grab active:cursor-grabbing"
+                                                draggable
+                                                onDragStart={(e) => {
+                                                    e.dataTransfer.setData('text/plain', index.toString());
+                                                    e.dataTransfer.effectAllowed = 'move';
+                                                }}
+                                             >
+                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 2a2 2 0 1 0-.001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0-.001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0-.001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001 4.001A2 2 0 0 0 13 6zm0 6a2 2 0 1 0-.001 4.001A2 2 0 0 0 13 12zm0 6a2 2 0 1 0-.001 4.001A2 2 0 0 0 13 18z"/></svg>
+                                             </button>
+                                             <button 
+                                                title="Move Forward"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (index === headerFields.length - 1) return;
+                                                    const newFields = [...headerFields];
+                                                    const temp = newFields[index + 1];
+                                                    newFields[index + 1] = newFields[index];
+                                                    newFields[index] = temp;
+                                                    updateDefinition({ headerFields: newFields });
+                                                }}
+                                                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-indigo-600"
+                                             >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                             </button>
+                                        </div>
+                                    )}
+
+                                    <label 
+                                        className="block mb-2 text-[10px] tracking-wider font-bold text-gray-400"
+                                        style={{
+                                            color: style.color,
+                                            fontWeight: style.fontWeight,
+                                            fontSize: style.fontSize,
+                                            fontStyle: style.fontStyle,
+                                            textAlign: style.textAlign,
+                                            textTransform: style.textTransform || 'uppercase'
+                                        }}
+                                    >
+                                        {field.label}
+                                    </label>
+                                    
+                                    {/* Input Simulation - Wireframe Style */}
+                                    <div 
+                                        className="w-full h-9 border rounded-md bg-white flex items-center px-3"
+                                        style={{ 
+                                            backgroundColor: style.backgroundColor,
+                                            padding: style.padding,
+                                            borderWidth: style.borderWidth || '1px',
+                                            borderColor: style.borderColor || '#e5e7eb',
+                                            borderRadius: style.borderRadius
+                                        }}
+                                    >
+                                        <span className="text-sm text-gray-300 truncate font-light">{field.placeholder || field.name}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        
+                        {headerFields.length === 0 && (
+                            <div className="col-span-4 py-12 text-center text-gray-400 border-2 border-dashed border-gray-100 rounded-lg">
+                                Drag fields here
+                            </div>
+                        )}
+                    </div>
                 </div>
-              )}
+
+                {/* Body Table Wireframe */}
+                <div className="mt-2 flex-1">
+                     <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">
+                        Body
+                    </h4>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden mb-8">
+                        {/* Table Header */}
+                        <div className="bg-gray-50 border-b border-gray-200 grid grid-cols-12 gap-4 px-4 py-2">
+                            <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase">#</div>
+                            <div className="col-span-3 text-[10px] font-bold text-gray-500 uppercase">Account</div>
+                            <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase">Debit</div>
+                            <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase">Credit</div>
+                            <div className="col-span-4 text-[10px] font-bold text-gray-500 uppercase">Notes</div>
+                        </div>
+                        {/* Empty Rows Wireframe */}
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="border-b border-gray-100 grid grid-cols-12 gap-4 px-4 py-2 bg-white">
+                                <div className="col-span-1 h-8 border border-gray-100 rounded bg-white"></div>
+                                <div className="col-span-3 h-8 border border-gray-100 rounded bg-white"></div>
+                                <div className="col-span-2 h-8 border border-gray-100 rounded bg-white"></div>
+                                <div className="col-span-2 h-8 border border-gray-100 rounded bg-white"></div>
+                                <div className="col-span-4 h-8 border border-gray-100 rounded bg-white"></div>
+                            </div>
+                        ))}
+                        <div className="px-4 py-2 bg-indigo-50 text-center text-indigo-600 text-xs font-bold border-t border-indigo-100">
+                            + Add Line
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer / Extra Wireframe */}
+                <div className="mt-auto">
+                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-2">
+                        Extra Notes
+                    </h4>
+                    <div className="h-24 border border-gray-200 rounded-lg bg-white mb-6 p-4">
+                        <span className="text-gray-300 text-sm italic">Additional notes or instructions...</span>
+                    </div>
+
+                    {/* Action Buttons Wireframe */}
+                    <div className="grid grid-cols-4 gap-4 pt-6 border-t border-gray-100">
+                        <div className="h-10 border border-gray-200 rounded shadow-sm bg-white flex items-center justify-center text-gray-600 text-sm font-medium">Print Voucher</div>
+                        <div className="h-10 border border-gray-200 rounded shadow-sm bg-white flex items-center justify-center text-gray-600 text-sm font-medium">Email PDF</div>
+                        <div className="h-10 border border-gray-200 rounded shadow-sm bg-white flex items-center justify-center text-gray-600 text-sm font-medium">Download PDF</div>
+                        <div className="h-10 border border-gray-200 rounded shadow-sm bg-white flex items-center justify-center text-gray-600 text-sm font-medium">Import CSV</div>
+                    </div>
+                </div>
+
             </div>
           </div>
-
-          {/* Body Section */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                Body Section
-              </div>
-              <div className="flex gap-1 text-gray-400">
-                <svg className="w-4 h-4 cursor-pointer hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                <svg className="w-4 h-4 cursor-pointer hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="w-full h-24 bg-gray-50 border border-gray-200 rounded flex items-center justify-center text-gray-400 text-sm">
-                Line Items Table
-              </div>
-            </div>
-          </div>
-
         </div>
 
         {/* Properties Panel */}
         <div className="w-80 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
           <div className="p-4 border-b border-gray-200 flex items-center gap-2">
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-            <h4 className="font-bold text-gray-900">Properties</h4>
+            <h4 className="font-bold text-gray-900">Field Properties</h4>
           </div>
           
           <div className="p-4 flex-1 overflow-y-auto space-y-6">
             {selectedField ? (
               <>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Field ID</label>
-                  <input 
-                    type="text" 
-                    value={selectedField.id} 
-                    disabled 
-                    className="w-full bg-gray-100 border border-gray-200 rounded px-3 py-2 text-sm text-gray-600"
-                  />
+                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Display Settings</label>
+                   <div className="space-y-3">
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Label Text</span>
+                            <input 
+                                type="text" 
+                                value={selectedField.label} 
+                                onChange={(e) => handleFieldUpdate({ label: e.target.value })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            />
+                        </div>
+                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Custom Label</label>
-                  <input 
-                    type="text" 
-                    value={selectedField.label} 
-                    onChange={(e) => handleFieldUpdate({ label: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
+                <div className="border-t pt-4">
+                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Typography & Color</label>
+                   
+                   <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Text Color</span>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={selectedField.style?.color || '#000000'} 
+                                    onChange={(e) => handleFieldUpdate({ 
+                                        style: { ...selectedField.style, color: e.target.value } 
+                                    })}
+                                    className="h-8 w-8 border rounded cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Background</span>
+                             <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={selectedField.style?.backgroundColor || '#ffffff'} 
+                                    onChange={(e) => handleFieldUpdate({ 
+                                        style: { ...selectedField.style, backgroundColor: e.target.value } 
+                                    })}
+                                    className="h-8 w-8 border rounded cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Font Weight</span>
+                            <select 
+                                value={selectedField.style?.fontWeight || 'normal'}
+                                onChange={(e) => handleFieldUpdate({
+                                    style: { ...selectedField.style, fontWeight: e.target.value as any }
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            >
+                                <option value="normal">Normal</option>
+                                <option value="500">Medium</option>
+                                <option value="bold">Bold</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Font Size</span>
+                            <select 
+                                value={selectedField.style?.fontSize || 'base'}
+                                onChange={(e) => handleFieldUpdate({
+                                    style: { ...selectedField.style, fontSize: e.target.value as any }
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            >
+                                <option value="sm">Small</option>
+                                <option value="base">Normal</option>
+                                <option value="lg">Large</option>
+                                <option value="xl">Extra Large</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Text Align</span>
+                            <div className="flex border rounded overflow-hidden">
+                                {['left', 'center', 'right'].map((align) => (
+                                    <button
+                                        key={align}
+                                        onClick={() => handleFieldUpdate({
+                                            style: { ...selectedField.style, textAlign: align as any }
+                                        })}
+                                        className={`flex-1 py-1 text-xs hover:bg-gray-100 ${selectedField.style?.textAlign === align ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-gray-500'}`}
+                                    >
+                                        {align.charAt(0).toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Transform</span>
+                            <select 
+                                value={selectedField.style?.textTransform || 'none'}
+                                onChange={(e) => handleFieldUpdate({
+                                    style: { ...selectedField.style, textTransform: e.target.value as any }
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            >
+                                <option value="none">None</option>
+                                <option value="uppercase">Uppercase</option>
+                                <option value="lowercase">Lowercase</option>
+                            </select>
+                        </div>
+                   </div>
                 </div>
 
-                <div>
+                <div className="border-t pt-4">
+                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Box Model</label>
+                   <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Padding</span>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. 4px"
+                                value={selectedField.style?.padding || ''} 
+                                onChange={(e) => handleFieldUpdate({ 
+                                    style: { ...selectedField.style, padding: e.target.value } 
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-600 block mb-1">Radius</span>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. 4px"
+                                value={selectedField.style?.borderRadius || ''} 
+                                onChange={(e) => handleFieldUpdate({ 
+                                    style: { ...selectedField.style, borderRadius: e.target.value } 
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            />
+                        </div>
+                         <div>
+                            <span className="text-xs text-gray-600 block mb-1">Border Width</span>
+                            <input 
+                                type="text" 
+                                placeholder="e.g. 1px"
+                                value={selectedField.style?.borderWidth || ''} 
+                                onChange={(e) => handleFieldUpdate({ 
+                                    style: { ...selectedField.style, borderWidth: e.target.value } 
+                                })}
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                            />
+                        </div>
+                         <div>
+                            <span className="text-xs text-gray-600 block mb-1">Border Color</span>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="color" 
+                                    value={selectedField.style?.borderColor || '#e5e7eb'} 
+                                    onChange={(e) => handleFieldUpdate({ 
+                                        style: { ...selectedField.style, borderColor: e.target.value } 
+                                    })}
+                                    className="h-8 w-8 border rounded cursor-pointer"
+                                />
+                            </div>
+                        </div>
+                   </div>
+                </div>
+
+                <div className="border-t pt-4">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Width (Columns)</label>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 mt-2">
                     <input 
                       type="range" 
                       min="1" 
@@ -180,21 +447,11 @@ export const StepLayout: React.FC<Props> = ({ definition, updateDefinition }) =>
                       {selectedField.width === 'full' ? 4 : selectedField.width === '1/2' ? 2 : 1}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Grid has 4 columns total.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Move To Section</label>
-                  <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option>HEADER</option>
-                    <option disabled>BODY (Coming Soon)</option>
-                    <option disabled>FOOTER (Coming Soon)</option>
-                  </select>
                 </div>
               </>
             ) : (
               <div className="text-center py-10 text-gray-400">
-                <p>Select a field on the canvas to edit its properties.</p>
+                <p>Select a field on the canvas to configure styling.</p>
               </div>
             )}
           </div>

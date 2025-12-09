@@ -26,4 +26,5 @@ export class Voucher {
   public approvedBy?: string;
   public lockedBy?: string;
   public description?: string | null;
+  public sourceModule?: 'accounting' | 'pos' | 'inventory' | 'hr' | string; // Track origin module
 }

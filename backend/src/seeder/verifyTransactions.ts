@@ -115,7 +115,7 @@ async function verifyTransaction() {
 
   // Verify Rollback
   console.log('Verifying rollback...');
-  const savedVoucher = await voucherRepo.getVoucher(voucherId);
+  const savedVoucher = await voucherRepo.getVoucher(companyId, voucherId);
   
   if (savedVoucher) {
     console.error('FAILURE: Voucher was saved despite transaction failure! Atomicity broken.');

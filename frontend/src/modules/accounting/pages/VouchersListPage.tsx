@@ -7,6 +7,7 @@ import { useVouchersList } from '../../../hooks/useVouchersList';
 import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
 import { VoucherTable } from '../components/VoucherTable';
 import { Button } from '../../../components/ui/Button';
+import { RequirePermission } from '../../../components/auth/RequirePermission';
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -49,21 +50,23 @@ const VouchersListPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-800">Vouchers</h1>
           <p className="text-sm text-gray-500 mt-1">Manage financial transactions</p>
         </div>
-        <div className="flex gap-3 items-center">
-           <select 
-             className="border border-gray-300 rounded px-3 py-2 text-sm"
-             value={selectedType}
-             onChange={(e) => setSelectedType(e.target.value)}
-           >
-             <option value="" disabled>Select Type...</option>
-             {types.map(t => (
-               <option key={t.code} value={t.code}>{t.name}</option>
-             ))}
-           </select>
-           <Button onClick={handleCreate} className="shadow-sm" disabled={!selectedType}>
-             + New Voucher
-           </Button>
-        </div>
+        <RequirePermission permission="accounting.vouchers.create">
+          <div className="flex gap-3 items-center">
+             <select 
+               className="border border-gray-300 rounded px-3 py-2 text-sm"
+               value={selectedType}
+               onChange={(e) => setSelectedType(e.target.value)}
+             >
+               <option value="" disabled>Select Type...</option>
+               {types.map(t => (
+                 <option key={t.code} value={t.code}>{t.name}</option>
+               ))}
+             </select>
+             <Button onClick={handleCreate} className="shadow-sm" disabled={!selectedType}>
+               + New Voucher
+             </Button>
+          </div>
+        </RequirePermission>
       </div>
 
       {/* Filters */}

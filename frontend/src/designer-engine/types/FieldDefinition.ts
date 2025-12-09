@@ -38,5 +38,20 @@ export interface FieldDefinition {
   // Type specific
   options?: SelectOption[]; // For SELECT
   relationTarget?: string; // For RELATION (e.g., 'customers')
+  // Visual Styles
+  style?: {
+    color?: string;
+    backgroundColor?: string;
+    fontWeight?: 'normal' | 'bold' | '500';
+    fontSize?: 'sm' | 'base' | 'lg' | 'xl';
+    fontStyle?: 'normal' | 'italic';
+    textAlign?: 'left' | 'center' | 'right';
+    textTransform?: 'none' | 'uppercase' | 'lowercase';
+    padding?: string;
+    borderWidth?: string;
+    borderColor?: string;
+    borderRadius?: string;
+  };
+    
   defaultValue?: any;
 }

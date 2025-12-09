@@ -6,11 +6,8 @@ interface Props {
 }
 
 export const StepReview: React.FC<Props> = ({ definition }) => {
-  const metadata = definition.metadata || {};
-  const workflow = definition.workflow || {};
-  const actions = definition.actions || {};
   const fields = definition.headerFields || [];
-  const columns = definition.tableColumns || [];
+  const columns = definition.tableFields || []; // Renamed from tableColumns
 
   const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -37,7 +34,7 @@ export const StepReview: React.FC<Props> = ({ definition }) => {
                 Review & Save
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-                Please review your configuration before saving.
+                Verify the voucher design before activating.
             </p>
         </div>
 
@@ -45,38 +42,26 @@ export const StepReview: React.FC<Props> = ({ definition }) => {
             <Section title="Basic Information">
                 <Row label="Name" value={definition.name} />
                 <Row label="Code" value={definition.code} />
-                <Row label="Abbreviation" value={metadata.abbreviation} />
-                <Row label="Category" value={definition.category} />
-                <Row label="Mode" value={metadata.mode === 'multiLine' ? 'Multi-line' : 'Single-line'} />
-                <Row label="Status" value={definition.status === 'ACTIVE' ? 'Active' : 'Inactive'} />
+                <Row label="Abbreviation" value={definition.abbreviation} />
+                <Row label="Mode" value={definition.mode === 'multi-line' ? 'Multi-line' : 'Single-line'} />
+                <Row label="Status" value={definition.status === 'ACTIVE' ? 'Active' : 'DRAFT'} />
             </Section>
 
-            <Section title="Rules & Approval">
-                <Row label="Auto Numbering" value={metadata.autoNumbering ? 'Yes' : 'No'} />
-                <Row label="Format" value={metadata.numberingFormat} />
-                <Row label="Requires Approval" value={workflow.approvalRequired ? 'Yes' : 'No'} />
-                {workflow.approvalRequired && (
-                    <Row label="Approval Levels" value={workflow.approvalLevels} />
-                )}
-                <Row label="Period Lock" value={metadata.enforcePeriodLock ? 'Enforced' : 'Disabled'} />
-            </Section>
-
-            <Section title="Fields">
-                <Row label="Total Fields" value={fields.length} />
-                <Row label="Header Fields" value={fields.filter(f => f.type !== 'LINE_ITEM').length} />
-                {/* Simplified logic for header/extra fields as we don't have section info in definition yet */}
-                {metadata.mode === 'multiLine' && (
-                    <Row label="Line Columns" value={columns.length} />
+            <Section title="UI Elements">
+                <Row label="Header Fields" value={fields.length} />
+                <Row label="Custom Fields" value={definition.customFields?.length || 0} />
+                <Row label="Active Header Fields" value={fields.map(f => f.label).join(', ')} />
+                {definition.mode === 'multi-line' && (
+                    <>
+                        <Row label="Table Columns" value={columns.length} />
+                        <Row label="Active Columns" value={columns.map(c => c.label).join(', ')} />
+                    </>
                 )}
             </Section>
-
-            <Section title="Actions">
-                <Row label="Submit" value={actions.submit?.enabled ? 'Enabled' : 'Disabled'} />
-                <Row label="Approve" value={actions.approve?.enabled ? 'Enabled' : 'Disabled'} />
-                <Row label="Print" value={actions.print?.enabled ? 'Enabled' : 'Disabled'} />
-                <Row label="Email" value={actions.email?.enabled ? 'Enabled' : 'Disabled'} />
-                <Row label="Download" value={actions.download?.enabled ? 'Enabled' : 'Disabled'} />
-            </Section>
+        </div>
+        
+        <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
+            <strong>Note:</strong> Numbering, Approval Rules, and Permissions are managed by the System Administrator in the backend configuration, not here.
         </div>
     </div>
   );

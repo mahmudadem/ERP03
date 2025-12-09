@@ -1,6 +1,16 @@
 import React from 'react';
 import { VoucherTypeDefinition } from '../../../../../designer-engine/types/VoucherTypeDefinition';
-import { TableColumnDefinition } from '../../../../../designer-engine/types/TableColumnDefinition';
+
+// Defined locally as it was missing from types directory
+export interface TableColumnDefinition {
+    id: string;
+    name: string;
+    label: string;
+    type: 'TEXT' | 'NUMBER' | 'ACCOUNT' | 'CURRENCY' | 'DATE';
+    width?: number;
+    required?: boolean;
+    editable?: boolean;
+}
 
 interface Props {
   definition: Partial<VoucherTypeDefinition>;
@@ -20,14 +30,13 @@ const AVAILABLE_LINE_FIELDS = [
 ];
 
 export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) => {
-  const metadata = definition.metadata || {};
-  const columns = definition.tableColumns || [];
+  const columns = definition.tableFields || [];
   const activeColumnIds = new Set(columns.map(c => c.id));
 
   const toggleColumn = (template: any) => {
     if (activeColumnIds.has(template.id)) {
         updateDefinition({
-            tableColumns: columns.filter(c => c.id !== template.id)
+            tableFields: columns.filter(c => c.id !== template.id)
         });
     } else {
         const newColumn: TableColumnDefinition = {
@@ -40,16 +49,12 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
             editable: true
         };
         updateDefinition({
-            tableColumns: [...columns, newColumn]
+            tableFields: [...columns, newColumn]
         });
     }
   };
 
-  const updateMetadata = (updates: any) => {
-    updateDefinition({ metadata: { ...metadata, ...updates } });
-  };
-
-  if (metadata.mode !== 'multiLine' && metadata.mode) { // If mode is set and not multiLine
+  if (definition.mode === 'single-line') { 
      return (
         <div className="p-8 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
@@ -61,7 +66,7 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                 Not Applicable
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-                This step is for multi-line vouchers only. Since you selected Single-line mode, you can skip this step.
+                This step is for multi-line vouchers only. You are in Single-line mode.
             </p>
         </div>
     );
@@ -74,7 +79,7 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                 Journal Configuration
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-                Configure the line items table and validation rules.
+                Configure the line items table columns.
             </p>
         </div>
 
@@ -132,7 +137,7 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                                             onChange={(e) => {
                                                 const newColumns = [...columns];
                                                 newColumns[index] = { ...column, width: parseInt(e.target.value) };
-                                                updateDefinition({ tableColumns: newColumns });
+                                                updateDefinition({ tableFields: newColumns });
                                             }}
                                             className="w-20 px-2 py-1 text-center border border-gray-300 rounded bg-white"
                                         />
@@ -144,7 +149,7 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                                             onChange={(e) => {
                                                 const newColumns = [...columns];
                                                 newColumns[index] = { ...column, required: e.target.checked };
-                                                updateDefinition({ tableColumns: newColumns });
+                                                updateDefinition({ tableFields: newColumns });
                                             }}
                                             className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                         />
@@ -156,7 +161,7 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                                             onChange={(e) => {
                                                 const newColumns = [...columns];
                                                 newColumns[index] = { ...column, editable: e.target.checked };
-                                                updateDefinition({ tableColumns: newColumns });
+                                                updateDefinition({ tableFields: newColumns });
                                             }}
                                             className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                         />
@@ -167,58 +172,6 @@ export const StepJournal: React.FC<Props> = ({ definition, updateDefinition }) =
                     </table>
                 </div>
             )}
-        </section>
-
-        {/* Validation Rules */}
-        <section className="pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Validation Rules
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={metadata.requireBalancedLines ?? true}
-                        onChange={(e) => updateMetadata({ requireBalancedLines: e.target.checked })}
-                        className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                    />
-                    <div>
-                        <span className="text-sm font-medium text-gray-900">
-                            Require Balanced Lines
-                        </span>
-                        <p className="text-xs text-gray-500">
-                            Total Debits must equal Total Credits
-                        </p>
-                    </div>
-                </label>
-
-                <div className="flex items-center gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700">
-                            Min Rows
-                        </label>
-                        <input
-                            type="number"
-                            min={1}
-                            value={metadata.minRows || 2}
-                            onChange={(e) => updateMetadata({ minRows: parseInt(e.target.value) })}
-                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700">
-                            Max Rows
-                        </label>
-                        <input
-                            type="number"
-                            min={1}
-                            value={metadata.maxRows || 100}
-                            onChange={(e) => updateMetadata({ maxRows: parseInt(e.target.value) })}
-                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg bg-white"
-                        />
-                    </div>
-                </div>
-            </div>
         </section>
     </div>
   );

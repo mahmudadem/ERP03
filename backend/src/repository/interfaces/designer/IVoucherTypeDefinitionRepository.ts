@@ -13,4 +13,5 @@ export interface IVoucherTypeDefinitionRepository {
   getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null>;
   updateLayout(companyId: string, code: string, layout: any): Promise<void>;
   getSystemTemplates(): Promise<VoucherTypeDefinition[]>;
+  deleteVoucherType(companyId: string, id: string): Promise<void>;
 }

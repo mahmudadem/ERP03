@@ -8,11 +8,8 @@ class VoucherTypeController {
     static async getVoucherTypeByCode(req, res, next) {
         try {
             const code = req.params.code;
-            // In a real implementation, we'd add a method 'findByCode' to the repo.
-            // For MVP, we'll iterate or assume ID access.
-            // Let's assume we fetch all and find, or assume the ID passed IS the code for simplicity in mock data.
-            const allTypes = await bindRepositories_1.diContainer.voucherTypeDefinitionRepository.getVoucherTypesForModule('ACCOUNTING');
-            const def = allTypes.find(t => t.code === code);
+            const companyId = req.user.companyId;
+            const def = await bindRepositories_1.diContainer.voucherTypeDefinitionRepository.getByCode(companyId, code);
             if (!def)
                 throw ApiError_1.ApiError.notFound(`Voucher Type '${code}' not found`);
             // We return the raw definition structure because the frontend engine needs the full JSON, 
@@ -28,7 +25,8 @@ class VoucherTypeController {
     }
     static async listVoucherTypes(req, res, next) {
         try {
-            const types = await bindRepositories_1.diContainer.voucherTypeDefinitionRepository.getVoucherTypesForModule('ACCOUNTING');
+            const companyId = req.user.companyId;
+            const types = await bindRepositories_1.diContainer.voucherTypeDefinitionRepository.getVoucherTypesForModule(companyId, 'ACCOUNTING');
             res.status(200).json({
                 success: true,
                 data: types.map(DesignerDTOs_1.DesignerDTOMapper.toVoucherTypeDTO)

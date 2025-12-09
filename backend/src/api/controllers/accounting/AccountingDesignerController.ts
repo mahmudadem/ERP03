@@ -70,4 +70,56 @@ export class AccountingDesignerController {
             next(error);
         }
     }
+    /**
+     * Create a new voucher type
+     */
+    static async create(req: Request, res: Response, next: NextFunction) {
+        try {
+            const companyId = (req as any).user.companyId;
+            const definition = req.body;
+
+            if (!companyId) {
+                throw ApiError.badRequest('Company context required');
+            }
+
+            // Ensure companyId is set on the definition
+            definition.companyId = companyId;
+
+            await diContainer.voucherTypeDefinitionRepository.createVoucherType(definition);
+            
+            // Return the created definition (mocking return since void)
+            res.status(201).json({ success: true, data: definition });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * Update an existing voucher type
+     */
+    static async update(req: Request, res: Response, next: NextFunction) {
+        try {
+            const companyId = (req as any).user.companyId;
+            const { code } = req.params;
+            const updates = req.body;
+
+            if (!companyId) {
+                throw ApiError.badRequest('Company context required');
+            }
+
+            // Get existing to find ID (repo updates by ID, not code, usually? Interface says ID)
+            // But verify interface: updateVoucherType(companyId: string, id: string, ...)
+            // We need the ID.
+            const existing = await diContainer.voucherTypeDefinitionRepository.getByCode(companyId, code);
+            if (!existing || !existing.id) {
+                throw ApiError.notFound('Voucher type not found');
+            }
+
+            await diContainer.voucherTypeDefinitionRepository.updateVoucherType(companyId, existing.id, updates);
+
+            res.json({ success: true, data: { ...existing, ...updates } });
+        } catch (error) {
+            next(error);
+        }
+    }
 }

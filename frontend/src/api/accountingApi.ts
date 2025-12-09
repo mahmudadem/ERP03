@@ -90,5 +90,12 @@ export const accountingApi = {
   // --- REPORTS ---
   getTrialBalance: (): Promise<TrialBalanceLine[]> => {
     return client.get('/tenant/accounting/reports/trial-balance');
+  },
+
+  getProfitAndLoss: (fromDate: string, toDate: string): Promise<any> => {
+    const params = new URLSearchParams();
+    params.append('from', fromDate);
+    params.append('to', toDate);
+    return client.get(`/tenant/accounting/reports/profit-loss?${params.toString()}`);
   }
 };

@@ -122,7 +122,7 @@ export class UpdateVoucherUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string, payload: Partial<Voucher>): Promise<void> {
-    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
     if (voucher.status !== 'draft') throw new Error('Only draft vouchers can be updated');
@@ -147,7 +147,7 @@ export class UpdateVoucherUseCase {
     if (typeof payload.date === 'string') {
       payload.date = new Date(payload.date);
     }
-    await this.voucherRepo.updateVoucher(voucherId, payload as any);
+    await this.voucherRepo.updateVoucher(companyId, voucherId, payload as any);
   }
 }
 
@@ -159,13 +159,13 @@ export class ApproveVoucherUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
-    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
     if (!['draft', 'pending'].includes(voucher.status)) throw new Error('Cannot approve from this status');
     assertBalanced(voucher);
     await this.ledgerRepo.recordForVoucher(voucher);
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() } as any);
+    await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'approved', approvedBy: userId, updatedAt: new Date().toISOString() } as any);
   }
 }
 
@@ -176,11 +176,11 @@ export class LockVoucherUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
-    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.lock');
     if (voucher.status !== 'approved') throw new Error('Only approved vouchers can be locked');
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() } as any);
+    await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'locked', lockedBy: userId, updatedAt: new Date().toISOString() } as any);
   }
 }
 
@@ -192,12 +192,12 @@ export class CancelVoucherUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
-    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
     if (!['draft', 'pending', 'approved'].includes(voucher.status)) throw new Error('Cannot cancel from this status');
     await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
-    await this.voucherRepo.updateVoucher(voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() } as any);
+    await this.voucherRepo.updateVoucher(companyId, voucherId, { status: 'cancelled', updatedAt: new Date().toISOString() } as any);
   }
 }
 
@@ -208,7 +208,7 @@ export class GetVoucherUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<Voucher> {
-    const voucher = await this.voucherRepo.getVoucher(voucherId);
+    const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
     if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');
     return voucher;

@@ -53,9 +53,9 @@ class PrismaVoucherRepository {
             },
         });
     }
-    async updateVoucher(id, data) {
+    async updateVoucher(companyId, id, data) {
         await this.prisma.voucher.update({
-            where: { id },
+            where: { id, companyId },
             data: {
                 status: data.status,
                 approvedBy: data.approvedBy,
@@ -64,14 +64,14 @@ class PrismaVoucherRepository {
             },
         });
     }
-    async deleteVoucher(id) {
+    async deleteVoucher(companyId, id) {
         await this.prisma.voucher.delete({
-            where: { id },
+            where: { id, companyId }, // Ensure company match
         });
     }
-    async getVoucher(id) {
-        const data = await this.prisma.voucher.findUnique({
-            where: { id },
+    async getVoucher(companyId, id) {
+        const data = await this.prisma.voucher.findFirst({
+            where: { id, companyId },
             include: { lines: true },
         });
         if (!data)
@@ -83,6 +83,20 @@ class PrismaVoucherRepository {
             where: { companyId },
             include: { lines: true },
             orderBy: { date: 'desc' },
+        });
+        return vouchers.map((v) => this.mapToDomain(v));
+    }
+    async getVouchersByDateRange(companyId, fromDate, toDate) {
+        const vouchers = await this.prisma.voucher.findMany({
+            where: {
+                companyId,
+                date: {
+                    gte: fromDate,
+                    lte: toDate
+                }
+            },
+            include: { lines: true },
+            orderBy: { date: 'asc' },
         });
         return vouchers.map((v) => this.mapToDomain(v));
     }

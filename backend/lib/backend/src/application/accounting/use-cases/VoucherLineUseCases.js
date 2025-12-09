@@ -6,10 +6,10 @@ class RecalculateVoucherTotalsUseCase {
     constructor(voucherRepo) {
         this.voucherRepo = voucherRepo;
     }
-    async execute(voucherId, lines) {
+    async execute(companyId, voucherId, lines) {
         // In a pure Clean Architecture, we would fetch lines from ILineRepo.
         // Here we accept them as arg or assume logic.
-        const voucher = await this.voucherRepo.getVoucher(voucherId);
+        const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
         let totalDebit = 0;
@@ -21,7 +21,7 @@ class RecalculateVoucherTotalsUseCase {
             else
                 totalCredit += Math.abs(baseAmt);
         });
-        await this.voucherRepo.updateVoucher(voucherId, {
+        await this.voucherRepo.updateVoucher(companyId, voucherId, {
             totalDebit,
             totalCredit
         });

@@ -15,7 +15,7 @@ db.settings({ ignoreUndefinedProperties: true, host: '127.0.0.1:8080', ssl: fals
 async function promote() {
     console.log('Promoting admin@demo.com to SUPER_ADMIN...');
     const repo = new FirestoreUserRepository(db);
-    const user = await repo.getUserByEmail('admin@demo.com');
+    const user = await repo.findByEmail('admin@demo.com');
     
     if (!user) {
         console.error('User admin@demo.com not found!');

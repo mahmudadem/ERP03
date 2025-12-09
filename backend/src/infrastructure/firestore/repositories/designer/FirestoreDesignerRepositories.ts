@@ -24,50 +24,80 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   protected toDomain = VoucherTypeDefinitionMapper.toDomain;
   protected toPersistence = VoucherTypeDefinitionMapper.toPersistence;
 
+  private static readonly SYSTEM_COMPANY_ID = 'SYSTEM';
+  private static readonly SYSTEM_COLLECTION_NAME = 'system_voucher_types';
+
+  /**
+   * Get company-specific voucher types collection
+   */
   private getCollection(companyId: string) {
     return this.db.collection('companies').doc(companyId).collection('voucher_types');
   }
 
+  /**
+   * Get top-level system voucher types collection
+   */
+  private getSystemCollection() {
+    return this.db.collection(FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME);
+  }
+
   async createVoucherType(def: VoucherTypeDefinition): Promise<void> {
     const data = this.toPersistence(def);
-    await this.getCollection(def.companyId).doc(def.id).set(data);
+    
+    // System templates go to top-level collection, company templates go to subcollection
+    if (def.companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      await this.getSystemCollection().doc(def.id).set(data);
+    } else {
+      await this.getCollection(def.companyId).doc(def.id).set(data);
+    }
   }
 
   async updateVoucherType(companyId: string, id: string, data: Partial<VoucherTypeDefinition>): Promise<void> {
-    await this.getCollection(companyId).doc(id).update(data);
+    if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      await this.getSystemCollection().doc(id).update(data);
+    } else {
+      await this.getCollection(companyId).doc(id).update(data);
+    }
   }
 
   async getVoucherType(companyId: string, id: string): Promise<VoucherTypeDefinition | null> {
-    const doc = await this.getCollection(companyId).doc(id).get();
+    const doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+      ? await this.getSystemCollection().doc(id).get()
+      : await this.getCollection(companyId).doc(id).get();
+    
     if (!doc.exists) return null;
     return this.toDomain(doc.data());
   }
 
   async getVoucherTypesForModule(companyId: string, module: string): Promise<VoucherTypeDefinition[]> {
-    const snap = await this.getCollection(companyId).where('module', '==', module).get();
+    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+      ? await this.getSystemCollection().where('module', '==', module).get()
+      : await this.getCollection(companyId).where('module', '==', module).get();
+    
     return snap.docs.map(d => this.toDomain(d.data()));
   }
 
   async getByCompanyId(companyId: string): Promise<VoucherTypeDefinition[]> {
-    const snap = await this.getCollection(companyId).get();
+    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+      ? await this.getSystemCollection().get()
+      : await this.getCollection(companyId).get();
+    
     return snap.docs.map(d => this.toDomain(d.data()));
   }
 
   async getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null> {
-    const snap = await this.getCollection(companyId)
-      .where('code', '==', code)
-      .limit(1)
-      .get();
+    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+      ? await this.getSystemCollection().where('code', '==', code).limit(1).get()
+      : await this.getCollection(companyId).where('code', '==', code).limit(1).get();
 
     if (snap.empty) return null;
     return this.toDomain(snap.docs[0].data());
   }
 
   async updateLayout(companyId: string, code: string, layout: any): Promise<void> {
-    const snap = await this.getCollection(companyId)
-      .where('code', '==', code)
-      .limit(1)
-      .get();
+    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+      ? await this.getSystemCollection().where('code', '==', code).limit(1).get()
+      : await this.getCollection(companyId).where('code', '==', code).limit(1).get();
 
     if (!snap.empty) {
       await snap.docs[0].ref.update({ layout });
@@ -75,6 +105,15 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async getSystemTemplates(): Promise<VoucherTypeDefinition[]> {
-    return this.getByCompanyId('SYSTEM');
+    const snap = await this.getSystemCollection().get();
+    return snap.docs.map(d => this.toDomain(d.data()));
+  }
+
+  async deleteVoucherType(companyId: string, id: string): Promise<void> {
+    if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      await this.getSystemCollection().doc(id).delete();
+    } else {
+      await this.getCollection(companyId).doc(id).delete();
+    }
   }
 }

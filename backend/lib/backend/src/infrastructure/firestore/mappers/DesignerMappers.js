@@ -22,17 +22,19 @@ class FormDefinitionMapper {
 exports.FormDefinitionMapper = FormDefinitionMapper;
 class VoucherTypeDefinitionMapper {
     static toDomain(data) {
-        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {});
+        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.workflow);
     }
     static toPersistence(entity) {
         return {
             id: entity.id,
+            companyId: entity.companyId,
             name: entity.name,
             code: entity.code,
             module: entity.module,
-            headerFields: entity.headerFields,
+            headerFields: entity.headerFields.map(f => (Object.assign({}, f))),
             tableColumns: entity.tableColumns,
-            layout: entity.layout
+            layout: entity.layout,
+            workflow: entity.workflow
         };
     }
 }

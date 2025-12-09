@@ -2,12 +2,12 @@ import React from 'react';
 import { useVoucherDesigner, STEPS } from '../hooks/useVoucherDesigner';
 import { Button } from '../../../../components/ui/Button';
 
+import { StepSelectType } from './steps/StepSelectType';
 import { StepBasicInfo } from './steps/StepBasicInfo';
-import { StepRules } from './steps/StepRules';
 import { StepFields } from './steps/StepFields';
+import { StepCustomFields } from './steps/StepCustomFields';
 import { StepJournal } from './steps/StepJournal';
 import { StepLayout } from './steps/StepLayout';
-import { StepActions } from './steps/StepActions';
 import { StepReview } from './steps/StepReview';
 import { WizardStepper } from './WizardStepper';
 
@@ -30,22 +30,22 @@ export const VoucherWizard: React.FC<Props> = ({ initialCode, onClose }) => {
 
   const renderStepContent = () => {
     switch (currentStep) {
+      case 'TYPE':
+        return <StepSelectType definition={definition} updateDefinition={updateDefinition} onCodeSelected={nextStep} />;
       case 'BASIC':
         return <StepBasicInfo definition={definition} updateDefinition={updateDefinition} initialCode={initialCode} />;
-      case 'RULES':
-        return <StepRules definition={definition} updateDefinition={updateDefinition} />;
       case 'FIELDS':
         return <StepFields definition={definition} updateDefinition={updateDefinition} />;
+      case 'CUSTOM':
+        return <StepCustomFields definition={definition} updateDefinition={updateDefinition} />;
       case 'JOURNAL':
         return <StepJournal definition={definition} updateDefinition={updateDefinition} />;
       case 'LAYOUT':
         return <StepLayout definition={definition} updateDefinition={updateDefinition} />;
-      case 'ACTIONS':
-        return <StepActions definition={definition} updateDefinition={updateDefinition} />;
       case 'REVIEW':
         return <StepReview definition={definition} />;
       default:
-        return <div className="p-4 text-center text-gray-500">Step content for {currentStep} under construction.</div>;
+        return <div>Unknown step</div>;
     }
   };
 
@@ -71,7 +71,7 @@ export const VoucherWizard: React.FC<Props> = ({ initialCode, onClose }) => {
 
       {/* Footer Actions */}
       <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between">
-        <Button variant="secondary" onClick={prevStep} disabled={currentStep === 'BASIC'}>
+        <Button variant="secondary" onClick={prevStep} disabled={currentStep === 'TYPE' || (!!initialCode && currentStep === 'BASIC')}>
           Previous
         </Button>
         <div className="flex gap-2">

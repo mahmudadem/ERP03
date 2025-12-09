@@ -26,8 +26,8 @@ export class CreateVoucherTypeDefinitionUseCase {
 
 export class UpdateVoucherTypeDefinitionUseCase {
   constructor(private repo: IVoucherTypeDefinitionRepository) {}
-  async execute(id: string, data: Partial<VoucherTypeDefinition>): Promise<void> {
-    await this.repo.updateVoucherType(id, data);
+  async execute(companyId: string, id: string, data: Partial<VoucherTypeDefinition>): Promise<void> {
+    await this.repo.updateVoucherType(companyId, id, data);
   }
 }
 

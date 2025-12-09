@@ -32,8 +32,8 @@ class UpdateVoucherTypeDefinitionUseCase {
     constructor(repo) {
         this.repo = repo;
     }
-    async execute(id, data) {
-        await this.repo.updateVoucherType(id, data);
+    async execute(companyId, id, data) {
+        await this.repo.updateVoucherType(companyId, id, data);
     }
 }
 exports.UpdateVoucherTypeDefinitionUseCase = UpdateVoucherTypeDefinitionUseCase;

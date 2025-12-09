@@ -2,8 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CompleteCompanyCreationUseCase = void 0;
 const Company_1 = require("../../../domain/core/entities/Company");
+const crypto_1 = require("crypto");
 class CompleteCompanyCreationUseCase {
-    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver) {
+    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo) {
         this.sessionRepo = sessionRepo;
         this.templateRepo = templateRepo;
         this.companyRepo = companyRepo;
@@ -11,6 +12,7 @@ class CompleteCompanyCreationUseCase {
         this.rbacCompanyUserRepo = rbacCompanyUserRepo;
         this.rbacCompanyRoleRepo = rbacCompanyRoleRepo;
         this.rolePermissionResolver = rolePermissionResolver;
+        this.voucherTypeRepo = voucherTypeRepo;
     }
     filter(steps, model) {
         return steps
@@ -93,6 +95,19 @@ class CompleteCompanyCreationUseCase {
         }
         await this.userRepo.updateActiveCompany(session.userId, company.id);
         await this.sessionRepo.delete(session.id);
+        // Copy System Voucher Templates
+        try {
+            const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
+            for (const template of systemTemplates) {
+                // Clone template for new company
+                const newTemplate = Object.assign(Object.assign({}, template), { id: (0, crypto_1.randomUUID)(), companyId: company.id });
+                await this.voucherTypeRepo.createVoucherType(newTemplate);
+            }
+        }
+        catch (err) {
+            console.error('Failed to copy system voucher templates', err);
+            // Non-blocking error, proceed
+        }
         return { companyId: company.id, activeCompanyId: company.id };
     }
 }

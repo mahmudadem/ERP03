@@ -7,6 +7,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { AccountSelector } from '../../../components/accounting/AccountSelector';
+import { RequirePermission } from '../../../components/auth/RequirePermission';
 
 const VoucherEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -152,30 +153,40 @@ const VoucherEditorPage: React.FC = () => {
     return (
       <div className="flex gap-2">
         {status === 'draft' && isStrict && (
-          <Button onClick={() => handleWorkflowAction('sendToApproval')} variant="secondary" size="sm">
-            Send for Approval
-          </Button>
+          <RequirePermission permission="accounting.vouchers.edit">
+            <Button onClick={() => handleWorkflowAction('sendToApproval')} variant="secondary" size="sm">
+              Send for Approval
+            </Button>
+          </RequirePermission>
         )}
         
         {status === 'pending' && isStrict && (
           <>
-            <Button onClick={() => handleWorkflowAction('approve')} variant="primary" size="sm">
-              Approve
-            </Button>
-            <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
-              Reject/Cancel
-            </Button>
+            <RequirePermission permission="accounting.vouchers.approve">
+              <Button onClick={() => handleWorkflowAction('approve')} variant="primary" size="sm">
+                Approve
+              </Button>
+            </RequirePermission>
+            <RequirePermission permission="accounting.vouchers.cancel">
+              <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
+                Reject/Cancel
+              </Button>
+            </RequirePermission>
           </>
         )}
 
         {status === 'approved' && (
           <>
-            <Button onClick={() => handleWorkflowAction('lock')} variant="secondary" size="sm">
-              Lock
-            </Button>
-            <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
-              Cancel
-            </Button>
+            <RequirePermission permission="accounting.vouchers.lock">
+              <Button onClick={() => handleWorkflowAction('lock')} variant="secondary" size="sm">
+                Lock
+              </Button>
+            </RequirePermission>
+            <RequirePermission permission="accounting.vouchers.cancel">
+              <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
+                Cancel
+              </Button>
+            </RequirePermission>
           </>
         )}
       </div>

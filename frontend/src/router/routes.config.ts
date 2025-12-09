@@ -11,6 +11,7 @@ const AccountsListPage = lazy(() => import('../modules/accounting/pages/Accounts
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
+const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
 
 // Inventory
 const InventoryHomePage = lazy(() => import('../modules/inventory/pages/InventoryHomePage'));
@@ -85,6 +86,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'voucher.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'voucher.update', requiredModule: 'accounting' },
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/designer', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/designer/pages/VoucherTypeDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
 
   // INVENTORY

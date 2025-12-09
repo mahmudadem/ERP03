@@ -54,9 +54,9 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         });
     }
 
-    async updateVoucher(id: string, data: Partial<Voucher>): Promise<void> {
+    async updateVoucher(companyId: string, id: string, data: Partial<Voucher>): Promise<void> {
         await this.prisma.voucher.update({
-            where: { id },
+            where: { id, companyId }, // Ensure company match
             data: {
                 status: data.status,
                 approvedBy: data.approvedBy,
@@ -66,15 +66,15 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         });
     }
 
-    async deleteVoucher(id: string): Promise<void> {
+    async deleteVoucher(companyId: string, id: string): Promise<void> {
         await this.prisma.voucher.delete({
-            where: { id },
+            where: { id, companyId }, // Ensure company match
         });
     }
 
-    async getVoucher(id: string): Promise<Voucher | null> {
-        const data = await this.prisma.voucher.findUnique({
-            where: { id },
+    async getVoucher(companyId: string, id: string): Promise<Voucher | null> {
+        const data = await this.prisma.voucher.findFirst({
+            where: { id, companyId }, // Ensure company match
             include: { lines: true },
         });
 
@@ -88,6 +88,22 @@ export class PrismaVoucherRepository implements IVoucherRepository {
             where: { companyId },
             include: { lines: true },
             orderBy: { date: 'desc' },
+        });
+
+        return vouchers.map((v) => this.mapToDomain(v));
+    }
+
+    async getVouchersByDateRange(companyId: string, fromDate: Date, toDate: Date): Promise<Voucher[]> {
+        const vouchers = await this.prisma.voucher.findMany({
+            where: {
+                companyId,
+                date: {
+                    gte: fromDate,
+                    lte: toDate
+                }
+            },
+            include: { lines: true },
+            orderBy: { date: 'asc' },
         });
 
         return vouchers.map((v) => this.mapToDomain(v));

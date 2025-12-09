@@ -68,9 +68,18 @@ export class SuperAdminVoucherTypeController {
 
   static async deleteSystemTemplate(req: Request, res: Response, next: NextFunction) {
     try {
-      // Not implemented in repo yet, but good to have the endpoint ready
-      // await diContainer.voucherTypeDefinitionRepository.delete('SYSTEM', req.params.id);
-      throw new Error('Delete not implemented yet');
+      const id = req.params.id;
+
+      // Ensure we are deleting a SYSTEM template
+      const existing = await diContainer.voucherTypeDefinitionRepository.getVoucherType('SYSTEM', id);
+      if (!existing) throw ApiError.notFound('System template not found');
+
+      await diContainer.voucherTypeDefinitionRepository.deleteVoucherType('SYSTEM', id);
+
+      (res as any).status(200).json({
+        success: true,
+        message: 'Template deleted successfully'
+      });
     } catch (error) {
       next(error);
     }

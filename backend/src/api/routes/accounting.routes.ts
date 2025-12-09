@@ -36,6 +36,7 @@ router.post('/vouchers/:id/lock', permissionGuard('accounting.voucher.lock'), Vo
 router.post('/vouchers/:id/cancel', permissionGuard('accounting.voucher.cancel'), VoucherController.cancel);
 
 // Reports
+router.get('/reports/profit-loss', permissionGuard('accounting.reports.profitAndLoss.view'), ReportingController.profitAndLoss);
 router.get('/reports/trial-balance', permissionGuard('accounting.report.view'), ReportingController.trialBalance);
 router.get('/reports/general-ledger', permissionGuard('accounting.report.view'), ReportingController.generalLedger);
 router.get('/reports/journal', permissionGuard('accounting.report.view'), ReportingController.journal);
@@ -43,6 +44,8 @@ router.get('/reports/journal', permissionGuard('accounting.report.view'), Report
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);
 router.get('/designer/voucher-types/:code', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypeByCode);
+router.post('/designer/voucher-types', permissionGuard('accounting.designer.create'), AccountingDesignerController.create);
+router.put('/designer/voucher-types/:code', permissionGuard('accounting.designer.modify'), AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
 
 export default router;

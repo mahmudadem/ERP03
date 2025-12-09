@@ -26,11 +26,12 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
   // Evaluate Rules (Header only for now)
   useEffect(() => {
-    if (definition?.header?.rules) {
-        const hidden = evaluateVisibility(definition.header.rules, headerValues);
-        setHiddenFieldIds(hidden);
-    }
-  }, [headerValues, definition?.header?.rules]);
+    // TODO: Re-implement rules evaluation for flat headerFields if needed
+    // if (definition?.header?.rules) {
+    //    const hidden = evaluateVisibility(definition.header.rules, headerValues);
+    //    setHiddenFieldIds(hidden);
+    // }
+  }, [headerValues, definition]);
 
   const handleHeaderChange = (field: string, val: any) => {
     setHeaderValues((prev: any) => ({ ...prev, [field]: val }));
@@ -38,7 +39,9 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
   const handleSave = () => {
     // Validate Header
-    if (definition?.header) {
+    // TODO: Re-implement validation for flat fields
+    /*
+    if (definition?.headerFields) {
         const headerErrors = validateForm(definition.header, headerValues);
         if (Object.keys(headerErrors).length > 0) {
         setErrors(headerErrors);
@@ -46,6 +49,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         return;
         }
     }
+    */
 
     // Prepare Payload
     const payload = {
@@ -71,27 +75,33 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         </div>
         
         <div className="p-6">
-          {definition.header?.sections?.map(section => (
+          {/* Render Header Fields in a default section */}
+          {definition.headerFields && definition.headerFields.length > 0 ? (
             <DynamicSectionRenderer
-              key={section.id}
-              section={section}
-              allFields={definition.header.fields}
-              values={headerValues}
-              errors={errors}
-              onChange={handleHeaderChange}
-              hiddenFieldIds={hiddenFieldIds}
-              customComponents={customComponents}
+                  section={{
+                      id: 'main-header',
+                      title: 'Header Information',
+                      fieldIds: definition.headerFields.map(f => f.id)
+                  }}
+                  allFields={definition.headerFields}
+                  values={headerValues}
+                  errors={errors}
+                  onChange={handleHeaderChange}
+                  hiddenFieldIds={hiddenFieldIds}
+                  customComponents={customComponents}
             />
-          ))}
+          ) : (
+            <div className="text-gray-400 italic">No header fields defined.</div>
+          )}
         </div>
       </div>
 
       {/* 2. Line Items Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="font-bold text-gray-700 mb-2">Line Items</h3>
-        {definition.lines && (
+        {definition.tableFields && (
             <DynamicTableRenderer
-            definition={definition.lines}
+            definition={{ columns: definition.tableFields }} 
             rows={lines}
             onChange={setLines}
             customComponents={customComponents}
