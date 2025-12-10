@@ -47,7 +47,9 @@ const PlanSelectionPage: React.FC = () => {
     
     try {
       await onboardingApi.selectPlan(selectedPlanId);
-      navigate('/onboarding/companies');
+      // Navigate to company selector - use the route that doesn't re-check plan status
+      // to avoid race condition with database propagation
+      window.location.href = '/#/company-selector';
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save plan selection');
     } finally {
@@ -85,83 +87,92 @@ const PlanSelectionPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-3 xl:grid-cols-4 items-start">
-          {plans.map((plan) => {
-            const isRecommended = plan.id === recommendedPlanId;
-            const isSelected = selectedPlanId === plan.id;
-            
-            return (
-              <div 
-                key={plan.id}
-                onClick={() => handleSelect(plan.id)}
-                className={cn(
-                  "relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 cursor-pointer h-full hover:shadow-lg",
-                  isSelected 
-                    ? "border-primary-500 ring-2 ring-primary-500 ring-opacity-50 transform scale-105 z-10" 
-                    : "border-slate-200 hover:border-slate-300",
-                  isRecommended && !isSelected ? "border-amber-400 border-2" : ""
-                )}
-              >
-                {isRecommended && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide flex items-center gap-1 shadow-sm">
-                      <Star className="w-3 h-3 fill-white" />
-                      Recommended
-                    </span>
-                  </div>
-                )}
-
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-slate-900">{plan.name}</h3>
-                  <p className="mt-2 text-sm text-slate-500 h-10">{plan.description}</p>
-                </div>
-
-                <div className="mb-6">
-                  <span className="text-2xl font-bold text-slate-900">
-                    {plan.price === 0 ? 'Free' : `$${plan.price}/mo`}
-                  </span>
-                </div>
-
-                <ul className="space-y-4 mb-6 flex-1">
-                  <li className="flex items-start">
-                    <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                    <span className="text-sm text-slate-600">
-                      Companies: <strong>{plan.limits.maxCompanies}</strong>
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                    <span className="text-sm text-slate-600">
-                      Users/Company: <strong>{plan.limits.maxUsersPerCompany}</strong>
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                    <span className="text-sm text-slate-600">
-                      Modules: <strong>{plan.limits.maxModulesAllowed}</strong>
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
-                    <span className="text-sm text-slate-600">
-                      Storage: <strong>{plan.limits.maxStorageMB} MB</strong>
-                    </span>
-                  </li>
-                </ul>
-                
-                <button
+        {/* Plans Container with horizontal scroll on smaller screens */}
+        <div className="relative">
+          {/* Left fade */}
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none 2xl:hidden"></div>
+          {/* Right fade */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none 2xl:hidden"></div>
+          
+          <div className="flex gap-6 overflow-x-auto pb-4 px-2 snap-x snap-mandatory scroll-smooth 2xl:justify-center 2xl:overflow-visible scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+            {plans.map((plan) => {
+              const isRecommended = plan.id === recommendedPlanId;
+              const isSelected = selectedPlanId === plan.id;
+              
+              return (
+                <div 
+                  key={plan.id}
+                  onClick={() => handleSelect(plan.id)}
                   className={cn(
-                    "w-full rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    isSelected
-                      ? "bg-primary-500 text-white hover:bg-primary-600"
-                      : "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                    "relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition-all duration-200 cursor-pointer hover:shadow-lg snap-center shrink-0",
+                    "w-[280px] min-w-[280px]",
+                    isSelected 
+                      ? "border-primary-500 ring-2 ring-primary-500 ring-opacity-50 transform scale-105 z-10" 
+                      : "border-slate-200 hover:border-slate-300",
+                    isRecommended && !isSelected ? "border-amber-400 border-2" : ""
                   )}
                 >
-                  {isSelected ? "Selected" : "Select Plan"}
-                </button>
-              </div>
-            );
-          })}
+                  {isRecommended && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide flex items-center gap-1 shadow-sm">
+                        <Star className="w-3 h-3 fill-white" />
+                        Recommended
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900">{plan.name}</h3>
+                    <p className="mt-2 text-sm text-slate-500 h-10">{plan.description}</p>
+                  </div>
+
+                  <div className="mb-6">
+                    <span className="text-2xl font-bold text-slate-900">
+                      {plan.price === 0 ? 'Free' : `$${plan.price}/mo`}
+                    </span>
+                  </div>
+
+                  <ul className="space-y-4 mb-6 flex-1">
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
+                      <span className="text-sm text-slate-600">
+                        Companies: <strong>{plan.limits.maxCompanies}</strong>
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
+                      <span className="text-sm text-slate-600">
+                        Users/Company: <strong>{plan.limits.maxUsersPerCompany}</strong>
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
+                      <span className="text-sm text-slate-600">
+                        Modules: <strong>{plan.limits.maxModulesAllowed}</strong>
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
+                      <span className="text-sm text-slate-600">
+                        Storage: <strong>{plan.limits.maxStorageMB} MB</strong>
+                      </span>
+                    </li>
+                  </ul>
+                  
+                  <button
+                    className={cn(
+                      "w-full rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+                      isSelected
+                        ? "bg-primary-500 text-white hover:bg-primary-600"
+                        : "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                    )}
+                  >
+                    {isSelected ? "Selected" : "Select Plan"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Floating Action Bar if selection made */}

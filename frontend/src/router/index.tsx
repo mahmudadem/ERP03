@@ -15,6 +15,7 @@ import { LandingPage, PlanSelectionPage, CompaniesListPage } from '../modules/on
 
 // Lazy pages
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
+const CompanySelectorPageLazy = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
 
 // Loading component
 const PageLoader = () => (
@@ -52,6 +53,17 @@ const routes = [
       <RequireOnboarding>
         <CompaniesListPage />
       </RequireOnboarding>
+    ),
+  },
+  // Company selector (requires auth only - no plan check to avoid redirect loop after plan selection)
+  {
+    path: '/company-selector',
+    element: (
+      <RequireAuth>
+        <Suspense fallback={<PageLoader />}>
+          <CompanySelectorPageLazy />
+        </Suspense>
+      </RequireAuth>
     ),
   },
   // Main app routes (requires auth + plan)
