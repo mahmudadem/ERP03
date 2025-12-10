@@ -7,6 +7,7 @@ import { routesConfig } from './routes.config';
 // Auth & Security
 import { LoginPage } from '../pages/LoginPage';
 import { RequireAuth } from '../components/auth/RequireAuth';
+import { RequireOnboarding } from '../components/auth/RequireOnboarding';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 // Onboarding
@@ -35,7 +36,7 @@ const routes = [
     path: '/login',
     element: <Navigate to="/auth?mode=login" replace />,
   },
-  // Onboarding: Plan selection (requires auth)
+  // Onboarding: Plan selection (requires auth, skip onboarding check)
   {
     path: '/onboarding/plan',
     element: (
@@ -44,22 +45,22 @@ const routes = [
       </RequireAuth>
     ),
   },
-  // Onboarding: Companies list page (requires auth) - New UI
+  // Onboarding: Companies list page (requires auth + plan)
   {
     path: '/onboarding/companies',
     element: (
-      <RequireAuth>
+      <RequireOnboarding>
         <CompaniesListPage />
-      </RequireAuth>
+      </RequireOnboarding>
     ),
   },
-  // Main app routes
+  // Main app routes (requires auth + plan)
   {
     path: '/',
     element: (
-      <RequireAuth>
+      <RequireOnboarding>
         <AppShell />
-      </RequireAuth>
+      </RequireOnboarding>
     ),
     children: [
       ...routesConfig.map((route) => ({
@@ -96,4 +97,5 @@ const routes = [
 ];
 
 export const router = createHashRouter(routes);
+
 
