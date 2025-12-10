@@ -47,7 +47,7 @@ const PlanSelectionPage: React.FC = () => {
     
     try {
       await onboardingApi.selectPlan(selectedPlanId);
-      navigate('/company-selector');
+      navigate('/onboarding/companies');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save plan selection');
     } finally {

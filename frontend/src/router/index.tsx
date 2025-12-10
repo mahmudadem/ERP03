@@ -10,7 +10,7 @@ import { RequireAuth } from '../components/auth/RequireAuth';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 // Onboarding
-import { LandingPage, PlanSelectionPage } from '../modules/onboarding';
+import { LandingPage, PlanSelectionPage, CompaniesListPage } from '../modules/onboarding';
 
 // Lazy pages
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
@@ -41,6 +41,15 @@ const routes = [
     element: (
       <RequireAuth>
         <PlanSelectionPage />
+      </RequireAuth>
+    ),
+  },
+  // Onboarding: Companies list page (requires auth)
+  {
+    path: '/onboarding/companies',
+    element: (
+      <RequireAuth>
+        <CompaniesListPage />
       </RequireAuth>
     ),
   },
