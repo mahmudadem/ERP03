@@ -81,12 +81,17 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     }
   }
 
-  // No plan - force plan selection
-  if (onboardingStatus && !onboardingStatus.hasPlan) {
-    // Don't redirect if we're already on the plan page
-    if (location.pathname !== '/onboarding/plan') {
-      return <Navigate to="/onboarding/plan" replace />;
+  // Check onboarding status
+  if (onboardingStatus) {
+    // Legacy mode: if user has companies but no plan, let them through
+    // Only new users (no companies AND no plan) need to select a plan first
+    if (!onboardingStatus.hasPlan && !onboardingStatus.hasCompanies) {
+      // New user with no plan and no companies - force plan selection
+      if (location.pathname !== '/onboarding/plan') {
+        return <Navigate to="/onboarding/plan" replace />;
+      }
     }
+    // Users with companies (even without plan) are allowed through
   }
 
   return <>{children}</>;
