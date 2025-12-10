@@ -60,15 +60,15 @@ const LandingPage: React.FC = () => {
               navigate('/onboarding/plan');
               break;
             case 'COMPANY_SELECT':
-              navigate('/onboarding/companies');
+              navigate('/company-selector');
               break;
             case 'DASHBOARD':
               navigate('/');
               break;
           }
         } catch {
-          // If status check fails, go to companies list
-          navigate('/onboarding/companies');
+          // If status check fails, go to company selector
+          navigate('/company-selector');
         }
       }
     } catch (err: any) {
