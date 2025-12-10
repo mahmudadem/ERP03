@@ -2,6 +2,8 @@
  * onboardingApi.ts
  * 
  * Purpose: API client for onboarding-related endpoints.
+ * Note: The axios client already unwraps { success, data } responses,
+ * so we receive the data directly.
  */
 
 import client from '../../../api/client';
@@ -59,39 +61,36 @@ export const onboardingApi = {
    * Register a new user (public)
    */
   signup: async (data: SignupRequest): Promise<SignupResponse> => {
-    const response = await client.post('/onboarding/signup', data);
-    return response.data.data;
+    // Client already unwraps { success, data } response
+    return client.post('/onboarding/signup', data);
   },
 
   /**
    * Get current user's onboarding status (authenticated)
    */
   getOnboardingStatus: async (): Promise<OnboardingStatus> => {
-    const response = await client.get('/onboarding/onboarding-status');
-    return response.data.data;
+    return client.get('/onboarding/onboarding-status');
   },
 
   /**
    * Select a plan for the current user (authenticated)
    */
   selectPlan: async (planId: string): Promise<{ success: boolean; planId: string; planName: string }> => {
-    const response = await client.post('/onboarding/select-plan', { planId });
-    return response.data.data;
+    return client.post('/onboarding/select-plan', { planId });
   },
 
   /**
    * Get all available plans (public)
    */
   getPlans: async (): Promise<Plan[]> => {
-    const response = await client.get('/onboarding/plans');
-    return response.data.data;
+    return client.get('/onboarding/plans');
   },
 
   /**
    * Get all available bundles for company creation (public)
    */
   getBundles: async (): Promise<Bundle[]> => {
-    const response = await client.get('/onboarding/bundles');
-    return response.data.data;
+    return client.get('/onboarding/bundles');
   },
 };
+
