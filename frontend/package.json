@@ -13,19 +13,22 @@
     "@heroicons/react": "^2.2.0",
     "@tanstack/react-query": "^5.90.12",
     "axios": "^1.13.2",
+    "clsx": "^2.1.1",
     "firebase": "^12.6.0",
+    "lucide-react": "^0.559.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^6.22.0"
+    "react-router-dom": "^6.22.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.56",
     "@types/react-dom": "^18.2.19",
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.2.2",
     "vite": "^7.2.4"
   }

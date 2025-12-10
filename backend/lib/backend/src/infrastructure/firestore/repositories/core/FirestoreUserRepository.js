@@ -79,6 +79,14 @@ class FirestoreUserRepository extends BaseFirestoreRepository_1.BaseFirestoreRep
             throw new InfrastructureError_1.InfrastructureError('Error listing all users', error);
         }
     }
+    async updatePlan(userId, planId) {
+        try {
+            await this.db.collection(this.collectionName).doc(userId).update({ planId });
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error updating user plan', error);
+        }
+    }
 }
 exports.FirestoreUserRepository = FirestoreUserRepository;
 //# sourceMappingURL=FirestoreUserRepository.js.map

@@ -4,13 +4,16 @@ import companyWizardRoutes from '../routes/company-wizard.routes';
 import impersonationRoutes from '../routes/impersonation.routes';
 import userCompaniesRoutes from '../routes/user.companies.routes';
 import coreRoutes from '../routes/core.routes';
+import onboardingRoutes from '../routes/onboarding.routes';
 
 const router = Router();
 
 router.use(authRoutes);
+router.use('/onboarding', onboardingRoutes);
 router.use('/company-wizard', companyWizardRoutes);
 router.use('/impersonate', impersonationRoutes);
 router.use(userCompaniesRoutes);
 router.use('/core', coreRoutes);
 
 export default router;
+

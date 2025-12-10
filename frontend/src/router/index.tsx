@@ -9,6 +9,9 @@ import { LoginPage } from '../pages/LoginPage';
 import { RequireAuth } from '../components/auth/RequireAuth';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
+// Onboarding
+import { LandingPage, PlanSelectionPage } from '../modules/onboarding';
+
 // Lazy pages
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
 
@@ -22,10 +25,26 @@ const PageLoader = () => (
 
 // Routes
 const routes = [
+  // Public: Landing page for signup/login
+  {
+    path: '/auth',
+    element: <LandingPage />,
+  },
+  // Legacy login route - redirect to new landing
   {
     path: '/login',
-    element: <LoginPage />,
+    element: <Navigate to="/auth?mode=login" replace />,
   },
+  // Onboarding: Plan selection (requires auth)
+  {
+    path: '/onboarding/plan',
+    element: (
+      <RequireAuth>
+        <PlanSelectionPage />
+      </RequireAuth>
+    ),
+  },
+  // Main app routes
   {
     path: '/',
     element: (
@@ -68,3 +87,4 @@ const routes = [
 ];
 
 export const router = createHashRouter(routes);
+

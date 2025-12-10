@@ -1,0 +1,5 @@
+{
+  "name": "ERP03 Company Creation Wizard",
+  "description": "A multi-step wizard for creating a new company container in ERP03, featuring bundle selection and basic information setup.",
+  "requestFramePermissions": []
+}

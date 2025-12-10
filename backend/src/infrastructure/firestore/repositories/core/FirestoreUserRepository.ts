@@ -80,4 +80,13 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
       throw new InfrastructureError('Error listing all users', error);
     }
   }
+
+  async updatePlan(userId: string, planId: string): Promise<void> {
+    try {
+      await this.db.collection(this.collectionName).doc(userId).update({ planId });
+    } catch (error) {
+      throw new InfrastructureError('Error updating user plan', error);
+    }
+  }
 }
+

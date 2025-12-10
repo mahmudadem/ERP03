@@ -54,4 +54,11 @@ export interface IUserRepository {
    * Lists all users in the system (Super Admin only).
    */
   listAll(): Promise<User[]>;
+
+  /**
+   * Updates the user's subscription plan.
+   * @param userId The ID of the user.
+   * @param planId The ID of the plan to set.
+   */
+  updatePlan(userId: string, planId: string): Promise<void>;
 }

@@ -9,8 +9,10 @@ const company_wizard_routes_1 = __importDefault(require("../routes/company-wizar
 const impersonation_routes_1 = __importDefault(require("../routes/impersonation.routes"));
 const user_companies_routes_1 = __importDefault(require("../routes/user.companies.routes"));
 const core_routes_1 = __importDefault(require("../routes/core.routes"));
+const onboarding_routes_1 = __importDefault(require("../routes/onboarding.routes"));
 const router = (0, express_1.Router)();
 router.use(auth_routes_1.default);
+router.use('/onboarding', onboarding_routes_1.default);
 router.use('/company-wizard', company_wizard_routes_1.default);
 router.use('/impersonate', impersonation_routes_1.default);
 router.use(user_companies_routes_1.default);

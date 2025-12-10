@@ -8,10 +8,17 @@ export class User {
     public name: string,
     public globalRole: UserRole,
     public createdAt: Date,
-    public pictureUrl?: string
+    public pictureUrl?: string,
+    public planId?: string,
+    public activeCompanyId?: string
   ) {}
 
   public isAdmin(): boolean {
     return this.globalRole === 'SUPER_ADMIN';
   }
+
+  public hasPlan(): boolean {
+    return !!this.planId;
+  }
 }
+
