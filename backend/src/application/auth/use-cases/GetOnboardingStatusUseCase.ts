@@ -6,7 +6,6 @@
 
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
-import { ApiError } from '../../../api/errors/ApiError';
 
 export interface OnboardingStatus {
   userId: string;
@@ -26,10 +25,23 @@ export class GetOnboardingStatusUseCase {
     private companyUserRepository: ICompanyUserRepository
   ) {}
 
-  async execute(userId: string): Promise<OnboardingStatus> {
+  async execute(userId: string, email?: string): Promise<OnboardingStatus> {
     const user = await this.userRepository.getUserById(userId);
+    
+    // If user doesn't exist in our database, they need to complete onboarding
+    // This handles legacy Firebase Auth users who don't have a User record yet
     if (!user) {
-      throw ApiError.notFound('User not found');
+      return {
+        userId,
+        email: email || 'unknown',
+        name: 'User',
+        hasPlan: false,
+        planId: null,
+        hasCompanies: false,
+        companiesCount: 0,
+        activeCompanyId: null,
+        nextStep: 'PLAN_SELECTION',
+      };
     }
 
     // Get user's companies
@@ -62,3 +74,4 @@ export class GetOnboardingStatusUseCase {
     };
   }
 }
+

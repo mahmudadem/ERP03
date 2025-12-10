@@ -74,9 +74,11 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     );
   }
 
-  // Error getting status - let them through but they might have issues
+  // Error getting status - redirect to plan selection (assume they need onboarding)
   if (statusError) {
-    return <>{children}</>;
+    if (location.pathname !== '/onboarding/plan') {
+      return <Navigate to="/onboarding/plan" replace />;
+    }
   }
 
   // No plan - force plan selection

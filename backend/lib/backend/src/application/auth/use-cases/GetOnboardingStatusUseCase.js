@@ -6,16 +6,27 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetOnboardingStatusUseCase = void 0;
-const ApiError_1 = require("../../../api/errors/ApiError");
 class GetOnboardingStatusUseCase {
     constructor(userRepository, companyUserRepository) {
         this.userRepository = userRepository;
         this.companyUserRepository = companyUserRepository;
     }
-    async execute(userId) {
+    async execute(userId, email) {
         const user = await this.userRepository.getUserById(userId);
+        // If user doesn't exist in our database, they need to complete onboarding
+        // This handles legacy Firebase Auth users who don't have a User record yet
         if (!user) {
-            throw ApiError_1.ApiError.notFound('User not found');
+            return {
+                userId,
+                email: email || 'unknown',
+                name: 'User',
+                hasPlan: false,
+                planId: null,
+                hasCompanies: false,
+                companiesCount: 0,
+                activeCompanyId: null,
+                nextStep: 'PLAN_SELECTION',
+            };
         }
         // Get user's companies
         const userCompanies = await this.companyUserRepository.getMembershipsByUser(userId);
