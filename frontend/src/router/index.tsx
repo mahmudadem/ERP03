@@ -44,7 +44,7 @@ const routes = [
       </RequireAuth>
     ),
   },
-  // Onboarding: Companies list page (requires auth)
+  // Onboarding: Companies list page (requires auth) - New UI
   {
     path: '/onboarding/companies',
     element: (
