@@ -1,9 +1,11 @@
 /**
  * authMiddleware.ts
- * Purpose: Verifies Firebase ID Tokens.
+ * 
+ * Purpose: Verifies authentication tokens using the ITokenVerifier abstraction.
+ * This middleware is provider-agnostic and works with any identity provider
+ * that implements the ITokenVerifier interface.
  */
 import { Request, Response, NextFunction } from 'express';
-import admin from '../../firebaseAdmin';
 import { ApiError } from '../errors/ApiError';
 import { diContainer } from '../../infrastructure/di/bindRepositories';
 
@@ -34,8 +36,10 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   const token = authHeader.split('Bearer ')[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    // Use the token verifier from DI container (provider-agnostic)
+    const decodedToken = await diContainer.tokenVerifier.verify(token);
     const uid = decodedToken.uid;
+    
     const userEntity = await diContainer.userRepository.getUserById(uid);
     const activeCompanyId = await diContainer.userRepository.getUserActiveCompany(uid);
 

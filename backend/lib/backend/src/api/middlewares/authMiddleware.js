@@ -1,10 +1,6 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = void 0;
-const firebaseAdmin_1 = __importDefault(require("../../firebaseAdmin"));
 const ApiError_1 = require("../errors/ApiError");
 const bindRepositories_1 = require("../../infrastructure/di/bindRepositories");
 const authMiddleware = async (req, res, next) => {
@@ -14,7 +10,8 @@ const authMiddleware = async (req, res, next) => {
     }
     const token = authHeader.split('Bearer ')[1];
     try {
-        const decodedToken = await firebaseAdmin_1.default.auth().verifyIdToken(token);
+        // Use the token verifier from DI container (provider-agnostic)
+        const decodedToken = await bindRepositories_1.diContainer.tokenVerifier.verify(token);
         const uid = decodedToken.uid;
         const userEntity = await bindRepositories_1.diContainer.userRepository.getUserById(uid);
         const activeCompanyId = await bindRepositories_1.diContainer.userRepository.getUserActiveCompany(uid);

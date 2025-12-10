@@ -1,7 +1,28 @@
+/**
+ * AuthContext.tsx
+ * 
+ * Purpose: React context for authentication state management.
+ * Uses the IAuthProvider abstraction to remain provider-agnostic.
+ * 
+ * By default, uses FirebaseAuthProvider, but can be swapped for any
+ * other provider implementation (Keycloak, Auth0, custom JWT, etc.)
+ */
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { AuthContextType, CurrentUser, LoginCredentials } from '../types/auth.types';
+import { IAuthProvider, AuthUser, LoginCredentials } from '../services/auth/IAuthProvider';
+import { getFirebaseAuthProvider } from '../services/auth/FirebaseAuthProvider';
+
+// Re-export types for backwards compatibility
+export type { LoginCredentials } from '../services/auth/IAuthProvider';
+
+export interface AuthContextType {
+  user: AuthUser | null;
+  loading: boolean;
+  login: (creds: LoginCredentials) => Promise<void>;
+  logout: () => Promise<void>;
+  getToken: () => Promise<string | null>;
+  refreshToken?: () => Promise<string | null>;
+}
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -14,29 +35,39 @@ export const useAuth = () => {
   return ctx;
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<CurrentUser | null>(null);
+interface AuthProviderProps {
+  children: ReactNode;
+  /** Optional custom auth provider. Defaults to FirebaseAuthProvider. */
+  authProvider?: IAuthProvider;
+}
+
+export const AuthProvider = ({ children, authProvider }: AuthProviderProps) => {
+  // Use provided auth provider or default to Firebase
+  const provider = authProvider ?? getFirebaseAuthProvider();
+  
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    // Subscribe to auth state changes
+    const unsubscribe = provider.onAuthStateChanged((authUser) => {
       // eslint-disable-next-line no-console
-      console.info('[Auth] onAuthStateChanged', firebaseUser?.uid);
-      setUser(firebaseUser);
+      console.info('[Auth] onAuthStateChanged', authUser?.uid);
+      setUser(authUser);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [provider]);
 
   const login = async (creds: LoginCredentials) => {
     // eslint-disable-next-line no-console
     console.info('[Auth] login attempt', creds.email);
     try {
-      const credential = await signInWithEmailAndPassword(auth, creds.email, creds.password);
-      setUser(credential.user);
+      const authUser = await provider.login(creds);
+      setUser(authUser);
       // eslint-disable-next-line no-console
-      console.info('[Auth] login success', credential.user.uid);
+      console.info('[Auth] login success', authUser.uid);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[Auth] login failed', err);
@@ -45,12 +76,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await provider.logout();
+    setUser(null);
   };
 
   const getToken = async () => {
-    if (!user) return null;
-    return user.getIdToken();
+    return provider.getToken();
+  };
+
+  const refreshToken = async () => {
+    if (provider.refreshToken) {
+      return provider.refreshToken();
+    }
+    // Fallback: force refresh via getToken
+    return provider.getToken(true);
   };
 
   const value: AuthContextType = {
@@ -59,6 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     logout,
     getToken,
+    refreshToken,
   };
 
   return (

@@ -101,7 +101,11 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         <h3 className="font-bold text-gray-700 mb-2">Line Items</h3>
         {definition.tableFields && (
             <DynamicTableRenderer
-            definition={{ columns: definition.tableFields }} 
+            definition={{ 
+              id: 'lines-table', 
+              name: 'items', 
+              columns: definition.tableFields 
+            }} 
             rows={lines}
             onChange={setLines}
             customComponents={customComponents}

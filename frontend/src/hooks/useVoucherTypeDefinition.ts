@@ -20,28 +20,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string) => {
         const def = await designerApi.getVoucherTypeByCode(voucherTypeCode);
         
         // Map backend structure to frontend structure if needed
-        if (!def.header && def.headerFields) {
-            def.header = {
-                id: def.id + '_header',
-                name: def.name,
-                module: def.module,
-                type: 'HEADER',
-                fields: def.headerFields,
-                sections: [{
-                    id: 'default_section',
-                    title: 'General Information',
-                    fieldIds: def.headerFields.map((f: any) => f.id)
-                }],
-                rules: [] // TODO: Map rules if they exist in layout or separate field
-            } as any;
-        }
-
-        if (!def.lines && def.tableColumns) {
-            def.lines = {
-                id: def.id + '_lines',
-                columns: def.tableColumns
-            } as any;
-        }
+        // No mapping needed as we use the flat structure directly in DynamicVoucherRenderer
 
         setDefinition(def);
         setError(null);

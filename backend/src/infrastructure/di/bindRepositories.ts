@@ -80,6 +80,10 @@ import { getPrismaClient } from '../prisma/prismaClient';
 import { ITransactionManager } from '../../repository/interfaces/shared/ITransactionManager';
 import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
 
+// AUTH
+import { ITokenVerifier } from '../../application/auth/interfaces/ITokenVerifier';
+import { FirebaseTokenVerifier } from '../auth/FirebaseTokenVerifier';
+
 
 // Helper to get Firestore instance
 const getDb = () => admin.firestore();
@@ -173,5 +177,8 @@ export const diContainer = {
   get roleTemplateRegistryRepository(): IRoleTemplateRegistryRepository { return new FirestoreRoleTemplateRegistryRepository(getDb()); },
 
   // SHARED
-  get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); }
+  get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); },
+
+  // AUTH
+  get tokenVerifier(): ITokenVerifier { return new FirebaseTokenVerifier(); }
 };

@@ -45,6 +45,7 @@ const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyR
 const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
 const prismaClient_1 = require("../prisma/prismaClient");
 const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
+const FirebaseTokenVerifier_1 = require("../auth/FirebaseTokenVerifier");
 // Helper to get Firestore instance
 const getDb = () => firebaseAdmin_1.default.firestore();
 // Database type configuration
@@ -120,6 +121,8 @@ exports.diContainer = {
     get planRegistryRepository() { return new FirestorePlanRegistryRepository_1.FirestorePlanRegistryRepository(getDb()); },
     get roleTemplateRegistryRepository() { return new FirestoreRoleTemplateRegistryRepository_1.FirestoreRoleTemplateRegistryRepository(getDb()); },
     // SHARED
-    get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); }
+    get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); },
+    // AUTH
+    get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); }
 };
 //# sourceMappingURL=bindRepositories.js.map

@@ -30,7 +30,7 @@ const Tabs = ({ active, onChange, tabs }: { active: string, onChange: (t: string
 // Field Editor Component
 const FieldListEditor = ({ fields, onChange }: { fields: FieldDefinition[], onChange: (f: FieldDefinition[]) => void }) => {
   const addField = () => {
-    onChange([...fields, { id: `f_${Date.now()}`, key: '', label: 'New Field', type: 'STRING', required: false, readonly: false }]);
+    onChange([...fields, { id: `f_${Date.now()}`, name: '', label: 'New Field', type: 'TEXT', required: false, readOnly: false }]);
   };
 
   const updateField = (index: number, updates: Partial<FieldDefinition>) => {
@@ -57,11 +57,11 @@ const FieldListEditor = ({ fields, onChange }: { fields: FieldDefinition[], onCh
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500">Key (Data Property)</label>
+              <label className="block text-xs font-medium text-gray-500">Name (Data Property)</label>
               <input
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                value={field.key}
-                onChange={e => updateField(idx, { key: e.target.value })}
+                value={field.name}
+                onChange={e => updateField(idx, { name: e.target.value })}
               />
             </div>
             <div>
@@ -71,11 +71,11 @@ const FieldListEditor = ({ fields, onChange }: { fields: FieldDefinition[], onCh
                 value={field.type}
                 onChange={e => updateField(idx, { type: e.target.value as any })}
               >
-                <option value="STRING">String</option>
+                <option value="TEXT">Text</option>
                 <option value="NUMBER">Number</option>
                 <option value="DATE">Date</option>
-                <option value="BOOLEAN">Boolean</option>
-                <option value="REFERENCE">Reference</option>
+                <option value="CHECKBOX">Checkbox (Boolean)</option>
+                <option value="RELATION">Relation</option>
                 <option value="SELECT">Select</option>
               </select>
             </div>
@@ -93,8 +93,8 @@ const FieldListEditor = ({ fields, onChange }: { fields: FieldDefinition[], onCh
                 <input
                   type="checkbox"
                   className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  checked={field.readonly}
-                  onChange={e => updateField(idx, { readonly: e.target.checked })}
+                  checked={field.readOnly}
+                  onChange={e => updateField(idx, { readOnly: e.target.checked })}
                 />
                 <span className="ml-2 text-sm text-gray-600">Readonly</span>
               </label>
@@ -125,7 +125,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
     code: '',
     module: 'ACCOUNTING',
     headerFields: [],
-    tableColumns: [],
+    tableFields: [],
     layout: { sections: [], lineFields: [] },
     workflow: { approvalRequired: false }
   });
@@ -262,7 +262,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
         {activeTab === 'Table Columns' && (
           <div className="space-y-4">
             <p className="text-sm text-gray-500">Define which fields from "Line Fields" should appear as columns in the table.</p>
-            {(definition.tableColumns || []).map((col, idx) => (
+            {(definition.tableFields || []).map((col, idx) => (
               <div key={idx} className="flex items-center space-x-4 p-4 bg-gray-50 rounded border border-gray-200">
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-500">Field ID (must match Line Field ID)</label>
@@ -270,9 +270,9 @@ export const VoucherTemplateEditorPage: React.FC = () => {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     value={col.fieldId}
                     onChange={e => {
-                      const newCols = [...(definition.tableColumns || [])];
+                      const newCols = [...(definition.tableFields || [])];
                       newCols[idx] = { ...newCols[idx], fieldId: e.target.value };
-                      updateDef({ tableColumns: newCols });
+                      updateDef({ tableFields: newCols });
                     }}
                   />
                 </div>
@@ -282,14 +282,14 @@ export const VoucherTemplateEditorPage: React.FC = () => {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     value={col.width}
                     onChange={e => {
-                      const newCols = [...(definition.tableColumns || [])];
+                      const newCols = [...(definition.tableFields || [])];
                       newCols[idx] = { ...newCols[idx], width: e.target.value };
-                      updateDef({ tableColumns: newCols });
+                      updateDef({ tableFields: newCols });
                     }}
                   />
                 </div>
                 <button 
-                  onClick={() => updateDef({ tableColumns: definition.tableColumns?.filter((_, i) => i !== idx) })}
+                  onClick={() => updateDef({ tableFields: definition.tableFields?.filter((_, i) => i !== idx) })}
                   className="text-red-600 hover:text-red-800 mt-6"
                 >
                   Remove
@@ -298,7 +298,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
             ))}
             <Button 
               variant="secondary" 
-              onClick={() => updateDef({ tableColumns: [...(definition.tableColumns || []), { fieldId: '', width: '20%' }] })}
+              onClick={() => updateDef({ tableFields: [...(definition.tableFields || []), { fieldId: '', width: '20%' }] })}
             >
               + Add Column
             </Button>

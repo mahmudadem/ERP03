@@ -20,6 +20,8 @@ export interface VoucherTypeDefinition {
   
   // Configuration
   mode: 'single-line' | 'multi-line';
+  module?: 'ACCOUNTING' | 'INVENTORY' | 'POS';
+  workflow?: { approvalRequired: boolean };
   
   // UI Metadata
   headerFields: FieldDefinition[];
