@@ -2,52 +2,33 @@
  * CompaniesListPage.tsx
  * 
  * Purpose: Shows user's companies and allows creating new ones.
- * Part of the onboarding flow after plan selection.
+ * Uses new UI design with logic from original CompanySelectorPage.
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, ExternalLink, MoreVertical, Loader2 } from 'lucide-react';
-import { companySelectorApi } from '../../company-selector/api';
+import { Plus, Building2, ExternalLink, MoreVertical, Loader2, RefreshCw } from 'lucide-react';
+import { useCompanies } from '../../company-selector/hooks/useCompanies';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useAuth } from '../../../context/AuthContext';
-import { cn } from '../../../lib/utils';
-
-interface Company {
-  id: string;
-  name: string;
-  country?: string;
-  modules?: string[];
-  status?: string;
-  logo?: string;
-}
 
 const CompaniesListPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { companies, loading, error, refresh } = useCompanies();
+  const { switchCompany } = useCompanyAccess();
+  const { setUiMode } = useUserPreferences();
 
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  const loadCompanies = async () => {
+  const handleEnter = async (companyId: string) => {
     try {
-      const data = await companySelectorApi.getUserCompanies();
-      // Map the response to our Company interface
-      setCompanies(data.map(c => ({
-        id: c.id,
-        name: c.name,
-        country: undefined,
-        modules: [],
-        status: 'active',
-      })));
+      await switchCompany(companyId);
+      // Force classic mode so the main router outlet renders instead of window manager
+      setUiMode('classic');
+      // Hard reload to ensure all contexts pick up the new active company
+      window.location.href = '/#/';
     } catch (err: any) {
-      console.error('Failed to load companies:', err);
-      setError('Failed to load companies');
-    } finally {
-      setIsLoading(false);
+      window.alert(err?.message || 'Failed to switch company');
     }
   };
 
@@ -55,17 +36,7 @@ const CompaniesListPage: React.FC = () => {
     navigate('/company-wizard');
   };
 
-  const handleCompanyClick = async (companyId: string) => {
-    try {
-      await companySelectorApi.switchCompany(companyId);
-      navigate('/');
-    } catch (err: any) {
-      console.error('Failed to switch company:', err);
-      setError('Failed to switch to company');
-    }
-  };
-
-  if (isLoading) {
+  if (loading && companies.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
@@ -84,6 +55,13 @@ const CompaniesListPage: React.FC = () => {
             <span className="font-bold text-xl text-slate-900">ERP03</span>
           </div>
           <div className="flex items-center gap-4">
+             <button 
+               onClick={refresh}
+               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+               title="Refresh"
+             >
+               <RefreshCw className="h-5 w-5" />
+             </button>
              <div className="h-8 w-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-medium">
                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
              </div>
@@ -95,7 +73,7 @@ const CompaniesListPage: React.FC = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Companies</h1>
-            <p className="text-slate-500 mt-1">Manage your organizations and workspaces.</p>
+            <p className="text-slate-500 mt-1">Choose a company to enter or create a new one.</p>
           </div>
           <button
             onClick={handleCreateClick}
@@ -107,8 +85,11 @@ const CompaniesListPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-            {error}
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={refresh} className="text-red-600 hover:text-red-800 font-medium text-sm">
+              Retry
+            </button>
           </div>
         )}
 
@@ -135,23 +116,19 @@ const CompaniesListPage: React.FC = () => {
             {companies.map((company) => (
               <div 
                 key={company.id}
-                onClick={() => handleCompanyClick(company.id)}
+                onClick={() => handleEnter(company.id)}
                 className="group relative flex flex-col justify-between overflow-hidden rounded-xl border bg-white p-6 shadow-sm transition-all hover:shadow-md hover:border-primary-500/50 cursor-pointer"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-lg bg-slate-100 border flex items-center justify-center overflow-hidden">
-                      {company.logo ? (
-                        <img src={company.logo} alt={company.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-lg font-bold text-slate-400">{company.name.charAt(0)}</span>
-                      )}
+                      <span className="text-lg font-bold text-slate-400">{company.name.charAt(0)}</span>
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-900 group-hover:text-primary-500 transition-colors">
                         {company.name}
                       </h3>
-                      <p className="text-xs text-slate-500">{company.country || 'No location set'}</p>
+                      <p className="text-xs text-slate-500">{company.model || 'Business'}</p>
                     </div>
                   </div>
                   <button 
@@ -164,7 +141,7 @@ const CompaniesListPage: React.FC = () => {
 
                 <div className="mt-6 flex items-center justify-between text-sm">
                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 px-2 py-1 rounded">
-                      <span className="font-medium">{company.modules?.length || 0}</span> Modules
+                      <span className="font-medium capitalize">{company.role || 'Member'}</span>
                    </div>
                    <div className="flex items-center gap-1 text-primary-500 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                       Open Dashboard <ExternalLink className="h-3 w-3" />
