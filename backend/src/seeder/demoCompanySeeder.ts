@@ -7,7 +7,6 @@ import { IVoucherTypeDefinitionRepository } from '../repository/interfaces/desig
 import { Company } from '../domain/core/entities/Company';
 import { User } from '../domain/core/entities/User';
 import { CompanyRole } from '../domain/rbac/CompanyRole';
-import { BUNDLES } from '../domain/platform/Bundle';
 import { VoucherTypeDefinition } from '../domain/designer/entities/VoucherTypeDefinition';
 import { FieldDefinition } from '../domain/designer/entities/FieldDefinition';
 
@@ -199,37 +198,23 @@ export async function seedDemoCompany(deps: SeedDependencies): Promise<SeedResul
     }
     console.log('');
 
-    // Step 4: Apply Starter Bundle
-    console.log('📦 Step 4: Applying Starter Bundle...');
-    const starterBundle = BUNDLES.find(b => b.id === 'starter');
-
-    if (starterBundle) {
-        await companyRepository.update(companyId, {
-            modules: starterBundle.modules,
-            subscriptionPlan: 'starter',
-            ownerId: ownerUserId
-        });
-        console.log(`  ✓ Bundle applied: ${starterBundle.name}`);
-        console.log(`  ✓ Modules activated: ${starterBundle.modules.join(', ')}`);
-    }
-    console.log('');
-
-    // Step 5: Enable Additional Features
-    console.log('🎯 Step 5: Enabling Additional Features...');
-    const additionalFeatures = ['multiCurrency', 'auditLogs'];
-    const allFeatures = [...(starterBundle?.features || []), ...additionalFeatures];
-
+    // Step 4: Set basic modules (no longer using hardcoded bundles)
+    console.log('📦 Step 4: Setting Basic Modules...');
+    
     await companyRepository.update(companyId, {
-        features: allFeatures
+        modules: ['accounting', 'inventory', 'finance', 'hr'],
+        subscriptionPlan: '', // No hardcoded bundle
+        ownerId: ownerUserId
     });
-
-    for (const feature of additionalFeatures) {
-        console.log(`  ✓ Feature enabled: ${feature}`);
-    }
+    console.log(`  ✓ Basic modules activated: accounting, inventory, finance, hr`);
     console.log('');
 
-    // Step 6: Create Voucher Types
-    console.log('📄 Step 6: Creating Voucher Types...');
+    // Note: Features are no longer part of bundles in the new architecture
+    console.log('ℹ️  Note: Features are managed separately in the new bundle architecture');
+    console.log('');
+
+    // Step 5: Create Voucher Types
+    console.log('📄 Step 5: Creating Voucher Types...');
     const voucherType = new VoucherTypeDefinition(
         `vt_inv_${ts}`,
         companyId,
@@ -302,15 +287,15 @@ export async function seedDemoCompany(deps: SeedDependencies): Promise<SeedResul
     console.log(`  ✓ Voucher Type created: ${voucherType.name} (${voucherType.code})`);
     console.log('');
 
-    // Step 7: Return Final Result
+    // Step 6: Return Final Result
     const result: SeedResult = {
         companyId,
         companyName: 'Demo Manufacturing Co.',
         rolesCreated: createdRoles,
         usersCreated: createdUsers,
-        activeModules: starterBundle?.modules || [],
-        activeFeatures: allFeatures,
-        bundleApplied: 'starter'
+        activeModules: ['accounting', 'inventory', 'finance',  'hr'],
+        activeFeatures: [],
+        bundleApplied: 'none'
     };
 
     console.log('✅ Demo Company Seeded Successfully!\n');

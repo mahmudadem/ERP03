@@ -49,4 +49,9 @@ export interface IUserRepository {
    * Retrieves the user's active company id if set.
    */
   getUserActiveCompany(userId: string): Promise<string | null>;
+
+  /**
+   * Lists all users in the system (Super Admin only).
+   */
+  listAll(): Promise<User[]>;
 }

@@ -104,6 +104,10 @@ class FirestoreCompanyRepository {
     mapToEntity(data) {
         return new Company_1.Company(data.id, data.name, data.ownerId || 'legacy_owner', data.createdAt.toDate(), data.updatedAt.toDate(), data.baseCurrency || 'USD', data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1), data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31), data.modules || ['CORE'], data.features || [], data.taxId || '', data.subscriptionPlan, data.address, data.country, data.logoUrl, data.contactInfo);
     }
+    async listAll() {
+        const snapshot = await this.db.collection(this.collectionName).get();
+        return snapshot.docs.map(doc => this.mapToEntity(doc.data()));
+    }
 }
 exports.FirestoreCompanyRepository = FirestoreCompanyRepository;
 //# sourceMappingURL=FirestoreCompanyRepository.js.map

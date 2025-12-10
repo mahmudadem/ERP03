@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetCompanyBundleUseCase = void 0;
-const Bundle_1 = require("../../../domain/platform/Bundle");
 const ApiError_1 = require("../../../api/errors/ApiError");
 class GetCompanyBundleUseCase {
-    constructor(companyRepository) {
+    constructor(companyRepository, bundleRepo) {
         this.companyRepository = companyRepository;
+        this.bundleRepo = bundleRepo;
     }
     async execute(input) {
         // Validate companyId
@@ -18,13 +18,15 @@ class GetCompanyBundleUseCase {
             throw ApiError_1.ApiError.notFound("Company not found");
         }
         // Bundle value is stored in company.subscriptionPlan
-        const bundleId = company.subscriptionPlan || 'starter';
-        // Load bundle metadata from Bundles registry
-        const bundle = Bundle_1.BUNDLES.find(b => b.id === bundleId);
+        const bundleId = company.subscriptionPlan;
+        if (!bundleId) {
+            return null;
+        }
+        // Load bundle metadata from Firestore
+        const bundle = await this.bundleRepo.getById(bundleId);
         if (!bundle) {
-            // Fallback to starter if bundle not found
-            const starterBundle = Bundle_1.BUNDLES.find(b => b.id === 'starter');
-            return Object.assign({ bundleId: 'starter' }, starterBundle);
+            // Bundle not found
+            return null;
         }
         // Return
         return Object.assign({ bundleId: bundle.id }, bundle);

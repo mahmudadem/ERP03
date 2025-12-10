@@ -87,13 +87,21 @@ export async function seedRbacData() {
 
   console.log('Seeding permissions...');
   for (const permission of permissions) {
-    await db.collection('permissions').doc(permission.id).set(permission);
+    await db.collection('system_metadata').doc('permissions').collection('items').doc(permission.id).set(permission);
   }
   console.log(`✓ Seeded ${permissions.length} permissions`);
 
-  console.log('Seeding system role templates...');
+  // Seed role templates
+  console.log('Seeding role templates...');
   for (const template of systemRoleTemplates) {
-    await db.collection('system_role_templates').doc(template.id).set(template);
+    await db.collection('system_metadata').doc('role_templates').collection('items').doc(template.id).set({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      permissions: template.permissions,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
   console.log(`✓ Seeded ${systemRoleTemplates.length} role templates`);
 

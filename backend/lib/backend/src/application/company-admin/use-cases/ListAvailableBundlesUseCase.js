@@ -1,11 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListAvailableBundlesUseCase = void 0;
-const Bundle_1 = require("../../../domain/platform/Bundle");
 class ListAvailableBundlesUseCase {
+    constructor(bundleRepo) {
+        this.bundleRepo = bundleRepo;
+    }
     async execute() {
-        // Return all bundles from registry
-        return Bundle_1.BUNDLES.map(bundle => (Object.assign({ bundleId: bundle.id }, bundle)));
+        // Return all bundles from Firestore
+        const bundles = await this.bundleRepo.getAll();
+        return bundles.map(bundle => (Object.assign({ bundleId: bundle.id }, bundle)));
     }
 }
 exports.ListAvailableBundlesUseCase = ListAvailableBundlesUseCase;

@@ -112,6 +112,10 @@ class PrismaCompanyRepository {
             data: { features },
         });
     }
+    async listAll() {
+        const companies = await this.prisma.company.findMany();
+        return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined));
+    }
 }
 exports.PrismaCompanyRepository = PrismaCompanyRepository;
 //# sourceMappingURL=PrismaCompanyRepository.js.map

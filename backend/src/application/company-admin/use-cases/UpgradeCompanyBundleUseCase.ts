@@ -1,10 +1,11 @@
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
-import { BUNDLES } from '../../../domain/platform/Bundle';
+import { IBundleRegistryRepository } from '../../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { ApiError } from '../../../api/errors/ApiError';
 
 export class UpgradeCompanyBundleUseCase {
   constructor(
-    private companyRepository: ICompanyRepository
+    private companyRepository: ICompanyRepository,
+    private bundleRepo: IBundleRegistryRepository
   ) { }
 
   async execute(input: { companyId: string; bundleId: string }): Promise<any> {
@@ -13,8 +14,8 @@ export class UpgradeCompanyBundleUseCase {
       throw ApiError.badRequest("Missing required fields");
     }
 
-    // Confirm new bundle exists in registry
-    const bundle = BUNDLES.find(b => b.id === input.bundleId);
+    // Confirm new bundle exists in Firestore
+    const bundle = await this.bundleRepo.getById(input.bundleId);
     if (!bundle) {
       throw ApiError.badRequest("Invalid bundle");
     }
@@ -33,8 +34,7 @@ export class UpgradeCompanyBundleUseCase {
     // Update
     await this.companyRepository.update(input.companyId, {
       subscriptionPlan: input.bundleId,
-      modules: bundle.modules,
-      features: bundle.features
+      modules: bundle.modulesIncluded
     });
 
     // Return success DTO

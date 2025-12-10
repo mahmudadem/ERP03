@@ -35,10 +35,6 @@ export const useSidebarConfig = () => {
         path: '/super-admin/companies'
       });
       sections.SUPER_ADMIN.push({
-        label: 'SA • Permissions',
-        path: '/super-admin/permissions'
-      });
-      sections.SUPER_ADMIN.push({
         label: 'SA • Roles',
         path: '/super-admin/roles'
       });
@@ -49,6 +45,28 @@ export const useSidebarConfig = () => {
       sections.SUPER_ADMIN.push({
         label: 'SA • Voucher Types',
         path: '/super-admin/voucher-templates'
+      });
+      
+      // Registry Manager Pages
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Business Domains',
+        path: '/super-admin/business-domains'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Bundles',
+        path: '/super-admin/bundles-manager'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Permissions Registry',
+        path: '/super-admin/permissions-registry'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Modules Registry',
+        path: '/super-admin/modules-registry'
+      });
+      sections.SUPER_ADMIN.push({
+        label: 'SA • Plans',
+        path: '/super-admin/plans'
       });
       
       return sections;

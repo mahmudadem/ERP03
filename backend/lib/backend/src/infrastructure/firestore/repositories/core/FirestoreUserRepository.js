@@ -70,6 +70,15 @@ class FirestoreUserRepository extends BaseFirestoreRepository_1.BaseFirestoreRep
             return null;
         return this.toDomain(snap.docs[0].data());
     }
+    async listAll() {
+        try {
+            const snapshot = await this.db.collection(this.collectionName).get();
+            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error listing all users', error);
+        }
+    }
 }
 exports.FirestoreUserRepository = FirestoreUserRepository;
 //# sourceMappingURL=FirestoreUserRepository.js.map

@@ -37,6 +37,10 @@ class PostgresCompanyRepository {
     async updateFeatures(companyId, features) {
         // TODO: Implement
     }
+    async listAll() {
+        // TODO: Implement
+        return [];
+    }
 }
 exports.PostgresCompanyRepository = PostgresCompanyRepository;
 //# sourceMappingURL=PostgresCompanyRepository.js.map

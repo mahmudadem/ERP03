@@ -42,6 +42,11 @@ const AssignUsersRolesPage = lazy(() => import('../modules/settings/rbac/AssignU
 const SystemOverviewPage = lazy(() => import('../modules/super-admin/pages/SystemOverviewPage'));
 const UsersListPage = lazy(() => import('../modules/super-admin/pages/UsersListPage'));
 const CompaniesListPage = lazy(() => import('../modules/super-admin/pages/CompaniesListPage'));
+const BusinessDomainsManagerPage = lazy(() => import('../modules/super-admin/pages/BusinessDomainsManagerPage').then(m => ({ default: m.BusinessDomainsManagerPage })));
+const BundlesManagerPage = lazy(() => import('../modules/super-admin/pages/BundlesManagerPage').then(m => ({ default: m.BundlesManagerPage })));
+const PermissionsManagerPage = lazy(() => import('../modules/super-admin/pages/PermissionsManagerPage').then(m => ({ default: m.PermissionsManagerPage })));
+const ModulesManagerPage = lazy(() => import('../modules/super-admin/pages/ModulesManagerPage').then(m => ({ default: m.ModulesManagerPage })));
+const PlansManagerPage = lazy(() => import('../modules/super-admin/pages/PlansManagerPage').then(m => ({ default: m.PlansManagerPage })));
 
 // Company Wizard (user-level)
 const SelectModelPage = lazy(() => import('../modules/company-wizard/pages/SelectModelPage'));
@@ -118,6 +123,15 @@ export const routesConfig: AppRoute[] = [
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/users', label: 'All Users', component: UsersListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies', label: 'All Companies', component: CompaniesListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  
+  // Super Admin Registry
+  { path: '/super-admin/business-domains', label: 'Business Domains', component: BusinessDomainsManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/bundles-manager', label: 'Bundles', component: BundlesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/permissions-registry', label: 'Permissions Registry', component: PermissionsManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  
+  // Super Admin - Existing
   { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions/:moduleId', label: 'Edit Module Permissions', component: EditModulePermissionsPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/roles', label: 'Roles', component: RolePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },

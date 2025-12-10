@@ -1,0 +1,1 @@
+{"version":3,"file":"ListBusinessDomainsUseCase.js","sourceRoot":"","sources":["../../../../../../src/application/super-admin/use-cases/ListBusinessDomainsUseCase.ts"],"names":[],"mappings":";;;AAIA,MAAa,0BAA0B;IACrC,YAAoB,kBAA6C;QAA7C,uBAAkB,GAAlB,kBAAkB,CAA2B;IAAG,CAAC;IAErE,KAAK,CAAC,OAAO;QACX,OAAO,MAAM,IAAI,CAAC,kBAAkB,CAAC,MAAM,EAAE,CAAC;IAChD,CAAC;CACF;AAND,gEAMC"}

@@ -56,6 +56,20 @@ import { ICompanyAdminRepository } from '../../repository/interfaces/company-adm
 import { FirestoreCompanyAdminRepository } from '../firestore/company-admin/FirestoreCompanyAdminRepository';
 import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaCompanyAdminRepository';
 
+// SUPER ADMIN
+import { IBusinessDomainRepository } from '../../repository/interfaces/super-admin/IBusinessDomainRepository';
+import { IPermissionRegistryRepository } from '../../repository/interfaces/super-admin/IPermissionRegistryRepository';
+import { IModuleRegistryRepository } from '../../repository/interfaces/super-admin/IModuleRegistryRepository';
+import { IBundleRegistryRepository } from '../../repository/interfaces/super-admin/IBundleRegistryRepository';
+import { IPlanRegistryRepository } from '../../repository/interfaces/super-admin/IPlanRegistryRepository';
+import { IRoleTemplateRegistryRepository } from '../../repository/interfaces/super-admin/IRoleTemplateRegistryRepository';
+import { FirestoreBusinessDomainRepository } from '../firestore/repositories/super-admin/FirestoreBusinessDomainRepository';
+import { FirestorePermissionRegistryRepository } from '../firestore/repositories/super-admin/FirestorePermissionRegistryRepository';
+import { FirestoreModuleRegistryRepository } from '../firestore/repositories/super-admin/FirestoreModuleRegistryRepository';
+import { FirestoreBundleRegistryRepository } from '../firestore/repositories/super-admin/FirestoreBundleRegistryRepository';
+import { FirestorePlanRegistryRepository } from '../firestore/repositories/super-admin/FirestorePlanRegistryRepository';
+import { FirestoreRoleTemplateRegistryRepository } from '../firestore/repositories/super-admin/FirestoreRoleTemplateRegistryRepository';
+
 
 
 // Import Prisma Implementations
@@ -150,7 +164,14 @@ export const diContainer = {
       : new FirestoreCompanyAdminRepository(getDb());
   },
 
+  // SUPER ADMIN
+  get businessDomainRepository(): IBusinessDomainRepository { return new FirestoreBusinessDomainRepository(getDb()); },
+  get permissionRegistryRepository(): IPermissionRegistryRepository { return new FirestorePermissionRegistryRepository(getDb()); },
+  get moduleRegistryRepository(): IModuleRegistryRepository { return new FirestoreModuleRegistryRepository(getDb()); },
+  get bundleRegistryRepository(): IBundleRegistryRepository { return new FirestoreBundleRegistryRepository(getDb()); },
+  get planRegistryRepository(): IPlanRegistryRepository { return new FirestorePlanRegistryRepository(getDb()); },
+  get roleTemplateRegistryRepository(): IRoleTemplateRegistryRepository { return new FirestoreRoleTemplateRegistryRepository(getDb()); },
+
   // SHARED
   get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); }
 };
-

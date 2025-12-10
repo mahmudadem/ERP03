@@ -108,4 +108,9 @@ export class FirestoreCompanyRepository implements ICompanyRepository {
       data.contactInfo
     );
   }
+
+  async listAll(): Promise<Company[]> {
+    const snapshot = await this.db.collection(this.collectionName).get();
+    return snapshot.docs.map(doc => this.mapToEntity(doc.data()));
+  }
 }

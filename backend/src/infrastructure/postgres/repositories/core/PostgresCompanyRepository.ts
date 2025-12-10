@@ -51,4 +51,9 @@ export class PostgresCompanyRepository implements ICompanyRepository {
   async updateFeatures(companyId: string, features: string[]): Promise<void> {
     // TODO: Implement
   }
+
+  async listAll(): Promise<Company[]> {
+    // TODO: Implement
+    return [];
+  }
 }

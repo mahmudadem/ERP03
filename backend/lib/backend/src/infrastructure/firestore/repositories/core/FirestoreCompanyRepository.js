@@ -154,6 +154,15 @@ class FirestoreCompanyRepository extends BaseFirestoreRepository_1.BaseFirestore
             throw new InfrastructureError_1.InfrastructureError('Error updating company features', error);
         }
     }
+    async listAll() {
+        try {
+            const snapshot = await this.db.collection(this.collectionName).get();
+            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error listing all companies', error);
+        }
+    }
 }
 exports.FirestoreCompanyRepository = FirestoreCompanyRepository;
 //# sourceMappingURL=FirestoreCompanyRepository.js.map

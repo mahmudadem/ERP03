@@ -126,4 +126,13 @@ export class FirestoreCompanyRepository extends BaseFirestoreRepository<Company>
       throw new InfrastructureError('Error updating company features', error);
     }
   }
+
+  async listAll(): Promise<Company[]> {
+    try {
+      const snapshot = await this.db.collection(this.collectionName).get();
+      return snapshot.docs.map(doc => this.toDomain(doc.data()));
+    } catch (error) {
+      throw new InfrastructureError('Error listing all companies', error);
+    }
+  }
 }

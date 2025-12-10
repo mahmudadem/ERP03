@@ -198,4 +198,26 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             data: { features } as any,
         });
     }
+
+    async listAll(): Promise<Company[]> {
+        const companies = await this.prisma.company.findMany();
+        return companies.map(
+            (data) =>
+                new Company(
+                    data.id,
+                    data.name,
+                    data.ownerId,
+                    data.createdAt,
+                    data.updatedAt,
+                    data.baseCurrency,
+                    data.fiscalYearStart,
+                    data.fiscalYearEnd,
+                    data.modules as any,
+                    (data as any).features || [],
+                    data.taxId,
+                    (data as any).subscriptionPlan || undefined,
+                    data.address || undefined
+                )
+        );
+    }
 }

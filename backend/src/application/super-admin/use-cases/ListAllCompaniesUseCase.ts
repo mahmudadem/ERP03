@@ -6,10 +6,8 @@ import { Company } from '../../../domain/core/entities/Company';
 export class ListAllCompaniesUseCase {
   constructor(
     private userRepo: IUserRepository,
-    private _companyRepo: ICompanyRepository
-  ) {
-    void this._companyRepo;
-  }
+    private companyRepo: ICompanyRepository
+  ) {}
 
   async execute(actorId: string): Promise<Company[]> {
     const actor = await this.userRepo.getUserById(actorId);
@@ -17,8 +15,6 @@ export class ListAllCompaniesUseCase {
       throw new Error('Only SUPER_ADMIN can list all companies');
     }
 
-    // This would require adding a listAll method to ICompanyRepository
-    // For now, we'll throw an error indicating implementation needed
-    throw new Error('ListAllCompanies requires ICompanyRepository.listAll() implementation');
+    return await this.companyRepo.listAll();
   }
 }

@@ -1,9 +1,12 @@
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
-import { BUNDLES } from '../../../domain/platform/Bundle';
+import { IBundleRegistryRepository } from '../../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { ApiError } from '../../../api/errors/ApiError';
 
 export class GetCompanyBundleUseCase {
-    constructor(private companyRepository: ICompanyRepository) { }
+    constructor(
+        private companyRepository: ICompanyRepository,
+        private bundleRepo: IBundleRegistryRepository
+    ) { }
 
     async execute(input: { companyId: string }): Promise<any> {
         // Validate companyId
@@ -18,18 +21,18 @@ export class GetCompanyBundleUseCase {
         }
 
         // Bundle value is stored in company.subscriptionPlan
-        const bundleId = company.subscriptionPlan || 'starter';
+        const bundleId = company.subscriptionPlan;
 
-        // Load bundle metadata from Bundles registry
-        const bundle = BUNDLES.find(b => b.id === bundleId);
+        if (!bundleId) {
+            return null;
+        }
+
+        // Load bundle metadata from Firestore
+        const bundle = await this.bundleRepo.getById(bundleId);
 
         if (!bundle) {
-            // Fallback to starter if bundle not found
-            const starterBundle = BUNDLES.find(b => b.id === 'starter');
-            return {
-                bundleId: 'starter',
-                ...starterBundle
-            };
+            // Bundle not found
+            return null;
         }
 
         // Return

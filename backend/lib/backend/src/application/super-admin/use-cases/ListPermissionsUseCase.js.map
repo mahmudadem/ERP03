@@ -1,0 +1,1 @@
+{"version":3,"file":"ListPermissionsUseCase.js","sourceRoot":"","sources":["../../../../../../src/application/super-admin/use-cases/ListPermissionsUseCase.ts"],"names":[],"mappings":";;;AAIA,MAAa,sBAAsB;IACjC,YAAoB,cAA6C;QAA7C,mBAAc,GAAd,cAAc,CAA+B;IAAG,CAAC;IAErE,KAAK,CAAC,OAAO;QACX,OAAO,MAAM,IAAI,CAAC,cAAc,CAAC,MAAM,EAAE,CAAC;IAC5C,CAAC;CACF;AAND,wDAMC"}

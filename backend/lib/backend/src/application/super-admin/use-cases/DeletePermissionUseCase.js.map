@@ -1,0 +1,1 @@
+{"version":3,"file":"DeletePermissionUseCase.js","sourceRoot":"","sources":["../../../../../../src/application/super-admin/use-cases/DeletePermissionUseCase.ts"],"names":[],"mappings":";;;AAGA,MAAa,uBAAuB;IAClC,YAAoB,cAA6C;QAA7C,mBAAc,GAAd,cAAc,CAA+B;IAAG,CAAC;IAErE,KAAK,CAAC,OAAO,CAAC,EAAU;QACtB,MAAM,IAAI,CAAC,cAAc,CAAC,MAAM,CAAC,EAAE,CAAC,CAAC;IACvC,CAAC;CACF;AAND,0DAMC"}

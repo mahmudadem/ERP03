@@ -22,7 +22,10 @@ export class CompanyBundleController {
         return;
       }
 
-      const useCase = new GetCompanyBundleUseCase(diContainer.companyRepository);
+      const useCase = new GetCompanyBundleUseCase(
+        diContainer.companyRepository,
+        diContainer.bundleRegistryRepository
+      );
       const result = await useCase.execute({ companyId });
 
       res.json({ success: true, data: result });
@@ -37,7 +40,7 @@ export class CompanyBundleController {
    */
   static async listAvailableBundles(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new ListAvailableBundlesUseCase();
+      const useCase = new ListAvailableBundlesUseCase(diContainer.bundleRegistryRepository);
       const result = await useCase.execute();
 
       res.json({ success: true, data: result });
@@ -64,7 +67,10 @@ export class CompanyBundleController {
         return;
       }
 
-      const useCase = new UpgradeCompanyBundleUseCase(diContainer.companyRepository);
+      const useCase = new UpgradeCompanyBundleUseCase(
+        diContainer.companyRepository,
+        diContainer.bundleRegistryRepository
+      );
       const result = await useCase.execute({ companyId, bundleId });
 
       res.json({ success: true, data: result });

@@ -5,7 +5,8 @@
  * or at the Company level (tenant-specific).
  */
 
-import { getBundleById } from '../../domain/platform/Bundle';
+import { IBundleRegistryRepository } from '../../repository/interfaces/super-admin/IBundleRegistryRepository';
+import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRepository';
 
 export interface FeatureFlagConfig {
     globalFlags: Record<string, boolean>;
@@ -18,7 +19,10 @@ export class FeatureFlagService {
         'experimental.sqlBackend': false,
     };
 
-    constructor() { }
+    constructor(
+        private bundleRepo: IBundleRegistryRepository,
+        private companyRepo: ICompanyRepository
+    ) {}
 
     /**
      * Check if a feature is enabled globally (platform-wide)
@@ -37,17 +41,14 @@ export class FeatureFlagService {
             return true;
         }
 
-        // For now, we'll use a simplified approach
-        // In a full implementation, bundle info would come from Company entity
-        // For MVP, we'll default to 'starter' bundle
-        // TODO: Get bundle from Company entity
-        const bundleId = 'starter';
-        const bundle = getBundleById(bundleId);
-
-        if (bundle && bundle.features.includes(featureId)) {
-            return true;
+        // Get company to find its bundle
+        const company = await this.companyRepo.findById(companyId);
+        if (!company || !company.subscriptionPlan) {
+            return false;
         }
 
+        // Note: features were removed from Bundle structure
+        // This method needs to be redesigned for new bundle architecture
         return false;
     }
 
@@ -55,11 +56,14 @@ export class FeatureFlagService {
      * Check if a module is enabled for a company
      */
     async isModuleEnabledForCompany(companyId: string, moduleId: string): Promise<boolean> {
-        // For now, use simplified approach
-        // TODO: Get bundle from Company entity
-        const bundleId = 'starter';
-        const bundle = getBundleById(bundleId);
+        // Get company to find its bundle
+        const company = await this.companyRepo.findById(companyId);
+        if (!company || !company.subscriptionPlan) {
+            return false;
+        }
 
-        return bundle ? bundle.modules.includes(moduleId) : false;
+        const bundle = await this.bundleRepo.getById(company.subscriptionPlan);
+
+        return bundle ? bundle.modulesIncluded.includes(moduleId) : false;
     }
 }

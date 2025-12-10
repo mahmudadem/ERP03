@@ -34,6 +34,12 @@ const FirestoreCompanyModuleSettingsRepository_1 = require("../firestore/reposit
 const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository");
 const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/FirestoreCompanyAdminRepository");
 const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
+const FirestoreBusinessDomainRepository_1 = require("../firestore/repositories/super-admin/FirestoreBusinessDomainRepository");
+const FirestorePermissionRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePermissionRegistryRepository");
+const FirestoreModuleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreModuleRegistryRepository");
+const FirestoreBundleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreBundleRegistryRepository");
+const FirestorePlanRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePlanRegistryRepository");
+const FirestoreRoleTemplateRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreRoleTemplateRegistryRepository");
 // Import Prisma Implementations
 const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
 const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
@@ -106,6 +112,13 @@ exports.diContainer = {
             ? new PrismaCompanyAdminRepository_1.PrismaCompanyAdminRepository((0, prismaClient_1.getPrismaClient)())
             : new FirestoreCompanyAdminRepository_1.FirestoreCompanyAdminRepository(getDb());
     },
+    // SUPER ADMIN
+    get businessDomainRepository() { return new FirestoreBusinessDomainRepository_1.FirestoreBusinessDomainRepository(getDb()); },
+    get permissionRegistryRepository() { return new FirestorePermissionRegistryRepository_1.FirestorePermissionRegistryRepository(getDb()); },
+    get moduleRegistryRepository() { return new FirestoreModuleRegistryRepository_1.FirestoreModuleRegistryRepository(getDb()); },
+    get bundleRegistryRepository() { return new FirestoreBundleRegistryRepository_1.FirestoreBundleRegistryRepository(getDb()); },
+    get planRegistryRepository() { return new FirestorePlanRegistryRepository_1.FirestorePlanRegistryRepository(getDb()); },
+    get roleTemplateRegistryRepository() { return new FirestoreRoleTemplateRegistryRepository_1.FirestoreRoleTemplateRegistryRepository(getDb()); },
     // SHARED
     get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); }
 };

@@ -1,0 +1,1 @@
+{"version":3,"file":"ListRoleTemplatesUseCase.js","sourceRoot":"","sources":["../../../../../../src/application/super-admin/use-cases/ListRoleTemplatesUseCase.ts"],"names":[],"mappings":";;;AAGA,MAAa,wBAAwB;IACnC,YAAoB,gBAAiD;QAAjD,qBAAgB,GAAhB,gBAAgB,CAAiC;IAAG,CAAC;IAEzE,KAAK,CAAC,OAAO;QACX,OAAO,MAAM,IAAI,CAAC,gBAAgB,CAAC,MAAM,EAAE,CAAC;IAC9C,CAAC;CACF;AAND,4DAMC"}

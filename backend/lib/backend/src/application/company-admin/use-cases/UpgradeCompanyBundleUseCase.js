@@ -1,19 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpgradeCompanyBundleUseCase = void 0;
-const Bundle_1 = require("../../../domain/platform/Bundle");
 const ApiError_1 = require("../../../api/errors/ApiError");
 class UpgradeCompanyBundleUseCase {
-    constructor(companyRepository) {
+    constructor(companyRepository, bundleRepo) {
         this.companyRepository = companyRepository;
+        this.bundleRepo = bundleRepo;
     }
     async execute(input) {
         // Validate companyId + bundleId
         if (!input.companyId || !input.bundleId) {
             throw ApiError_1.ApiError.badRequest("Missing required fields");
         }
-        // Confirm new bundle exists in registry
-        const bundle = Bundle_1.BUNDLES.find(b => b.id === input.bundleId);
+        // Confirm new bundle exists in Firestore
+        const bundle = await this.bundleRepo.getById(input.bundleId);
         if (!bundle) {
             throw ApiError_1.ApiError.badRequest("Invalid bundle");
         }
@@ -29,8 +29,7 @@ class UpgradeCompanyBundleUseCase {
         // Update
         await this.companyRepository.update(input.companyId, {
             subscriptionPlan: input.bundleId,
-            modules: bundle.modules,
-            features: bundle.features
+            modules: bundle.modulesIncluded
         });
         // Return success DTO
         return { bundleId: input.bundleId, status: 'upgraded' };

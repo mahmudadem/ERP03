@@ -22,7 +22,7 @@ class CompanyBundleController {
                 res.status(400).json({ success: false, error: 'Company ID required' });
                 return;
             }
-            const useCase = new GetCompanyBundleUseCase_1.GetCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository);
+            const useCase = new GetCompanyBundleUseCase_1.GetCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.bundleRegistryRepository);
             const result = await useCase.execute({ companyId });
             res.json({ success: true, data: result });
         }
@@ -36,7 +36,7 @@ class CompanyBundleController {
      */
     static async listAvailableBundles(req, res, next) {
         try {
-            const useCase = new ListAvailableBundlesUseCase_1.ListAvailableBundlesUseCase();
+            const useCase = new ListAvailableBundlesUseCase_1.ListAvailableBundlesUseCase(bindRepositories_1.diContainer.bundleRegistryRepository);
             const result = await useCase.execute();
             res.json({ success: true, data: result });
         }
@@ -61,7 +61,7 @@ class CompanyBundleController {
                 res.status(400).json({ success: false, error: 'Bundle ID required' });
                 return;
             }
-            const useCase = new UpgradeCompanyBundleUseCase_1.UpgradeCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository);
+            const useCase = new UpgradeCompanyBundleUseCase_1.UpgradeCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.bundleRegistryRepository);
             const result = await useCase.execute({ companyId, bundleId });
             res.json({ success: true, data: result });
         }

@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tenantContextMiddleware = void 0;
 const ApiError_1 = require("../errors/ApiError");
 const bindRepositories_1 = require("../../infrastructure/di/bindRepositories");
-const Bundle_1 = require("../../domain/platform/Bundle");
 const tenantContextMiddleware = async (req, res, next) => {
     try {
         const user = req.user;
@@ -30,11 +29,9 @@ const tenantContextMiddleware = async (req, res, next) => {
                 permissions = role.resolvedPermissions || role.permissions || [];
             }
         }
-        // 3. Resolve Features from Bundle
-        // Use company.subscriptionPlan if available, otherwise default to 'starter'
-        const bundleId = company.subscriptionPlan || 'starter';
-        const bundle = (0, Bundle_1.getBundleById)(bundleId);
-        const features = bundle ? bundle.features : [];
+        // NOTE: Features were part of the old bundle structure
+        // With the new businessDomains-based bundle structure, features are not tracked
+        const features = [];
         // 4. Set Tenant Context with ALL required fields
         console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);
         console.log(`[TenantContext] Permissions: ${JSON.stringify(permissions)}`);

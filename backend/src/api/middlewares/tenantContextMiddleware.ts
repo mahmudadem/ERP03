@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../errors/ApiError';
 import { diContainer } from '../../infrastructure/di/bindRepositories';
-import { getBundleById } from '../../domain/platform/Bundle';
 
 declare global {
     namespace Express {
@@ -51,11 +50,9 @@ export const tenantContextMiddleware = async (req: Request, res: Response, next:
             }
         }
 
-        // 3. Resolve Features from Bundle
-        // Use company.subscriptionPlan if available, otherwise default to 'starter'
-        const bundleId = (company as any).subscriptionPlan || 'starter';
-        const bundle = getBundleById(bundleId);
-        const features = bundle ? bundle.features : [];
+        // NOTE: Features were part of the old bundle structure
+        // With the new businessDomains-based bundle structure, features are not tracked
+        const features: string[] = [];
 
         // 4. Set Tenant Context with ALL required fields
         console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);

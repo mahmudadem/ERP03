@@ -1,0 +1,1 @@
+{"version":3,"file":"ListPlansUseCase.js","sourceRoot":"","sources":["../../../../../../src/application/super-admin/use-cases/ListPlansUseCase.ts"],"names":[],"mappings":";;;AAIA,MAAa,gBAAgB;IAC3B,YAAoB,QAAiC;QAAjC,aAAQ,GAAR,QAAQ,CAAyB;IAAG,CAAC;IAEzD,KAAK,CAAC,OAAO;QACX,OAAO,MAAM,IAAI,CAAC,QAAQ,CAAC,MAAM,EAAE,CAAC;IACtC,CAAC;CACF;AAND,4CAMC"}

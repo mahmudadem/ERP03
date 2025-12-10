@@ -71,4 +71,13 @@ export class FirestoreUserRepository extends BaseFirestoreRepository<User> imple
     if (snap.empty) return null;
     return this.toDomain(snap.docs[0].data());
   }
+
+  async listAll(): Promise<User[]> {
+    try {
+      const snapshot = await this.db.collection(this.collectionName).get();
+      return snapshot.docs.map(doc => this.toDomain(doc.data()));
+    } catch (error) {
+      throw new InfrastructureError('Error listing all users', error);
+    }
+  }
 }

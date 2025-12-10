@@ -65,4 +65,9 @@ export interface ICompanyRepository {
    * @param features Array of feature names.
    */
   updateFeatures(companyId: string, features: string[]): Promise<void>;
+
+  /**
+   * Lists all companies in the system (Super Admin only).
+   */
+  listAll(): Promise<Company[]>;
 }

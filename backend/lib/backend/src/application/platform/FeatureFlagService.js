@@ -7,9 +7,10 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeatureFlagService = void 0;
-const Bundle_1 = require("../../domain/platform/Bundle");
 class FeatureFlagService {
-    constructor() {
+    constructor(bundleRepo, companyRepo) {
+        this.bundleRepo = bundleRepo;
+        this.companyRepo = companyRepo;
         this.globalFlags = {
             // Platform-level feature flags
             'beta.newUI': false,
@@ -32,26 +33,26 @@ class FeatureFlagService {
         if (this.isGlobalFeatureEnabled(featureId)) {
             return true;
         }
-        // For now, we'll use a simplified approach
-        // In a full implementation, bundle info would come from Company entity
-        // For MVP, we'll default to 'starter' bundle
-        // TODO: Get bundle from Company entity
-        const bundleId = 'starter';
-        const bundle = (0, Bundle_1.getBundleById)(bundleId);
-        if (bundle && bundle.features.includes(featureId)) {
-            return true;
+        // Get company to find its bundle
+        const company = await this.companyRepo.findById(companyId);
+        if (!company || !company.subscriptionPlan) {
+            return false;
         }
+        // Note: features were removed from Bundle structure
+        // This method needs to be redesigned for new bundle architecture
         return false;
     }
     /**
      * Check if a module is enabled for a company
      */
     async isModuleEnabledForCompany(companyId, moduleId) {
-        // For now, use simplified approach
-        // TODO: Get bundle from Company entity
-        const bundleId = 'starter';
-        const bundle = (0, Bundle_1.getBundleById)(bundleId);
-        return bundle ? bundle.modules.includes(moduleId) : false;
+        // Get company to find its bundle
+        const company = await this.companyRepo.findById(companyId);
+        if (!company || !company.subscriptionPlan) {
+            return false;
+        }
+        const bundle = await this.bundleRepo.getById(company.subscriptionPlan);
+        return bundle ? bundle.modulesIncluded.includes(moduleId) : false;
     }
 }
 exports.FeatureFlagService = FeatureFlagService;
