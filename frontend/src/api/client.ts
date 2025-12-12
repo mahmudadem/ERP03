@@ -20,7 +20,20 @@ export const client = axios.create({
 // Request Interceptor
 client.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    if (authTokenGetter) {
+    // List of public endpoints that should NOT have an auth token attached
+    const publicEndpoints = [
+      '/onboarding/signup',
+      '/onboarding/plans',
+      '/onboarding/bundles',
+      '/auth/login' // Although login usually doesn't need it, good to be explicit
+    ];
+
+    // Check if the current request URL matches any public endpoint
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      config.url?.includes(endpoint)
+    );
+
+    if (authTokenGetter && !isPublicEndpoint) {
       try {
         const token = await authTokenGetter();
         if (token) {

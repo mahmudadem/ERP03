@@ -4,15 +4,25 @@ import { companySelectorApi } from '../modules/company-selector/api';
 import { authApi } from '../api/auth';
 import { useAuth } from './AuthContext';
 
+export interface CompanyData {
+  id: string;
+  name: string;
+  baseCurrency?: string;
+  fiscalYearStart?: string;
+  logoUrl?: string;
+  modules?: string[];
+}
+
 export interface CompanyAccessContextValue {
   companyId: string;
+  company: CompanyData | null;
   permissions: string[];
   resolvedPermissions: string[];
   moduleBundles: string[];
   isSuperAdmin: boolean;
   isOwner: boolean;
   loading: boolean;
-   permissionsLoaded: boolean;
+  permissionsLoaded: boolean;
   setCompanyId: (companyId: string) => void;
   loadActiveCompany: () => Promise<void>;
   switchCompany: (companyId: string) => Promise<void>;
@@ -25,6 +35,7 @@ const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined
 export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [companyId, setCompanyIdState] = useState<string>(() => localStorage.getItem('activeCompanyId') || '');
+  const [company, setCompany] = useState<CompanyData | null>(null);
   const [isOwner, setIsOwner] = useState<boolean>(false);
   const [isSuperAdminState, setIsSuperAdminState] = useState<boolean>(false);
   const [permissions, setPermissions] = useState<string[]>(() => {
@@ -120,6 +131,19 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const data = await companySelectorApi.getActiveCompany();
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
+      // Store company object for UI display
+      if (data.company) {
+        setCompany({
+          id: activeId,
+          name: data.company.name || 'Unknown Company',
+          baseCurrency: data.company.baseCurrency || 'USD',
+          fiscalYearStart: data.company.fiscalYearStart,
+          logoUrl: data.company.logoUrl,
+          modules: data.company.modules,
+        });
+      } else {
+        setCompany(null);
+      }
       // roleId, roleName, and isOwner are available in the response but not currently used in context
       const isOwnerFlag = !!(data as any).isOwner;
       setIsOwner(isOwnerFlag);
@@ -187,6 +211,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     <CompanyAccessContext.Provider
       value={{
         companyId,
+        company,
         permissions,
         resolvedPermissions,
         moduleBundles,

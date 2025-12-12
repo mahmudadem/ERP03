@@ -9,6 +9,8 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { SignupUseCase } from '../../../application/auth/use-cases/SignupUseCase';
 import { SelectPlanUseCase } from '../../../application/auth/use-cases/SelectPlanUseCase';
 import { GetOnboardingStatusUseCase } from '../../../application/auth/use-cases/GetOnboardingStatusUseCase';
+import { CreateCompanyUseCase } from '../../../application/onboarding/use-cases/CreateCompanyUseCase';
+import { CompanyRolePermissionResolver } from '../../../application/rbac/CompanyRolePermissionResolver';
 import { ApiError } from '../../errors/ApiError';
 
 export class OnboardingController {
@@ -142,6 +144,52 @@ export class OnboardingController {
       res.json({
         success: true,
         data: formattedBundles,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * POST /create-company
+   * Creates a new company directly (fast wizard)
+   */
+  static async createCompany(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = (req as any).user?.uid;
+      if (!userId) {
+        return next(ApiError.unauthorized('Authentication required'));
+      }
+
+      const { companyName, description, country, email, bundleId } = req.body;
+
+      // We need a resolver instance
+      const resolver = new CompanyRolePermissionResolver(
+        diContainer.modulePermissionsDefinitionRepository,
+        diContainer.companyRoleRepository
+      );
+
+      const useCase = new CreateCompanyUseCase(
+        diContainer.companyRepository,
+        diContainer.userRepository,
+        diContainer.rbacCompanyUserRepository,
+        diContainer.companyRoleRepository,
+        resolver,
+        diContainer.bundleRegistryRepository,
+        diContainer.companyModuleRepository
+      );
+
+      const result = await useCase.execute({
+        userId,
+        companyName,
+        description,
+        country,
+        email,
+        bundleId
+      });
+
+      res.json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

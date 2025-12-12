@@ -1,10 +1,10 @@
 import React from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useCompanyContext } from '../../../hooks/useCompanyContext';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
-  const { company } = useCompanyContext();
+  const { company } = useCompanyAccess();
 
   return (
     <div className="max-w-4xl mx-auto py-8">
@@ -31,7 +31,7 @@ const ProfilePage: React.FC = () => {
             </div>
              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Current Company</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{company?.name} ({company?.id})</dd>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{company?.name || 'No company selected'} ({company?.id})</dd>
             </div>
           </dl>
         </div>

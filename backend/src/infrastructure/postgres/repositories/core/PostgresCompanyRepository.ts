@@ -25,6 +25,11 @@ export class PostgresCompanyRepository implements ICompanyRepository {
     return null;
   }
 
+  async findByNameAndOwner(name: string, ownerId: string): Promise<Company | null> {
+    // TODO: Implement SELECT WHERE name = $1 AND owner_id = $2
+    return null;
+  }
+
   async getUserCompanies(userId: string): Promise<Company[]> {
     // TODO: Implement JOIN query
     return [];
@@ -55,5 +60,10 @@ export class PostgresCompanyRepository implements ICompanyRepository {
   async listAll(): Promise<Company[]> {
     // TODO: Implement
     return [];
+  }
+
+  async delete(companyId: string): Promise<void> {
+    // TODO: Implement
+    await pool.query('DELETE FROM companies WHERE id = $1', [companyId]);
   }
 }

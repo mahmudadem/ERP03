@@ -15,8 +15,8 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
       moduleId: data.moduleId || doc.id,
       permissions: data.permissions || [],
       autoAttachToRoles: data.autoAttachToRoles || [],
-      createdAt: data.createdAt instanceof admin.firestore.Timestamp ? data.createdAt.toDate() : new Date(),
-      updatedAt: data.updatedAt instanceof admin.firestore.Timestamp ? data.updatedAt.toDate() : new Date(),
+      createdAt: (data.createdAt && typeof data.createdAt.toDate === 'function') ? data.createdAt.toDate() : new Date(),
+      updatedAt: (data.updatedAt && typeof data.updatedAt.toDate === 'function') ? data.updatedAt.toDate() : new Date(),
       permissionsDefined: data.permissionsDefined ?? true
     };
   }

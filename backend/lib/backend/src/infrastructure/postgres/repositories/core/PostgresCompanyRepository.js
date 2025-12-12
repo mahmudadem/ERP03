@@ -16,6 +16,10 @@ class PostgresCompanyRepository {
         // TODO: Implement SELECT WHERE tax_id = $1
         return null;
     }
+    async findByNameAndOwner(name, ownerId) {
+        // TODO: Implement SELECT WHERE name = $1 AND owner_id = $2
+        return null;
+    }
     async getUserCompanies(userId) {
         // TODO: Implement JOIN query
         return [];
@@ -40,6 +44,10 @@ class PostgresCompanyRepository {
     async listAll() {
         // TODO: Implement
         return [];
+    }
+    async delete(companyId) {
+        // TODO: Implement
+        await postgresClient_1.pool.query('DELETE FROM companies WHERE id = $1', [companyId]);
     }
 }
 exports.PostgresCompanyRepository = PostgresCompanyRepository;

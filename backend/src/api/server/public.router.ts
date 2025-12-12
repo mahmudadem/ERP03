@@ -5,6 +5,7 @@ import impersonationRoutes from '../routes/impersonation.routes';
 import userCompaniesRoutes from '../routes/user.companies.routes';
 import coreRoutes from '../routes/core.routes';
 import onboardingRoutes from '../routes/onboarding.routes';
+import companyModulesRoutes from '../routes/company-modules.routes';
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.use('/company-wizard', companyWizardRoutes);
 router.use('/impersonate', impersonationRoutes);
 router.use(userCompaniesRoutes);
 router.use('/core', coreRoutes);
+router.use('/company-modules', companyModulesRoutes);
 
 export default router;
 

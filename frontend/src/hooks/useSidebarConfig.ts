@@ -57,6 +57,10 @@ export const useSidebarConfig = () => {
         path: '/super-admin/bundles-manager'
       });
       sections.SUPER_ADMIN.push({
+        label: 'SA • Module Permissions',
+        path: '/super-admin/permissions'
+      });
+      sections.SUPER_ADMIN.push({
         label: 'SA • Permissions Registry',
         path: '/super-admin/permissions-registry'
       });
@@ -100,22 +104,28 @@ export const useSidebarConfig = () => {
     });
     const activeModules: string[] = Array.from(new Set(mapped));
 
-    // Build MODULES section as flat items
+    // Build specific sections for each Module (App Name Grouping)
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {
-        label: moduleId,
+        label: moduleId.charAt(0).toUpperCase() + moduleId.slice(1),
         items: []
       };
       const items = def.items.filter((item) => hasPermission(item.permission));
+      
       if (items.length > 0) {
-        items.forEach((i) => {
-          sections.MODULES.push({ label: `${def.label} • ${i.label}`, path: i.path });
-        });
+        // Create a new section for this App
+        sections[def.label] = items.map(i => ({
+          label: i.label,
+          path: i.path
+        }));
       }
     });
 
-    // Company Admin menu (Permission Gated)
-    if (hasPermission('manage_settings') || hasWildcard) {
+    // Remove the generic MODULES key if unused (or keep it empty)
+    delete sections.MODULES;
+
+    // Company Admin menu (Permission Gated or Module Check)
+    if (activeModules.includes('companyAdmin') || hasPermission('manage_settings') || hasWildcard) {
       const companyAdminItems: SidebarSection[] = [
         { label: 'CA • Overview', path: '/company-admin/overview' },
         { label: 'CA • Users', path: '/company-admin/users' },

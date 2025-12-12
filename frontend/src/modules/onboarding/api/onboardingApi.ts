@@ -92,5 +92,20 @@ export const onboardingApi = {
   getBundles: async (): Promise<Bundle[]> => {
     return client.get('/onboarding/bundles');
   },
+
+  /**
+   * Create a new company (authenticated)
+   */
+  createCompany: async (data: CreateCompanyRequest): Promise<{ companyId: string }> => {
+    return client.post('/onboarding/create-company', data);
+  },
 };
+
+export interface CreateCompanyRequest {
+  companyName: string;
+  description: string;
+  country: string;
+  email: string; // Admin email
+  bundleId: string;
+}
 

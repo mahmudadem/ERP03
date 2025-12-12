@@ -51,5 +51,45 @@ export const moduleMenuMap: Record<
       { label: 'Attendance', path: '/hr/attendance', permission: 'attendance.list' },
       { label: 'Payroll', path: '/hr/payroll', permission: 'payroll.list' }
     ]
+  },
+  crm: {
+    label: 'CRM',
+    icon: 'Users',
+    items: [
+      { label: 'Leads', path: '/crm/leads', permission: 'crm.leads.view' },
+      { label: 'Customers', path: '/crm/customers', permission: 'crm.customers.view' }
+    ]
+  },
+  pos: {
+    label: 'POS',
+    icon: 'Monitor',
+    items: [
+      { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access' },
+      { label: 'Sessions', path: '/pos/sessions', permission: 'pos.sessions.view' }
+    ]
+  },
+  manufacturing: {
+    label: 'Manufacturing',
+    icon: 'Factory',
+    items: [
+      { label: 'Work Orders', path: '/manufacturing/work-orders', permission: 'mfg.workOrder.view' },
+      { label: 'BOM', path: '/manufacturing/bom', permission: 'mfg.bom.view' }
+    ]
+  },
+  projects: {
+    label: 'Projects',
+    icon: 'Briefcase',
+    items: [
+      { label: 'Projects', path: '/projects', permission: 'project.view' },
+      { label: 'Tasks', path: '/projects/tasks', permission: 'task.view' }
+    ]
+  },
+  purchase: {
+    label: 'Purchases',
+    icon: 'ClipboardList',
+    items: [
+      { label: 'Purchase Orders', path: '/purchases/orders', permission: 'purchase.order.list' },
+      { label: 'Vendors', path: '/purchases/vendors', permission: 'vendor.list' }
+    ]
   }
 };

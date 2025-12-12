@@ -22,5 +22,7 @@ router.get('/bundles', OnboardingController_1.OnboardingController.listBundles);
 router.get('/onboarding-status', authMiddleware_1.authMiddleware, OnboardingController_1.OnboardingController.getOnboardingStatus);
 // Select plan - saves user's plan choice
 router.post('/select-plan', authMiddleware_1.authMiddleware, OnboardingController_1.OnboardingController.selectPlan);
+// Create company - fast creation from wizard
+router.post('/create-company', authMiddleware_1.authMiddleware, OnboardingController_1.OnboardingController.createCompany);
 exports.default = router;
 //# sourceMappingURL=onboarding.routes.js.map

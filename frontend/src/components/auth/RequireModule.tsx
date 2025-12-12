@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useCompanyContext } from '../../hooks/useCompanyContext';
+import { useCompanyAccess } from '../../context/CompanyAccessContext';
 
 interface RequireModuleProps {
   moduleId: string;
@@ -8,8 +8,8 @@ interface RequireModuleProps {
 }
 
 export function RequireModule({ moduleId, children }: RequireModuleProps) {
-  const { activeCompanyModules } = useCompanyContext();
-  const modules = activeCompanyModules || [];
+  const { moduleBundles } = useCompanyAccess();
+  const modules = moduleBundles || [];
 
   if (!modules.includes(moduleId)) {
     return <Navigate to="/forbidden" replace />;

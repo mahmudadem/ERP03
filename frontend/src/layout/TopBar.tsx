@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCompanyContext } from '../hooks/useCompanyContext';
+import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
-  const { company } = useCompanyContext();
+  const { company } = useCompanyAccess();
   const { uiMode, toggleUiMode, toggleTheme, setUiMode } = useUserPreferences();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -31,8 +31,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
         </button>
         
         <div className="flex flex-col">
-          <span className="font-bold text-gray-800 leading-tight">{company.name}</span>
-          <span className="text-xs text-gray-500">{company.baseCurrency} • FY 2024</span>
+          <span className="font-bold text-gray-800 leading-tight">{company?.name || 'No Company'}</span>
+          <span className="text-xs text-gray-500">{company?.baseCurrency || 'USD'} • FY 2024</span>
         </div>
       </div>
 

@@ -70,17 +70,24 @@ class CompanyMapper {
             subscriptionPlan: entity.subscriptionPlan || null,
             createdAt: this.toTimestamp(entity.createdAt),
             updatedAt: this.toTimestamp(entity.updatedAt),
-            country: entity.country,
-            logoUrl: entity.logoUrl,
-            contactInfo: entity.contactInfo
+            country: entity.country || null,
+            logoUrl: entity.logoUrl || null,
+            contactInfo: entity.contactInfo || null
         };
     }
 }
 exports.CompanyMapper = CompanyMapper;
 class UserMapper {
+    static toTimestamp(date) {
+        var _a;
+        if ((_a = admin === null || admin === void 0 ? void 0 : admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp) {
+            return admin.firestore.Timestamp.fromDate(date);
+        }
+        return date;
+    }
     static toDomain(data) {
         var _a, _b;
-        return new User_1.User(data.id, data.email, data.name, data.globalRole || data.role || 'USER', ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt), data.pictureUrl);
+        return new User_1.User(data.id, data.email, data.name, data.globalRole || data.role || 'USER', ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt), data.pictureUrl, data.planId, data.activeCompanyId);
     }
     static toPersistence(entity) {
         return {
@@ -88,8 +95,10 @@ class UserMapper {
             email: entity.email,
             name: entity.name,
             globalRole: entity.globalRole,
-            createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
-            pictureUrl: entity.pictureUrl || null
+            createdAt: this.toTimestamp(entity.createdAt),
+            pictureUrl: entity.pictureUrl || null,
+            planId: entity.planId || null,
+            activeCompanyId: entity.activeCompanyId || null
         };
     }
 }

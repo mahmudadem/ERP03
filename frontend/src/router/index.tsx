@@ -15,6 +15,8 @@ import { LandingPage, PlanSelectionPage, CompaniesListPage } from '../modules/on
 
 // Lazy pages
 const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
+const CompanySelectorPageLazy = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
+const NewCompanyWizardPage = lazy(() => import('../modules/onboarding/pages/NewCompanyWizardPage'));
 
 // Loading component
 const PageLoader = () => (
@@ -51,6 +53,17 @@ const routes = [
     element: (
       <RequireAuth>
         <CompaniesListPage />
+      </RequireAuth>
+    ),
+  },
+  // New Company Wizard (standalone, no app shell)
+  {
+    path: '/company-wizard',
+    element: (
+      <RequireAuth>
+        <Suspense fallback={<PageLoader />}>
+          <NewCompanyWizardPage />
+        </Suspense>
       </RequireAuth>
     ),
   },

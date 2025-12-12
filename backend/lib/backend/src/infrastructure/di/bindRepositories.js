@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.diContainer = void 0;
 const firebaseAdmin_1 = __importDefault(require("../../firebaseAdmin"));
+const CompanyRolePermissionResolver_1 = require("../../application/rbac/CompanyRolePermissionResolver");
 // Import All Firestore Implementations
 const FirestoreCompanyRepository_1 = require("../firestore/repositories/core/FirestoreCompanyRepository");
 const FirestoreUserRepository_1 = require("../firestore/repositories/core/FirestoreUserRepository");
@@ -34,6 +35,7 @@ const FirestoreCompanyModuleSettingsRepository_1 = require("../firestore/reposit
 const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/repositories/system/FirestoreModulePermissionsDefinitionRepository");
 const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/FirestoreCompanyAdminRepository");
 const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
+const FirestoreCompanyModuleRepository_1 = require("../firestore/repositories/company/FirestoreCompanyModuleRepository");
 const FirestoreBusinessDomainRepository_1 = require("../firestore/repositories/super-admin/FirestoreBusinessDomainRepository");
 const FirestorePermissionRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePermissionRegistryRepository");
 const FirestoreModuleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreModuleRegistryRepository");
@@ -60,6 +62,7 @@ exports.diContainer = {
     get userRepository() { return new FirestoreUserRepository_1.FirestoreUserRepository(getDb()); },
     get companyUserRepository() { return new FirestoreCompanyUserRepository_1.FirestoreCompanyUserRepository(getDb()); },
     get companySettingsRepository() { return new FirestoreCompanySettingsRepository_1.FirestoreCompanySettingsRepository(getDb()); },
+    get companyModuleRepository() { return new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb()); },
     // SYSTEM
     get moduleRepository() { return new FirestoreSystemRepositories_1.FirestoreModuleRepository(getDb()); },
     get roleRepository() { return new FirestoreSystemRepositories_1.FirestoreRoleRepository(getDb()); },
@@ -94,6 +97,9 @@ exports.diContainer = {
     get systemRoleTemplateRepository() { return new FirestoreSystemRoleTemplateRepository_1.FirestoreSystemRoleTemplateRepository(getDb()); },
     get companyRoleRepository() { return new FirestoreCompanyRoleRepository_1.FirestoreCompanyRoleRepository(getDb()); },
     get rbacCompanyUserRepository() { return new FirestoreCompanyUserRepository_2.FirestoreCompanyUserRepository(getDb()); },
+    get companyRolePermissionResolver() {
+        return new CompanyRolePermissionResolver_1.CompanyRolePermissionResolver(this.modulePermissionsDefinitionRepository, this.companyRoleRepository);
+    },
     // IMPERSONATION
     get impersonationRepository() { return new FirestoreImpersonationRepository_1.FirestoreImpersonationRepository(getDb()); },
     // COMPANY WIZARD

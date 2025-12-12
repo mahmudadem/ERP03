@@ -10,6 +10,8 @@ const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories"
 const SignupUseCase_1 = require("../../../application/auth/use-cases/SignupUseCase");
 const SelectPlanUseCase_1 = require("../../../application/auth/use-cases/SelectPlanUseCase");
 const GetOnboardingStatusUseCase_1 = require("../../../application/auth/use-cases/GetOnboardingStatusUseCase");
+const CreateCompanyUseCase_1 = require("../../../application/onboarding/use-cases/CreateCompanyUseCase");
+const CompanyRolePermissionResolver_1 = require("../../../application/rbac/CompanyRolePermissionResolver");
 const ApiError_1 = require("../../errors/ApiError");
 class OnboardingController {
     /**
@@ -127,6 +129,38 @@ class OnboardingController {
             res.json({
                 success: true,
                 data: formattedBundles,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * POST /create-company
+     * Creates a new company directly (fast wizard)
+     */
+    static async createCompany(req, res, next) {
+        var _a;
+        try {
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
+            if (!userId) {
+                return next(ApiError_1.ApiError.unauthorized('Authentication required'));
+            }
+            const { companyName, description, country, email, bundleId } = req.body;
+            // We need a resolver instance
+            const resolver = new CompanyRolePermissionResolver_1.CompanyRolePermissionResolver(bindRepositories_1.diContainer.modulePermissionsDefinitionRepository, bindRepositories_1.diContainer.companyRoleRepository);
+            const useCase = new CreateCompanyUseCase_1.CreateCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const result = await useCase.execute({
+                userId,
+                companyName,
+                description,
+                country,
+                email,
+                bundleId
+            });
+            res.json({
+                success: true,
+                data: result,
             });
         }
         catch (error) {

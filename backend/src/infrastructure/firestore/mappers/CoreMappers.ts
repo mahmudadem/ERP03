@@ -64,14 +64,21 @@ export class CompanyMapper {
       subscriptionPlan: entity.subscriptionPlan || null,
       createdAt: this.toTimestamp(entity.createdAt),
       updatedAt: this.toTimestamp(entity.updatedAt),
-      country: entity.country,
-      logoUrl: entity.logoUrl,
-      contactInfo: entity.contactInfo
+      country: entity.country || null,
+      logoUrl: entity.logoUrl || null,
+      contactInfo: entity.contactInfo || null
     };
   }
 }
 
 export class UserMapper {
+  private static toTimestamp(date: Date) {
+    if (admin?.firestore?.Timestamp) {
+      return admin.firestore.Timestamp.fromDate(date);
+    }
+    return date;
+  }
+
   static toDomain(data: any): User {
     return new User(
       data.id,
@@ -79,7 +86,9 @@ export class UserMapper {
       data.name,
       data.globalRole || data.role || 'USER',
       data.createdAt?.toDate?.() || new Date(data.createdAt),
-      data.pictureUrl
+      data.pictureUrl,
+      data.planId,
+      data.activeCompanyId
     );
   }
 
@@ -89,8 +98,10 @@ export class UserMapper {
       email: entity.email,
       name: entity.name,
       globalRole: entity.globalRole,
-      createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
-      pictureUrl: entity.pictureUrl || null
+      createdAt: this.toTimestamp(entity.createdAt),
+      pictureUrl: entity.pictureUrl || null,
+      planId: entity.planId || null,
+      activeCompanyId: entity.activeCompanyId || null
     };
   }
 }

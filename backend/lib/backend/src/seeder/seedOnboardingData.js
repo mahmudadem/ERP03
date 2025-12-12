@@ -9,6 +9,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// Force Emulator usage
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+process.env.GCLOUD_PROJECT = 'erp-03';
 const firebaseAdmin_1 = __importDefault(require("../firebaseAdmin"));
 const db = firebaseAdmin_1.default.firestore();
 // Plans from UI design
@@ -245,11 +248,124 @@ async function seedBundles() {
     }
     console.log(`\n✅ ${BUNDLES.length} bundles seeded.\n`);
 }
+// Module Definitions for Permissions
+const MODULE_DEFINITIONS = [
+    {
+        moduleId: 'accounting',
+        permissions: [
+            { id: 'accounting.account.view', label: 'View Chart of Accounts', enabled: true },
+            { id: 'accounting.account.create', label: 'Create Accounts', enabled: true },
+            { id: 'accounting.account.edit', label: 'Edit Accounts', enabled: true },
+            { id: 'accounting.voucher.view', label: 'View Vouchers', enabled: true },
+            { id: 'accounting.voucher.create', label: 'Create Vouchers', enabled: true },
+            { id: 'accounting.reports.profitAndLoss.view', label: 'View P&L', enabled: true },
+            { id: 'accounting.report.view', label: 'View General Reports', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'inventory',
+        permissions: [
+            { id: 'inventory.items.view', label: 'View Items', enabled: true },
+            { id: 'inventory.items.create', label: 'Create Items', enabled: true },
+            { id: 'inventory.warehouses.view', label: 'View Warehouses', enabled: true },
+            { id: 'inventory.stock.view', label: 'View Stock', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'hr',
+        permissions: [
+            { id: 'employee.list', label: 'View Employees', enabled: true },
+            { id: 'attendance.list', label: 'View Attendance', enabled: true },
+            { id: 'payroll.list', label: 'View Payroll', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'crm',
+        permissions: [
+            { id: 'crm.leads.view', label: 'View Leads', enabled: true },
+            { id: 'crm.customers.view', label: 'View Customers', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'pos',
+        permissions: [
+            { id: 'pos.terminal.access', label: 'Access POS Terminal', enabled: true },
+            { id: 'pos.sessions.view', label: 'View POS Sessions', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'manufacturing',
+        permissions: [
+            { id: 'mfg.workOrder.view', label: 'View Work Orders', enabled: true },
+            { id: 'mfg.bom.view', label: 'View BoM', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'projects',
+        permissions: [
+            { id: 'project.view', label: 'View Projects', enabled: true },
+            { id: 'task.view', label: 'View Tasks', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'purchase',
+        permissions: [
+            { id: 'vendor.list', label: 'View Vendors', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    },
+    {
+        moduleId: 'companyAdmin',
+        permissions: [
+            { id: 'manage_settings', label: 'Manage Settings', enabled: true },
+            { id: 'view_audit_logs', label: 'View Audit Logs', enabled: true },
+            { id: 'manage_users', label: 'Manage Users', enabled: true },
+            { id: 'manage_roles', label: 'Manage Roles', enabled: true },
+        ],
+        autoAttachToRoles: ['OWNER', 'ADMIN']
+    }
+];
+async function seedModuleDefinitions() {
+    console.log('📦 Seeding Module Permissions...');
+    // Note: Repository uses 'modulePermissionsDefinitions' collection directly
+    const collection = db.collection('modulePermissionsDefinitions');
+    for (const def of MODULE_DEFINITIONS) {
+        await collection.doc(def.moduleId).set(Object.assign(Object.assign({}, def), { createdAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(), updatedAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(), permissionsDefined: true }));
+        console.log(`  ✓ Module Definition: ${def.moduleId}`);
+    }
+    console.log(`\n✅ ${MODULE_DEFINITIONS.length} module definitions seeded.\n`);
+}
+async function seedModulesRegistry() {
+    console.log('📦 Seeding Modules Registry...');
+    const collection = db.collection('system_metadata').doc('modules').collection('items');
+    // Use unique modules from definitions
+    for (const def of MODULE_DEFINITIONS) {
+        const moduleName = def.moduleId.charAt(0).toUpperCase() + def.moduleId.slice(1);
+        await collection.doc(def.moduleId).set({
+            id: def.moduleId,
+            name: moduleName,
+            description: `Core ${moduleName} module functionality`,
+            createdAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`  ✓ Module Registry: ${def.moduleId}`);
+    }
+    console.log(`\n✅ ${MODULE_DEFINITIONS.length} modules registered.\n`);
+}
 async function main() {
     console.log('\n🌱 Seeding Onboarding Data...\n');
     try {
         await seedPlans();
         await seedBundles();
+        await seedModuleDefinitions();
+        await seedModulesRegistry();
         console.log('🎉 All onboarding data seeded successfully!\n');
     }
     catch (error) {

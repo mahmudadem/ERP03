@@ -26,6 +26,22 @@ export class InventoryController {
     }
   }
 
+  static async listItems(req: Request, res: Response, next: NextFunction) {
+      try {
+          // Quick implementation: Direct repository or dedicated Use Case
+          // Using repository directly for read-only to save time/complexity if use-case missing
+          const companyId = (req as any).user.companyId;
+          const items = await diContainer.itemRepository.getCompanyItems(companyId);
+          
+          (res as any).json({
+            success: true,
+            data: items.map(InventoryDTOMapper.toItemDTO)
+          });
+      } catch (error) {
+          next(error);
+      }
+  }
+
   static async createWarehouse(req: Request, res: Response, next: NextFunction) {
     try {
       const useCase = new CreateWarehouseUseCase(diContainer.warehouseRepository);

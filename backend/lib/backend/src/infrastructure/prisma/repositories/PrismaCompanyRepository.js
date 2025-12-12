@@ -56,6 +56,17 @@ class PrismaCompanyRepository {
             return null;
         return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined);
     }
+    async findByNameAndOwner(name, ownerId) {
+        const data = await this.prisma.company.findFirst({
+            where: {
+                name,
+                ownerId,
+            },
+        });
+        if (!data)
+            return null;
+        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined);
+    }
     async getUserCompanies(userId) {
         const companies = await this.prisma.company.findMany({
             where: {
@@ -115,6 +126,11 @@ class PrismaCompanyRepository {
     async listAll() {
         const companies = await this.prisma.company.findMany();
         return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined));
+    }
+    async delete(companyId) {
+        await this.prisma.company.delete({
+            where: { id: companyId },
+        });
     }
 }
 exports.PrismaCompanyRepository = PrismaCompanyRepository;

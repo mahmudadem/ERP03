@@ -89,6 +89,33 @@ export class PrismaCompanyRepository implements ICompanyRepository {
         );
     }
 
+    async findByNameAndOwner(name: string, ownerId: string): Promise<Company | null> {
+        const data = await this.prisma.company.findFirst({
+            where: {
+                name,
+                ownerId,
+            },
+        });
+
+        if (!data) return null;
+
+        return new Company(
+            data.id,
+            data.name,
+            data.ownerId,
+            data.createdAt,
+            data.updatedAt,
+            data.baseCurrency,
+            data.fiscalYearStart,
+            data.fiscalYearEnd,
+            data.modules as any,
+            (data as any).features || [],
+            data.taxId,
+            (data as any).subscriptionPlan || undefined,
+            data.address || undefined
+        );
+    }
+
     async getUserCompanies(userId: string): Promise<Company[]> {
         const companies = await this.prisma.company.findMany({
             where: {
@@ -219,5 +246,11 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                     data.address || undefined
                 )
         );
+    }
+
+    async delete(companyId: string): Promise<void> {
+        await this.prisma.company.delete({
+            where: { id: companyId },
+        });
     }
 }

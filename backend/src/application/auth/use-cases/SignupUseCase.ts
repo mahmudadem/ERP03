@@ -71,7 +71,15 @@ export class SignupUseCase {
       undefined  // activeCompanyId - not set yet
     );
 
-    await this.userRepository.createUser(user);
+    try {
+      await this.userRepository.createUser(user);
+    } catch (error) {
+      // Rollback: delete auth user validation failed or db error
+      await admin.auth().deleteUser(firebaseUser.uid).catch(err => 
+        console.error(`[SignupUseCase] Failed to rollback auth user ${firebaseUser.uid}`, err)
+      );
+      throw error;
+    }
 
     return {
       userId: firebaseUser.uid,

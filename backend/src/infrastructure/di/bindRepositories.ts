@@ -15,6 +15,7 @@ import { IPermissionRepository as IRbacPermissionRepository } from '../../reposi
 import { ISystemRoleTemplateRepository } from '../../repository/interfaces/rbac/ISystemRoleTemplateRepository';
 import { ICompanyRoleRepository } from '../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../repository/interfaces/rbac/ICompanyUserRepository';
+import { CompanyRolePermissionResolver } from '../../application/rbac/CompanyRolePermissionResolver';
 
 // Import All Firestore Implementations
 import { FirestoreCompanyRepository } from '../firestore/repositories/core/FirestoreCompanyRepository';
@@ -55,6 +56,8 @@ import { FirestoreModulePermissionsDefinitionRepository } from '../firestore/rep
 import { ICompanyAdminRepository } from '../../repository/interfaces/company-admin/ICompanyAdminRepository';
 import { FirestoreCompanyAdminRepository } from '../firestore/company-admin/FirestoreCompanyAdminRepository';
 import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaCompanyAdminRepository';
+import { ICompanyModuleRepository } from '../../repository/interfaces/company/ICompanyModuleRepository';
+import { FirestoreCompanyModuleRepository } from '../firestore/repositories/company/FirestoreCompanyModuleRepository';
 
 // SUPER ADMIN
 import { IBusinessDomainRepository } from '../../repository/interfaces/super-admin/IBusinessDomainRepository';
@@ -101,6 +104,7 @@ export const diContainer = {
   get userRepository(): IUserRepository { return new FirestoreUserRepository(getDb()); },
   get companyUserRepository(): ICompanyUserRepository { return new FirestoreCompanyUserRepository(getDb()); },
   get companySettingsRepository(): ICompanySettingsRepository { return new FirestoreCompanySettingsRepository(getDb()); },
+  get companyModuleRepository(): ICompanyModuleRepository { return new FirestoreCompanyModuleRepository(getDb()); },
 
   // SYSTEM
   get moduleRepository(): SysRepo.IModuleRepository { return new FirestoreModuleRepository(getDb()); },
@@ -143,6 +147,12 @@ export const diContainer = {
   get systemRoleTemplateRepository(): ISystemRoleTemplateRepository { return new FirestoreSystemRoleTemplateRepository(getDb()); },
   get companyRoleRepository(): ICompanyRoleRepository { return new FirestoreCompanyRoleRepository(getDb()); },
   get rbacCompanyUserRepository(): IRbacCompanyUserRepository { return new FirestoreRbacCompanyUserRepository(getDb()); },
+  get companyRolePermissionResolver(): CompanyRolePermissionResolver {
+    return new CompanyRolePermissionResolver(
+      this.modulePermissionsDefinitionRepository,
+      this.companyRoleRepository
+    );
+  },
 
   // IMPERSONATION
   get impersonationRepository(): IImpersonationRepository { return new FirestoreImpersonationRepository(getDb()); },

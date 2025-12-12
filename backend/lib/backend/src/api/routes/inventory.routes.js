@@ -7,6 +7,7 @@ const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
 const router = (0, express_1.Router)();
 router.use(authMiddleware_1.authMiddleware);
 router.post('/items', (0, permissionGuard_1.permissionGuard)('inventory.items.create'), InventoryController_1.InventoryController.createItem);
+router.get('/items', (0, permissionGuard_1.permissionGuard)('inventory.items.view'), InventoryController_1.InventoryController.listItems);
 router.post('/warehouses', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.create'), InventoryController_1.InventoryController.createWarehouse);
 exports.default = router;
 //# sourceMappingURL=inventory.routes.js.map

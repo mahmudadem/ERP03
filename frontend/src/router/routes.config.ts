@@ -13,6 +13,10 @@ const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/Voucher
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
 
+// Initialization Wizards
+const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
+const CompanyAdminInitializationWizard = lazy(() => import('../modules/company-admin/wizards/CompanyAdminInitializationWizard'));
+
 // Inventory
 const InventoryHomePage = lazy(() => import('../modules/inventory/pages/InventoryHomePage'));
 const ItemsListPage = lazy(() => import('../modules/inventory/pages/ItemsListPage'));
@@ -73,7 +77,7 @@ export interface AppRoute {
   path: string;
   label: string;
   component: ComponentType<any>;
-  section: 'CORE' | 'ACCOUNTING' | 'INVENTORY' | 'HR' | 'POS' | 'SETTINGS' | 'SUPER_ADMIN';
+  section: 'CORE' | 'ACCOUNTING' | 'INVENTORY' | 'HR' | 'POS' | 'SETTINGS' | 'SUPER_ADMIN' | 'SETUP';
   hideInMenu?: boolean;
   requiredPermission?: string;
   requiredGlobalRole?: 'SUPER_ADMIN';
@@ -84,6 +88,10 @@ export const routesConfig: AppRoute[] = [
   // CORE
   { path: '/', label: 'Dashboard', component: DashboardPage, section: 'CORE' },
   { path: '/companies', label: 'Companies', component: CompaniesPage, section: 'CORE' },
+
+  // MODULE INITIALIZATION WIZARDS (No module/permission requirements)
+  { path: '/accounting/setup', label: 'Accounting Setup', component: AccountingInitializationWizard, section: 'SETUP', hideInMenu: true },
+  { path: '/companyAdmin/setup', label: 'Company Admin Setup', component: CompanyAdminInitializationWizard, section: 'SETUP', hideInMenu: true },
 
   // ACCOUNTING
   { path: '/accounting', label: 'Overview', component: AccountingHomePage, section: 'ACCOUNTING', requiredModule: 'accounting' },
@@ -155,6 +163,22 @@ export const routesConfig: AppRoute[] = [
   { path: '/company-admin/features', label: 'Company Features', component: CompanyAdminFeaturesPage, section: 'SETTINGS' },
   { path: '/company-admin/bundles', label: 'Company Bundles', component: CompanyAdminBundlesPage, section: 'SETTINGS' },
   { path: '/company-admin/settings', label: 'Company Settings', component: CompanyAdminSettingsPage, section: 'SETTINGS' },
+  
+  // CRM
+  { path: '/crm/leads', label: 'CRM Overview', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredModule: 'crm' },
+  { path: '/crm/customers', label: 'Customers', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredModule: 'crm' },
+
+  // Manufacturing
+  { path: '/manufacturing/work-orders', label: 'Manufacturing', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredModule: 'manufacturing' },
+  { path: '/manufacturing/bom', label: 'BoM', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredModule: 'manufacturing' },
+
+  // Projects
+  { path: '/projects', label: 'Projects', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
+  { path: '/projects/tasks', label: 'Tasks', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
+
+  // Purchase
+  { path: '/purchases/orders', label: 'Purchase Orders', component: lazy(() => import('../modules/purchase/pages/PurchaseHomePage')), section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/vendors', label: 'Vendors', component: lazy(() => import('../modules/purchase/pages/PurchaseHomePage')), section: 'INVENTORY', requiredModule: 'purchase' },
   
   // USER PROFILE
   { path: '/profile', label: 'My Profile', component: lazy(() => import('../modules/core/pages/ProfilePage')), section: 'CORE', hideInMenu: true },

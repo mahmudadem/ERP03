@@ -24,6 +24,14 @@ export interface ICompanyRepository {
    * @param taxId The tax identification number.
    */
   findByTaxId(taxId: string): Promise<Company | null>;
+  
+  /**
+   * Finds existence of a company by Name and Owner.
+   * Used for deduplication during creation.
+   * @param name The company name.
+   * @param ownerId The owner's ID.
+   */
+  findByNameAndOwner(name: string, ownerId: string): Promise<Company | null>;
 
   /**
    * Retrieves all companies a user belongs to.
@@ -70,4 +78,11 @@ export interface ICompanyRepository {
    * Lists all companies in the system (Super Admin only).
    */
   listAll(): Promise<Company[]>;
+
+  /**
+   * Deletes a company and all related data (use with caution).
+   * Typically used for rollback scenarios during failed creation.
+   * @param companyId The company ID to delete.
+   */
+  delete(companyId: string): Promise<void>;
 }

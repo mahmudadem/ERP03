@@ -31,4 +31,7 @@ router.get('/onboarding-status', authMiddleware, OnboardingController.getOnboard
 // Select plan - saves user's plan choice
 router.post('/select-plan', authMiddleware, OnboardingController.selectPlan);
 
+// Create company - fast creation from wizard
+router.post('/create-company', authMiddleware, OnboardingController.createCompany);
+
 export default router;

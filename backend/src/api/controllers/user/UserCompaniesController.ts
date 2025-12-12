@@ -55,7 +55,28 @@ export class UserCompaniesController {
     try {
       const userId = (req as any).user.uid;
       const { companyId } = req.body;
-      const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, companyId);
+      
+      let membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, companyId);
+      
+      if (!membership) {
+        // Fallback: Check if user is the stored Owner of the company
+        const company = await diContainer.companyRepository.findById(companyId);
+        if (company && company.ownerId === userId) {
+             // He's the owner but membership record is missing (likely partial failure during creation)
+             // Auto-repair: Create the OWNER membership
+             console.warn(`Auto-repairing missing OWNER membership for user ${userId} in company ${companyId}`);
+             await diContainer.rbacCompanyUserRepository.assignRole({
+                 companyId: companyId,
+                 userId: userId,
+                 roleId: 'OWNER',
+                 isOwner: true,
+                 createdAt: new Date()
+             });
+             // Re-fetch
+             membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, companyId);
+        }
+      }
+
       if (!membership) throw new Error('Not a member of this company');
       await diContainer.userRepository.updateActiveCompany(userId, companyId);
       return res.json({ success: true, activeCompanyId: companyId });

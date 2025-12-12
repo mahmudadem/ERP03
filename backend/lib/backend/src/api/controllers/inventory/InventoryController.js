@@ -21,6 +21,21 @@ class InventoryController {
             next(error);
         }
     }
+    static async listItems(req, res, next) {
+        try {
+            // Quick implementation: Direct repository or dedicated Use Case
+            // Using repository directly for read-only to save time/complexity if use-case missing
+            const companyId = req.user.companyId;
+            const items = await bindRepositories_1.diContainer.itemRepository.getCompanyItems(companyId);
+            res.json({
+                success: true,
+                data: items.map(InventoryDTOs_1.InventoryDTOMapper.toItemDTO)
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async createWarehouse(req, res, next) {
         try {
             const useCase = new WarehouseUseCases_1.CreateWarehouseUseCase(bindRepositories_1.diContainer.warehouseRepository);
