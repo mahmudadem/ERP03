@@ -73,6 +73,8 @@ import { FirestoreBundleRegistryRepository } from '../firestore/repositories/sup
 import { FirestorePlanRegistryRepository } from '../firestore/repositories/super-admin/FirestorePlanRegistryRepository';
 import { FirestoreRoleTemplateRegistryRepository } from '../firestore/repositories/super-admin/FirestoreRoleTemplateRegistryRepository';
 
+// SYSTEM METADATA
+import { ISystemMetadataRepository, FirestoreSystemMetadataRepository } from '../repositories/FirestoreSystemMetadataRepository';
 
 
 // Import Prisma Implementations
@@ -190,5 +192,8 @@ export const diContainer = {
   get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); },
 
   // AUTH
-  get tokenVerifier(): ITokenVerifier { return new FirebaseTokenVerifier(); }
+  get tokenVerifier(): ITokenVerifier { return new FirebaseTokenVerifier(); },
+
+  // SYSTEM METADATA
+  get systemMetadataRepository(): ISystemMetadataRepository { return new FirestoreSystemMetadataRepository(getDb()); }
 };

@@ -42,6 +42,8 @@ const FirestoreModuleRegistryRepository_1 = require("../firestore/repositories/s
 const FirestoreBundleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreBundleRegistryRepository");
 const FirestorePlanRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePlanRegistryRepository");
 const FirestoreRoleTemplateRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreRoleTemplateRegistryRepository");
+// SYSTEM METADATA
+const FirestoreSystemMetadataRepository_1 = require("../repositories/FirestoreSystemMetadataRepository");
 // Import Prisma Implementations
 const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
 const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
@@ -129,6 +131,8 @@ exports.diContainer = {
     // SHARED
     get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); },
     // AUTH
-    get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); }
+    get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); },
+    // SYSTEM METADATA
+    get systemMetadataRepository() { return new FirestoreSystemMetadataRepository_1.FirestoreSystemMetadataRepository(getDb()); }
 };
 //# sourceMappingURL=bindRepositories.js.map

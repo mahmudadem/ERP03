@@ -53,7 +53,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
     if (updates.initialized !== undefined) firestoreUpdates.initialized = updates.initialized;
     if (updates.initializationStatus) firestoreUpdates.initializationStatus = updates.initializationStatus;
     if (updates.config) firestoreUpdates.config = updates.config;
-    firestoreUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+    firestoreUpdates.updatedAt = new Date();
 
     await docRef.update(firestoreUpdates);
   }

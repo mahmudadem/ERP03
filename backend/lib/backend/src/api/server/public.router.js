@@ -11,6 +11,7 @@ const user_companies_routes_1 = __importDefault(require("../routes/user.companie
 const core_routes_1 = __importDefault(require("../routes/core.routes"));
 const onboarding_routes_1 = __importDefault(require("../routes/onboarding.routes"));
 const company_modules_routes_1 = __importDefault(require("../routes/company-modules.routes"));
+const system_metadata_routes_1 = __importDefault(require("../routes/system.metadata.routes"));
 const router = (0, express_1.Router)();
 router.use(auth_routes_1.default);
 router.use('/onboarding', onboarding_routes_1.default);
@@ -19,5 +20,6 @@ router.use('/impersonate', impersonation_routes_1.default);
 router.use(user_companies_routes_1.default);
 router.use('/core', core_routes_1.default);
 router.use('/company-modules', company_modules_routes_1.default);
+router.use('/system/metadata', system_metadata_routes_1.default);
 exports.default = router;
 //# sourceMappingURL=public.router.js.map

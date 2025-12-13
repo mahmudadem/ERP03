@@ -45,6 +45,7 @@ const AssignUsersRolesPage = lazy(() => import('../modules/settings/rbac/AssignU
 // Super Admin
 const SystemOverviewPage = lazy(() => import('../modules/super-admin/pages/SystemOverviewPage'));
 const UsersListPage = lazy(() => import('../modules/super-admin/pages/UsersListPage'));
+const SuperAdminUsersManagementPage = lazy(() => import('../modules/super-admin/pages/SuperAdminUsersManagementPage'));
 const CompaniesListPage = lazy(() => import('../modules/super-admin/pages/CompaniesListPage'));
 const BusinessDomainsManagerPage = lazy(() => import('../modules/super-admin/pages/BusinessDomainsManagerPage').then(m => ({ default: m.BusinessDomainsManagerPage })));
 const BundlesManagerPage = lazy(() => import('../modules/super-admin/pages/BundlesManagerPage').then(m => ({ default: m.BundlesManagerPage })));
@@ -129,7 +130,7 @@ export const routesConfig: AppRoute[] = [
 
   // SUPER ADMIN
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
-  { path: '/super-admin/users', label: 'All Users', component: UsersListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/users', label: 'Users Management', component: SuperAdminUsersManagementPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies', label: 'All Companies', component: CompaniesListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   
   // Super Admin Registry

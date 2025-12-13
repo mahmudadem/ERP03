@@ -63,7 +63,30 @@ client.interceptors.response.use(
       ? response.data.data
       : response.data;
   },
-  (error) => {
+  async (error) => {
+    // Handle authentication errors
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      console.warn('[API] Authentication error - clearing auth and redirecting to login');
+      
+      // Clear any stored auth state
+      try {
+        // Dynamically import Firebase auth to avoid circular dependencies
+        const { getAuth, signOut } = await import('firebase/auth');
+        const auth = getAuth();
+        await signOut(auth);
+      } catch (authError) {
+        console.error('[API] Error signing out:', authError);
+      }
+      
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Redirect to login page
+      window.location.href = '/login';
+      
+      return Promise.reject(error);
+    }
+    
     // Normalize backend error messages for frontend consumption
     if (error.response?.data?.error?.message) {
       // Ensure error.response.data.message exists for hooks that look there

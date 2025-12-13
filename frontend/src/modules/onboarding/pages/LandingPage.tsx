@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Building2, ArrowRight, CheckCircle2, ShieldCheck, Globe } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { onboardingApi } from '../api/onboardingApi';
+import { authApi } from '../../../api/auth';
 import { cn } from '../../../lib/utils';
 
 const LandingPage: React.FC = () => {
@@ -51,7 +52,20 @@ const LandingPage: React.FC = () => {
         // Login flow
         await login({ email, password });
         
-        // Check onboarding status to determine where to go
+        // Check if user is a super admin first
+        try {
+          const permissions = await authApi.getMyPermissions();
+          
+          if (permissions.isSuperAdmin) {
+            // Super Admin: redirect to admin dashboard
+            navigate('/super-admin/overview');
+            return;
+          }
+        } catch (permErr) {
+          console.error('Failed to check super admin status:', permErr);
+        }
+        
+        // Regular user: Check onboarding status to determine where to go
         try {
           const status = await onboardingApi.getOnboardingStatus();
           
@@ -275,6 +289,16 @@ const LandingPage: React.FC = () => {
                       )}
                     </button>
                   </form>
+                  
+                  {/* Admin Login Link */}
+                  <div className="mt-4 text-center">
+                    <a 
+                      href="/#/admin/login" 
+                      className="text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                    >
+                      System Administrator? <span className="underline">Access Admin Portal</span>
+                    </a>
+                  </div>
                   
                   <p className="mt-6 text-center text-xs text-slate-400">
                     By clicking continue, you agree to our <a href="#" className="underline hover:text-slate-600">Terms of Service</a> and <a href="#" className="underline hover:text-slate-600">Privacy Policy</a>.

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { useCompanies } from './hooks/useCompanies';
 import { CompanyCard } from './CompanyCard';
 import { NewCompanyCard } from './NewCompanyCard';
@@ -7,12 +8,14 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import { useAuth } from '../../hooks/useAuth';
 
 const CompanySelectorPage: React.FC = () => {
   const { companies, loading, error, refresh } = useCompanies();
   const navigate = useNavigate();
   const { switchCompany, companyId } = useCompanyAccess();
   const { setUiMode } = useUserPreferences();
+  const { logout } = useAuth();
 
   const handleEnter = async (companyId: string) => {
     try {
@@ -23,6 +26,15 @@ const CompanySelectorPage: React.FC = () => {
       window.location.href = '/#/';
     } catch (err: any) {
       window.alert(err?.message || 'Failed to switch company');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (err: any) {
+      console.error('Logout failed:', err);
     }
   };
 
@@ -56,7 +68,12 @@ const CompanySelectorPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Your Companies</h1>
           <p className="text-sm text-gray-600">Choose a company to enter or create a new one.</p>
         </div>
-        <Button variant="secondary" onClick={refresh}>Refresh</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={refresh}>Refresh</Button>
+          <Button variant="secondary" onClick={handleLogout} leftIcon={<LogOut className="w-4 h-4" />}>
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

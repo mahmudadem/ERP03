@@ -51,24 +51,46 @@ export class CompanyModulesController {
    * PATCH /company-modules/:companyId/:moduleCode/initialize
    * Mark a module as initialized with optional config
    */
+  /**
+   * PATCH /company-modules/:companyId/:moduleCode/initialize
+   * Mark a module as initialized with optional config
+   */
   async initializeModule(req: Request, res: Response) {
     try {
       const { companyId, moduleCode } = req.params;
       const { config = {} } = req.body;
 
-      // Check if module exists
-      const module = await this.companyModuleRepo.get(companyId, moduleCode);
-      if (!module) {
-        throw ApiError.notFound('Module installation not found');
-      }
+      // Special handling for Accounting Initialization
+      if (moduleCode === 'accounting') {
+        const { diContainer } = require('../../../infrastructure/di/bindRepositories');
+        const { InitializeAccountingUseCase } = require('../../../application/accounting/use-cases/InitializeAccountingUseCase');
+        
+        const useCase = new InitializeAccountingUseCase(
+          this.companyModuleRepo,
+          diContainer.accountRepository
+        );
 
-      // Update module state
-      await this.companyModuleRepo.update(companyId, moduleCode, {
-        initialized: true,
-        initializationStatus: 'complete',
-        config,
-        updatedAt: new Date()
-      });
+        await useCase.execute({
+          companyId,
+          config
+        });
+      } else {
+        // Generic initialization for other modules
+        
+        // Check if module exists
+        const module = await this.companyModuleRepo.get(companyId, moduleCode);
+        if (!module) {
+          throw ApiError.notFound('Module installation not found');
+        }
+
+        // Update module state
+        await this.companyModuleRepo.update(companyId, moduleCode, {
+          initialized: true,
+          initializationStatus: 'complete',
+          config,
+          updatedAt: new Date()
+        });
+      }
 
       res.json({ 
         success: true, 

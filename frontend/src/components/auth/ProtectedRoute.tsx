@@ -18,6 +18,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
   const isWizardFlow = path.startsWith('/company-wizard') || path.startsWith('/company-selector');
+  const isSuperAdminRoute = path.startsWith('/super-admin');
   let persistedModules: string[] = [];
   try {
     const raw = localStorage.getItem('activeModules');
@@ -40,7 +41,8 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!isWizardFlow && !companyIdFallback) {
+  // Super Admins and super admin routes don't need a company - they manage the system
+  if (!isWizardFlow && !isSuperAdminRoute && !companyIdFallback && !isSuperAdmin) {
     return <Navigate to="/company-selector" replace />;
   }
 

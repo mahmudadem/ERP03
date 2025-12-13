@@ -125,9 +125,31 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       setPermissionsLoaded(true);
       return;
     }
+    
     setLoading(true);
     setPermissionsLoaded(false);
+    
     try {
+      // First, check if user is super admin via permissions
+      const permData = await authApi.getMyPermissions();
+      const isUserSuperAdmin = !!permData.isSuperAdmin;
+      setIsSuperAdminState(isUserSuperAdmin);
+      
+      // Super admins don't need a company - skip company loading
+      if (isUserSuperAdmin) {
+        setPermissions(permData.resolvedPermissions || []);
+        setResolvedPermissions(permData.resolvedPermissions || []);
+        setIsOwner(false);
+        setModuleBundles([]);
+        setCompanyIdState('');
+        setCompany(null);
+        localStorage.setItem('resolvedPermissions', JSON.stringify(permData.resolvedPermissions || []));
+        setPermissionsLoaded(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Regular users - load company as normal
       const data = await companySelectorApi.getActiveCompany();
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);

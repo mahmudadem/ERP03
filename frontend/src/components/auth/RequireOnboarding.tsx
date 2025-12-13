@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { onboardingApi, OnboardingStatus } from '../../modules/onboarding';
 
 interface RequireOnboardingProps {
@@ -20,12 +21,19 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
   skipOnboardingCheck = false 
 }) => {
   const { user, loading: authLoading } = useAuth();
+  const { isSuperAdmin, loading: accessLoading } = useCompanyAccess();
   const location = useLocation();
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState(false);
 
   useEffect(() => {
+    // Super Admins bypass all onboarding checks
+    if (isSuperAdmin) {
+      setStatusLoading(false);
+      return;
+    }
+    
     if (!user || skipOnboardingCheck) {
       setStatusLoading(false);
       return;
@@ -44,10 +52,10 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     };
 
     checkStatus();
-  }, [user, skipOnboardingCheck]);
+  }, [user, skipOnboardingCheck, isSuperAdmin]);
 
   // Still loading auth
-  if (authLoading) {
+  if (authLoading || accessLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
@@ -55,13 +63,22 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     );
   }
 
+  // Debug logging
+  console.log('[RequireOnboarding] State:', { 
+    user: !!user, 
+    isSuperAdmin, 
+    skipOnboardingCheck, 
+    statusLoading,
+    path: location.pathname 
+  });
+
   // Not logged in - redirect to auth
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Skip onboarding check (for pages like plan selection)
-  if (skipOnboardingCheck) {
+  // Super Admins bypass onboarding - they don't need plans or companies
+  if (isSuperAdmin || skipOnboardingCheck) {
     return <>{children}</>;
   }
 

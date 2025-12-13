@@ -17,63 +17,14 @@ export const useSidebarConfig = () => {
       MODULES: [],
       COMPANY_ADMIN: [],
       SETTINGS: [],
-      SUPER_ADMIN: []
     };
 
-    // 1. Super Admin View: ONLY Super Admin Menu
+    // Super Admin items should NEVER appear in regular sidebar
+    // Super admins use the SuperAdminShell with its own dedicated sidebar
+    // If a super admin somehow ends up here, show them nothing to avoid confusion
     if (isSuperAdmin) {
-      sections.SUPER_ADMIN.push({
-        label: 'Super Admin',
-        path: '/super-admin/overview'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Users',
-        path: '/super-admin/users'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Companies',
-        path: '/super-admin/companies'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Roles',
-        path: '/super-admin/roles'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Templates',
-        path: '/super-admin/templates'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Voucher Types',
-        path: '/super-admin/voucher-templates'
-      });
-      
-      // Registry Manager Pages
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Business Domains',
-        path: '/super-admin/business-domains'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Bundles',
-        path: '/super-admin/bundles-manager'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Module Permissions',
-        path: '/super-admin/permissions'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Permissions Registry',
-        path: '/super-admin/permissions-registry'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Modules Registry',
-        path: '/super-admin/modules-registry'
-      });
-      sections.SUPER_ADMIN.push({
-        label: 'SA • Plans',
-        path: '/super-admin/plans'
-      });
-      
-      return sections;
+      // Return empty sections - super admins should be in /super-admin/* routes with SuperAdminShell
+      return {};
     }
 
     // 2. Company User View

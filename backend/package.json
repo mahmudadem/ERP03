@@ -11,7 +11,9 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "seed:demo": "ts-node --transpile-only src/seeder/runDemoSeeder.ts",
-    "seed:onboarding": "ts-node --transpile-only src/seeder/seedOnboardingData.ts"
+    "seed:onboarding": "ts-node --transpile-only src/seeder/seedOnboardingData.ts",
+    "seed:system": "ts-node --transpile-only src/seeder/runSystemSeeder.ts",
+    "reset:accounting": "ts-node --transpile-only src/seeder/resetAccountingModule.ts"
   },
   "engines": {
     "node": "18"
