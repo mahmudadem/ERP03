@@ -10,7 +10,7 @@ class GetSystemMetadataUseCase {
         if (!metadata) {
             throw new Error(`System metadata not found: ${key}`);
         }
-        return metadata.data || metadata;
+        return metadata;
     }
 }
 exports.GetSystemMetadataUseCase = GetSystemMetadataUseCase;

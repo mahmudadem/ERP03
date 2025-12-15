@@ -334,8 +334,8 @@ const MODULE_DEFINITIONS = [
 ];
 async function seedModuleDefinitions() {
     console.log('📦 Seeding Module Permissions...');
-    // Note: Repository uses 'modulePermissionsDefinitions' collection directly
-    const collection = db.collection('modulePermissionsDefinitions');
+    // Note: Repository uses 'system_metadata/module_permissions/items' collection
+    const collection = db.collection('system_metadata').doc('module_permissions').collection('items');
     for (const def of MODULE_DEFINITIONS) {
         await collection.doc(def.moduleId).set(Object.assign(Object.assign({}, def), { createdAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(), updatedAt: firebaseAdmin_1.default.firestore.FieldValue.serverTimestamp(), permissionsDefined: true }));
         console.log(`  ✓ Module Definition: ${def.moduleId}`);

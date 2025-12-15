@@ -63,7 +63,7 @@ class CompanyModulesController {
             if (moduleCode === 'accounting') {
                 const { diContainer } = require('../../../infrastructure/di/bindRepositories');
                 const { InitializeAccountingUseCase } = require('../../../application/accounting/use-cases/InitializeAccountingUseCase');
-                const useCase = new InitializeAccountingUseCase(this.companyModuleRepo, diContainer.accountRepository);
+                const useCase = new InitializeAccountingUseCase(this.companyModuleRepo, diContainer.accountRepository, diContainer.systemMetadataRepository);
                 await useCase.execute({
                     companyId,
                     config

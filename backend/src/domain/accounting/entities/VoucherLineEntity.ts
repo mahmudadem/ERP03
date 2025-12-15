@@ -1,0 +1,152 @@
+import { VoucherType, VoucherStatus, TransactionSide } from '../types/VoucherTypes';
+
+/**
+ * VoucherLine Value Object (Immutable)
+ * 
+ * ADR-005 Compliant Implementation
+ * 
+ * Represents a single debit or credit line in a voucher.
+ * This is a complete rewrite following the simplified architecture.
+ * 
+ * Key principles:
+ * - Immutable (readonly properties)
+ * - Self-validating (validation in constructor)
+ * - Always stores BOTH transaction and base currency
+ * - Exchange rate frozen at transaction time
+ */
+export class VoucherLineEntity {
+  constructor(
+    public readonly id: number,
+    public readonly accountId: string,
+    public readonly side: TransactionSide,
+    
+    // Transaction currency (what user entered)
+    public readonly amount: number,
+    public readonly currency: string,
+    
+    // Base currency (for accounting/reporting)
+    public readonly baseAmount: number,
+    public readonly baseCurrency: string,
+    
+    // FX metadata (rate at transaction time)
+    public readonly exchangeRate: number,
+    
+    // Optional fields
+    public readonly notes?: string,
+    public readonly costCenterId?: string
+  ) {
+    // Invariant: amount must be positive
+    if (amount <= 0) {
+      throw new Error(`VoucherLine amount must be positive, got: ${amount}`);
+    }
+    
+    // Invariant: baseAmount must be positive
+    if (baseAmount <= 0) {
+      throw new Error(`VoucherLine baseAmount must be positive, got: ${baseAmount}`);
+    }
+    
+    // Invariant: exchangeRate must be positive
+    if (exchangeRate <= 0) {
+      throw new Error(`Exchange rate must be positive, got: ${exchangeRate}`);
+    }
+    
+    // Invariant: accountId required
+    if (!accountId || accountId.trim() === '') {
+      throw new Error('VoucherLine accountId is required');
+    }
+    
+    // Invariant: currency codes required
+    if (!currency || !baseCurrency) {
+      throw new Error('Currency codes are required');
+    }
+  }
+
+  /**
+   * Get debit amount in base currency (0 if this is a credit line)
+   */
+  get debitAmount(): number {
+    return this.side === 'Debit' ? this.baseAmount : 0;
+  }
+
+  /**
+   * Get credit amount in base currency (0 if this is a debit line)
+   */
+  get creditAmount(): number {
+    return this.side === 'Credit' ? this.baseAmount : 0;
+  }
+
+  /**
+   * Check if this line is a debit
+   */
+  get isDebit(): boolean {
+    return this.side === 'Debit';
+  }
+
+  /**
+   * Check if this line is a credit
+   */
+  get isCredit(): boolean {
+    return this.side === 'Credit';
+  }
+
+  /**
+   * Check if this involves foreign currency
+   */
+  get isForeignCurrency(): boolean {
+    return this.currency !== this.baseCurrency;
+  }
+
+  /**
+   * Convert to plain object for persistence
+   */
+  toJSON(): Record<string, any> {
+    return {
+      id: this.id,
+      accountId: this.accountId,
+      side: this.side,
+      amount: this.amount,
+      currency: this.currency,
+      baseAmount: this.baseAmount,
+      baseCurrency: this.baseCurrency,
+      exchangeRate: this.exchangeRate,
+      notes: this.notes || null,
+      costCenterId: this.costCenterId || null
+    };
+  }
+
+  /**
+   * Create from plain object (for deserialization)
+   */
+  static fromJSON(data: any): VoucherLineEntity {
+    return new VoucherLineEntity(
+      data.id,
+      data.accountId,
+      data.side as TransactionSide,
+      data.amount,
+      data.currency,
+      data.baseAmount,
+      data.baseCurrency,
+      data.exchangeRate,
+      data.notes,
+      data.costCenterId
+    );
+  }
+
+  /**
+   * Create a new line with updated notes (immutable update)
+   */
+  withNotes(notes: string): VoucherLineEntity {
+    return new VoucherLineEntity(
+      this.id,
+      this.accountId,
+      this.side,
+      this.amount,
+      this.currency,
+      this.baseAmount,
+      this.baseCurrency,
+      this.exchangeRate,
+      notes,
+      this.costCenterId
+    );
+  }
+}

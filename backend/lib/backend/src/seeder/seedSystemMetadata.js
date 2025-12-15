@@ -15,6 +15,7 @@ const CURRENCIES = [
     { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س', locale: 'ar-SA' },
     { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£', locale: 'ar-EG' },
 ];
+const COATemplates_1 = require("../application/accounting/templates/COATemplates");
 const COA_TEMPLATES = [
     {
         id: 'simplified',
@@ -23,6 +24,7 @@ const COA_TEMPLATES = [
         recommended: 'Ideal for startups and freelancers',
         accountCount: 25,
         complexity: 'low',
+        accounts: COATemplates_1.SimplifiedCOA
     },
     {
         id: 'standard',
@@ -31,6 +33,7 @@ const COA_TEMPLATES = [
         recommended: 'Most popular for SMBs',
         accountCount: 60,
         complexity: 'medium',
+        accounts: COATemplates_1.StandardCOA
     },
     {
         id: 'full',
@@ -39,6 +42,7 @@ const COA_TEMPLATES = [
         recommended: 'For established enterprises',
         accountCount: 120,
         complexity: 'high',
+        accounts: COATemplates_1.StandardCOA // Placeholder: Using Standard for now until Full definition exists
     },
 ];
 async function seedSystemMetadata(repository) {

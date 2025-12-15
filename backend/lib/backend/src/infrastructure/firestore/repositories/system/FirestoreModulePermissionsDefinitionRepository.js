@@ -5,8 +5,10 @@ const InfrastructureError_1 = require("../../../errors/InfrastructureError");
 class FirestoreModulePermissionsDefinitionRepository {
     constructor(db) {
         this.db = db;
-        this.collection = 'modulePermissionsDefinitions';
         this.cache = new Map();
+    }
+    getCollection() {
+        return this.db.collection('system_metadata').doc('module_permissions').collection('items');
     }
     mapDoc(doc) {
         var _a;
@@ -31,7 +33,7 @@ class FirestoreModulePermissionsDefinitionRepository {
     }
     async list() {
         try {
-            const snapshot = await this.db.collection(this.collection).get();
+            const snapshot = await this.getCollection().get();
             const defs = snapshot.docs.map((d) => this.mapDoc(d));
             defs.forEach((d) => this.setCache(d));
             return defs;
@@ -45,7 +47,7 @@ class FirestoreModulePermissionsDefinitionRepository {
         if (cached)
             return cached;
         try {
-            const doc = await this.db.collection(this.collection).doc(moduleId).get();
+            const doc = await this.getCollection().doc(moduleId).get();
             if (!doc.exists)
                 return null;
             const def = this.mapDoc(doc);
@@ -58,7 +60,7 @@ class FirestoreModulePermissionsDefinitionRepository {
     }
     async create(def) {
         try {
-            await this.db.collection(this.collection).doc(def.moduleId).set(def);
+            await this.getCollection().doc(def.moduleId).set(def);
             this.invalidate(def.moduleId);
         }
         catch (err) {
@@ -67,7 +69,7 @@ class FirestoreModulePermissionsDefinitionRepository {
     }
     async update(moduleId, partial) {
         try {
-            await this.db.collection(this.collection).doc(moduleId).set(partial, { merge: true });
+            await this.getCollection().doc(moduleId).set(partial, { merge: true });
             this.invalidate(moduleId);
         }
         catch (err) {
@@ -76,7 +78,7 @@ class FirestoreModulePermissionsDefinitionRepository {
     }
     async delete(moduleId) {
         try {
-            await this.db.collection(this.collection).doc(moduleId).delete();
+            await this.getCollection().doc(moduleId).delete();
             this.invalidate(moduleId);
         }
         catch (err) {

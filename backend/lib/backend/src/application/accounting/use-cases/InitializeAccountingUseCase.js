@@ -24,21 +24,23 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializeAccountingUseCase = void 0;
-const COATemplates_1 = require("../templates/COATemplates");
 const crypto = __importStar(require("crypto"));
 class InitializeAccountingUseCase {
-    constructor(companyModuleRepo, accountRepo) {
+    constructor(companyModuleRepo, accountRepo, systemMetadataRepo) {
         this.companyModuleRepo = companyModuleRepo;
         this.accountRepo = accountRepo;
+        this.systemMetadataRepo = systemMetadataRepo;
     }
     async execute(request) {
         const { companyId, config } = request;
         console.log(`[InitializeAccountingUseCase] Initializing for ${companyId} with template ${config.coaTemplate}`);
-        // 1. Select Template
-        let templateAccounts = COATemplates_1.StandardCOA;
-        if (config.coaTemplate === 'simplified') {
-            templateAccounts = COATemplates_1.SimplifiedCOA;
+        // 1. Fetch Template from DB
+        const templates = await this.systemMetadataRepo.getMetadata('coa_templates');
+        const selectedTemplate = templates.find((t) => t.id === config.coaTemplate);
+        if (!selectedTemplate || !selectedTemplate.accounts) {
+            throw new Error(`COA Template '${config.coaTemplate}' not found in system metadata.`);
         }
+        const templateAccounts = selectedTemplate.accounts;
         // 2. Create Accounts
         const codeToIdMap = new Map();
         // First pass: Generate IDs map
@@ -47,7 +49,7 @@ class InitializeAccountingUseCase {
             codeToIdMap.set(tpl.code, id);
         }
         // Second pass: Create accounts
-        const promises = templateAccounts.map(tpl => {
+        const promises = templateAccounts.map((tpl) => {
             const id = codeToIdMap.get(tpl.code);
             let parentId = null;
             if (tpl.parentId && codeToIdMap.has(tpl.parentId)) {

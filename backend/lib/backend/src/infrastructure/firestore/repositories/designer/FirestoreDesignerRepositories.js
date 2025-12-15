@@ -36,7 +36,9 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
      * Get top-level system voucher types collection
      */
     getSystemCollection() {
-        return this.db.collection(FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME);
+        return this.db.collection(FirestoreVoucherTypeDefinitionRepository.SYSTEM_METADATA_COLLECTION)
+            .doc(FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME)
+            .collection('items');
     }
     async createVoucherType(def) {
         const data = this.toPersistence(def);
@@ -107,5 +109,6 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
 }
 exports.FirestoreVoucherTypeDefinitionRepository = FirestoreVoucherTypeDefinitionRepository;
 FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID = 'SYSTEM';
-FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME = 'system_voucher_types';
+FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME = 'voucher_types';
+FirestoreVoucherTypeDefinitionRepository.SYSTEM_METADATA_COLLECTION = 'system_metadata';
 //# sourceMappingURL=FirestoreDesignerRepositories.js.map

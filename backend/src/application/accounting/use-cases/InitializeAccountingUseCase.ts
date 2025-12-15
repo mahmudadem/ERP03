@@ -1,6 +1,7 @@
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
-import { StandardCOA, SimplifiedCOA } from '../templates/COATemplates';
+import { ISystemMetadataRepository } from '../../../infrastructure/repositories/FirestoreSystemMetadataRepository';
+
 import * as crypto from 'crypto';
 
 interface InitializeAccountingRequest {
@@ -16,7 +17,8 @@ interface InitializeAccountingRequest {
 export class InitializeAccountingUseCase {
   constructor(
     private companyModuleRepo: ICompanyModuleRepository,
-    private accountRepo: IAccountRepository
+    private accountRepo: IAccountRepository,
+    private systemMetadataRepo: ISystemMetadataRepository
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
@@ -24,12 +26,15 @@ export class InitializeAccountingUseCase {
 
     console.log(`[InitializeAccountingUseCase] Initializing for ${companyId} with template ${config.coaTemplate}`);
 
-    // 1. Select Template
-    let templateAccounts = StandardCOA;
-    if (config.coaTemplate === 'simplified') {
-      templateAccounts = SimplifiedCOA;
+    // 1. Fetch Template from DB
+    const templates = await this.systemMetadataRepo.getMetadata('coa_templates');
+    const selectedTemplate = templates.find((t: any) => t.id === config.coaTemplate);
+
+    if (!selectedTemplate || !selectedTemplate.accounts) {
+      throw new Error(`COA Template '${config.coaTemplate}' not found in system metadata.`);
     }
 
+    const templateAccounts = selectedTemplate.accounts;
     // 2. Create Accounts
     const codeToIdMap = new Map<string, string>();
 
@@ -40,7 +45,7 @@ export class InitializeAccountingUseCase {
     }
 
     // Second pass: Create accounts
-    const promises = templateAccounts.map(tpl => {
+    const promises = templateAccounts.map((tpl: any) => {
       const id = codeToIdMap.get(tpl.code)!;
       let parentId: string | null = null;
       

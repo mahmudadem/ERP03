@@ -25,16 +25,29 @@ async function run() {
         console.log('        DEMO COMPANY SEEDER - ERP Enhanced');
         console.log('═══════════════════════════════════════════════════════\n');
 
-        // Seed System Templates first
-        await seedSystemVoucherTypes(diContainer.voucherTypeDefinitionRepository);
+        // await seedSystemVoucherTypes(diContainer.voucherTypeDefinitionRepository);
 
-        const result = await seedDemoCompany({
-            companyRepository: diContainer.companyRepository,
-            companyRoleRepository: diContainer.companyRoleRepository,
-            companyUserRepository: diContainer.rbacCompanyUserRepository,
-            userRepository: diContainer.userRepository,
-            voucherTypeDefinitionRepository: diContainer.voucherTypeDefinitionRepository
-        });
+        console.log('Calling seedDemoCompany...');
+        let result;
+        try {
+            result = await seedDemoCompany({
+                companyRepository: diContainer.companyRepository,
+                companyRoleRepository: diContainer.companyRoleRepository,
+                companyUserRepository: diContainer.rbacCompanyUserRepository,
+                userRepository: diContainer.userRepository,
+                voucherTypeDefinitionRepository: diContainer.voucherTypeDefinitionRepository,
+                companyModuleRepository: diContainer.companyModuleRepository
+            });
+            console.log('seedDemoCompany completed successfully');
+        } catch (err) {
+            console.error('\n\n❌❌❌ ERROR IN SEED DEMO COMPANY ❌❌❌');
+            console.error('Error:', err);
+            if (err instanceof Error) {
+                console.error('Message:', err.message);
+                console.error('Stack:', err.stack);
+            }
+            throw err;
+        }
 
         console.log('═══════════════════════════════════════════════════════');
         console.log('                   SEEDING COMPLETE');

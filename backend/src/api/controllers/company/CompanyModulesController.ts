@@ -67,7 +67,8 @@ export class CompanyModulesController {
         
         const useCase = new InitializeAccountingUseCase(
           this.companyModuleRepo,
-          diContainer.accountRepository
+          diContainer.accountRepository,
+          diContainer.systemMetadataRepository
         );
 
         await useCase.execute({

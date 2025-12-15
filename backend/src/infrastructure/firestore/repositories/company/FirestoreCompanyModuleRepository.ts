@@ -11,7 +11,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
   async get(companyId: string, moduleCode: string): Promise<CompanyModule | null> {
     const docRef = this.db
-      .collection('companyModules')
+      .collection('companies')
       .doc(companyId)
       .collection('modules')
       .doc(moduleCode);
@@ -24,7 +24,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
   async listByCompany(companyId: string): Promise<CompanyModule[]> {
     const snapshot = await this.db
-      .collection('companyModules')
+      .collection('companies')
       .doc(companyId)
       .collection('modules')
       .get();
@@ -34,7 +34,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
   async create(module: CompanyModule): Promise<void> {
     const docRef = this.db
-      .collection('companyModules')
+      .collection('companies')
       .doc(module.companyId)
       .collection('modules')
       .doc(module.moduleCode);
@@ -44,7 +44,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
   async update(companyId: string, moduleCode: string, updates: Partial<CompanyModule>): Promise<void> {
     const docRef = this.db
-      .collection('companyModules')
+      .collection('companies')
       .doc(companyId)
       .collection('modules')
       .doc(moduleCode);
@@ -60,7 +60,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
   async delete(companyId: string, moduleCode: string): Promise<void> {
     const docRef = this.db
-      .collection('companyModules')
+      .collection('companies')
       .doc(companyId)
       .collection('modules')
       .doc(moduleCode);
@@ -73,7 +73,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
 
     for (const module of modules) {
       const docRef = this.db
-        .collection('companyModules')
+        .collection('companies')
         .doc(module.companyId)
         .collection('modules')
         .doc(module.moduleCode);

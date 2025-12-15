@@ -25,7 +25,8 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   protected toPersistence = VoucherTypeDefinitionMapper.toPersistence;
 
   private static readonly SYSTEM_COMPANY_ID = 'SYSTEM';
-  private static readonly SYSTEM_COLLECTION_NAME = 'system_voucher_types';
+  private static readonly SYSTEM_COLLECTION_NAME = 'voucher_types';
+  private static readonly SYSTEM_METADATA_COLLECTION = 'system_metadata';
 
   /**
    * Get company-specific voucher types collection
@@ -38,7 +39,9 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
    * Get top-level system voucher types collection
    */
   private getSystemCollection() {
-    return this.db.collection(FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME);
+    return this.db.collection(FirestoreVoucherTypeDefinitionRepository.SYSTEM_METADATA_COLLECTION)
+      .doc(FirestoreVoucherTypeDefinitionRepository.SYSTEM_COLLECTION_NAME)
+      .collection('items');
   }
 
   async createVoucherType(def: VoucherTypeDefinition): Promise<void> {

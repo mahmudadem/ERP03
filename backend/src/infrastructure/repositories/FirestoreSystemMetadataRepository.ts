@@ -11,19 +11,36 @@ export class FirestoreSystemMetadataRepository implements ISystemMetadataReposit
   constructor(private readonly db: Firestore) {}
 
   async getMetadata(key: string): Promise<any> {
-    const doc = await this.db.collection(this.collection).doc(key).get();
+    const snapshot = await this.db.collection(this.collection).doc(key).collection('items').get();
     
-    if (!doc.exists) {
+    if (snapshot.empty) {
       return null;
     }
 
-    return doc.data();
+    return snapshot.docs.map(doc => doc.data());
   }
 
-  async setMetadata(key: string, value: any): Promise<void> {
-    await this.db.collection(this.collection).doc(key).set({
-      data: value,
-      updatedAt: new Date().toISOString(),
+  async setMetadata(key: string, value: any[]): Promise<void> {
+    const batch = this.db.batch();
+    const collectionRef = this.db.collection(this.collection).doc(key).collection('items');
+
+    // Delete existing items first (to ensure full replacement like the original set)
+    // In a real prod scenario we might want a smarter merge, but for seeding/config this is cleaner.
+    const existing = await collectionRef.get();
+    existing.docs.forEach(doc => batch.delete(doc.ref));
+
+    // Add new items
+    value.forEach((item: any) => {
+      // Use 'id' or 'code' as document ID if present, otherwise auto-id
+      const docId = item.id || item.code || this.db.collection('_').doc().id;
+      const docRef = collectionRef.doc(docId);
+       
+      batch.set(docRef, {
+        ...item,
+        updatedAt: new Date().toISOString(),
+      });
     });
+
+    await batch.commit();
   }
 }
