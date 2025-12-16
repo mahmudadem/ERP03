@@ -675,6 +675,51 @@ export const StepLayoutEditor: React.FC<Props> = ({
                     })}
                   </div>
 
+                  {/* System Metadata Preview */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">System Information</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Voucher Number</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-400 italic">
+                          Pending
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm">
+                          <span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                            Draft
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Created At</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-400 italic">
+                          Pending
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Created By</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-400 italic">
+                          Pending
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Updated At</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-400 italic">
+                          Pending
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Updated By</label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-400 italic">
+                          Pending
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Actions */}
                   <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end gap-3">
                     <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium">
