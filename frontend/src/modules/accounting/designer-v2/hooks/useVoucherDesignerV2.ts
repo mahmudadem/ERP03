@@ -204,6 +204,10 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
         const coreFields = getCoreFields(state.voucherType);
         return coreFields.every(f => state.selectedFieldIds.includes(f.id));
       
+      case 'LINE_CONFIG':
+        // Line config is optional, always can proceed
+        return true;
+      
       case 'LAYOUT_EDITOR':
         return getAllFields().length > 0;
       
