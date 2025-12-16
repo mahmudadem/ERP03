@@ -12,6 +12,7 @@ import {
   StepSelectType,
   StepFieldSelection,
   StepLayoutEditor,
+  StepLineConfig,
   StepValidation,
   StepReview
 } from './steps';
@@ -25,9 +26,10 @@ interface Props {
 const STEP_INFO = [
   { id: 'SELECT_TYPE', label: 'Type', number: 1 },
   { id: 'FIELD_SELECTION', label: 'Fields', number: 2 },
-  { id: 'LAYOUT_EDITOR', label: 'Layout', number: 3 },
-  { id: 'VALIDATION', label: 'Validate', number: 4 },
-  { id: 'REVIEW', label: 'Review', number: 5 }
+  { id: 'LINE_CONFIG', label: 'Line Table', number: 3 },
+  { id: 'LAYOUT_EDITOR', label: 'Layout', number: 4 },
+  { id: 'VALIDATION', label: 'Validate', number: 5 },
+  { id: 'REVIEW', label: 'Review', number: 6 }
 ];
 
 export const VoucherWizard: React.FC<Props> = ({ initialType, onClose, onSave }) => {
@@ -73,6 +75,15 @@ export const VoucherWizard: React.FC<Props> = ({ initialType, onClose, onSave })
             mode={designer.displayMode}
             onFieldsUpdate={designer.updateFields}
             onModeChange={designer.updateDisplayMode}
+          />
+        );
+
+      case 'LINE_CONFIG':
+        if (!designer.voucherType) return null;
+        return (
+          <StepLineConfig
+            columns={designer.lineColumns || []}
+            onColumnsChange={designer.updateLineColumns}
           />
         );
 

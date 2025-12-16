@@ -8,9 +8,10 @@
 import { useState, useEffect } from 'react';
 import { VoucherTypeCode, DisplayMode, VoucherLayoutV2 } from '../types/VoucherLayoutV2';
 import { FieldDefinitionV2 } from '../types/FieldDefinitionV2';
+import { LineColumnDefinition, getDefaultLineTableConfig } from '../types/LineTableConfiguration';
 import { getCoreFields, getSharedFields } from '../registries';
 
-export type DesignerStep = 'SELECT_TYPE' | 'FIELD_SELECTION' | 'LAYOUT_EDITOR' | 'VALIDATION' | 'REVIEW';
+export type DesignerStep = 'SELECT_TYPE' | 'FIELD_SELECTION' | 'LAYOUT_EDITOR' | 'LINE_CONFIG' | 'VALIDATION' | 'REVIEW';
 
 export interface DesignerState {
   // Step navigation
@@ -26,6 +27,9 @@ export interface DesignerState {
   // Field customizations (styling, labels, etc.)
   customizedFields: Map<string, Partial<FieldDefinitionV2>>;
   
+  // Line table configuration
+  lineColumns: LineColumnDefinition[];
+  
   // Layout configuration
   displayMode: DisplayMode;
   
@@ -37,6 +41,7 @@ export interface DesignerState {
 const STEP_ORDER: DesignerStep[] = [
   'SELECT_TYPE',
   'FIELD_SELECTION',
+  'LINE_CONFIG',
   'LAYOUT_EDITOR',
   'VALIDATION',
   'REVIEW'
@@ -49,6 +54,7 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
     selectedFieldIds: [],
     personalFields: [],
     customizedFields: new Map(),
+    lineColumns: getDefaultLineTableConfig().columns,
     displayMode: 'windows',
     loading: false,
     error: null
@@ -213,6 +219,11 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
     }
   };
 
+  // Update line table columns
+  const updateLineColumns = (columns: LineColumnDefinition[]) => {
+    setState(prev => ({ ...prev, lineColumns: columns }));
+  };
+
   // Save configuration
   const save = async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -256,6 +267,7 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
       selectedFieldIds: [],
       personalFields: [],
       customizedFields: new Map(),
+      lineColumns: getDefaultLineTableConfig().columns,
       displayMode: 'windows',
       loading: false,
       error: null
@@ -268,6 +280,7 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
     voucherType: state.voucherType,
     selectedFieldIds: state.selectedFieldIds,
     personalFields: state.personalFields,
+    lineColumns: state.lineColumns,
     displayMode: state.displayMode,
     loading: state.loading,
     error: state.error,
@@ -280,6 +293,7 @@ export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
     selectVoucherType,
     updateFieldSelection,
     updateFields,
+    updateLineColumns,
     updateDisplayMode,
     setCurrentStep,
     nextStep,
