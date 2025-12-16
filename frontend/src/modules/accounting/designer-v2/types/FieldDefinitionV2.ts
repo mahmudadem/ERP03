@@ -159,6 +159,16 @@ export interface FieldDefinitionV2 extends FieldDefinition {
    * User's custom order in layout
    */
   order?: number;
+  
+  /**
+   * Component type (optional - for PERSONAL fields or override)
+   */
+  componentType?: string;
+  
+  /**
+   * Component-specific configuration
+   */
+  componentConfig?: any;
 }
 
 /**

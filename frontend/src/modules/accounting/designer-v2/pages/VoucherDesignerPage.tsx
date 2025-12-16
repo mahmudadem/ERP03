@@ -103,7 +103,11 @@ export const VoucherDesignerPage: React.FC = () => {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 backdrop-blur-sm">
         <div className="w-full max-w-6xl h-[90vh]">
-          <VoucherWizard onClose={handleCloseWizard} onSave={handleSave} />
+          <VoucherWizard 
+            initialType={selectedType || undefined}
+            onClose={handleCloseWizard} 
+            onSave={handleSave} 
+          />
         </div>
       </div>
     );
@@ -158,14 +162,19 @@ export const VoucherDesignerPage: React.FC = () => {
                 ${colors.border} ${colors.hover} hover:shadow-lg
               `}
             >
-              {/* Custom Layout Badge */}
-              {type.hasCustomLayout && (
-                <div className="absolute top-4 right-4">
+              {/* Badges */}
+              <div className="absolute top-4 right-4 flex gap-2">
+                {!type.hasCustomLayout && (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded">
+                    DEFAULT
+                  </span>
+                )}
+                {type.hasCustomLayout && (
                   <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded">
                     CUSTOMIZED
                   </span>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Icon & Title */}
               <div className="flex items-start gap-4 mb-4">

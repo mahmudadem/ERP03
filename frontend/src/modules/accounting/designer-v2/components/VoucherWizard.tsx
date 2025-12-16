@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { useVoucherDesignerV2 } from '../hooks/useVoucherDesignerV2';
+import { VoucherTypeCode } from '../types/VoucherLayoutV2';
 import {
   StepSelectType,
   StepFieldSelection,
@@ -16,6 +17,7 @@ import {
 } from './steps';
 
 interface Props {
+  initialType?: VoucherTypeCode;
   onClose: () => void;
   onSave?: () => void;
 }
@@ -28,8 +30,8 @@ const STEP_INFO = [
   { id: 'REVIEW', label: 'Review', number: 5 }
 ];
 
-export const VoucherWizard: React.FC<Props> = ({ onClose, onSave }) => {
-  const designer = useVoucherDesignerV2();
+export const VoucherWizard: React.FC<Props> = ({ initialType, onClose, onSave }) => {
+  const designer = useVoucherDesignerV2(initialType);
 
   const handleSave = async () => {
     const success = await designer.save();

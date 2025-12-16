@@ -23,6 +23,9 @@ export interface DesignerState {
   selectedFieldIds: string[];
   personalFields: FieldDefinitionV2[];
   
+  // Field customizations (styling, labels, etc.)
+  customizedFields: Map<string, Partial<FieldDefinitionV2>>;
+  
   // Layout configuration
   displayMode: DisplayMode;
   
@@ -39,17 +42,19 @@ const STEP_ORDER: DesignerStep[] = [
   'REVIEW'
 ];
 
-export const useVoucherDesignerV2 = () => {
+export const useVoucherDesignerV2 = (initialType?: VoucherTypeCode) => {
   const [state, setState] = useState<DesignerState>({
-    currentStep: 'SELECT_TYPE',
+    currentStep: initialType ? 'FIELD_SELECTION' : 'SELECT_TYPE',
+    voucherType: initialType,
     selectedFieldIds: [],
     personalFields: [],
+    customizedFields: new Map(),
     displayMode: 'windows',
     loading: false,
     error: null
   });
 
-  // Get all fields (CORE + selected SHARED + PERSONAL)
+  // Get all fields (CORE + selected SHARED + PERSONAL) with customizations applied
   const getAllFields = (): FieldDefinitionV2[] => {
     if (!state.voucherType) return [];
 
@@ -66,7 +71,11 @@ export const useVoucherDesignerV2 = () => {
     // Include PERSONAL fields
     fields.push(...state.personalFields);
     
-    return fields;
+    // Apply customizations to all fields
+    return fields.map(field => {
+      const customizations = state.customizedFields.get(field.id);
+      return customizations ? { ...field, ...customizations } : field;
+    });
   };
 
   // Initialize field selection when voucher type changes
@@ -100,18 +109,48 @@ export const useVoucherDesignerV2 = () => {
     }));
   };
 
-  // Update fields (from layout editor)
+  // Update fields (from layout editor) - Store customizations
   const updateFields = (fields: FieldDefinitionV2[]) => {
-    // Extract PERSONAL fields
+    const newCustomizations = new Map(state.customizedFields);
+    const coreFields = state.voucherType ? getCoreFields(state.voucherType) : [];
+    const sharedFields = state.voucherType ? getSharedFields(state.voucherType) : [];
+    
+    // Extract PERSONAL fields (they're fully custom)
     const personalFields = fields.filter(f => f.category === 'PERSONAL');
     
-    // Extract selected field IDs
+    // Extract field IDs
     const fieldIds = fields.map(f => f.id);
+    
+    // Store customizations for CORE and SHARED fields
+    fields.forEach(field => {
+      if (field.category === 'CORE' || field.category === 'SHARED') {
+        // Find the original field
+        const originalField = [...coreFields, ...sharedFields].find(f => f.id === field.id);
+        
+        if (originalField) {
+          // Store only the differences (customizations)
+          const customizations: Partial<FieldDefinitionV2> = {};
+          
+          if (field.label !== originalField.label) customizations.label = field.label;
+          if (field.width !== originalField.width) customizations.width = field.width;
+          if (field.style) customizations.style = field.style;
+          if (field.placeholder !== originalField.placeholder) customizations.placeholder = field.placeholder;
+          
+          // Store customizations
+          if (Object.keys(customizations).length > 0) {
+            newCustomizations.set(field.id, customizations);
+          } else {
+            newCustomizations.delete(field.id);
+          }
+        }
+      }
+    });
     
     setState(prev => ({
       ...prev,
       selectedFieldIds: fieldIds,
-      personalFields
+      personalFields,
+      customizedFields: newCustomizations
     }));
   };
 
@@ -216,6 +255,7 @@ export const useVoucherDesignerV2 = () => {
       currentStep: 'SELECT_TYPE',
       selectedFieldIds: [],
       personalFields: [],
+      customizedFields: new Map(),
       displayMode: 'windows',
       loading: false,
       error: null

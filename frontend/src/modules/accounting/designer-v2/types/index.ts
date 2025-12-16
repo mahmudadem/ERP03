@@ -7,3 +7,6 @@
 export * from './FieldDefinitionV2';
 export * from './VoucherLayoutV2';
 export * from './SystemFieldRegistry';
+export * from './FieldComponents';
+export * from './SystemMetadataFields';
+export * from './LineTableConfiguration';

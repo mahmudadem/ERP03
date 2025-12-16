@@ -102,6 +102,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/designer', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/designer/pages/VoucherTypeDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
+  { path: '/accounting/designer-v2', label: 'Voucher Designer V2 (NEW)', component: lazy(() => import('../modules/accounting/designer-v2/pages/VoucherDesignerPage').then(m => ({ default: m.VoucherDesignerPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
 
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY', requiredModule: 'inventory' },

@@ -563,7 +563,7 @@ export const StepLayoutEditor: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Test Run Modal - Simplified placeholder */}
+      {/* Test Run Modal - Rendered with actual fields */}
       {isTestRunOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -584,9 +584,109 @@ export const StepLayoutEditor: React.FC<Props> = ({
             <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
               <div className={`mx-auto ${mode === 'windows' ? 'max-w-4xl' : 'max-w-6xl'}`}>
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <p className="text-center text-gray-600">
-                    Test Run preview would render here with actual form components
-                  </p>
+                  {/* Voucher Form Preview */}
+                  <div className="mb-6 pb-4 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-900 mb-1">
+                      {voucherType.replace('_', ' ')}
+                    </h2>
+                    <p className="text-sm text-gray-500">Draft • Preview Mode</p>
+                  </div>
+
+                  {/* Render Actual Fields */}
+                  <div className="grid grid-cols-4 gap-6">
+                    {fields.map(field => {
+                      const colSpan = field.width === 'full' ? 'col-span-4' : 
+                                    field.width === '1/2' ? 'col-span-2' : 'col-span-1';
+                      const style = field.style || {};
+
+                      return (
+                        <div key={field.id} className={colSpan}>
+                          <label
+                            className="block mb-2 text-sm font-medium"
+                            style={{
+                              color: style.color ||'#374151',
+                              fontWeight: style.fontWeight || 'medium',
+                              fontSize: style.fontSize || '0.875rem',
+                              textAlign: style.textAlign as any
+                            }}
+                          >
+                            {field.label}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          
+                          {/* Render appropriate input based on type */}
+                          {field.type === 'TEXTAREA' ? (
+                            <textarea
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              rows={3}
+                              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                borderColor: style.borderColor,
+                                borderWidth: style.borderWidth
+                              }}
+                            />
+                          ) : field.type === 'SELECT' ? (
+                            <select
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                borderColor: style.borderColor,
+                                borderWidth: style.borderWidth
+                              }}
+                            >
+                              <option value="">Select {field.label}</option>
+                            </select>
+                          ) : field.type === 'DATE' ? (
+                            <input
+                              type="date"
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                borderColor:style.borderColor,
+                                borderWidth: style.borderWidth
+                              }}
+                            />
+                          ) : field.type === 'NUMBER' ? (
+                            <input
+                              type="number"
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              placeholder={field.placeholder || '0.00'}
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                borderColor: style.borderColor,
+                                borderWidth: style.borderWidth
+                              }}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                              style={{
+                                backgroundColor: style.backgroundColor,
+                                borderColor: style.borderColor,
+                                borderWidth: style.borderWidth
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end gap-3">
+                    <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium">
+                      Cancel
+                    </button>
+                    <button className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium">
+                      Save as Draft
+                    </button>
+                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">
+                      Submit
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

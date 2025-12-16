@@ -2,13 +2,18 @@
  * StepFieldSelection.tsx
  * 
  * Second step: Select which fields to include.
- * Shows CORE (locked), SHARED (toggle), and PERSONAL (add/remove) fields.
+ * Shows CORE (locked), SHARED (toggle), PERSONAL (add/remove) fields.
+ * Now includes: Component type selection, System metadata fields.
  */
 
 import React, { useState } from 'react';
 import { VoucherTypeCode } from '../../types/VoucherLayoutV2';
 import { FieldDefinitionV2, createPersonalField } from '../../types/FieldDefinitionV2';
 import { getCoreFields, getSharedFields } from '../../registries';
+import { getDefaultComponentType, FieldComponentType, ComponentConfig } from '../../types/FieldComponents';
+import { SYSTEM_METADATA_FIELDS, SystemMetadataField } from '../../types/SystemMetadataFields';
+import { ComponentSelector } from '../ComponentSelector';
+import { ComponentConfigModal } from '../ComponentConfigModal';
 
 interface Props {
   voucherType: VoucherTypeCode;
@@ -24,6 +29,10 @@ export const StepFieldSelection: React.FC<Props> = ({
   onFieldsChange
 }) => {
   const [newPersonalFieldName, setNewPersonalFieldName] = useState('');
+  const [componentSelectorOpen, setComponentSelectorOpen] = useState(false);
+  const [componentConfigOpen, setComponentConfigOpen] = useState(false);
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [selectedMetadataIds, setSelectedMetadataIds] = useState<string[]>([]);
 
   const coreFields = getCoreFields(voucherType);
   const sharedFields = getSharedFields(voucherType);
@@ -68,6 +77,39 @@ export const StepFieldSelection: React.FC<Props> = ({
     onFieldsChange(
       selectedFieldIds.filter(id => id !== fieldId),
       personalFields.filter(f => f.id !== fieldId)
+    );
+  };
+
+  const openComponentSelector = (fieldId: string) => {
+    setEditingFieldId(fieldId);
+    setComponentSelectorOpen(true);
+  };
+
+  const handleComponentSelect = (componentType: FieldComponentType) => {
+    setComponentSelectorOpen(false);
+    setComponentConfigOpen(true);
+    // Component type will be saved when config is saved
+  };
+
+  const handleComponentConfigSave = (config: ComponentConfig) => {
+    if (!editingFieldId) return;
+
+    // Update the personal field with new config
+    const updatedPersonalFields = personalFields.map(f =>
+      f.id === editingFieldId
+        ? { ...f, componentType: config as any, componentConfig: config }
+        : f
+    );
+
+    onFieldsChange(selectedFieldIds, updatedPersonalFields);
+    setEditingFieldId(null);
+  };
+
+  const toggleMetadataField = (fieldId: string) => {
+    setSelectedMetadataIds(prev =>
+      prev.includes(fieldId)
+        ? prev.filter(id => id !== fieldId)
+        : [...prev, fieldId]
     );
   };
 
@@ -293,10 +335,130 @@ export const StepFieldSelection: React.FC<Props> = ({
         )}
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* SYSTEM METADATA FIELDS (Read-Only System Info) */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">
+              ℹ️ System Metadata Fields
+            </h3>
+            <p className="text-sm text-gray-600">
+              Optional read-only fields showing voucher lifecycle information
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          {/* Audit Fields */}
+          <div className="mb-6">
+            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              Audit Trail
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {SYSTEM_METADATA_FIELDS.filter(f => f.metadataType === 'audit').map(field => (
+                <label
+                  key={field.id}
+                  className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedMetadataIds.includes(field.id)}
+                    onChange={() => toggleMetadataField(field.id)}
+                    className="mt-0.5 rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-900">{field.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{field.semanticMeaning}</div>
+                    <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded">
+                      Read-only
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Status Fields */}
+          <div className="mb-6">
+            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              Status
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {SYSTEM_METADATA_FIELDS.filter(f => f.metadataType === 'status').map(field => (
+                <label
+                  key={field.id}
+                  className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedMetadataIds.includes(field.id)}
+                    onChange={() => toggleMetadataField(field.id)}
+                    className="mt-0.5 rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-900">{field.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{field.semanticMeaning}</div>
+                    <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded">
+                      Read-only
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Workflow Fields */}
+          <div>
+            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              Workflow
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {SYSTEM_METADATA_FIELDS.filter(f => f.metadataType === 'workflow').map(field => (
+                <label
+                  key={field.id}
+                  className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedMetadataIds.includes(field.id)}
+                    onChange={() => toggleMetadataField(field.id)}
+                    className="mt-0.5 rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-gray-900">{field.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{field.semanticMeaning}</div>
+                    <span className="inline-block mt-1 px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded">
+                      Read-only
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Summary */}
       <div className="mt-10 bg-gray-50 border border-gray-200 rounded-lg p-6">
         <h4 className="font-bold text-gray-900 mb-3">Field Selection Summary</h4>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-4 gap-6">
           <div>
             <div className="text-2xl font-bold text-red-600">{coreFields.length}</div>
             <div className="text-sm text-gray-600">Core (required)</div>
@@ -311,8 +473,37 @@ export const StepFieldSelection: React.FC<Props> = ({
             <div className="text-2xl font-bold text-purple-600">{personalFields.length}</div>
             <div className="text-sm text-gray-600">Personal (private)</div>
           </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-600">{selectedMetadataIds.length}</div>
+            <div className="text-sm text-gray-600">Metadata (system)</div>
+          </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {componentSelectorOpen && editingFieldId && (
+        <ComponentSelector
+          fieldType={personalFields.find(f => f.id === editingFieldId)?.type || 'TEXT'}
+          currentComponent={personalFields.find(f => f.id === editingFieldId)?.componentType as any}
+          onSelect={handleComponentSelect}
+          onClose={() => {
+            setComponentSelectorOpen(false);
+            setEditingFieldId(null);
+          }}
+        />
+      )}
+
+      {componentConfigOpen && editingFieldId && (
+        <ComponentConfigModal
+          componentType={personalFields.find(f => f.id === editingFieldId)?.componentType as any || 'TEXT_INPUT'}
+          config={personalFields.find(f => f.id === editingFieldId)?.componentConfig}
+          onSave={handleComponentConfigSave}
+          onClose={() => {
+            setComponentConfigOpen(false);
+            setEditingFieldId(null);
+          }}
+        />
+      )}
     </div>
   );
 };
