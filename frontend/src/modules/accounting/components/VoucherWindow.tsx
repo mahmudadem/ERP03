@@ -112,14 +112,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
   }, [isDragging, isResizing, dragOffset, resizeType, win.id, win.isMaximized, win.size, win.position, updateWindowPosition, updateWindowSize]);
 
   const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      await onSave(win.id, win.data);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
     if (!rendererRef.current) {
       console.error('Renderer ref not ready');
       return;
