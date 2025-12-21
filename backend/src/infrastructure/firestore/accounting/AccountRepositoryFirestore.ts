@@ -29,10 +29,13 @@ export class AccountRepositoryFirestore implements IAccountRepository {
     }
 
     async create(companyId: string, data: NewAccountInput): Promise<Account> {
-        const ref = this.getCollection(companyId).doc();
+        // Use account CODE as the document ID (industry standard for accounting)
+        const ref = this.getCollection(companyId).doc(data.code);
+        // Generate UUID for system tracing/logging
+        const uuid = this.db.collection('tmp').doc().id;
         const now = new Date();
         const account: Account = {
-            id: ref.id,
+            id: data.code,       // id = code (business identifier)
             companyId,
             ...data,
             type: data.type as AccountType,
@@ -41,6 +44,7 @@ export class AccountRepositoryFirestore implements IAccountRepository {
             isProtected: false,
             currency: data.currency || '',
             parentId: data.parentId ?? null,
+            uuid: uuid,          // System UUID for tracing
             createdAt: now,
             updatedAt: now,
         };
