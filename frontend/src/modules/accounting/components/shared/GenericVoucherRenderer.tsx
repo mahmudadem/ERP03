@@ -199,7 +199,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                             // @ts-ignore
                                             onChange={(e) => handleRowChange(row.id, col, e.target.value)}
                                             className={`w-full p-1 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none ${['debit', 'credit'].includes(col) ? 'text-end' : ''}`}
-                                            placeholder={['debit', 'credit'].includes(col) ? '---' : ''}
+                                            placeholder={col === 'account' ? 'Account ID (e.g., 101)' : ['debit', 'credit'].includes(col) ? '---' : ''}
                                             type={['debit', 'credit'].includes(col) ? 'number' : 'text'}
                                         />
                                     </td>
