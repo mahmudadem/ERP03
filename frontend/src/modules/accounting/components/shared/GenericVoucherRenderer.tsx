@@ -111,7 +111,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         ...formData,
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
-        formId: definition.id // Which form was used for rendering
+        formId: definition.id, // Which form was used for rendering
+        prefix: (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V' // Voucher number prefix
       };
     }
   }));
