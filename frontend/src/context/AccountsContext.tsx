@@ -1,20 +1,14 @@
-/**
- * Accounts Context
- * 
- * Provides cached account data to the application.
- * Fetches valid accounts once and caches for performance.
- */
-
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { accountingApi, AccountDTO } from '../api/accountingApi';
 
 // Account type matching backend
 export interface Account {
   id: string;
   code: string;
   name: string;
-  type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
-  currency: string;
-  isActive: boolean;
+  type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE' | string;
+  currency?: string;
+  isActive?: boolean;
   parentId?: string | null;
   isParent?: boolean;
 }
@@ -55,31 +49,25 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     setError(null);
 
     try {
-      // Fetch all accounts (using existing endpoint)
-      const response = await fetch('/api/v1/tenant/accounting/accounts', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accounts: ${response.status}`);
-      }
-
-      const data = await response.json();
+      // Use existing accountingApi which has correct base URL
+      const data = await accountingApi.getAccounts();
       
-      if (data.success && Array.isArray(data.data)) {
-        setAccounts(data.data);
-        
-        // Filter valid accounts client-side (leaf accounts = no children, active)
-        // For now, consider all active accounts as valid
-        // Later: backend will provide pre-filtered list
-        const valid = data.data.filter((acc: Account) => acc.isActive !== false);
-        setValidAccounts(valid);
-        
-        setLastFetch(Date.now());
-      }
+      const accountList: Account[] = data.map((acc: AccountDTO) => ({
+        id: acc.id,
+        code: acc.code,
+        name: acc.name,
+        type: acc.type as Account['type'],
+        currency: acc.currency,
+        isActive: acc.isActive !== false
+      }));
+      
+      setAccounts(accountList);
+      
+      // Filter valid accounts client-side (all active accounts for now)
+      const valid = accountList.filter((acc: Account) => acc.isActive !== false);
+      setValidAccounts(valid);
+      
+      setLastFetch(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
       console.error('Failed to fetch accounts:', err);
