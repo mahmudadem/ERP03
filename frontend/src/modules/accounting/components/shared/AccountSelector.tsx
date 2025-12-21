@@ -34,14 +34,36 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   // Get selected account from value
   const selectedAccount = value ? getAccountByCode(value) : null;
 
-  // Filter accounts based on search
-  const filteredAccounts = validAccounts.filter((account: Account) => {
-    const search = searchTerm.toLowerCase();
-    return (
+  // Filter and sort accounts based on search - exact matches first
+  const filteredAccounts = (() => {
+    const search = searchTerm.toLowerCase().trim();
+    if (!search) return validAccounts;
+    
+    // Filter matching accounts
+    const matches = validAccounts.filter((account: Account) => 
       account.code.toLowerCase().includes(search) ||
       account.name.toLowerCase().includes(search)
     );
-  });
+    
+    // Sort: exact code match first, then startsWith, then includes
+    return matches.sort((a, b) => {
+      const aCode = a.code.toLowerCase();
+      const bCode = b.code.toLowerCase();
+      
+      // Exact match gets highest priority
+      if (aCode === search && bCode !== search) return -1;
+      if (bCode === search && aCode !== search) return 1;
+      
+      // Starts with gets second priority
+      const aStarts = aCode.startsWith(search);
+      const bStarts = bCode.startsWith(search);
+      if (aStarts && !bStarts) return -1;
+      if (bStarts && !aStarts) return 1;
+      
+      // Otherwise maintain code order
+      return aCode.localeCompare(bCode);
+    });
+  })();
 
   // Handle click outside to close
   useEffect(() => {
