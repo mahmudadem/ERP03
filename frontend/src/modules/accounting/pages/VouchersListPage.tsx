@@ -149,11 +149,11 @@ const VouchersListPage: React.FC = () => {
       const summary = vouchers.find(v => v.id === id);
       if (!summary) return;
 
-      // Try to find voucher type by voucherTypeId (if saved), otherwise fallback to type enum
-      let type = summary.voucherTypeId 
-        ? voucherTypes.find(t => t.id === summary.voucherTypeId)
+      // Try to find form by formId (if saved), otherwise fallback to matching by base type
+      let formDefinition = summary.formId 
+        ? voucherTypes.find(t => t.id === summary.formId)
         : voucherTypes.find(t => {
-            // Fallback: match by code or type enum
+            // Fallback: find first form that matches the base type
             const typeMap: Record<string, string> = {
               'journal_entry': 'JOURNAL',
               'payment': 'PAYMENT',
@@ -164,20 +164,20 @@ const VouchersListPage: React.FC = () => {
             return t.code === expectedCode || t.id === expectedCode;
           });
       
-      if (!type) {
-        console.warn('Voucher type not found for:', summary);
-        alert(`Cannot find form definition for voucher type: ${summary.type}`);
+      if (!formDefinition) {
+        console.warn('Form definition not found for:', summary);
+        alert(`Cannot find form for voucher type: ${summary.type}`);
         return;
       }
 
       try {
         // Fetch full details (includes lines)
         const fullVoucher = await accountingApi.getVoucher(id);
-        openWindow(type, fullVoucher);
+        openWindow(formDefinition, fullVoucher);
       } catch (error) {
         console.error('Failed to fetch full voucher details:', error);
         // Fallback to summary if fetch fails
-        openWindow(type, summary);
+        openWindow(formDefinition, summary);
       }
     } else {
       navigate(`/accounting/vouchers/${id}`);

@@ -84,8 +84,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       return {
         ...formData,
         lines: rows.filter(row => row.account && (row.debit > 0 || row.credit > 0)),
-        type: backendType,
-        voucherTypeId: definition.id // Track which designer form was used
+        type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
+        formId: definition.id // Which form was used for rendering
       };
     }
   }));
