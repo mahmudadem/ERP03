@@ -26,7 +26,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializeAccountingUseCase = void 0;
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-admin/firestore");
-const crypto = __importStar(require("crypto"));
 class InitializeAccountingUseCase {
     constructor(companyModuleRepo, accountRepo, systemMetadataRepo) {
         this.companyModuleRepo = companyModuleRepo;
@@ -43,26 +42,15 @@ class InitializeAccountingUseCase {
             throw new Error(`COA Template '${config.coaTemplate}' not found in system metadata.`);
         }
         const templateAccounts = selectedTemplate.accounts;
-        // 2. Create Accounts
-        const codeToIdMap = new Map();
-        // First pass: Generate IDs map
-        for (const tpl of templateAccounts) {
-            const id = crypto.randomUUID();
-            codeToIdMap.set(tpl.code, id);
-        }
-        // Second pass: Create accounts
+        // 2. Create Accounts - Use CODE as ID (industry standard)
+        // Parent references use account codes directly
         const promises = templateAccounts.map((tpl) => {
-            const id = codeToIdMap.get(tpl.code);
-            let parentId = null;
-            if (tpl.parentId && codeToIdMap.has(tpl.parentId)) {
-                parentId = codeToIdMap.get(tpl.parentId);
-            }
             const input = {
-                id,
+                // No 'id' field - repository will use code as doc ID
                 code: tpl.code,
                 name: tpl.name,
                 type: tpl.type,
-                parentId,
+                parentId: tpl.parentId || null,
                 currency: config.baseCurrency
             };
             return this.accountRepo.create(companyId, input);

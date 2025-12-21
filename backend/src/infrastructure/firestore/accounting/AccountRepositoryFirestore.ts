@@ -34,7 +34,7 @@ export class AccountRepositoryFirestore implements IAccountRepository {
         // Generate UUID for system tracing/logging
         const uuid = this.db.collection('tmp').doc().id;
         const now = new Date();
-        const account: Account = {
+        const account = {
             id: data.code,       // id = code (business identifier)
             companyId,
             ...data,
@@ -47,7 +47,7 @@ export class AccountRepositoryFirestore implements IAccountRepository {
             uuid: uuid,          // System UUID for tracing
             createdAt: now,
             updatedAt: now,
-        };
+        } as any as Account;
         const payload: any = {
             ...account,
             parentId: account.parentId ?? null,

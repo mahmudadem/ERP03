@@ -28,8 +28,13 @@ class FirestoreAccountRepository extends BaseFirestoreRepository_1.BaseFirestore
     async create(companyId, data) {
         var _a, _b;
         try {
-            const accountId = data.id || this.db.collection('tmp').doc().id;
-            const account = new Account_1.Account(companyId, accountId, data.code, data.name, data.type, data.currency || '', (_a = data.isProtected) !== null && _a !== void 0 ? _a : false, (_b = data.isActive) !== null && _b !== void 0 ? _b : true, data.parentId || undefined, new Date(), new Date());
+            // Use account CODE as the document ID (industry standard for accounting)
+            const accountId = data.code; // Code IS the document ID
+            // Generate UUID for system tracing/logging
+            const uuid = this.db.collection('tmp').doc().id;
+            const account = new Account_1.Account(companyId, accountId, // id = code
+            data.code, data.name, data.type, data.currency || '', (_a = data.isProtected) !== null && _a !== void 0 ? _a : false, (_b = data.isActive) !== null && _b !== void 0 ? _b : true, uuid, // System UUID for tracing
+            data.parentId || undefined, new Date(), new Date());
             await this.col(companyId).doc(account.id).set(this.toPersistence(Object.assign(Object.assign({}, account), { companyId })));
             return account;
         }

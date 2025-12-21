@@ -31,9 +31,13 @@ class AccountRepositoryFirestore {
     }
     async create(companyId, data) {
         var _a, _b;
-        const ref = this.getCollection(companyId).doc();
+        // Use account CODE as the document ID (industry standard for accounting)
+        const ref = this.getCollection(companyId).doc(data.code);
+        // Generate UUID for system tracing/logging
+        const uuid = this.db.collection('tmp').doc().id;
         const now = new Date();
-        const account = Object.assign(Object.assign({ id: ref.id, companyId }, data), { type: data.type, active: true, isActive: true, isProtected: false, currency: data.currency || '', parentId: (_a = data.parentId) !== null && _a !== void 0 ? _a : null, createdAt: now, updatedAt: now });
+        const account = Object.assign(Object.assign({ id: data.code, // id = code (business identifier)
+            companyId }, data), { type: data.type, active: true, isActive: true, isProtected: false, currency: data.currency || '', parentId: (_a = data.parentId) !== null && _a !== void 0 ? _a : null, uuid: uuid, createdAt: now, updatedAt: now });
         const payload = Object.assign(Object.assign({}, account), { parentId: (_b = account.parentId) !== null && _b !== void 0 ? _b : null, updatedAt: account.updatedAt || now, createdAt: account.createdAt || now });
         // Strip any lingering undefined properties to placate Firestore
         Object.keys(payload).forEach((key) => {

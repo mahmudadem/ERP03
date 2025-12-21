@@ -119,9 +119,10 @@ class UpdateVoucherUseCase {
             throw new Error('Only draft vouchers can be updated');
         if (payload.lines) {
             for (const l of payload.lines) {
+                // Account code IS the document ID now
                 const acc = await this.accountRepo.getById(companyId, l.accountId);
                 if (!acc || acc.active === false)
-                    throw new Error(`Account ${l.accountId} invalid`);
+                    throw new Error(`Account ${l.accountId} not found or inactive`);
             }
             const totalDebitBase = payload.lines.reduce((s, l) => s + (l.debitBase || 0), 0);
             const totalCreditBase = payload.lines.reduce((s, l) => s + (l.creditBase || 0), 0);

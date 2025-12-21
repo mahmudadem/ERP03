@@ -2,8 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Account = void 0;
 class Account {
-    constructor(companyId, id, code, name, type, currency, isProtected, // System accounts that cannot be deleted
-    active, parentId, createdAt, updatedAt) {
+    constructor(companyId, id, // id = code (for business operations)
+    code, // Account code (same as id)
+    name, type, currency, isProtected, // System accounts that cannot be deleted
+    active, uuid, // System UUID for error tracing/logs
+    parentId, createdAt, updatedAt) {
         this.companyId = companyId;
         this.id = id;
         this.code = code;
@@ -12,6 +15,7 @@ class Account {
         this.currency = currency;
         this.isProtected = isProtected;
         this.active = active;
+        this.uuid = uuid;
         this.parentId = parentId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
