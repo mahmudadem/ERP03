@@ -149,10 +149,24 @@ const VouchersListPage: React.FC = () => {
       const summary = vouchers.find(v => v.id === id);
       if (!summary) return;
 
-      const type = voucherTypes.find(t => t.id === summary.type);
+      // Try to find voucher type by voucherTypeId (if saved), otherwise fallback to type enum
+      let type = summary.voucherTypeId 
+        ? voucherTypes.find(t => t.id === summary.voucherTypeId)
+        : voucherTypes.find(t => {
+            // Fallback: match by code or type enum
+            const typeMap: Record<string, string> = {
+              'journal_entry': 'JOURNAL',
+              'payment': 'PAYMENT',
+              'receipt': 'RECEIPT',
+              'opening_balance': 'OPENING_BALANCE'
+            };
+            const expectedCode = typeMap[summary.type];
+            return t.code === expectedCode || t.id === expectedCode;
+          });
+      
       if (!type) {
-        console.warn('Voucher type not found definition for:', summary.type);
-        alert(`Unknown voucher type: ${summary.type}`);
+        console.warn('Voucher type not found for:', summary);
+        alert(`Cannot find form definition for voucher type: ${summary.type}`);
         return;
       }
 
