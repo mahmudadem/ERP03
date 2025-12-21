@@ -98,6 +98,9 @@ export class VoucherMapper {
     voucher.approvedBy = data.approvedBy;
     voucher.lockedBy = data.lockedBy;
     voucher.description = data.description ?? null;
+    // Form metadata
+    (voucher as any).formId = data.formId || null;
+    (voucher as any).prefix = data.prefix || null;
     return voucher;
   }
 
@@ -138,6 +141,9 @@ export class VoucherMapper {
       lockedBy: entity.lockedBy || null,
       reference: entity.reference || null,
       description: entity.description ?? null,
+      // Form metadata
+      formId: (entity as any).formId || null,
+      prefix: (entity as any).prefix || null,
       createdAt: toTimestamp(entity.createdAt),
       updatedAt: toTimestamp(entity.updatedAt),
       lines: lines

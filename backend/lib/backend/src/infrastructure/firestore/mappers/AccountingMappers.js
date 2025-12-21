@@ -90,6 +90,9 @@ class VoucherMapper {
         voucher.approvedBy = data.approvedBy;
         voucher.lockedBy = data.lockedBy;
         voucher.description = (_o = data.description) !== null && _o !== void 0 ? _o : null;
+        // Form metadata
+        voucher.formId = data.formId || null;
+        voucher.prefix = data.prefix || null;
         return voucher;
     }
     static toPersistence(entity) {
@@ -132,6 +135,9 @@ class VoucherMapper {
             lockedBy: entity.lockedBy || null,
             reference: entity.reference || null,
             description: (_j = entity.description) !== null && _j !== void 0 ? _j : null,
+            // Form metadata
+            formId: entity.formId || null,
+            prefix: entity.prefix || null,
             createdAt: toTimestamp(entity.createdAt),
             updatedAt: toTimestamp(entity.updatedAt),
             lines: lines
