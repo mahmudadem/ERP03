@@ -91,14 +91,22 @@ const VouchersListPage: React.FC = () => {
        delete payload.id;
     }
 
+    // Clean up payload - remove empty strings and undefined values
+    const cleanPayload = Object.entries(payload).reduce((acc, [key, value]) => {
+      if (value !== '' && value !== undefined && value !== null) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as any);
+    
     let savedVoucher;
-    if (data.id && !data.id.toString().startsWith('voucher-')) {
+    if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
        // Update existing
-       await accountingApi.updateVoucher(data.id, payload);
-       savedVoucher = { ...payload, id: data.id }; // Simplified return
+       await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
+       savedVoucher = { ...cleanPayload, id: cleanPayload.id }; // Simplified return
     } else {
        // Create new
-       const res = await accountingApi.createVoucher(payload);
+       const res = await accountingApi.createVoucher(cleanPayload);
        savedVoucher = res;
     }
     return savedVoucher;
