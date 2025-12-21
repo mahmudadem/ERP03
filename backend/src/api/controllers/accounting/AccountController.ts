@@ -7,6 +7,7 @@ import { UpdateAccountUseCase } from '../../../application/accounting/use-cases/
 import { DeactivateAccountUseCase } from '../../../application/accounting/use-cases/accounts/DeactivateAccountUseCase';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { AccountValidationService } from '../../../application/accounting/services/AccountValidationService';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -28,6 +29,48 @@ export class AccountController {
       const accounts = await useCase.execute(companyId);
 
       return res.json({ success: true, data: accounts });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * Get valid accounts for voucher entry
+   * Only returns leaf accounts that pass all validation rules
+   */
+  static async getValid(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const voucherType = req.query.voucherType as string | undefined;
+
+      await permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+
+      const validationService = new AccountValidationService(diContainer.accountRepository);
+      const validAccounts = await validationService.getValidAccounts(companyId, userId, voucherType);
+
+      return res.json({ success: true, data: validAccounts });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
+  /**
+   * Resolve account code to account object and validate
+   */
+  static async resolveCode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const { code } = req.params;
+      const voucherType = req.query.voucherType as string | undefined;
+
+      await permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+
+      const validationService = new AccountValidationService(diContainer.accountRepository);
+      const account = await validationService.resolveAndValidate(companyId, userId, code, voucherType);
+
+      return res.json({ success: true, data: account });
     } catch (err) {
       return next(err);
     }

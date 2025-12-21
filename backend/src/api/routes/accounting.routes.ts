@@ -17,6 +17,8 @@ router.use(authMiddleware);
 
 // Accounts
 router.get('/accounts', permissionGuard('accounting.account.view'), AccountController.list);
+router.get('/accounts/valid', permissionGuard('accounting.voucher.create'), AccountController.getValid);
+router.get('/accounts/resolve/:code', permissionGuard('accounting.voucher.create'), AccountController.resolveCode);
 router.get('/accounts/:id', permissionGuard('accounting.account.view'), AccountController.getById);
 router.post('/accounts', permissionGuard('accounting.account.create'), AccountController.create);
 router.put('/accounts/:id', permissionGuard('accounting.account.edit'), AccountController.update);
