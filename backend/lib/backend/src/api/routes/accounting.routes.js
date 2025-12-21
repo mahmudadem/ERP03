@@ -15,6 +15,8 @@ const router = (0, express_1.Router)();
 router.use(authMiddleware_1.authMiddleware);
 // Accounts
 router.get('/accounts', (0, permissionGuard_1.permissionGuard)('accounting.account.view'), AccountController_1.AccountController.list);
+router.get('/accounts/valid', (0, permissionGuard_1.permissionGuard)('accounting.voucher.create'), AccountController_1.AccountController.getValid);
+router.get('/accounts/resolve/:code', (0, permissionGuard_1.permissionGuard)('accounting.voucher.create'), AccountController_1.AccountController.resolveCode);
 router.get('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accounting.account.view'), AccountController_1.AccountController.getById);
 router.post('/accounts', (0, permissionGuard_1.permissionGuard)('accounting.account.create'), AccountController_1.AccountController.create);
 router.put('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accounting.account.edit'), AccountController_1.AccountController.update);

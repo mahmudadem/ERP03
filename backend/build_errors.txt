@@ -1,0 +1,51 @@
+﻿src/application/accounting/services/SimpleVoucherNumberGenerator.ts(2,29): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(1,30): error TS7016: Could not find a declaration file for module 'uuid'. 'C:/Users/mahmu/OneDrive/Desktop/ERP03-github/ERP03/backend/node_modules/uuid/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(2,31): error TS2307: Cannot find module '../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(3,44): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(4,56): error TS2307: Cannot find module '../../domain/accounting/handlers/JournalEntryHandler' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(5,36): error TS2307: Cannot find module '../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(83,51): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveJournalEntryUseCase.ts(84,52): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(1,30): error TS7016: Could not find a declaration file for module 'uuid'. 'C:/Users/mahmu/OneDrive/Desktop/ERP03-github/ERP03/backend/node_modules/uuid/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(2,31): error TS2307: Cannot find module '../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(3,44): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(4,60): error TS2307: Cannot find module '../../domain/accounting/handlers/OpeningBalanceHandler' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(5,36): error TS2307: Cannot find module '../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(83,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(83,43): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(84,39): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveOpeningBalanceUseCase.ts(84,44): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(1,30): error TS7016: Could not find a declaration file for module 'uuid'. 'C:/Users/mahmu/OneDrive/Desktop/ERP03-github/ERP03/backend/node_modules/uuid/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(2,31): error TS2307: Cannot find module '../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(3,44): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(4,60): error TS2307: Cannot find module '../../domain/accounting/handlers/PaymentVoucherHandler' or its corresponding type declarations.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(5,36): error TS2307: Cannot find module '../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(128,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(128,43): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(129,39): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SavePaymentVoucherUseCase.ts(129,44): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(1,30): error TS7016: Could not find a declaration file for module 'uuid'. 'C:/Users/mahmu/OneDrive/Desktop/ERP03-github/ERP03/backend/node_modules/uuid/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/uuid` if it exists or add a new declaration (.d.ts) file containing `declare module 'uuid';`
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(2,31): error TS2307: Cannot find module '../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(3,44): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(4,60): error TS2307: Cannot find module '../../domain/accounting/handlers/ReceiptVoucherHandler' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(5,36): error TS2307: Cannot find module '../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(78,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(78,43): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(79,39): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/application/accounting/use-cases/SaveReceiptVoucherUseCase.ts(79,44): error TS7006: Parameter 'line' implicitly has an 'any' type.
+src/application/accounting/use-cases/VoucherApprovalUseCases.ts(1,36): error TS2307: Cannot find module '../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/application/accounting/use-cases/VoucherApprovalUseCases.ts(2,31): error TS2307: Cannot find module '../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/application/accounting/use-cases/VoucherApprovalUseCases.ts(3,1): error TS6133: 'VoucherStatus' is declared but its value is never read.
+src/application/accounting/use-cases/VoucherApprovalUseCases.ts(3,31): error TS2307: Cannot find module '../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.
+src/application/accounting/use-cases/VoucherUseCases.ts(23,13): error TS6138: Property 'accountRepo' is declared but its value is never read.
+src/domain/accounting/entities/VoucherLineEntity.ts(1,10): error TS6133: 'VoucherType' is declared but its value is never read.
+src/domain/accounting/entities/VoucherLineEntity.ts(1,23): error TS6133: 'VoucherStatus' is declared but its value is never read.
+src/domain/accounting/handlers/JournalEntryHandler.ts(2,1): error TS6133: 'TransactionSide' is declared but its value is never read.
+src/infrastructure/firestore/accounting/AccountRepositoryFirestore.ts(34,15): error TS2739: Type '{ type: AccountType; active: true; isActive: true; isProtected: false; currency: string; parentId: string | null; createdAt: Date; updatedAt: Date; id: string; code: string; name: string; companyId: string; }' is missing the following properties from type 'Account': isParent, hasChildren, setAsParent
+src/infrastructure/firestore/repositories/accounting/FirestoreVoucherRepositoryV2.ts(2,36): error TS2307: Cannot find module '../../../domain/accounting/repositories/IVoucherRepository' or its corresponding type declarations.
+src/infrastructure/firestore/repositories/accounting/FirestoreVoucherRepositoryV2.ts(3,31): error TS2307: Cannot find module '../../../domain/accounting/entities/VoucherEntity' or its corresponding type declarations.
+src/infrastructure/firestore/repositories/accounting/FirestoreVoucherRepositoryV2.ts(4,44): error TS2307: Cannot find module '../../../domain/accounting/types/VoucherTypes' or its corresponding type declarations.

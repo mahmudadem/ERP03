@@ -15,7 +15,14 @@ class Account {
         this.parentId = parentId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.isParent = false; // Set by repository when account has children
+        this.hasChildren = false; // Same as isParent, for compatibility
         this.isActive = active;
+    }
+    /** Mark this account as a parent account (has children) */
+    setAsParent(hasChildren) {
+        this.isParent = hasChildren;
+        this.hasChildren = hasChildren;
     }
 }
 exports.Account = Account;

@@ -14,8 +14,8 @@ export class ActiveAccountOnlyRule implements IAccountValidationRule {
   async validate(ctx: AccountValidationContext): Promise<ValidationResult> {
     const { account } = ctx;
     
-    // Check if account is active
-    if (account.isActive === false || account.status === 'inactive' || account.status === 'disabled') {
+    // Check if account is active (use isActive boolean or active field)
+    if (account.isActive === false) {
       return {
         valid: false,
         reason: `Account "${account.code} - ${account.name}" is inactive. Please select an active account.`,
