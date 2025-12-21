@@ -39,15 +39,34 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const [rows, setRows] = useState<JournalRow[]>(INITIAL_ROWS);
   const [formData, setFormData] = useState<Record<string, any>>({});
   
-  // Pre-fill mandatory fields with defaults when form opens
+  // Initialize form data: merge initialData with defaults
   useEffect(() => {
-    setFormData({
+    const defaults = {
       date: new Date().toISOString().split('T')[0],
       currency: 'USD',
       exchangeRate: 1,
       paymentMethod: 'Bank Transfer'
-    });
-  }, []);
+    };
+    
+    // Merge: initialData takes precedence over defaults
+    setFormData({ ...defaults, ...initialData });
+    
+    // If initialData has lines, populate rows
+    if (initialData?.lines && Array.isArray(initialData.lines)) {
+      const loadedRows = initialData.lines.map((line: any, index: number) => ({
+        id: index + 1,
+        account: line.account || '',
+        notes: line.notes || '',
+        debit: line.debit || 0,
+        credit: line.credit || 0,
+        currency: line.currency || 'USD',
+        parity: line.parity || 1.0,
+        equivalent: line.equivalent || 0,
+        category: line.category || ''
+      }));
+      setRows(loadedRows);
+    }
+  }, [initialData]);
   
   // Expose getData method to parent via ref
   useImperativeHandle(ref, () => ({
