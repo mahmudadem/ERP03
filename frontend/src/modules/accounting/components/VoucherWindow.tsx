@@ -6,7 +6,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Minus, Square, Save, Loader2, Send } from 'lucide-react';
-import { GenericVoucherRenderer } from '../voucher-wizard/components/GenericVoucherRenderer';
+import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 

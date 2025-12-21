@@ -8,7 +8,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { VoucherTypeConfig } from '../voucher-wizard/types';
-import { GenericVoucherRenderer, GenericVoucherRendererRef } from '../ai-designer/components/GenericVoucherRenderer';
+import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIMode } from '../../../api/companyApi';
 
 interface VoucherEntryModalProps {
