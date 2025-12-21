@@ -78,12 +78,24 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     return definition.code?.substring(0, 3) || 'VOC';
   };
 
-  // Helper: Get table columns from canonical definition
+  // Helper: Detect format and get table columns
   const getTableColumns = (): string[] => {
-    if (!definition.tableColumns || definition.tableColumns.length === 0) {
-      return ['account', 'debit', 'credit', 'notes']; // Default
+    // VoucherTypeDefinition format (system)
+    if (definition.tableColumns && Array.isArray(definition.tableColumns)) {
+      if (definition.tableColumns.length === 0) {
+        return ['account', 'debit', 'credit', 'notes'];
+      }
+      // tableColumns can be array of objects {fieldId} or array of strings
+      return definition.tableColumns.map((col: any) => 
+        typeof col === 'string' ? col : col.fieldId
+      );
     }
-    return definition.tableColumns.map(col => col.fieldId);
+    // VoucherTypeConfig format (designer) - check uiModeOverrides
+    const configDef = definition as any;
+    if (configDef.isMultiLine && configDef.tableColumns) {
+      return Array.isArray(configDef.tableColumns) ? configDef.tableColumns : ['account', 'debit', 'credit', 'notes'];
+    }
+    return ['account', 'debit', 'credit', 'notes'];
   };
 
   // --- Field Renderers ---
@@ -222,31 +234,70 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     );
   };
 
-  // Render canonical header fields
+  // Render header fields - supports both formats
   const renderHeaderFields = () => {
-    if (!definition.headerFields || definition.headerFields.length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="bg-white px-4 py-3 mb-4">
-        <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-          {definition.headerFields.map((field, index) => (
-            <div 
-              key={field.id}
-              className="col-span-6 md:col-span-4"
-            >
-              {renderField(field.id, field.label)}
-            </div>
-          ))}
+    const configDef = definition as any;
+    
+    // Format 1: VoucherTypeDefinition (system) - uses headerFields
+    if (definition.headerFields && definition.headerFields.length > 0) {
+      return (
+        <div className="bg-white px-4 py-3 mb-4">
+          <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+            {definition.headerFields.map((field: any) => (
+              <div key={field.id} className="col-span-6 md:col-span-4">
+                {renderField(field.id, field.label)}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    // Format 2: VoucherTypeConfig (designer) - uses uiModeOverrides.sections
+    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
+      const sections = configDef.uiModeOverrides[mode].sections;
+      const headerSection = sections.HEADER;
+      
+      if (!headerSection || !headerSection.fields || headerSection.fields.length === 0) {
+        return null;
+      }
+      
+      // Sort fields by row and col
+      const sortedFields = [...headerSection.fields].sort((a: any, b: any) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return a.col - b.col;
+      });
+      
+      return (
+        <div className="bg-white px-4 py-3 mb-4">
+          <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+            {sortedFields.map((field: any) => (
+              <div 
+                key={field.fieldId}
+                className={`col-span-${Math.min(12, field.colSpan || 4)}`}
+                style={{ gridColumn: `span ${Math.min(12, field.colSpan || 4)}` }}
+              >
+                {renderField(field.fieldId, field.labelOverride)}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
-  // Render table if multi-line
+  // Render table if multi-line - supports both formats
   const renderLineItems = () => {
-    if (!definition.tableColumns || definition.tableColumns.length === 0) {
+    const configDef = definition as any;
+    
+    // Check VoucherTypeDefinition format
+    const hasTableColumns = definition.tableColumns && definition.tableColumns.length > 0;
+    // Check VoucherTypeConfig format
+    const isMultiLine = configDef.isMultiLine || configDef.tableColumns;
+    
+    if (!hasTableColumns && !isMultiLine) {
       return null;
     }
 
