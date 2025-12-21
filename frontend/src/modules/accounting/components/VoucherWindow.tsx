@@ -24,6 +24,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
   const [resizeType, setResizeType] = useState<string>('');
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<GenericVoucherRendererRef>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.window-header') && 
@@ -119,10 +120,37 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
     }
   };
 
-  const handleSubmit = async () => {
+    if (!rendererRef.current) {
+      console.error('Renderer ref not ready');
+      return;
+    }
+    
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      await onSubmit(win.id, win.data);
+      const formData = rendererRef.current.getData();
+      await onSave(win.id, formData);
+    } catch (error) {
+      console.error('Save failed:', error);
+      alert('Failed to save voucher');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle submit for approval
+  const handleSubmit = async () => {
+    if (!rendererRef.current) {
+      console.error('Renderer ref not ready');
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const formData = rendererRef.current.getData();
+      await onSubmit(win.id, formData);
+    } catch (error) {
+      console.error('Submit failed:', error);
+      alert('Failed to submit voucher');
     } finally {
       setIsSaving(false);
     }
@@ -209,10 +237,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
       {/* Voucher Content */}
       <div className="flex-1 overflow-y-auto p-4 bg-white overflow-x-hidden">
         <GenericVoucherRenderer
-  definition={win.voucherType as any}
-  mode="windows"
-  initialData={win.data}
-/>
+          ref={rendererRef}
+          definition={win.voucherType as any}
+          mode="windows"
+          initialData={win.data}
+        />
       </div>
 
       {/* Window Footer */}
