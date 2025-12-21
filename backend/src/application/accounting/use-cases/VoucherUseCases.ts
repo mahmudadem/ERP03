@@ -151,7 +151,8 @@ export class UpdateVoucherUseCase {
 
     if (payload.lines) {
       for (const l of payload.lines) {
-        const acc = await this.accountRepo.getById(companyId, l.accountId!);
+        // Look up account by CODE (not UUID) - standard accounting practice
+        const acc = await this.accountRepo.getByCode(companyId, l.accountId!);
         if (!acc || acc.active === false) throw new Error(`Account ${l.accountId} invalid`);
       }
       const totalDebitBase = payload.lines.reduce((s, l) => s + (l.debitBase || 0), 0);
