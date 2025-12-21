@@ -38,7 +38,7 @@ class AccountRepositoryFirestore {
         const now = new Date();
         const account = Object.assign(Object.assign({ id: data.code, // id = code (business identifier)
             companyId }, data), { type: data.type, active: true, isActive: true, isProtected: false, currency: data.currency || '', parentId: (_a = data.parentId) !== null && _a !== void 0 ? _a : null, uuid: uuid, createdAt: now, updatedAt: now });
-        const payload = Object.assign(Object.assign({}, account), { parentId: (_b = account.parentId) !== null && _b !== void 0 ? _b : null, updatedAt: account.updatedAt || now, createdAt: account.createdAt || now });
+        const payload = Object.assign(Object.assign({}, account), { uuid: uuid, parentId: (_b = account.parentId) !== null && _b !== void 0 ? _b : null, updatedAt: account.updatedAt || now, createdAt: account.createdAt || now });
         // Strip any lingering undefined properties to placate Firestore
         Object.keys(payload).forEach((key) => {
             if (payload[key] === undefined) {

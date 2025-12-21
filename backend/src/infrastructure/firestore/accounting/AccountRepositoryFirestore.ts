@@ -50,6 +50,7 @@ export class AccountRepositoryFirestore implements IAccountRepository {
         } as any as Account;
         const payload: any = {
             ...account,
+            uuid: uuid,           // Explicitly add UUID to ensure it's persisted
             parentId: account.parentId ?? null,
             updatedAt: account.updatedAt || now,
             createdAt: account.createdAt || now
