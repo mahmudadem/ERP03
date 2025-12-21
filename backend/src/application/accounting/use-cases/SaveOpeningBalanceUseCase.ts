@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { VoucherEntity } from '../../domain/accounting/entities/VoucherEntity';
-import { VoucherType, VoucherStatus } from '../../domain/accounting/types/VoucherTypes';
-import { OpeningBalanceHandler, OpeningBalanceInput } from '../../domain/accounting/handlers/OpeningBalanceHandler';
-import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
+import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { OpeningBalanceHandler, OpeningBalanceInput } from '../../../domain/accounting/handlers/OpeningBalanceHandler';
+import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { IExchangeRateService, ICompanyService, IVoucherNumberGenerator } from './SavePaymentVoucherUseCase';
 
 /**

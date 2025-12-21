@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SimpleVoucherNumberGenerator = void 0;
-const VoucherTypes_1 = require("../../domain/accounting/types/VoucherTypes");
+const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 /**
  * Simple Voucher Number Generator
  *

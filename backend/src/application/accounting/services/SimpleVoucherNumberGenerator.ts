@@ -1,5 +1,5 @@
 import { IVoucherNumberGenerator } from '../use-cases/SavePaymentVoucherUseCase';
-import { VoucherType } from '../../domain/accounting/types/VoucherTypes';
+import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 
 /**
  * Simple Voucher Number Generator

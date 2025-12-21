@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SaveOpeningBalanceUseCase = void 0;
 const uuid_1 = require("uuid");
-const VoucherEntity_1 = require("../../domain/accounting/entities/VoucherEntity");
-const VoucherTypes_1 = require("../../domain/accounting/types/VoucherTypes");
-const OpeningBalanceHandler_1 = require("../../domain/accounting/handlers/OpeningBalanceHandler");
+const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
+const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
+const OpeningBalanceHandler_1 = require("../../../domain/accounting/handlers/OpeningBalanceHandler");
 /**
  * Save Opening Balance Use Case
  *

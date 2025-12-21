@@ -1,6 +1,6 @@
-import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
-import { VoucherEntity } from '../../domain/accounting/entities/VoucherEntity';
-import { VoucherStatus } from '../../domain/accounting/types/VoucherTypes';
+import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
+import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
+import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 
 /**
  * Approve Voucher Use Case

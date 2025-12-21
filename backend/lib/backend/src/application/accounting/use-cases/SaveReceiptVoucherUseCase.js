@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SaveReceiptVoucherUseCase = void 0;
 const uuid_1 = require("uuid");
-const VoucherEntity_1 = require("../../domain/accounting/entities/VoucherEntity");
-const VoucherTypes_1 = require("../../domain/accounting/types/VoucherTypes");
-const ReceiptVoucherHandler_1 = require("../../domain/accounting/handlers/ReceiptVoucherHandler");
+const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
+const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
+const ReceiptVoucherHandler_1 = require("../../../domain/accounting/handlers/ReceiptVoucherHandler");
 /**
  * Save Receipt Voucher Use Case
  *

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherRepositoryV2 = void 0;
-const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
+const VoucherEntity_1 = require("../../../../domain/accounting/entities/VoucherEntity");
 /**
  * Firestore Voucher Repository Implementation (ADR-005 Compliant)
  *

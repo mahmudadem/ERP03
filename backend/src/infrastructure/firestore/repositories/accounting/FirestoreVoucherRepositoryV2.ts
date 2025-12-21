@@ -1,7 +1,7 @@
 import { Firestore } from 'firebase-admin/firestore';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
-import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
-import { VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { IVoucherRepository } from '../../../../domain/accounting/repositories/IVoucherRepository';
+import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
+import { VoucherType, VoucherStatus } from '../../../../domain/accounting/types/VoucherTypes';
 
 /**
  * Firestore Voucher Repository Implementation (ADR-005 Compliant)
