@@ -128,6 +128,9 @@ class UpdateVoucherUseCase {
             const totalCreditBase = payload.lines.reduce((s, l) => s + (l.creditBase || 0), 0);
             payload.totalDebitBase = totalDebitBase;
             payload.totalCreditBase = totalCreditBase;
+            // Also update the non-Base totals for list display
+            payload.totalDebit = totalDebitBase;
+            payload.totalCredit = totalCreditBase;
             if (Math.abs(totalDebitBase - totalCreditBase) > 0.0001) {
                 const err = new Error('Voucher not balanced');
                 err.statusCode = 400;

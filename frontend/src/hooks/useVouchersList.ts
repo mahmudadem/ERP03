@@ -29,6 +29,7 @@ export const useVouchersList = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchVouchers = useCallback(async (currentFilters: VoucherListFilters) => {
+    console.log('🔄 fetchVouchers called with filters:', currentFilters);
     setIsLoading(true);
     setError(undefined);
 
@@ -40,9 +41,11 @@ export const useVouchersList = () => {
 
     try {
       const response = await accountingApi.listVouchers(currentFilters);
+      console.log('📦 API response:', response);
       
       if (Array.isArray(response)) {
         // Backend returned flat array (all items)
+        console.log('📋 Setting vouchers (array):', response.length, 'items');
         setVouchers(response);
         setPagination({
           page: 1,
