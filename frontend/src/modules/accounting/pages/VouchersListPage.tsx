@@ -74,15 +74,15 @@ const VouchersListPage: React.FC = () => {
       // Line Items Mapping
       lines: (data.lines || []).map((line: any) => ({
         id: line.id && typeof line.id === 'string' ? line.id : undefined, 
-        accountId: line.account, 
-        description: line.notes, 
-        debitFx: Number(line.debit || 0),
-        creditFx: Number(line.credit || 0),
-        debitBase: Number(line.debit || 0) * (Number(line.parity || 1)),
-        creditBase: Number(line.credit || 0) * (Number(line.parity || 1)),
-        lineCurrency: line.currency || 'USD',
-        exchangeRate: Number(line.parity || 1),
-        costCenterId: line.category || null, 
+        accountId: line.accountId || line.account,  // Use accountId if present, otherwise map from account
+        description: line.description || line.notes, 
+        debitFx: Number(line.debitFx || line.debit || 0),
+        creditFx: Number(line.creditFx || line.credit || 0),
+        debitBase: Number(line.debitBase || line.debit || 0) * (Number(line.exchangeRate || line.parity || 1)),
+        creditBase: Number(line.creditBase || line.credit || 0) * (Number(line.exchangeRate || line.parity || 1)),
+        lineCurrency: line.lineCurrency || line.currency || 'USD',
+        exchangeRate: Number(line.exchangeRate || line.parity || 1),
+        costCenterId: line.costCenterId || line.category || null, 
       }))
     };
     
