@@ -10,7 +10,6 @@ const ReportingController_1 = require("../controllers/accounting/ReportingContro
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
-const featureFlagGuard_1 = require("../middlewares/guards/featureFlagGuard");
 const router = (0, express_1.Router)();
 // authMiddleware should be applied at tenant router level, but keeping here for safety if mounted elsewhere
 router.use(authMiddleware_1.authMiddleware);
@@ -23,7 +22,7 @@ router.delete('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accountin
 // Vouchers
 router.get('/vouchers', (0, permissionGuard_1.permissionGuard)('accounting.voucher.view'), VoucherController_1.VoucherController.list);
 router.get('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.voucher.view'), VoucherController_1.VoucherController.get);
-router.post('/vouchers', (0, permissionGuard_1.permissionGuard)('accounting.voucher.create'), (0, featureFlagGuard_1.featureFlagGuard)('feature.multiCurrency'), VoucherController_1.VoucherController.create);
+router.post('/vouchers', (0, permissionGuard_1.permissionGuard)('accounting.voucher.create'), VoucherController_1.VoucherController.create);
 router.put('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.voucher.edit'), VoucherController_1.VoucherController.update);
 router.post('/vouchers/:id/approve', (0, permissionGuard_1.permissionGuard)('accounting.voucher.approve'), VoucherController_1.VoucherController.approve);
 router.post('/vouchers/:id/lock', (0, permissionGuard_1.permissionGuard)('accounting.voucher.lock'), VoucherController_1.VoucherController.lock);

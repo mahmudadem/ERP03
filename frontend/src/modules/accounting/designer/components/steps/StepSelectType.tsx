@@ -25,7 +25,6 @@ export const StepSelectType: React.FC<Props> = ({ definition, updateDefinition, 
           code: type.code,
           name: type.name,
           mode: type.mode as any,
-          abbreviation: type.code
       });
       if (onCodeSelected) onCodeSelected(type.code);
   };

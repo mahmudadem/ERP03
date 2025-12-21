@@ -1,13 +1,16 @@
 
 import { useState, useEffect } from 'react';
+import { useCompanySettings } from './useCompanySettings';
 
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
 
 export const useUserPreferences = () => {
-  // Initialize from localStorage or default
-  const [uiMode, setUiMode] = useState<UiMode>(() => {
-    return (localStorage.getItem('erp_ui_mode') as UiMode) || 'classic';
+  const { settings, updateSettings } = useCompanySettings();
+  
+  // Get uiMode from CompanySettings, fallback to localStorage, then 'windows' as default
+  const [uiMode, setUiModeState] = useState<UiMode>(() => {
+    return settings?.uiMode || (localStorage.getItem('erp_ui_mode') as UiMode) || 'windows';
   });
 
   const [theme, setTheme] = useState<Theme>(() => {
@@ -16,11 +19,14 @@ export const useUserPreferences = () => {
 
   const [language, setLanguage] = useState('en');
 
-  // Persist changes
+  // Sync with CompanySettings when it loads
   useEffect(() => {
-    localStorage.setItem('erp_ui_mode', uiMode);
-  }, [uiMode]);
+    if (settings?.uiMode && settings.uiMode !== uiMode) {
+      setUiModeState(settings.uiMode);
+    }
+  }, [settings?.uiMode]);
 
+  // Persist theme to localStorage
   useEffect(() => {
     localStorage.setItem('erp_theme', theme);
     if (theme === 'dark') {
@@ -30,8 +36,21 @@ export const useUserPreferences = () => {
     }
   }, [theme]);
 
-  const toggleUiMode = () => {
-    setUiMode((prev) => (prev === 'classic' ? 'windows' : 'classic'));
+  const setUiMode = async (mode: UiMode) => {
+    setUiModeState(mode);
+    localStorage.setItem('erp_ui_mode', mode);
+    
+    // Save to CompanySettings
+    try {
+      await updateSettings({ uiMode: mode });
+    } catch (error) {
+      console.error('Failed to update UI mode in company settings:', error);
+    }
+  };
+
+  const toggleUiMode = async () => {
+    const newMode = uiMode === 'classic' ? 'windows' : 'classic';
+    await setUiMode(newMode);
   };
 
   const toggleTheme = () => {

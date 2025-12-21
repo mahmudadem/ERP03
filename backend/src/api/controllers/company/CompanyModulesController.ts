@@ -67,8 +67,12 @@ export class CompanyModulesController {
         
         const useCase = new InitializeAccountingUseCase(
           this.companyModuleRepo,
-          diContainer.accountRepository
+          diContainer.accountRepository,
+          diContainer.systemMetadataRepository
         );
+
+        console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));
+        console.log('[InitializeAccounting] selectedVoucherTypes:', config.selectedVoucherTypes);
 
         await useCase.execute({
           companyId,

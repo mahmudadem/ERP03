@@ -1,9 +1,11 @@
-
 import client from './client';
+
+export type UIMode = 'classic' | 'windows';
 
 export interface CompanySettings {
   companyId: string;
   strictApprovalMode: boolean;
+  uiMode?: UIMode; // System-wide UI mode preference
 }
 
 export const companyApi = {

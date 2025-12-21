@@ -4,10 +4,14 @@ import { ModulePermissionsDefinition } from '../../../../domain/system/ModulePer
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
 export class FirestoreModulePermissionsDefinitionRepository implements IModulePermissionsDefinitionRepository {
-  private collection = 'modulePermissionsDefinitions';
+
   private cache: Map<string, ModulePermissionsDefinition> = new Map();
 
   constructor(private db: admin.firestore.Firestore) {}
+
+  private getCollection() {
+    return this.db.collection('system_metadata').doc('module_permissions').collection('items');
+  }
 
   private mapDoc(doc: admin.firestore.DocumentSnapshot): ModulePermissionsDefinition {
     const data = doc.data() || {};
@@ -31,7 +35,7 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
 
   async list(): Promise<ModulePermissionsDefinition[]> {
     try {
-      const snapshot = await this.db.collection(this.collection).get();
+      const snapshot = await this.getCollection().get();
       const defs = snapshot.docs.map((d) => this.mapDoc(d));
       defs.forEach((d) => this.setCache(d));
       return defs;
@@ -44,7 +48,7 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
     const cached = this.cache.get(moduleId);
     if (cached) return cached;
     try {
-      const doc = await this.db.collection(this.collection).doc(moduleId).get();
+      const doc = await this.getCollection().doc(moduleId).get();
       if (!doc.exists) return null;
       const def = this.mapDoc(doc);
       this.setCache(def);
@@ -56,7 +60,7 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
 
   async create(def: ModulePermissionsDefinition): Promise<void> {
     try {
-      await this.db.collection(this.collection).doc(def.moduleId).set(def);
+      await this.getCollection().doc(def.moduleId).set(def);
       this.invalidate(def.moduleId);
     } catch (err) {
       throw new InfrastructureError('Failed to create module permissions definition', err);
@@ -65,7 +69,7 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
 
   async update(moduleId: string, partial: Partial<ModulePermissionsDefinition>): Promise<void> {
     try {
-      await this.db.collection(this.collection).doc(moduleId).set(partial, { merge: true });
+      await this.getCollection().doc(moduleId).set(partial, { merge: true });
       this.invalidate(moduleId);
     } catch (err) {
       throw new InfrastructureError('Failed to update module permissions definition', err);
@@ -74,7 +78,7 @@ export class FirestoreModulePermissionsDefinitionRepository implements IModulePe
 
   async delete(moduleId: string): Promise<void> {
     try {
-      await this.db.collection(this.collection).doc(moduleId).delete();
+      await this.getCollection().doc(moduleId).delete();
       this.invalidate(moduleId);
     } catch (err) {
       throw new InfrastructureError('Failed to delete module permissions definition', err);

@@ -28,12 +28,14 @@ export const VoucherWizard: React.FC<Props> = ({ initialCode, onClose }) => {
     save
   } = useVoucherDesigner(initialCode);
 
+  const [hasValidationErrors, setHasValidationErrors] = React.useState(false);
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 'TYPE':
         return <StepSelectType definition={definition} updateDefinition={updateDefinition} onCodeSelected={nextStep} />;
       case 'BASIC':
-        return <StepBasicInfo definition={definition} updateDefinition={updateDefinition} initialCode={initialCode} />;
+        return <StepBasicInfo definition={definition} updateDefinition={updateDefinition} initialCode={initialCode} onValidationChange={setHasValidationErrors} />;
       case 'FIELDS':
         return <StepFields definition={definition} updateDefinition={updateDefinition} />;
       case 'CUSTOM':
@@ -81,7 +83,14 @@ export const VoucherWizard: React.FC<Props> = ({ initialCode, onClose }) => {
                     {loading ? 'Saving...' : 'Save & Activate'}
                 </Button>
             ) : (
-                <Button variant="primary" onClick={nextStep}>
+                <Button 
+                  variant="primary" 
+                  onClick={nextStep}
+                  disabled={
+                    (currentStep === 'TYPE' && !definition.code) ||
+                    (currentStep === 'BASIC' && hasValidationErrors)
+                  }
+                >
                     Next
                 </Button>
             )}

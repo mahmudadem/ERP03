@@ -102,6 +102,10 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/designer', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/designer/pages/VoucherTypeDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
+  { path: '/accounting/designer-v2', label: 'Voucher Designer V2 (NEW)', component: lazy(() => import('../modules/accounting/designer-v2/pages/VoucherDesignerPage').then(m => ({ default: m.VoucherDesignerPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
+  { path: '/accounting/ai-designer', label: 'AI Designer (Original)', component: lazy(() => import('../modules/accounting/pages/AIDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'designer.vouchers.view', requiredModule: 'accounting' },
+  { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
+  { path: '/accounting/vouchers/demo', label: '🆕 New Forms Demo', component: lazy(() => import('../modules/accounting/pages/NewVoucherFormsDemo')), section: 'ACCOUNTING', requiredModule: 'accounting' },
 
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY', requiredModule: 'inventory' },

@@ -11,7 +11,7 @@ class FirestoreCompanyModuleRepository {
     }
     async get(companyId, moduleCode) {
         const docRef = this.db
-            .collection('companyModules')
+            .collection('companies')
             .doc(companyId)
             .collection('modules')
             .doc(moduleCode);
@@ -22,7 +22,7 @@ class FirestoreCompanyModuleRepository {
     }
     async listByCompany(companyId) {
         const snapshot = await this.db
-            .collection('companyModules')
+            .collection('companies')
             .doc(companyId)
             .collection('modules')
             .get();
@@ -30,7 +30,7 @@ class FirestoreCompanyModuleRepository {
     }
     async create(module) {
         const docRef = this.db
-            .collection('companyModules')
+            .collection('companies')
             .doc(module.companyId)
             .collection('modules')
             .doc(module.moduleCode);
@@ -38,7 +38,7 @@ class FirestoreCompanyModuleRepository {
     }
     async update(companyId, moduleCode, updates) {
         const docRef = this.db
-            .collection('companyModules')
+            .collection('companies')
             .doc(companyId)
             .collection('modules')
             .doc(moduleCode);
@@ -54,7 +54,7 @@ class FirestoreCompanyModuleRepository {
     }
     async delete(companyId, moduleCode) {
         const docRef = this.db
-            .collection('companyModules')
+            .collection('companies')
             .doc(companyId)
             .collection('modules')
             .doc(moduleCode);
@@ -64,7 +64,7 @@ class FirestoreCompanyModuleRepository {
         const batch = this.db.batch();
         for (const module of modules) {
             const docRef = this.db
-                .collection('companyModules')
+                .collection('companies')
                 .doc(module.companyId)
                 .collection('modules')
                 .doc(module.moduleCode);

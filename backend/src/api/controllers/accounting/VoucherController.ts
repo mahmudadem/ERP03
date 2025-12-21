@@ -55,7 +55,8 @@ export class VoucherController {
         diContainer.companyModuleSettingsRepository,
         diContainer.ledgerRepository,
         permissionChecker,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.voucherTypeDefinitionRepository
       );
       const voucher = await useCase.execute(companyId, userId, req.body);
       res.json({ success: true, data: voucher });

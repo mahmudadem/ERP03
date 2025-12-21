@@ -1,0 +1,5 @@
+{
+  "name": "CloudERP - Journal Entry System",
+  "description": "A modern web-based ERP interface featuring a multi-window desktop environment, specific journal voucher accounting modules, and Gemini AI integration for smart entry assistance.",
+  "requestFramePermissions": []
+}

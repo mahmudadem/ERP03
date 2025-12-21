@@ -1,4 +1,6 @@
 
+import { PostingRole } from './PostingRole';
+
 export type FieldType = 'STRING' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT' | 'REFERENCE';
 
 export interface ValidationRule {
@@ -13,6 +15,12 @@ export interface VisibilityRule {
   value: any;
 }
 
+/**
+ * FieldDefinition
+ * 
+ * Defines a single field in a voucher type.
+ * Schema Version 2: Includes explicit posting classification.
+ */
 export class FieldDefinition {
   constructor(
     public id: string,
@@ -21,6 +29,9 @@ export class FieldDefinition {
     public type: FieldType,
     public required: boolean,
     public readOnly: boolean,
+    public isPosting: boolean,
+    public postingRole: PostingRole | null,
+    public schemaVersion: number = 2,
     public visibilityRules: VisibilityRule[] = [],
     public validationRules: ValidationRule[] = [],
     public defaultValue?: any

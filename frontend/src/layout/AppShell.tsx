@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom'; // Important for nested routing
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { WindowManager } from './WindowManager';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 
 export const AppShell: React.FC = () => {
@@ -27,17 +26,9 @@ export const AppShell: React.FC = () => {
         <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
         <main className="flex-1 relative overflow-hidden bg-gray-50/50">
-          {uiMode === 'classic' ? (
-             // Classic Mode: Render Router Outlet directly
-             <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll">
-               <Outlet />
-             </div>
-          ) : (
-             // Windows Mode: Render Window Manager
-             // Note: In Windows mode, we typically ignore the Outlet for main navigation
-             // and let the WindowManager handle "apps". For MVP, we render WM on top.
-             <WindowManager />
-          )}
+          <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValidateDynamicFieldRulesUseCase = exports.UpdateVoucherTypeDefinitionUseCase = exports.CreateVoucherTypeDefinitionUseCase = exports.UpdateFormDefinitionUseCase = exports.CreateFormDefinitionUseCase = void 0;
+const VoucherTypeDefinitionValidator_1 = require("../../../domain/designer/validators/VoucherTypeDefinitionValidator");
 class CreateFormDefinitionUseCase {
     constructor(repo) {
         this.repo = repo;
@@ -24,6 +25,8 @@ class CreateVoucherTypeDefinitionUseCase {
         this.repo = repo;
     }
     async execute(def) {
+        // STEP 3 ENFORCEMENT: Validate before save
+        VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
         await this.repo.createVoucherType(def);
     }
 }

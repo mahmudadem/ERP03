@@ -10,6 +10,6 @@ export class GetSystemMetadataUseCase {
       throw new Error(`System metadata not found: ${key}`);
     }
 
-    return metadata.data || metadata;
+    return metadata;
   }
 }

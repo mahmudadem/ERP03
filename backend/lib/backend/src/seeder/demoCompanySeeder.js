@@ -27,8 +27,6 @@ exports.seedDemoCompany = void 0;
 const admin = __importStar(require("firebase-admin"));
 const Company_1 = require("../domain/core/entities/Company");
 const User_1 = require("../domain/core/entities/User");
-const VoucherTypeDefinition_1 = require("../domain/designer/entities/VoucherTypeDefinition");
-const FieldDefinition_1 = require("../domain/designer/entities/FieldDefinition");
 async function seedDemoCompany(deps) {
     const { companyRepository, companyRoleRepository, companyUserRepository, userRepository } = deps;
     console.log('🌱 Starting Demo Company Seeder...\n');
@@ -167,71 +165,34 @@ async function seedDemoCompany(deps) {
         subscriptionPlan: '',
         ownerId: ownerUserId
     });
-    console.log(`  ✓ Basic modules activated: accounting, inventory, finance, hr`);
+    // Substep: Create Company Module entries (Subcollection)
+    console.log('  → Creating module entries in subcollection...');
+    const modulesToInit = ['accounting', 'inventory', 'finance', 'hr'];
+    for (const mod of modulesToInit) {
+        console.log(`    → Creating module: ${mod}...`);
+        try {
+            await deps.companyModuleRepository.create({
+                companyId,
+                moduleCode: mod,
+                initialized: false,
+                initializationStatus: 'pending',
+                config: {},
+                installedAt: new Date()
+            });
+            console.log(`    ✓ Module ${mod} created successfully`);
+        }
+        catch (err) {
+            console.error(`    ❌ Failed to create module ${mod}:`, err);
+            throw err;
+        }
+    }
+    console.log(`  ✓ Basic modules activated: ${modulesToInit.join(', ')}`);
     console.log('');
     // Note: Features are no longer part of bundles in the new architecture
     console.log('ℹ️  Note: Features are managed separately in the new bundle architecture');
     console.log('');
-    // Step 5: Create Voucher Types
-    console.log('📄 Step 5: Creating Voucher Types...');
-    const voucherType = new VoucherTypeDefinition_1.VoucherTypeDefinition(`vt_inv_${ts}`, companyId, 'Sales Invoice', 'INV', 'ACCOUNTING', [
-        new FieldDefinition_1.FieldDefinition('v_date', 'date', 'Date', 'DATE', true, false),
-        new FieldDefinition_1.FieldDefinition('v_desc', 'description', 'Description', 'STRING', false, false)
-    ], [
-        { fieldId: 'l_desc', width: '40%' },
-        { fieldId: 'l_acc', width: '30%' },
-        { fieldId: 'l_debit', width: '15%' },
-        { fieldId: 'l_credit', width: '15%' }
-    ], {
-        sections: [
-            {
-                title: 'General Info',
-                fields: ['v_date', 'v_desc']
-            }
-        ],
-        lineFields: [
-            Object.assign({}, new FieldDefinition_1.FieldDefinition('l_desc', 'description', 'Description', 'STRING', true, false)),
-            Object.assign({}, new FieldDefinition_1.FieldDefinition('l_acc', 'accountId', 'Account', 'REFERENCE', true, false, [], [], null)),
-            Object.assign({}, new FieldDefinition_1.FieldDefinition('l_debit', 'debit', 'Debit', 'NUMBER', false, false)),
-            Object.assign({}, new FieldDefinition_1.FieldDefinition('l_credit', 'credit', 'Credit', 'NUMBER', false, false))
-        ]
-    });
-    // Note: The entity constructor might not match exactly what I guessed for layout.
-    // Let's adjust based on the entity definition I saw earlier:
-    // public layout: Record<string, any>
-    // The frontend expects specific structure. I'll stick to a generic layout object that the frontend can parse or I'll adapt the frontend.
-    // Actually, looking at the mock:
-    /*
-    header: { fields: [...] },
-    lines: { columns: [...] }
-    */
-    // The backend entity has `headerFields` and `tableColumns`.
-    // The `layout` param is likely for UI arrangement.
-    // I will pass the line definitions in the layout or assume they are derived.
-    // Wait, `tableColumns` only has `fieldId`. Where are the line field definitions stored?
-    // The `VoucherTypeDefinition` class I saw:
-    /*
-    constructor(
-        public id: string,
-        public name: string,
-        public code: string,
-        public module: string,
-        public headerFields: FieldDefinition[],
-        public tableColumns: TableColumn[],
-        public layout: Record<string, any>
-    )
-    */
-    // It seems `headerFields` are explicit. But where are "Line Fields"?
-    // Maybe they are supposed to be in `headerFields` too? No, that doesn't make sense.
-    // Let's look at `VoucherTypeDefinition.ts` again.
-    // Ah, I might have missed something.
-    // If `tableColumns` references `fieldId`, those fields must be defined somewhere.
-    // Maybe `headerFields` contains ALL fields?
-    // Or maybe `layout` contains the line definitions?
-    // I'll assume for now that I can put line field definitions in `layout.lineFields` as I did above.
-    // And I'll update the repository/mapper if needed.
-    await deps.voucherTypeDefinitionRepository.createVoucherType(voucherType);
-    console.log(`  ✓ Voucher Type created: ${voucherType.name} (${voucherType.code})`);
+    // Step 5: Voucher Types - Skipped for now
+    console.log('ℹ️  Step 5: Voucher Types creation skipped (undefined value issue)');
     console.log('');
     // Step 6: Return Final Result
     const result = {

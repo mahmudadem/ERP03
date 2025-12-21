@@ -8,7 +8,7 @@ interface Currency {
 }
 
 interface CoaTemplate {
-  id: string; // Changed from union type to support API
+  id: string;
   name: string;
   description: string;
   recommended: string;
@@ -23,20 +23,23 @@ export const systemMetadataApi = {
   async getCurrencies(): Promise<Currency[]> {
     try {
       const response = await client.get('/system/metadata/currencies');
-      console.log('[systemMetadataApi] getCurrencies response:', response);
       
-      // Handle different response structures
-      // Check if response itself is the array (axios interceptor already unwrapped it)
+      // Client interceptor already unwraps response.data.data
       if (Array.isArray(response)) {
         return response;
-      } else if (response.data?.success && response.data?.data) {
-        return response.data.data;
-      } else if (Array.isArray(response.data)) {
-        return response.data;
-      } else {
-        console.error('[systemMetadataApi] Unexpected response structure:', response);
-        throw new Error('Invalid response structure');
       }
+
+      // Fallback strategies for different response shapes
+      if (response && Array.isArray(response.data)) {
+        return response.data;
+      }
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+
+      console.warn('[systemMetadataApi] Unexpected response structure for currencies:', response);
+      // Return empty array instead of throwing to prevent crashing the UI completely
+      return []; 
     } catch (error) {
       console.error('[systemMetadataApi] Failed to fetch currencies:', error);
       throw error;
@@ -49,20 +52,22 @@ export const systemMetadataApi = {
   async getCoaTemplates(): Promise<CoaTemplate[]> {
     try {
       const response = await client.get('/system/metadata/coa-templates');
-      console.log('[systemMetadataApi] getCoaTemplates response:', response);
       
-      // Handle different response structures
-      // Check if response itself is the array (axios interceptor already unwrapped it)
+      // Client interceptor already unwraps response.data.data
       if (Array.isArray(response)) {
         return response;
-      } else if (response.data?.success && response.data?.data) {
-        return response.data.data;
-      } else if (Array.isArray(response.data)) {
-        return response.data;
-      } else {
-        console.error('[systemMetadataApi] Unexpected response structure:', response);
-        throw new Error('Invalid response structure');
       }
+
+      // Fallback strategies
+      if (response && Array.isArray(response.data)) {
+        return response.data;
+      }
+      if (response?.data?.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+
+      console.warn('[systemMetadataApi] Unexpected response structure for COA templates:', response);
+      return [];
     } catch (error) {
       console.error('[systemMetadataApi] Failed to fetch COA templates:', error);
       throw error;

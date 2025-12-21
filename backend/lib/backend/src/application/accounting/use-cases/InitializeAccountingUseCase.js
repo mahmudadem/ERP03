@@ -24,21 +24,25 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializeAccountingUseCase = void 0;
-const COATemplates_1 = require("../templates/COATemplates");
+const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
 const crypto = __importStar(require("crypto"));
 class InitializeAccountingUseCase {
-    constructor(companyModuleRepo, accountRepo) {
+    constructor(companyModuleRepo, accountRepo, systemMetadataRepo) {
         this.companyModuleRepo = companyModuleRepo;
         this.accountRepo = accountRepo;
+        this.systemMetadataRepo = systemMetadataRepo;
     }
     async execute(request) {
         const { companyId, config } = request;
         console.log(`[InitializeAccountingUseCase] Initializing for ${companyId} with template ${config.coaTemplate}`);
-        // 1. Select Template
-        let templateAccounts = COATemplates_1.StandardCOA;
-        if (config.coaTemplate === 'simplified') {
-            templateAccounts = COATemplates_1.SimplifiedCOA;
+        // 1. Fetch COA Template from DB
+        const templates = await this.systemMetadataRepo.getMetadata('coa_templates');
+        const selectedTemplate = templates.find((t) => t.id === config.coaTemplate);
+        if (!selectedTemplate || !selectedTemplate.accounts) {
+            throw new Error(`COA Template '${config.coaTemplate}' not found in system metadata.`);
         }
+        const templateAccounts = selectedTemplate.accounts;
         // 2. Create Accounts
         const codeToIdMap = new Map();
         // First pass: Generate IDs map
@@ -47,7 +51,7 @@ class InitializeAccountingUseCase {
             codeToIdMap.set(tpl.code, id);
         }
         // Second pass: Create accounts
-        const promises = templateAccounts.map(tpl => {
+        const promises = templateAccounts.map((tpl) => {
             const id = codeToIdMap.get(tpl.code);
             let parentId = null;
             if (tpl.parentId && codeToIdMap.has(tpl.parentId)) {
@@ -65,7 +69,17 @@ class InitializeAccountingUseCase {
         });
         await Promise.all(promises);
         console.log(`[InitializeAccountingUseCase] Created ${promises.length} accounts.`);
-        // 3. Mark Module as Initialized
+        // 3. Copy Default Voucher Types to Company
+        try {
+            await this.copyDefaultVoucherTypes(companyId, config.selectedVoucherTypes || [] // Pass selected voucher type IDs
+            );
+            console.log(`[InitializeAccountingUseCase] Copied default voucher types to company.`);
+        }
+        catch (error) {
+            console.warn(`[InitializeAccountingUseCase] Failed to copy voucher types:`, error);
+            // Don't fail initialization if voucher copy fails
+        }
+        // 4. Mark Module as Initialized
         await this.companyModuleRepo.update(companyId, 'accounting', {
             initialized: true,
             initializationStatus: 'complete',
@@ -73,6 +87,49 @@ class InitializeAccountingUseCase {
             updatedAt: new Date()
         });
         console.log(`[InitializeAccountingUseCase] Module marked as initialized.`);
+    }
+    /**
+     * Copy default voucher types from system_metadata to company
+     * Only copies the voucher types specified in selectedVoucherTypeIds
+     */
+    async copyDefaultVoucherTypes(companyId, selectedVoucherTypeIds) {
+        const db = admin.firestore();
+        // If no vouchers selected, skip copying
+        if (!selectedVoucherTypeIds || selectedVoucherTypeIds.length === 0) {
+            console.log(`[InitializeAccountingUseCase] No voucher types selected, skipping copy`);
+            return;
+        }
+        // Load default voucher types from system_metadata/voucher_types/items
+        const defaultVouchersRef = db
+            .collection('system_metadata')
+            .doc('voucher_types')
+            .collection('items');
+        const snapshot = await defaultVouchersRef.get();
+        if (snapshot.empty) {
+            console.warn(`[InitializeAccountingUseCase] No default voucher types found in system_metadata`);
+            return;
+        }
+        const batch = db.batch();
+        let count = 0;
+        snapshot.forEach(doc => {
+            // Only copy if this voucher type was selected
+            if (!selectedVoucherTypeIds.includes(doc.id)) {
+                return; // Skip this one
+            }
+            const voucherType = doc.data();
+            // Create a copy for this company
+            const companyVoucherRef = db
+                .collection('companies')
+                .doc(companyId)
+                .collection('voucherTypes')
+                .doc(doc.id);
+            // Add company-specific metadata
+            const companyVoucher = Object.assign(Object.assign({}, voucherType), { companyId, isSystemDefault: true, isLocked: true, enabled: true, inUse: false, createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() });
+            batch.set(companyVoucherRef, companyVoucher);
+            count++;
+        });
+        await batch.commit();
+        console.log(`[InitializeAccountingUseCase] Copied ${count} default voucher types to company ${companyId}`);
     }
 }
 exports.InitializeAccountingUseCase = InitializeAccountingUseCase;

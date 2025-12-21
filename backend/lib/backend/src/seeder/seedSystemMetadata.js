@@ -15,7 +15,20 @@ const CURRENCIES = [
     { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س', locale: 'ar-SA' },
     { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£', locale: 'ar-EG' },
 ];
+const COATemplates_1 = require("../application/accounting/templates/COATemplates");
+const IndustryCOATemplates_1 = require("../application/accounting/templates/IndustryCOATemplates");
 const COA_TEMPLATES = [
+    // Empty template - always first
+    {
+        id: 'empty',
+        name: 'Empty - Start from Scratch',
+        description: 'Build your own chart of accounts from the ground up',
+        recommended: 'For businesses with unique accounting needs',
+        accountCount: 0,
+        complexity: 'custom',
+        accounts: []
+    },
+    // Ordered by account count (ascending)
     {
         id: 'simplified',
         name: 'Simplified',
@@ -23,6 +36,34 @@ const COA_TEMPLATES = [
         recommended: 'Ideal for startups and freelancers',
         accountCount: 25,
         complexity: 'low',
+        accounts: COATemplates_1.SimplifiedCOA
+    },
+    {
+        id: 'services',
+        name: 'Professional Services',
+        description: 'For consulting, agencies & service providers',
+        recommended: 'Optimized for billable hours & projects',
+        accountCount: 42,
+        complexity: 'low',
+        accounts: IndustryCOATemplates_1.ServicesCOA
+    },
+    {
+        id: 'manufacturing',
+        name: 'Manufacturing',
+        description: 'For production & manufacturing businesses',
+        recommended: 'Includes WIP, Raw Materials, Factory Overhead',
+        accountCount: 48,
+        complexity: 'medium',
+        accounts: IndustryCOATemplates_1.ManufacturingCOA
+    },
+    {
+        id: 'retail',
+        name: 'Retail & E-Commerce',
+        description: 'For retail stores and online businesses',
+        recommended: 'Includes POS, inventory shrinkage tracking',
+        accountCount: 52,
+        complexity: 'medium',
+        accounts: IndustryCOATemplates_1.RetailCOA
     },
     {
         id: 'standard',
@@ -31,6 +72,7 @@ const COA_TEMPLATES = [
         recommended: 'Most popular for SMBs',
         accountCount: 60,
         complexity: 'medium',
+        accounts: COATemplates_1.StandardCOA
     },
     {
         id: 'full',
@@ -39,6 +81,7 @@ const COA_TEMPLATES = [
         recommended: 'For established enterprises',
         accountCount: 120,
         complexity: 'high',
+        accounts: COATemplates_1.StandardCOA // Placeholder: Using Standard for now until Full definition exists
     },
 ];
 async function seedSystemMetadata(repository) {
