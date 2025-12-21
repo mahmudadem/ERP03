@@ -48,20 +48,26 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       paymentMethod: 'Bank Transfer'
     };
     
+    // Convert dates from ISO to yyyy-MM-dd format for HTML date inputs
+    const processedInitialData = initialData ? {
+      ...initialData,
+      date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : undefined
+    } : {};
+    
     // Merge: initialData takes precedence over defaults
-    setFormData({ ...defaults, ...initialData });
+    setFormData({ ...defaults, ...processedInitialData });
     
     // If initialData has lines, populate rows
     if (initialData?.lines && Array.isArray(initialData.lines)) {
       const loadedRows = initialData.lines.map((line: any, index: number) => ({
         id: index + 1,
-        account: line.account || '',
-        notes: line.notes || '',
-        debit: line.debit || 0,
-        credit: line.credit || 0,
-        currency: line.currency || 'USD',
-        parity: line.parity || 1.0,
-        equivalent: line.equivalent || 0,
+        account: line.accountId || line.account || '',
+        notes: line.description || line.notes || '',
+        debit: line.debitFx || line.debit || 0,
+        credit: line.creditFx || line.credit || 0,
+        currency: line.lineCurrency || line.currency || 'USD',
+        parity: line.exchangeRate || line.parity || 1.0,
+        equivalent: line.baseAmount || line.equivalent || 0,
         category: line.category || ''
       }));
       setRows(loadedRows);
