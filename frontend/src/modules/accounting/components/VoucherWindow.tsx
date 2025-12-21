@@ -209,7 +209,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
       {/* Voucher Content */}
       <div className="flex-1 overflow-y-auto p-4 bg-white overflow-x-hidden">
         <GenericVoucherRenderer
-          config={win.voucherType}
+          definition={win.voucherType as any}
           mode="windows"
           initialData={win.data}
           onDataChange={handleDataChange}
