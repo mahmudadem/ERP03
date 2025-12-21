@@ -3,21 +3,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoucherPostingStrategyFactory = void 0;
 const PaymentVoucherStrategy_1 = require("../strategies/implementations/PaymentVoucherStrategy");
 const ReceiptVoucherStrategy_1 = require("../strategies/implementations/ReceiptVoucherStrategy");
-const FxVoucherStrategy_1 = require("../strategies/implementations/FxVoucherStrategy");
-const TransferVoucherStrategy_1 = require("../strategies/implementations/TransferVoucherStrategy");
+const JournalEntryStrategy_1 = require("../strategies/implementations/JournalEntryStrategy");
+const OpeningBalanceStrategy_1 = require("../strategies/implementations/OpeningBalanceStrategy");
+/**
+ * VoucherPostingStrategyFactory
+ *
+ * Maps VoucherType enum values to their corresponding posting strategies.
+ * Each of the 4 canonical voucher types has exactly one strategy.
+ *
+ * Contract:
+ * - Input: lowercase enum value from VoucherType (e.g., 'payment', 'receipt')
+ * - Output: IVoucherPostingStrategy (never null)
+ * - Throws error for unknown types
+ */
 class VoucherPostingStrategyFactory {
     static getStrategy(typeCode) {
         switch (typeCode) {
-            case 'PAYMENT':
+            case 'payment':
                 return new PaymentVoucherStrategy_1.PaymentVoucherStrategy();
-            case 'RECEIPT':
+            case 'receipt':
                 return new ReceiptVoucherStrategy_1.ReceiptVoucherStrategy();
-            case 'FX':
-                return new FxVoucherStrategy_1.FxVoucherStrategy();
-            case 'TRANSFER':
-                return new TransferVoucherStrategy_1.TransferVoucherStrategy();
+            case 'journal_entry':
+                return new JournalEntryStrategy_1.JournalEntryStrategy();
+            case 'opening_balance':
+                return new OpeningBalanceStrategy_1.OpeningBalanceStrategy();
             default:
-                return null; // For manual journals or unknown types
+                throw new Error(`Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance`);
         }
     }
 }

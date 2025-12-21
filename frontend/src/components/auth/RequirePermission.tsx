@@ -11,7 +11,15 @@ interface RequirePermissionProps {
 export function RequirePermission({ permission, children, fallback = null }: RequirePermissionProps) {
   const { permissions, isSuperAdmin } = useCompanyAccess();
   
-  if (isSuperAdmin || permissions.includes(permission)) {
+  // Check if user has permission:
+  // 1. Super admin has all permissions
+  // 2. User has wildcard (*) permission
+  // 3. User has specific permission
+  const hasPermission = isSuperAdmin || 
+                       permissions.includes('*') || 
+                       permissions.includes(permission);
+  
+  if (hasPermission) {
     return <>{children}</>;
   }
   

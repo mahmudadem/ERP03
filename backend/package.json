@@ -13,6 +13,7 @@
     "seed:demo": "ts-node --transpile-only src/seeder/runDemoSeeder.ts",
     "seed:onboarding": "ts-node --transpile-only src/seeder/seedOnboardingData.ts",
     "seed:system": "ts-node --transpile-only src/seeder/runSystemSeeder.ts",
+    "seed:vouchers": "ts-node --transpile-only src/scripts/seedDefaultVoucherTypes.ts",
     "reset:accounting": "ts-node --transpile-only src/seeder/resetAccountingModule.ts"
   },
   "engines": {

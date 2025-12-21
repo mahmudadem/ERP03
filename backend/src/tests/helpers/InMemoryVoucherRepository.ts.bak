@@ -1,6 +1,6 @@
-import { IVoucherRepository } from '../../src/domain/accounting/repositories/IVoucherRepository';
-import { VoucherEntity } from '../../src/domain/accounting/entities/VoucherEntity';
-import { VoucherType, VoucherStatus } from '../../src/domain/accounting/types/VoucherTypes';
+import { IVoucherRepository } from '../../repository/interfaces/accounting/IVoucherRepository';
+import { Voucher } from '../../domain/accounting/entities/Voucher';
+import { VoucherStatus } from '../../domain/accounting/entities/VoucherStatus';
 
 /**
  * In-Memory Voucher Repository

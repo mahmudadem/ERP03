@@ -1,7 +1,10 @@
 /**
  * FieldDefinition.ts
  * Defines the structure of a single input field.
+ * Schema Version 2: Includes explicit posting classification.
  */
+
+import { PostingRole } from './PostingRole';
 
 export type FieldType = 
   | 'TEXT' 
@@ -22,6 +25,11 @@ export interface FieldDefinition {
   name: string; // Key in the data object
   label: string;
   type: FieldType;
+  
+  // Posting Classification (Schema V2)
+  isPosting: boolean;
+  postingRole: PostingRole | null;
+  schemaVersion?: number; // Default: 2
   
   // Layout & UI
   placeholder?: string;

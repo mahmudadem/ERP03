@@ -9,7 +9,7 @@ import { ReportingController } from '../controllers/accounting/ReportingControll
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
-import { featureFlagGuard } from '../middlewares/guards/featureFlagGuard';
+
 
 const router = Router();
 // authMiddleware should be applied at tenant router level, but keeping here for safety if mounted elsewhere
@@ -27,7 +27,6 @@ router.get('/vouchers', permissionGuard('accounting.voucher.view'), VoucherContr
 router.get('/vouchers/:id', permissionGuard('accounting.voucher.view'), VoucherController.get);
 router.post('/vouchers', 
   permissionGuard('accounting.voucher.create'), 
-  featureFlagGuard('feature.multiCurrency'), 
   VoucherController.create
 );
 router.put('/vouchers/:id', permissionGuard('accounting.voucher.edit'), VoucherController.update);

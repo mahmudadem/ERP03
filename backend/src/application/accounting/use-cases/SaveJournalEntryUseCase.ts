@@ -80,8 +80,8 @@ export class SaveJournalEntryUseCase {
     const lines = this.handler.createLines(input, baseCurrency, exchangeRate);
 
     // Step 5: Calculate totals (validation happens in constructor)
-    const totalDebit = lines.reduce((sum, line) => sum + line.debitAmount, 0);
-    const totalCredit = lines.reduce((sum, line) => sum + line.creditAmount, 0);
+    const totalDebit = lines.reduce((sum: number, line) => sum + line.debitAmount, 0);
+    const totalCredit = lines.reduce((sum: number, line) => sum + line.creditAmount, 0);
 
     // Step 6: Generate unique voucher number
     const voucherNo = await this.numberGenerator.generate(

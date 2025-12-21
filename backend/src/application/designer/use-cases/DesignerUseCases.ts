@@ -2,6 +2,7 @@
 import { FormDefinition } from '../../../domain/designer/entities/FormDefinition';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IFormDefinitionRepository, IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer';
+import { VoucherTypeDefinitionValidator } from '../../../domain/designer/validators/VoucherTypeDefinitionValidator';
 
 export class CreateFormDefinitionUseCase {
   constructor(private repo: IFormDefinitionRepository) {}
@@ -20,6 +21,8 @@ export class UpdateFormDefinitionUseCase {
 export class CreateVoucherTypeDefinitionUseCase {
   constructor(private repo: IVoucherTypeDefinitionRepository) {}
   async execute(def: VoucherTypeDefinition): Promise<void> {
+    // STEP 3 ENFORCEMENT: Validate before save
+    VoucherTypeDefinitionValidator.validate(def);
     await this.repo.createVoucherType(def);
   }
 }

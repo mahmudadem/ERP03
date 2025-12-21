@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useRBAC } from '../api/rbac/useRBAC';
 import { moduleMenuMap } from '../config/moduleMenuMap';
+import { useVoucherTypes } from './useVoucherTypes';
 
 type SidebarSection = {
   label: string;
@@ -11,6 +12,7 @@ type SidebarSection = {
 export const useSidebarConfig = () => {
   const { isSuperAdmin, moduleBundles, resolvedPermissions } = useCompanyAccess();
   const { hasPermission } = useRBAC();
+  const { voucherTypes } = useVoucherTypes();
 
   const sidebarSections = useMemo(() => {
     const sections: Record<string, SidebarSection[]> = {
@@ -61,7 +63,32 @@ export const useSidebarConfig = () => {
         label: moduleId.charAt(0).toUpperCase() + moduleId.slice(1),
         items: []
       };
-      const items = def.items.filter((item) => hasPermission(item.permission));
+      let items = def.items.filter((item) => hasPermission(item.permission));
+      
+      // Special handling for accounting module - inject dynamic voucher types
+      if (moduleId === 'accounting') {
+        // Remove static "Vouchers" link
+        items = items.filter(item => item.label !== 'Vouchers');
+        
+        // Add dynamic voucher type links
+        const voucherItems = voucherTypes.map(vt => ({
+          label: vt.name,
+          path: `/accounting/vouchers?type=${vt.id}`,
+          permission: 'voucher.view'
+        }));
+        
+        // Insert voucher items after Chart of Accounts
+        const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
+        if (coaIndex >= 0) {
+          items = [
+            ...items.slice(0, coaIndex + 1),
+            ...voucherItems.filter(item => hasPermission(item.permission)),
+            ...items.slice(coaIndex + 1)
+          ];
+        } else {
+          items = [...voucherItems.filter(item => hasPermission(item.permission)), ...items];
+        }
+      }
       
       if (items.length > 0) {
         // Create a new section for this App
@@ -90,7 +117,7 @@ export const useSidebarConfig = () => {
     }
 
     return sections;
-  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions]);
+  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions, voucherTypes]);
 
   return sidebarSections;
 };

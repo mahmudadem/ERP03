@@ -1,4 +1,5 @@
 import { VoucherTypeDefinition } from '../domain/designer/entities/VoucherTypeDefinition';
+import { PostingRole } from '../domain/designer/entities/PostingRole';
 import { randomUUID } from 'crypto';
 import { IVoucherTypeDefinitionRepository } from '../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 
@@ -6,41 +7,189 @@ const SYSTEM_COMPANY_ID = 'SYSTEM';
 
 const templates = [
   {
-    name: "Vendor Payment",
+    name: "Payment Voucher",
     code: "PAYMENT",
     module: "ACCOUNTING",
     headerFields: [
-      { id: "vendorAccountId", label: "Vendor", type: "ACCOUNT_SELECT", required: true, config: { filterType: "LIABILITY" } },
-      { id: "cashAccountId", label: "Pay From", type: "ACCOUNT_SELECT", required: true, config: { filterType: "ASSET" } },
-      { id: "amount", label: "Amount", type: "NUMBER", required: true },
-      { id: "currency", label: "Currency", type: "CURRENCY_SELECT", required: true },
-      { id: "exchangeRate", label: "Exchange Rate", type: "NUMBER", defaultValue: 1 },
-      { id: "description", label: "Description", type: "TEXT" }
+      { 
+        id: "date", 
+        label: "Date", 
+        type: "DATE", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      { 
+        id: "payFromAccountId",        // ✅ Generic semantic (NOT cashAccountId)
+        label: "Pay From", 
+        type: "ACCOUNT_SELECT", 
+        required: true, 
+        config: { filterType: "ASSET" },
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      { 
+        id: "currency", 
+        label: "Currency", 
+        type: "CURRENCY_SELECT", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      { 
+        id: "exchangeRate", 
+        label: "Exchange Rate", 
+        type: "NUMBER", 
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      { 
+        id: "totalAmount",              // Auto-calculated from lines
+        label: "Total Amount", 
+        type: "NUMBER", 
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      { 
+        id: "description", 
+        label: "Description", 
+        type: "TEXT",
+        isPosting: false,               // Metadata only
+        postingRole: null
+      }
     ],
-    tableColumns: [],
+    lineFields: [                        // ✅ Support multiple allocations (one-to-many)
+      {
+        id: "payToAccountId",            // ✅ Generic (NOT vendorAccountId)
+        label: "Pay To Account",
+        type: "ACCOUNT_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      {
+        id: "amount",
+        label: "Amount",
+        type: "NUMBER",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "notes",
+        label: "Notes",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "payToAccountId", width: "200px" },
+      { fieldId: "amount", width: "100px" },
+      { fieldId: "notes", width: "200px" }
+    ],
     layout: {
       sections: [
-        { id: "main", title: "Payment Details", fieldIds: ["vendorAccountId", "cashAccountId", "amount", "currency", "exchangeRate", "description"] }
+        { id: "header", title: "Payment Header", fieldIds: ["date", "payFromAccountId", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "allocations", title: "Payment Allocations", fieldIds: ["lineItems"] }
       ]
     },
     workflow: { approvalRequired: true }
   },
   {
-    name: "Customer Receipt",
+    name: "Receipt Voucher",
     code: "RECEIPT",
     module: "ACCOUNTING",
     headerFields: [
-      { id: "customerAccountId", label: "Customer", type: "ACCOUNT_SELECT", required: true, config: { filterType: "ASSET" } }, // Accounts Receivable
-      { id: "cashAccountId", label: "Deposit To", type: "ACCOUNT_SELECT", required: true, config: { filterType: "ASSET" } },
-      { id: "amount", label: "Amount", type: "NUMBER", required: true },
-      { id: "currency", label: "Currency", type: "CURRENCY_SELECT", required: true },
-      { id: "exchangeRate", label: "Exchange Rate", type: "NUMBER", defaultValue: 1 },
-      { id: "description", label: "Description", type: "TEXT" }
+      { 
+        id: "date", 
+        label: "Date", 
+        type: "DATE", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      { 
+        id: "depositToAccountId",    // ✅ Generic (NOT cashAccountId)
+        label: "Deposit To", 
+        type: "ACCOUNT_SELECT", 
+        required: true, 
+        config: { filterType: "ASSET" },
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      { 
+        id: "currency", 
+        label: "Currency", 
+        type: "CURRENCY_SELECT", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      { 
+        id: "exchangeRate", 
+        label: "Exchange Rate", 
+        type: "NUMBER", 
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      { 
+        id: "totalAmount",          // Auto-calculated from lines
+        label: "Total Amount", 
+        type: "NUMBER", 
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      { 
+        id: "description", 
+        label: "Description", 
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
     ],
-    tableColumns: [],
+    lineFields: [                   // ✅ Support multiple sources (many-to-one)
+      {
+        id: "receiveFromAccountId",  // ✅ Generic (NOT customerAccountId)
+        label: "Receive From Account",
+        type: "ACCOUNT_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      {
+        id: "amount",
+        label: "Amount",
+        type: "NUMBER",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "notes",
+        label: "Notes",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "receiveFromAccountId", width: "200px" },
+      { fieldId: "amount", width: "100px" },
+      { fieldId: "notes", width: "200px" }
+    ],
     layout: {
       sections: [
-        { id: "main", title: "Receipt Details", fieldIds: ["customerAccountId", "cashAccountId", "amount", "currency", "exchangeRate", "description"] }
+        { id: "header", title: "Receipt Header", fieldIds: ["date", "depositToAccountId", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "sources", title: "Receipt Sources", fieldIds: ["lineItems"] }
       ]
     },
     workflow: { approvalRequired: true }
@@ -87,13 +236,63 @@ const templates = [
     workflow: { approvalRequired: true }
   },
   {
-    name: "Journal Voucher",
+    name: "Journal Entry",
     code: "JOURNAL",
     module: "ACCOUNTING",
     headerFields: [
-      { id: "date", label: "Date", type: "DATE", required: true },
-      { id: "reference", label: "Reference", type: "TEXT" },
-      { id: "description", label: "Description", type: "TEXT" }
+      { 
+        id: "date", 
+        label: "Date", 
+        type: "DATE", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      { 
+        id: "reference", 
+        label: "Reference", 
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      },
+      { 
+        id: "description", 
+        label: "Description", 
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    lineFields: [
+      {
+        id: "accountId",
+        label: "Account",
+        type: "ACCOUNT_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      {
+        id: "debit",
+        label: "Debit",
+        type: "NUMBER",
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "credit",
+        label: "Credit",
+        type: "NUMBER",
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "description",
+        label: "Description",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
     ],
     tableColumns: [
       { fieldId: "accountId", width: "200px" },
@@ -103,7 +302,8 @@ const templates = [
     ],
     layout: {
       sections: [
-        { id: "header", title: "Journal Header", fieldIds: ["date", "reference", "description"] }
+        { id: "header", title: "Journal Header", fieldIds: ["date", "reference", "description"] },
+        { id: "lines", title: "Journal Lines", fieldIds: ["lineItems"] }
       ]
     },
     workflow: { approvalRequired: true }
@@ -128,7 +328,9 @@ export const seedSystemVoucherTypes = async (repo: IVoucherTypeDefinitionReposit
         t.headerFields as any[],
         t.tableColumns as any[],
         t.layout,
-        t.workflow
+        2,                          // schemaVersion
+        undefined,                  // requiredPostingRoles
+        t.workflow                  // workflow
       );
       
       await repo.createVoucherType(def);

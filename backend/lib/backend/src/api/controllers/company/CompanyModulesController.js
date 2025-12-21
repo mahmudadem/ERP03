@@ -64,6 +64,8 @@ class CompanyModulesController {
                 const { diContainer } = require('../../../infrastructure/di/bindRepositories');
                 const { InitializeAccountingUseCase } = require('../../../application/accounting/use-cases/InitializeAccountingUseCase');
                 const useCase = new InitializeAccountingUseCase(this.companyModuleRepo, diContainer.accountRepository, diContainer.systemMetadataRepository);
+                console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));
+                console.log('[InitializeAccounting] selectedVoucherTypes:', config.selectedVoucherTypes);
                 await useCase.execute({
                     companyId,
                     config

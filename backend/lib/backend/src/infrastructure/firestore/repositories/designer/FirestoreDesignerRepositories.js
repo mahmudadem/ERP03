@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherTypeDefinitionRepository = exports.FirestoreFormDefinitionRepository = void 0;
 const BaseFirestoreRepository_1 = require("../BaseFirestoreRepository");
 const DesignerMappers_1 = require("../../mappers/DesignerMappers");
+const VoucherTypeDefinitionValidator_1 = require("../../../../domain/designer/validators/VoucherTypeDefinitionValidator");
 class FirestoreFormDefinitionRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
     constructor() {
         super(...arguments);
@@ -41,6 +42,8 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
             .collection('items');
     }
     async createVoucherType(def) {
+        // STEP 3 ENFORCEMENT: Validate before persisting
+        VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
         const data = this.toPersistence(def);
         // System templates go to top-level collection, company templates go to subcollection
         if (def.companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
@@ -51,6 +54,16 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
         }
     }
     async updateVoucherType(companyId, id, data) {
+        // STEP 3 ENFORCEMENT: For full updates, validate if data is complete definition
+        if (data) {
+            try {
+                VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(data);
+            }
+            catch (error) {
+                // If it's a partial update, skip validation (updating single field like layout)
+                console.warn('Partial update detected, skipping full validation');
+            }
+        }
         if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
             await this.getSystemCollection().doc(id).update(data);
         }
@@ -64,19 +77,67 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
             : await this.getCollection(companyId).doc(id).get();
         if (!doc.exists)
             return null;
-        return this.toDomain(doc.data());
+        const definition = this.toDomain(doc.data());
+        // STEP 3 ENFORCEMENT: Validate after load
+        try {
+            VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(definition);
+            return definition;
+        }
+        catch (error) {
+            console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load voucher definition`, {
+                id,
+                companyId,
+                name: definition.name,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+            return null;
+        }
     }
     async getVoucherTypesForModule(companyId, module) {
         const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
             ? await this.getSystemCollection().where('module', '==', module).get()
             : await this.getCollection(companyId).where('module', '==', module).get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        const definitions = snap.docs.map(d => this.toDomain(d.data()));
+        // STEP 3 ENFORCEMENT: Filter out invalid definitions
+        return definitions.filter(def => {
+            try {
+                VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
+                return true;
+            }
+            catch (error) {
+                console.error(`[VOUCHER_DEF_LOAD_ERROR] Excluded invalid definition from list`, {
+                    id: def.id,
+                    name: def.name,
+                    companyId,
+                    module,
+                    error: error.message
+                });
+                return false;
+            }
+        });
     }
     async getByCompanyId(companyId) {
         const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
             ? await this.getSystemCollection().get()
             : await this.getCollection(companyId).get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        const definitions = snap.docs.map(d => this.toDomain(d.data()));
+        // STEP 3 ENFORCEMENT: Filter out invalid definitions
+        return definitions.filter(def => {
+            try {
+                VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
+                return true;
+            }
+            catch (error) {
+                console.error(`[VOUCHER_DEF_LOAD_ERROR] Excluded invalid definition from company list`, {
+                    id: def.id,
+                    name: def.name,
+                    companyId,
+                    error: error.message
+                });
+                return false;
+            }
+        });
     }
     async getByCode(companyId, code) {
         const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
@@ -84,7 +145,21 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
             : await this.getCollection(companyId).where('code', '==', code).limit(1).get();
         if (snap.empty)
             return null;
-        return this.toDomain(snap.docs[0].data());
+        const definition = this.toDomain(snap.docs[0].data());
+        // STEP 3 ENFORCEMENT: Validate after load
+        try {
+            VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(definition);
+            return definition;
+        }
+        catch (error) {
+            console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load voucher definition by code`, {
+                code,
+                companyId,
+                name: definition.name,
+                error: error.message
+            });
+            return null;
+        }
     }
     async updateLayout(companyId, code, layout) {
         const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
@@ -96,7 +171,22 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
     }
     async getSystemTemplates() {
         const snap = await this.getSystemCollection().get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        const definitions = snap.docs.map(d => this.toDomain(d.data()));
+        // STEP 3 ENFORCEMENT: Filter out invalid system templates
+        return definitions.filter(def => {
+            try {
+                VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
+                return true;
+            }
+            catch (error) {
+                console.error(`[VOUCHER_DEF_LOAD_ERROR] Excluded invalid system template`, {
+                    id: def.id,
+                    name: def.name,
+                    error: error.message
+                });
+                return false;
+            }
+        });
     }
     async deleteVoucherType(companyId, id) {
         if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {

@@ -1,6 +1,28 @@
 /**
  * VoucherLayoutV2.ts
  * 
+ * @deprecated for persistence - VIEW MODEL ONLY
+ * 
+ * ⚠️ CRITICAL WARNING ⚠️
+ * VoucherLayoutV2 is an EPHEMERAL UI VIEW MODEL.
+ * 
+ * DO NOT:
+ * - Save to database
+ * - Send to API endpoints
+ * - Store in localStorage
+ * - Cache beyond component lifecycle
+ * - Pass to any repository methods
+ * 
+ * This type is for RENDERING ONLY.
+ * 
+ * Correct Flow:
+ * 1. Load VoucherTypeDefinition (canonical, Schema V2)
+ * 2. Generate VoucherLayoutV2 for UI rendering
+ * 3. User edits layout in UI
+ * 4. On save: Apply changes to canonical VoucherTypeDefinition
+ * 5. Save ONLY canonical VoucherTypeDefinition
+ * 6. Discard VoucherLayoutV2
+ * 
  * Voucher layout with 4-area structure:
  * 1. Header Area - Read-only metadata (status, voucher no, etc.)
  * 2. Body Area - Input fields (varies by voucher type)
@@ -150,8 +172,17 @@ export interface ActionsAreaConfig {
 
 /**
  * Complete Voucher Layout (4 Areas)
+ * 
+ * @deprecated for persistence
+ * This is a VIEW MODEL ONLY. Never persist to database.
  */
 export interface VoucherLayoutV2 {
+  /**
+   * PERSISTENCE MARKER - DO NOT REMOVE
+   * This property prevents accidental persistence
+   */
+  readonly __DO_NOT_PERSIST__?: never;
+  
   /**
    * Unique layout ID
    */

@@ -65,8 +65,12 @@ export const accountingApi = {
     return client.post('/tenant/accounting/vouchers', payload);
   },
 
-  updateVoucher: (id: string, payload: any): Promise<{success: boolean}> => {
+  updateVoucher: (id: string, payload: any): Promise<VoucherDetailDTO> => {
     return client.put(`/tenant/accounting/vouchers/${id}`, payload);
+  },
+
+  deleteVoucher: (id: string): Promise<{ success: boolean }> => {
+    return client.delete(`/tenant/accounting/vouchers/${id}`);
   },
 
   // --- WORKFLOW ACTIONS ---

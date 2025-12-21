@@ -71,6 +71,9 @@ export class CompanyModulesController {
           diContainer.systemMetadataRepository
         );
 
+        console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));
+        console.log('[InitializeAccounting] selectedVoucherTypes:', config.selectedVoucherTypes);
+
         await useCase.execute({
           companyId,
           config

@@ -40,8 +40,21 @@ export const useVouchersList = () => {
 
     try {
       const response = await accountingApi.listVouchers(currentFilters);
-      setVouchers(response.items);
-      setPagination(response.pagination);
+      
+      if (Array.isArray(response)) {
+        // Backend returned flat array (all items)
+        setVouchers(response);
+        setPagination({
+          page: 1,
+          pageSize: response.length,
+          totalItems: response.length,
+          totalPages: 1
+        });
+      } else {
+        // Backend returned paginated object
+        setVouchers(response.items || []);
+        setPagination(response.pagination || { page: 1, pageSize: 0, totalItems: 0, totalPages: 0 });
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       console.error('Failed to fetch vouchers:', err);

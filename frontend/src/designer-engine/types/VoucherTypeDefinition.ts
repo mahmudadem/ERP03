@@ -1,36 +1,48 @@
 /**
  * VoucherTypeDefinition.ts
- * Defines the schema for transactional documents (Invoices, Bills).
- * Combines a Header Form + Line Items Table + Footer Summary.
+ * 
+ * CANONICAL SCHEMA V2 (matches backend exactly)
+ * Source of Truth: backend/src/domain/designer/entities/VoucherTypeDefinition.ts
+ * 
+ * All voucher type definitions must conform to Schema Version 2:
+ * - Every field must have isPosting and postingRole
+ * - schemaVersion must be 2
  */
-import { FormDefinition } from './FormDefinition';
-import { TableDefinition } from './TableDefinition';
 import { FieldDefinition } from './FieldDefinition';
+import { PostingRole } from './PostingRole';
 
-export interface VoucherTypeDefinition {
-  id?: string;
-  companyId?: string;
-  
-  // Identity
-  name: string; // Keeping name for backward comp. Prompt suggests translations but simple name is standard for now.
-  nameTranslations?: Record<string, string>;
-  code: string;
-  abbreviation: string;
-  color: string;
-  
-  // Configuration
-  mode: 'single-line' | 'multi-line';
-  module?: 'ACCOUNTING' | 'INVENTORY' | 'POS';
-  workflow?: { approvalRequired: boolean };
-  
-  // UI Metadata
-  headerFields: FieldDefinition[];
-  tableFields: any[]; // Formerly tableColumns
-  layout: Record<string, any>;
-  customFields?: any[]; // [{ key: string, type: string, label: any }]
-  
-  // Status
-  status?: 'ACTIVE' | 'DRAFT';
+export interface TableColumn {
+  fieldId: string;
+  width?: string;
 }
 
-// Removed VoucherActions interface entirely
+/**
+ * Canonical VoucherTypeDefinition (Schema Version 2)
+ * 
+ * This is the ONLY allowed schema for voucher type definitions.
+ * Enforced at backend validation layer.
+ */
+export interface VoucherTypeDefinition {
+  // Identity (REQUIRED)
+  id: string;
+  companyId: string;
+  name: string;
+  code: string; // Must match VoucherType enum value
+  module: string; // 'ACCOUNTING', 'INVENTORY', 'POS'
+  
+  // Field Definitions (REQUIRED - Schema V2 with classifications)
+  headerFields: FieldDefinition[];
+  tableColumns: TableColumn[];
+  
+  // Layout Configuration (REQUIRED - JSON serialized)
+  layout: Record<string, any>;
+  
+  // Schema Version (REQUIRED - Must be 2)
+  schemaVersion: number;
+  
+  // Posting Validation (OPTIONAL)
+  requiredPostingRoles?: PostingRole[];
+  
+  // Workflow Metadata (OPTIONAL)
+  workflow?: any;
+}

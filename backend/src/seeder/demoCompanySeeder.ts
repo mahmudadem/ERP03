@@ -8,8 +8,6 @@ import { ICompanyModuleRepository } from '../repository/interfaces/company/IComp
 import { Company } from '../domain/core/entities/Company';
 import { User } from '../domain/core/entities/User';
 import { CompanyRole } from '../domain/rbac/CompanyRole';
-import { VoucherTypeDefinition } from '../domain/designer/entities/VoucherTypeDefinition';
-import { FieldDefinition } from '../domain/designer/entities/FieldDefinition';
 
 export interface SeedDependencies {
     companyRepository: ICompanyRepository;
