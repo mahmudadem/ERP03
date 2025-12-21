@@ -868,7 +868,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               </div>
               <div className="flex-1 overflow-auto bg-gray-50 p-6">
                  <div className="bg-white shadow-lg rounded-lg border border-gray-200 min-h-full">
-                    <GenericVoucherRenderer config={config} mode={previewMode} />
+                    <GenericVoucherRenderer definition={config as any} mode={previewMode} />
                  </div>
               </div>
            </div>

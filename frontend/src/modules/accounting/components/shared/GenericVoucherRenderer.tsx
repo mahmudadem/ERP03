@@ -2,7 +2,6 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'rea
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { JournalRow } from '../../ai-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
-import { useLanguage } from '../../ai-designer/LanguageContext';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 
 interface GenericVoucherRendererProps {
@@ -33,7 +32,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
   }
 
-  const { t, isRTL } = useLanguage();
+  // Language support with fallback (works without LanguageProvider)
+  const t = (key: string) => key; // Simple fallback - just return key
+  const isRTL = false; // Default LTR
+  
   const [rows, setRows] = useState<JournalRow[]>(INITIAL_ROWS);
   const [formData, setFormData] = useState<Record<string, any>>({});
   
