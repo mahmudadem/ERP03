@@ -7,7 +7,6 @@
 
 export { VoucherDesigner } from './components/VoucherDesigner';
 export { VoucherTypeManager } from './components/VoucherTypeManager';
-export { GenericVoucherRenderer } from './components/GenericVoucherRenderer';
 export { WizardProvider, useWizard } from './WizardContext';
 
 // Services for database integration
