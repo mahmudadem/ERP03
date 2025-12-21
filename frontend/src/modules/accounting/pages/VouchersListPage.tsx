@@ -23,7 +23,8 @@ const VouchersListPage: React.FC = () => {
   const { 
     vouchers, 
     filters, 
-    setFilters, 
+    setFilters,
+    refresh, 
     pagination, 
     isLoading, 
     error 
@@ -118,7 +119,7 @@ const VouchersListPage: React.FC = () => {
     try {
       await saveVoucherInternal(data);
       console.log('✅ Voucher saved successfully!');
-      setFilters({...filters}); 
+      refresh(); // Force refresh the voucher list 
     } catch (error) {
       console.error('❌ Failed to save voucher:', error);
       alert('Failed to save voucher. Please check console for details.');
