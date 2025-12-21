@@ -32,7 +32,7 @@ import {
   VoucherTypeConfig, FieldLayout, UIMode, AvailableField, 
   VoucherRule, VoucherAction, SectionLayout, SectionType
 } from '../types';
-import { GenericVoucherRenderer } from './GenericVoucherRenderer';
+import { GenericVoucherRenderer } from '../../components/shared/GenericVoucherRenderer';
 
 // --- MOCK DATA (UI ONLY) ---
 

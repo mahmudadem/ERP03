@@ -27,9 +27,9 @@ export interface GenericVoucherRendererRef {
   getData: () => any;
 }
 
-export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows' }, ref) => {
-  // GUARD: Validate canonical
-  if (definition.schemaVersion !== 2) {
+export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData }, ref) => {
+  // GUARD: Validate canonical (only if schemaVersion is present)
+  if (definition.schemaVersion && definition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
   }
 
