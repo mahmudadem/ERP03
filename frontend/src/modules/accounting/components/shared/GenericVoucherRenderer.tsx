@@ -51,11 +51,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   
   // Expose getData method to parent via ref
   useImperativeHandle(ref, () => ({
-    getData: () => ({
-      ...formData,
-      lines: rows.filter(row => row.account && (row.debit > 0 || row.credit > 0)),
-      type: definition.code
-    })
+    getData: () => {
+      // Map designer codes to backend types
+      const typeMap: Record<string, string> = {
+        'JOURNAL': 'journal_entry',
+        'PAYMENT': 'payment',
+        'RECEIPT': 'receipt',
+        'OPENING_BALANCE': 'opening_balance'
+      };
+      
+      const backendType = typeMap[definition.code?.toUpperCase()] || definition.code?.toLowerCase() || 'journal_entry';
+      
+      return {
+        ...formData,
+        lines: rows.filter(row => row.account && (row.debit > 0 || row.credit > 0)),
+        type: backendType
+      };
+    }
   }));
   
   const handleInputChange = (fieldId: string, value: any) => {
