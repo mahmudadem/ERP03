@@ -55,8 +55,8 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     setError(null);
 
     try {
-      // Fetch valid accounts for voucher entry
-      const response = await fetch('/api/v1/tenant/accounting/accounts/valid', {
+      // Fetch all accounts (using existing endpoint)
+      const response = await fetch('/api/v1/tenant/accounting/accounts', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
           'Content-Type': 'application/json'
@@ -70,22 +70,13 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
       const data = await response.json();
       
       if (data.success && Array.isArray(data.data)) {
-        setValidAccounts(data.data);
+        setAccounts(data.data);
         
-        // Also fetch all accounts for reference
-        const allResponse = await fetch('/api/v1/tenant/accounting/accounts', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (allResponse.ok) {
-          const allData = await allResponse.json();
-          if (allData.success && Array.isArray(allData.data)) {
-            setAccounts(allData.data);
-          }
-        }
+        // Filter valid accounts client-side (leaf accounts = no children, active)
+        // For now, consider all active accounts as valid
+        // Later: backend will provide pre-filtered list
+        const valid = data.data.filter((acc: Account) => acc.isActive !== false);
+        setValidAccounts(valid);
         
         setLastFetch(Date.now());
       }
