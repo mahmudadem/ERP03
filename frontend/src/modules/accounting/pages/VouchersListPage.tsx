@@ -149,6 +149,9 @@ const VouchersListPage: React.FC = () => {
       const summary = vouchers.find(v => v.id === id);
       if (!summary) return;
 
+      console.log('🔍 Editing voucher:', summary);
+      console.log('📋 Available forms:', voucherTypes.map(t => ({ id: t.id, code: t.code, name: t.name })));
+
       // Try to find form by formId (if saved), otherwise fallback to matching by base type
       let formDefinition = summary.formId 
         ? voucherTypes.find(t => t.id === summary.formId)
@@ -161,8 +164,12 @@ const VouchersListPage: React.FC = () => {
               'opening_balance': 'OPENING_BALANCE'
             };
             const expectedCode = typeMap[summary.type];
+            console.log(`🔎 Looking for form with code='${expectedCode}' or id='${expectedCode}' for type='${summary.type}'`);
+            console.log(`   Checking form:`, { id: t.id, code: t.code });
             return t.code === expectedCode || t.id === expectedCode;
           });
+      
+      console.log('✅ Found form:', formDefinition);
       
       if (!formDefinition) {
         console.warn('Form definition not found for:', summary);
