@@ -13,6 +13,7 @@ import { useWindowManager } from '../../../context/WindowManagerContext';
 import { WindowsDesktop } from '../components/WindowsDesktop';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { accountingApi } from '../../../api/accountingApi';
+import { AccountsProvider } from '../../../context/AccountsContext';
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -279,10 +280,12 @@ const VouchersListPage: React.FC = () => {
 
       {/* Render the Windows Desktop if in Windows Mode */}
       {isWindowsMode && (
-        <WindowsDesktop 
-          onSaveVoucher={handleSaveVoucher} 
-          onSubmitVoucher={handleSubmitVoucher}
-        />
+        <AccountsProvider>
+          <WindowsDesktop 
+            onSaveVoucher={handleSaveVoucher} 
+            onSubmitVoucher={handleSubmitVoucher}
+          />
+        </AccountsProvider>
       )}
     </div>
   );

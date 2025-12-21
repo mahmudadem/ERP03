@@ -3,6 +3,8 @@ import { VoucherTypeDefinition } from '../../../../designer-engine/types/Voucher
 import { JournalRow } from '../../ai-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
+import { AccountSelector } from './AccountSelector';
+import { Account } from '../../../../context/AccountsContext';
 
 interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
@@ -211,15 +213,24 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                 <td className="p-1.5 text-center text-gray-400 text-[10px]">{index + 1}</td>
                                 {columns.map(col => (
                                     <td key={col} className="p-1.5">
-                                        <input 
-                                            // @ts-ignore
-                                            value={row[col] || ''}
-                                            // @ts-ignore
-                                            onChange={(e) => handleRowChange(row.id, col, e.target.value)}
-                                            className={`w-full p-1 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none ${['debit', 'credit'].includes(col) ? 'text-end' : ''}`}
-                                            placeholder={col === 'account' ? 'Account ID (e.g., 101)' : ['debit', 'credit'].includes(col) ? '---' : ''}
-                                            type={['debit', 'credit'].includes(col) ? 'number' : 'text'}
-                                        />
+                                        {col === 'account' ? (
+                                            <AccountSelector
+                                                value={row.account}
+                                                onChange={(acc: Account | null) => handleRowChange(row.id, 'account', acc?.code || '')}
+                                                placeholder="Select account"
+                                                className="w-full"
+                                            />
+                                        ) : (
+                                            <input 
+                                                // @ts-ignore
+                                                value={row[col] || ''}
+                                                // @ts-ignore
+                                                onChange={(e) => handleRowChange(row.id, col, e.target.value)}
+                                                className={`w-full p-1 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none ${['debit', 'credit'].includes(col) ? 'text-end' : ''}`}
+                                                placeholder={['debit', 'credit'].includes(col) ? '---' : ''}
+                                                type={['debit', 'credit'].includes(col) ? 'number' : 'text'}
+                                            />
+                                        )}
                                     </td>
                                 ))}
                                 <td className="p-1.5 text-center">
