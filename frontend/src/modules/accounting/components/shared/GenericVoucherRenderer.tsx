@@ -87,6 +87,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       const backendType = typeMap[definition.code?.toUpperCase()] || definition.code?.toLowerCase() || 'journal_entry';
       
+      console.log('📊 getData() - Raw rows:', rows);
+      
       // Map rows to backend VoucherLine format
       const backendLines = rows
         .filter(row => row.account && (row.debit > 0 || row.credit > 0))
@@ -100,6 +102,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           lineCurrency: row.currency || 'USD',
           exchangeRate: row.parity || 1
         }));
+      
+      console.log('📤 getData() - Filtered backend lines:', backendLines);
       
       return {
         ...formData,
