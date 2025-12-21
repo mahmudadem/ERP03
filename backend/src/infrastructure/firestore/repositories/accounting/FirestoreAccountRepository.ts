@@ -27,16 +27,21 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
 
   async create(companyId: string, data: NewAccountInput): Promise<Account> {
     try {
-      const accountId = data.id || this.db.collection('tmp').doc().id;
+      // Use account CODE as the document ID (industry standard for accounting)
+      const accountId = data.code; // Code IS the document ID
+      // Generate UUID for system tracing/logging
+      const uuid = this.db.collection('tmp').doc().id;
+      
       const account = new Account(
         companyId,
-        accountId,
+        accountId,  // id = code
         data.code,
         data.name,
         data.type as AccountType,
         data.currency || '',
         (data as any).isProtected ?? false,
         (data as any).isActive ?? true,
+        uuid,       // System UUID for tracing
         data.parentId || undefined,
         new Date(),
         new Date()

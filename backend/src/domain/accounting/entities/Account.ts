@@ -8,13 +8,14 @@ export class Account {
 
   constructor(
     public companyId: string,
-    public id: string,
-    public code: string,
+    public id: string,          // id = code (for business operations)
+    public code: string,        // Account code (same as id)
     public name: string,
     public type: AccountType,
     public currency: string,
     public isProtected: boolean, // System accounts that cannot be deleted
     public active: boolean,
+    public uuid?: string,        // System UUID for error tracing/logs
     public parentId?: string | null,
     public createdAt?: Date,
     public updatedAt?: Date
