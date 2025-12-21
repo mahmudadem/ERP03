@@ -72,6 +72,7 @@ const VouchersListPage: React.FC = () => {
       // Header Mappings
       voucherNo: data.voucherNumber || data.voucherNo,
       description: data.description || data.notes, 
+      formId: data.formId, // Preserve form ID for re-rendering on edit
       
       // Line Items Mapping
       lines: (data.lines || []).map((line: any) => ({
