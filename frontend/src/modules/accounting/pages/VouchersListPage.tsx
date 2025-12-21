@@ -156,17 +156,36 @@ const VouchersListPage: React.FC = () => {
       let formDefinition = summary.formId 
         ? voucherTypes.find(t => t.id === summary.formId)
         : voucherTypes.find(t => {
-            // Fallback: find first form that matches the base type
-            const typeMap: Record<string, string> = {
-              'journal_entry': 'JOURNAL',
-              'payment': 'PAYMENT',
-              'receipt': 'RECEIPT',
-              'opening_balance': 'OPENING_BALANCE'
+            // Fallback: find first form that matches the voucher type
+            // Check if form's id or name contains the type
+            const typeKeywords: Record<string, string[]> = {
+              'journal_entry': ['journal', 'journal_entry'],
+              'payment': ['payment'],
+              'receipt': ['receipt'],
+              'opening_balance': ['opening', 'balance']
             };
-            const expectedCode = typeMap[summary.type];
-            console.log(`🔎 Looking for form with code='${expectedCode}' or id='${expectedCode}' for type='${summary.type}'`);
-            console.log(`   Checking form:`, { id: t.id, code: t.code });
-            return t.code === expectedCode || t.id === expectedCode;
+            
+            const keywords = typeKeywords[summary.type] || [];
+            const formIdLower = (t.id || '').toLowerCase();
+            const formNameLower = (t.name || '').toLowerCase();
+            const formCodeLower = (t.code || '').toLowerCase();
+            
+            console.log(`🔎 Checking form:`, { 
+              id: t.id, 
+              name: t.name, 
+              code: t.code,
+              matches: keywords.some(kw => 
+                formIdLower.includes(kw) || 
+                formNameLower.includes(kw) ||
+                formCodeLower.includes(kw)
+              )
+            });
+            
+            return keywords.some(kw => 
+              formIdLower.includes(kw) || 
+              formNameLower.includes(kw) ||
+              formCodeLower.includes(kw)
+            );
           });
       
       console.log('✅ Found form:', formDefinition);
