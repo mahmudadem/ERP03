@@ -21,6 +21,12 @@ export interface VoucherFormResponse {
   headerFields: any[];
   tableColumns: any[];
   layout?: any;
+  uiModeOverrides?: any; // Layout data for different UI modes
+  rules?: any[]; // Validation rules
+  actions?: any[]; // Action buttons configuration
+  isMultiLine?: boolean;
+  defaultCurrency?: string;
+  baseType?: string; // Base voucher type for backend
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
