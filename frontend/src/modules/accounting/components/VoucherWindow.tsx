@@ -245,52 +245,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
         />
       </div>
 
-      {/* Window Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
-            onClick={() => closeWindow(win.id)}
-          >
-            Cancel
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save as Draft
-              </>
-            )}
-          </button>
-          
-          {win.data?.status !== 'approved' && (
-            <button
-            onClick={handleSubmit}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            disabled={isSaving}
-          >
-             {isSaving ? (
-               <Loader2 className="w-4 h-4 animate-spin" />
-             ) : (
-               <Send className="w-4 h-4" />
-             )}
-            Submit for Approval
-          </button>
-          )}
-        </div>
-      </div>
-
       {/* Resize Handles - Only when not maximized */}
       {!win.isMaximized && (
         <>
