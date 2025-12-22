@@ -495,8 +495,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const configDef = definition as any;
     const actions = configDef.actions || [];
     
+    // Filter enabled actions
+    const enabledActions = actions.filter((a: any) => a.enabled !== false);
+    
     // If no custom actions defined, render default buttons
-    if (!actions.length) {
+    if (!enabledActions.length) {
       return (
         <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
           <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
@@ -511,19 +514,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       );
     }
     
+    // Determine grid columns based on number of actions
+    const gridCols = enabledActions.length > 4 ? 3 : 2;
+    
     // Render custom actions from config
     return (
-      <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
-        {actions.filter((a: any) => a.enabled !== false).map((action: any, index: number) => (
+      <div className={`bg-gray-50 border-t p-2 grid grid-cols-${gridCols} gap-2`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+        {enabledActions.map((action: any, index: number) => (
           <button 
-            key={action.id || index}
+            key={action.type || action.id || index}
             className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors ${
               action.primary 
                 ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            {action.label || action.id}
+            {action.label || action.type || action.id}
           </button>
         ))}
       </div>

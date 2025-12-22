@@ -608,7 +608,36 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
              </div>
              
              <div className="flex-1 overflow-y-auto pr-2 pb-10">
-                {sortedSections.map(([key, _]) => renderInteractiveGrid(key))}
+                {sortedSections.map(([key, _]) => {
+                  // Special rendering for ACTIONS section - show all enabled actions from config
+                  if (key === 'ACTIONS') {
+                    const enabledActions = config.actions.filter(a => a.enabled !== false);
+                    return (
+                      <div key={key} className="mb-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <GripVertical size={14} className="text-gray-400" />
+                            <span className="text-xs font-bold text-gray-500 uppercase">ACTIONS SECTION</span>
+                          </div>
+                        </div>
+                        <div className="p-4 grid grid-cols-3 gap-2">
+                          {enabledActions.map((action, index) => (
+                            <div
+                              key={action.type || index}
+                              className="rounded border p-2 flex flex-col justify-center text-xs bg-indigo-50 border-indigo-200 text-indigo-700 font-bold items-center"
+                            >
+                              <span className="truncate w-full text-center pointer-events-none">
+                                {action.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Regular grid rendering for other sections
+                  return renderInteractiveGrid(key);
+                })}
              </div>
          </div>
 
