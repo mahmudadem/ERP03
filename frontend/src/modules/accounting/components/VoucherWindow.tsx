@@ -175,14 +175,23 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
       };
 
   return (
-    <div
-      ref={windowRef}
-      style={style}
-      className={`flex flex-col bg-white rounded-lg shadow-xl overflow-hidden border ${
-        win.isFocused ? 'border-gray-300' : 'border-gray-200'
-      }`}
-      onMouseDown={() => focusWindow(win.id)}
-    >
+    <>
+      {/* Invisible overlay during drag/resize to prevent events leaking to background */}
+      {(isDragging || isResizing) && (
+        <div 
+          className="fixed inset-0 z-[9999]"
+          style={{ cursor: isDragging ? 'move' : 'se-resize' }}
+        />
+      )}
+      
+      <div
+        ref={windowRef}
+        style={style}
+        className={`flex flex-col bg-white rounded-lg shadow-xl overflow-hidden border ${
+          win.isFocused ? 'border-gray-300' : 'border-gray-200'
+        }`}
+        onMouseDown={() => focusWindow(win.id)}
+      >
       {/* Window Header */}
       <div
         className="window-header flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-move select-none"
@@ -305,5 +314,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
         </>
       )}
     </div>
+    </>
   );
 };
