@@ -68,7 +68,8 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
       setRate(fetchedRate);
       onChange?.({ currency: selectedCurrency, exchangeRate: fetchedRate });
     }
-  }, [selectedCurrency, baseCurrency, onChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCurrency, baseCurrency]); // Removed onChange to prevent infinite loop
 
   const handleCurrencyChange = (newCurrency: string) => {
     setSelectedCurrency(newCurrency);
