@@ -482,21 +482,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     );
   };
 
-  return (
-    <div className="flex flex-col h-full bg-white font-sans text-slate-800 overflow-y-auto">
-        {/* Header Fields from Canonical */}
-        {renderHeaderFields()}
-        
-        {/* Body Section (if defined) */}
-        {renderSection('BODY')}
-        
-        {/* Line Items Table (if multi-line) */}
-        {renderLineItems()}
-        
-        {/* Extra Section (if defined) */}
-        {renderSection('EXTRA', 'Additional Information')}
+  // Check if BODY section has lineItems to avoid rendering twice
+  const bodyHasLineItems = () => {
+    const configDef = definition as any;
+    if (!configDef.uiModeOverrides || !configDef.uiModeOverrides[mode]) return false;
+    const bodySection = configDef.uiModeOverrides[mode]?.sections?.BODY;
+    return bodySection?.fields?.some((f: any) => f.fieldId === 'lineItems');
+  };
 
-        {/* Action Buttons */}
+  // Render action buttons from config
+  const renderActions = () => {
+    const configDef = definition as any;
+    const actions = configDef.actions || [];
+    
+    // If no custom actions defined, render default buttons
+    if (!actions.length) {
+      return (
         <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
           <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
             <Save size={14} />
@@ -507,6 +508,44 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             Print
           </button>
         </div>
+      );
+    }
+    
+    // Render custom actions from config
+    return (
+      <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
+        {actions.filter((a: any) => a.enabled !== false).map((action: any, index: number) => (
+          <button 
+            key={action.id || index}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors ${
+              action.primary 
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {action.label || action.id}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white font-sans text-slate-800 overflow-y-auto">
+        {/* Header Fields from Canonical */}
+        {renderHeaderFields()}
+        
+        {/* Body Section (if defined) - may include lineItems */}
+        {renderSection('BODY')}
+        
+        {/* Line Items Table (if multi-line and not already in BODY) */}
+        {!bodyHasLineItems() && renderLineItems()}
+        
+        {/* Extra Section (if defined) */}
+        {renderSection('EXTRA', 'Additional Information')}
+
+        {/* Action Buttons - from config or default */}
+        {renderActions()}
     </div>
   );
 }));
