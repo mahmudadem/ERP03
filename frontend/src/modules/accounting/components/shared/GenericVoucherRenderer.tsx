@@ -81,7 +81,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // Merge: initialData takes precedence over defaults
     const mergedData = { ...defaults, ...processedInitialData };
-    console.log('🔧 GenericVoucherRenderer formData:', mergedData);
     setFormData(mergedData);
     
     // If initialData has lines, populate rows
@@ -107,14 +106,41 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // Map designer codes to backend types
       const typeMap: Record<string, string> = {
         'JOURNAL': 'journal_entry',
+        'JOURNAL_ENTRY': 'journal_entry',
         'PAYMENT': 'payment',
         'RECEIPT': 'receipt',
-        'OPENING_BALANCE': 'opening_balance'
+        'OPENING_BALANCE': 'opening_balance',
+        'OPENING': 'opening_balance'
       };
       
-      const backendType = typeMap[definition.code?.toUpperCase()] || definition.code?.toLowerCase() || 'journal_entry';
+      // Try to resolve backend type from multiple sources
+      const defAny = definition as any;
+      let backendType = 'journal_entry'; // Default fallback
       
-      console.log('📊 getData() - Raw rows:', rows);
+      // 1. Check explicit _typeId (from custom forms)
+      if (defAny._typeId && typeMap[defAny._typeId.toUpperCase()]) {
+        backendType = typeMap[defAny._typeId.toUpperCase()];
+      }
+      // 2. Check code directly
+      else if (definition.code && typeMap[definition.code.toUpperCase()]) {
+        backendType = typeMap[definition.code.toUpperCase()];
+      }
+      // 3. Try to infer from name (for cloned forms like "Journal Entry - Copy")
+      else if (definition.name) {
+        const nameLower = definition.name.toLowerCase();
+        if (nameLower.includes('journal')) backendType = 'journal_entry';
+        else if (nameLower.includes('payment')) backendType = 'payment';
+        else if (nameLower.includes('receipt')) backendType = 'receipt';
+        else if (nameLower.includes('opening')) backendType = 'opening_balance';
+      }
+      // 4. Check if code contains a base type pattern
+      else if (definition.code) {
+        const codeLower = definition.code.toLowerCase();
+        if (codeLower.includes('journal')) backendType = 'journal_entry';
+        else if (codeLower.includes('payment')) backendType = 'payment';
+        else if (codeLower.includes('receipt')) backendType = 'receipt';
+        else if (codeLower.includes('opening')) backendType = 'opening_balance';
+      }
       
       // Map rows to backend VoucherLine format
       const backendLines = rows
@@ -130,12 +156,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           exchangeRate: row.parity || 1
         }));
       
-      console.log('📤 getData() - Filtered backend lines:', backendLines);
-      
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
-      
-      console.log('📤 getData() - formId:', resultFormId, 'prefix:', resultPrefix, 'definition:', { id: definition.id, code: definition.code, prefix: (definition as any).prefix });
       
       return {
         ...formData,
