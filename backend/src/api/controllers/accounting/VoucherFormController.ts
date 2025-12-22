@@ -41,7 +41,13 @@ export class VoucherFormController {
       const form = await diContainer.voucherFormRepository.getById(companyId, id);
       
       if (!form) {
-        return res.status(404).json({ success: false, error: 'Form not found' });
+        const { BusinessError } = await import('../../../errors/AppError');
+        const { ErrorCode } = await import('../../../errors/ErrorCodes');
+        throw new BusinessError(
+          ErrorCode.VOUCH_NOT_FOUND,
+          `Form not found: ${id}`,
+          { formId: id }
+        );
       }
       
       res.json({ success: true, data: form });

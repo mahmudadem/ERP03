@@ -5,7 +5,7 @@
 import express from 'express';
 import cors from 'cors';
 import router from './router';
-import { errorHandler } from '../errors/errorHandler';
+import { errorHandler } from '../../errors/errorHandler';
 import { impersonationMiddleware } from '../middlewares/impersonationMiddleware';
 
 const app = express();
