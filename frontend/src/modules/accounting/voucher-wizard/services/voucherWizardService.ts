@@ -138,6 +138,33 @@ export async function saveVoucher(
     }
     
     // ALSO save to voucherForms (new, for sidebar and rendering)
+    // Extract headerFields from wizard layout (convert uiModeOverrides to flat fields)
+    const extractHeaderFields = () => {
+      const windowsLayout = config.uiModeOverrides?.windows?.sections?.HEADER?.fields || [];
+      const classicLayout = config.uiModeOverrides?.classic?.sections?.HEADER?.fields || [];
+      // Prefer windows layout, fallback to classic
+      const fields = windowsLayout.length > 0 ? windowsLayout : classicLayout;
+      return fields.map((f: any) => ({
+        id: f.fieldId,
+        label: f.labelOverride || f.fieldId,
+        type: 'text', // Default type, can be enhanced later
+        order: f.row || 0
+      }));
+    };
+
+    // Extract tableColumns from wizard config
+    const extractTableColumns = () => {
+      if (config.tableColumns && Array.isArray(config.tableColumns)) {
+        return config.tableColumns.map((col: any) => ({
+          id: typeof col === 'string' ? col : col.fieldId || col.id,
+          label: typeof col === 'string' ? col : col.label || col.fieldId,
+          type: 'text',
+          order: 0
+        }));
+      }
+      return [];
+    };
+
     const formData = {
       id: config.id,
       companyId,
@@ -149,8 +176,8 @@ export async function saveVoucher(
       isSystemGenerated: false,
       isLocked: false,
       enabled: config.enabled !== false,
-      headerFields: (canonical as any).headerFields || [],
-      tableColumns: (canonical as any).tableColumns || [],
+      headerFields: extractHeaderFields(),
+      tableColumns: extractTableColumns(),
       layout: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
