@@ -107,12 +107,17 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       console.log('📤 getData() - Filtered backend lines:', backendLines);
       
+      const resultFormId = definition.id;
+      const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
+      
+      console.log('📤 getData() - formId:', resultFormId, 'prefix:', resultPrefix, 'definition:', { id: definition.id, code: definition.code, prefix: (definition as any).prefix });
+      
       return {
         ...formData,
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
-        formId: definition.id, // Which form was used for rendering
-        prefix: (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V' // Voucher number prefix
+        formId: resultFormId, // Which form was used for rendering
+        prefix: resultPrefix // Voucher number prefix
       };
     }
   }));

@@ -80,6 +80,12 @@ const VouchersListPage: React.FC = () => {
   
   // Helper to save data first
   const saveVoucherInternal = async (data: any) => {
+    console.log('💾 saveVoucherInternal - incoming data:', { 
+      formId: data.formId, 
+      prefix: data.prefix, 
+      type: data.type 
+    });
+    
     // 1. Transform UI Data -> API Payload
     const payload = {
       ...data,

@@ -119,6 +119,9 @@ export class CreateVoucherUseCase {
       voucher.createdAt = new Date().toISOString();
       voucher.updatedAt = new Date().toISOString();
       voucher.description = payload.description ?? null;
+      // Form metadata
+      voucher.formId = payload.formId || null;
+      voucher.prefix = payload.prefix || null;
 
       assertBalanced(voucher);
       

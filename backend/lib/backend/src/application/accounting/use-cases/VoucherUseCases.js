@@ -91,6 +91,9 @@ class CreateVoucherUseCase {
             voucher.createdAt = new Date().toISOString();
             voucher.updatedAt = new Date().toISOString();
             voucher.description = (_b = payload.description) !== null && _b !== void 0 ? _b : null;
+            // Form metadata
+            voucher.formId = payload.formId || null;
+            voucher.prefix = payload.prefix || null;
             assertBalanced(voucher);
             // Pass transaction to createVoucher
             await this.voucherRepo.createVoucher(voucher, transaction);
