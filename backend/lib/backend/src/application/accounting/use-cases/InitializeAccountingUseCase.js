@@ -99,6 +99,7 @@ class InitializeAccountingUseCase {
         }
         const batch = db.batch();
         let count = 0;
+        const copiedTypes = [];
         snapshot.forEach(doc => {
             // Only copy if this voucher type was selected
             if (!selectedVoucherTypeIds.includes(doc.id)) {
@@ -114,10 +115,57 @@ class InitializeAccountingUseCase {
             // Add company-specific metadata
             const companyVoucher = Object.assign(Object.assign({}, voucherType), { companyId, isSystemDefault: true, isLocked: true, enabled: true, inUse: false, createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() });
             batch.set(companyVoucherRef, companyVoucher);
+            copiedTypes.push({ id: doc.id, data: companyVoucher });
             count++;
         });
         await batch.commit();
         console.log(`[InitializeAccountingUseCase] Copied ${count} default voucher types to company ${companyId}`);
+        // Now create default forms for each copied type
+        await this.createDefaultFormsForTypes(companyId, copiedTypes);
+    }
+    /**
+     * Create default VoucherForms for each VoucherType
+     * Each type gets one default form that matches its layout
+     */
+    async createDefaultFormsForTypes(companyId, types) {
+        var _a, _b, _c;
+        const db = admin.firestore();
+        const batch = db.batch();
+        for (const type of types) {
+            const formId = `default_${type.id}`;
+            const formRef = db
+                .collection('companies')
+                .doc(companyId)
+                .collection('voucherForms')
+                .doc(formId);
+            // Extract UI layout from the type definition
+            const form = {
+                id: formId,
+                companyId,
+                typeId: type.id,
+                name: `${type.data.name || type.id} - Default`,
+                code: type.data.code || type.id,
+                description: `Default form for ${type.data.name || type.id}`,
+                prefix: type.data.prefix || ((_a = type.data.code) === null || _a === void 0 ? void 0 : _a.slice(0, 3).toUpperCase()) || 'V',
+                isDefault: true,
+                isSystemGenerated: true,
+                isLocked: true,
+                enabled: true,
+                // Copy layout from type definition
+                headerFields: type.data.headerFields || ((_b = type.data.fields) === null || _b === void 0 ? void 0 : _b.filter((f) => f.section === 'header')) || [],
+                tableColumns: type.data.tableColumns || ((_c = type.data.fields) === null || _c === void 0 ? void 0 : _c.filter((f) => f.section === 'table')) || [],
+                layout: type.data.layout || {
+                    theme: 'default',
+                    showTotals: true
+                },
+                createdAt: firestore_1.FieldValue.serverTimestamp(),
+                updatedAt: firestore_1.FieldValue.serverTimestamp(),
+                createdBy: 'system'
+            };
+            batch.set(formRef, form);
+        }
+        await batch.commit();
+        console.log(`[InitializeAccountingUseCase] Created ${types.length} default forms in voucherForms collection`);
     }
 }
 exports.InitializeAccountingUseCase = InitializeAccountingUseCase;

@@ -111,6 +111,7 @@ export class InitializeAccountingUseCase {
 
     const batch = db.batch();
     let count = 0;
+    const copiedTypes: { id: string; data: any }[] = [];
 
     snapshot.forEach(doc => {
       // Only copy if this voucher type was selected
@@ -140,10 +141,67 @@ export class InitializeAccountingUseCase {
       };
       
       batch.set(companyVoucherRef, companyVoucher);
+      copiedTypes.push({ id: doc.id, data: companyVoucher });
       count++;
     });
 
     await batch.commit();
     console.log(`[InitializeAccountingUseCase] Copied ${count} default voucher types to company ${companyId}`);
+
+    // Now create default forms for each copied type
+    await this.createDefaultFormsForTypes(companyId, copiedTypes);
+  }
+
+  /**
+   * Create default VoucherForms for each VoucherType
+   * Each type gets one default form that matches its layout
+   */
+  private async createDefaultFormsForTypes(
+    companyId: string,
+    types: { id: string; data: any }[]
+  ): Promise<void> {
+    const db = admin.firestore();
+    const batch = db.batch();
+
+    for (const type of types) {
+      const formId = `default_${type.id}`;
+      
+      const formRef = db
+        .collection('companies')
+        .doc(companyId)
+        .collection('voucherForms')
+        .doc(formId);
+
+      // Extract UI layout from the type definition
+      const form = {
+        id: formId,
+        companyId,
+        typeId: type.id,
+        name: `${type.data.name || type.id} - Default`,
+        code: type.data.code || type.id,
+        description: `Default form for ${type.data.name || type.id}`,
+        prefix: type.data.prefix || type.data.code?.slice(0, 3).toUpperCase() || 'V',
+        isDefault: true,
+        isSystemGenerated: true,
+        isLocked: true, // System-generated forms are locked
+        enabled: true,
+        // Copy layout from type definition
+        headerFields: type.data.headerFields || type.data.fields?.filter((f: any) => f.section === 'header') || [],
+        tableColumns: type.data.tableColumns || type.data.fields?.filter((f: any) => f.section === 'table') || [],
+        layout: type.data.layout || {
+          theme: 'default',
+          showTotals: true
+        },
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        createdBy: 'system'
+      };
+
+      batch.set(formRef, form);
+    }
+
+    await batch.commit();
+    console.log(`[InitializeAccountingUseCase] Created ${types.length} default forms in voucherForms collection`);
   }
 }
+
