@@ -16,4 +16,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./IFormDefinitionRepository"), exports);
 __exportStar(require("./IVoucherTypeDefinitionRepository"), exports);
+__exportStar(require("./IVoucherFormRepository"), exports);
 //# sourceMappingURL=index.js.map

@@ -20,6 +20,7 @@ const FirestoreInventoryRepositories_1 = require("../firestore/repositories/inve
 const FirestoreHRRepositories_1 = require("../firestore/repositories/hr/FirestoreHRRepositories");
 const FirestorePOSRepositories_1 = require("../firestore/repositories/pos/FirestorePOSRepositories");
 const FirestoreDesignerRepositories_1 = require("../firestore/repositories/designer/FirestoreDesignerRepositories");
+const FirestoreVoucherFormRepository_1 = require("../firestore/repositories/designer/FirestoreVoucherFormRepository");
 const FirestorePermissionRepository_1 = require("../firestore/repositories/rbac/FirestorePermissionRepository");
 const FirestoreSystemRoleTemplateRepository_1 = require("../firestore/repositories/rbac/FirestoreSystemRoleTemplateRepository");
 const FirestoreCompanyRoleRepository_1 = require("../firestore/repositories/rbac/FirestoreCompanyRoleRepository");
@@ -94,6 +95,7 @@ exports.diContainer = {
     // DESIGNER
     get formDefinitionRepository() { return new FirestoreDesignerRepositories_1.FirestoreFormDefinitionRepository(getDb()); },
     get voucherTypeDefinitionRepository() { return new FirestoreDesignerRepositories_1.FirestoreVoucherTypeDefinitionRepository(getDb()); },
+    get voucherFormRepository() { return new FirestoreVoucherFormRepository_1.FirestoreVoucherFormRepository(getDb()); },
     // RBAC
     get rbacPermissionRepository() { return new FirestorePermissionRepository_1.FirestorePermissionRepository(getDb()); },
     get systemRoleTemplateRepository() { return new FirestoreSystemRoleTemplateRepository_1.FirestoreSystemRoleTemplateRepository(getDb()); },

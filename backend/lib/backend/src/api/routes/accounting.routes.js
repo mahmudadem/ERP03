@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const AccountController_1 = require("../controllers/accounting/AccountController");
 const VoucherController_1 = require("../controllers/accounting/VoucherController");
+const VoucherFormController_1 = require("../controllers/accounting/VoucherFormController");
 const ReportingController_1 = require("../controllers/accounting/ReportingController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
@@ -40,5 +41,13 @@ router.get('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuar
 router.post('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), AccountingDesignerController_1.AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.saveVoucherTypeLayout);
+// VoucherForms (UI layouts)
+router.get('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.list);
+router.get('/voucher-forms/by-type/:typeId', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.getByType);
+router.get('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.getById);
+router.post('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), VoucherFormController_1.VoucherFormController.create);
+router.put('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), VoucherFormController_1.VoucherFormController.update);
+router.delete('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), VoucherFormController_1.VoucherFormController.delete);
+router.post('/voucher-forms/:id/clone', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), VoucherFormController_1.VoucherFormController.clone);
 exports.default = router;
 //# sourceMappingURL=accounting.routes.js.map

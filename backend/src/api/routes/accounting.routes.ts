@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { AccountController } from '../controllers/accounting/AccountController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
+import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { authMiddleware } from '../middlewares/authMiddleware';
@@ -48,5 +49,14 @@ router.get('/designer/voucher-types/:code', permissionGuard('accounting.designer
 router.post('/designer/voucher-types', permissionGuard('accounting.designer.create'), AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', permissionGuard('accounting.designer.modify'), AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
+
+// VoucherForms (UI layouts)
+router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);
+router.get('/voucher-forms/by-type/:typeId', permissionGuard('accounting.designer.view'), VoucherFormController.getByType);
+router.get('/voucher-forms/:id', permissionGuard('accounting.designer.view'), VoucherFormController.getById);
+router.post('/voucher-forms', permissionGuard('accounting.designer.create'), VoucherFormController.create);
+router.put('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.update);
+router.delete('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.delete);
+router.post('/voucher-forms/:id/clone', permissionGuard('accounting.designer.create'), VoucherFormController.clone);
 
 export default router;
