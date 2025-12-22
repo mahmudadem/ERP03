@@ -90,6 +90,117 @@ function removeUndefined(obj: any): any {
 }
 
 /**
+ * Ensure uiModeOverrides is populated for all modes
+ * Auto-generates layout if missing
+ */
+function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
+  // If uiModeOverrides already exists and has content, return as-is
+  if (config.uiModeOverrides && 
+      config.uiModeOverrides.windows?.sections?.ACTIONS?.fields?.length > 0) {
+    return config;
+  }
+
+  console.log('[ensureUIModeOverrides] Generating missing uiModeOverrides');
+
+  const AVAILABLE_FIELDS = [
+    { id: 'voucherNo', sectionHint: 'HEADER' },
+    { id: 'status', sectionHint: 'HEADER' },
+    { id: 'createdBy', sectionHint: 'HEADER' },
+    { id: 'createdAt', sectionHint: 'HEADER' },
+    { id: 'date', sectionHint: 'HEADER' },
+    { id: 'reference', sectionHint: 'HEADER' },
+    { id: 'description', sectionHint: 'HEADER' },
+    { id: 'currency', sectionHint: 'HEADER' },
+    { id: 'exchangeRate', sectionHint: 'HEADER' },
+    { id: 'paymentMethod', sectionHint: 'HEADER' },
+    { id: 'account', sectionHint: 'HEADER' },
+    { id: 'lineItems', sectionHint: 'BODY' },
+    { id: 'notes', sectionHint: 'EXTRA' },
+    { id: 'attachments', sectionHint: 'EXTRA' },
+  ];
+
+  const newOverrides: any = {};
+  const modes: ('windows' | 'classic')[] = ['windows', 'classic'];
+
+  modes.forEach(mode => {
+    const isWindows = mode === 'windows';
+    const sections: any = {
+      HEADER: [],
+      BODY: [],
+      EXTRA: [],
+      ACTIONS: []
+    };
+
+    let headerRow = 0;
+    let headerColCursor = 0;
+
+    // 1. Place System Fields
+    const systemFields = ['voucherNo', 'status', 'createdBy', 'createdAt'];
+    systemFields.forEach(fieldId => {
+      if (isWindows) {
+        sections.HEADER.push({ fieldId, row: 0, col: headerColCursor, colSpan: 3 });
+        headerColCursor += 3;
+      } else {
+        sections.HEADER.push({ fieldId, row: headerRow, col: 0, colSpan: 12 });
+        headerRow++;
+      }
+    });
+    if (isWindows) headerRow = 1;
+
+    // 2. Place Header Fields from config
+    const headerFields = (config as any).headerFields || [];
+    headerFields.forEach((fieldId: string) => {
+      const span = isWindows ? 4 : 12;
+      if (isWindows) {
+        if (headerColCursor + span > 12) {
+          headerRow++;
+          headerColCursor = 0;
+        }
+        sections.HEADER.push({ fieldId, row: headerRow, col: headerColCursor, colSpan: span });
+        headerColCursor += span;
+      } else {
+        sections.HEADER.push({ fieldId, row: headerRow, col: 0, colSpan: 12 });
+        headerRow++;
+      }
+    });
+
+    // 3. Place Body (line items if multi-line)
+    if ((config as any).isMultiLine !== false) {
+      sections.BODY.push({ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 });
+    }
+
+    // 4. Place Actions
+    const enabledActions = (config.actions || []).filter(a => a.enabled);
+    enabledActions.forEach((action, idx) => {
+      const span = isWindows ? Math.floor(12 / Math.min(4, enabledActions.length)) : 12;
+      const row = isWindows ? 0 : idx;
+      const col = isWindows ? idx * span : 0;
+      sections.ACTIONS.push({
+        fieldId: `action_${action.type}`,
+        labelOverride: action.label,
+        row,
+        col,
+        colSpan: span
+      });
+    });
+
+    newOverrides[mode] = {
+      sections: {
+        HEADER: { order: 0, fields: sections.HEADER },
+        BODY: { order: 1, fields: sections.BODY },
+        EXTRA: { order: 2, fields: sections.EXTRA },
+        ACTIONS: { order: 3, fields: sections.ACTIONS }
+      }
+    };
+  });
+
+  return {
+    ...config,
+    uiModeOverrides: newOverrides
+  };
+}
+
+/**
  * Save voucher type (create or update)
  */
 export async function saveVoucher(
@@ -99,6 +210,9 @@ export async function saveVoucher(
   isEdit: boolean = false
 ): Promise<{ success: boolean; errors?: string[] }> {
   try {
+    // Ensure uiModeOverrides is populated (auto-generate if missing)
+    config = ensureUIModeOverrides(config);
+    
     // Validate UI config
     const uiValidation = validateUiConfig(config);
     if (!uiValidation.valid) {
