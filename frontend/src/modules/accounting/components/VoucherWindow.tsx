@@ -19,6 +19,7 @@ interface VoucherWindowProps {
 export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSubmit }) => {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow, updateWindowPosition, updateWindowSize, updateWindowData } = useWindowManager();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [resizeType, setResizeType] = useState<string>('');
@@ -320,4 +321,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
     </>
   );
 };
+
+
 
