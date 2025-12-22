@@ -12,6 +12,29 @@
  * DELETE /tenant/accounting/voucher-forms/:id     - Delete form
  * GET    /tenant/accounting/voucher-forms/by-type/:typeId - Get forms by type
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoucherFormController = void 0;
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
@@ -38,7 +61,9 @@ class VoucherFormController {
             const { id } = req.params;
             const form = await bindRepositories_1.diContainer.voucherFormRepository.getById(companyId, id);
             if (!form) {
-                return res.status(404).json({ success: false, error: 'Form not found' });
+                const { BusinessError } = await Promise.resolve().then(() => __importStar(require('../../../errors/AppError')));
+                const { ErrorCode } = await Promise.resolve().then(() => __importStar(require('../../../errors/ErrorCodes')));
+                throw new BusinessError(ErrorCode.VOUCH_NOT_FOUND, `Form not found: ${id}`, { formId: id });
             }
             res.json({ success: true, data: form });
         }

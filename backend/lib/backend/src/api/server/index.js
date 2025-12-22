@@ -10,7 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const router_1 = __importDefault(require("./router"));
-const errorHandler_1 = require("../errors/errorHandler");
+const errorHandler_1 = require("../../errors/errorHandler");
 const impersonationMiddleware_1 = require("../middlewares/impersonationMiddleware");
 const app = (0, express_1.default)();
 // Global Middlewares
