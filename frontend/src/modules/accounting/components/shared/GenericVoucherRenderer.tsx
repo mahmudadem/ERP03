@@ -498,14 +498,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     let actionFields: any[] = [];
     if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
       const actionsSection = configDef.uiModeOverrides[mode].sections?.ACTIONS;
-      console.log('🎬 renderActions - ACTIONS section:', actionsSection);
       if (actionsSection?.fields && actionsSection.fields.length > 0) {
         // Sort by row and col
         actionFields = [...actionsSection.fields].sort((a: any, b: any) => {
           if (a.row !== b.row) return a.row - b.row;
           return a.col - b.col;
         });
-        console.log('🎬 renderActions - actionFields from section:', actionFields);
       }
     }
     
@@ -513,7 +511,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     if (actionFields.length === 0) {
       const actions = configDef.actions || [];
       const enabledActions = actions.filter((a: any) => a.enabled !== false);
-      console.log('🎬 renderActions - Fallback to config.actions:', enabledActions);
       
       // If no custom actions defined, render default buttons
       if (!enabledActions.length) {
@@ -531,11 +528,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         );
       }
       
+      // Create action fields from config.actions
       actionFields = enabledActions.map((action: any, index: number) => ({
         fieldId: `action_${action.type}`,
         labelOverride: action.label,
         row: 0,
-        col: index
+        col: index,
+        colSpan: 4
       }));
     }
     

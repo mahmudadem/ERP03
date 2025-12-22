@@ -196,7 +196,6 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     }
   }, [initialConfig]);
 
-
   // Convert database templates to UI template format
   const templates: VoucherTemplate[] = [
     ...availableTemplates.map((t: VoucherTypeConfig) => ({
@@ -294,7 +293,13 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
           const span = isWindows ? Math.floor(12 / Math.min(4, enabledActions.length)) : 12;
           const row = isWindows ? 0 : idx;
           const col = isWindows ? idx * span : 0;
-          sections.ACTIONS.push({ fieldId: `action_${action.type}`, row, col, colSpan: span });
+          sections.ACTIONS.push({ 
+            fieldId: `action_${action.type}`, 
+            labelOverride: action.label,
+            row, 
+            col, 
+            colSpan: span 
+          });
       });
 
       newOverrides[mode] = {
