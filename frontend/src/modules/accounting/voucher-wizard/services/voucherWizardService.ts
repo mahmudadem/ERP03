@@ -129,13 +129,9 @@ export async function saveVoucher(
     const cleanedData = removeUndefined(canonical);
     
     // Save to voucherTypes (legacy, for backend type info)
+    // Use setDoc with merge to handle both create and update (some forms may not exist in voucherTypes)
     const voucherTypeRef = doc(db, `companies/${companyId}/voucherTypes`, config.id);
-    
-    if (isEdit) {
-      await updateDoc(voucherTypeRef, cleanedData);
-    } else {
-      await setDoc(voucherTypeRef, cleanedData);
-    }
+    await setDoc(voucherTypeRef, cleanedData, { merge: true });
     
     // ALSO save to voucherForms (new, for sidebar and rendering)
     // Extract headerFields from wizard layout (convert uiModeOverrides to flat fields)
@@ -194,12 +190,8 @@ export async function saveVoucher(
     };
     
     const formRef = doc(db, `companies/${companyId}/voucherForms`, config.id);
-    
-    if (isEdit) {
-      await updateDoc(formRef, removeUndefined(formData));
-    } else {
-      await setDoc(formRef, removeUndefined(formData));
-    }
+    // Use setDoc with merge to handle both create and update
+    await setDoc(formRef, removeUndefined(formData), { merge: true });
     
     console.log('[saveVoucher] Saved to both voucherTypes and voucherForms');
     
