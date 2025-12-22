@@ -80,7 +80,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     } : {};
     
     // Merge: initialData takes precedence over defaults
-    setFormData({ ...defaults, ...processedInitialData });
+    const mergedData = { ...defaults, ...processedInitialData };
+    console.log('🔧 GenericVoucherRenderer formData:', mergedData);
+    setFormData(mergedData);
     
     // If initialData has lines, populate rows
     if (initialData?.lines && Array.isArray(initialData.lines)) {
@@ -213,7 +215,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             <input 
               type="text" 
               readOnly 
-              value={fieldId === 'voucherNo' ? `${getVoucherPrefix()}-...` : fieldId === 'status' ? 'Draft' : 'System'}
+              value={formData[fieldId] || 'Pending'}
               className="w-full p-1.5 border border-gray-200 rounded bg-gray-50 text-gray-500 text-xs shadow-sm" 
             />
          </div>
@@ -277,10 +279,20 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
 
     // 3. Standard Inputs (from canonical headerFields)
+    
+    // System fields list - these are read-only display fields
+    const systemFields = ['voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
+    const isSystemField = systemFields.includes(fieldId);
+
     return (
         <div className="space-y-0.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
-            {fieldId === 'currency' || fieldId === 'paymentMethod' ? (
+            {/* System fields - display as read-only */}
+            {isSystemField ? (
+                <div className="w-full p-1.5 border border-gray-100 rounded bg-gray-50 text-xs text-gray-600 italic">
+                    {formData[fieldId] || 'Pending'}
+                </div>
+            ) : fieldId === 'currency' || fieldId === 'paymentMethod' ? (
                  <div className="relative">
                     <select 
                       value={formData[fieldId] || ''}
