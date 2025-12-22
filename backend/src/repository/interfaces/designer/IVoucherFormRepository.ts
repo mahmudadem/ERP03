@@ -36,6 +36,14 @@ export interface VoucherFormDefinition {
     [key: string]: any;
   };
   
+  // Advanced Layout (from Designer)
+  uiModeOverrides?: any;         // Layout data for different UI modes (windows, classic)
+  rules?: any[];                 // Validation rules
+  actions?: any[];               // Action buttons configuration
+  isMultiLine?: boolean;         // Does this voucher support line items?
+  defaultCurrency?: string;      // Default currency
+  baseType?: string;             // Base voucher type for backend compatibility
+  
   // Timestamps
   createdAt: Date;
   updatedAt: Date;

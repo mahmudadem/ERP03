@@ -210,8 +210,13 @@ export async function saveVoucher(
   isEdit: boolean = false
 ): Promise<{ success: boolean; errors?: string[] }> {
   try {
+    console.log('💾 [saveVoucher] Starting save for:', config.id, 'isEdit:', isEdit);
+    console.log('💾 [saveVoucher] Config before ensureUIModeOverrides:', config.uiModeOverrides);
+    
     // Ensure uiModeOverrides is populated (auto-generate if missing)
     config = ensureUIModeOverrides(config);
+    
+    console.log('💾 [saveVoucher] Config after ensureUIModeOverrides:', config.uiModeOverrides);
     
     // Validate UI config
     const uiValidation = validateUiConfig(config);

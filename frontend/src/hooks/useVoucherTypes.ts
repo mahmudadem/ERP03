@@ -30,6 +30,7 @@ export function useVoucherTypes() {
         // PHASE 3: Try loading from new voucherForms API first
         try {
           const forms = await voucherFormApi.list();
+          console.log('📡 [useVoucherTypes] Raw API response:', forms);
           if (forms && forms.length > 0) {
             console.log(`[useVoucherTypes] Loaded ${forms.length} forms from voucherForms API`);
             
