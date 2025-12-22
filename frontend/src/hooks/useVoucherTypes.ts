@@ -53,6 +53,7 @@ export function useVoucherTypes() {
                 defaultCurrency: (form as any).defaultCurrency || 'USD',
                 // Keep typeId reference for backend operations
                 _typeId: form.typeId,
+                baseType: (form as any).baseType || form.typeId || form.code, // Base voucher type for backend
                 _isForm: true
               } as any));
             

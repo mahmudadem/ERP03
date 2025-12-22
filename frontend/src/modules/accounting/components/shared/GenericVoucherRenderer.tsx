@@ -117,8 +117,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const defAny = definition as any;
       let backendType = 'journal_entry'; // Default fallback
       
+      // 0. Check explicit baseType (stored when form is cloned/created)
+      if (defAny.baseType && typeMap[defAny.baseType.toUpperCase()]) {
+        backendType = typeMap[defAny.baseType.toUpperCase()];
+      }
       // 1. Check explicit _typeId (from custom forms)
-      if (defAny._typeId && typeMap[defAny._typeId.toUpperCase()]) {
+      else if (defAny._typeId && typeMap[defAny._typeId.toUpperCase()]) {
         backendType = typeMap[defAny._typeId.toUpperCase()];
       }
       // 2. Check code directly

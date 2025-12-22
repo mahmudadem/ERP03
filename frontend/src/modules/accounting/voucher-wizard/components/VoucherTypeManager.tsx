@@ -50,6 +50,9 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ template
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 7); // 5 random chars
     
+    // Determine the base type (use existing baseType or fallback to code/id)
+    const originalBaseType = (voucher as any).baseType || voucher.code || voucher.id;
+    
     const cloned: VoucherTypeConfig = {
       ...voucher,
       // Truly unique ID
@@ -60,7 +63,9 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ template
       prefix: `${voucher.prefix.replace('-', '')}C${random.toUpperCase()}-`,
       isSystemDefault: false,
       isLocked: false,
-    };
+      // IMPORTANT: Preserve the base type for backend compatibility
+      baseType: originalBaseType,
+    } as any;
     setEditingVoucher(cloned);
     setIsCloning(true); // Mark as cloning, not editing
     setViewMode('designer');

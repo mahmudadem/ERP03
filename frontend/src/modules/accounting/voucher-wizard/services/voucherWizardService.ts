@@ -168,7 +168,8 @@ export async function saveVoucher(
     const formData = {
       id: config.id,
       companyId,
-      typeId: config.id, // Links to the type we just created
+      typeId: (config as any).baseType || config.id, // Use baseType for cloned forms, otherwise id
+      baseType: (config as any).baseType || config.code || config.id, // Store base type explicitly
       name: config.name,
       code: config.id,
       prefix: config.prefix || config.id?.slice(0, 3).toUpperCase() || 'V',
