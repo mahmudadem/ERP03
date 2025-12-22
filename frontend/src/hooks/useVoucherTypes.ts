@@ -45,6 +45,12 @@ export function useVoucherTypes() {
                 enabled: form.enabled,
                 headerFields: form.headerFields || [],
                 tableColumns: form.tableColumns || [],
+                // Additional layout data
+                uiModeOverrides: (form as any).uiModeOverrides || null,
+                rules: (form as any).rules || [],
+                actions: (form as any).actions || [],
+                isMultiLine: (form as any).isMultiLine ?? true,
+                defaultCurrency: (form as any).defaultCurrency || 'USD',
                 // Keep typeId reference for backend operations
                 _typeId: form.typeId,
                 _isForm: true

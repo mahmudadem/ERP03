@@ -176,8 +176,16 @@ export async function saveVoucher(
       isSystemGenerated: false,
       isLocked: false,
       enabled: config.enabled !== false,
+      // Layout data
       headerFields: extractHeaderFields(),
       tableColumns: extractTableColumns(),
+      // Full layout for custom rendering
+      uiModeOverrides: config.uiModeOverrides || null,
+      // Rules and actions
+      rules: config.rules || [],
+      actions: config.actions || [],
+      isMultiLine: config.isMultiLine ?? true,
+      defaultCurrency: config.defaultCurrency || 'USD',
       layout: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
