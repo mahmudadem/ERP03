@@ -498,12 +498,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     let actionFields: any[] = [];
     if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
       const actionsSection = configDef.uiModeOverrides[mode].sections?.ACTIONS;
+      console.log('🎬 renderActions - ACTIONS section:', actionsSection);
       if (actionsSection?.fields && actionsSection.fields.length > 0) {
         // Sort by row and col
         actionFields = [...actionsSection.fields].sort((a: any, b: any) => {
           if (a.row !== b.row) return a.row - b.row;
           return a.col - b.col;
         });
+        console.log('🎬 renderActions - actionFields from section:', actionFields);
       }
     }
     
@@ -511,6 +513,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     if (actionFields.length === 0) {
       const actions = configDef.actions || [];
       const enabledActions = actions.filter((a: any) => a.enabled !== false);
+      console.log('🎬 renderActions - Fallback to config.actions:', enabledActions);
       
       // If no custom actions defined, render default buttons
       if (!enabledActions.length) {
@@ -536,16 +539,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }));
     }
     
-    // Determine grid columns based on number of actions
-    const gridCols = actionFields.length > 4 ? 3 : 2;
+    // Render actions from ACTIONS section layout using CSS Grid
+    const maxRow = actionFields.reduce((max, f) => Math.max(max, f.row || 0), 0) + 1;
     
-    // Render actions from ACTIONS section layout
     return (
-      <div className={`bg-gray-50 border-t p-2 grid grid-cols-${gridCols} gap-2`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
+      <div 
+        className="bg-gray-50 border-t p-2 grid grid-cols-12 gap-2"
+        style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
+      >
         {actionFields.map((field: any, index: number) => (
           <button 
             key={field.fieldId || index}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+            className="flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+            style={{
+              gridColumnStart: (field.col || 0) + 1,
+              gridColumnEnd: `span ${field.colSpan || 4}`,
+              gridRowStart: (field.row || 0) + 1
+            }}
           >
             {field.labelOverride || field.fieldId}
           </button>

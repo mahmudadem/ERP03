@@ -196,62 +196,6 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     }
   }, [initialConfig]);
 
-  // Sync enabled actions to ACTIONS section fields
-  useEffect(() => {
-    const enabledActions = config.actions.filter(a => a.enabled !== false);
-    
-    // Update ACTIONS section in both modes to include all enabled actions
-    ['windows', 'classic'].forEach((mode: string) => {
-      const actionsSection = config.uiModeOverrides[mode as UIMode]?.sections?.ACTIONS;
-      if (actionsSection) {
-        // Get existing action fields
-        const existingActionIds = new Set(actionsSection.fields.map((f: any) => f.fieldId));
-        
-        // Add missing actions
-        const newFields = [...actionsSection.fields];
-        enabledActions.forEach((action, index) => {
-          const actionId = `action_${action.type}`;
-          if (!existingActionIds.has(actionId)) {
-            // Calculate position in grid (3 columns)
-            const row = Math.floor(newFields.length / 3);
-            const col = newFields.length % 3;
-            newFields.push({
-              fieldId: actionId,
-              labelOverride: action.label,
-              row,
-              col,
-              colSpan: 4
-            });
-          }
-        });
-        
-        // Remove actions that are no longer enabled
-        const enabledActionIds = new Set(enabledActions.map(a => `action_${a.type}`));
-        const filteredFields = newFields.filter(f => 
-          !f.fieldId.startsWith('action_') || enabledActionIds.has(f.fieldId)
-        );
-        
-        // Update config
-        setConfig(prev => ({
-          ...prev,
-          uiModeOverrides: {
-            ...prev.uiModeOverrides,
-            [mode]: {
-              ...prev.uiModeOverrides[mode as UIMode],
-              sections: {
-                ...prev.uiModeOverrides[mode as UIMode].sections,
-                ACTIONS: {
-                  ...actionsSection,
-                  fields: filteredFields
-                }
-              }
-            }
-          }
-        }));
-      }
-    });
-  }, [config.actions]);
-
 
   // Convert database templates to UI template format
   const templates: VoucherTemplate[] = [
