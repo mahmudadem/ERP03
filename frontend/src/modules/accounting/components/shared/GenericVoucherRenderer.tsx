@@ -149,9 +149,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (definition.tableColumns.length === 0) {
         return ['account', 'debit', 'credit', 'notes'];
       }
-      // tableColumns can be array of objects {fieldId} or array of strings
+      // tableColumns can be array of objects {fieldId} or {id} or array of strings
       return definition.tableColumns.map((col: any) => 
-        typeof col === 'string' ? col : col.fieldId
+        typeof col === 'string' ? col : (col.fieldId || col.id || col)
       );
     }
     // VoucherTypeConfig format (designer) - check uiModeOverrides
