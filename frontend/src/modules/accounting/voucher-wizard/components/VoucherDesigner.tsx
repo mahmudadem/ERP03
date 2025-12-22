@@ -19,7 +19,7 @@
  * Output: Plain VoucherTypeConfig object via onSave callback
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { 
@@ -154,6 +154,47 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
   // Check if voucher is read-only (system default or locked)
   const isReadOnly = Boolean(initialConfig?.isLocked || initialConfig?.isSystemDefault);
+
+  // Initialize selectedFieldIds from initialConfig when editing
+  useEffect(() => {
+    if (initialConfig) {
+      // Extract field IDs from various sources in the saved config
+      const fieldIds = new Set<string>();
+      const configAny = initialConfig as any;
+      
+      // From headerFields
+      if (configAny.headerFields && Array.isArray(configAny.headerFields)) {
+        configAny.headerFields.forEach((f: any) => {
+          fieldIds.add(f.id || f.fieldId || f);
+        });
+      }
+      
+      // From uiModeOverrides sections
+      const uiOverrides = (initialConfig as any).uiModeOverrides;
+      if (uiOverrides) {
+        ['windows', 'classic'].forEach(mode => {
+          const sections = uiOverrides[mode]?.sections;
+          if (sections) {
+            Object.values(sections).forEach((section: any) => {
+              if (section?.fields && Array.isArray(section.fields)) {
+                section.fields.forEach((f: any) => {
+                  fieldIds.add(f.fieldId || f.id || f);
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      // Always include required fields
+      fieldIds.add('date');
+      fieldIds.add('lineItems');
+      
+      if (fieldIds.size > 0) {
+        setSelectedFieldIds(Array.from(fieldIds));
+      }
+    }
+  }, [initialConfig]);
 
   // Convert database templates to UI template format
   const templates: VoucherTemplate[] = [
