@@ -126,13 +126,15 @@ class InitializeAccountingUseCase {
     /**
      * Create default VoucherForms for each VoucherType
      * Each type gets one default form that matches its layout
+     * Uses the same ID as the type for simplicity
      */
     async createDefaultFormsForTypes(companyId, types) {
         var _a, _b, _c;
         const db = admin.firestore();
         const batch = db.batch();
         for (const type of types) {
-            const formId = `default_${type.id}`;
+            // Use same ID as type for the default form (simpler)
+            const formId = type.id;
             const formRef = db
                 .collection('companies')
                 .doc(companyId)
@@ -143,7 +145,7 @@ class InitializeAccountingUseCase {
                 id: formId,
                 companyId,
                 typeId: type.id,
-                name: `${type.data.name || type.id} - Default`,
+                name: type.data.name || type.id,
                 code: type.data.code || type.id,
                 description: `Default form for ${type.data.name || type.id}`,
                 prefix: type.data.prefix || ((_a = type.data.code) === null || _a === void 0 ? void 0 : _a.slice(0, 3).toUpperCase()) || 'V',

@@ -155,6 +155,7 @@ export class InitializeAccountingUseCase {
   /**
    * Create default VoucherForms for each VoucherType
    * Each type gets one default form that matches its layout
+   * Uses the same ID as the type for simplicity
    */
   private async createDefaultFormsForTypes(
     companyId: string,
@@ -164,7 +165,8 @@ export class InitializeAccountingUseCase {
     const batch = db.batch();
 
     for (const type of types) {
-      const formId = `default_${type.id}`;
+      // Use same ID as type for the default form (simpler)
+      const formId = type.id;
       
       const formRef = db
         .collection('companies')
@@ -177,7 +179,7 @@ export class InitializeAccountingUseCase {
         id: formId,
         companyId,
         typeId: type.id,
-        name: `${type.data.name || type.id} - Default`,
+        name: type.data.name || type.id, // Use original name, no suffix
         code: type.data.code || type.id,
         description: `Default form for ${type.data.name || type.id}`,
         prefix: type.data.prefix || type.data.code?.slice(0, 3).toUpperCase() || 'V',
