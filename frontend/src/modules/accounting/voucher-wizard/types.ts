@@ -77,7 +77,9 @@ export interface AvailableField {
 export interface VoucherTypeConfig {
   id: string;
   name: string;
+  code?: string; // Short code (e.g., "JOURNAL", "PAYMENT")
   prefix: string; // e.g., "JV-"
+  module?: string; // Module (e.g., "ACCOUNTING")
   startNumber: number;
   
   // Step 2: Rules (UI toggles only)

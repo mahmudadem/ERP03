@@ -17,6 +17,9 @@ export interface VoucherListItem {
   reference?: string;
   voucherNo?: string;
   createdBy?: string;
+  // Form tracking
+  formId?: string;  // Which form was used to create this voucher
+  prefix?: string;  // Voucher number prefix
 }
 
 export interface VoucherListFilters {

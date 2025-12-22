@@ -32,7 +32,7 @@ const VouchersListPage: React.FC = () => {
 
   const { voucherTypes, loading: typesLoading } = useVoucherTypes();
   const { openWindow } = useWindowManager();
-  const { uiMode } = useUserPreferences();
+   const { uiMode } = useUserPreferences();
   const [selectedType, setSelectedType] = React.useState<string>(typeFromUrl || '');
   
   // Check if Windows Mode is enabled
@@ -40,8 +40,21 @@ const VouchersListPage: React.FC = () => {
 
   // Update selected type when URL changes or voucher types load
   React.useEffect(() => {
+    console.log('📋 VoucherTypes loaded:', voucherTypes.map(t => ({ id: t.id, name: t.name, code: t.code })));
+    console.log('🔍 selectedType:', selectedType, 'typeFromUrl:', typeFromUrl);
+    
     if (typeFromUrl) {
-      setSelectedType(typeFromUrl);
+      // Try to find by exact ID or by typeId (for new voucherForms)
+      const found = voucherTypes.find(vt => 
+        vt.id === typeFromUrl || 
+        (vt as any)._typeId === typeFromUrl ||
+        vt.code?.toLowerCase() === typeFromUrl.toLowerCase()
+      );
+      if (found) {
+        setSelectedType(found.id);
+      } else {
+        setSelectedType(typeFromUrl);
+      }
     } else if (voucherTypes.length > 0 && !selectedType) {
       setSelectedType(voucherTypes[0].id);
     }
@@ -50,8 +63,9 @@ const VouchersListPage: React.FC = () => {
   const currentVoucherType = voucherTypes.find(vt => vt.id === selectedType);
 
   const handleCreate = () => {
+    console.log('🆕 handleCreate - selectedType:', selectedType, 'currentVoucherType:', currentVoucherType);
     if (!selectedType || !currentVoucherType) {
-      console.error('❌ Cannot create: missing selectedType or currentVoucherType');
+      console.error('❌ Cannot create: missing selectedType or currentVoucherType', { selectedType, voucherTypes });
       return;
     }
     
