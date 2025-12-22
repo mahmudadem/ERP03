@@ -43,17 +43,40 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   
   // Initialize form data: merge initialData with defaults
   useEffect(() => {
-    const defaults = {
-      date: new Date().toISOString().split('T')[0],
+    const today = new Date().toISOString().split('T')[0];
+    
+    // System field defaults - show proper fallbacks for unsaved vouchers
+    const systemDefaults = {
+      voucherNo: 'Auto-generated',
+      status: 'Draft',
+      createdBy: 'Current User',
+      createdAt: 'On Save',
+      updatedAt: 'On Save',
+      updatedBy: 'Current User'
+    };
+    
+    // User input field defaults
+    const inputDefaults = {
+      date: today,
       currency: 'USD',
       exchangeRate: 1,
-      paymentMethod: 'Bank Transfer'
+      paymentMethod: 'Bank Transfer',
+      reference: '',
+      description: '',
+      notes: ''
     };
+    
+    const defaults = { ...systemDefaults, ...inputDefaults };
     
     // Convert dates from ISO to yyyy-MM-dd format for HTML date inputs
     const processedInitialData = initialData ? {
       ...initialData,
-      date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : undefined
+      date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : undefined,
+      // Keep system values if they exist in initialData
+      voucherNo: initialData.voucherNo || initialData.id || systemDefaults.voucherNo,
+      status: initialData.status || systemDefaults.status,
+      createdBy: initialData.createdBy || systemDefaults.createdBy,
+      createdAt: initialData.createdAt ? new Date(initialData.createdAt).toLocaleDateString() : systemDefaults.createdAt
     } : {};
     
     // Merge: initialData takes precedence over defaults
