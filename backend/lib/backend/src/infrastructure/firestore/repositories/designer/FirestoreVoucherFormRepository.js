@@ -41,7 +41,7 @@ class FirestoreVoucherFormRepository {
         return this.db.collection('companies').doc(companyId).collection('voucherForms');
     }
     toDomain(data) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         return {
             id: data.id,
             companyId: data.companyId,
@@ -57,12 +57,19 @@ class FirestoreVoucherFormRepository {
             headerFields: data.headerFields || [],
             tableColumns: data.tableColumns || [],
             layout: data.layout || {},
-            createdAt: ((_f = (_e = data.createdAt) === null || _e === void 0 ? void 0 : _e.toDate) === null || _f === void 0 ? void 0 : _f.call(_e)) || data.createdAt || new Date(),
-            updatedAt: ((_h = (_g = data.updatedAt) === null || _g === void 0 ? void 0 : _g.toDate) === null || _h === void 0 ? void 0 : _h.call(_g)) || data.updatedAt || new Date(),
+            uiModeOverrides: data.uiModeOverrides || null,
+            rules: data.rules || [],
+            actions: data.actions || [],
+            isMultiLine: (_e = data.isMultiLine) !== null && _e !== void 0 ? _e : true,
+            defaultCurrency: data.defaultCurrency || null,
+            baseType: data.baseType || null,
+            createdAt: ((_g = (_f = data.createdAt) === null || _f === void 0 ? void 0 : _f.toDate) === null || _g === void 0 ? void 0 : _g.call(_f)) || data.createdAt || new Date(),
+            updatedAt: ((_j = (_h = data.updatedAt) === null || _h === void 0 ? void 0 : _h.toDate) === null || _j === void 0 ? void 0 : _j.call(_h)) || data.updatedAt || new Date(),
             createdBy: data.createdBy || null
         };
     }
     toPersistence(form) {
+        var _a;
         return {
             id: form.id,
             companyId: form.companyId,
@@ -78,6 +85,12 @@ class FirestoreVoucherFormRepository {
             headerFields: form.headerFields,
             tableColumns: form.tableColumns,
             layout: form.layout || {},
+            uiModeOverrides: form.uiModeOverrides || null,
+            rules: form.rules || [],
+            actions: form.actions || [],
+            isMultiLine: (_a = form.isMultiLine) !== null && _a !== void 0 ? _a : true,
+            defaultCurrency: form.defaultCurrency || null,
+            baseType: form.baseType || null,
             createdAt: form.createdAt || admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             createdBy: form.createdBy || null
