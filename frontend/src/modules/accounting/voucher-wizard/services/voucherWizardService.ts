@@ -128,14 +128,44 @@ export async function saveVoucher(
     // Remove undefined values (Firestore doesn't allow them)
     const cleanedData = removeUndefined(canonical);
     
-    // Save to Firestore
-    const voucherRef = doc(db, `companies/${companyId}/voucherTypes`, config.id);
+    // Save to voucherTypes (legacy, for backend type info)
+    const voucherTypeRef = doc(db, `companies/${companyId}/voucherTypes`, config.id);
     
     if (isEdit) {
-      await updateDoc(voucherRef, cleanedData);
+      await updateDoc(voucherTypeRef, cleanedData);
     } else {
-      await setDoc(voucherRef, cleanedData);
+      await setDoc(voucherTypeRef, cleanedData);
     }
+    
+    // ALSO save to voucherForms (new, for sidebar and rendering)
+    const formData = {
+      id: config.id,
+      companyId,
+      typeId: config.id, // Links to the type we just created
+      name: config.name,
+      code: config.id,
+      prefix: config.prefix || config.id?.slice(0, 3).toUpperCase() || 'V',
+      isDefault: false,
+      isSystemGenerated: false,
+      isLocked: false,
+      enabled: config.enabled !== false,
+      headerFields: (canonical as any).headerFields || [],
+      tableColumns: (canonical as any).tableColumns || [],
+      layout: {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: userId
+    };
+    
+    const formRef = doc(db, `companies/${companyId}/voucherForms`, config.id);
+    
+    if (isEdit) {
+      await updateDoc(formRef, removeUndefined(formData));
+    } else {
+      await setDoc(formRef, removeUndefined(formData));
+    }
+    
+    console.log('[saveVoucher] Saved to both voucherTypes and voucherForms');
     
     return { success: true };
   } catch (error) {
