@@ -4,6 +4,7 @@ import { VoucherTypeDefinition } from '../../../../designer-engine/types/Voucher
 import { VoucherDesigner } from './VoucherDesigner';
 import { useVouchers } from '../VoucherContext';
 import { Button } from './ui/Button';
+import { AccountsProvider } from '../../../../context/AccountsContext';
 
 interface VoucherTypeManagerProps {
   onExit: () => void;
@@ -66,11 +67,13 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
       {viewMode === 'designer' && (
         <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4">
            <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-7xl overflow-hidden flex flex-col border border-gray-200">
-               <VoucherDesigner 
-                 initialDefinition={editingDefinition} 
-                 onSave={handleSave} 
-                 onCancel={handleBack} 
-               />
+               <AccountsProvider>
+                 <VoucherDesigner 
+                   initialDefinition={editingDefinition} 
+                   onSave={handleSave} 
+                   onCancel={handleBack} 
+                 />
+               </AccountsProvider>
            </div>
         </div>
       )}
