@@ -443,13 +443,58 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     );
   };
 
+  // Render any section from uiModeOverrides (BODY, EXTRA, etc.)
+  const renderSection = (sectionKey: string, title?: string) => {
+    const configDef = definition as any;
+    
+    if (!configDef.uiModeOverrides || !configDef.uiModeOverrides[mode]) {
+      return null;
+    }
+    
+    const sections = configDef.uiModeOverrides[mode].sections;
+    const section = sections?.[sectionKey];
+    
+    if (!section || !section.fields || section.fields.length === 0) {
+      return null;
+    }
+    
+    // Sort fields by row and col
+    const sortedFields = [...section.fields].sort((a: any, b: any) => {
+      if (a.row !== b.row) return a.row - b.row;
+      return a.col - b.col;
+    });
+    
+    return (
+      <div className="bg-white px-4 py-3 mb-4">
+        {title && <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">{title}</h3>}
+        <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+          {sortedFields.map((field: any) => (
+            <div 
+              key={field.fieldId}
+              className={`col-span-${Math.min(12, field.colSpan || 4)}`}
+              style={{ gridColumn: `span ${Math.min(12, field.colSpan || 4)}` }}
+            >
+              {renderField(field.fieldId, field.labelOverride)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full bg-white font-sans text-slate-800 overflow-y-auto">
         {/* Header Fields from Canonical */}
         {renderHeaderFields()}
         
+        {/* Body Section (if defined) */}
+        {renderSection('BODY')}
+        
         {/* Line Items Table (if multi-line) */}
         {renderLineItems()}
+        
+        {/* Extra Section (if defined) */}
+        {renderSection('EXTRA', 'Additional Information')}
 
         {/* Action Buttons */}
         <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
