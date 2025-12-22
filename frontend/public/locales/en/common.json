@@ -1,0 +1,46 @@
+{
+  "errors": {
+    "AUTH_001": "Invalid email or password. Please try again.",
+    "AUTH_002": "Your session has expired. Please log in again.",
+    "AUTH_003": "Invalid authentication token. Please log in again.",
+    "AUTH_004": "You don't have permission to perform this action.",
+    "AUTH_005": "User account not found.",
+    "AUTH_006": "This account has been disabled. Please contact support.",
+    
+    "VAL_001": "{{field}} is required.",
+    "VAL_002": "{{field}} has an invalid format.",
+    "VAL_003": "{{field}} already exists. Please use a different value.",
+    "VAL_004": "{{field}} must be between {{min}} and {{max}}.",
+    "VAL_005": "{{field}} has an invalid type.",
+    "VAL_006": "{{field}} length must be between {{min}} and {{max}} characters.",
+    
+    "VOUCH_001": "This voucher has already been approved and cannot be modified.",
+    "VOUCH_002": "This voucher has already been posted and cannot be modified.",
+    "VOUCH_003": "Voucher not found.",
+    "VOUCH_004": "Invalid voucher status for this operation.",
+    "VOUCH_005": "Voucher is unbalanced. Total debits must equal total credits.",
+    "VOUCH_006": "Voucher must have at least one line item.",
+    "VOUCH_007": "This voucher is locked and cannot be modified.",
+    
+    "ACC_001": "Insufficient balance in account {{accountName}}.",
+    "ACC_002": "Account not found.",
+    "ACC_003": "This account is inactive and cannot be used.",
+    "ACC_004": "The accounting period is closed. Cannot post transactions.",
+    "ACC_005": "Invalid account type for this operation.",
+    
+    "INFRA_001": "Database error occurred. Please try again later.",
+    "INFRA_002": "Network error. Please check your connection and try again.",
+    "INFRA_003": "Service temporarily unavailable. Please try again later.",
+    "INFRA_004": "Request timed out. Please try again.",
+    "INFRA_999": "An unexpected error occurred. Please contact support if this persists."
+  },
+  "success": {
+    "voucher_saved": "Voucher saved successfully!",
+    "voucher_submitted": "Voucher submitted for approval!",
+    "voucher_approved": "Voucher approved successfully!",
+    "voucher_rejected": "Voucher rejected.",
+    "voucher_deleted": "Voucher deleted successfully!",
+    "form_saved": "Form saved successfully!",
+    "settings_updated": "Settings updated successfully!"
+  }
+}
