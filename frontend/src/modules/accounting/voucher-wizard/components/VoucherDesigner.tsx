@@ -363,7 +363,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       }
     }
     
-    if (currentStep === 4) {
+    // Run auto-placement after Actions step to sync enabled actions to layout
+    if (currentStep === 5) {
       runAutoPlacement(); 
     }
     setCurrentStep(prev => Math.min(STEPS.length, prev + 1));
