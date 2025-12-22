@@ -106,6 +106,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/ai-designer', label: 'AI Designer (Original)', component: lazy(() => import('../modules/accounting/pages/AIDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'designer.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/demo', label: '🆕 New Forms Demo', component: lazy(() => import('../modules/accounting/pages/NewVoucherFormsDemo')), section: 'ACCOUNTING', requiredModule: 'accounting' },
+  { path: '/error-test', label: '🧪 Error Handling Test', component: lazy(() => import('../pages/ErrorTestPage').then(m => ({ default: m.ErrorTestPage }))), section: 'SETTINGS', hideInMenu: false },
 
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY', requiredModule: 'inventory' },
