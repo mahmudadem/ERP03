@@ -493,43 +493,61 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Render action buttons from config
   const renderActions = () => {
     const configDef = definition as any;
-    const actions = configDef.actions || [];
     
-    // Filter enabled actions
-    const enabledActions = actions.filter((a: any) => a.enabled !== false);
+    // Try to get actions from ACTIONS section in uiModeOverrides (respects layout)
+    let actionFields: any[] = [];
+    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
+      const actionsSection = configDef.uiModeOverrides[mode].sections?.ACTIONS;
+      if (actionsSection?.fields && actionsSection.fields.length > 0) {
+        // Sort by row and col
+        actionFields = [...actionsSection.fields].sort((a: any, b: any) => {
+          if (a.row !== b.row) return a.row - b.row;
+          return a.col - b.col;
+        });
+      }
+    }
     
-    // If no custom actions defined, render default buttons
-    if (!enabledActions.length) {
-      return (
-        <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
-          <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-            <Save size={14} />
-            Save
-          </button>
-          <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
-            <Printer size={14} />
-            Print
-          </button>
-        </div>
-      );
+    // Fallback to config.actions if no ACTIONS section
+    if (actionFields.length === 0) {
+      const actions = configDef.actions || [];
+      const enabledActions = actions.filter((a: any) => a.enabled !== false);
+      
+      // If no custom actions defined, render default buttons
+      if (!enabledActions.length) {
+        return (
+          <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
+            <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
+              <Save size={14} />
+              Save
+            </button>
+            <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
+              <Printer size={14} />
+              Print
+            </button>
+          </div>
+        );
+      }
+      
+      actionFields = enabledActions.map((action: any, index: number) => ({
+        fieldId: `action_${action.type}`,
+        labelOverride: action.label,
+        row: 0,
+        col: index
+      }));
     }
     
     // Determine grid columns based on number of actions
-    const gridCols = enabledActions.length > 4 ? 3 : 2;
+    const gridCols = actionFields.length > 4 ? 3 : 2;
     
-    // Render custom actions from config
+    // Render actions from ACTIONS section layout
     return (
       <div className={`bg-gray-50 border-t p-2 grid grid-cols-${gridCols} gap-2`} style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}>
-        {enabledActions.map((action: any, index: number) => (
+        {actionFields.map((field: any, index: number) => (
           <button 
-            key={action.type || action.id || index}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors ${
-              action.primary 
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
+            key={field.fieldId || index}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
           >
-            {action.label || action.type || action.id}
+            {field.labelOverride || field.fieldId}
           </button>
         ))}
       </div>

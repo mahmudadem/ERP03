@@ -196,6 +196,63 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     }
   }, [initialConfig]);
 
+  // Sync enabled actions to ACTIONS section fields
+  useEffect(() => {
+    const enabledActions = config.actions.filter(a => a.enabled !== false);
+    
+    // Update ACTIONS section in both modes to include all enabled actions
+    ['windows', 'classic'].forEach((mode: string) => {
+      const actionsSection = config.uiModeOverrides[mode as UIMode]?.sections?.ACTIONS;
+      if (actionsSection) {
+        // Get existing action fields
+        const existingActionIds = new Set(actionsSection.fields.map((f: any) => f.fieldId));
+        
+        // Add missing actions
+        const newFields = [...actionsSection.fields];
+        enabledActions.forEach((action, index) => {
+          const actionId = `action_${action.type}`;
+          if (!existingActionIds.has(actionId)) {
+            // Calculate position in grid (3 columns)
+            const row = Math.floor(newFields.length / 3);
+            const col = newFields.length % 3;
+            newFields.push({
+              fieldId: actionId,
+              labelOverride: action.label,
+              row,
+              col,
+              colSpan: 4
+            });
+          }
+        });
+        
+        // Remove actions that are no longer enabled
+        const enabledActionIds = new Set(enabledActions.map(a => `action_${a.type}`));
+        const filteredFields = newFields.filter(f => 
+          !f.fieldId.startsWith('action_') || enabledActionIds.has(f.fieldId)
+        );
+        
+        // Update config
+        setConfig(prev => ({
+          ...prev,
+          uiModeOverrides: {
+            ...prev.uiModeOverrides,
+            [mode]: {
+              ...prev.uiModeOverrides[mode as UIMode],
+              sections: {
+                ...prev.uiModeOverrides[mode as UIMode].sections,
+                ACTIONS: {
+                  ...actionsSection,
+                  fields: filteredFields
+                }
+              }
+            }
+          }
+        }));
+      }
+    });
+  }, [config.actions]);
+
+
   // Convert database templates to UI template format
   const templates: VoucherTemplate[] = [
     ...availableTemplates.map((t: VoucherTypeConfig) => ({
@@ -608,36 +665,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
              </div>
              
              <div className="flex-1 overflow-y-auto pr-2 pb-10">
-                {sortedSections.map(([key, _]) => {
-                  // Special rendering for ACTIONS section - show all enabled actions from config
-                  if (key === 'ACTIONS') {
-                    const enabledActions = config.actions.filter(a => a.enabled !== false);
-                    return (
-                      <div key={key} className="mb-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <GripVertical size={14} className="text-gray-400" />
-                            <span className="text-xs font-bold text-gray-500 uppercase">ACTIONS SECTION</span>
-                          </div>
-                        </div>
-                        <div className="p-4 grid grid-cols-3 gap-2">
-                          {enabledActions.map((action, index) => (
-                            <div
-                              key={action.type || index}
-                              className="rounded border p-2 flex flex-col justify-center text-xs bg-indigo-50 border-indigo-200 text-indigo-700 font-bold items-center"
-                            >
-                              <span className="truncate w-full text-center pointer-events-none">
-                                {action.label}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  }
-                  // Regular grid rendering for other sections
-                  return renderInteractiveGrid(key);
-                })}
+                {sortedSections.map(([key, _]) => renderInteractiveGrid(key))}
              </div>
          </div>
 
