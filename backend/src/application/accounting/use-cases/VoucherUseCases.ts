@@ -148,9 +148,23 @@ export class UpdateVoucherUseCase {
 
   async execute(companyId: string, userId: string, voucherId: string, payload: Partial<Voucher>): Promise<void> {
     const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
-    if (!voucher || voucher.companyId !== companyId) throw new Error('Voucher not found');
+    if (!voucher || voucher.companyId !== companyId) {
+      const { BusinessError } = await import('../../../errors/AppError');
+      const { ErrorCode } = await import('../../../errors/ErrorCodes');
+      throw new BusinessError(ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
+    }
+    
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
-    if (voucher.status !== 'draft') throw new Error('Only draft vouchers can be updated');
+    
+    if (voucher.status !== 'draft') {
+      const { BusinessError } = await import('../../../errors/AppError');
+      const { ErrorCode } = await import('../../../errors/ErrorCodes');
+      throw new BusinessError(
+        ErrorCode.VOUCH_INVALID_STATUS,
+        `Cannot update voucher with status: ${voucher.status}`,
+        { status: voucher.status }
+      );
+    }
 
     if (payload.lines) {
       for (const l of payload.lines) {

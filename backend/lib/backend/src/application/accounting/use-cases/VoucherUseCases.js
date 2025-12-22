@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVouchersUseCase = exports.GetVoucherUseCase = exports.CancelVoucherUseCase = exports.LockVoucherUseCase = exports.ApproveVoucherUseCase = exports.UpdateVoucherUseCase = exports.CreateVoucherUseCase = void 0;
 const crypto_1 = require("crypto");
@@ -115,11 +138,17 @@ class UpdateVoucherUseCase {
     }
     async execute(companyId, userId, voucherId, payload) {
         const voucher = await this.voucherRepo.getVoucher(companyId, voucherId);
-        if (!voucher || voucher.companyId !== companyId)
-            throw new Error('Voucher not found');
+        if (!voucher || voucher.companyId !== companyId) {
+            const { BusinessError } = await Promise.resolve().then(() => __importStar(require('../../../errors/AppError')));
+            const { ErrorCode } = await Promise.resolve().then(() => __importStar(require('../../../errors/ErrorCodes')));
+            throw new BusinessError(ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
+        }
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
-        if (voucher.status !== 'draft')
-            throw new Error('Only draft vouchers can be updated');
+        if (voucher.status !== 'draft') {
+            const { BusinessError } = await Promise.resolve().then(() => __importStar(require('../../../errors/AppError')));
+            const { ErrorCode } = await Promise.resolve().then(() => __importStar(require('../../../errors/ErrorCodes')));
+            throw new BusinessError(ErrorCode.VOUCH_INVALID_STATUS, `Cannot update voucher with status: ${voucher.status}`, { status: voucher.status });
+        }
         if (payload.lines) {
             for (const l of payload.lines) {
                 // Account code IS the document ID now

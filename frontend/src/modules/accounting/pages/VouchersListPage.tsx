@@ -14,6 +14,7 @@ import { WindowsDesktop } from '../components/WindowsDesktop';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountsProvider } from '../../../context/AccountsContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -141,6 +142,7 @@ const VouchersListPage: React.FC = () => {
     try {
       await saveVoucherInternal(data);
       console.log('✅ Voucher saved successfully!');
+      errorHandler.showSuccess('voucher_saved');
       refresh(); // Force refresh the voucher list 
     } catch (error) {
       console.error('❌ Failed to save voucher:', error);
@@ -162,7 +164,7 @@ const VouchersListPage: React.FC = () => {
          await accountingApi.updateVoucher(saved.id, { status: 'pending' });
          
          console.log('✅ Voucher submitted successfully!');
-         alert('Voucher Submitted for Approval!');
+         errorHandler.showSuccess('voucher_submitted');
          setFilters({...filters}); // Refresh list
          
          // Ideally close window or update its local state to show 'Pending' badge

@@ -37,6 +37,18 @@ export const ErrorTestPage: React.FC = () => {
     }, { useModal: true });
   };
 
+  const simulateDuplicate = () => {
+    // Simulate what happens when backend returns VAL_DUPLICATE_ENTRY
+    errorHandler.showError({
+      code: ErrorCode.VAL_DUPLICATE_ENTRY,
+      message: 'Technical: Duplicate key value violates unique constraint',
+      severity: ErrorSeverity.WARNING,
+      field: 'Voucher Number',
+      timestamp: new Date().toISOString(),
+      context: { field: 'Voucher Number' } 
+    });
+  };
+
   const testSuccess = () => {
     errorHandler.showSuccess('voucher_saved');
   };
@@ -97,6 +109,12 @@ export const ErrorTestPage: React.FC = () => {
               className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
             >
               Test Critical Error Modal
+            </button>
+            <button
+              onClick={simulateDuplicate}
+              className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+            >
+              Simulate Duplicate Error
             </button>
           </div>
         </section>
