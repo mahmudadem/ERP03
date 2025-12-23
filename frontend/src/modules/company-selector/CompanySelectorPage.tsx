@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useAuth } from '../../hooks/useAuth';
+import { errorHandler } from '../../services/errorHandler';
 
 const CompanySelectorPage: React.FC = () => {
   const { companies, loading, error, refresh } = useCompanies();
@@ -25,7 +26,7 @@ const CompanySelectorPage: React.FC = () => {
       // Hard reload to ensure all contexts pick up the new active company
       window.location.href = '/#/';
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to switch company');
+      errorHandler.showError(err);
     }
   };
 

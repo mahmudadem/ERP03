@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, Module } from '../../../api/superAdmin';
+import { errorHandler } from '../../../services/errorHandler';
 
 const PROTECTED_MODULES = ['finance', 'inventory', 'hr'];
 const FORBIDDEN_IDS = ['core', 'companyAdmin'];
@@ -20,9 +21,8 @@ export const ModulesManagerPage: React.FC = () => {
       setLoading(true);
       const response: any = await superAdminApi.getModules();
       setModules(response.data || response);
-    } catch (error) {
-      console.error('Failed to load modules:', error);
-      alert('Failed to load modules');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,11 @@ export const ModulesManagerPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (PROTECTED_MODULES.includes(id)) {
-      alert(`Cannot delete protected module: ${id}`);
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: `Cannot delete protected module: ${id}`,
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -50,11 +54,10 @@ export const ModulesManagerPage: React.FC = () => {
     
     try {
       await superAdminApi.deleteModule(id);
-      alert('Module deleted');
+      errorHandler.showSuccess('Module deleted');
       loadModules();
     } catch (error: any) {
-      console.error('Failed to delete module:', error);
-      alert(`Failed to delete: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 
@@ -62,12 +65,20 @@ export const ModulesManagerPage: React.FC = () => {
     e.preventDefault();
     
     if (!formData.id || !formData.name) {
-      alert('ID and Name are required');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'ID and Name are required',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
     if (FORBIDDEN_IDS.includes(formData.id)) {
-      alert(`Cannot create module with ID: ${formData.id}. This is a reserved system component.`);
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: `Cannot create module with ID: ${formData.id}. This is a reserved system component.`,
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -77,17 +88,16 @@ export const ModulesManagerPage: React.FC = () => {
           name: formData.name,
           description: formData.description
         });
-        alert('Module updated');
+        errorHandler.showSuccess('Module updated');
       } else {
         await superAdminApi.createModule(formData);
-        alert('Module created');
+        errorHandler.showSuccess('Module created');
       }
       
       setIsModalOpen(false);
       loadModules();
     } catch (error: any) {
-      console.error('Failed to save module:', error);
-      alert(`Failed to save: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 

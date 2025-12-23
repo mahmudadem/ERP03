@@ -23,9 +23,6 @@ export const ModuleSetupCard: React.FC = () => {
   // Filter uninitialized modules, excluding companyAdmin (owner user is sufficient)
   const uninitializedModules = modules.filter((m) => !m.initialized && m.moduleCode !== 'companyAdmin');
 
-  // Debug logging
-  console.log('[ModuleSetupCard] Render:', { loading, modulesCount: modules.length, uninitializedCount: uninitializedModules.length });
-
   // Don't show card if loading or all modules are initialized
   if (loading || uninitializedModules.length === 0) {
     return null;

@@ -33,6 +33,7 @@ import {
   VoucherRule, VoucherAction, SectionLayout, SectionType
 } from '../types';
 import { GenericVoucherRenderer } from '../../components/shared/GenericVoucherRenderer';
+import { errorHandler } from '../../../../services/errorHandler';
 
 // --- MOCK DATA (UI ONLY) ---
 
@@ -358,7 +359,11 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       
       if (!result.isValid) {
         // Show errors - user cannot proceed
-        alert(`Please fix the following issues:\n${Object.values(result.errors).filter(Boolean).join('\n')}`);
+        errorHandler.showError({
+          code: 'VAL_001',
+          message: `Please fix the following issues:\n${Object.values(result.errors).filter(Boolean).join('\n')}`,
+          severity: 'WARNING'
+        } as any);
         return;
       }
     }

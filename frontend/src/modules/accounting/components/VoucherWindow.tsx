@@ -9,6 +9,7 @@ import { X, Minus, Square, Save, Loader2, Send } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 interface VoucherWindowProps {
   win: VoucherWindowType;
@@ -114,7 +115,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
 
   const handleSave = async () => {
     if (!rendererRef.current) {
-      console.error('Renderer ref not ready');
       return;
     }
     
@@ -122,9 +122,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
     try {
       const formData = rendererRef.current.getData();
       await onSave(win.id, formData);
-    } catch (error) {
-      console.error('Save failed:', error);
-      alert('Failed to save voucher');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setIsSaving(false);
     }
@@ -133,7 +132,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
   // Handle submit for approval
   const handleSubmit = async () => {
     if (!rendererRef.current) {
-      console.error('Renderer ref not ready');
       return;
     }
     
@@ -141,9 +139,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
     try {
       const formData = rendererRef.current.getData();
       await onSubmit(win.id, formData);
-    } catch (error) {
-      console.error('Submit failed:', error);
-      alert('Failed to submit voucher');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setIsSaving(false);
     }

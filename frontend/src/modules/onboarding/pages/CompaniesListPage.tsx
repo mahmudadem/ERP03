@@ -12,6 +12,7 @@ import { useCompanies } from '../../company-selector/hooks/useCompanies';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useAuth } from '../../../context/AuthContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 const CompaniesListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const CompaniesListPage: React.FC = () => {
       // Hard reload to ensure all contexts pick up the new active company
       window.location.href = '/#/';
     } catch (err: any) {
-      window.alert(err?.message || 'Failed to switch company');
+      errorHandler.showError(err);
     }
   };
 

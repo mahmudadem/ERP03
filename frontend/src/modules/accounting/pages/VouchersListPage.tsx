@@ -144,9 +144,8 @@ const VouchersListPage: React.FC = () => {
       console.log('✅ Voucher saved successfully!');
       errorHandler.showSuccess('voucher_saved');
       refresh(); // Force refresh the voucher list 
-    } catch (error) {
-      console.error('❌ Failed to save voucher:', error);
-      alert('Failed to save voucher. Please check console for details.');
+    } catch (error: any) {
+      errorHandler.showError(error);
     }
   };
 
@@ -172,9 +171,8 @@ const VouchersListPage: React.FC = () => {
       } else {
          throw new Error('Could not retrieve Voucher ID after save.');
       }
-    } catch (error) {
-       console.error('❌ Failed to submit voucher:', error);
-       alert('Failed to submit voucher. Please check console.');
+    } catch (error: any) {
+       errorHandler.showError(error);
     }
   };
 
@@ -225,8 +223,11 @@ const VouchersListPage: React.FC = () => {
       console.log('✅ Found form:', formDefinition);
       
       if (!formDefinition) {
-        console.warn('Form definition not found for:', summary);
-        alert(`Cannot find form for voucher type: ${summary.type}`);
+        errorHandler.showError({
+          code: 'VOUCH_NOT_FOUND',
+          message: `Cannot find form for voucher type: ${summary.type}`,
+          severity: 'ERROR'
+        } as any);
         return;
       }
 
@@ -293,10 +294,9 @@ const VouchersListPage: React.FC = () => {
                 try {
                    await accountingApi.deleteVoucher(id);
                    setFilters({...filters}); 
-                } catch (e) {
-                   console.error("Failed to delete", e);
-                   alert("Failed to delete voucher");
-                }
+                } catch (e: any) {
+                   errorHandler.showError(e);
+                 }
               }
             }}
           />

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { generateJournalSuggestion, analyzeImageForJournal } from '../services/geminiService';
 import { useLanguage } from '../LanguageContext';
+import { errorHandler } from '../../../../services/errorHandler';
 
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 15 }).map((_, i) => ({
   id: i + 1,
@@ -89,7 +90,11 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
 
   const handleAIAutoFill = async () => {
     if (!description) {
-        alert("Please enter a description to auto-fill.");
+        errorHandler.showError({
+            code: 'VAL_001',
+            message: "Please enter a description to auto-fill.",
+            severity: 'WARNING'
+        } as any);
         return;
     }
     setLoadingAI(true);
@@ -98,8 +103,8 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
       const cleanJson = suggestion.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       applyAIData(parsed);
-    } catch (e) {
-      alert('Failed to generate entry. Check API Key.');
+    } catch (e: any) {
+      errorHandler.showError(e);
     } finally {
       setLoadingAI(false);
     }
@@ -118,9 +123,8 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
         const cleanJson = result.replace(/```json|```/g, '').trim();
         const parsed = JSON.parse(cleanJson);
         applyAIData(parsed);
-      } catch (err) {
-        console.error("Image analysis failed", err);
-        alert("Failed to analyze image.");
+      } catch (err: any) {
+        errorHandler.showError(err);
       } finally {
         setLoadingAI(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -137,8 +141,8 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
       .join("\n");
     
     navigator.clipboard.writeText(header + body)
-      .then(() => alert("Copied to clipboard!"))
-      .catch(err => console.error("Failed to copy", err));
+      .then(() => errorHandler.showSuccess("Copied to clipboard!"))
+      .catch(err => errorHandler.showError(err));
   };
 
   return (

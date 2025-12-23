@@ -1,8 +1,8 @@
-
 import { useEffect, useState } from 'react';
 import { superAdminApi, SuperAdminUser } from '../../../api/superAdmin';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function UsersListPage() {
   const [users, setUsers] = useState<SuperAdminUser[]>([]);
@@ -17,9 +17,8 @@ export default function UsersListPage() {
     try {
       const data = await superAdminApi.getAllUsers();
       setUsers(data);
-    } catch (error) {
-      console.error('Failed to load users', error);
-      window.alert('Unable to load users. Please try again.');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -29,10 +28,10 @@ export default function UsersListPage() {
     if (!window.confirm('Promote this user to SUPER_ADMIN?')) return;
     try {
       await superAdminApi.promoteUser(userId);
-      window.alert('User promoted to SUPER_ADMIN');
+      errorHandler.showSuccess('User promoted to SUPER_ADMIN');
       loadUsers();
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to promote user');
+      errorHandler.showError(error);
     }
   };
 
@@ -40,10 +39,10 @@ export default function UsersListPage() {
     if (!window.confirm('Demote this SUPER_ADMIN to USER?')) return;
     try {
       await superAdminApi.demoteUser(userId);
-      window.alert('User demoted to USER');
+      errorHandler.showSuccess('User demoted to USER');
       loadUsers();
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to demote user');
+      errorHandler.showError(error);
     }
   };
 

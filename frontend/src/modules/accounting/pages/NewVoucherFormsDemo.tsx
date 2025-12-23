@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PaymentVoucherForm } from '../components/PaymentVoucherForm';
 import { ReceiptVoucherForm } from '../components/ReceiptVoucherForm';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 type VoucherType = 'payment' | 'receipt' | null;
 
@@ -11,7 +12,7 @@ const NewVoucherFormsDemo: React.FC = () => {
   const currentCompanyId = companyId || '';
 
   const handleSuccess = () => {
-    alert('Voucher created successfully!');
+    errorHandler.showSuccess('Voucher created successfully!');
     setActiveForm(null);
     // In production, refresh voucher list here
   };

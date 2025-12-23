@@ -5,6 +5,7 @@ import { WizardStepRenderer } from '../WizardStepRenderer';
 import { WizardNavigation } from '../WizardNavigation';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { errorHandler } from '../../../services/errorHandler';
 
 const WizardRunner: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -32,6 +33,7 @@ const WizardRunner: React.FC = () => {
       setValues({});
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || err.message || 'Failed to submit step');
+      errorHandler.showError(err);
     }
   };
 
@@ -44,11 +46,12 @@ const WizardRunner: React.FC = () => {
         setValues({});
       }
       const result = await completeWizard();
-      window.alert('Company created successfully');
+      errorHandler.showSuccess('Company created successfully');
       navigate('/');
       return result.companyId;
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || err.message || 'Failed to complete wizard');
+      errorHandler.showError(err);
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountSelector } from './AccountSelector';
+import { errorHandler } from '../../../services/errorHandler';
 
 interface PaymentAllocation {
   payToAccountId: string;
@@ -71,13 +72,14 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      alert(`Payment voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(`Payment voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create payment voucher');
+      errorHandler.showError(err);
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { superAdminApi, SuperAdminUser, SuperAdminCompany } from '../../../api/superAdmin';
 import { Button } from '../../../components/ui/Button';
 import { Users, Building2, Shield, Crown, Search, Filter, ChevronRight, Mail, Calendar } from 'lucide-react';
+import { errorHandler } from '../../../services/errorHandler';
 
 interface UserWithCompanies extends SuperAdminUser {
   companies?: SuperAdminCompany[];
@@ -40,9 +41,8 @@ export default function SuperAdminUsersManagementPage() {
 
       setUsers(usersWithCompanies);
       setCompanies(companiesData);
-    } catch (error) {
-      console.error('Failed to load data', error);
-      window.alert('Unable to load users and companies. Please try again.');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -52,10 +52,10 @@ export default function SuperAdminUsersManagementPage() {
     if (!window.confirm('Promote this user to SUPER_ADMIN? This will grant them full system access.')) return;
     try {
       await superAdminApi.promoteUser(userId);
-      window.alert('User promoted to SUPER_ADMIN');
+      errorHandler.showSuccess('User promoted to SUPER_ADMIN');
       loadData();
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to promote user');
+      errorHandler.showError(error);
     }
   };
 
@@ -63,10 +63,10 @@ export default function SuperAdminUsersManagementPage() {
     if (!window.confirm('Demote this SUPER_ADMIN to USER? They will lose all system admin privileges.')) return;
     try {
       await superAdminApi.demoteUser(userId);
-      window.alert('User demoted to USER');
+      errorHandler.showSuccess('User demoted to USER');
       loadData();
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to demote user');
+      errorHandler.showError(error);
     }
   };
 
@@ -76,10 +76,10 @@ export default function SuperAdminUsersManagementPage() {
       const { impersonationToken } = await superAdminApi.startImpersonation(companyId);
       // Store the impersonation token
       sessionStorage.setItem('impersonationToken', impersonationToken);
-      window.alert('Impersonation session started. Reloading...');
+      errorHandler.showSuccess('Impersonation session started. Reloading...');
       window.location.reload();
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to start impersonation');
+      errorHandler.showError(error);
     }
   };
 

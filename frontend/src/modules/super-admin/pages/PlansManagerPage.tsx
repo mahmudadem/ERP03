@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, Plan } from '../../../api/superAdmin';
+import { errorHandler } from '../../../services/errorHandler';
 
 export const PlansManagerPage: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -30,9 +31,8 @@ export const PlansManagerPage: React.FC = () => {
       setLoading(true);
       const response: any = await superAdminApi.getPlans();
       setPlans(response.data || response);
-    } catch (error) {
-      console.error('Failed to load plans:', error);
-      alert('Failed to load plans');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -75,11 +75,10 @@ export const PlansManagerPage: React.FC = () => {
     
     try {
       await superAdminApi.deletePlan(id);
-      alert('Plan deleted');
+      errorHandler.showSuccess('Plan deleted');
       loadPlans();
     } catch (error: any) {
-      console.error('Failed to delete plan:', error);
-      alert(`Failed to delete: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 
@@ -87,7 +86,11 @@ export const PlansManagerPage: React.FC = () => {
     e.preventDefault();
     
     if (!formData.id || !formData.name) {
-      alert('ID and Name are required');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'ID and Name are required',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -100,17 +103,16 @@ export const PlansManagerPage: React.FC = () => {
           status: formData.status,
           limits: formData.limits
         });
-        alert('Plan updated');
+        errorHandler.showSuccess('Plan updated');
       } else {
         await superAdminApi.createPlan(formData);
-        alert('Plan created');
+        errorHandler.showSuccess('Plan created');
       }
       
       setIsModalOpen(false);
       loadPlans();
     } catch (error: any) {
-      console.error('Failed to save plan:', error);
-      alert(`Failed to save: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 

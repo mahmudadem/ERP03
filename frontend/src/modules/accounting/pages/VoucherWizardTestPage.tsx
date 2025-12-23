@@ -7,20 +7,20 @@
 
 import React from 'react';
 import { VoucherTypeManager, WizardProvider, VoucherTypeConfig } from '../voucher-wizard';
+import { errorHandler } from '../../../services/errorHandler';
 
 const VoucherWizardTestPage: React.FC = () => {
   const handleVoucherSaved = (config: VoucherTypeConfig) => {
     console.log('✅ Wizard completed! Output:', config);
     
-    // Show the output in an alert for quick verification
-    alert(
+    // Show the output in a success toast for quick verification
+    errorHandler.showSuccess(
       `✅ Voucher Created!\n\n` +
       `Name: ${config.name}\n` +
       `ID: ${config.id}\n` +
       `Prefix: ${config.prefix}\n` +
       `Multi-line: ${config.isMultiLine ? 'Yes' : 'No'}\n` +
-      `Fields: ${config.uiModeOverrides.windows.sections.HEADER.fields.length} header fields\n\n` +
-      `Check console for full output →`
+      `Fields: ${config.uiModeOverrides.windows.sections.HEADER.fields.length} header fields`
     );
   };
 

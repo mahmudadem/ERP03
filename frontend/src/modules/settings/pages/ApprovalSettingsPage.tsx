@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { errorHandler } from '../../../services/errorHandler';
 
 const ApprovalSettingsPage: React.FC = () => {
   const { settings, updateSettings, isLoading } = useCompanySettings();
@@ -15,8 +15,12 @@ const ApprovalSettingsPage: React.FC = () => {
   }, [settings]);
 
   const handleSave = async () => {
-    await updateSettings({ strictApprovalMode: strictMode });
-    alert('Settings Saved');
+    try {
+      await updateSettings({ strictApprovalMode: strictMode });
+      errorHandler.showSuccess('common:success.SAVE');
+    } catch (error: any) {
+      errorHandler.showError(error);
+    }
   };
 
   if (isLoading) return <div>Loading settings...</div>;

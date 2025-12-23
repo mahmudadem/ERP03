@@ -3,6 +3,7 @@ import { superAdminRolesApi } from '../../../api/superAdmin/roles';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { errorHandler } from '../../../services/errorHandler';
 
 const RolePermissionsListPage: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
@@ -16,8 +17,8 @@ const RolePermissionsListPage: React.FC = () => {
     try {
       const data = await superAdminRolesApi.listRoles();
       setRoles(data);
-    } catch (error) {
-      console.error('Failed to load roles:', error);
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -32,10 +33,10 @@ const RolePermissionsListPage: React.FC = () => {
       await superAdminRolesApi.createRole(newRole);
       setShowCreateModal(false);
       setNewRole({ id: '', name: '', description: '' });
+      errorHandler.showSuccess('Role template created successfully');
       await loadRoles();
-    } catch (error) {
-      console.error('Failed to create role:', error);
-      alert('Failed to create role template');
+    } catch (error: any) {
+      errorHandler.showError(error);
     }
   };
 

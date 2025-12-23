@@ -7,6 +7,7 @@ import { VoucherTypeDefinition } from '../../../../designer-engine/types/Voucher
 import { FieldDefinition } from '../../../../designer-engine/types/FieldDefinition';
 import { UIMode } from '../types';
 import { GenericVoucherRenderer } from './GenericVoucherRenderer';
+import { errorHandler } from '../../../../services/errorHandler';
 
 /**
  * VoucherDesigner - Simplified for Canonical Schema V2
@@ -69,7 +70,11 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   const handleFinish = () => {
     // GUARD: Validate before save
     if (!definition.name || !definition.code) {
-      alert('Please fill in all required fields');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'Please fill in all required fields',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountSelector } from './AccountSelector';
+import { errorHandler } from '../../../services/errorHandler';
 
 interface ReceiptSource {
   receiveFromAccountId: string;
@@ -71,13 +72,14 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      alert(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create receipt voucher');
+      errorHandler.showError(err);
     } finally {
       setLoading(false);
     }

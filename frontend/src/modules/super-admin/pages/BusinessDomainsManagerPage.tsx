@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, BusinessDomain } from '../../../api/superAdmin';
+import { errorHandler } from '../../../services/errorHandler';
 
 export const BusinessDomainsManagerPage: React.FC = () => {
   const [domains, setDomains] = useState<BusinessDomain[]>([]);
@@ -17,9 +18,8 @@ export const BusinessDomainsManagerPage: React.FC = () => {
       setLoading(true);
       const response: any = await superAdminApi.getBusinessDomains();
       setDomains(response.data || response);
-    } catch (error) {
-      console.error('Failed to load business domains:', error);
-      alert('Failed to load business domains');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -42,11 +42,10 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     
     try {
       await superAdminApi.deleteBusinessDomain(id);
-      alert('Business domain deleted');
+      errorHandler.showSuccess('Business domain deleted');
       loadDomains();
-    } catch (error:  any) {
-      console.error('Failed to delete business domain:', error);
-      alert(`Failed to delete: ${error.response?.data?.message || error.message}`);
+    } catch (error: any) {
+      errorHandler.showError(error);
     }
   };
 
@@ -54,7 +53,11 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     e.preventDefault();
     
     if (!formData.id || !formData.name) {
-      alert('ID and Name are required');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'ID and Name are required',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -64,17 +67,16 @@ export const BusinessDomainsManagerPage: React.FC = () => {
           name: formData.name,
           description: formData.description
         });
-        alert('Business domain updated');
+        errorHandler.showSuccess('Business domain updated');
       } else {
         await superAdminApi.createBusinessDomain(formData);
-        alert('Business domain created');
+        errorHandler.showSuccess('Business domain created');
       }
       
       setIsModalOpen(false);
       loadDomains();
     } catch (error: any) {
-      console.error('Failed to save business domain:', error);
-      alert(`Failed to save: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 

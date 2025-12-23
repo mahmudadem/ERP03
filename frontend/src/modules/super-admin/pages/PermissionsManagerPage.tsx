@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, Permission } from '../../../api/superAdmin';
+import { errorHandler } from '../../../services/errorHandler';
 
 export const PermissionsManagerPage: React.FC = () => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -17,9 +18,8 @@ export const PermissionsManagerPage: React.FC = () => {
       setLoading(true);
       const response: any = await superAdminApi.getPermissions();
       setPermissions(response.data || response);
-    } catch (error) {
-      console.error('Failed to load permissions:', error);
-      alert('Failed to load permissions');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -42,11 +42,10 @@ export const PermissionsManagerPage: React.FC = () => {
     
     try {
       await superAdminApi.deletePermission(id);
-      alert('Permission deleted');
+      errorHandler.showSuccess('Permission deleted');
       loadPermissions();
     } catch (error: any) {
-      console.error('Failed to delete permission:', error);
-      alert(`Failed to delete: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 
@@ -54,7 +53,11 @@ export const PermissionsManagerPage: React.FC = () => {
     e.preventDefault();
     
     if (!formData.id || !formData.name) {
-      alert('ID and Name are required');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'ID and Name are required',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -64,17 +67,16 @@ export const PermissionsManagerPage: React.FC = () => {
           name: formData.name,
           description: formData.description
         });
-        alert('Permission updated');
+        errorHandler.showSuccess('Permission updated');
       } else {
         await superAdminApi.createPermission(formData);
-        alert('Permission created');
+        errorHandler.showSuccess('Permission created');
       }
       
       setIsModalOpen(false);
       loadPermissions();
     } catch (error: any) {
-      console.error('Failed to save permission:', error);
-      alert(`Failed to save: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 

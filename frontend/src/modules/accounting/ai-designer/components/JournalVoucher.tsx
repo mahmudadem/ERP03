@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { generateJournalSuggestion, analyzeImageForJournal } from '../services/geminiService';
 import { useLanguage } from '../LanguageContext';
+import { errorHandler } from '../../../../services/errorHandler';
 
 // Preserving logic: keeping enough initial rows to fill the view, but not too many to force scroll immediately
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 8 }).map((_, i) => ({
@@ -99,8 +100,8 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
       const cleanJson = suggestion.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       applyAIData(parsed);
-    } catch (e) {
-      alert('Failed to generate entry. Check API Key.');
+    } catch (e: any) {
+      errorHandler.showError(e);
     } finally {
       setLoadingAI(false);
     }
@@ -119,9 +120,8 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
         const cleanJson = result.replace(/```json|```/g, '').trim();
         const parsed = JSON.parse(cleanJson);
         applyAIData(parsed);
-      } catch (err) {
-        console.error("Image analysis failed", err);
-        alert("Failed to analyze image. Please try again.");
+      } catch (err: any) {
+        errorHandler.showError(err);
       } finally {
         setLoadingAI(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -138,8 +138,8 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
       .join("\n");
     
     navigator.clipboard.writeText(header + body)
-      .then(() => alert("Table data copied to clipboard as CSV!"))
-      .catch(err => console.error("Failed to copy", err));
+      .then(() => errorHandler.showSuccess("Table data copied to clipboard as CSV!"))
+      .catch(err => errorHandler.showError(err));
   };
 
   return (

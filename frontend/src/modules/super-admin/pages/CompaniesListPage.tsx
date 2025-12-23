@@ -1,8 +1,8 @@
-
 import { useEffect, useState } from 'react';
 import { superAdminApi, SuperAdminCompany } from '../../../api/superAdmin';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function CompaniesListPage() {
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
@@ -17,9 +17,8 @@ export default function CompaniesListPage() {
     try {
       const data = await superAdminApi.getAllCompanies();
       setCompanies(data);
-    } catch (error) {
-      console.error('Failed to load companies', error);
-      window.alert('Unable to load companies. Please try again.');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -29,10 +28,10 @@ export default function CompaniesListPage() {
     if (!window.confirm('Start impersonating this company?')) return;
     try {
       await superAdminApi.startImpersonation(companyId);
-      window.alert('Impersonation started. Redirecting...');
+      errorHandler.showSuccess('Impersonation started. Redirecting...');
       window.location.href = '/';
     } catch (error: any) {
-      window.alert(error?.message || 'Failed to start impersonation');
+      errorHandler.showError(error);
     }
   };
 

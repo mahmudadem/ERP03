@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { voucherTypeRepository } from '../repositories/VoucherTypeRepository';
+import { errorHandler } from '../../../../services/errorHandler';
 
 export type DesignerStep = 'TYPE' | 'BASIC' | 'FIELDS' | 'JOURNAL' | 'LAYOUT' | 'REVIEW';
 
@@ -82,7 +83,7 @@ export const useVoucherDesigner = (initialCode?: string) => {
       return true;
     } catch (err: any) {
       setError(err.message);
-      alert('Failed to save: ' + err.message);
+      errorHandler.showError(err);
       return false;
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { AccountSelector } from '../../../components/accounting/AccountSelector';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
+import { errorHandler } from '../../../services/errorHandler';
 
 const VoucherEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -53,9 +54,8 @@ const VoucherEditorPage: React.FC = () => {
         },
         lines: voucher.lines || []
       });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to load voucher data');
+    } catch (err: any) {
+      errorHandler.showError(err);
     } finally {
       setDataLoading(false);
     }
@@ -79,16 +79,15 @@ const VoucherEditorPage: React.FC = () => {
 
       if (id === 'new') {
         const created = await accountingApi.createVoucher(payload);
-        alert('Voucher Created Successfully');
+        errorHandler.showSuccess('common:success.SAVE');
         navigate(`/accounting/vouchers/${created.id}`);
       } else {
         await accountingApi.updateVoucher(id!, payload);
-        alert('Voucher Updated');
+        errorHandler.showSuccess('common:success.SAVE');
         loadVoucherData(id!);
       }
     } catch (err: any) {
-      console.error(err);
-      alert(`Error: ${err.message || 'Failed to save voucher'}`);
+      errorHandler.showError(err);
     }
   };
 
@@ -99,19 +98,19 @@ const VoucherEditorPage: React.FC = () => {
       switch (action) {
         case 'sendToApproval':
           updatedVoucher = await accountingApi.sendVoucherToApproval(id);
-          alert('Sent to Approval');
+          errorHandler.showSuccess('Sent to Approval');
           break;
         case 'approve':
           updatedVoucher = await accountingApi.approveVoucher(id);
-          alert('Voucher Approved');
+          errorHandler.showSuccess('Voucher Approved');
           break;
         case 'lock':
           updatedVoucher = await accountingApi.lockVoucher(id);
-          alert('Voucher Locked');
+          errorHandler.showSuccess('Voucher Locked');
           break;
         case 'cancel':
           updatedVoucher = await accountingApi.cancelVoucher(id);
-          alert('Voucher Cancelled');
+          errorHandler.showSuccess('Voucher Cancelled');
           break;
       }
       
@@ -120,7 +119,7 @@ const VoucherEditorPage: React.FC = () => {
         setInitialValues((prev: any) => ({ ...prev, header: { ...prev.header, status: updatedVoucher.status } }));
       }
     } catch (err: any) {
-      alert(`Action Failed: ${err.message}`);
+      errorHandler.showError(err);
     }
   };
 

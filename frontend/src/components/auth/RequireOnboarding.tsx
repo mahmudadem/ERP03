@@ -63,15 +63,6 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     );
   }
 
-  // Debug logging
-  console.log('[RequireOnboarding] State:', { 
-    user: !!user, 
-    isSuperAdmin, 
-    skipOnboardingCheck, 
-    statusLoading,
-    path: location.pathname 
-  });
-
   // Not logged in - redirect to auth
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;

@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { rbacApi, CompanyRole } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function RolesListPage() {
   const { companyId } = useCompanyAccess();
@@ -18,8 +18,8 @@ export default function RolesListPage() {
     try {
       const data = await rbacApi.listCompanyRoles(companyId);
       setRoles(data);
-    } catch (error) {
-      console.error('Failed to load roles:', error);
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -31,8 +31,9 @@ export default function RolesListPage() {
     try {
       await rbacApi.deleteCompanyRole(companyId, roleId);
       await loadRoles();
+      errorHandler.showSuccess('Role deleted');
     } catch (error: any) {
-      alert(error.message || 'Failed to delete role');
+      errorHandler.showError(error);
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, Bundle, BusinessDomain, Module } from '../../../api/superAdmin';
+import { errorHandler } from '../../../services/errorHandler';
 
 export const BundlesManagerPage: React.FC = () => {
   const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -32,9 +33,8 @@ export const BundlesManagerPage: React.FC = () => {
       setBundles(bundlesRes.data || bundlesRes);
       setBusinessDomains(domainsRes.data || domainsRes);
       setModules(modulesRes.data || modulesRes);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-      alert('Failed to load data');
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -69,11 +69,10 @@ export const BundlesManagerPage: React.FC = () => {
     
     try {
       await superAdminApi.deleteBundle(id);
-      alert('Bundle deleted');
+      errorHandler.showSuccess('Bundle deleted');
       loadData();
     } catch (error: any) {
-      console.error('Failed to delete bundle:', error);
-      alert(`Failed to delete: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 
@@ -81,7 +80,11 @@ export const BundlesManagerPage: React.FC = () => {
     e.preventDefault();
     
     if (!formData.id || !formData.name) {
-      alert('ID and Name are required');
+      errorHandler.showError({
+        code: 'VAL_001',
+        message: 'ID and Name are required',
+        severity: 'WARNING'
+      } as any);
       return;
     }
 
@@ -93,17 +96,16 @@ export const BundlesManagerPage: React.FC = () => {
           businessDomains: formData.businessDomains,
           modulesIncluded: formData.modulesIncluded
         });
-        alert('Bundle updated');
+        errorHandler.showSuccess('Bundle updated');
       } else {
         await superAdminApi.createBundle(formData);
-        alert('Bundle created');
+        errorHandler.showSuccess('Bundle created');
       }
       
       setIsModalOpen(false);
       loadData();
     } catch (error: any) {
-      console.error('Failed to save bundle:', error);
-      alert(`Failed to save: ${error.response?.data?.message || error.message}`);
+      errorHandler.showError(error);
     }
   };
 

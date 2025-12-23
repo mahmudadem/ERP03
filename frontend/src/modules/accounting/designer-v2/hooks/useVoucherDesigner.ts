@@ -10,6 +10,7 @@ import { FieldDefinitionV2 } from '../types/FieldDefinitionV2';
 import { LineColumnDefinition, getDefaultLineTableConfig } from '../types/LineTableConfiguration';
 import { getCoreFields, getSharedFields } from '../registries';
 import { SYSTEM_METADATA_FIELDS } from '../types/SystemMetadataFields';
+import { errorHandler } from '../../../../services/errorHandler';
 
 export type DesignerStep = 'SELECT_TYPE' | 'FIELD_SELECTION' | 'LINE_CONFIG' | 'LAYOUT_EDITOR' | 'VALIDATION' | 'REVIEW';
 
@@ -136,10 +137,14 @@ export const useVoucherDesigner = (initialType?: string) => {
         lineColumns,
         displayMode
       });
-      alert('Save functionality to be implemented');
+      errorHandler.showError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Save functionality to be implemented',
+        severity: 'INFO'
+      } as any);
     } catch (err: any) {
       setError(err.message);
-      alert('Failed to save: ' + err.message);
+      errorHandler.showError(err);
     } finally {
       setLoading(false);
     }

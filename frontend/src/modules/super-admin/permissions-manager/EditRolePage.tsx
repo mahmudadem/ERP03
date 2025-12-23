@@ -4,6 +4,7 @@ import { superAdminRolesApi } from '../../../api/superAdmin/roles';
 import { superAdminPermissionsApi } from '../../../api/superAdmin/permissions';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { errorHandler } from '../../../services/errorHandler';
 
 const EditRolePage: React.FC = () => {
   const { roleId } = useParams();
@@ -24,6 +25,8 @@ const EditRolePage: React.FC = () => {
         setModules(mods);
         const allPerms = mods.flatMap((m: any) => (m.permissions || []).map((p: any) => p.id));
         setPermissions(allPerms);
+      } catch (error: any) {
+        errorHandler.showError(error);
       } finally {
         setLoading(false);
       }
@@ -51,12 +54,16 @@ const EditRolePage: React.FC = () => {
 
   const save = async () => {
     if (!roleId) return;
-    await superAdminRolesApi.updateRole(roleId, {
-      name: role.name,
-      moduleBundles: role.moduleBundles || [],
-      explicitPermissions: role.explicitPermissions || [],
-    });
-    alert('Saved');
+    try {
+      await superAdminRolesApi.updateRole(roleId, {
+        name: role.name,
+        moduleBundles: role.moduleBundles || [],
+        explicitPermissions: role.explicitPermissions || [],
+      });
+      errorHandler.showSuccess('common:success.SAVE');
+    } catch (error: any) {
+      errorHandler.showError(error);
+    }
   };
 
   if (loading || !role) return <div className="p-6">Loading...</div>;

@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { rbacApi, CompanyRole, Permission, SystemRoleTemplate } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function EditRolePage() {
   const { roleId } = useParams<{ roleId: string }>();
@@ -41,8 +41,8 @@ export default function EditRolePage() {
           setSelectedPermissions(currentRole.permissions);
         }
       }
-    } catch (error) {
-      console.error('Failed to load data:', error);
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -80,9 +80,10 @@ export default function EditRolePage() {
           permissions: selectedPermissions
         });
       }
+      errorHandler.showSuccess('common:success.SAVE');
       navigate('/settings/rbac/roles');
     } catch (error: any) {
-      alert(error.message || 'Failed to save role');
+      errorHandler.showError(error);
     }
   };
 

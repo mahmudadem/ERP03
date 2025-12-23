@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { rbacApi, CompanyUser, CompanyRole } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function AssignUsersRolesPage() {
   const { companyId } = useCompanyAccess();
@@ -23,8 +23,8 @@ export default function AssignUsersRolesPage() {
       ]);
       setUsers(usersData);
       setRoles(rolesData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
+    } catch (error: any) {
+      errorHandler.showError(error);
     } finally {
       setLoading(false);
     }
@@ -34,8 +34,9 @@ export default function AssignUsersRolesPage() {
     try {
       await rbacApi.assignRoleToUser(companyId, userId, roleId);
       await loadData();
+      errorHandler.showSuccess('Role assigned successfully');
     } catch (error: any) {
-      alert(error.message || 'Failed to assign role');
+      errorHandler.showError(error);
     }
   };
 

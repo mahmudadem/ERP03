@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountingApi, Account } from '../../../api/accounting';
 import { AccountForm } from '../components/AccountForm';
+import { errorHandler } from '../../../services/errorHandler';
 
 export default function AccountsListPage() {
     const queryClient = useQueryClient();
@@ -41,7 +42,7 @@ export default function AccountsListPage() {
             try {
                 await deactivateMutation.mutateAsync(id);
             } catch (error: any) {
-                alert(error.message || 'Failed to deactivate account');
+                errorHandler.showError(error);
             }
         }
     };

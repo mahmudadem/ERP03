@@ -30,15 +30,11 @@ export function useVoucherTypes() {
         // PHASE 3: Try loading from new voucherForms API first
         try {
           const forms = await voucherFormApi.list();
-          console.log('📡 [useVoucherTypes] Raw API response:', forms);
           if (forms && forms.length > 0) {
-            console.log(`[useVoucherTypes] Loaded ${forms.length} forms from voucherForms API`);
-            
             // Convert VoucherForm to VoucherTypeConfig for backward compatibility
             const configFromForms: VoucherTypeConfig[] = forms
               .filter(f => f.enabled !== false)
               .map(form => {
-                console.log('🔍 [useVoucherTypes] Loading form:', form.id, 'uiModeOverrides:', form.uiModeOverrides);
                 return {
                   id: form.id,
                   code: form.code,
@@ -77,7 +73,6 @@ export function useVoucherTypes() {
           vouchers = await loadDefaultTemplates();
         }
 
-        console.log(`[useVoucherTypes] Total loaded (legacy): ${vouchers.length} types`);
         
         // Only show enabled vouchers in sidebar
         const enabledVouchers = vouchers.filter(v => v.enabled !== false);

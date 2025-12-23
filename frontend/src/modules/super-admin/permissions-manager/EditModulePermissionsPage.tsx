@@ -4,6 +4,7 @@ import { superAdminPermissionsApi } from '../../../api/superAdmin/permissions';
 import { superAdminApi, Permission } from '../../../api/superAdmin';
 import { Button } from '../../../components/ui/Button';
 import { ChevronRight, GripVertical, Search, Trash2 } from 'lucide-react';
+import { errorHandler } from '../../../services/errorHandler';
 
 const EditModulePermissionsPage: React.FC = () => {
   const { moduleId } = useParams();
@@ -24,9 +25,8 @@ const EditModulePermissionsPage: React.FC = () => {
         
         setDefinition(permDef || { moduleId, permissions: [], autoAttachToRoles: [] });
         setRegistryPermissions(registry || []);
-      } catch (err) {
-        console.error(err);
-        alert('Failed to load data');
+      } catch (err: any) {
+        errorHandler.showError(err);
       } finally {
         setLoading(false);
       }
@@ -84,8 +84,12 @@ const EditModulePermissionsPage: React.FC = () => {
 
   const save = async () => {
     if (!moduleId) return;
-    await superAdminPermissionsApi.updateModulePermissions(moduleId, definition);
-    alert('Saved successfully!');
+    try {
+      await superAdminPermissionsApi.updateModulePermissions(moduleId, definition);
+      errorHandler.showSuccess('common:success.SAVE');
+    } catch (err: any) {
+      errorHandler.showError(err);
+    }
   };
 
   if (loading || !definition) return <div className="p-8 text-center text-gray-500">Loading editor...</div>;
