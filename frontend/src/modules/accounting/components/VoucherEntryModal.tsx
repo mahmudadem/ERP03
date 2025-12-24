@@ -7,14 +7,14 @@
 
 import React, { useState, useRef } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
-import { VoucherTypeConfig } from '../voucher-wizard/types';
+import { VoucherFormConfig } from '../voucher-wizard/types';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIMode } from '../../../api/companyApi';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  voucherType: VoucherTypeConfig;
+  voucherType: VoucherFormConfig;
   uiMode: UIMode;
   onSave: (data: any) => Promise<void>;
 }
@@ -45,9 +45,16 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       const formData = rendererRef.current.getData();
       
       // Build complete voucher payload
+      // Refined Logic (Decoupled Forms):
+      // - typeId: Must be the BASE STRATEGY (e.g. JOURNAL_ENTRY) so backend finds the definition.
+      // - metadata.formId: The specific UI form config used (e.g. petty_cash).
       const voucherData = {
         ...formData,
-        typeId: voucherType.id,
+        typeId: (voucherType as any).baseType || voucherType.id,
+        metadata: {
+          ...(formData.metadata || {}),
+          formId: voucherType.id
+        },
         status: 'draft'
       };
       

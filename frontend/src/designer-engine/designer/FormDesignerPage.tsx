@@ -8,6 +8,7 @@ import { FormDefinition } from '../types/FormDefinition';
 import { FieldDefinition, FieldType } from '../types/FieldDefinition';
 import { SectionDefinition } from '../types/SectionDefinition';
 import { Button } from '../../components/ui/Button';
+import { errorHandler } from '../../services/errorHandler';
 
 // Initial State with a default section to ensure fields render
 const INITIAL_FORM: FormDefinition = {
@@ -96,7 +97,7 @@ export const FormDesignerPage: React.FC = () => {
 
   const handleSave = () => {
     console.log('Saved Form Definition:', definition);
-    alert('Form Definition saved to console. (Valid JSON generated)');
+    errorHandler.showSuccess('Form Definition saved to console. (Valid JSON generated)');
   };
 
   return (

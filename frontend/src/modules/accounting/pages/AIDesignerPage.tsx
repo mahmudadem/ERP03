@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { VoucherTypeManager, WizardProvider, loadDefaultTemplates, loadCompanyVouchers, saveVoucher, VoucherTypeConfig } from '../voucher-wizard';
+import { VoucherFormDesigner, WizardProvider, loadDefaultTemplates, loadCompanyForms, saveVoucherForm, VoucherFormConfig } from '../voucher-wizard';
 import { Button } from '../../../components/ui/Button';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -13,12 +13,12 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 export default function AIDesignerPage() {
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
-  const [templates, setTemplates] = useState<VoucherTypeConfig[]>([]);
-  const [vouchers, setVouchers] = useState<VoucherTypeConfig[]>([]);
+  const [templates, setTemplates] = useState<VoucherFormConfig[]>([]);
+  const [forms, setForms] = useState<VoucherFormConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load templates and company vouchers on mount
+  // Load templates and company forms on mount
   useEffect(() => {
     async function loadData() {
       if (!companyId) return;
@@ -27,16 +27,16 @@ export default function AIDesignerPage() {
       setError(null);
       
       try {
-        const [loadedTemplates, loadedVouchers] = await Promise.all([
+        const [loadedTemplates, loadedForms] = await Promise.all([
           loadDefaultTemplates(),
-          loadCompanyVouchers(companyId)
+          loadCompanyForms(companyId)
         ]);
         
         setTemplates(loadedTemplates);
-        setVouchers(loadedVouchers);
+        setForms(loadedForms);
       } catch (err) {
         console.error('Failed to load voucher data:', err);
-        setError('Failed to load vouchers. Please refresh the page.');
+        setError('Failed to load voucher forms. Please refresh the page.');
       } finally {
         setLoading(false);
       }
@@ -45,26 +45,26 @@ export default function AIDesignerPage() {
     loadData();
   }, [companyId]);
 
-  const handleVoucherSaved = async (config: VoucherTypeConfig, isEdit: boolean) => {
+  const handleVoucherSaved = async (config: VoucherFormConfig, isEdit: boolean) => {
     if (!companyId || !user) {
       setError('Missing company ID or user information');
       return;
     }
 
     try {
-      const result = await saveVoucher(companyId, config, user.uid, isEdit);
+      const result = await saveVoucherForm(companyId, config, user.uid, isEdit);
       
       if (result.success) {
-        // Reload all vouchers to ensure we're in sync with database
-        const updatedVouchers = await loadCompanyVouchers(companyId);
-        setVouchers(updatedVouchers);
+        // Reload all forms to ensure we're in sync with database
+        const updatedForms = await loadCompanyForms(companyId);
+        setForms(updatedForms);
         setError(null);
       } else {
-        setError(result.errors?.join(', ') || 'Failed to save voucher');
+        setError(result.errors?.join(', ') || 'Failed to save voucher form');
       }
     } catch (err) {
-      console.error('Failed to save voucher:', err);
-      setError('Failed to save voucher. Please try again.');
+      console.error('Failed to save voucher form:', err);
+      setError('Failed to save voucher form. Please try again.');
     }
   };
 
@@ -73,7 +73,7 @@ export default function AIDesignerPage() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin h-8 w-8 mx-auto mb-4 text-indigo-600" />
-          <p className="text-gray-600">Loading vouchers...</p>
+          <p className="text-gray-600">Loading forms...</p>
         </div>
       </div>
     );
@@ -97,8 +97,8 @@ export default function AIDesignerPage() {
   }
 
   return (
-    <WizardProvider initialVouchers={vouchers}>
-      <VoucherTypeManager
+    <WizardProvider initialForms={forms}>
+      <VoucherFormDesigner
         templates={templates}
         onVoucherSaved={handleVoucherSaved}
         onExit={() => {/* Could navigate away if needed */}}

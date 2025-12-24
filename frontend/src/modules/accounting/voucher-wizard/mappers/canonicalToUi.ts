@@ -1,12 +1,12 @@
 /**
  * Canonical to UI Mapper
  * 
- * Transforms VoucherTypeDefinition (from DB) → VoucherTypeConfig (for wizard)
+ * Transforms VoucherTypeDefinition (from DB) → VoucherFormConfig (for wizard)
  * 
- * This allows editing existing voucher types by loading them into the wizard.
+ * This allows editing existing voucher forms by loading them into the wizard.
  */
 
-import { VoucherTypeConfig, VoucherRule, VoucherAction, FieldLayout, SectionLayout, SectionType } from '../types';
+import { VoucherFormConfig, VoucherRule, VoucherAction, FieldLayout, SectionLayout, SectionType } from '../types';
 
 // TODO: Import actual VoucherTypeDefinition from your schema
 interface VoucherTypeDefinition {
@@ -26,7 +26,11 @@ interface VoucherTypeDefinition {
   };
   
   isMultiLine: boolean;
-  tableColumns?: string[];
+  tableColumns?: Array<{
+    fieldId: string;
+    width?: string;
+    labelOverride?: string;
+  }>;
   
   requiresApproval?: boolean;
   preventNegativeCash?: boolean;
@@ -72,7 +76,7 @@ const ALL_ACTIONS: VoucherAction[] = [
 /**
  * Transform canonical voucher definition to UI config
  */
-export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherTypeConfig {
+export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherFormConfig {
   // Map business rules back to UI toggles
   const rules = DEFAULT_RULES.map(rule => ({
     ...rule,
@@ -82,29 +86,38 @@ export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherTypeConf
   // Map enabled actions
   const actions = ALL_ACTIONS.map(action => ({
     ...action,
-    enabled: canonical.enabledActions.includes(action.type)
+    enabled: canonical.enabledActions?.includes(action.type) || false
   }));
   
   // Transform layouts
   const uiModeOverrides = {
-    classic: transformCanonicalLayout(canonical.layout.classic),
-    windows: transformCanonicalLayout(canonical.layout.windows)
+    classic: transformCanonicalLayout(canonical.layout?.classic || { sections: {} }),
+    windows: transformCanonicalLayout(canonical.layout?.windows || { sections: {} })
   };
   
-  const uiConfig: VoucherTypeConfig = {
+  const uiConfig: VoucherFormConfig = {
     id: canonical.id,
     name: canonical.name,
     prefix: canonical.prefix,
     startNumber: canonical.nextNumber,
     rules,
     isMultiLine: canonical.isMultiLine,
-    tableColumns: canonical.tableColumns,
+    tableColumns: (canonical.tableColumns || []).map((col: any) => {
+      if (typeof col === 'string') return { id: col };
+      return {
+        id: col.fieldId || col.id,
+        width: col.width,
+        labelOverride: col.labelOverride || ''
+      };
+    }),
     actions,
     uiModeOverrides,
     enabled: canonical.enabled,
-    isSystemDefault: canonical.isSystemDefault,
-    isLocked: canonical.isSystemDefault, // System defaults are locked
+    isSystemDefault: canonical.isSystemDefault || (canonical as any).isSystemGenerated || (canonical as any).isDefault,
+    isLocked: canonical.isSystemDefault || (canonical as any).isLocked,
     inUse: canonical.inUse,
+    baseType: (canonical as any).baseType || canonical.code || canonical.id,
+    metadata: (canonical as any).metadata || {}
   };
   
   return uiConfig;
@@ -132,20 +145,29 @@ function getRuleEnabled(canonical: VoucherTypeDefinition, ruleId: string): boole
  * Transform canonical layout to UI layout
  */
 function transformCanonicalLayout(canonicalLayout: LayoutSchema): { sections: Record<SectionType, SectionLayout> } {
-  const sections: any = {};
+  const sections: any = {
+    HEADER: { order: 0, fields: [] },
+    BODY: { order: 1, fields: [] },
+    EXTRA: { order: 2, fields: [] },
+    ACTIONS: { order: 3, fields: [] }
+  };
   
-  Object.entries(canonicalLayout.sections).forEach(([sectionName, sectionData]) => {
-    sections[sectionName as SectionType] = {
-      order: sectionData.order,
-      fields: sectionData.fields.map(field => ({
-        fieldId: field.fieldId,
-        row: field.row,
-        col: field.col,
-        colSpan: field.colSpan,
-        labelOverride: field.label
-      }))
-    };
-  });
+  if (canonicalLayout?.sections) {
+    Object.entries(canonicalLayout.sections).forEach(([sectionName, sectionData]) => {
+      if (sections[sectionName as SectionType]) {
+        sections[sectionName as SectionType] = {
+          order: sectionData.order,
+          fields: (sectionData.fields || []).map(field => ({
+            fieldId: field.fieldId,
+            row: field.row,
+            col: field.col,
+            colSpan: field.colSpan,
+            labelOverride: field.label
+          }))
+        };
+      }
+    });
+  }
   
   return { sections };
 }

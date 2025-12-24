@@ -36,6 +36,7 @@ class PrismaVoucherRepository {
                 description: voucher.description || null,
                 createdAt: voucher.createdAt ? new Date(voucher.createdAt) : new Date(),
                 updatedAt: voucher.updatedAt ? new Date(voucher.updatedAt) : new Date(),
+                metadata: voucher.metadata || {},
                 lines: {
                     create: voucher.lines.map((line) => ({
                         id: line.id,
@@ -48,6 +49,7 @@ class PrismaVoucherRepository {
                         lineCurrency: line.lineCurrency || voucher.currency,
                         exchangeRate: line.exchangeRate || 1,
                         costCenterId: line.costCenterId || null,
+                        metadata: line.metadata || {},
                     })),
                 },
             },
@@ -110,6 +112,7 @@ class PrismaVoucherRepository {
             line.creditBase = lineData.creditBase;
             line.lineCurrency = lineData.lineCurrency;
             line.exchangeRate = lineData.exchangeRate;
+            line.metadata = lineData.metadata || {};
         });
         const voucher = new Voucher_1.Voucher(data.id, data.companyId, data.type, data.date, data.currency, data.exchangeRate, data.status, data.totalDebit, data.totalCredit, data.createdBy, data.reference, lines);
         voucher.voucherNo = data.voucherNo;
@@ -121,6 +124,7 @@ class PrismaVoucherRepository {
         voucher.approvedBy = data.approvedBy;
         voucher.lockedBy = data.lockedBy;
         voucher.description = data.description;
+        voucher.metadata = data.metadata || {};
         return voucher;
     }
 }

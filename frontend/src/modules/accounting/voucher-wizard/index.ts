@@ -6,7 +6,7 @@
  */
 
 export { VoucherDesigner } from './components/VoucherDesigner';
-export { VoucherTypeManager } from './components/VoucherTypeManager';
+export { VoucherFormDesigner } from './components/VoucherFormDesigner';
 export { WizardProvider, useWizard } from './WizardContext';
 
 // Services for database integration
@@ -19,7 +19,7 @@ export * from './validators';
 export * from './mappers';
 
 export type {
-  VoucherTypeConfig,
+  VoucherFormConfig,
   FieldLayout,
   SectionLayout,
   VoucherLayoutConfig,
@@ -32,3 +32,5 @@ export type {
   FieldCategory,
   OnWizardFinish
 } from './types';
+
+// Backward compatibility alias for the service function is already exported via * from './services'

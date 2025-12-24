@@ -41,8 +41,11 @@ export class VoucherEntity {
     public readonly totalDebit: number,
     public readonly totalCredit: number,
     
-    // Status
+    // State
     public readonly status: VoucherStatus,
+    
+    // Metadata (Generic extra fields)
+    public readonly metadata: Record<string, any> = {},
     
     // Audit trail
     public readonly createdBy: string,
@@ -174,6 +177,7 @@ export class VoucherEntity {
       this.totalDebit,
       this.totalCredit,
       VoucherStatus.APPROVED,
+      this.metadata,
       this.createdBy,
       this.createdAt,
       approvedBy,
@@ -208,6 +212,7 @@ export class VoucherEntity {
       this.totalDebit,
       this.totalCredit,
       VoucherStatus.REJECTED,
+      this.metadata,
       this.createdBy,
       this.createdAt,
       this.approvedBy,
@@ -242,6 +247,7 @@ export class VoucherEntity {
       this.totalDebit,
       this.totalCredit,
       VoucherStatus.LOCKED,
+      this.metadata,
       this.createdBy,
       this.createdAt,
       this.approvedBy,
@@ -272,6 +278,7 @@ export class VoucherEntity {
       totalDebit: this.totalDebit,
       totalCredit: this.totalCredit,
       status: this.status,
+      metadata: this.metadata,
       createdBy: this.createdBy,
       createdAt: this.createdAt.toISOString(),
       approvedBy: this.approvedBy || null,
@@ -302,6 +309,7 @@ export class VoucherEntity {
       data.totalDebit,
       data.totalCredit,
       data.status as VoucherStatus,
+      data.metadata || {},
       data.createdBy,
       new Date(data.createdAt),
       data.approvedBy,

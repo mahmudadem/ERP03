@@ -36,6 +36,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
                 description: voucher.description || null,
                 createdAt: voucher.createdAt ? new Date(voucher.createdAt) : new Date(),
                 updatedAt: voucher.updatedAt ? new Date(voucher.updatedAt) : new Date(),
+                metadata: voucher.metadata || {},
                 lines: {
                     create: voucher.lines.map((line) => ({
                         id: line.id,
@@ -48,6 +49,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
                         lineCurrency: line.lineCurrency || voucher.currency,
                         exchangeRate: line.exchangeRate || 1,
                         costCenterId: line.costCenterId || null,
+                        metadata: line.metadata || {},
                     })),
                 },
             },
@@ -132,6 +134,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
             line.creditBase = lineData.creditBase;
             line.lineCurrency = lineData.lineCurrency;
             line.exchangeRate = lineData.exchangeRate;
+            line.metadata = lineData.metadata || {};
         });
 
         const voucher = new Voucher(
@@ -158,6 +161,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         voucher.approvedBy = data.approvedBy;
         voucher.lockedBy = data.lockedBy;
         voucher.description = data.description;
+        voucher.metadata = data.metadata || {};
 
         return voucher;
     }

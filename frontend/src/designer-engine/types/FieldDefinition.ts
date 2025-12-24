@@ -13,7 +13,9 @@ export type FieldType =
   | 'SELECT' 
   | 'CHECKBOX' 
   | 'TEXTAREA' 
-  | 'RELATION'; // For picking a Customer, Item, etc.
+  | 'RELATION' // For picking a Customer, Item, etc.
+  | 'account-selector' // Custom business component
+  | 'currency-exchange'; // Custom business component
 
 export interface SelectOption {
   label: string;

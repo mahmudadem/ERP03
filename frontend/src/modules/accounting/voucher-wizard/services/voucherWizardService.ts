@@ -5,7 +5,7 @@
  * Integrates with Firestore and applies validation
  */
 
-import { VoucherTypeConfig } from '../types';
+import { VoucherFormConfig } from '../types';
 import { uiToCanonical, canonicalToUi, validateUiConfig } from '../mappers';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 
@@ -16,15 +16,13 @@ import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where } fro
 /**
  * Load default system voucher templates from Firestore
  * Uses pattern: system_metadata/voucher_types/items/{voucherTypeId}
- * (Same structure as system_metadata/plans/items/{planId})
  */
-export async function loadDefaultTemplates(): Promise<VoucherTypeConfig[]> {
+export async function loadDefaultTemplates(): Promise<VoucherFormConfig[]> {
   try {
-    // Load from system_metadata/voucher_types/items
     const templatesRef = collection(db, 'system_metadata', 'voucher_types', 'items');
     const snapshot = await getDocs(templatesRef);
     
-    const templates: VoucherTypeConfig[] = [];
+    const templates: VoucherFormConfig[] = [];
     
     snapshot.forEach(doc => {
       try {
@@ -36,37 +34,36 @@ export async function loadDefaultTemplates(): Promise<VoucherTypeConfig[]> {
       }
     });
     
-    console.log(`✅ Loaded ${templates.length} default voucher templates from Firestore`);
     return templates;
   } catch (error) {
-    console.error('❌ Failed to load templates from system_metadata/voucher_types/items:', error);
+    console.error('❌ Failed to load templates:', error);
     return [];
   }
 }
 
 /**
- * Load company-specific voucher types
+ * Load company-specific voucher forms
  */
-export async function loadCompanyVouchers(companyId: string): Promise<VoucherTypeConfig[]> {
+export async function loadCompanyForms(companyId: string): Promise<VoucherFormConfig[]> {
   try {
-    const vouchersRef = collection(db, `companies/${companyId}/voucherTypes`);
-    const snapshot = await getDocs(vouchersRef);
+    const formsRef = collection(db, `companies/${companyId}/voucherForms`);
+    const snapshot = await getDocs(formsRef);
     
-    const vouchers: VoucherTypeConfig[] = [];
+    const forms: VoucherFormConfig[] = [];
     
     snapshot.forEach(doc => {
       try {
         const canonical = doc.data() as any; 
         const uiConfig = canonicalToUi(canonical);
-        vouchers.push(uiConfig);
+        forms.push(uiConfig);
       } catch (err) {
-        console.error(`[loadCompanyVouchers] Failed to parse document ${doc.id}:`, err);
+        console.error(`[loadCompanyForms] Failed to parse document ${doc.id}:`, err);
       }
     });
     
-    return vouchers;
+    return forms;
   } catch (error) {
-    console.error('Failed to load company vouchers:', error);
+    console.error('Failed to load company forms:', error);
     return [];
   }
 }
@@ -93,31 +90,11 @@ function removeUndefined(obj: any): any {
  * Ensure uiModeOverrides is populated for all modes
  * Auto-generates layout if missing
  */
-function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
-  // If uiModeOverrides already exists and has content, return as-is
+function ensureUIModeOverrides(config: VoucherFormConfig): VoucherFormConfig {
   if (config.uiModeOverrides && 
       config.uiModeOverrides.windows?.sections?.ACTIONS?.fields?.length > 0) {
     return config;
   }
-
-  console.log('[ensureUIModeOverrides] Generating missing uiModeOverrides');
-
-  const AVAILABLE_FIELDS = [
-    { id: 'voucherNo', sectionHint: 'HEADER' },
-    { id: 'status', sectionHint: 'HEADER' },
-    { id: 'createdBy', sectionHint: 'HEADER' },
-    { id: 'createdAt', sectionHint: 'HEADER' },
-    { id: 'date', sectionHint: 'HEADER' },
-    { id: 'reference', sectionHint: 'HEADER' },
-    { id: 'description', sectionHint: 'HEADER' },
-    { id: 'currency', sectionHint: 'HEADER' },
-    { id: 'exchangeRate', sectionHint: 'HEADER' },
-    { id: 'paymentMethod', sectionHint: 'HEADER' },
-    { id: 'account', sectionHint: 'HEADER' },
-    { id: 'lineItems', sectionHint: 'BODY' },
-    { id: 'notes', sectionHint: 'EXTRA' },
-    { id: 'attachments', sectionHint: 'EXTRA' },
-  ];
 
   const newOverrides: any = {};
   const modes: ('windows' | 'classic')[] = ['windows', 'classic'];
@@ -134,7 +111,6 @@ function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
     let headerRow = 0;
     let headerColCursor = 0;
 
-    // 1. Place System Fields
     const systemFields = ['voucherNo', 'status', 'createdBy', 'createdAt'];
     systemFields.forEach(fieldId => {
       if (isWindows) {
@@ -147,7 +123,6 @@ function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
     });
     if (isWindows) headerRow = 1;
 
-    // 2. Place Header Fields from config
     const headerFields = (config as any).headerFields || [];
     headerFields.forEach((fieldId: string) => {
       const span = isWindows ? 4 : 12;
@@ -164,12 +139,10 @@ function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
       }
     });
 
-    // 3. Place Body (line items if multi-line)
     if ((config as any).isMultiLine !== false) {
       sections.BODY.push({ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 });
     }
 
-    // 4. Place Actions
     const enabledActions = (config.actions || []).filter(a => a.enabled);
     enabledActions.forEach((action, idx) => {
       const span = isWindows ? Math.floor(12 / Math.min(4, enabledActions.length)) : 12;
@@ -201,22 +174,16 @@ function ensureUIModeOverrides(config: VoucherTypeConfig): VoucherTypeConfig {
 }
 
 /**
- * Save voucher type (create or update)
+ * Save voucher form configuration
  */
-export async function saveVoucher(
+export async function saveVoucherForm(
   companyId: string,
-  config: VoucherTypeConfig,
+  config: VoucherFormConfig,
   userId: string,
   isEdit: boolean = false
 ): Promise<{ success: boolean; errors?: string[] }> {
   try {
-    console.log('💾 [saveVoucher] Starting save for:', config.id, 'isEdit:', isEdit);
-    console.log('💾 [saveVoucher] Config before ensureUIModeOverrides:', config.uiModeOverrides);
-    
-    // Ensure uiModeOverrides is populated (auto-generate if missing)
     config = ensureUIModeOverrides(config);
-    
-    console.log('💾 [saveVoucher] Config after ensureUIModeOverrides:', config.uiModeOverrides);
     
     // Validate UI config
     const uiValidation = validateUiConfig(config);
@@ -224,58 +191,54 @@ export async function saveVoucher(
       return { success: false, errors: uiValidation.errors };
     }
     
-    // Check uniqueness (name, ID, prefix)
+    // Check uniqueness
     const uniquenessResult = await validateUniqueness(
       companyId,
       config.name,
       config.id,
       config.prefix,
-      isEdit ? config.id : undefined // Exclude self when editing
+      isEdit ? config.id : undefined
     );
-    
-    console.log('[saveVoucher] Uniqueness validation result:', uniquenessResult);
     
     if (!uniquenessResult.isValid) {
       const errors = Object.values(uniquenessResult.errors).filter(Boolean) as string[];
-      console.error('[saveVoucher] Uniqueness validation failed:', errors);
       return { success: false, errors };
     }
     
-    // Transform to canonical
+    // Transform to canonical - We keep this to extract layout but we DO NOT save to voucher_types
+    // as per refined architecture: Backend types are fixed strategies.
     const canonical = uiToCanonical(config, companyId, userId, isEdit);
     
-    // Remove undefined values (Firestore doesn't allow them)
-    const cleanedData = removeUndefined(canonical);
-    
-    // Save to voucherTypes (legacy, for backend type info)
-    // Use setDoc with merge to handle both create and update (some forms may not exist in voucherTypes)
-    const voucherTypeRef = doc(db, `companies/${companyId}/voucherTypes`, config.id);
-    await setDoc(voucherTypeRef, cleanedData, { merge: true });
-    
-    // ALSO save to voucherForms (new, for sidebar and rendering)
-    // Extract headerFields from wizard layout (convert uiModeOverrides to flat fields)
+    // Save to voucherForms for modern UI usage
     const extractHeaderFields = () => {
       const windowsLayout = config.uiModeOverrides?.windows?.sections?.HEADER?.fields || [];
       const classicLayout = config.uiModeOverrides?.classic?.sections?.HEADER?.fields || [];
-      // Prefer windows layout, fallback to classic
       const fields = windowsLayout.length > 0 ? windowsLayout : classicLayout;
       return fields.map((f: any) => ({
         id: f.fieldId,
         label: f.labelOverride || f.fieldId,
-        type: 'text', // Default type, can be enhanced later
+        type: 'text',
         order: f.row || 0
       }));
     };
 
-    // Extract tableColumns from wizard config
     const extractTableColumns = () => {
       if (config.tableColumns && Array.isArray(config.tableColumns)) {
-        return config.tableColumns.map((col: any) => ({
-          id: typeof col === 'string' ? col : col.fieldId || col.id,
-          label: typeof col === 'string' ? col : col.label || col.fieldId,
-          type: 'text',
-          order: 0
-        }));
+        return config.tableColumns.map((col: any) => {
+          const id = typeof col === 'string' ? col : (col.id || col.fieldId);
+          const label = typeof col === 'string' ? col : (col.labelOverride || col.label || id);
+          const width = typeof col === 'string' ? undefined : col.width;
+          
+          return {
+            id,
+            fieldId: id,
+            label,
+            labelOverride: label,
+            width,
+            type: 'text',
+            order: 0
+          };
+        });
       }
       return [];
     };
@@ -283,8 +246,8 @@ export async function saveVoucher(
     const formData = {
       id: config.id,
       companyId,
-      typeId: (config as any).baseType || config.id, // Use baseType for cloned forms, otherwise id
-      baseType: (config as any).baseType || config.code || config.id, // Store base type explicitly
+      typeId: (config as any).baseType || config.id,
+      baseType: (config as any).baseType || config.code || config.id,
       name: config.name,
       code: config.id,
       prefix: config.prefix || config.id?.slice(0, 3).toUpperCase() || 'V',
@@ -292,63 +255,54 @@ export async function saveVoucher(
       isSystemGenerated: false,
       isLocked: false,
       enabled: config.enabled !== false,
-      // Layout data
       headerFields: extractHeaderFields(),
       tableColumns: extractTableColumns(),
-      // Full layout for custom rendering
       uiModeOverrides: config.uiModeOverrides || null,
-      // Rules and actions
+      // IMPORTANT: Add layout here so canonicalToUi can restore it!
+      layout: canonical.layout,
       rules: config.rules || [],
       actions: config.actions || [],
       isMultiLine: config.isMultiLine ?? true,
       defaultCurrency: config.defaultCurrency || 'USD',
-      layout: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: userId
     };
     
     const formRef = doc(db, `companies/${companyId}/voucherForms`, config.id);
-    // Use setDoc with merge to handle both create and update
     await setDoc(formRef, removeUndefined(formData), { merge: true });
-    
-    console.log('[saveVoucher] Saved to both voucherTypes and voucherForms');
     
     return { success: true };
   } catch (error) {
-    console.error('Failed to save voucher:', error);
-    return { success: false, errors: ['Failed to save voucher. Please try again.'] };
+    console.error('Failed to save voucher form:', error);
+    return { success: false, errors: ['Failed to save voucher form. Please try again.'] };
   }
 }
 
 /**
- * Clone a voucher (typically from system defaults)
+ * Clone a voucher form template
  */
-export async function cloneVoucher(
-  sourceVoucherId: string,
+export async function cloneVoucherForm(
+  sourceFormId: string,
   companyId: string,
   isSystemDefault: boolean = false
-): Promise<VoucherTypeConfig | null> {
+): Promise<VoucherFormConfig | null> {
   try {
     let sourceDoc;
-    
     if (isSystemDefault) {
-      // Load from system templates
-      sourceDoc = await getDoc(doc(db, 'systemVoucherTemplates', sourceVoucherId));
+      sourceDoc = await getDoc(doc(db, 'systemVoucherTemplates', sourceFormId));
     } else {
-      // Load from company vouchers
-      sourceDoc = await getDoc(doc(db, `companies/${companyId}/voucherTypes`, sourceVoucherId));
+      sourceDoc = await getDoc(doc(db, `companies/${companyId}/voucherForms`, sourceFormId));
     }
     
     if (!sourceDoc.exists()) {
-      console.error('Source voucher not found');
+      console.error('Source form not found');
       return null;
     }
     
-    const canonical = sourceDoc.data() as any; // TODO: Use proper type
+    const canonical = sourceDoc.data() as any;
     const uiConfig = canonicalToUi(canonical);
     
-    // Modify for cloning
     uiConfig.id = `${uiConfig.id}_copy_${Date.now()}`;
     uiConfig.name = `${uiConfig.name} (Copy)`;
     uiConfig.isSystemDefault = false;
@@ -357,58 +311,74 @@ export async function cloneVoucher(
     
     return uiConfig;
   } catch (error) {
-    console.error('Failed to clone voucher:', error);
+    console.error('Failed to clone form:', error);
     return null;
   }
 }
 
 /**
- * Toggle voucher enabled/disabled state
+ * Toggle form enabled/disabled state
  */
-export async function toggleVoucherEnabled(
+export async function toggleFormEnabled(
   companyId: string,
-  voucherId: string,
+  formId: string,
   enabled: boolean
 ): Promise<boolean> {
   try {
-    const voucherRef = doc(db, `companies/${companyId}/voucherTypes`, voucherId);
-    await updateDoc(voucherRef, { enabled });
+    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    await updateDoc(formRef, { enabled });
     return true;
   } catch (error) {
-    console.error('Failed to toggle voucher:', error);
+    console.error('Failed to toggle form:', error);
     return false;
   }
 }
 
 /**
- * Check if voucher can be deleted
- * Returns: { canDelete: boolean, reason?: string }
+ * Check if form can be deleted
  */
-export async function checkDeletable(
+export async function checkFormDeletable(
   companyId: string,
-  voucherId: string
+  formId: string
 ): Promise<{ canDelete: boolean; reason?: string }> {
   try {
-    const voucherRef = doc(db, `companies/${companyId}/voucherTypes`, voucherId);
-    const voucherDoc = await getDoc(voucherRef);
+    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    const formDoc = await getDoc(formRef);
     
-    if (!voucherDoc.exists()) {
-      return { canDelete: false, reason: 'Voucher not found' };
+    if (!formDoc.exists()) {
+      return { canDelete: false, reason: 'Form not found' };
     }
     
-    const data = voucherDoc.data();
-    
+    const data = formDoc.data();
     if (data.isSystemDefault) {
-      return { canDelete: false, reason: 'System defaults cannot be deleted' };
+      return { canDelete: false, reason: 'System templates cannot be deleted' };
     }
     
     if (data.inUse) {
-      return { canDelete: false, reason: 'Voucher is in use and cannot be deleted. You can disable it instead.' };
+      return { canDelete: false, reason: 'This form is in use and cannot be deleted. You can disable it instead.' };
     }
     
     return { canDelete: true };
   } catch (error) {
-    console.error('Failed to check deletable:', error);
-    return { canDelete: false, reason: 'Error checking voucher status' };
+    return { canDelete: false, reason: 'Error checking form status' };
+  }
+}
+
+/**
+ * Get a specific voucher form by ID
+ */
+export async function getVoucherFormById(companyId: string, formId: string): Promise<VoucherFormConfig | null> {
+  try {
+    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    const snap = await getDoc(formRef);
+    
+    if (snap.exists()) {
+      const canonical = snap.data() as any;
+      return canonicalToUi(canonical);
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to load voucher form:', error);
+    return null;
   }
 }

@@ -17,7 +17,7 @@ const VoucherEditorPage: React.FC = () => {
   
   const { settings: companySettings } = useCompanySettings();
   const typeCode = searchParams.get('type') || 'INV';
-  const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(typeCode);
+  const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(typeCode, companySettings?.id);
   
   const [initialValues, setInitialValues] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);

@@ -11,6 +11,7 @@ class VoucherLine {
         this.baseAmount = baseAmount;
         this.rateAccToBase = rateAccToBase;
         this.costCenterId = costCenterId;
+        this.metadata = {};
     }
 }
 exports.VoucherLine = VoucherLine;

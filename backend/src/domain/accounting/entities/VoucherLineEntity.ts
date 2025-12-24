@@ -33,7 +33,10 @@ export class VoucherLineEntity {
     
     // Optional fields
     public readonly notes?: string,
-    public readonly costCenterId?: string
+    public readonly costCenterId?: string,
+    
+    // Metadata (Generic extra fields)
+    public readonly metadata: Record<string, any> = {}
   ) {
     // Invariant: amount must be positive
     if (amount <= 0) {
@@ -69,7 +72,7 @@ export class VoucherLineEntity {
   }
 
   /**
-   * Get credit amount in base currency (0 if this is a debit line)
+   * Get credit amount in base currency (0 if this is a credit line)
    */
   get creditAmount(): number {
     return this.side === 'Credit' ? this.baseAmount : 0;
@@ -110,7 +113,8 @@ export class VoucherLineEntity {
       baseCurrency: this.baseCurrency,
       exchangeRate: this.exchangeRate,
       notes: this.notes || null,
-      costCenterId: this.costCenterId || null
+      costCenterId: this.costCenterId || null,
+      metadata: this.metadata
     };
   }
 
@@ -128,7 +132,8 @@ export class VoucherLineEntity {
       data.baseCurrency,
       data.exchangeRate,
       data.notes,
-      data.costCenterId
+      data.costCenterId,
+      data.metadata || {}
     );
   }
 
@@ -146,7 +151,8 @@ export class VoucherLineEntity {
       this.baseCurrency,
       this.exchangeRate,
       notes,
-      this.costCenterId
+      this.costCenterId,
+      this.metadata
     );
   }
 }

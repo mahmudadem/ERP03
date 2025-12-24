@@ -61,20 +61,28 @@ export interface VoucherRule {
 export interface AvailableField {
   id: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system';
+  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector';
   sectionHint?: SectionType;
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields
   autoManaged?: boolean;      // true for systemMetadata fields
 }
 
+// Table Column Configuration
+export interface TableColumnConfig {
+  id: string;
+  labelOverride?: string;
+  order?: number;
+  width?: string; // e.g., '100px', '20%', 'auto'
+}
+
 /**
- * Complete voucher type configuration from wizard
+ * Complete voucher form configuration from wizard
  * 
  * THIS IS THE OUTPUT OF THE WIZARD.
  * It contains ONLY UI choices, NO accounting logic.
  */
-export interface VoucherTypeConfig {
+export interface VoucherFormConfig {
   id: string;
   name: string;
   code?: string; // Short code (e.g., "JOURNAL", "PAYMENT")
@@ -90,7 +98,7 @@ export interface VoucherTypeConfig {
   defaultCurrency?: string;
   
   // Step 3: Table columns selection
-  tableColumns?: string[]; // ['account', 'debit', 'credit', 'notes', etc.]
+  tableColumns?: string[] | TableColumnConfig[]; // ['account', 'debit', 'credit', 'notes', etc.] or objects
 
   // Step 4: Actions
   actions: VoucherAction[];
@@ -104,11 +112,19 @@ export interface VoucherTypeConfig {
   // Metadata for DB integration
   enabled?: boolean;        // Can be disabled without deletion
   isSystemDefault?: boolean; // Read-only system voucher
+  isSystemGenerated?: boolean; // Was this auto-created during init?
+  isDefault?: boolean;      // Is this a default form?
   isLocked?: boolean;        // Prevent editing core fields
   inUse?: boolean;          // Has transactions, can't delete
+  baseType?: string;         // Metadata for backend compatibility
+  headerFields?: any[]; // For persistence mapping
+  
+  // Metadata for arbitrary storage
+  metadata?: Record<string, any>;
 }
 
 /**
  * Wizard completion callback type
  */
-export type OnWizardFinish = (result: VoucherTypeConfig) => void;
+export type OnWizardFinish = (result: VoucherFormConfig) => void;
+// End of types

@@ -106,6 +106,7 @@ export class SaveOpeningBalanceUseCase {
       totalDebit,
       totalCredit,
       VoucherStatus.DRAFT,  // Always starts as DRAFT
+      {}, // metadata
       userId,
       new Date()  // Created at
     );

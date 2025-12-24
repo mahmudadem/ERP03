@@ -9,13 +9,13 @@
 
 import { useState, useEffect } from 'react';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
-import { loadCompanyVouchers } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
-import { VoucherTypeConfig } from '../modules/accounting/voucher-wizard/types';
+import { loadCompanyForms } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
+import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 import { voucherFormApi } from '../api/voucherFormApi';
 
 export function useVoucherTypes() {
   const { companyId } = useCompanyAccess();
-  const [voucherTypes, setVoucherTypes] = useState<VoucherTypeConfig[]>([]);
+  const [voucherTypes, setVoucherTypes] = useState<VoucherFormConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +31,8 @@ export function useVoucherTypes() {
         try {
           const forms = await voucherFormApi.list();
           if (forms && forms.length > 0) {
-            // Convert VoucherForm to VoucherTypeConfig for backward compatibility
-            const configFromForms: VoucherTypeConfig[] = forms
+            // Convert VoucherForm to VoucherFormConfig for backward compatibility
+            const configFromForms: VoucherFormConfig[] = forms
               .filter(f => f.enabled !== false)
               .map(form => {
                 return {
@@ -66,7 +66,7 @@ export function useVoucherTypes() {
         }
 
         // FALLBACK: Load from legacy voucherTypes (Firebase direct)
-        let vouchers = await loadCompanyVouchers(companyId);
+        let vouchers = await loadCompanyForms(companyId);
         
         if (vouchers.length === 0) {
           const { loadDefaultTemplates } = await import('../modules/accounting/voucher-wizard/services/voucherWizardService');
@@ -75,7 +75,7 @@ export function useVoucherTypes() {
 
         
         // Only show enabled vouchers in sidebar
-        const enabledVouchers = vouchers.filter(v => v.enabled !== false);
+        const enabledVouchers = vouchers.filter((v: VoucherFormConfig) => v.enabled !== false);
         setVoucherTypes(enabledVouchers);
       } catch (error) {
         console.error('Failed to load voucher types for sidebar:', error);

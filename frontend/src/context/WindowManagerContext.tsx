@@ -6,23 +6,27 @@
  */
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { VoucherTypeConfig } from '../modules/accounting/voucher-wizard/types';
+import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 
 export interface VoucherWindow {
   id: string;
-  voucherType: VoucherTypeConfig;
+  voucherType: VoucherFormConfig;
   title: string;
   isMinimized: boolean;
   isMaximized: boolean;
   isFocused: boolean;
   position: { x: number; y: number };
   size: { width: number; height: number };
-  data?: any; // Voucher data being edited
+  data?: {
+    voucherConfig?: VoucherFormConfig;
+    [key: string]: any;
+  };
 }
 
-interface WindowManagerContextType {
+interface WindowContextType {
   windows: VoucherWindow[];
-  openWindow: (voucherType: VoucherTypeConfig, data?: any) => void;
+  activeWindowId: string | null;
+  openWindow: (voucherConfig: VoucherFormConfig, data?: any) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   maximizeWindow: (id: string) => void;
@@ -32,12 +36,12 @@ interface WindowManagerContextType {
   updateWindowData: (id: string, data: any) => void;
 }
 
-const WindowManagerContext = createContext<WindowManagerContextType | undefined>(undefined);
+const WindowManagerContext = createContext<WindowContextType | undefined>(undefined);
 
 export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [windows, setWindows] = useState<VoucherWindow[]>([]);
 
-  const openWindow = useCallback((voucherType: VoucherTypeConfig, data?: any) => {
+  const openWindow = useCallback((voucherType: VoucherFormConfig, data?: any) => {
     const id = `voucher-${Date.now()}`;
     const newWindow: VoucherWindow = {
       id,
@@ -105,6 +109,7 @@ export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <WindowManagerContext.Provider value={{
       windows,
+      activeWindowId: windows.find(w => w.isFocused)?.id || null,
       openWindow,
       closeWindow,
       minimizeWindow,

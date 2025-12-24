@@ -37,7 +37,14 @@ export class VoucherTypeDefinitionMapper {
       data.headerFields || [],
       data.tableColumns || [],
       data.layout || {},
-      data.workflow
+      data.schemaVersion || 1,
+      data.requiredPostingRoles || [],
+      data.workflow || null,
+      data.uiModeOverrides || null,
+      data.isMultiLine ?? true,
+      data.rules || [],
+      data.actions || [],
+      data.defaultCurrency || 'USD'
     );
   }
   static toPersistence(entity: VoucherTypeDefinition): any {
@@ -47,10 +54,16 @@ export class VoucherTypeDefinitionMapper {
       name: entity.name,
       code: entity.code,
       module: entity.module,
-      headerFields: entity.headerFields.map(f => ({ ...f })),
+      headerFields: (entity.headerFields || []).map(f => ({ ...f })),
       tableColumns: entity.tableColumns,
       layout: entity.layout,
-      workflow: entity.workflow
+      schemaVersion: entity.schemaVersion,
+      workflow: entity.workflow,
+      uiModeOverrides: entity.uiModeOverrides,
+      isMultiLine: entity.isMultiLine,
+      rules: entity.rules,
+      actions: entity.actions,
+      defaultCurrency: entity.defaultCurrency
     };
   }
 }

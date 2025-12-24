@@ -95,6 +95,7 @@ class CreateVoucherUseCase {
                     line.exchangeRate = l.exchangeRate || payload.exchangeRate || 1;
                     line.fxAmount = line.debitFx && line.debitFx > 0 ? line.debitFx : -1 * (line.creditFx || 0);
                     line.baseAmount = line.debitBase && line.debitBase > 0 ? line.debitBase : -1 * (line.creditBase || 0);
+                    line.metadata = l.metadata || {};
                     return line;
                 });
             }
@@ -114,6 +115,7 @@ class CreateVoucherUseCase {
             voucher.createdAt = new Date().toISOString();
             voucher.updatedAt = new Date().toISOString();
             voucher.description = (_b = payload.description) !== null && _b !== void 0 ? _b : null;
+            voucher.metadata = payload.metadata || {};
             // Form metadata
             voucher.formId = payload.formId || null;
             voucher.prefix = payload.prefix || null;

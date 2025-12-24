@@ -1,18 +1,20 @@
 /**
  * UI to Canonical Schema Mapper
  * 
- * Transforms VoucherTypeConfig (UI wizard output) → VoucherTypeDefinition (Schema V2)
+ * Transforms VoucherFormConfig (UI wizard output) → VoucherTypeDefinition (Schema V2)
  * 
  * This mapper applies accounting business rules and converts the pure UI config
- * into a complete canonical voucher type definition ready for database storage.
+ * into a complete canonical voucher definition ready for database storage.
  */
 
-import { VoucherTypeConfig, FieldLayout, VoucherAction, UIMode, SectionType } from '../types';
+import { VoucherFormConfig, FieldLayout, VoucherAction, UIMode, SectionType } from '../types';
+import { SYSTEM_FIELDS, AVAILABLE_FIELDS } from '../components/VoucherDesigner';
 
 // TODO: Import actual VoucherTypeDefinition from your schema
 interface VoucherTypeDefinition {
   id: string;
   code: string;
+  module: string;
   name: string;
   schemaVersion: 2;
   prefix: string;
@@ -26,10 +28,25 @@ interface VoucherTypeDefinition {
     classic: LayoutSchema;
     windows: LayoutSchema;
   };
+  headerFields: Array<{
+    id: string;
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+    readOnly: boolean;
+    isPosting: boolean;
+    postingRole: string | null;
+    schemaVersion: number;
+  }>;
   
   // Configuration
   isMultiLine: boolean;
-  tableColumns?: string[];
+  tableColumns?: Array<{
+    fieldId: string;
+    width?: string;
+    labelOverride?: string;
+  }>;
   
   // Business rules (mapped from UI toggles)
   requiresApproval?: boolean;
@@ -40,7 +57,11 @@ interface VoucherTypeDefinition {
   // Actions
   enabledActions: string[];
   
+  // Strategy
+  baseType?: string;
+  
   // Metadata
+  metadata?: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;
   createdBy?: string;
@@ -66,17 +87,26 @@ interface LayoutSchema {
 }
 
 /**
- * Transform UI config to canonical voucher type definition
+ * Transform UI config to canonical voucher definition
  */
 export function uiToCanonical(
-  uiConfig: VoucherTypeConfig,
+  uiConfig: VoucherFormConfig,
   companyId: string,
   userId: string,
   isEdit: boolean = false
 ): VoucherTypeDefinition {
-  // Generate code from ID (uppercase, snake_case)
-  const code = uiConfig.id.toUpperCase().replace(/[-\s]/g, '_');
-  
+  // Map UI types to Backend FieldType enum
+  const mapFieldType = (type: string): string => {
+    switch (type) {
+      case 'number': return 'NUMBER';
+      case 'date': return 'DATE';
+      case 'checkbox': return 'BOOLEAN';
+      case 'select': return 'SELECT';
+      case 'account-selector': return 'REFERENCE';
+      default: return 'STRING';
+    }
+  };
+
   // Map UI rules to business rule flags
   const requiresApproval = uiConfig.rules.find(r => r.id === 'require_approval')?.enabled || false;
   const preventNegativeCash = uiConfig.rules.find(r => r.id === 'prevent_negative_cash')?.enabled || false;
@@ -93,11 +123,45 @@ export function uiToCanonical(
     classic: transformLayout(uiConfig.uiModeOverrides.classic, 'classic'),
     windows: transformLayout(uiConfig.uiModeOverrides.windows, 'windows')
   };
+
+  // Extract header fields from all layouts
+  const headerFieldsMap = new Map<string, any>();
+  const allFields = [...SYSTEM_FIELDS, ...AVAILABLE_FIELDS];
+  
+  const collectFields = (modeOverride: any) => {
+    if (!modeOverride?.sections) return;
+    Object.values(modeOverride.sections).forEach((section: any) => {
+      if (section.fields) {
+        section.fields.forEach((f: any) => {
+          if (!headerFieldsMap.has(f.fieldId)) {
+            const meta = allFields.find(af => af.id === f.fieldId);
+            if (meta) {
+              headerFieldsMap.set(f.fieldId, {
+                id: f.fieldId,
+                name: f.fieldId,
+                label: f.labelOverride || meta.label,
+                type: mapFieldType(meta.type || 'text'),
+                required: meta.mandatory || false,
+                readOnly: meta.type === 'system',
+                isPosting: false, // Default to false
+                postingRole: null, // Default to null
+                schemaVersion: 2
+              });
+            }
+          }
+        });
+      }
+    });
+  };
+
+  collectFields(uiConfig.uiModeOverrides.classic);
+  collectFields(uiConfig.uiModeOverrides.windows);
   
   // Build canonical definition
   const canonical: VoucherTypeDefinition = {
     id: uiConfig.id,
-    code,
+    code: uiConfig.id, // Keep case consistent with ID
+    module: 'accounting', // Required by backend entities
     name: uiConfig.name,
     schemaVersion: 2,
     prefix: uiConfig.prefix,
@@ -106,8 +170,20 @@ export function uiToCanonical(
     isSystemDefault: uiConfig.isSystemDefault || false,
     inUse: uiConfig.inUse || false,
     layout,
+    // Populate headerFields required by backend validator
+    headerFields: Array.from(headerFieldsMap.values()),
     isMultiLine: uiConfig.isMultiLine,
-    tableColumns: uiConfig.tableColumns,
+    tableColumns: (uiConfig.tableColumns || []).map((col: any) => {
+      if (typeof col === 'string') {
+        return { fieldId: col };
+      }
+      return {
+        fieldId: col.id || col.fieldId,
+        width: col.width,
+        labelOverride: col.labelOverride
+      };
+    }),
+    baseType: uiConfig.baseType || uiConfig.id, // Ensure base strategy is preserved
     requiresApproval,
     preventNegativeCash,
     allowFutureDates,
@@ -116,6 +192,34 @@ export function uiToCanonical(
     companyId,
     updatedAt: new Date(),
     updatedBy: userId,
+  };
+  
+  // Pack additional metadata if present in uiConfig
+  // Pack additional metadata if present in uiConfig
+  const sharedFields = new Set<string>();
+  
+  // Helper to extract shared fields from a layout
+  const extractShared = (modeOverride: any) => {
+    if (!modeOverride?.sections) return;
+    Object.values(modeOverride.sections).forEach((section: any) => {
+      if (section.fields) {
+        section.fields.forEach((f: any) => {
+          const fieldMeta = AVAILABLE_FIELDS.find(af => af.id === f.fieldId);
+          if (fieldMeta?.category === 'shared') {
+            sharedFields.add(f.fieldId);
+          }
+        });
+      }
+    });
+  };
+
+  extractShared(uiConfig.uiModeOverrides.classic);
+  extractShared(uiConfig.uiModeOverrides.windows);
+
+  canonical.metadata = {
+    ...(canonical.metadata || {}),
+    ...(uiConfig.metadata || {}),
+    sharedFields: Array.from(sharedFields)
   };
   
   // Add creation metadata if new
@@ -139,14 +243,21 @@ function transformLayout(
   Object.entries(uiLayout.sections).forEach(([sectionName, sectionData]) => {
     sections[sectionName] = {
       order: sectionData.order,
-      fields: sectionData.fields.map(field => ({
-        fieldId: field.fieldId,
-        row: field.row,
-        col: field.col,
-        colSpan: field.colSpan,
-        label: field.labelOverride,
-        // TODO: Add category from field metadata when available
-      }))
+      fields: sectionData.fields.map(field => {
+        // Find field metadata to get category
+        const fieldMeta = [...SYSTEM_FIELDS, ...AVAILABLE_FIELDS]
+          .find(f => f.id === field.fieldId);
+        
+        return {
+          fieldId: field.fieldId,
+          row: field.row,
+          col: field.col,
+          colSpan: field.colSpan,
+          label: field.labelOverride,
+          category: fieldMeta?.category,
+          mandatory: fieldMeta?.mandatory
+        };
+      })
     };
   });
   
@@ -156,15 +267,15 @@ function transformLayout(
 /**
  * Validate UI config before transformation
  */
-export function validateUiConfig(config: VoucherTypeConfig): { valid: boolean; errors: string[] } {
+export function validateUiConfig(config: VoucherFormConfig): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
   if (!config.id || config.id.trim() === '') {
-    errors.push('Voucher ID is required');
+    errors.push('Form ID is required');
   }
   
   if (!config.name || config.name.trim() === '') {
-    errors.push('Voucher name is required');
+    errors.push('Form name is required');
   }
   
   if (!config.prefix || config.prefix.trim() === '') {

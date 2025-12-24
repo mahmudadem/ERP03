@@ -78,6 +78,7 @@ class VoucherMapper {
             line.creditBase = l.creditBase;
             line.lineCurrency = l.lineCurrency;
             line.exchangeRate = (_f = l.exchangeRate) !== null && _f !== void 0 ? _f : l.rateAccToBase;
+            line.metadata = l.metadata || {};
             return line;
         });
         const voucher = new Voucher_1.Voucher(data.id, data.companyId, data.type, ((_b = (_a = data.date) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.date, data.currency, data.exchangeRate, data.status, (_d = (_c = data.totalDebit) !== null && _c !== void 0 ? _c : data.totalDebitBase) !== null && _d !== void 0 ? _d : 0, (_f = (_e = data.totalCredit) !== null && _e !== void 0 ? _e : data.totalCreditBase) !== null && _f !== void 0 ? _f : 0, data.createdBy, data.reference, lines);
@@ -90,6 +91,7 @@ class VoucherMapper {
         voucher.approvedBy = data.approvedBy;
         voucher.lockedBy = data.lockedBy;
         voucher.description = (_o = data.description) !== null && _o !== void 0 ? _o : null;
+        voucher.metadata = data.metadata || {};
         // Form metadata
         voucher.formId = data.formId || null;
         voucher.prefix = data.prefix || null;
@@ -113,7 +115,8 @@ class VoucherMapper {
                 debitFx: l.debitFx,
                 creditFx: l.creditFx,
                 lineCurrency: l.lineCurrency,
-                exchangeRate: l.exchangeRate
+                exchangeRate: l.exchangeRate,
+                metadata: l.metadata || {}
             });
         });
         return {
@@ -135,6 +138,7 @@ class VoucherMapper {
             lockedBy: entity.lockedBy || null,
             reference: entity.reference || null,
             description: (_j = entity.description) !== null && _j !== void 0 ? _j : null,
+            metadata: entity.metadata || {},
             // Form metadata
             formId: entity.formId || null,
             prefix: entity.prefix || null,

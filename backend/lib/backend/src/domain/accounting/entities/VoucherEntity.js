@@ -31,8 +31,10 @@ class VoucherEntity {
     lines, 
     // Calculated totals (in base currency)
     totalDebit, totalCredit, 
-    // Status
+    // State
     status, 
+    // Metadata (Generic extra fields)
+    metadata = {}, 
     // Audit trail
     createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt) {
         this.id = id;
@@ -48,6 +50,7 @@ class VoucherEntity {
         this.totalDebit = totalDebit;
         this.totalCredit = totalCredit;
         this.status = status;
+        this.metadata = metadata;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
         this.approvedBy = approvedBy;
@@ -141,7 +144,7 @@ class VoucherEntity {
         if (!this.canApprove) {
             throw new Error(`Cannot approve voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.metadata, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt);
     }
     /**
      * Create rejected version (immutable update)
@@ -150,7 +153,7 @@ class VoucherEntity {
         if (!this.isDraft && !this.isApproved) {
             throw new Error(`Cannot reject voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt);
     }
     /**
      * Create locked version (immutable update)
@@ -159,7 +162,7 @@ class VoucherEntity {
         if (!this.canLock) {
             throw new Error(`Cannot lock voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.LOCKED, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, lockedBy, lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.LOCKED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, lockedBy, lockedAt);
     }
     /**
      * Convert to plain object for persistence
@@ -180,6 +183,7 @@ class VoucherEntity {
             totalDebit: this.totalDebit,
             totalCredit: this.totalCredit,
             status: this.status,
+            metadata: this.metadata,
             createdBy: this.createdBy,
             createdAt: this.createdAt.toISOString(),
             approvedBy: this.approvedBy || null,
@@ -195,7 +199,7 @@ class VoucherEntity {
      * Create from plain object (for deserialization)
      */
     static fromJSON(data) {
-        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, data.description, data.currency, data.baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData)), data.totalDebit, data.totalCredit, data.status, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined);
+        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, data.description, data.currency, data.baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined);
     }
 }
 exports.VoucherEntity = VoucherEntity;

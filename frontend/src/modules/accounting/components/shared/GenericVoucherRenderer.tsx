@@ -4,6 +4,7 @@ import { JournalRow } from '../../ai-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
+import { CustomComponentRegistry } from './registry';
 import { Account } from '../../../../context/AccountsContext';
 
 interface GenericVoucherRendererProps {
@@ -194,42 +195,95 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   };
 
   // Helper: Detect format and get table columns
-  const getTableColumns = (): string[] => {
-    // VoucherTypeDefinition format (system)
-    if (definition.tableColumns && Array.isArray(definition.tableColumns)) {
-      if (definition.tableColumns.length === 0) {
-        return ['account', 'debit', 'credit', 'notes'];
+  const getTableColumns = (): any[] => {
+    const rawColumns = (definition as any).tableColumns;
+    
+    // Only return defaults if property is missing entirely
+    if (rawColumns === undefined || rawColumns === null) {
+      return [
+        { id: 'accountSelector', label: t('account') || 'Account', width: '25%' },
+        { id: 'debit', label: t('debit') || 'Debit', width: '15%' },
+        { id: 'credit', label: t('credit') || 'Credit', width: '15%' },
+        { id: 'notes', label: t('notes') || 'Notes', width: 'auto' }
+      ];
+    }
+
+    if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
+      return [];
+    }
+
+    return rawColumns.map((col: any) => {
+      // Handle legacy string array
+      if (typeof col === 'string') {
+        const fallbackLabel = col.charAt(0).toUpperCase() + col.slice(1);
+        return { 
+          id: col, 
+          label: t(col) || fallbackLabel,
+          width: 'auto'
+        };
       }
-      // tableColumns can be array of objects {fieldId} or {id} or array of strings
-      return definition.tableColumns.map((col: any) => 
-        typeof col === 'string' ? col : (col.fieldId || col.id || col)
-      );
-    }
-    // VoucherTypeConfig format (designer) - check uiModeOverrides
-    const configDef = definition as any;
-    if (configDef.isMultiLine && configDef.tableColumns) {
-      return Array.isArray(configDef.tableColumns) ? configDef.tableColumns : ['account', 'debit', 'credit', 'notes'];
-    }
-    return ['account', 'debit', 'credit', 'notes'];
+      
+      // Handle structured object array (Schema V2)
+      const colId = col.id || col.fieldId;
+      // If we have no ID at all, then "Column" is the last resort fallback
+      const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
+      
+      return {
+        id: colId,
+        label: col.labelOverride || col.label || (colId ? t(colId) : undefined) || fallbackLabel,
+        width: col.width || 'auto'
+      };
+    });
   };
 
   // --- Field Renderers ---
 
   const renderField = (fieldId: string, labelOverride?: string) => {
-    // 0. Special Components (Currency Exchange Widget)
-    if (fieldId === 'currencyExchange' || (fieldId === 'currency' && definition.headerFields?.some(f => f.id === 'exchangeRate'))) {
+    // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
+    if (fieldId === 'exchangeRate') {
+      const hasCurrency = (definition.headerFields || []).some(f => f.id === 'currency' || f.id === 'currencyExchange');
+      const hasCurrencyInUI = (definition as any).uiModeOverrides?.[mode]?.sections?.HEADER?.fields?.some((f: any) => f.fieldId === 'currency' || f.fieldId === 'currencyExchange');
+      
+      if (hasCurrency || hasCurrencyInUI) {
+        return null;
+      }
+    }
+
+    // 0. Special Components (Currency Exchange Widget via Registry)
+    if (fieldId === 'currencyExchange' || fieldId === 'exchangeRate') {
+      const CurrencyComp = CustomComponentRegistry.currencyExchange;
       return (
-        <CurrencyExchangeWidget
-          value={{
-            currency: formData.currency || 'USD',
-            exchangeRate: formData.exchangeRate || 1
-          }}
-          baseCurrency="USD"
-          onChange={(data) => {
-            handleInputChange('currency', data.currency);
-            handleInputChange('exchangeRate', data.exchangeRate);
-          }}
-        />
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <CurrencyComp
+            currency={formData.currency || 'USD'}
+            value={formData.exchangeRate}
+            onChange={(rate: number) => {
+              handleInputChange('exchangeRate', rate);
+            }}
+          />
+        </div>
+      );
+    }
+
+    // 0.5. Custom Components from Registry
+    if (CustomComponentRegistry[fieldId]) {
+      const Component = CustomComponentRegistry[fieldId];
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <Component
+            value={formData[fieldId]}
+            onChange={(val: any) => {
+               // Adaptation for AccountSelector which returns an account object
+               if (fieldId === 'accountSelector' && val?.code) {
+                  handleInputChange(fieldId, val.code);
+               } else {
+                  handleInputChange(fieldId, val);
+               }
+            }}
+          />
+        </div>
       );
     }
     
@@ -256,42 +310,62 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-white">
                 <table className="w-full text-sm min-w-[600px]">
                     <thead className="bg-gray-50 text-gray-500 font-medium">
-                        <tr>
-                            <th className="p-2 text-start w-10 text-xs">#</th>
-                            {columns.map(col => (
-                                <th key={col} className="p-2 text-start text-xs capitalize">{t(col)}</th>
-                            ))}
-                            <th className="p-2 w-8"></th>
-                        </tr>
+                         <tr>
+                             <th className="p-2 text-start w-10 text-xs">#</th>
+                             {columns.map(col => (
+                                 <th 
+                                   key={col.id} 
+                                   className="p-2 text-start text-xs capitalize"
+                                   style={col.width ? { width: col.width, minWidth: col.width === 'auto' ? '150px' : col.width } : {}}
+                                 >
+                                   {col.label}
+                                 </th>
+                             ))}
+                             <th className="p-2 w-8"></th>
+                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {rows.map((row, index) => (
-                            <tr key={row.id} className="group hover:bg-slate-50 transition-colors">
-                                <td className="p-1.5 text-center text-gray-400 text-[10px]">{index + 1}</td>
-                                {columns.map(col => (
-                                    <td key={col} className="p-1.5">
-                                        {col === 'account' ? (
-                                            <AccountSelector
-                                                value={row.account}
-                                                onChange={(acc: Account | null) => handleRowChange(row.id, 'account', acc?.code || '')}
-                                                placeholder="Select account"
-                                                className="w-full"
-                                            />
-                                        ) : (
-                                            <input 
-                                                // @ts-ignore
-                                                value={row[col] || ''}
-                                                // @ts-ignore
-                                                onChange={(e) => handleRowChange(row.id, col, e.target.value)}
-                                                className={`w-full p-1 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none ${['debit', 'credit'].includes(col) ? 'text-end' : ''}`}
-                                                placeholder={['debit', 'credit'].includes(col) ? '---' : ''}
-                                                type={['debit', 'credit'].includes(col) ? 'number' : 'text'}
-                                            />
-                                        )}
-                                    </td>
-                                ))}
-                                <td className="p-1.5 text-center">
-                                    <button className="text-gray-300 hover:text-red-500"><Trash2 size={12} /></button>
+                            <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="p-2 text-gray-400 text-xs text-center">{index + 1}</td>
+                                 {columns.map(col => {
+                                     const colId = col.id;
+                                     return (
+                                         <td 
+                                           key={`${row.id}-${colId}`} 
+                                           className="p-1"
+                                           style={col.width ? { width: col.width } : {}}
+                                         >
+                                             {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
+                                                 <AccountSelector 
+                                                     value={row.account} 
+                                                     onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                                 />
+                                             ) : colId === 'debit' || colId === 'credit' ? (
+                                                 <input 
+                                                     type="number" 
+                                                     value={row[colId as 'debit' | 'credit'] || 0}
+                                                     onChange={(e) => handleRowChange(row.id, colId as any, parseFloat(e.target.value) || 0)}
+                                                     className="w-full p-1.5 border border-gray-200 rounded text-xs text-end focus:ring-1 focus:ring-indigo-500 outline-none" 
+                                                 />
+                                             ) : (
+                                                 <input 
+                                                   type="text" 
+                                                   value={(row as any)[colId] || ''}
+                                                   onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                   className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none" 
+                                                 />
+                                             )}
+                                         </td>
+                                     );
+                                 })}
+                                <td className="p-2 text-center w-8">
+                                    <button 
+                                      onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                                      className="text-gray-300 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -372,7 +446,42 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const renderHeaderFields = () => {
     const configDef = definition as any;
     
-    // Format 1: VoucherTypeDefinition (system) - uses headerFields
+    // Format 1: VoucherFormConfig (designer) - uses uiModeOverrides.sections
+    // PRIORITY: If custom layout exists, use it!
+    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
+      const sections = configDef.uiModeOverrides[mode].sections;
+      const headerSection = sections.HEADER;
+      
+      if (headerSection && headerSection.fields && headerSection.fields.length > 0) {
+        // Sort fields by row and col
+        const sortedFields = [...headerSection.fields].sort((a: any, b: any) => {
+          if (a.row !== b.row) return a.row - b.row;
+          return a.col - b.col;
+        });
+        
+        return (
+          <div className="bg-white px-4 py-3 mb-4">
+            <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+              {sortedFields.map((field: any) => (
+                <div 
+                  key={field.fieldId} 
+                  className={`col-span-${field.colSpan || 4}`}
+                  style={{ 
+                    gridColumnStart: (field.col || 0) + 1,
+                    gridColumnEnd: `span ${field.colSpan || 4}`,
+                    gridRowStart: (field.row || 0) + 1
+                  }}
+                >
+                  {renderField(field.fieldId, field.labelOverride)}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // Format 2: VoucherTypeDefinition (canonical system) - fallback if no UI override
     if (definition.headerFields && definition.headerFields.length > 0) {
       return (
         <div className="bg-white px-4 py-3 mb-4">
@@ -380,38 +489,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             {definition.headerFields.map((field: any) => (
               <div key={field.id} className="col-span-6 md:col-span-4">
                 {renderField(field.id, field.label)}
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    
-    // Format 2: VoucherTypeConfig (designer) - uses uiModeOverrides.sections
-    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
-      const sections = configDef.uiModeOverrides[mode].sections;
-      const headerSection = sections.HEADER;
-      
-      if (!headerSection || !headerSection.fields || headerSection.fields.length === 0) {
-        return null;
-      }
-      
-      // Sort fields by row and col
-      const sortedFields = [...headerSection.fields].sort((a: any, b: any) => {
-        if (a.row !== b.row) return a.row - b.row;
-        return a.col - b.col;
-      });
-      
-      return (
-        <div className="bg-white px-4 py-3 mb-4">
-          <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-            {sortedFields.map((field: any) => (
-              <div 
-                key={field.fieldId}
-                className={`col-span-${Math.min(12, field.colSpan || 4)}`}
-                style={{ gridColumn: `span ${Math.min(12, field.colSpan || 4)}` }}
-              >
-                {renderField(field.fieldId, field.labelOverride)}
               </div>
             ))}
           </div>
@@ -428,7 +505,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // Check VoucherTypeDefinition format
     const hasTableColumns = definition.tableColumns && definition.tableColumns.length > 0;
-    // Check VoucherTypeConfig format
+    // Check VoucherFormConfig format
     const isMultiLine = configDef.isMultiLine || configDef.tableColumns;
     
     if (!hasTableColumns && !isMultiLine) {
@@ -472,7 +549,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             <div 
               key={field.fieldId}
               className={`col-span-${Math.min(12, field.colSpan || 4)}`}
-              style={{ gridColumn: `span ${Math.min(12, field.colSpan || 4)}` }}
+              style={{ 
+                gridColumnStart: (field.col || 0) + 1,
+                gridColumnEnd: `span ${field.colSpan || 4}`,
+                gridRowStart: (field.row || 0) + 1
+              }}
             >
               {renderField(field.fieldId, field.labelOverride)}
             </div>

@@ -30,4 +30,5 @@ export class Voucher {
   // Form metadata
   public formId?: string | null; // Which form was used to create this voucher
   public prefix?: string | null; // Voucher number prefix
+  public metadata: Record<string, any> = {};
 }

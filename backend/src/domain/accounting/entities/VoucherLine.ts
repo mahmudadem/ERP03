@@ -17,4 +17,5 @@ export class VoucherLine {
   public creditBase?: number;
   public lineCurrency?: string;
   public exchangeRate?: number;
+  public metadata: Record<string, any> = {};
 }

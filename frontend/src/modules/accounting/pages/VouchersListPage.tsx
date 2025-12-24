@@ -75,106 +75,19 @@ const VouchersListPage: React.FC = () => {
       openWindow(currentVoucherType, { status: 'draft' });
     } else {
       // Classic Mode: Navigate to editor page
-      navigate(`/accounting/vouchers/new?type=${selectedType}`);
+      // Use baseType for backend compatibility, pass formId separately
+      const baseType = (currentVoucherType as any).baseType || currentVoucherType.code || selectedType;
+      navigate(`/accounting/vouchers/new?type=${baseType}&formId=${selectedType}`);
     }
   };
   
-  // Helper to save data first
-  const saveVoucherInternal = async (data: any) => {
-    console.log('💾 saveVoucherInternal - incoming data:', { 
-      formId: data.formId, 
-      prefix: data.prefix, 
-      type: data.type 
-    });
-    
-    // 1. Transform UI Data -> API Payload
-    const payload = {
-      ...data,
-      // Header Mappings
-      voucherNo: data.voucherNumber || data.voucherNo,
-      description: data.description || data.notes, 
-      formId: data.formId, // Preserve form ID for re-rendering on edit
-      prefix: data.prefix, // Preserve prefix for display
-      
-      // Line Items Mapping
-      lines: (data.lines || []).map((line: any) => ({
-        id: line.id && typeof line.id === 'string' ? line.id : undefined, 
-        accountId: line.accountId || line.account,  // Use accountId if present, otherwise map from account
-        description: line.description || line.notes, 
-        debitFx: Number(line.debitFx || line.debit || 0),
-        creditFx: Number(line.creditFx || line.credit || 0),
-        debitBase: Number(line.debitBase || line.debit || 0) * (Number(line.exchangeRate || line.parity || 1)),
-        creditBase: Number(line.creditBase || line.credit || 0) * (Number(line.exchangeRate || line.parity || 1)),
-        lineCurrency: line.lineCurrency || line.currency || 'USD',
-        exchangeRate: Number(line.exchangeRate || line.parity || 1),
-        costCenterId: line.costCenterId || line.category || null, 
-      }))
-    };
-    
-    // Clean up UI-only ID if it's a temp ID
-    if (payload.id && payload.id.toString().startsWith('voucher-')) {
-       delete payload.id;
-    }
+  // Handle refresh from global events (e.g. when a voucher is saved in another page)
+  React.useEffect(() => {
+    const handleRefresh = () => refresh();
+    window.addEventListener('vouchers-updated', handleRefresh);
+    return () => window.removeEventListener('vouchers-updated', handleRefresh);
+  }, [refresh]);
 
-    // Clean up payload - remove empty strings and undefined values
-    const cleanPayload = Object.entries(payload).reduce((acc, [key, value]) => {
-      if (value !== '' && value !== undefined && value !== null) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {} as any);
-    
-    let savedVoucher;
-    if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
-       // Update existing
-       await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
-       savedVoucher = { ...cleanPayload, id: cleanPayload.id }; // Simplified return
-    } else {
-       // Create new
-       const res = await accountingApi.createVoucher(cleanPayload);
-       savedVoucher = res;
-    }
-    return savedVoucher;
-  };
-
-  const handleSaveVoucher = async (windowId: string, data: any) => {
-    console.log('💾 Saving voucher from window:', windowId, data);
-    try {
-      await saveVoucherInternal(data);
-      console.log('✅ Voucher saved successfully!');
-      errorHandler.showSuccess('voucher_saved');
-      refresh(); // Force refresh the voucher list 
-    } catch (error: any) {
-      errorHandler.showError(error);
-    }
-  };
-
-  const handleSubmitVoucher = async (windowId: string, data: any) => {
-    console.log('🚀 Submitting voucher from window:', windowId);
-    try {
-      // 1. Save any pending changes first
-      const saved = await saveVoucherInternal(data);
-      
-      // 2. Update status to 'pending' (Submitted for Approval)
-      // We use updateVoucher instead of sendVoucherToApproval because the latter hits /approve endpoint
-      // which requires 'voucher.approve' permission (usually for admins/approvers).
-      // Regular users "submit" by changing status to 'pending'.
-      if (saved && saved.id) {
-         await accountingApi.updateVoucher(saved.id, { status: 'pending' });
-         
-         console.log('✅ Voucher submitted successfully!');
-         errorHandler.showSuccess('voucher_submitted');
-         setFilters({...filters}); // Refresh list
-         
-         // Ideally close window or update its local state to show 'Pending' badge
-         // For now, refreshing the list is enough as the user will see it there.
-      } else {
-         throw new Error('Could not retrieve Voucher ID after save.');
-      }
-    } catch (error: any) {
-       errorHandler.showError(error);
-    }
-  };
 
   const handleRowClick = async (id: string) => {
     if (isWindowsMode) {
@@ -270,7 +183,7 @@ const VouchersListPage: React.FC = () => {
           </div>
         </div>
 
-        <VoucherFiltersBar filters={filters} onFilterChange={setFilters} />
+        <VoucherFiltersBar filters={filters} onChange={setFilters} />
       </div>
 
       <div className="flex-1 p-6">
@@ -303,15 +216,6 @@ const VouchersListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Render the Windows Desktop if in Windows Mode */}
-      {isWindowsMode && (
-        <AccountsProvider>
-          <WindowsDesktop 
-            onSaveVoucher={handleSaveVoucher} 
-            onSubmitVoucher={handleSubmitVoucher}
-          />
-        </AccountsProvider>
-      )}
     </div>
   );
 };

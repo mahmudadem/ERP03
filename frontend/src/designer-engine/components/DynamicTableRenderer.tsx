@@ -45,7 +45,7 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
              <tr>
                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
                {definition.columns.map(col => (
-                 <th key={col.id} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                 <th key={col.id} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={col.width ? { width: col.width } : undefined}>
                    {col.label}
                  </th>
                ))}
@@ -59,7 +59,7 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
                    {index + 1}
                  </td>
                  {definition.columns.map(col => (
-                   <td key={col.id} className="px-4 py-2">
+                   <td key={col.id} className="px-4 py-2" style={col.width ? { width: col.width } : undefined}>
                      <DynamicFieldRenderer
                        field={{ ...col, label: '' }} // Hide label in table cell
                        value={row[col.name]}

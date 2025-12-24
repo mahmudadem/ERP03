@@ -3,12 +3,14 @@
  * Renders a full voucher document (Header Form + Line Items Table).
  */
 import React, { useState, useEffect } from 'react';
-import { VoucherTypeDefinition } from '../types/VoucherTypeDefinition';
+import { VoucherTypeDefinition, TableColumn } from '../types/VoucherTypeDefinition';
+import { FieldDefinition } from '../types/FieldDefinition';
 import { DynamicSectionRenderer } from './DynamicSectionRenderer';
 import { DynamicTableRenderer } from './DynamicTableRenderer';
 import { evaluateVisibility } from '../utils/evaluateRules';
 import { validateForm } from '../utils/validateForm';
 import { Button } from '../../components/ui/Button';
+import { errorHandler } from '../../services/errorHandler';
 
 interface Props {
   definition: VoucherTypeDefinition;
@@ -45,7 +47,11 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         const headerErrors = validateForm(definition.header, headerValues);
         if (Object.keys(headerErrors).length > 0) {
         setErrors(headerErrors);
-        alert('Please correct the errors in the header.');
+        errorHandler.showError({
+          code: 'VAL_001',
+          message: 'Please correct the errors in the header.',
+          severity: 'WARNING'
+        } as any);
         return;
         }
     }
@@ -99,12 +105,12 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
       {/* 2. Line Items Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="font-bold text-gray-700 mb-2">Line Items</h3>
-        {definition.tableFields && (
+        {definition.tableColumns && definition.tableColumns.length > 0 && (
             <DynamicTableRenderer
             definition={{ 
               id: 'lines-table', 
               name: 'items', 
-              columns: definition.tableFields 
+              columns: resolveTableFields(definition)
             }} 
             rows={lines}
             onChange={setLines}
@@ -139,3 +145,100 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
     </div>
   );
 };
+
+/**
+ * Standard Accounting Fields for Table Columns
+ */
+const STANDARD_TABLE_FIELDS: Record<string, Partial<FieldDefinition>> = {
+  account: {
+    label: 'Account',
+    type: 'account-selector',
+    required: true
+  },
+  debit: {
+    label: 'Debit',
+    type: 'NUMBER',
+    required: false
+  },
+  credit: {
+    label: 'Credit',
+    type: 'NUMBER',
+    required: false
+  },
+  description: {
+    label: 'Description',
+    type: 'TEXT',
+    required: false
+  },
+  notes: {
+    label: 'Notes',
+    type: 'TEXTAREA',
+    required: false
+  },
+  amount: {
+    label: 'Amount',
+    type: 'NUMBER',
+    required: true
+  },
+  currency: {
+    label: 'Currency',
+    type: 'SELECT',
+    options: [
+      { label: 'USD', value: 'USD' },
+      { label: 'EUR', value: 'EUR' },
+      { label: 'TRY', value: 'TRY' }
+    ]
+  },
+  exchangeRate: {
+    label: 'Rate',
+    type: 'NUMBER'
+  }
+};
+
+/**
+ * Resolves TableColumn IDs into full FieldDefinition objects
+ */
+function resolveTableFields(definition: VoucherTypeDefinition): FieldDefinition[] {
+  return (definition.tableColumns || []).map(col => {
+    // Robustly identify the ID (handle strings or objects)
+    const colId = typeof col === 'string' ? col : (col.fieldId || (col as any).id);
+    
+    if (!colId) {
+       return {
+         id: 'unknown-' + Math.random().toString(36).slice(2, 5),
+         name: 'unknown',
+         label: 'Column',
+         type: 'TEXT',
+         isPosting: true,
+         schemaVersion: 2
+       } as FieldDefinition;
+    }
+
+    // 1. Try to find in headerFields (sometimes definitions are shared)
+    const existing = (definition.headerFields || []).find(f => f.id === colId);
+    
+    // 2. Check standard registry
+    const standard = STANDARD_TABLE_FIELDS[colId];
+    
+    // Determine base properties
+    const baseField = existing || standard || { 
+      label: colId.charAt(0).toUpperCase() + colId.slice(1),
+      type: 'TEXT'
+    };
+
+    // Extract object-specific properties if col is an object
+    const colObj = typeof col === 'object' ? col : {};
+
+    return {
+      id: colId,
+      name: colId,
+      isPosting: true,
+      postingRole: null,
+      schemaVersion: 2,
+      ...baseField,
+      // Override with user customizations from the wizard
+      label: (colObj as any).labelOverride || (colObj as any).label || baseField.label || colId,
+      width: (colObj as any).width || baseField.width,
+    } as FieldDefinition;
+  });
+}

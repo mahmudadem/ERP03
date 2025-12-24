@@ -5,6 +5,7 @@ import { PostingRole } from './PostingRole';
 export interface TableColumn {
   fieldId: string;
   width?: string;
+  labelOverride?: string;
 }
 
 /**
@@ -25,6 +26,11 @@ export class VoucherTypeDefinition {
     public layout: Record<string, any>, // JSON layout config
     public schemaVersion: number = 2,
     public requiredPostingRoles?: PostingRole[],
-    public workflow?: any // Workflow metadata
+    public workflow?: any, // Workflow metadata
+    public uiModeOverrides?: any, // For Schema V2 layout
+    public isMultiLine?: boolean,
+    public rules?: any[],
+    public actions?: any[],
+    public defaultCurrency?: string
   ) {}
 }

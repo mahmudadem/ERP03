@@ -106,6 +106,7 @@ export class SaveJournalEntryUseCase {
       totalDebit,
       totalCredit,
       VoucherStatus.DRAFT,  // Always starts as DRAFT
+      {}, // metadata
       userId,
       new Date()  // Created at
     );

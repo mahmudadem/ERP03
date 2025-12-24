@@ -72,6 +72,7 @@ class SaveJournalEntryUseCase {
         const voucher = new VoucherEntity_1.VoucherEntity((0, uuid_1.v4)(), // Generate ID
         companyId, voucherNo, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, input.date, input.description, currency, baseCurrency, exchangeRate, lines, // Readonly array
         totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, // Always starts as DRAFT
+        {}, // metadata
         userId, new Date() // Created at
         );
         // Step 8: Save to repository

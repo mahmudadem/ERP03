@@ -24,7 +24,9 @@ class VoucherLineEntity {
     // FX metadata (rate at transaction time)
     exchangeRate, 
     // Optional fields
-    notes, costCenterId) {
+    notes, costCenterId, 
+    // Metadata (Generic extra fields)
+    metadata = {}) {
         this.id = id;
         this.accountId = accountId;
         this.side = side;
@@ -35,6 +37,7 @@ class VoucherLineEntity {
         this.exchangeRate = exchangeRate;
         this.notes = notes;
         this.costCenterId = costCenterId;
+        this.metadata = metadata;
         // Invariant: amount must be positive
         if (amount <= 0) {
             throw new Error(`VoucherLine amount must be positive, got: ${amount}`);
@@ -63,7 +66,7 @@ class VoucherLineEntity {
         return this.side === 'Debit' ? this.baseAmount : 0;
     }
     /**
-     * Get credit amount in base currency (0 if this is a debit line)
+     * Get credit amount in base currency (0 if this is a credit line)
      */
     get creditAmount() {
         return this.side === 'Credit' ? this.baseAmount : 0;
@@ -100,20 +103,21 @@ class VoucherLineEntity {
             baseCurrency: this.baseCurrency,
             exchangeRate: this.exchangeRate,
             notes: this.notes || null,
-            costCenterId: this.costCenterId || null
+            costCenterId: this.costCenterId || null,
+            metadata: this.metadata
         };
     }
     /**
      * Create from plain object (for deserialization)
      */
     static fromJSON(data) {
-        return new VoucherLineEntity(data.id, data.accountId, data.side, data.amount, data.currency, data.baseAmount, data.baseCurrency, data.exchangeRate, data.notes, data.costCenterId);
+        return new VoucherLineEntity(data.id, data.accountId, data.side, data.amount, data.currency, data.baseAmount, data.baseCurrency, data.exchangeRate, data.notes, data.costCenterId, data.metadata || {});
     }
     /**
      * Create a new line with updated notes (immutable update)
      */
     withNotes(notes) {
-        return new VoucherLineEntity(this.id, this.accountId, this.side, this.amount, this.currency, this.baseAmount, this.baseCurrency, this.exchangeRate, notes, this.costCenterId);
+        return new VoucherLineEntity(this.id, this.accountId, this.side, this.amount, this.currency, this.baseAmount, this.baseCurrency, this.exchangeRate, notes, this.costCenterId, this.metadata);
     }
 }
 exports.VoucherLineEntity = VoucherLineEntity;

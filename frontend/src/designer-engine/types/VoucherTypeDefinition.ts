@@ -14,6 +14,7 @@ import { PostingRole } from './PostingRole';
 export interface TableColumn {
   fieldId: string;
   width?: string;
+  labelOverride?: string;
 }
 
 /**

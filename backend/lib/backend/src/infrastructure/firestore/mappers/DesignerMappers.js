@@ -22,7 +22,8 @@ class FormDefinitionMapper {
 exports.FormDefinitionMapper = FormDefinitionMapper;
 class VoucherTypeDefinitionMapper {
     static toDomain(data) {
-        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.workflow);
+        var _a;
+        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.schemaVersion || 1, data.requiredPostingRoles || [], data.workflow || null, data.uiModeOverrides || null, (_a = data.isMultiLine) !== null && _a !== void 0 ? _a : true, data.rules || [], data.actions || [], data.defaultCurrency || 'USD');
     }
     static toPersistence(entity) {
         return {
@@ -31,10 +32,16 @@ class VoucherTypeDefinitionMapper {
             name: entity.name,
             code: entity.code,
             module: entity.module,
-            headerFields: entity.headerFields.map(f => (Object.assign({}, f))),
+            headerFields: (entity.headerFields || []).map(f => (Object.assign({}, f))),
             tableColumns: entity.tableColumns,
             layout: entity.layout,
-            workflow: entity.workflow
+            schemaVersion: entity.schemaVersion,
+            workflow: entity.workflow,
+            uiModeOverrides: entity.uiModeOverrides,
+            isMultiLine: entity.isMultiLine,
+            rules: entity.rules,
+            actions: entity.actions,
+            defaultCurrency: entity.defaultCurrency
         };
     }
 }

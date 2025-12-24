@@ -11,52 +11,52 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { VoucherTypeConfig } from './types';
+import { VoucherFormConfig } from './types';
 
 interface WizardContextType {
-  vouchers: VoucherTypeConfig[];
-  addVoucher: (voucher: VoucherTypeConfig) => void;
-  updateVoucher: (voucher: VoucherTypeConfig) => void;
-  deleteVoucher: (id: string) => void;
-  getVoucher: (id: string) => VoucherTypeConfig | undefined;
-  setVouchers: (vouchers: VoucherTypeConfig[]) => void;
+  forms: VoucherFormConfig[];
+  addForm: (form: VoucherFormConfig) => void;
+  updateForm: (form: VoucherFormConfig) => void;
+  deleteForm: (id: string) => void;
+  getForm: (id: string) => VoucherFormConfig | undefined;
+  setForms: (forms: VoucherFormConfig[]) => void;
 }
 
 const WizardContext = createContext<WizardContextType | undefined>(undefined);
 
 interface WizardProviderProps {
   children: ReactNode;
-  initialVouchers?: VoucherTypeConfig[];
+  initialForms?: VoucherFormConfig[];
 }
 
-export const WizardProvider: React.FC<WizardProviderProps> = ({ children, initialVouchers = [] }) => {
-  const [vouchers, setVouchers] = useState<VoucherTypeConfig[]>(initialVouchers);
+export const WizardProvider: React.FC<WizardProviderProps> = ({ children, initialForms = [] }) => {
+  const [forms, setForms] = useState<VoucherFormConfig[]>(initialForms);
 
-  // Update vouchers when initialVouchers prop changes
+  // Update forms when initialForms prop changes
   useEffect(() => {
-    if (initialVouchers &&  initialVouchers.length > 0) {
-      setVouchers(initialVouchers);
+    if (initialForms && initialForms.length > 0) {
+      setForms(initialForms);
     }
-  }, [initialVouchers]);
+  }, [initialForms]);
 
-  const addVoucher = (voucher: VoucherTypeConfig) => {
-    setVouchers(prev => [...prev, voucher]);
+  const addForm = (form: VoucherFormConfig) => {
+    setForms(prev => [...prev, form]);
   };
 
-  const updateVoucher = (voucher: VoucherTypeConfig) => {
-    setVouchers(prev => prev.map(v => v.id === voucher.id ? voucher : v));
+  const updateForm = (form: VoucherFormConfig) => {
+    setForms(prev => prev.map(v => v.id === form.id ? form : v));
   };
 
-  const deleteVoucher = (id: string) => {
-    setVouchers(prev => prev.filter(v => v.id !== id));
+  const deleteForm = (id: string) => {
+    setForms(prev => prev.filter(v => v.id !== id));
   };
 
-  const getVoucher = (id: string) => {
-    return vouchers.find(v => v.id === id);
+  const getForm = (id: string) => {
+    return forms.find(v => v.id === id);
   };
 
   return (
-    <WizardContext.Provider value={{ vouchers, addVoucher, updateVoucher, deleteVoucher, getVoucher, setVouchers }}>
+    <WizardContext.Provider value={{ forms, addForm, updateForm, deleteForm, getForm, setForms }}>
       {children}
     </WizardContext.Provider>
   );

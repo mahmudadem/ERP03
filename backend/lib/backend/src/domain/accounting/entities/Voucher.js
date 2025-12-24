@@ -15,6 +15,7 @@ class Voucher {
         this.createdBy = createdBy;
         this.reference = reference;
         this.lines = lines;
+        this.metadata = {};
     }
 }
 exports.Voucher = Voucher;

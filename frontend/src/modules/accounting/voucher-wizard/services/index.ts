@@ -4,9 +4,9 @@
 
 export {
   loadDefaultTemplates,
-  loadCompanyVouchers,
-  saveVoucher,
-  cloneVoucher,
-  toggleVoucherEnabled,
-  checkDeletable
+  loadCompanyForms,
+  saveVoucherForm,
+  cloneVoucherForm,
+  toggleFormEnabled,
+  checkFormDeletable
 } from './voucherWizardService';

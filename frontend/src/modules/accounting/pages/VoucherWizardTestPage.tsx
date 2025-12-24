@@ -6,11 +6,11 @@
  */
 
 import React from 'react';
-import { VoucherTypeManager, WizardProvider, VoucherTypeConfig } from '../voucher-wizard';
+import { VoucherFormDesigner, WizardProvider, VoucherFormConfig } from '../voucher-wizard';
 import { errorHandler } from '../../../services/errorHandler';
 
 const VoucherWizardTestPage: React.FC = () => {
-  const handleVoucherSaved = (config: VoucherTypeConfig) => {
+  const handleVoucherSaved = (config: VoucherFormConfig) => {
     console.log('✅ Wizard completed! Output:', config);
     
     // Show the output in a success toast for quick verification
@@ -43,7 +43,7 @@ const VoucherWizardTestPage: React.FC = () => {
             <li>Go through all 6 steps (Basic Info → Rules → Fields → Actions → Visual Editor → Review)</li>
             <li>Try the drag-and-drop editor in Step 5</li>
             <li>Click "Save & Close" to see the output</li>
-            <li>Check browser console for the full <code>VoucherTypeConfig</code> object</li>
+            <li>Check browser console for the full <code>VoucherFormConfig</code> object</li>
           </ul>
         </div>
       </div>
@@ -51,7 +51,7 @@ const VoucherWizardTestPage: React.FC = () => {
       {/* Wizard Container */}
       <div className="flex-1 overflow-hidden">
         <WizardProvider>
-          <VoucherTypeManager 
+          <VoucherFormDesigner 
             onVoucherSaved={handleVoucherSaved}
             onExit={() => console.log('Exit clicked')}
           />

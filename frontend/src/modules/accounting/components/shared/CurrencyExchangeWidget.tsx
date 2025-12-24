@@ -10,15 +10,11 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-interface CurrencyExchangeData {
-  currency: string;
-  exchangeRate: number;
-}
-
 interface CurrencyExchangeWidgetProps {
-  value?: CurrencyExchangeData;
+  currency: string;
+  value?: number; // Current exchange rate
   baseCurrency?: string;
-  onChange?: (value: CurrencyExchangeData) => void;
+  onChange?: (rate: number) => void;
   disabled?: boolean;
 }
 
@@ -46,96 +42,121 @@ const EXCHANGE_RATES: Record<string, number> = {
 };
 
 export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
-  value = { currency: 'USD', exchangeRate: 1 },
+  currency = 'USD',
+  value,
   baseCurrency = 'USD',
   onChange,
   disabled = false
 }) => {
-  const [selectedCurrency, setSelectedCurrency] = useState(value.currency);
-  const [rate, setRate] = useState(value.exchangeRate);
+  const [systemRate, setSystemRate] = useState(1);
+  const [manualRate, setManualRate] = useState<number | undefined>(value);
 
-  // Auto-fetch exchange rate when currency changes
+  // Auto-fetch system rate when currency changes
+  // FIX: Also reset manualRate when currency changes to avoid stale overrides!
   useEffect(() => {
-    if (selectedCurrency === baseCurrency) {
-      // Same currency = rate 1
-      setRate(1);
-      onChange?.({ currency: selectedCurrency, exchangeRate: 1 });
+    setManualRate(undefined); // Reset override on currency change
+    
+    if (currency === baseCurrency) {
+      setSystemRate(1);
     } else {
-      // Fetch rate from API (mocked here)
-      const rateKey = `${baseCurrency}-${selectedCurrency}`;
+      const rateKey = `${baseCurrency}-${currency}`;
       const fetchedRate = EXCHANGE_RATES[rateKey] || 1;
-      
-      setRate(fetchedRate);
-      onChange?.({ currency: selectedCurrency, exchangeRate: fetchedRate });
+      setSystemRate(fetchedRate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCurrency, baseCurrency]); // Removed onChange to prevent infinite loop
+  }, [currency, baseCurrency]);
 
-  const handleCurrencyChange = (newCurrency: string) => {
-    setSelectedCurrency(newCurrency);
+  // Handle manual rate change
+  const handleManualRateChange = (newRate: number | string) => {
+    const val = typeof newRate === 'string' ? (parseFloat(newRate) || undefined) : newRate;
+    setManualRate(val);
+    onChange?.(val ?? systemRate);
   };
 
-  const handleRateChange = (newRate: number) => {
-    setRate(newRate);
-    onChange?.({ currency: selectedCurrency, exchangeRate: newRate });
-  };
+  // Sync manual rate with value if it changes externally
+  useEffect(() => {
+    if (value !== undefined && value !== (manualRate ?? systemRate)) {
+      setManualRate(value);
+    }
+  }, [value, systemRate]);
 
   const baseCurrencyInfo = CURRENCIES.find(c => c.code === baseCurrency);
-  const selectedCurrencyInfo = CURRENCIES.find(c => c.code === selectedCurrency);
+  const selectedCurrencyInfo = CURRENCIES.find(c => c.code === currency);
+
+  const hasOverride = manualRate !== undefined && manualRate !== systemRate;
 
   return (
-    <div className="space-y-2">
-      {/* Currency Selector */}
-      <div className="relative">
-        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">
-          Currency
-        </label>
-        <select
-          value={selectedCurrency}
-          onChange={(e) => handleCurrencyChange(e.target.value)}
-          disabled={disabled}
-          className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm appearance-none pr-6"
-        >
-          {CURRENCIES.map(curr => (
-            <option key={curr.code} value={curr.code}>
-              {curr.code} - {curr.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2 top-8 text-gray-400 pointer-events-none" size={14} />
+    <div className={`
+      flex items-center border rounded overflow-hidden transition-all shadow-sm
+      ${hasOverride ? 'border-indigo-400 ring-1 ring-indigo-100' : 'border-gray-200'}
+      ${disabled ? 'bg-gray-50 opacity-75' : 'bg-white'}
+    `}>
+      {/* 1. System/Reference Section */}
+      <div className="flex-1 px-2.5 py-1.5 border-r border-gray-100 bg-gray-50/50 min-w-[120px]">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">System Rate</span>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-gray-500">
+            <span>{baseCurrency}</span>
+            <span className="opacity-30">→</span>
+            <span>{currency}</span>
+          </div>
+        </div>
+        <div className="text-xs font-semibold text-gray-600 mt-0.5">
+          {systemRate.toFixed(4)}
+        </div>
       </div>
 
-      {/* Exchange Rate Display & Edit */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">
-            Exchange Rate
-          </label>
+      {/* 2. Manual Input Section */}
+      <div className="flex-[1.2] px-2.5 py-1.5 relative group">
+        <label className={`
+          absolute -top-1.5 left-2 px-1 text-[8px] font-bold uppercase tracking-widest transition-opacity
+          ${hasOverride ? 'text-indigo-600 opacity-100 bg-white' : 'text-gray-400 opacity-0'}
+        `}>
+          Manual Override
+        </label>
+        <div className="flex items-center gap-1.5 mt-0.5">
           <input
             type="number"
             step="0.0001"
-            value={rate}
-            onChange={(e) => handleRateChange(parseFloat(e.target.value) || 1)}
+            placeholder={systemRate.toString()}
+            value={manualRate || ''}
+            onChange={(e) => handleManualRateChange(e.target.value)}
             disabled={disabled}
-            className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm"
+            className={`
+              w-full bg-transparent text-xs font-bold outline-none placeholder:text-gray-300 placeholder:font-normal
+              ${hasOverride ? 'text-indigo-700' : 'text-gray-400'}
+            `}
           />
-        </div>
-        
-        {/* Conversion Display */}
-        <div className="flex-1 pt-5">
-          <div className="p-1.5 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-            1 {baseCurrencyInfo?.symbol}{baseCurrency} = {rate.toFixed(4)} {selectedCurrencyInfo?.symbol}{selectedCurrency}
-          </div>
+          {!hasOverride && (
+            <div className="text-[9px] font-bold text-gray-300 pointer-events-none uppercase tracking-tighter">Enter...</div>
+          )}
         </div>
       </div>
 
-      {/* Visual Indicator */}
-      {selectedCurrency !== baseCurrency && (
-        <div className="text-[10px] text-indigo-600 flex items-center gap-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-          Rate auto-fetched
-        </div>
-      )}
+      {/* 3. Status/Reset Section */}
+      <div className={`
+        flex-1 px-2.5 py-1.5 transition-colors min-w-[130px]
+        ${hasOverride ? 'bg-indigo-50/80' : 'bg-white'}
+      `}>
+        {hasOverride ? (
+          <div className="flex flex-col items-end">
+             <div className="text-[9px] font-bold text-indigo-600 uppercase leading-none">Override Active</div>
+             <button 
+                onClick={() => handleManualRateChange(systemRate)}
+                className="text-[9px] font-bold text-indigo-400 hover:text-indigo-700 underline mt-1 transition-colors"
+              >
+                Reset to System
+              </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end">
+            <div className="text-[9px] font-bold text-gray-300 uppercase leading-none">No Override</div>
+            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-green-400"></span>
+              Live Tracking
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -3,10 +3,16 @@ import { Outlet } from 'react-router-dom'; // Important for nested routing
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { WindowsDesktop } from '../modules/accounting/components/WindowsDesktop';
+import { AccountsProvider } from '../context/AccountsContext';
+import { useVoucherActions } from '../hooks/useVoucherActions';
 
 export const AppShell: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { uiMode } = useUserPreferences();
+  const { handleSaveVoucher, handleSubmitVoucher } = useVoucherActions();
+
+  const isWindowsMode = uiMode === 'windows';
 
   return (
     <div className="min-h-screen flex bg-gray-50 text-gray-900 font-sans overflow-hidden">
@@ -31,6 +37,16 @@ export const AppShell: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Global Windows Desktop for MDI Mode */}
+      {isWindowsMode && (
+        <AccountsProvider>
+          <WindowsDesktop 
+            onSaveVoucher={handleSaveVoucher} 
+            onSubmitVoucher={handleSubmitVoucher}
+          />
+        </AccountsProvider>
+      )}
     </div>
   );
 };

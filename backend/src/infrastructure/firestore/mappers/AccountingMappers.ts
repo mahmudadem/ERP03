@@ -72,6 +72,7 @@ export class VoucherMapper {
       line.creditBase = l.creditBase;
       line.lineCurrency = l.lineCurrency;
       line.exchangeRate = l.exchangeRate ?? l.rateAccToBase;
+      line.metadata = l.metadata || {};
       return line;
     });
 
@@ -98,6 +99,7 @@ export class VoucherMapper {
     voucher.approvedBy = data.approvedBy;
     voucher.lockedBy = data.lockedBy;
     voucher.description = data.description ?? null;
+    voucher.metadata = data.metadata || {};
     // Form metadata
     (voucher as any).formId = data.formId || null;
     (voucher as any).prefix = data.prefix || null;
@@ -119,7 +121,8 @@ export class VoucherMapper {
       debitFx: l.debitFx,
       creditFx: l.creditFx,
       lineCurrency: l.lineCurrency,
-      exchangeRate: l.exchangeRate
+      exchangeRate: l.exchangeRate,
+      metadata: l.metadata || {}
     }));
 
     return {
@@ -141,6 +144,7 @@ export class VoucherMapper {
       lockedBy: entity.lockedBy || null,
       reference: entity.reference || null,
       description: entity.description ?? null,
+      metadata: entity.metadata || {},
       // Form metadata
       formId: (entity as any).formId || null,
       prefix: (entity as any).prefix || null,
