@@ -45,6 +45,7 @@ export const accountingApi = {
     const params = new URLSearchParams();
     
     if (filters.type && filters.type !== 'ALL') params.append('type', filters.type);
+    if (filters.formId) params.append('formId', filters.formId);
     if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
     if (filters.from) params.append('from', filters.from);
     if (filters.to) params.append('to', filters.to);

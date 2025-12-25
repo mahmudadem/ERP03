@@ -9,7 +9,7 @@ import { Eye, Edit, Trash2 } from 'lucide-react';
 
 interface Props {
   vouchers: VoucherListItem[];
-  pagination: {
+  pagination?: {
     page: number;
     pageSize: number;
     totalItems: number;
@@ -17,7 +17,7 @@ interface Props {
   };
   isLoading?: boolean;
   error?: string | null;
-  onPageChange: (page: number) => void;
+  onPageChange?: (page: number) => void;
   onRowClick?: (id: string) => void;
   onEdit?: (voucher: VoucherListItem) => void;
   onDelete?: (id: string) => void;
@@ -149,12 +149,13 @@ export const VoucherTable: React.FC<Props> = ({
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-         <div className="text-sm text-gray-500">
+      {/* Pagination Footer - Only show if pagination is provided */}
+      {pagination && onPageChange && (
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
             Showing page <span className="font-medium">{pageInfo.page}</span> of <span className="font-medium">{pageInfo.totalPages || 1}</span> ({pageInfo.totalItems} items)
-         </div>
-         <div className="flex gap-2">
+          </div>
+          <div className="flex gap-2">
             <Button 
               variant="secondary" 
               size="sm" 
@@ -171,8 +172,9 @@ export const VoucherTable: React.FC<Props> = ({
             >
               Next
             </Button>
-         </div>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

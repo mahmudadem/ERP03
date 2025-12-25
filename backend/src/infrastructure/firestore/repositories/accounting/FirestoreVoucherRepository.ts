@@ -87,18 +87,74 @@ export class FirestoreVoucherRepository extends BaseFirestoreRepository<Voucher>
 
   async getVouchers(companyId: string, filters?: any): Promise<Voucher[]> {
     try {
+      console.log('\n\n========== VOUCHER QUERY DEBUG START ==========');
+      console.log('FILTERS:', JSON.stringify(filters, null, 2));
+      
+      // First, check total vouchers without filters for debugging
+      const allVouchersSnapshot = await this.getVouchersCollection(companyId).get();
+      console.log('TOTAL VOUCHERS IN DB:', allVouchersSnapshot.size);
+      
+      // Log first voucher's date for comparison if any exist
+      if (allVouchersSnapshot.size > 0) {
+        const firstDoc = allVouchersSnapshot.docs[0].data();
+        console.log('FIRST VOUCHER DATE:', firstDoc.date);
+        console.log('FIRST VOUCHER TYPE:', firstDoc.type);
+        console.log('FIRST VOUCHER FORMID:', firstDoc.formId);
+      }
+      
       let query: admin.firestore.Query = this.getVouchersCollection(companyId);
 
-      // Apply basic filters if needed
+      // Apply filters
+      if (filters?.type) {
+        console.log('FILTERING BY TYPE:', filters.type);
+        query = query.where('type', '==', filters.type);
+      }
+      
+      if (filters?.formId) {
+        console.log('FILTERING BY FORMID:', filters.formId);
+        query = query.where('formId', '==', filters.formId);
+      }
+      
       if (filters?.status) {
+        console.log('FILTERING BY STATUS:', filters.status);
         query = query.where('status', '==', filters.status);
       }
-      if (filters?.sourceModule) {
-        query = query.where('sourceModule', '==', filters.sourceModule);
+      
+      // Date range filtering using ISO strings (same format as existing vouchers)
+      if (filters?.from) {
+        const fromDate = new Date(filters.from);
+        console.log('FILTERING FROM DATE:', fromDate.toISOString());
+        query = query.where('date', '>=', fromDate.toISOString());
+      }
+      if (filters?.to && !filters?.from) {
+        // Only apply 'to' if 'from' is not set (Firestore range limitation)
+        const toDate = new Date(filters.to);
+        console.log('FILTERING TO DATE:', toDate.toISOString());
+        query = query.where('date', '<=', toDate.toISOString());
       }
       
       const snapshot = await query.get();
-      return snapshot.docs.map(doc => this.toDomain(doc.data()));
+      console.log('QUERY RETURNED:', snapshot.size, 'vouchers');
+      console.log('========== VOUCHER QUERY DEBUG END ==========\n\n');
+      
+      let vouchers = snapshot.docs.map(doc => this.toDomain(doc.data()));
+      
+      // Apply client-side filters that Firestore can't handle
+      if (filters?.to && filters?.from) {
+        // If both from and to are set, filter 'to' client-side
+        const toDate = new Date(filters.to);
+        vouchers = vouchers.filter(v => new Date(v.date) <= toDate);
+      }
+      
+      if (filters?.search) {
+        const searchLower = filters.search.toLowerCase();
+        vouchers = vouchers.filter(v => 
+          v.voucherNo?.toLowerCase().includes(searchLower) ||
+          v.reference?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      return vouchers;
     } catch (error) {
       throw new InfrastructureError('Error fetching vouchers', error);
     }

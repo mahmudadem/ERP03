@@ -17,31 +17,31 @@ const router = Router();
 router.use(authMiddleware);
 
 // Accounts
-router.get('/accounts', permissionGuard('accounting.account.view'), AccountController.list);
-router.get('/accounts/valid', permissionGuard('accounting.voucher.create'), AccountController.getValid);
-router.get('/accounts/resolve/:code', permissionGuard('accounting.voucher.create'), AccountController.resolveCode);
-router.get('/accounts/:id', permissionGuard('accounting.account.view'), AccountController.getById);
-router.post('/accounts', permissionGuard('accounting.account.create'), AccountController.create);
-router.put('/accounts/:id', permissionGuard('accounting.account.edit'), AccountController.update);
-router.delete('/accounts/:id', permissionGuard('accounting.account.delete'), AccountController.deactivate);
+router.get('/accounts', permissionGuard('accounting.accounts.view'), AccountController.list);
+router.get('/accounts/valid', permissionGuard('accounting.vouchers.create'), AccountController.getValid);
+router.get('/accounts/resolve/:code', permissionGuard('accounting.vouchers.create'), AccountController.resolveCode);
+router.get('/accounts/:id', permissionGuard('accounting.accounts.view'), AccountController.getById);
+router.post('/accounts', permissionGuard('accounting.accounts.create'), AccountController.create);
+router.put('/accounts/:id', permissionGuard('accounting.accounts.edit'), AccountController.update);
+router.delete('/accounts/:id', permissionGuard('accounting.accounts.delete'), AccountController.deactivate);
 
 // Vouchers
-router.get('/vouchers', permissionGuard('accounting.voucher.view'), VoucherController.list);
-router.get('/vouchers/:id', permissionGuard('accounting.voucher.view'), VoucherController.get);
+router.get('/vouchers', permissionGuard('accounting.vouchers.view'), VoucherController.list);
+router.get('/vouchers/:id', permissionGuard('accounting.vouchers.view'), VoucherController.get);
 router.post('/vouchers', 
-  permissionGuard('accounting.voucher.create'), 
+  permissionGuard('accounting.vouchers.create'), 
   VoucherController.create
 );
-router.put('/vouchers/:id', permissionGuard('accounting.voucher.edit'), VoucherController.update);
-router.post('/vouchers/:id/approve', permissionGuard('accounting.voucher.approve'), VoucherController.approve);
-router.post('/vouchers/:id/lock', permissionGuard('accounting.voucher.lock'), VoucherController.lock);
-router.post('/vouchers/:id/cancel', permissionGuard('accounting.voucher.cancel'), VoucherController.cancel);
+router.put('/vouchers/:id', permissionGuard('accounting.vouchers.edit'), VoucherController.update);
+router.post('/vouchers/:id/approve', permissionGuard('accounting.vouchers.approve'), VoucherController.approve);
+router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock);
+router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'), VoucherController.cancel);
 
 // Reports
 router.get('/reports/profit-loss', permissionGuard('accounting.reports.profitAndLoss.view'), ReportingController.profitAndLoss);
-router.get('/reports/trial-balance', permissionGuard('accounting.report.view'), ReportingController.trialBalance);
-router.get('/reports/general-ledger', permissionGuard('accounting.report.view'), ReportingController.generalLedger);
-router.get('/reports/journal', permissionGuard('accounting.report.view'), ReportingController.journal);
+router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBalance.view'), ReportingController.trialBalance);
+router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.generalLedger);
+router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

@@ -81,8 +81,34 @@ class PrismaVoucherRepository {
         return this.mapToDomain(data);
     }
     async getVouchers(companyId, filters) {
+        const where = { companyId };
+        // Apply filters
+        if (filters === null || filters === void 0 ? void 0 : filters.type) {
+            where.type = filters.type;
+        }
+        if (filters === null || filters === void 0 ? void 0 : filters.formId) {
+            where.formId = filters.formId;
+        }
+        if (filters === null || filters === void 0 ? void 0 : filters.status) {
+            where.status = filters.status;
+        }
+        if ((filters === null || filters === void 0 ? void 0 : filters.from) || (filters === null || filters === void 0 ? void 0 : filters.to)) {
+            where.date = {};
+            if (filters.from) {
+                where.date.gte = new Date(filters.from);
+            }
+            if (filters.to) {
+                where.date.lte = new Date(filters.to);
+            }
+        }
+        if (filters === null || filters === void 0 ? void 0 : filters.search) {
+            where.OR = [
+                { voucherNo: { contains: filters.search, mode: 'insensitive' } },
+                { reference: { contains: filters.search, mode: 'insensitive' } },
+            ];
+        }
         const vouchers = await this.prisma.voucher.findMany({
-            where: { companyId },
+            where,
             include: { lines: true },
             orderBy: { date: 'desc' },
         });

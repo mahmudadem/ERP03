@@ -159,16 +159,25 @@ class FirestoreVoucherFormRepository {
             const cleanUpdates = Object.assign({}, updates);
             delete cleanUpdates.id;
             delete cleanUpdates.companyId;
-            cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+            cleanUpdates.updatedAt = new Date();
             // Remove undefined values
             Object.keys(cleanUpdates).forEach(key => {
                 if (cleanUpdates[key] === undefined) {
                     delete cleanUpdates[key];
                 }
             });
-            await ref.update(cleanUpdates);
+            // Use set with merge to create if doesn't exist, update if it does
+            await ref.set(cleanUpdates, { merge: true });
         }
         catch (error) {
+            console.error('❌ Firestore update error:', {
+                formId,
+                companyId,
+                updates,
+                errorMessage: error.message,
+                errorCode: error.code,
+                errorDetails: error
+            });
             throw new InfrastructureError_1.InfrastructureError('Error updating voucher form', error);
         }
     }

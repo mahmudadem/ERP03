@@ -45,7 +45,9 @@ Added complete permission set:
 - `inventory.reports.stockCard.view`
 
 **Designer:**
-- `designer.vouchers.modify`
+- `accounting.designer.view`
+- `accounting.designer.create`
+- `accounting.designer.modify`
 - `designer.forms.modify`
 
 **System:**
@@ -213,7 +215,9 @@ Add `RequirePermission` to:
 - Stock In/Out → `inventory.stock.in` / `inventory.stock.out`
 
 **DesignerPages:**
-- Open designer → `designer.vouchers.modify`
+- Open designer → `accounting.designer.view`
+- Create/Clone → `accounting.designer.create`
+- Modify layout → `accounting.designer.modify`
 
 **SettingsPages:**
 - Users management → `system.company.users.manage`
@@ -246,7 +250,7 @@ Add `RequirePermission` to:
 - [ ] Sidebar hides items without permission
 - [ ] Voucher creation blocked without `accounting.vouchers.create`
 - [ ] Inventory hidden without `inventory.items.manage`
-- [ ] Designer hidden without `designer.vouchers.modify`
+- [ ] Designer hidden without `accounting.designer.view`
 - [ ] Permission changes reflect after company switch
 - [ ] Backend rejects API calls without permission
 

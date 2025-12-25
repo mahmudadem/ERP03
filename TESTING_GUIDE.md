@@ -30,7 +30,7 @@
 ### Test Scenario 3: Designer Access
 
 **Setup**:
-1. Login as a regular user WITHOUT `designer.vouchers.modify`
+1. Login as a regular user WITHOUT `accounting.designer.view`
 2. Try to navigate to `/accounting/designer`
 
 **Expected**:
@@ -155,7 +155,7 @@ Use this checklist to verify all functionality:
 - [ ] User without edit permission: Cannot send for approval
 - [ ] User without lock permission: Cannot lock vouchers
 - [ ] User without cancel permission: Cannot cancel vouchers
-- [ ] User without designer permission: Cannot create voucher types
+- [ ] User without designer permission: Cannot access designer or create forms (`accounting.designer.*`)
 - [ ] OWNER/ADMIN: Can see all buttons
 - [ ] SUPER_ADMIN: Bypasses all checks
 

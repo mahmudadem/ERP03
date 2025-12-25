@@ -86,8 +86,40 @@ export class PrismaVoucherRepository implements IVoucherRepository {
     }
 
     async getVouchers(companyId: string, filters?: any): Promise<Voucher[]> {
+        const where: any = { companyId };
+
+        // Apply filters
+        if (filters?.type) {
+            where.type = filters.type;
+        }
+        
+        if (filters?.formId) {
+            where.formId = filters.formId;
+        }
+        
+        if (filters?.status) {
+            where.status = filters.status;
+        }
+        
+        if (filters?.from || filters?.to) {
+            where.date = {};
+            if (filters.from) {
+                where.date.gte = new Date(filters.from);
+            }
+            if (filters.to) {
+                where.date.lte = new Date(filters.to);
+            }
+        }
+        
+        if (filters?.search) {
+            where.OR = [
+                { voucherNo: { contains: filters.search,  mode: 'insensitive' } },
+                { reference: { contains: filters.search, mode: 'insensitive' } },
+            ];
+        }
+
         const vouchers = await this.prisma.voucher.findMany({
-            where: { companyId },
+            where,
             include: { lines: true },
             orderBy: { date: 'desc' },
         });

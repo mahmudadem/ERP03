@@ -141,14 +141,16 @@ class VoucherFormController {
             if (!existing) {
                 return res.status(404).json({ success: false, error: 'Form not found' });
             }
-            // Prevent editing locked forms
-            if (existing.isLocked) {
+            const updates = req.body;
+            // Allow updating 'enabled' field even for locked forms (company preference)
+            const isOnlyEnablingDisabling = Object.keys(updates).length === 1 && 'enabled' in updates;
+            // Prevent editing locked forms (except for enabled field)
+            if (existing.isLocked && !isOnlyEnablingDisabling) {
                 return res.status(403).json({
                     success: false,
                     error: 'Cannot edit locked form. Clone it instead.'
                 });
             }
-            const updates = req.body;
             // Prevent changing certain fields
             delete updates.id;
             delete updates.companyId;

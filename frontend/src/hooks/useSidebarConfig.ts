@@ -4,9 +4,10 @@ import { useRBAC } from '../api/rbac/useRBAC';
 import { moduleMenuMap } from '../config/moduleMenuMap';
 import { useVoucherTypes } from './useVoucherTypes';
 
-type SidebarSection = {
+type SidebarItem = {
   label: string;
   path?: string;
+  children?: SidebarItem[];
 };
 
 export const useSidebarConfig = () => {
@@ -15,7 +16,7 @@ export const useSidebarConfig = () => {
   const { voucherTypes } = useVoucherTypes();
 
   const sidebarSections = useMemo(() => {
-    const sections: Record<string, SidebarSection[]> = {
+    const sections: Record<string, SidebarItem[]> = {
       MODULES: [],
       COMPANY_ADMIN: [],
       SETTINGS: [],
@@ -70,23 +71,37 @@ export const useSidebarConfig = () => {
         // Remove static "Vouchers" link
         items = items.filter(item => item.label !== 'Vouchers');
         
-        // Add dynamic voucher type links
-        const voucherItems = voucherTypes.map(vt => ({
-          label: vt.name,
-          path: `/accounting/vouchers?type=${vt.id}`,
-          permission: 'voucher.view'
-        }));
+        // Add dynamic voucher type links - ONLY ENABLED FORMS
+        const voucherChildren = [
+          { 
+            label: 'All Vouchers', 
+            path: '/accounting/vouchers', 
+            permission: 'accounting.vouchers.view' 
+          },
+          ...voucherTypes
+            .filter(vt => vt.enabled !== false) // Only show enabled forms
+            .map(vt => ({
+              label: vt.name,
+              path: `/accounting/vouchers?type=${vt.id}`,
+              permission: 'accounting.vouchers.view'
+            }))
+        ];
         
-        // Insert voucher items after Chart of Accounts
+        const vouchersGroup = {
+          label: 'Vouchers',
+          children: voucherChildren.filter(item => hasPermission(item.permission))
+        };
+        
+        // Insert vouchers group after Chart of Accounts
         const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
         if (coaIndex >= 0) {
           items = [
             ...items.slice(0, coaIndex + 1),
-            ...voucherItems.filter(item => hasPermission(item.permission)),
+            vouchersGroup,
             ...items.slice(coaIndex + 1)
           ];
         } else {
-          items = [...voucherItems.filter(item => hasPermission(item.permission)), ...items];
+          items = [vouchersGroup, ...items];
         }
       }
       
@@ -94,7 +109,8 @@ export const useSidebarConfig = () => {
         // Create a new section for this App
         sections[def.label] = items.map(i => ({
           label: i.label,
-          path: i.path
+          path: i.path,
+          children: (i as any).children
         }));
       }
     });
@@ -104,7 +120,7 @@ export const useSidebarConfig = () => {
 
     // Company Admin menu (Permission Gated or Module Check)
     if (activeModules.includes('companyAdmin') || hasPermission('manage_settings') || hasWildcard) {
-      const companyAdminItems: SidebarSection[] = [
+      const companyAdminItems: SidebarItem[] = [
         { label: 'CA • Overview', path: '/company-admin/overview' },
         { label: 'CA • Users', path: '/company-admin/users' },
         { label: 'CA • Roles', path: '/company-admin/roles' },

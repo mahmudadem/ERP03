@@ -123,7 +123,7 @@ ERP03/
 - Visual voucher type builder
 - Custom field definitions
 - Layout customization
-- Permission: `designer.vouchers.modify`
+- Permission: `accounting.designer.*` (View, Create, Modify)
 
 ### ✅ RBAC System
 - Fine-grained permissions

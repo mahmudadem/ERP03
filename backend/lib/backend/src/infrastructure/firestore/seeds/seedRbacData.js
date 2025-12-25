@@ -49,14 +49,17 @@ const permissions = [
     { id: 'inventory.stock.in', category: 'inventory', labelEn: 'Stock In', labelAr: 'إدخال مخزون', labelTr: 'Stok Girişi', descriptionEn: 'Receive stock into warehouse' },
     { id: 'inventory.stock.out', category: 'inventory', labelEn: 'Stock Out', labelAr: 'إخراج مخزون', labelTr: 'Stok Çıkışı', descriptionEn: 'Issue stock from warehouse' },
     { id: 'inventory.reports.stockCard.view', category: 'inventory', labelEn: 'View Stock Card', labelAr: 'عرض بطاقة المخزون', labelTr: 'Stok Kartı Görüntüle', descriptionEn: 'View stock card reports' },
-    // Designer
-    { id: 'designer.vouchers.modify', category: 'designer', labelEn: 'Modify Voucher Forms', labelAr: 'تعديل نماذج السندات', labelTr: 'Fiş Formlarını Düzenle', descriptionEn: 'Design and modify voucher form layouts' },
-    { id: 'designer.forms.modify', category: 'designer', labelEn: 'Modify Forms', labelAr: 'تعديل النماذج', labelTr: 'Formları Düzenle', descriptionEn: 'Design and modify general forms' },
+    // Designer (Accounting Module Specific)
+    { id: 'accounting.designer.view', category: 'accounting', labelEn: 'View Voucher Designer', labelAr: 'عرض مصمم السندات', labelTr: 'Fiş Tasarımcısını Görüntüle', descriptionEn: 'Access the voucher form designer page' },
+    { id: 'accounting.designer.create', category: 'accounting', labelEn: 'Create/Clone Voucher Forms', labelAr: 'إنشاء/نسخ نماذج السندات', labelTr: 'Fiş Formu Oluştur/Kopyala', descriptionEn: 'Create new voucher forms or clone existing ones' },
+    { id: 'accounting.designer.modify', category: 'accounting', labelEn: 'Modify Voucher Layouts', labelAr: 'تعديل مخططات السندات', labelTr: 'Fiş Tasarımlarını Düzenle', descriptionEn: 'Modify or delete existing voucher form layouts' },
     // System
     { id: 'system.company.settings.manage', category: 'system', labelEn: 'Manage Company Settings', labelAr: 'إدارة إعدادات الشركة', labelTr: 'Şirket Ayarlarını Yönet', descriptionEn: 'Manage company-wide settings' },
     { id: 'system.roles.manage', category: 'system', labelEn: 'Manage Roles', labelAr: 'إدارة الأدوار', labelTr: 'Rolleri Yönet', descriptionEn: 'Create and manage user roles and permissions' },
     { id: 'system.users.manage', category: 'system', labelEn: 'Manage Users', labelAr: 'إدارة المستخدمين', labelTr: 'Kullanıcıları Yönet', descriptionEn: 'Manage company users' },
     { id: 'system.company.users.manage', category: 'system', labelEn: 'Manage Company Users', labelAr: 'إدارة مستخدمي الشركة', labelTr: 'Şirket Kullanıcılarını Yönet', descriptionEn: 'Manage users within company' },
+    // Forms (General)
+    { id: 'designer.forms.modify', category: 'designer', labelEn: 'Modify General Forms', labelAr: 'تعديل النماذج العامة', labelTr: 'Genel Formları Düzenle', descriptionEn: 'Design and modify general forms' },
     // HR
     { id: 'hr.employees.manage', category: 'hr', labelEn: 'Manage Employees', labelAr: 'إدارة الموظفين', labelTr: 'Çalışanları Yönet', descriptionEn: 'Manage employee records' },
     { id: 'hr.payroll.manage', category: 'hr', labelEn: 'Manage Payroll', labelAr: 'إدارة الرواتب', labelTr: 'Bordro Yönet', descriptionEn: 'Process payroll' },
@@ -72,8 +75,11 @@ const systemRoleTemplates = [
     {
         id: 'template_accountant',
         name: 'Accountant',
-        description: 'Full accounting access',
-        permissions: permissions.filter(p => p.category === 'accounting').map(p => p.id),
+        description: 'Accounting and Financial management',
+        permissions: [
+            ...permissions.filter(p => p.category === 'accounting').map(p => p.id),
+            'accounting.designer.view' // Accountants can view designer by default
+        ],
         isCore: true
     },
     {

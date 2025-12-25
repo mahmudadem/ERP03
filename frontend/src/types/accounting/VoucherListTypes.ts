@@ -24,6 +24,7 @@ export interface VoucherListItem {
 
 export interface VoucherListFilters {
   type?: string;
+  formId?: string;  // Filter by specific voucher form/template
   status?: string;
   from?: string; // ISO Date YYYY-MM-DD
   to?: string;   // ISO Date YYYY-MM-DD

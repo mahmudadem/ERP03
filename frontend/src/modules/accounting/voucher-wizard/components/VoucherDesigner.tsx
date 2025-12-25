@@ -38,7 +38,7 @@ import { errorHandler } from '../../../../services/errorHandler';
 // --- MOCK DATA (UI ONLY) ---
 
 export const SYSTEM_FIELDS: AvailableField[] = [
-  { id: 'voucherNo', label: 'Voucher #', type: 'system', sectionHint: 'HEADER' },
+  { id: 'voucherNumber', label: 'Voucher #', type: 'system', sectionHint: 'HEADER' },
   { id: 'status', label: 'Status', type: 'system', sectionHint: 'HEADER' },
   { id: 'createdBy', label: 'Created By', type: 'system', sectionHint: 'HEADER' },
   { id: 'createdAt', label: 'Created At', type: 'system', sectionHint: 'HEADER' },
@@ -46,20 +46,22 @@ export const SYSTEM_FIELDS: AvailableField[] = [
 
 export const AVAILABLE_FIELDS: AvailableField[] = [
   { id: 'date', label: 'Voucher Date', type: 'date', sectionHint: 'HEADER', category: 'core', mandatory: true },
+  { id: 'payee', label: 'Payee / Customer', type: 'text', sectionHint: 'HEADER', category: 'shared' },
   { id: 'reference', label: 'Reference Doc', type: 'text', sectionHint: 'HEADER', category: 'shared' },
   { id: 'description', label: 'Description', type: 'text', sectionHint: 'HEADER', category: 'core' },
   { id: 'currency', label: 'Currency', type: 'select', sectionHint: 'HEADER', category: 'core', mandatory: true },
-  { id: 'exchangeRate', label: 'Exchange Rate', type: 'number', sectionHint: 'HEADER', category: 'core' },
-  { id: 'paymentMethod', label: 'Payment Method', type: 'select', sectionHint: 'HEADER', category: 'shared' },
-  { id: 'currencyExchange', label: 'Exchange Rate (Smart)', type: 'number', sectionHint: 'HEADER', category: 'core' },
-  { id: 'accountSelector', label: 'Account (Header)', type: 'account-selector', sectionHint: 'HEADER', category: 'core' },
+  { id: 'exchangeRate', label: 'Exchange Rate', type: 'number', sectionHint: 'HEADER', category: 'shared', supportedTypes: ['payment_voucher', 'receipt_voucher', 'transfer_voucher'] },
+  { id: 'paymentMethod', label: 'Payment Method', type: 'select', sectionHint: 'HEADER', category: 'shared', supportedTypes: ['payment_voucher'] },
+  { id: 'branch', label: 'Branch / Dept', type: 'select', sectionHint: 'HEADER', category: 'shared' },
+  { id: 'currencyExchange', label: 'Exchange Rate (Smart)', type: 'number', sectionHint: 'HEADER', category: 'shared' },
+  { id: 'account', label: 'Account (Header)', type: 'account-selector', sectionHint: 'HEADER', category: 'shared' },
   { id: 'lineItems', label: 'Line Items Table', type: 'table', sectionHint: 'BODY', category: 'core', mandatory: true },
   { id: 'notes', label: 'Internal Notes', type: 'textarea', sectionHint: 'EXTRA', category: 'shared' },
   { id: 'attachments', label: 'Attachments', type: 'text', sectionHint: 'EXTRA', category: 'shared' },
 ];
 
 const AVAILABLE_TABLE_COLUMNS = [
-    { id: 'accountSelector', label: 'Account' },
+    { id: 'account', label: 'Account' },
     { id: 'debit', label: 'Debit' },
     { id: 'credit', label: 'Credit' },
     { id: 'notes', label: 'Notes' },
@@ -94,13 +96,13 @@ interface VoucherTemplate {
 }
 
 const STEPS = [
-  { id: 1, title: 'Template', icon: LayoutTemplate },
-  { id: 2, title: 'Basic Info', icon: FileText },
-  { id: 3, title: 'Rules', icon: Shield },
-  { id: 4, title: 'Fields', icon: Layers },
-  { id: 5, title: 'Actions', icon: MousePointerClick },
-  { id: 6, title: 'Visual Editor', icon: Settings },
-  { id: 7, title: 'Review', icon: CheckCircle2 },
+  { id: 1, title: 'Template', icon: LayoutTemplate, description: 'Choose base' },
+  { id: 2, title: 'Basic Info', icon: FileText, description: 'ID & Name' },
+  { id: 3, title: 'Rules', icon: Shield, description: 'Logic' },
+  { id: 4, title: 'Fields', icon: Layers, description: 'Selection' },
+  { id: 5, title: 'Actions', icon: MousePointerClick, description: 'Buttons' },
+  { id: 6, title: 'Visual Editor', icon: Settings, description: 'Layout' },
+  { id: 7, title: 'Review', icon: CheckCircle2, description: 'Finalize' },
 ];
 
 interface VoucherDesignerProps {
@@ -121,7 +123,45 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   // Wizard State
   // Skip Step 1 (template selection) if editing existing voucher
   const [currentStep, setCurrentStep] = useState(initialConfig ? 2 : 1);
-  const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>(['date', 'description', 'lineItems']);
+  
+  const getCoreFieldIds = (baseType?: string) => {
+    return AVAILABLE_FIELDS.filter(f => {
+      const isCore = f.category === 'core' || f.mandatory;
+      if (!isCore) return false;
+      if (f.supportedTypes && baseType && !f.supportedTypes.includes(baseType)) return false;
+      if (f.excludedTypes && baseType && f.excludedTypes.includes(baseType)) return false;
+      return true;
+    }).map(f => f.id);
+  };
+
+  const isFieldAllowed = (fieldId: string, baseType?: string) => {
+    const field = AVAILABLE_FIELDS.find(f => f.id === fieldId);
+    if (!field) return true; // System fields or unknown fields allowed by default
+    if (field.supportedTypes && baseType && !field.supportedTypes.includes(baseType)) return false;
+    if (field.excludedTypes && baseType && field.excludedTypes.includes(baseType)) return false;
+    return true;
+  };
+
+  // Initialize with all core and required fields by default
+  const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>(() => {
+    // Start with core/mandatory fields if not provided
+    if (initialConfig?.id && initialConfig?.id !== 'new_voucher_form') {
+       // Extract unique field IDs from existing sections
+       const existingFields = new Set<string>();
+       Object.values(initialConfig.uiModeOverrides).forEach(mode => {
+         Object.values(mode.sections).forEach(s => s.fields.forEach(f => {
+           if (!f.fieldId.startsWith('action_') && isFieldAllowed(f.fieldId, initialConfig.baseType)) {
+             existingFields.add(f.fieldId);
+           }
+         }));
+       });
+       // Combine with mandatory fields
+       const mandatory = getCoreFieldIds(initialConfig.baseType);
+       return Array.from(new Set([...Array.from(existingFields), ...mandatory]));
+    }
+    
+    return getCoreFieldIds(initialConfig?.baseType);
+  });
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
   // Uniqueness Validation State
@@ -141,7 +181,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     rules: DEFAULT_RULES,
     isMultiLine: true,
     tableColumns: [
-      { id: 'accountSelector', labelOverride: 'Account' },
+      { id: 'account', labelOverride: 'Account' },
       { id: 'debit', labelOverride: 'Debit' },
       { id: 'credit', labelOverride: 'Credit' },
       { id: 'notes', labelOverride: 'Notes' }
@@ -186,7 +226,10 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
             Object.values(sections).forEach((section: any) => {
               if (section?.fields && Array.isArray(section.fields)) {
                 section.fields.forEach((f: any) => {
-                  fieldIds.add(f.fieldId || f.id || f);
+                  const id = f.fieldId || f.id || f;
+                  if (isFieldAllowed(id, initialConfig.baseType)) {
+                    fieldIds.add(id);
+                  }
                 });
               }
             });
@@ -194,9 +237,10 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         });
       }
       
-      // Always include required fields
-      fieldIds.add('date');
-      fieldIds.add('lineItems');
+      // Always include required/core fields
+      getCoreFieldIds(initialConfig.baseType).forEach(id => {
+        fieldIds.add(id);
+      });
       
       if (fieldIds.size > 0) {
         setSelectedFieldIds(Array.from(fieldIds));
@@ -235,23 +279,32 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         section.fields.forEach(f => assignedFieldIds.add(f.fieldId));
       });
 
-      // 2. Filter out fields that are no longer selected
+      // 2. Filter out fields that are no longer selected or actions that are no longer enabled
       Object.keys(currentModeConfig.sections).forEach(sectionKey => {
         const section = currentModeConfig.sections[sectionKey as SectionType];
         section.fields = section.fields.filter(f => {
-          // Keep system fields and action fields (handled separately)
-          if (f.fieldId.startsWith('action_') || SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) return true;
-          // Keep if still selected
+          // Action handling
+          if (f.fieldId.startsWith('action_')) {
+            const actionType = f.fieldId.replace('action_', '');
+            return config.actions.find(a => a.type === actionType)?.enabled ?? false;
+          }
+          // System fields
+          if (SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) return true;
+          // Regular fields
           return selectedFieldIds.includes(f.fieldId);
         });
       });
 
       // 3. Identify fields that MUST be present but aren't currently placed
-      const allRequiredFieldIds = [
+      const allRequiredFieldIds = Array.from(new Set([
         ...SYSTEM_FIELDS.map(f => f.id),
-        ...AVAILABLE_FIELDS.filter(f => selectedFieldIds.includes(f.id)).map(f => f.id),
+        ...AVAILABLE_FIELDS.filter(f => {
+          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
+          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          return f.category === 'core' || f.mandatory || selectedFieldIds.includes(f.id);
+        }).map(f => f.id),
         ...config.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
-      ];
+      ]));
 
       const missingFieldIds = allRequiredFieldIds.filter(id => {
         // Check if placed in any section
@@ -317,11 +370,37 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       ...template.config,
       id: template.config.id || prev.id,
       baseType: (template.config as any).baseType || template.id, // Store strategy reference
+      isSystemDefault: false, // New forms from templates are NOT system defaults
+      isLocked: false,        // New forms from templates are NOT locked
       startNumber: 1000,
-      rules: DEFAULT_RULES,
-      actions: DEFAULT_ACTIONS,
-      uiModeOverrides: prev.uiModeOverrides, // Keep existing layout structure
+      rules: template.config.rules || DEFAULT_RULES,
+      actions: template.config.actions || DEFAULT_ACTIONS,
+      // Priority: Use template's layout if it exists, otherwise fallback to empty sections
+      uiModeOverrides: template.config.uiModeOverrides || prev.uiModeOverrides,
     }));
+    
+    // Sync selectedFieldIds from template if available
+    const fieldIds = new Set<string>();
+    const baseType = (template.config as any).baseType || template.id;
+    
+    // Always include core fields for this type
+    getCoreFieldIds(baseType).forEach(id => fieldIds.add(id));
+
+    if (template.config.uiModeOverrides) {
+      Object.values(template.config.uiModeOverrides).forEach(mode => {
+        Object.values(mode.sections).forEach(section => {
+          section.fields.forEach(f => {
+            if (!f.fieldId.startsWith('action_') && !SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) {
+              if (isFieldAllowed(f.fieldId, baseType)) {
+                fieldIds.add(f.fieldId);
+              }
+            }
+          });
+        });
+      });
+    }
+    
+    setSelectedFieldIds(Array.from(fieldIds));
   };
 
   const handleNext = async () => {
@@ -368,7 +447,18 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   };
 
   const handleStepClick = (stepId: number) => {
-      setCurrentStep(stepId);
+      // Only allow clicking on steps we've already reached or are current
+      if (stepId <= currentStep) {
+        if (stepId === 6) runAutoPlacement();
+        setCurrentStep(stepId);
+      } else {
+        // Use Next button to proceed forward to ensure logic runs
+        errorHandler.showError({
+          code: 'NAV_001',
+          message: 'Please use the "Next" button to proceed through the steps.',
+          severity: 'INFO'
+        } as any);
+      }
   }
 
   // --- VISUAL EDITOR LOGIC (Drag & Drop + Resize) ---
@@ -542,7 +632,16 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               );
            })}
 
-           {layout.fields.map((field: FieldLayout, idx: number) => {
+           {layout.fields
+             .filter((f: FieldLayout) => {
+                if (SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) return true;
+                if (f.fieldId.startsWith('action_')) {
+                  const actionType = f.fieldId.replace('action_', '');
+                  return config.actions.find(a => a.type === actionType)?.enabled;
+                }
+                return selectedFieldIds.includes(f.fieldId);
+             })
+             .map((field: FieldLayout, idx: number) => {
               const meta = [...SYSTEM_FIELDS, ...AVAILABLE_FIELDS].find(f => f.id === field.fieldId) 
                          || (field.fieldId.startsWith('action_') ? { label: config.actions.find(a => `action_${a.type}` === field.fieldId)?.label || 'Action', type: 'button' } : null);
               
@@ -1020,10 +1119,25 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                           setValidationErrors(prev => ({...prev, id: undefined}));
                         }
                       }}
-                      className={`mt-1 block w-full rounded-md shadow-sm p-2 border bg-white text-slate-900 ${
+                      readOnly={!!initialConfig?.id}
+                      disabled={!!initialConfig?.id}
+                      className={`mt-1 block w-full rounded-md shadow-sm p-2 border ${
+                        !!initialConfig?.id 
+                          ? 'bg-gray-100 text-gray-600 cursor-not-allowed' 
+                          : 'bg-white text-slate-900'
+                      } ${
                         validationErrors.id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
+                    {!!initialConfig?.id ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        🔒 Form ID cannot be changed after creation to maintain data integrity
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Auto-generated for cloned forms (e.g., JE_1234567890_C)
+                      </p>
+                    )}
                     {validationErrors.id && (
                       <p className="mt-1 text-sm text-red-600">❌ {validationErrors.id}</p>
                     )}
@@ -1071,56 +1185,79 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
             ))}
           </div>
         );
-      case 4: // Fields
+      case 4: // Fields (Reorganized)
+        const relevantFields = AVAILABLE_FIELDS.filter(f => {
+          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
+          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          return true;
+        });
+
+        const coreFields = relevantFields.filter(f => f.category === 'core' || f.mandatory);
+        const optionalFields = relevantFields.filter(f => f.category !== 'core' && !f.mandatory);
+
+        const renderFieldCard = (field: AvailableField) => {
+          const isCore = field.category === 'core' || field.mandatory;
+          const isSelected = isCore || selectedFieldIds.includes(field.id);
+          
+          return (
+            <div 
+              key={field.id} 
+              onClick={() => {
+                if (isCore) return; // Prevent toggling core fields
+                setSelectedFieldIds(prev => isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]);
+              }} 
+              className={`
+                p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all
+                ${isSelected 
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                }
+                ${isCore ? 'opacity-80 cursor-default' : 'cursor-pointer'}
+              `}
+            >
+               <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold">{field.label}</span>
+                    {isCore && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Required</span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-gray-400 font-medium'}`}>
+                    {field.id === 'lineItems' ? 'Main Table' : (field.sectionHint || 'HEADER')}
+                  </span>
+               </div>
+               <div className="flex items-center gap-2">
+                 {isSelected ? <CheckCircle2 size={18} className="text-white shadow-sm" /> : <div className="w-4 h-4 rounded-full border border-gray-200" />}
+               </div>
+            </div>
+          );
+        };
+
         return (
           <div className="max-w-4xl mx-auto space-y-8">
-             <div>
-               <h3 className="text-sm font-bold text-gray-400 uppercase mb-3 tracking-widest">Field Selection</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {AVAILABLE_FIELDS.map(field => {
-                    const isSelected = selectedFieldIds.includes(field.id);
-                    const isCore = field.category === 'core' || field.type === 'system' || field.mandatory;
-                    
-                    return (
-                      <div 
-                        key={field.id} 
-                        onClick={() => {
-                          if (isCore) return; // Prevent toggling core fields
-                          setSelectedFieldIds(prev => isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]);
-                        }} 
-                        className={`
-                          p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all
-                          ${isSelected 
-                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
-                          }
-                          ${isCore ? 'opacity-80' : ''}
-                          ${isCore && isSelected ? 'ring-2 ring-indigo-200' : ''}
-                        `}
-                      >
-                         <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold">{field.label}</span>
-                              {field.category === 'core' && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Core</span>
-                              )}
-                              {field.category === 'shared' && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>Shared</span>
-                              )}
-                            </div>
-                            <span className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-gray-400 font-medium'}`}>
-                              {isCore ? 'Required Core Field' : 'Optional Metadata'}
-                            </span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                           {isCore && <CheckCircle2 size={18} className={isSelected ? 'text-white shadow-sm' : 'text-gray-200'} />}
-                           {!isCore && isSelected && <CheckCircle2 size={18} className="text-white shadow-sm" />}
-                         </div>
-                      </div>
-                    );
-                  })}
-               </div>
+             <div className="space-y-6">
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                       <Shield size={12} /> Core System Fields
+                    </h3>
+                    <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-2 py-0.5 rounded">Always Included</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     {coreFields.map(renderFieldCard)}
+                  </div>
+                </section>
+
+                <section className="pt-4 border-t border-gray-100">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                    <Layers size={12} /> Optional & Shared Fields
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     {optionalFields.map(renderFieldCard)}
+                  </div>
+                </section>
              </div>
+
 
              {config.isMultiLine && (
                <div className="space-y-6">
@@ -1128,10 +1265,10 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                      {AVAILABLE_TABLE_COLUMNS.map(col => {
                         const currentCols = (config.tableColumns || []) as any[];
-                        // Migrate legacy 'account' to 'accountSelector' for selection check
+                        // Standardize 'account' check
                         const isSelected = currentCols.some(c => {
                            const id = (typeof c === 'string' ? c : c.id);
-                           return id === col.id || (col.id === 'accountSelector' && id === 'account');
+                           return id === col.id || (col.id === 'account' && id === 'accountSelector');
                         });
                         
                         return (
@@ -1232,22 +1369,36 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       )}
 
       {/* Steps */}
-      <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-gray-200 shrink-0 overflow-x-auto">
+      <div className="flex items-center justify-between px-8 py-6 bg-white border-b border-gray-200 shrink-0 overflow-x-auto gap-4">
         {STEPS.map((step, idx) => {
           const isActive = step.id === currentStep;
           const isCompleted = step.id < currentStep;
+          const isPlayable = step.id <= currentStep; // User can click back
           const Icon = step.icon;
+          
           return (
             <div 
               key={step.id} 
               onClick={() => handleStepClick(step.id)}
-              className="flex flex-col items-center relative z-10 w-20 min-w-[5rem] cursor-pointer group"
+              className={`flex flex-col items-center relative z-10 w-24 min-w-[6rem] transition-all group ${!isPlayable ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${isActive ? 'bg-indigo-600 border-indigo-600 text-white' : isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-400 group-hover:border-indigo-300'}`}>
+              <div className={`
+                w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all 
+                ${isActive ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-4 ring-indigo-100 scale-110' : isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-400 group-hover:border-indigo-300'}
+              `}>
                 {isCompleted ? <Check size={20} /> : <Icon size={20} />}
               </div>
-              <span className={`text-[10px] font-bold mt-2 uppercase tracking-wide ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>{step.title}</span>
-              {idx < STEPS.length - 1 && <div className={`absolute top-5 left-1/2 w-[calc(100%+3rem)] h-0.5 -z-10 ${step.id < currentStep ? 'bg-green-500' : 'bg-gray-200'}`} />}
+              <div className="text-center mt-2">
+                <span className={`text-[10px] font-black uppercase tracking-tighter block leading-none ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
+                  {step.title}
+                </span>
+                {isActive && step.description && (
+                  <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-tight whitespace-nowrap">{step.description}</span>
+                )}
+              </div>
+              {idx < STEPS.length - 1 && (
+                <div className={`absolute top-5 left-[calc(50%+1.25rem)] w-[calc(100%-2rem)] h-0.5 -z-10 ${step.id < currentStep ? 'bg-green-400' : 'bg-gray-100'}`} />
+              )}
             </div>
           );
         })}

@@ -48,7 +48,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // System field defaults - show proper fallbacks for unsaved vouchers
     const systemDefaults = {
-      voucherNo: 'Auto-generated',
+      voucherNumber: 'Auto-generated',
       status: 'Draft',
       createdBy: 'Current User',
       createdAt: 'On Save',
@@ -74,7 +74,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       ...initialData,
       date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : undefined,
       // Keep system values if they exist in initialData
-      voucherNo: initialData.voucherNo || initialData.id || systemDefaults.voucherNo,
+      voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id || systemDefaults.voucherNumber,
       status: initialData.status || systemDefaults.status,
       createdBy: initialData.createdBy || systemDefaults.createdBy,
       createdAt: initialData.createdAt ? new Date(initialData.createdAt).toLocaleDateString() : systemDefaults.createdAt
@@ -201,7 +201,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // Only return defaults if property is missing entirely
     if (rawColumns === undefined || rawColumns === null) {
       return [
-        { id: 'accountSelector', label: t('account') || 'Account', width: '25%' },
+        { id: 'account', label: t('account') || 'Account', width: '25%' },
         { id: 'debit', label: t('debit') || 'Debit', width: '15%' },
         { id: 'credit', label: t('credit') || 'Credit', width: '15%' },
         { id: 'notes', label: t('notes') || 'Notes', width: 'auto' }
@@ -267,8 +267,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
 
     // 0.5. Custom Components from Registry
-    if (CustomComponentRegistry[fieldId]) {
-      const Component = CustomComponentRegistry[fieldId];
+    if (CustomComponentRegistry[fieldId] || fieldId === 'account' || fieldId === 'accountSelector') {
+      const Component = CustomComponentRegistry[fieldId] || CustomComponentRegistry.account;
       return (
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
@@ -276,7 +276,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             value={formData[fieldId]}
             onChange={(val: any) => {
                // Adaptation for AccountSelector which returns an account object
-               if (fieldId === 'accountSelector' && val?.code) {
+               if ((fieldId === 'account' || fieldId === 'accountSelector') && val?.code) {
                   handleInputChange(fieldId, val.code);
                } else {
                   handleInputChange(fieldId, val);
@@ -288,7 +288,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
     
     // 1. System Fields (Read Only)
-    if (['voucherNo', 'status', 'createdBy', 'createdAt'].includes(fieldId)) {
+    if (['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt'].includes(fieldId)) {
        return (
          <div className="space-y-0.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
@@ -381,7 +381,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // 3. Standard Inputs (from canonical headerFields)
     
     // System fields list - these are read-only display fields
-    const systemFields = ['voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
+    const systemFields = ['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
     const isSystemField = systemFields.includes(fieldId);
 
     return (

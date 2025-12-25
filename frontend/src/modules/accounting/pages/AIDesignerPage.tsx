@@ -32,8 +32,8 @@ export default function AIDesignerPage() {
           loadCompanyForms(companyId)
         ]);
         
-        setTemplates(loadedTemplates);
-        setForms(loadedForms);
+        setTemplates(loadedTemplates); // Keep all templates for creating new
+        setForms(loadedForms); // Show ONLY company-specific forms in the main list
       } catch (err) {
         console.error('Failed to load voucher data:', err);
         setError('Failed to load voucher forms. Please refresh the page.');

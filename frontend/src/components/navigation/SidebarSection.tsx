@@ -2,9 +2,15 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 
+interface SidebarItemData {
+  path?: string;
+  label: string;
+  children?: SidebarItemData[];
+}
+
 interface SidebarSectionProps {
   title: string;
-  items: Array<{ path: string; label: string }>;
+  items: SidebarItemData[];
   isOpen: boolean; // Sidebar open/closed state
   onNavigate?: () => void;
   defaultExpanded?: boolean;
@@ -46,13 +52,14 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       {/* Items List - Conditionally Rendered */}
       {isExpanded && (
         <div className="space-y-0.5 mt-1">
-          {items.map((item) => (
+          {items.map((item, idx) => (
             <SidebarItem
-              key={item.path}
-              path={item.path}
+              key={item.path || `${item.label}-${idx}`}
+              path={item.path || ''}
               label={item.label}
               isOpen={isOpen}
               onClick={onNavigate}
+              children={item.children}
             />
           ))}
         </div>

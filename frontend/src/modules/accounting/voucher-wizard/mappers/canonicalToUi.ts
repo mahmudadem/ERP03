@@ -84,10 +84,16 @@ export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherFormConf
   }));
   
   // Map enabled actions
-  const actions = ALL_ACTIONS.map(action => ({
-    ...action,
-    enabled: canonical.enabledActions?.includes(action.type) || false
-  }));
+  const actions = ALL_ACTIONS.map(action => {
+    // Check both canonical and UI-specific format for resilience
+    const isEnabled = canonical.enabledActions?.includes(action.type) || 
+                     (canonical as any).actions?.find((a: any) => a.type === action.type)?.enabled || 
+                     false;
+    return {
+      ...action,
+      enabled: isEnabled
+    };
+  });
   
   // Transform layouts
   const uiModeOverrides = {
@@ -137,7 +143,9 @@ function getRuleEnabled(canonical: VoucherTypeDefinition, ruleId: string): boole
     case 'mandatory_attachments':
       return canonical.mandatoryAttachments || false;
     default:
-      return false;
+      // Fallback: check the UI-specific rules array if it exists
+      const uiRule = (canonical as any).rules?.find((r: any) => r.id === ruleId);
+      return uiRule ? uiRule.enabled : false;
   }
 }
 

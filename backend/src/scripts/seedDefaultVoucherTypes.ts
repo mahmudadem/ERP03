@@ -1,5 +1,5 @@
 /**
- * Seed Default Voucher Types to system_metadata/voucher_types/items
+ * Seed Refined Default Voucher Types to system_metadata/voucher_types/items
  * 
  * Run with: npm run seed:vouchers
  */
@@ -18,12 +18,9 @@ if (!admin.apps.length) {
   });
 }
 
-console.log(`🔧 Using Firestore Emulator at ${process.env.FIRESTORE_EMULATOR_HOST}`);
-console.log(`🔧 Project ID: ${process.env.GCLOUD_PROJECT}\n`);
-
 const db = admin.firestore();
 
-// Default voucher type definitions
+// Enhanced voucher type definitions
 const DEFAULT_VOUCHER_TYPES = [
   {
     id: 'journal_entry',
@@ -33,10 +30,9 @@ const DEFAULT_VOUCHER_TYPES = [
     prefix: 'JE-',
     nextNumber: 1000,
     enabled: true,
-    isRecommended: true, // Recommended for all businesses
+    isRecommended: true,
     isSystemDefault: true,
     inUse: false,
-    
     layout: {
       classic: {
         sections: {
@@ -48,22 +44,9 @@ const DEFAULT_VOUCHER_TYPES = [
               { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       },
       windows: {
@@ -71,39 +54,26 @@ const DEFAULT_VOUCHER_TYPES = [
           HEADER: {
             order: 1,
             fields: [
-              { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-              { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
+              { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
+              { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
+              { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
               { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       }
     },
-    
     isMultiLine: true,
-    tableColumns: ['account', 'debit', 'credit', 'notes'],
-    
+    tableColumns: [
+      { fieldId: 'account', width: '30%', labelOverride: 'Account' },
+      { fieldId: 'debit', width: '20%', labelOverride: 'Debit' },
+      { fieldId: 'credit', width: '20%', labelOverride: 'Credit' },
+      { fieldId: 'notes', width: '30%', labelOverride: 'Line Description' }
+    ],
     requiresApproval: false,
-    preventNegativeCash: false,
-    allowFutureDates: true,
-    mandatoryAttachments: false,
-    
     enabledActions: ['print', 'email', 'download_pdf'],
   },
   
@@ -118,7 +88,6 @@ const DEFAULT_VOUCHER_TYPES = [
     isRecommended: true,
     isSystemDefault: true,
     inUse: false,
-    
     layout: {
       classic: {
         sections: {
@@ -127,25 +96,13 @@ const DEFAULT_VOUCHER_TYPES = [
             fields: [
               { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
               { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'payee', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'payee', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'paymentMethod', row: 1, col: 6, colSpan: 6 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       },
       windows: {
@@ -153,39 +110,27 @@ const DEFAULT_VOUCHER_TYPES = [
           HEADER: {
             order: 1,
             fields: [
-              { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-              { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'payee', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
+              { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
+              { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
+              { fieldId: 'payee', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'paymentMethod', row: 1, col: 6, colSpan: 6 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       }
     },
-    
     isMultiLine: true,
-    tableColumns: ['account', 'debit', 'credit'],
-    
+    tableColumns: [
+      { fieldId: 'account', width: '40%', labelOverride: 'Expense/Asset Account' },
+      { fieldId: 'amount', width: '20%', labelOverride: 'Amount' },
+      { fieldId: 'reference', width: '20%', labelOverride: 'Ref #' },
+      { fieldId: 'notes', width: '20%', labelOverride: 'Notes' }
+    ],
     requiresApproval: true,
-    preventNegativeCash: true,
-    allowFutureDates: false,
-    mandatoryAttachments: false,
-    
     enabledActions: ['print', 'email', 'download_pdf'],
   },
   
@@ -200,7 +145,6 @@ const DEFAULT_VOUCHER_TYPES = [
     isRecommended: true,
     isSystemDefault: true,
     inUse: false,
-    
     layout: {
       classic: {
         sections: {
@@ -209,25 +153,13 @@ const DEFAULT_VOUCHER_TYPES = [
             fields: [
               { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
               { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'receivedFrom', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'receivedFrom', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'receiptMethod', row: 1, col: 6, colSpan: 6 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       },
       windows: {
@@ -235,42 +167,87 @@ const DEFAULT_VOUCHER_TYPES = [
           HEADER: {
             order: 1,
             fields: [
-              { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-              { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'receivedFrom', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
+              { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
+              { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
+              { fieldId: 'receivedFrom', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'receiptMethod', row: 1, col: 6, colSpan: 6 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       }
     },
-    
     isMultiLine: true,
-    tableColumns: ['account', 'debit', 'credit'],
-    
+    tableColumns: [
+      { fieldId: 'account', width: '40%', labelOverride: 'Inbound Account' },
+      { fieldId: 'amount', width: '20%', labelOverride: 'Amount' },
+      { fieldId: 'reference', width: '20%', labelOverride: 'Ref #' },
+      { fieldId: 'notes', width: '20%', labelOverride: 'Notes' }
+    ],
     requiresApproval: false,
-    preventNegativeCash: false,
-    allowFutureDates: false,
-    mandatoryAttachments: false,
-    
     enabledActions: ['print', 'email', 'download_pdf'],
   },
   
+  {
+    id: 'transfer_voucher',
+    code: 'TRANSFER_VOUCHER',
+    name: 'Transfer Voucher',
+    schemaVersion: 2,
+    prefix: 'TRF-',
+    nextNumber: 1000,
+    enabled: true,
+    isRecommended: true,
+    isSystemDefault: true,
+    inUse: false,
+    layout: {
+      classic: {
+        sections: {
+          HEADER: {
+            order: 1,
+            fields: [
+              { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
+              { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
+              { fieldId: 'fromAccount', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'toAccount', row: 1, col: 6, colSpan: 6 },
+              { fieldId: 'amount', row: 2, col: 0, colSpan: 4 },
+              { fieldId: 'exchangeRate', row: 2, col: 4, colSpan: 4 },
+              { fieldId: 'reference', row: 2, col: 8, colSpan: 4 },
+            ]
+          },
+          BODY: { order: 2, fields: [] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
+        }
+      },
+      windows: {
+        sections: {
+          HEADER: {
+            order: 1,
+            fields: [
+              { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
+              { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
+              { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
+              { fieldId: 'fromAccount', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'toAccount', row: 1, col: 6, colSpan: 6 },
+              { fieldId: 'fromAmount', row: 2, col: 0, colSpan: 4 },
+              { fieldId: 'toAmount', row: 2, col: 4, colSpan: 4 },
+              { fieldId: 'exchangeRate', row: 2, col: 8, colSpan: 4 },
+            ]
+          },
+          BODY: { order: 2, fields: [] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
+        }
+      }
+    },
+    isMultiLine: false,
+    requiresApproval: true,
+    enabledActions: ['print', 'email', 'download_pdf'],
+  },
+
   {
     id: 'invoice',
     code: 'INVOICE',
@@ -282,7 +259,6 @@ const DEFAULT_VOUCHER_TYPES = [
     isRecommended: true,
     isSystemDefault: true,
     inUse: false,
-    
     layout: {
       classic: {
         sections: {
@@ -291,25 +267,13 @@ const DEFAULT_VOUCHER_TYPES = [
             fields: [
               { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
               { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'customer', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'customer', row: 1, col: 0, colSpan: 6 },
+              { fieldId: 'dueDate', row: 1, col: 6, colSpan: 6 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       },
       windows: {
@@ -317,46 +281,35 @@ const DEFAULT_VOUCHER_TYPES = [
           HEADER: {
             order: 1,
             fields: [
-              { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-              { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-              { fieldId: 'customer', row: 1, col: 0, colSpan: 12 },
+              { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
+              { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
+              { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
+              { fieldId: 'customer', row: 1, col: 0, colSpan: 8 },
+              { fieldId: 'dueDate', row: 1, col: 8, colSpan: 4 },
             ]
           },
-          BODY: {
-            order: 2,
-            fields: [
-              { fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          EXTRA: {
-            order: 3,
-            fields: [
-              { fieldId: 'notes', row: 0, col: 0, colSpan: 12 }
-            ]
-          },
-          ACTIONS: {
-            order: 4,
-            fields: []
-          }
+          BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+          EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
+          ACTIONS: { order: 4, fields: [] }
         }
       }
     },
-    
     isMultiLine: true,
-    tableColumns: ['account', 'debit', 'notes'],
-    
+    tableColumns: [
+      { fieldId: 'item', width: '30%', labelOverride: 'Product/Service' },
+      { fieldId: 'quantity', width: '10%', labelOverride: 'Qty' },
+      { fieldId: 'rate', width: '15%', labelOverride: 'Unit Price' },
+      { fieldId: 'amount', width: '15%', labelOverride: 'Total' },
+      { fieldId: 'vatPercent', width: '10%', labelOverride: 'VAT %' },
+      { fieldId: 'notes', width: '20%', labelOverride: 'Description' }
+    ],
     requiresApproval: false,
-    preventNegativeCash: false,
-    allowFutureDates: true,
-    mandatoryAttachments: false,
-    
-    enabledActions: ['print', 'email', 'download_pdf'],
+    enabledActions: ['print', 'email', 'download_pdf', 'download_excel'],
   },
 ];
 
 async function seedDefaultVoucherTypes() {
-  console.log('🌱 Seeding Default Voucher Types...');
-  console.log('');
+  console.log('🌱 Seeding Refined Default Voucher Types...');
   
   try {
     const batch = db.batch();
@@ -380,30 +333,18 @@ async function seedDefaultVoucherTypes() {
     
     await batch.commit();
     
-    console.log('');
-    console.log('✅ SUCCESS! Seeded default voucher types to Firestore');
+    console.log('\n✅ SUCCESS! Refined voucher types seeded to Firestore');
     console.log(`   Location: system_metadata/voucher_types/items/`);
-    console.log(`   Count: ${DEFAULT_VOUCHER_TYPES.length} voucher types`);
-    console.log('');
-    console.log('Default Voucher Types:');
-    DEFAULT_VOUCHER_TYPES.forEach(vt => {
-      console.log(`  - ${vt.name} (${vt.prefix}) - ${vt.code}`);
-    });
-    console.log('');
+    console.log(`   Count: ${DEFAULT_VOUCHER_TYPES.length} voucher types seeded.`);
     
   } catch (error) {
     console.error('❌ ERROR: Failed to seed voucher types', error);
-    throw error;
+    process.exit(1);
   }
 }
 
-// Run the seed
 seedDefaultVoucherTypes()
   .then(() => {
     console.log('🎉 Seed completed successfully!\n');
     process.exit(0);
-  })
-  .catch((error) => {
-    console.error('\n💥 Seed failed:', error);
-    process.exit(1);
   });

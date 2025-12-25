@@ -77,16 +77,63 @@ class FirestoreVoucherRepository extends BaseFirestoreRepository_1.BaseFirestore
     }
     async getVouchers(companyId, filters) {
         try {
+            console.log('\n\n========== VOUCHER QUERY DEBUG START ==========');
+            console.log('FILTERS:', JSON.stringify(filters, null, 2));
+            // First, check total vouchers without filters for debugging
+            const allVouchersSnapshot = await this.getVouchersCollection(companyId).get();
+            console.log('TOTAL VOUCHERS IN DB:', allVouchersSnapshot.size);
+            // Log first voucher's date for comparison if any exist
+            if (allVouchersSnapshot.size > 0) {
+                const firstDoc = allVouchersSnapshot.docs[0].data();
+                console.log('FIRST VOUCHER DATE:', firstDoc.date);
+                console.log('FIRST VOUCHER TYPE:', firstDoc.type);
+                console.log('FIRST VOUCHER FORMID:', firstDoc.formId);
+            }
             let query = this.getVouchersCollection(companyId);
-            // Apply basic filters if needed
+            // Apply filters
+            if (filters === null || filters === void 0 ? void 0 : filters.type) {
+                console.log('FILTERING BY TYPE:', filters.type);
+                query = query.where('type', '==', filters.type);
+            }
+            if (filters === null || filters === void 0 ? void 0 : filters.formId) {
+                console.log('FILTERING BY FORMID:', filters.formId);
+                query = query.where('formId', '==', filters.formId);
+            }
             if (filters === null || filters === void 0 ? void 0 : filters.status) {
+                console.log('FILTERING BY STATUS:', filters.status);
                 query = query.where('status', '==', filters.status);
             }
-            if (filters === null || filters === void 0 ? void 0 : filters.sourceModule) {
-                query = query.where('sourceModule', '==', filters.sourceModule);
+            // Date range filtering using ISO strings (same format as existing vouchers)
+            if (filters === null || filters === void 0 ? void 0 : filters.from) {
+                const fromDate = new Date(filters.from);
+                console.log('FILTERING FROM DATE:', fromDate.toISOString());
+                query = query.where('date', '>=', fromDate.toISOString());
+            }
+            if ((filters === null || filters === void 0 ? void 0 : filters.to) && !(filters === null || filters === void 0 ? void 0 : filters.from)) {
+                // Only apply 'to' if 'from' is not set (Firestore range limitation)
+                const toDate = new Date(filters.to);
+                console.log('FILTERING TO DATE:', toDate.toISOString());
+                query = query.where('date', '<=', toDate.toISOString());
             }
             const snapshot = await query.get();
-            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+            console.log('QUERY RETURNED:', snapshot.size, 'vouchers');
+            console.log('========== VOUCHER QUERY DEBUG END ==========\n\n');
+            let vouchers = snapshot.docs.map(doc => this.toDomain(doc.data()));
+            // Apply client-side filters that Firestore can't handle
+            if ((filters === null || filters === void 0 ? void 0 : filters.to) && (filters === null || filters === void 0 ? void 0 : filters.from)) {
+                // If both from and to are set, filter 'to' client-side
+                const toDate = new Date(filters.to);
+                vouchers = vouchers.filter(v => new Date(v.date) <= toDate);
+            }
+            if (filters === null || filters === void 0 ? void 0 : filters.search) {
+                const searchLower = filters.search.toLowerCase();
+                vouchers = vouchers.filter(v => {
+                    var _a, _b;
+                    return ((_a = v.voucherNo) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(searchLower)) ||
+                        ((_b = v.reference) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes(searchLower));
+                });
+            }
+            return vouchers;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error fetching vouchers', error);

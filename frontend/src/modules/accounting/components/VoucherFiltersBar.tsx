@@ -2,14 +2,25 @@
  * VoucherFiltersBar.tsx
  */
 import React from 'react';
-import { VoucherListFilters } from '../../../types/accounting/VoucherListTypes';
+import { DateRange, VoucherFilters } from '../../../hooks/useVouchersWithCache';
 
 interface Props {
-  filters: VoucherListFilters;
-  onChange: (partial: Partial<VoucherListFilters>) => void;
+  dateRange: DateRange;
+  onDateRangeChange: (range: DateRange) => void;
+  filters: VoucherFilters;
+  onChange: (partial: Partial<VoucherFilters>) => void;
+  hideTypeFilter?: boolean;
+  voucherTypes?: Array<{ id: string; name: string; code?: string }>;
 }
 
-export const VoucherFiltersBar: React.FC<Props> = ({ filters, onChange }) => {
+export const VoucherFiltersBar: React.FC<Props> = ({ 
+  dateRange, 
+  onDateRangeChange, 
+  filters, 
+  onChange, 
+  hideTypeFilter, 
+  voucherTypes = [] 
+}) => {
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -32,20 +43,26 @@ export const VoucherFiltersBar: React.FC<Props> = ({ filters, onChange }) => {
       </div>
 
       {/* Type Filter */}
-      <div className="w-full lg:w-32">
-        <select
-          name="type"
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-          value={filters.type || 'ALL'}
-          onChange={handleInputChange}
-        >
-          <option value="ALL">All Types</option>
-          <option value="INV">Invoice</option>
-          <option value="PMT">Payment</option>
-          <option value="REC">Receipt</option>
-          <option value="JRNL">Journal</option>
-        </select>
-      </div>
+      {!hideTypeFilter && (
+        <div className="w-full lg:w-32">
+          <select
+            name="type"
+            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+            value={filters.type || 'ALL'}
+            onChange={handleInputChange}
+          >
+            <option value="ALL">All Types</option>
+            {voucherTypes.map(vt => {
+              const value = (vt as any).baseType || vt.code || vt.id;
+              return (
+                <option key={vt.id} value={value}>
+                  {vt.name}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      )}
 
       {/* Status Filter */}
       <div className="w-full lg:w-32">
@@ -67,35 +84,19 @@ export const VoucherFiltersBar: React.FC<Props> = ({ filters, onChange }) => {
       <div className="flex gap-2 items-center w-full lg:w-auto">
         <input
           type="date"
-          name="from"
           className="border rounded px-2 py-2 text-sm w-36"
-          value={filters.from || ''}
-          onChange={handleInputChange}
+          value={dateRange.from || ''}
+          onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
         />
         <span className="text-gray-400">-</span>
         <input
           type="date"
-          name="to"
           className="border rounded px-2 py-2 text-sm w-36"
-          value={filters.to || ''}
-          onChange={handleInputChange}
+          value={dateRange.to || ''}
+          onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
         />
       </div>
 
-      {/* Sort */}
-      <div className="w-full lg:w-40 ml-auto">
-        <select
-          name="sort"
-          className="w-full border rounded px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-          value={filters.sort || 'date_desc'}
-          onChange={handleInputChange}
-        >
-          <option value="date_desc">Newest First</option>
-          <option value="date_asc">Oldest First</option>
-          <option value="amount_desc">High Amount</option>
-          <option value="amount_asc">Low Amount</option>
-        </select>
-      </div>
     </div>
   );
 };

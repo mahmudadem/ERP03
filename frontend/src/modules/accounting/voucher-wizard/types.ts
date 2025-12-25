@@ -66,6 +66,8 @@ export interface AvailableField {
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields
   autoManaged?: boolean;      // true for systemMetadata fields
+  supportedTypes?: string[];  // Only show for these base types
+  excludedTypes?: string[];   // Hide for these base types
 }
 
 // Table Column Configuration

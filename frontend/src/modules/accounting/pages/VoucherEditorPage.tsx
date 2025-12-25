@@ -18,7 +18,7 @@ const VoucherEditorPage: React.FC = () => {
   const { settings: companySettings } = useCompanySettings();
   const typeCode = searchParams.get('type') || 'INV';
   const formId = searchParams.get('formId') || typeCode; // Use formId if provided, otherwise fall back to typeCode
-  const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(formId, companySettings?.id);
+  const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(formId, companySettings?.companyId);
   
   const [initialValues, setInitialValues] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -71,7 +71,8 @@ const VoucherEditorPage: React.FC = () => {
       const payload = {
         ...formData, // Spread all dynamic fields (header fields, etc.)
         companyId: 'current',
-        type: definition?.code || 'INV',
+        type: (definition as any).baseType || definition?.code || 'INV',
+        formId: formId, // Store which form layout was used
         date: formData.header?.date || formData.date || new Date().toISOString(),
         currency: formData.header?.currency || formData.currency || 'USD',
         // If the template uses a lines table, include it. If not, it might be undefined.
