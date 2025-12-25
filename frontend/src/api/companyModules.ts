@@ -16,23 +16,13 @@ export const companyModulesApi = {
    */
   list: async (companyId: string): Promise<CompanyModuleStatus[]> => {
     try {
-      console.log('[companyModulesApi] Calling GET /company-modules/' + companyId);
       const response = await client.get<{ modules: CompanyModuleStatus[] }>(
         `/company-modules/${companyId}`
       );
-      console.log('[companyModulesApi] Response received:', response);
       // Axios client is configured to auto-unwrap data, so response IS the data object
       const modules = (response as any).modules || [];
-      console.log('[companyModulesApi] Returning modules:', modules);
       return modules;
     } catch (error: any) {
-      console.error('[companyModulesApi] API call failed:', error);
-      console.error('[companyModulesApi] Error details:', {
-        message: error?.message,
-        response: error?.response,
-        status: error?.response?.status,
-        data: error?.response?.data
-      });
       return [];
     }
   },

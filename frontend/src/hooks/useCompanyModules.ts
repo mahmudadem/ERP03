@@ -12,24 +12,18 @@ export function useCompanyModules() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('[useCompanyModules] Effect triggered, companyId:', companyId);
-    
     if (!companyId) {
-      console.log('[useCompanyModules] No companyId, exiting');
       setLoading(false);
       return;
     }
 
     const fetchModules = async () => {
       try {
-        console.log('[useCompanyModules] Fetching modules for company:', companyId);
         setLoading(true);
         const data = await companyModulesApi.list(companyId);
-        console.log('[useCompanyModules] Modules fetched:', data);
         setModules(data);
         setError(null);
       } catch (err) {
-        console.error('[useCompanyModules] Failed to load company modules:', err);
         setError('Failed to load module status');
       } finally {
         setLoading(false);
