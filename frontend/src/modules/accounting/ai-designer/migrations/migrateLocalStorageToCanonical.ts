@@ -50,7 +50,6 @@ export function migrateLocalStorageToCanonical(): MigrationResult {
   try {
     // GUARD: Check if migration already completed
     if (isMigrationCompleted()) {
-      console.log('[AI Designer Migration] Already completed. Skipping.');
       result.success = true;
       result.skippedCount = -1; // Indicator that migration was skipped
       return result;
@@ -60,19 +59,13 @@ export function migrateLocalStorageToCanonical(): MigrationResult {
     const legacyData = readLegacyData();
     
     if (!legacyData || legacyData.length === 0) {
-      console.log('[AI Designer Migration] No legacy data found. Nothing to migrate.');
       markMigrationComplete();
       result.success = true;
       return result;
     }
-
-    console.log(`[AI Designer Migration] Found ${legacyData.length} legacy definitions`);
-
     // STEP 2: Backup legacy data
     const backupKey = backupLegacyData(legacyData);
     result.backupKey = backupKey;
-    console.log(`[AI Designer Migration] Backed up to: ${backupKey}`);
-
     // STEP 3: Migrate each definition
     const canonicalDefinitions: VoucherTypeDefinition[] = [];
 
@@ -93,7 +86,6 @@ export function migrateLocalStorageToCanonical(): MigrationResult {
     // STEP 4: Save canonical definitions
     if (canonicalDefinitions.length > 0) {
       saveCanonicalDefinitions(canonicalDefinitions);
-      console.log(`[AI Designer Migration] Saved ${canonicalDefinitions.length} canonical definitions`);
     }
 
     // STEP 5: Mark migration complete
@@ -356,7 +348,6 @@ export function saveCanonicalDefinitionsValidated(definitions: VoucherTypeDefini
 
   try {
     localStorage.setItem(CANONICAL_KEY, JSON.stringify(definitions));
-    console.log(`[AI Designer] Saved ${definitions.length} canonical definitions`);
   } catch (error) {
     console.error('[AI Designer] Failed to save:', error);
     throw error;

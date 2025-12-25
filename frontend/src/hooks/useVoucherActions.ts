@@ -3,12 +3,6 @@ import { errorHandler } from '../services/errorHandler';
 
 export const useVoucherActions = () => {
   const saveVoucherInternal = async (data: any) => {
-    console.log('💾 saveVoucherInternal - incoming data:', { 
-      formId: data.formId, 
-      prefix: data.prefix, 
-      type: data.type 
-    });
-    
     // 1. Transform UI Data -> API Payload
     const payload = {
       ...data,
@@ -60,10 +54,8 @@ export const useVoucherActions = () => {
   };
 
   const handleSaveVoucher = async (windowId: string, data: any) => {
-    console.log('💾 Saving voucher from window:', windowId, data);
     try {
       await saveVoucherInternal(data);
-      console.log('✅ Voucher saved successfully!');
       errorHandler.showSuccess('voucher_saved');
     } catch (error: any) {
       errorHandler.showError(error);
@@ -71,12 +63,10 @@ export const useVoucherActions = () => {
   };
 
   const handleSubmitVoucher = async (windowId: string, data: any) => {
-    console.log('🚀 Submitting voucher from window:', windowId);
     try {
       const saved = await saveVoucherInternal(data);
       if (saved && saved.id) {
          await accountingApi.updateVoucher(saved.id, { status: 'pending' });
-         console.log('✅ Voucher submitted successfully!');
          errorHandler.showSuccess('voucher_submitted');
          window.dispatchEvent(new CustomEvent('vouchers-updated'));
       } else {

@@ -96,7 +96,6 @@ export const FormDesignerPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    console.log('Saved Form Definition:', definition);
     errorHandler.showSuccess('Form Definition saved to console. (Valid JSON generated)');
   };
 

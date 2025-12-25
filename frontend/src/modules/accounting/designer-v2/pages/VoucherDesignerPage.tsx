@@ -96,7 +96,6 @@ export const VoucherDesignerPage: React.FC = () => {
 
   const handleSave = () => {
     // Refresh list or show success message
-    console.log('Layout saved successfully!');
   };
 
   if (isWizardOpen) {
@@ -208,7 +207,6 @@ export const VoucherDesignerPage: React.FC = () => {
                   <button
                     onClick={() => {
                       if (confirm('Reset to default layout?')) {
-                        console.log('Reset layout for', type.code);
                       }
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"

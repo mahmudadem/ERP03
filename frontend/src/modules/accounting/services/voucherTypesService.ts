@@ -33,8 +33,6 @@ export async function loadSystemVoucherTypes(): Promise<SystemVoucherType[]> {
         isRecommended: data.isRecommended || false,
       });
     });
-    
-    console.log(`✅ Loaded ${vouchers.length} system voucher types`);
     return vouchers;
   } catch (error) {
     console.error('Failed to load system voucher types:', error);

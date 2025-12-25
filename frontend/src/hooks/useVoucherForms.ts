@@ -31,8 +31,6 @@ export function useVoucherForms() {
 
     try {
       const data = await voucherFormApi.list();
-      console.log(`[useVoucherForms] Loaded ${data.length} forms for company ${companyId}`);
-      
       // Filter only enabled forms
       const enabledForms = data.filter(f => f.enabled !== false);
       setForms(enabledForms);

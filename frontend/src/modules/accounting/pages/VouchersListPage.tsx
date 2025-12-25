@@ -88,7 +88,6 @@ const VouchersListPage: React.FC = () => {
   const isLoading = vouchersLoading || typesLoading;
 
   const handleCreate = () => {
-    console.log('🆕 handleCreate - selectedType:', selectedType, 'currentVoucherType:', currentVoucherType);
     if (!selectedType || !currentVoucherType) {
       console.error('❌ Cannot create: missing selectedType or currentVoucherType', { selectedType, voucherTypes });
       return;
@@ -117,8 +116,6 @@ const VouchersListPage: React.FC = () => {
     if (isWindowsMode) {
       const summary = vouchers.find(v => v.id === id);
       if (!summary) return;
-
-      console.log('🔍 Editing voucher:', summary);
       console.log('📋 Available forms:', voucherTypes.map(t => ({ id: t.id, code: t.code, name: t.name })));
 
       // Try to find form by formId (if saved), otherwise fallback to matching by base type
@@ -156,9 +153,6 @@ const VouchersListPage: React.FC = () => {
               formCodeLower.includes(kw)
             );
           });
-      
-      console.log('✅ Found form:', formDefinition);
-      
       if (!formDefinition) {
         errorHandler.showError({
           code: 'VOUCH_NOT_FOUND',

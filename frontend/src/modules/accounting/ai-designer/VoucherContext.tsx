@@ -93,8 +93,6 @@ export const VoucherProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       setDefinitions(validated);
-      console.log(`[AI Designer] Loaded ${validated.length} canonical definitions`);
-
     } catch (err: any) {
       setError(err.message);
       console.error('[AI Designer] Initialization error:', err);
@@ -157,8 +155,6 @@ export const VoucherProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Save to localStorage
     saveToLocalStorage(updated);
-
-    console.log(`[AI Designer] Deleted definition: ${id}`);
   };
 
   // =================================================================

@@ -26,7 +26,6 @@ export async function validateUniqueness(
   prefix: string,
   excludeVoucherId?: string
 ): Promise<ValidationResult> {
-  console.log('[validateUniqueness] Checking:', { companyId, name, id, prefix, excludeVoucherId });
   const errors: ValidationResult['errors'] = {};
   
   try {
@@ -62,7 +61,6 @@ export async function validateUniqueness(
       isValid: Object.keys(errors).length === 0,
       errors
     };
-    console.log('[validateUniqueness] Result:', result);
     return result;
   } catch (error) {
     console.error('Uniqueness validation failed:', error);

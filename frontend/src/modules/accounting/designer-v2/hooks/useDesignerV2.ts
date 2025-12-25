@@ -180,13 +180,6 @@ export const useDesignerV2 = (voucherCode: string) => {
     }
     
     // Log for monitoring
-    console.log('[DesignerV2] Persistence attempt validated:', {
-      context,
-      hasSchemaVersion: 'schemaVersion' in obj,
-      schemaVersion: obj.schemaVersion,
-      hasCanonicalProperties: true,
-      isCanonical: true
-    });
   }
 
   // =================================================================

@@ -20,7 +20,6 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
   const handleCreate = async () => {
     // Guard: prevent double submission
     if (isSubmitting) {
-      console.log('Already submitting, ignoring duplicate click');
       return;
     }
 

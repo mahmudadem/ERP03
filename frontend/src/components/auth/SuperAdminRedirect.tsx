@@ -20,7 +20,6 @@ export const SuperAdminRedirect: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // If super admin is NOT on a super admin route, redirect them
     if (isSuperAdmin && !isOnSuperAdminRoute) {
-      console.log('[SuperAdminRedirect] Redirecting super admin from', location.pathname, 'to /super-admin/overview');
       navigate('/super-admin/overview', { replace: true });
     }
   }, [isSuperAdmin, loading, location.pathname, navigate]);

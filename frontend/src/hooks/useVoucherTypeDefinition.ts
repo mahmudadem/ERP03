@@ -27,7 +27,6 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
         // 2. If API fails (likely 404 because it's a UI-only Form), try Firestore if companyId is provided
         if (companyId) {
           try {
-            console.log(`API load failed, trying Firestore form for ${voucherTypeCode}...`);
             const formConfig = await getVoucherFormById(companyId, voucherTypeCode);
             
             if (formConfig) {

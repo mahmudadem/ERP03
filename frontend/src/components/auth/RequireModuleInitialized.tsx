@@ -35,7 +35,6 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
     // If module is not initialized, redirect to wizard
     if (!moduleStatus.initialized) {
       const wizardPath = initializationPath || `/${moduleCode}/setup`;
-      console.log(`Module ${moduleCode} not initialized, redirecting to ${wizardPath}`);
       navigate(wizardPath, { replace: true });
     }
   }, [moduleCode, loading, getModuleStatus, navigate, initializationPath]);

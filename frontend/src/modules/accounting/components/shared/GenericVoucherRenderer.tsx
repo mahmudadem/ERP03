@@ -574,23 +574,16 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Render action buttons from config
   const renderActions = () => {
     const configDef = definition as any;
-    
-    console.log('🎯 renderActions - Full definition:', configDef);
-    console.log('🎯 renderActions - mode:', mode);
-    console.log('🎯 renderActions - uiModeOverrides:', configDef.uiModeOverrides);
-    
     // Try to get actions from ACTIONS section in uiModeOverrides (respects layout)
     let actionFields: any[] = [];
     if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
       const actionsSection = configDef.uiModeOverrides[mode].sections?.ACTIONS;
-      console.log('🎯 renderActions - ACTIONS section:', actionsSection);
       if (actionsSection?.fields && actionsSection.fields.length > 0) {
         // Sort by row and col
         actionFields = [...actionsSection.fields].sort((a: any, b: any) => {
           if (a.row !== b.row) return a.row - b.row;
           return a.col - b.col;
         });
-        console.log('🎯 renderActions - actionFields:', actionFields);
       }
     }
     
