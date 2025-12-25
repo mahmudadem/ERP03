@@ -20,7 +20,8 @@ export const moduleMenuMap: Record<
       { label: 'Designer', path: '/accounting/designer', permission: 'accounting.designer.view' },
       { label: 'AI Designer', path: '/accounting/ai-designer', permission: 'accounting.designer.view' },
       { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view' },
-      { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view' }
+      { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view' },
+      { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings.view' }
     ]
   },
   inventory: {
