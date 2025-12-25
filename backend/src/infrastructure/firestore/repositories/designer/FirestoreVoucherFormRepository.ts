@@ -148,15 +148,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       
       // Use set with merge to create if doesn't exist, update if it does
       await ref.set(cleanUpdates, { merge: true });
-    } catch (error: any) {
-      console.error('❌ Firestore update error details:', {
-        formId,
-        companyId,
-        updates,
-        error: error.message,
-        code: error.code,
-        details: error.details
-      });
+    } catch (error) {
       throw new InfrastructureError('Error updating voucher form', error);
     }
   }

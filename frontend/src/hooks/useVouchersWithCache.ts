@@ -40,8 +40,7 @@ export const useVouchersWithCache = (companyId: string) => {
   } = useQuery({
     queryKey: ['vouchers-debug', companyId], // Changed key to force fresh fetch
     queryFn: async () => {
-      console.log('🚀 FETCHING VOUCHERS - NO FILTERS');
-      // TEMPORARILY REMOVE ALL FILTERS FOR DEBUGGING
+      // Fetch vouchers with date range filtering
       return accountingApi.listVouchers({
         // from: dateRange.from,  // COMMENTED OUT
         // to: dateRange.to,      // COMMENTED OUT
@@ -53,9 +52,6 @@ export const useVouchersWithCache = (companyId: string) => {
     staleTime: 0, // Force fresh fetch every time
     gcTime: 0, // Don't cache (React Query v5)
   });
-
-  console.log('📦 RAW API RESPONSE:', vouchersResponse);
-  console.log('📦 Is array?', Array.isArray(vouchersResponse));
   
   // Response IS the array directly, not wrapped in { items: [...] }
   const allVouchers: VoucherListItem[] = Array.isArray(vouchersResponse) 
@@ -64,27 +60,22 @@ export const useVouchersWithCache = (companyId: string) => {
 
   // Filter client-side (INSTANT, NO API CALL)
   const filteredVouchers = useMemo(() => {
-    console.log('🔍 CLIENT FILTERING - allVouchers count:', allVouchers.length);
-    console.log('🔍 CLIENT FILTERING - filters:', filters);
     
     let result = allVouchers;
 
     if (filters.formId) {
-      console.log('  ❌ Filtering by formId:', filters.formId);
-      console.log('  📋 Available voucher formIds:', result.map(v => v.formId));
+      
+      
       result = result.filter((v) => v.formId === filters.formId);
-      console.log('  ➡️ After formId filter:', result.length, 'vouchers');
-      if (result.length === 0) {
-        console.warn('⚠️ NO MATCHES! Filter formId:', filters.formId, 'does not match any voucher formIds');
-      }
+      
+      
     }
 
     if (filters.type) {
-      console.log('  ❌ Filtering by type:', filters.type);
-      console.log('  📋 Available voucher types:', result.map(v => v.type));
+      
       // Case-insensitive comparison
       result = result.filter((v) => v.type?.toLowerCase() === filters.type?.toLowerCase());
-      console.log('  ➡️ After type filter:', result.length);
+      
     }
 
     if (filters.status) {
@@ -100,13 +91,13 @@ export const useVouchersWithCache = (companyId: string) => {
       );
     }
 
-    console.log('✅ FINAL filtered vouchers:', result.length);
+    
     return result;
   }, [allVouchers, filters]);
 
   // Invalidate cache when vouchers are created/updated/deleted
   const invalidateVouchers = () => {
-    console.log('♻️ INVALIDATING VOUCHERS CACHE');
+    
     queryClient.invalidateQueries({ queryKey: ['vouchers-debug', companyId] });
   };
 

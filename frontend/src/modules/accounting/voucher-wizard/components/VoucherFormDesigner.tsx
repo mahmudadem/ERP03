@@ -111,8 +111,6 @@ export const VoucherFormDesigner: React.FC<Props> = ({
       
       // Update local state
       await updateForm({ ...form, enabled });
-      
-      console.log(`✅ Form ${formId} ${enabled ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Failed to toggle form:', error);
       alert('Failed to update form status. Please try again.');

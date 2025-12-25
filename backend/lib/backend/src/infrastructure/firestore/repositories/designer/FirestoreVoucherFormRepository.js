@@ -170,14 +170,6 @@ class FirestoreVoucherFormRepository {
             await ref.set(cleanUpdates, { merge: true });
         }
         catch (error) {
-            console.error('❌ Firestore update error:', {
-                formId,
-                companyId,
-                updates,
-                errorMessage: error.message,
-                errorCode: error.code,
-                errorDetails: error
-            });
             throw new InfrastructureError_1.InfrastructureError('Error updating voucher form', error);
         }
     }
