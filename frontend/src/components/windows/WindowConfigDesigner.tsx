@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, GripVertical, Plus, Trash2, Eye } from 'lucide-react';
-import { WindowConfig, WindowWidget, WindowAction, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../../types/WindowConfig';
+import { WindowConfig, WindowWidget, WindowAction, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../types/WindowConfig';
+
 
 interface WindowDesignerProps {
   initialConfig?: WindowConfig;
