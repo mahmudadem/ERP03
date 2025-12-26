@@ -11,6 +11,7 @@ interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
   mode?: 'classic' | 'windows';
   initialData?: any;
+  onChange?: (data: any) => void;
 }
 
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 5 }).map((_, i) => ({
@@ -29,7 +30,7 @@ export interface GenericVoucherRendererRef {
   getData: () => any;
 }
 
-export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData }, ref) => {
+export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange }, ref) => {
   // GUARD: Validate canonical (only if schemaVersion is present)
   if (definition.schemaVersion && definition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
@@ -100,6 +101,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       setRows(loadedRows);
     }
   }, [initialData]);
+  
+  // Call onChange whenever rows or formData changes
+  useEffect(() => {
+    if (onChange) {
+      onChange({ ...formData, rows });
+    }
+  }, [rows, formData, onChange]);
   
   // Expose getData method to parent via ref
   useImperativeHandle(ref, () => ({

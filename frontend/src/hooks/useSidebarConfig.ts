@@ -98,10 +98,23 @@ export const useSidebarConfig = () => {
           items = [
             ...items.slice(0, coaIndex + 1),
             vouchersGroup,
+            { 
+              label: 'Window Designer', 
+              path: '/accounting/window-config-test',
+              permission: 'accounting.settings.manage'
+            },
             ...items.slice(coaIndex + 1)
           ];
         } else {
-          items = [vouchersGroup, ...items];
+          items = [
+            vouchersGroup,
+            { 
+              label: 'Window Designer', 
+              path: '/accounting/window-config-test',
+              permission: 'accounting.settings.manage'
+            },
+            ...items
+          ];
         }
       }
       

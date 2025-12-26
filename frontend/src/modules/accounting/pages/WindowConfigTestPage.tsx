@@ -122,20 +122,16 @@ export const WindowConfigTestPage: React.FC = () => {
               <span className="ml-2 font-medium text-gray-900">{currentConfig.body.component}</span>
             </div>
             <div>
-              <span className="text-gray-600">Left Widgets:</span>
-              <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.leftWidgets?.length || 0}</span>
+              <span className="text-gray-600">Header Components:</span>
+              <span className="ml-2 font-medium text-gray-900">{currentConfig.header.components?.length || 0}</span>
             </div>
             <div>
-              <span className="text-gray-600">Center Widgets:</span>
-              <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.centerWidgets?.length || 0}</span>
+              <span className="text-gray-600">Footer Components:</span>
+              <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.components?.length || 0}</span>
             </div>
             <div>
-              <span className="text-gray-600">Right Widgets:</span>
-              <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.rightWidgets?.length || 0}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Actions:</span>
-              <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.actions.length}</span>
+              <span className="text-gray-600">Show Controls:</span>
+              <span className="ml-2 font-medium text-gray-900">{currentConfig.header.showControls ? 'Yes' : 'No'}</span>
             </div>
           </div>
         </div>
@@ -146,9 +142,9 @@ export const WindowConfigTestPage: React.FC = () => {
           <ol className="list-decimal list-inside space-y-1 text-blue-800 text-sm">
             <li>Click "Load Template" to see pre-configured window layouts</li>
             <li>Click "Open Designer" to customize the configuration</li>
-            <li>Drag widgets from the palette to footer sections (left/center/right)</li>
-            <li>Click action buttons to add them to the footer</li>
-            <li>Drag action buttons to reorder them</li>
+            <li>Drag components from the library to the grid canvas (header or footer)</li>
+            <li>Click on a component to select it and use resize controls</li>
+            <li>Click the trash icon to remove components</li>
             <li>Click "Save Config" to apply changes</li>
             <li>See the live preview below!</li>
           </ol>

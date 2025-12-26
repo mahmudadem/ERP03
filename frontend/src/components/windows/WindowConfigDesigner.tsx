@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, GripVertical, Plus, Trash2, Eye } from 'lucide-react';
-import { WindowConfig, WindowWidget, WindowAction, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../types/WindowConfig';
-
+import { X, Plus, Trash2 } from 'lucide-react';
+import { WindowConfig, WindowComponent, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../types/WindowConfig';
+import { ComponentPropertiesPanel } from './ComponentPropertiesPanel';
 
 interface WindowDesignerProps {
   initialConfig?: WindowConfig;
@@ -20,94 +20,108 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
       windowType: 'voucher',
       header: {
         title: 'New Window',
+        components: [],
         showControls: true,
       },
       body: {
         component: 'GenericVoucherRenderer',
       },
       footer: {
-        actions: [],
+        components: [],
       },
     }
   );
 
-  const [showPreview, setShowPreview] = useState(false);
-  const [draggedWidget, setDraggedWidget] = useState<WindowWidget | null>(null);
-  const [draggedAction, setDraggedAction] = useState<WindowAction | null>(null);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
-  // Add widget to footer section
-  const addWidget = (widget: WindowWidget, section: 'left' | 'center' | 'right') => {
-    const sectionKey = `${section}Widgets` as 'leftWidgets' | 'centerWidgets' | 'rightWidgets';
-    const currentWidgets = config.footer[sectionKey] || [];
-    
+  // Get all components (header + footer)
+  const allComponents = [
+    ...(config.header.components || []),
+    ...(config.footer.components || []),
+  ];
+
+  const selectedComponent = allComponents.find(c => c.id === selectedComponentId) || null;
+
+  // Add a new component
+  const addComponent = (template: Omit<WindowComponent, 'row' | 'col' | 'colSpan'>) => {
+    const newComponent: WindowComponent = {
+      ...template,
+      id: `${template.id}-${Date.now()}`,
+      row: 0,
+      col: 0,
+      colSpan: 3,
+      section: 'footer', // Default to footer
+    };
+
     setConfig({
       ...config,
       footer: {
         ...config.footer,
-        [sectionKey]: [...currentWidgets, { ...widget, id: `${widget.id}-${Date.now()}` }],
+        components: [...(config.footer.components || []), newComponent],
+      },
+    });
+
+    setSelectedComponentId(newComponent.id);
+    setShowAddMenu(false);
+  };
+
+  // Update a component
+  const updateComponent = (updated: WindowComponent) => {
+    const section = updated.section || 'footer';
+    const otherSection = section === 'header' ? 'footer' : 'header';
+
+    // Remove from both sections first
+    const headerComponents = (config.header.components || []).filter(c => c.id !== updated.id);
+    const footerComponents = (config.footer.components || []).filter(c => c.id !== updated.id);
+
+    // Add to correct section
+    if (section === 'header') {
+      headerComponents.push(updated);
+    } else {
+      footerComponents.push(updated);
+    }
+
+    setConfig({
+      ...config,
+      header: {
+        ...config.header,
+        components: headerComponents,
+      },
+      footer: {
+        ...config.footer,
+        components: footerComponents,
       },
     });
   };
 
-  // Remove widget
-  const removeWidget = (widgetId: string, section: 'left' | 'center' | 'right') => {
-    const sectionKey = `${section}Widgets` as 'leftWidgets' | 'centerWidgets' | 'rightWidgets';
-    const currentWidgets = config.footer[sectionKey] || [];
-    
+  // Delete a component
+  const deleteComponent = (id: string) => {
     setConfig({
       ...config,
+      header: {
+        ...config.header,
+        components: (config.header.components || []).filter(c => c.id !== id),
+      },
       footer: {
         ...config.footer,
-        [sectionKey]: currentWidgets.filter(w => w.id !== widgetId),
+        components: (config.footer.components || []).filter(c => c.id !== id),
       },
     });
-  };
 
-  // Add action
-  const addAction = (action: WindowAction) => {
-    setConfig({
-      ...config,
-      footer: {
-        ...config.footer,
-        actions: [...config.footer.actions, { ...action, id: `${action.id}-${Date.now()}` }],
-      },
-    });
-  };
-
-  // Remove action
-  const removeAction = (actionId: string) => {
-    setConfig({
-      ...config,
-      footer: {
-        ...config.footer,
-        actions: config.footer.actions.filter(a => a.id !== actionId),
-      },
-    });
-  };
-
-  // Reorder actions via drag-drop
-  const reorderActions = (dragIndex: number, dropIndex: number) => {
-    const newActions = [...config.footer.actions];
-    const [dragged] = newActions.splice(dragIndex, 1);
-    newActions.splice(dropIndex, 0, dragged);
-    
-    setConfig({
-      ...config,
-      footer: {
-        ...config.footer,
-        actions: newActions,
-      },
-    });
+    if (selectedComponentId === id) {
+      setSelectedComponentId(null);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[1600px] h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Window Configuration Designer</h2>
-            <p className="text-sm text-gray-600 mt-1">Configure header, body, and footer for {config.windowType} windows</p>
+            <p className="text-sm text-gray-600 mt-1">Configure components with detailed properties</p>
           </div>
           <button
             onClick={onCancel}
@@ -117,135 +131,127 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
           </button>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content - 3 Column Layout */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Left Panel - Configuration */}
-          <div className="w-96 border-r border-gray-200 flex flex-col">
-            <div className="p-4 space-y-6 overflow-y-auto flex-1">
-              {/* Header Configuration */}
-              <div>
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  Header
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Window Title
-                    </label>
-                    <input
-                      type="text"
-                      value={config.header.title}
-                      onChange={(e) => setConfig({
-                        ...config,
-                        header: { ...config.header, title: e.target.value },
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="Enter window title"
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={config.header.showControls}
-                      onChange={(e) => setConfig({
-                        ...config,
-                        header: { ...config.header, showControls: e.target.checked },
-                      })}
-                      className="rounded"
-                    />
-                    Show window controls (Min/Max/Close)
-                  </label>
-                </div>
+          {/* Left Panel - Component List */}
+          <div className="w-80 border-r border-gray-200 flex flex-col">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-gray-900">Components</h3>
+                <button
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                  className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center gap-1"
+                >
+                  <Plus size={14} />
+                  Add
+                </button>
               </div>
 
-              {/* Body Configuration */}
-              <div>
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  Body
-                </h3>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Component
-                  </label>
-                  <select
-                    value={config.body.component}
-                    onChange={(e) => setConfig({
-                      ...config,
-                      body: { ...config.body, component: e.target.value },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  >
-                    <option value="GenericVoucherRenderer">Voucher Renderer</option>
-                    <option value="InvoiceRenderer">Invoice Renderer</option>
-                    <option value="ReportRenderer">Report Renderer</option>
-                    <option value="StatementRenderer">Statement Renderer</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Footer - Widgets */}
-              <div>
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                  Footer Widgets
-                </h3>
-                
-                <div className="space-y-3">
-                  {/* Available Widgets */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Available Widgets (Drag to add)
-                    </label>
-                    <div className="space-y-1">
-                      {AVAILABLE_WIDGETS.map(widget => (
-                        <div
-                          key={widget.id}
-                          draggable
-                          onDragStart={() => setDraggedWidget(widget)}
-                          onDragEnd={() => setDraggedWidget(null)}
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded border border-gray-200 cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-colors"
-                        >
-                          <GripVertical size={14} className="text-gray-400" />
-                          <span className="text-sm flex-1">{widget.label}</span>
-                          <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded">
-                            {widget.type}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer - Actions */}
-              <div>
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-orange-500" />
-                  Footer Actions
-                </h3>
-                
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Available Actions
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
+              {/* Add Component Menu */}
+              {showAddMenu && (
+                <div className="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                  <div className="p-2">
+                    <div className="text-xs font-bold text-gray-500 uppercase px-2 py-1">Widgets</div>
+                    {AVAILABLE_WIDGETS.map(widget => (
+                      <button
+                        key={widget.id}
+                        onClick={() => addComponent(widget)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
+                      >
+                        {widget.label}
+                      </button>
+                    ))}
+                    <div className="text-xs font-bold text-gray-500 uppercase px-2 py-1 mt-2">Actions</div>
                     {AVAILABLE_ACTIONS.map(action => (
                       <button
                         key={action.id}
-                        onClick={() => addAction(action)}
-                        className="px-3 py-2 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                        onClick={() => addComponent(action)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
                       >
-                        + {action.label}
+                        {action.label}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Save/Cancel Buttons */}
+            {/* Component List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {allComponents.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">
+                  No components yet.<br />Click "Add" to get started.
+                </div>
+              ) : (
+                allComponents.map(component => (
+                  <div
+                    key={component.id}
+                    onClick={() => setSelectedComponentId(component.id)}
+                    className={`p-3 rounded-lg border-2 cursor-pointer transition-colors group ${
+                      selectedComponentId === component.id
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-gray-900">{component.label}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {component.section || 'footer'} • Row {component.row} • Col {component.col}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteComponent(component.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 p-1"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex gap-1">
+                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                        {component.type === 'widget' ? component.widgetType : 'action'}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                        Span: {component.colSpan}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Basic Settings */}
+            <div className="p-4 border-t border-gray-200 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Window Title</label>
+                <input
+                  type="text"
+                  value={config.header.title}
+                  onChange={(e) => setConfig({
+                    ...config,
+                    header: { ...config.header, title: e.target.value },
+                  })}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={config.header.showControls}
+                  onChange={(e) => setConfig({
+                    ...config,
+                    header: { ...config.header, showControls: e.target.checked },
+                  })}
+                  className="rounded"
+                />
+                Show window controls
+              </label>
+            </div>
+
+            {/* Save/Cancel */}
             <div className="p-4 border-t border-gray-200 flex gap-3">
               <button
                 onClick={onCancel}
@@ -257,159 +263,32 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
                 onClick={() => onSave(config)}
                 className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
-                Save Config
+                Save
               </button>
             </div>
           </div>
 
-          {/* Right Panel - Live Preview */}
-          <div className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+          {/* Center Panel - Live Preview */}
+          <div className="flex-1 bg-gray-100 p-6 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              <div className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-                {/* Window Header Preview */}
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                  <h3 className="font-medium text-gray-700">{config.header.title}</h3>
-                  {config.header.showControls && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                      <div className="w-3 h-3 rounded-full bg-green-400" />
-                      <div className="w-3 h-3 rounded-full bg-red-400" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Body Preview */}
-                <div className="p-8 min-h-[400px] bg-white">
-                  <div className="text-center py-12 text-gray-400">
-                    <div className="text-sm font-medium mb-2">{config.body.component}</div>
-                    <div className="text-xs">Window content will render here</div>
-                  </div>
-                </div>
-
-                {/* Footer Preview */}
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                  <div className="flex items-center justify-between gap-4">
-                    {/* Left Widgets */}
-                    <div
-                      className="flex items-center gap-3 flex-1"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (draggedWidget) {
-                          addWidget(draggedWidget, 'left');
-                          setDraggedWidget(null);
-                        }
-                      }}
-                    >
-                      {config.footer.leftWidgets?.map(widget => (
-                        <div key={widget.id} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded group">
-                          <span className="text-sm font-medium text-gray-700">{widget.label}</span>
-                          <button
-                            onClick={() => removeWidget(widget.id, 'left')}
-                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                      {(!config.footer.leftWidgets || config.footer.leftWidgets.length === 0) && (
-                        <div className="text-xs text-gray-400 italic">Drop widgets here</div>
-                      )}
-                    </div>
-
-                    {/* Center Widgets */}
-                    <div
-                      className="flex items-center gap-3"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (draggedWidget) {
-                          addWidget(draggedWidget, 'center');
-                          setDraggedWidget(null);
-                        }
-                      }}
-                    >
-                      {config.footer.centerWidgets?.map(widget => (
-                        <div key={widget.id} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded group">
-                          <span className="text-sm font-medium text-gray-700">{widget.label}</span>
-                          <button
-                            onClick={() => removeWidget(widget.id, 'center')}
-                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Right Widgets + Actions */}
-                    <div className="flex items-center gap-3 justify-end flex-1">
-                      {/* Right Widgets */}
-                      <div
-                        className="flex items-center gap-3"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => {
-                          if (draggedWidget) {
-                            addWidget(draggedWidget, 'right');
-                            setDraggedWidget(null);
-                          }
-                        }}
-                      >
-                        {config.footer.rightWidgets?.map(widget => (
-                          <div key={widget.id} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded group">
-                            <span className="text-sm font-medium text-gray-700">{widget.label}</span>
-                            <button
-                              onClick={() => removeWidget(widget.id, 'right')}
-                              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Actions */}
-                      {config.footer.actions.map((action, index) => {
-                        const variantClasses = {
-                          primary: 'bg-indigo-600 text-white',
-                          secondary: 'bg-gray-600 text-white',
-                          outline: 'bg-white border border-gray-300 text-gray-700',
-                          text: 'text-gray-600 hover:text-gray-800',
-                          danger: 'bg-red-600 text-white',
-                        };
-
-return (
-                          <div
-                            key={action.id}
-                            draggable
-                            onDragStart={() => setDraggedAction(action)}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              if (draggedAction) {
-                                const dragIndex = config.footer.actions.findIndex(a => a.id === draggedAction.id);
-                                reorderActions(dragIndex, index);
-                                setDraggedAction(null);
-                              }
-                            }}
-                            className="flex items-center gap-2 group"
-                          >
-                            <GripVertical size={14} className="text-gray-400 cursor-grab" />
-                            <button className={`px-4 py-2 rounded text-sm font-medium ${variantClasses[action.variant]}`}>
-                              {action.label}
-                            </button>
-                            <button
-                              onClick={() => removeAction(action.id)}
-                              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+              <h3 className="text-sm font-bold text-gray-700 mb-4">Live Preview</h3>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                <div className="text-center text-gray-400 text-sm py-12">
+                  Preview will show components with all applied styling
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Right Panel - Properties */}
+          <div className="w-96 border-l border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-white">
+              <h3 className="font-bold text-gray-900">Properties</h3>
+            </div>
+            <ComponentPropertiesPanel
+              component={selectedComponent}
+              onUpdate={updateComponent}
+            />
           </div>
         </div>
       </div>

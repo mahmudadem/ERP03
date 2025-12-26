@@ -240,11 +240,49 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
           definition={win.voucherType as any}
           mode="windows"
           initialData={win.data}
+          onChange={handleDataChange}
         />
       </div>
 
       {/* Window Footer - Core Actions */}
       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        {/* Totals Display */}
+        <div className="flex items-center gap-4">
+          {(() => {
+            const totalDebit = win.data?.rows?.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) || 0), 0) || 0;
+            const totalCredit = win.data?.rows?.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0) || 0;
+            const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01; // Account for floating point precision
+            const hasValues = totalDebit > 0 || totalCredit > 0;
+            
+            // Gray when both are 0, green when balanced with values, red when unbalanced
+            const bgColor = !hasValues ? 'bg-gray-100' : (isBalanced ? 'bg-green-100' : 'bg-red-100');
+            
+            return (
+              <>
+                <div className={`flex items-center gap-2 px-3 py-1.5 ${bgColor} rounded transition-colors`}>
+                  <span className="text-xs font-medium text-gray-600 uppercase">Total Debit</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {new Intl.NumberFormat('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(totalDebit)}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-2 px-3 py-1.5 ${bgColor} rounded transition-colors`}>
+                  <span className="text-xs font-medium text-gray-600 uppercase">Total Credit</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {new Intl.NumberFormat('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(totalCredit)}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
@@ -252,8 +290,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({ win, onSave, onSub
           >
             Cancel
           </button>
-        </div>
-        <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
             className="flex items-center gap-2 px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50"
