@@ -30,7 +30,7 @@ export async function loadDefaultTemplates(): Promise<VoucherFormConfig[]> {
         const uiConfig = canonicalToUi(canonical);
         templates.push(uiConfig);
       } catch (err) {
-        console.warn(`Failed to parse template ${doc.id}:`, err);
+        // console.warn(`Failed to parse template ${doc.id}:`, err); // Removed debug console.warn
       }
     });
     
@@ -53,7 +53,7 @@ export async function loadCompanyForms(companyId: string): Promise<VoucherFormCo
     
     snapshot.forEach(doc => {
       try {
-        const canonical = doc.data() as any; 
+        const canonical = doc.data() as any;
         const uiConfig = canonicalToUi(canonical);
         forms.push(uiConfig);
       } catch (err) {
@@ -247,7 +247,7 @@ export async function saveVoucherForm(
       id: config.id,
       companyId,
       typeId: (config as any).baseType || config.id,
-      baseType: (config as any).baseType || config.code || config.id,
+      baseType: (canonical as any).baseType || canonical.code || canonical.id,
       name: config.name,
       code: config.id,
       prefix: config.prefix || config.id?.slice(0, 3).toUpperCase() || 'V',
@@ -260,6 +260,7 @@ export async function saveVoucherForm(
       uiModeOverrides: config.uiModeOverrides || null,
       // IMPORTANT: Add layout here so canonicalToUi can restore it!
       layout: canonical.layout,
+      tableStyle: config.tableStyle || 'web',
       rules: config.rules || [],
       actions: config.actions || [],
       enabledActions: canonical.enabledActions || [],

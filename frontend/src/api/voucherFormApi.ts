@@ -25,6 +25,7 @@ export interface VoucherFormResponse {
   rules?: any[]; // Validation rules
   actions?: any[]; // Action buttons configuration
   isMultiLine?: boolean;
+  tableStyle?: 'web' | 'classic';
   defaultCurrency?: string;
   baseType?: string; // Base voucher type for backend
   createdAt: string;

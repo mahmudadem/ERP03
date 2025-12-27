@@ -43,10 +43,16 @@ export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const openWindow = useCallback((voucherType: VoucherFormConfig, data?: any) => {
     const id = `voucher-${Date.now()}`;
+    
+    // Determine if this is a new voucher or editing existing
+    const isExisting = data?.id || data?.voucherNumber || data?.voucherId;
+    const titlePrefix = isExisting ? 'Edit' : 'New';
+    const titleSuffix = isExisting && data?.voucherNumber ? ` - ${data.voucherNumber}` : '';
+    
     const newWindow: VoucherWindow = {
       id,
       voucherType,
-      title: `New ${voucherType.name}`,
+      title: `${titlePrefix} ${voucherType.name}${titleSuffix}`,
       isMinimized: false,
       isMaximized: false,
       isFocused: true,

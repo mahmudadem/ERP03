@@ -27,10 +27,13 @@ export class CompanySettingsController {
       const companyId = (req as any).companyId || (req.query.companyId as string) || (req.body as any)?.companyId;
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
 
-      const { strictApprovalMode } = (req as any).body;
+      const { strictApprovalMode, uiMode, timezone, dateFormat } = (req as any).body;
       
       await diContainer.companySettingsRepository.updateSettings(companyId, {
-        strictApprovalMode
+        strictApprovalMode,
+        uiMode,
+        timezone,
+        dateFormat
       });
 
       (res as any).status(200).json({

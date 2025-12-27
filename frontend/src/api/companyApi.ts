@@ -5,7 +5,9 @@ export type UIMode = 'classic' | 'windows';
 export interface CompanySettings {
   companyId: string;
   strictApprovalMode: boolean;
-  uiMode?: UIMode; // System-wide UI mode preference
+  uiMode?: UIMode;
+  timezone?: string; // e.g., 'UTC', 'Europe/Istanbul'
+  dateFormat?: string; // e.g., 'YYYY-MM-DD', 'DD/MM/YYYY'
 }
 
 export const companyApi = {

@@ -38,6 +38,7 @@ interface VoucherTypeDefinition {
   mandatoryAttachments?: boolean;
   
   enabledActions: string[];
+  tableStyle?: 'web' | 'classic';
 }
 
 interface LayoutSchema {
@@ -123,6 +124,7 @@ export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherFormConf
     isLocked: canonical.isSystemDefault || (canonical as any).isLocked,
     inUse: canonical.inUse,
     baseType: (canonical as any).baseType || canonical.code || canonical.id,
+    tableStyle: canonical.tableStyle || 'web',
     metadata: (canonical as any).metadata || {}
   };
   

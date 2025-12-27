@@ -8,7 +8,7 @@ interface AccountSelectorProps {
   required?: boolean;
 }
 
-export const AccountSelector: React.FC<AccountSelectorProps> = ({
+export const AccountSelectorSimple: React.FC<AccountSelectorProps> = ({
   value,
   onChange,
   label,

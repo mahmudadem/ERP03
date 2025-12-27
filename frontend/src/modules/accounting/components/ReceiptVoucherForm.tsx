@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
-import { AccountSelector } from './AccountSelector';
+import { AccountSelectorSimple } from './AccountSelectorSimple';
 import { errorHandler } from '../../../services/errorHandler';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { getCompanyToday, formatCompanyDate } from '../../../utils/dateUtils';
 
 interface ReceiptSource {
   receiveFromAccountId: string;
@@ -20,6 +22,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
   onSuccess,
   onCancel
 }) => {
+  const { settings } = useCompanySettings();
   const [depositToAccountId, setDepositToAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [sources, setSources] = useState<ReceiptSource[]>([
@@ -55,9 +58,8 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
     setLoading(true);
 
     try {
-      // Get local date in YYYY-MM-DD format
-      const today = new Date();
-      const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // Get company-local "today" date in YYYY-MM-DD format
+      const localDate = getCompanyToday(settings);
       
       const payload = {
         type: 'receipt',
@@ -72,7 +74,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: $${totalAmount.toFixed(2)}`);
       
       if (onSuccess) {
         onSuccess();
@@ -100,7 +102,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
         <div className="form-section">
           <h3>Receipt Header</h3>
           
-          <AccountSelector
+          <AccountSelectorSimple
             value={depositToAccountId}
             onChange={setDepositToAccountId}
             label="Deposit To Account"
@@ -134,7 +136,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
               {sources.map((source, index) => (
                 <tr key={index}>
                   <td>
-                    <AccountSelector
+                    <AccountSelectorSimple
                       value={source.receiveFromAccountId}
                       onChange={(id) => handleSourceChange(index, 'receiveFromAccountId', id)}
                       label=""

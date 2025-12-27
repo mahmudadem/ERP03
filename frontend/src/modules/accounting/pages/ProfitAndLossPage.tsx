@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { accountingApi } from '../../../api/accountingApi';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { formatCompanyDate, getCompanyToday } from '../../../utils/dateUtils';
+import { DatePicker } from '../components/shared/DatePicker';
 
 interface ProfitAndLossData {
   revenue: number;
@@ -13,13 +16,26 @@ interface ProfitAndLossData {
 }
 
 const ProfitAndLossPage: React.FC = () => {
+  const { settings } = useCompanySettings();
   const [data, setData] = useState<ProfitAndLossData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Default to current year
-  const [fromDate, setFromDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  // Default dates (will be refined once settings load)
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Sync defaults once settings load
+  useEffect(() => {
+    if (settings && !isInitialized) {
+      const today = getCompanyToday(settings);
+      const yearStart = `${today.split('-')[0]}-01-01`;
+      setFromDate(yearStart);
+      setToDate(today);
+      setIsInitialized(true);
+    }
+  }, [settings, isInitialized]);
 
   const loadReport = async () => {
     try {
@@ -49,11 +65,7 @@ const ProfitAndLossPage: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return formatCompanyDate(dateStr, settings);
   };
 
   const handleExport = () => {
@@ -106,21 +118,17 @@ const ProfitAndLossPage: React.FC = () => {
         <div className="flex gap-4 items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
-            <input
-              type="date"
+            <DatePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
+              onChange={(val: string) => setFromDate(val)}
             />
           </div>
           
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
-            <input
-              type="date"
+            <DatePicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
+              onChange={(val: string) => setToDate(val)}
             />
           </div>
           

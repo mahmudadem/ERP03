@@ -8,6 +8,8 @@ import { VoucherTypeDefinition } from '../../../../../designer-engine/types/Vouc
 import { FieldDefinition } from '../../types/FieldTypes';
 import { Button } from '../../../../../components/ui/Button';
 import { getSystemFields } from '../../registries/systemFields';
+import { useCompanySettings } from '../../../../../hooks/useCompanySettings';
+import { formatCompanyDate, formatCompanyTime } from '../../../../../utils/dateUtils';
 
 interface Props {
   definition: Partial<VoucherTypeDefinition>;
@@ -28,6 +30,7 @@ export const StepLayout: React.FC<Props> = ({ definition, updateDefinition }) =>
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isTestRunOpen, setIsTestRunOpen] = useState(false);
   const [draggedElement, setDraggedElement] = useState<GridElement | null>(null);
+  const { settings } = useCompanySettings();
   
   // Initialize grid elements from definition
   const initializeGridElements = (): GridElement[] => {
@@ -363,10 +366,10 @@ export const StepLayout: React.FC<Props> = ({ definition, updateDefinition }) =>
                                       <span className="px-2 py-0.5 bg-green-100 text-green-700 font-bold rounded">PENDING</span>
                                     </div>
                                   )}
-                                  {fieldData.id === 'created_date' && <div>Created: {new Date().toLocaleString()}</div>}
+                                  {fieldData.id === 'created_date' && <div>Created: {formatCompanyDate(new Date(), settings)} {formatCompanyTime(new Date(), settings)}</div>}
                                   {fieldData.id === 'document_number' && <div>Document Number: Pending</div>}
                                   {fieldData.id === 'created_by' && <div>Created By: John Doe</div>}
-                                  {fieldData.id === 'updated_date' && <div>Updated: {new Date().toLocaleString()}</div>}
+                                  {fieldData.id === 'updated_date' && <div>Updated: {formatCompanyDate(new Date(), settings)} {formatCompanyTime(new Date(), settings)}</div>}
                                   {fieldData.id === 'updated_by' && <div>Updated By: Jane Smith</div>}
                                 </div>
                               ) : (

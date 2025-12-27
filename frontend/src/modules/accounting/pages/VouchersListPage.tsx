@@ -16,6 +16,7 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountsProvider } from '../../../context/AccountsContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { VoucherEntryModal } from '../components/VoucherEntryModal';
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +46,11 @@ const VouchersListPage: React.FC = () => {
   const isJournalEntry = !typeFromUrl || typeFromUrl.toLowerCase() === 'all';
   const isWindowsMode = uiMode === 'windows';
   const [selectedType, setSelectedType] = React.useState<string>('');
+  
+  // Web View Modal State
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingVoucher, setEditingVoucher] = React.useState<any>(null);
+  const [modalType, setModalType] = React.useState<any>(null);
 
   // Update logic to sync URL/Type with client-side filters
   React.useEffect(() => {
@@ -97,10 +103,10 @@ const VouchersListPage: React.FC = () => {
       // Windows Mode: Open in MDI window
       openWindow(currentVoucherType, { status: 'draft' });
     } else {
-      // Classic Mode: Navigate to editor page
-      // Use baseType for backend compatibility, pass formId separately
-      const baseType = (currentVoucherType as any).baseType || currentVoucherType.code || selectedType;
-      navigate(`/accounting/vouchers/new?type=${baseType}&formId=${selectedType}`);
+      // Classic/Web Mode: Open Modal
+      setModalType(currentVoucherType);
+      setEditingVoucher(null); // Clear for new
+      setIsModalOpen(true);
     }
   };
   
@@ -113,141 +119,162 @@ const VouchersListPage: React.FC = () => {
 
 
   const handleRowClick = async (id: string) => {
+    // Shared Logic: Find the correct Form Definition
+    const summary = vouchers.find(v => v.id === id);
+    if (!summary) return;
+    
+    // Try to find form by formId (if saved), otherwise fallback to matching by base type
+    let formDefinition = summary.formId 
+      ? voucherTypes.find(t => t.id === summary.formId)
+      : voucherTypes.find(t => {
+          const typeKeywords: Record<string, string[]> = {
+            'journal_entry': ['journal', 'journal_entry'],
+            'payment': ['payment'],
+            'receipt': ['receipt'],
+            'opening_balance': ['opening', 'balance']
+          };
+          
+          const keywords = typeKeywords[summary.type] || [];
+          const formIdLower = (t.id || '').toLowerCase();
+          const formNameLower = (t.name || '').toLowerCase();
+          const formCodeLower = (t.code || '').toLowerCase();
+          
+          return keywords.some(kw => 
+            formIdLower.includes(kw) || 
+            formNameLower.includes(kw) ||
+            formCodeLower.includes(kw)
+          );
+        });
+
+    if (!formDefinition) {
+      errorHandler.showError({
+        code: 'VOUCH_NOT_FOUND',
+        message: `Cannot find form for voucher type: ${summary.type}`,
+        severity: 'ERROR'
+      } as any);
+      return;
+    }
+
+    // Windows Mode
     if (isWindowsMode) {
-      const summary = vouchers.find(v => v.id === id);
-      if (!summary) return;
-      console.log('📋 Available forms:', voucherTypes.map(t => ({ id: t.id, code: t.code, name: t.name })));
-
-      // Try to find form by formId (if saved), otherwise fallback to matching by base type
-      let formDefinition = summary.formId 
-        ? voucherTypes.find(t => t.id === summary.formId)
-        : voucherTypes.find(t => {
-            // Fallback: find first form that matches the voucher type
-            // Check if form's id or name contains the type
-            const typeKeywords: Record<string, string[]> = {
-              'journal_entry': ['journal', 'journal_entry'],
-              'payment': ['payment'],
-              'receipt': ['receipt'],
-              'opening_balance': ['opening', 'balance']
-            };
-            
-            const keywords = typeKeywords[summary.type] || [];
-            const formIdLower = (t.id || '').toLowerCase();
-            const formNameLower = (t.name || '').toLowerCase();
-            const formCodeLower = (t.code || '').toLowerCase();
-            
-            console.log(`🔎 Checking form:`, { 
-              id: t.id, 
-              name: t.name, 
-              code: t.code,
-              matches: keywords.some(kw => 
-                formIdLower.includes(kw) || 
-                formNameLower.includes(kw) ||
-                formCodeLower.includes(kw)
-              )
-            });
-            
-            return keywords.some(kw => 
-              formIdLower.includes(kw) || 
-              formNameLower.includes(kw) ||
-              formCodeLower.includes(kw)
-            );
-          });
-      if (!formDefinition) {
-        errorHandler.showError({
-          code: 'VOUCH_NOT_FOUND',
-          message: `Cannot find form for voucher type: ${summary.type}`,
-          severity: 'ERROR'
-        } as any);
-        return;
-      }
-
       try {
-        // Fetch full details (includes lines)
         const fullVoucher = await accountingApi.getVoucher(id);
         openWindow(formDefinition, fullVoucher);
       } catch (error) {
         console.error('Failed to fetch full voucher details:', error);
-        // Fallback to summary if fetch fails
         openWindow(formDefinition, summary);
       }
     } else {
-      const summary = vouchers.find(v => v.id === id);
-      const queryParams = new URLSearchParams();
-      if (summary?.type) queryParams.set('type', summary.type);
-      if (summary?.formId) queryParams.set('formId', summary.formId);
-      
-      const queryString = queryParams.toString();
-      navigate(`/accounting/vouchers/${id}${queryString ? `?${queryString}` : ''}`);
+      // Classic/Web View Mode: Open Modal
+      try {
+        const fullVoucher = await accountingApi.getVoucher(id);
+        setModalType(formDefinition);
+        setEditingVoucher(fullVoucher);
+        setIsModalOpen(true);
+      } catch (error) {
+        console.error('Failed to fetch full voucher details:', error);
+        errorHandler.showError({
+          code: 'FETCH_ERROR',
+          message: 'Failed to load voucher details',
+          severity: 'ERROR'
+        } as any);
+      }
+    }
+  };
+
+  const handleSaveWeb = async (data: any) => {
+    try {
+      if (editingVoucher) {
+        // Edit Mode
+        await accountingApi.updateVoucher(editingVoucher.id, data);
+        errorHandler.showSuccess('Voucher updated successfully');
+      } else {
+        // Create Mode
+        await accountingApi.createVoucher(data);
+        errorHandler.showSuccess('Voucher created successfully');
+      }
+      invalidateVouchers();
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error('Save failed:', error);
+      throw error; // Let logic inside modal handle/display specific error if needed, but we throw to stop modal closing if not caught
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
-      <div className="flex-none p-6 pb-0">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
-          <div className="flex items-center gap-3">
-            <RequirePermission permission="accounting.vouchers.create">
-              <div className="flex items-center gap-2">
-                {isJournalEntry && (
-                  <select 
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
-                    className="p-2 border border-slate-200 rounded text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                  >
-                    {voucherTypes.map(type => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
-                    ))}
-                  </select>
-                )}
-                <Button onClick={handleCreate} disabled={!selectedType}>
-                  + New {currentVoucherType?.name || 'Voucher'}
-                </Button>
-              </div>
-            </RequirePermission>
+    <AccountsProvider>
+      <div className="flex flex-col h-full bg-slate-50 relative">
+        <div className="flex-none p-6 pb-0">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
+            <div className="flex items-center gap-3">
+              <RequirePermission permission="accounting.vouchers.create">
+                <div className="flex items-center gap-2">
+                  {isJournalEntry && (
+                    <select 
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                      className="p-2 border border-slate-200 rounded text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    >
+                      {voucherTypes.map(type => (
+                        <option key={type.id} value={type.id}>{type.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <Button onClick={handleCreate} disabled={!selectedType}>
+                    + New {currentVoucherType?.name || 'Voucher'}
+                  </Button>
+                </div>
+              </RequirePermission>
+            </div>
+          </div>
+
+          <VoucherFiltersBar 
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            filters={clientFilters} 
+            onChange={setClientFilters} 
+            hideTypeFilter={!isJournalEntry} 
+            voucherTypes={voucherTypes}
+          />
+        </div>
+
+        <div className="flex-1 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <VoucherTable 
+              vouchers={vouchers} 
+              isLoading={isLoading}
+              error={error ? error.message : null}
+              onRowClick={handleRowClick}
+              onEdit={(voucher) => handleRowClick(voucher.id)}
+              onDelete={async (id) => {
+                if (window.confirm('Are you sure you want to delete this voucher?')) {
+                   try {
+                      await accountingApi.deleteVoucher(id);
+                      invalidateVouchers(); 
+                   } catch (e: any) {
+                      errorHandler.showError(e);
+                    }
+                }
+              }}
+            />
           </div>
         </div>
 
-        <VoucherFiltersBar 
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          filters={clientFilters} 
-          onChange={setClientFilters} 
-          hideTypeFilter={!isJournalEntry} 
-          voucherTypes={voucherTypes}
-        />
-      </div>
-
-      <div className="flex-1 p-6">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <VoucherTable 
-            vouchers={vouchers} 
-            isLoading={isLoading}
-            error={error ? error.message : null}
-            onRowClick={handleRowClick}
-            onEdit={(voucher) => {
-              if (isWindowsMode) {
-                handleRowClick(voucher.id);
-              } else {
-                navigate(`/accounting/vouchers/${voucher.id}/edit`);
-              }
-            }}
-            onDelete={async (id) => {
-              if (window.confirm('Are you sure you want to delete this voucher?')) {
-                 try {
-                    await accountingApi.deleteVoucher(id);
-                    invalidateVouchers(); 
-                 } catch (e: any) {
-                    errorHandler.showError(e);
-                  }
-              }
-            }}
+        {/* Web View Modal */}
+        {modalType && (
+          <VoucherEntryModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            voucherType={modalType}
+            uiMode={uiMode}
+            onSave={handleSaveWeb}
+            initialData={editingVoucher}
           />
-        </div>
-      </div>
+        )}
 
-    </div>
+      </div>
+    </AccountsProvider>
   );
 };
 

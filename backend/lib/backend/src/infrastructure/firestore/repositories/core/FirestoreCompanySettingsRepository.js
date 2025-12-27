@@ -11,12 +11,15 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
     }
     toDomain(data) {
         var _a;
-        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true);
+        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true, data.uiMode, data.timezone, data.dateFormat);
     }
     toPersistence(entity) {
         return {
             companyId: entity.companyId,
-            strictApprovalMode: entity.strictApprovalMode
+            strictApprovalMode: entity.strictApprovalMode,
+            uiMode: entity.uiMode,
+            timezone: entity.timezone,
+            dateFormat: entity.dateFormat
         };
     }
     async getSettings(companyId) {
@@ -33,7 +36,14 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
     }
     async updateSettings(companyId, settings) {
         try {
-            await this.db.collection(this.collectionName).doc(companyId).set(settings, { merge: true });
+            const updateData = Object.entries(settings).reduce((acc, [key, value]) => {
+                if (value !== undefined)
+                    acc[key] = value;
+                return acc;
+            }, {});
+            if (Object.keys(updateData).length === 0)
+                return;
+            await this.db.collection(this.collectionName).doc(companyId).set(updateData, { merge: true });
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to update company settings', error);

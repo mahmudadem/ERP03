@@ -41,6 +41,7 @@ export interface VoucherFormDefinition {
   rules?: any[];                 // Validation rules
   actions?: any[];               // Action buttons configuration
   isMultiLine?: boolean;         // Does this voucher support line items?
+  tableStyle?: 'web' | 'classic'; // Line items table style
   defaultCurrency?: string;      // Default currency
   baseType?: string;             // Base voucher type for backend compatibility
   

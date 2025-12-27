@@ -2,6 +2,7 @@ import React from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { UserCompany } from './api';
+import { formatCompanyDate } from '../../utils/dateUtils';
 
 interface Props {
   company: UserCompany;
@@ -17,10 +18,10 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
           {company.model} • {company.role}
         </p>
         {company.createdAt && (
-          <p className="text-xs text-gray-400">Created: {new Date(company.createdAt).toLocaleDateString()}</p>
+          <p className="text-xs text-gray-400">Created: {formatCompanyDate(company.createdAt, null)}</p>
         )}
         {company.lastAccessedAt && (
-          <p className="text-xs text-gray-400">Last accessed: {new Date(company.lastAccessedAt).toLocaleDateString()}</p>
+          <p className="text-xs text-gray-400">Last accessed: {formatCompanyDate(company.lastAccessedAt, null)}</p>
         )}
       </div>
       <div className="mt-4">

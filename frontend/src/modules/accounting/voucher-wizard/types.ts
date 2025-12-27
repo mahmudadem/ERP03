@@ -101,6 +101,7 @@ export interface VoucherFormConfig {
   
   // Step 3: Table columns selection
   tableColumns?: string[] | TableColumnConfig[]; // ['account', 'debit', 'credit', 'notes', etc.] or objects
+  tableStyle?: 'web' | 'classic'; // Default to 'web'
 
   // Step 4: Actions
   actions: VoucherAction[];

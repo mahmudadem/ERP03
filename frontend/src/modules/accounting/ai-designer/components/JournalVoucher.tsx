@@ -9,6 +9,9 @@ import {
 import { generateJournalSuggestion, analyzeImageForJournal } from '../services/geminiService';
 import { useLanguage } from '../LanguageContext';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useCompanySettings } from '../../../../hooks/useCompanySettings';
+import { formatCompanyDate, formatCompanyTime, getCompanyToday } from '../../../../utils/dateUtils';
+import { DatePicker } from '../../components/shared/DatePicker';
 
 // Preserving logic: keeping enough initial rows to fill the view, but not too many to force scroll immediately
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 8 }).map((_, i) => ({
@@ -33,9 +36,10 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
   const [description, setDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t, isRTL } = useLanguage();
+  const { settings } = useCompanySettings();
   
   const displayTitle = t(title || 'journalVoucher');
-  const currentTime = new Date().toLocaleString();
+  const currentTime = `${formatCompanyDate(new Date(), settings)} ${formatCompanyTime(new Date(), settings)}`;
 
   // Calculate totals
   const totalDebit = rows.reduce((sum, row) => sum + (row.debit || 0), 0);
@@ -209,8 +213,13 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
         <div className="space-y-0.5">
           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t('referenceDocument')}</label>
           <div className="relative">
-            <input type="date" className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm" />
-            <Calendar className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-gray-400 pointer-events-none`} size={14} />
+            <DatePicker 
+              value={getCompanyToday(settings)}
+              onChange={(val: string) => {
+                // In this component, the date value isn't strictly tracked in state for the header yet
+                // but we can add logic if needed. For now, we satisfy the UI requirement.
+              }}
+            />
           </div>
         </div>
         

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { CompanyWizardField } from './api';
 import { useWizardSession } from './context/WizardSessionContext';
 import { Button } from '../../components/ui/Button';
+import { useCompanySettings } from '../../hooks/useCompanySettings';
+import { getCompanyToday } from '../../utils/dateUtils';
 
 interface Props {
   field: CompanyWizardField;
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export const WizardFieldRenderer: React.FC<Props> = ({ field, value, onChange }) => {
+  const { settings } = useCompanySettings();
   const { sessionId } = useWizardSession();
   const [options, setOptions] = useState<Array<{ id: string; label: string }> | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -86,7 +89,7 @@ export const WizardFieldRenderer: React.FC<Props> = ({ field, value, onChange })
         className="border rounded px-3 py-2 text-sm"
       />
       {field.type === 'date' && value === undefined && (
-        <Button variant="ghost" size="sm" onClick={() => onChange(new Date().toISOString().slice(0, 10))}>
+        <Button variant="ghost" size="sm" onClick={() => onChange(getCompanyToday(settings))}>
           Use Today
         </Button>
       )}

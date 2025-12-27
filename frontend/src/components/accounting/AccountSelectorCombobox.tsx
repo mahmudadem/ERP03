@@ -16,13 +16,15 @@ interface AccountSelectorProps {
   onChange: (accountId: string, account?: Account) => void;
   className?: string;
   placeholder?: string;
+  noBorder?: boolean; // For use in table cells
 }
 
-export const AccountSelector: React.FC<AccountSelectorProps> = ({ 
+export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({ 
   value, 
   onChange, 
   className = "",
-  placeholder = "Select account..."
+  placeholder = "Select account...",
+  noBorder = false
 }) => {
   const [query, setQuery] = useState('');
 
@@ -46,14 +48,22 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
     return <div className="animate-pulse h-9 bg-gray-100 rounded-md w-full"></div>;
   }
 
+  // DEBUG: Verify noBorder value
+  if (noBorder) {
+    console.log('🔴 AccountSelector rendering with noBorder=true');
+  }
+
   return (
     <Combobox value={selectedAccount || null} onChange={(account: Account | null) => {
       if (account) onChange(account.id, account);
     }}>
-      <div className={`relative mt-1 ${className}`}>
-        <div className="relative w-full cursor-default overflow-hidden rounded-md bg-white text-left border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300 sm:text-sm">
+      <div className={`relative ${noBorder ? '' : 'mt-1'} ${className}`}>
+        <div 
+          className={`relative w-full cursor-default overflow-hidden ${noBorder ? 'rounded-none bg-transparent' : 'rounded-md bg-white border border-gray-300'} text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300 sm:text-sm`}
+          style={noBorder ? { border: 'none', boxShadow: 'none' } : undefined}
+        >
           <Combobox.Input
-            className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
+            className={`w-full border-none ${noBorder ? 'py-1 pl-2 pr-8' : 'py-2 pl-3 pr-10'} text-sm leading-5 text-gray-900 focus:ring-0 bg-transparent`}
             displayValue={(account: Account) => account ? `${account.code} - ${account.name}` : ''}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={placeholder}

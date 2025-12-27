@@ -49,6 +49,7 @@ export function useVoucherTypes() {
                   rules: (form as any).rules || [],
                   actions: (form as any).actions || [],
                   isMultiLine: (form as any).isMultiLine ?? true,
+                  tableStyle: (form as any).tableStyle || 'web',
                   defaultCurrency: (form as any).defaultCurrency || 'USD',
                   // Keep typeId reference for backend operations
                   _typeId: form.typeId,

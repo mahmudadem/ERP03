@@ -5,7 +5,10 @@ class CompanySettingsDTOMapper {
     static toDTO(settings) {
         return {
             companyId: settings.companyId,
-            strictApprovalMode: settings.strictApprovalMode
+            strictApprovalMode: settings.strictApprovalMode,
+            uiMode: settings.uiMode,
+            timezone: settings.timezone,
+            dateFormat: settings.dateFormat
         };
     }
 }

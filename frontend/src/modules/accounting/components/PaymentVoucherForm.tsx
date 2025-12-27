@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
-import { AccountSelector } from './AccountSelector';
+import { AccountSelectorSimple } from './AccountSelectorSimple';
 import { errorHandler } from '../../../services/errorHandler';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { getCompanyToday, formatCompanyDate } from '../../../utils/dateUtils';
 
 interface PaymentAllocation {
   payToAccountId: string;
@@ -20,6 +22,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
   onSuccess,
   onCancel
 }) => {
+  const { settings } = useCompanySettings();
   const [payFromAccountId, setPayFromAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [allocations, setAllocations] = useState<PaymentAllocation[]>([
@@ -55,9 +58,8 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
     setLoading(true);
 
     try {
-      // Get local date in YYYY-MM-DD format
-      const today = new Date();
-      const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // Get company-local "today" date in YYYY-MM-DD format
+      const localDate = getCompanyToday(settings);
       
       const payload = {
         type: 'payment',
@@ -72,7 +74,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      errorHandler.showSuccess(`Payment voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${localDate}\nAmount: $${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(`Payment voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: $${totalAmount.toFixed(2)}`);
       
       if (onSuccess) {
         onSuccess();
@@ -100,7 +102,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
         <div className="form-section">
           <h3>Payment Header</h3>
           
-          <AccountSelector
+          <AccountSelectorSimple
             value={payFromAccountId}
             onChange={setPayFromAccountId}
             label="Pay From Account"
@@ -134,7 +136,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
               {allocations.map((alloc, index) => (
                 <tr key={index}>
                   <td>
-                    <AccountSelector
+                    <AccountSelectorSimple
                       value={alloc.payToAccountId}
                       onChange={(id) => handleAllocationChange(index, 'payToAccountId', id)}
                       label=""

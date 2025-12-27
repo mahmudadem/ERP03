@@ -1,207 +1,182 @@
-import React from 'react';
-import { GripVertical, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useRef } from 'react';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { WindowComponent } from '../../types/WindowConfig';
 
 interface GridCanvasProps {
   components: WindowComponent[];
-  onComponentsChange: (components: WindowComponent[]) => void;
   sectionName: string;
+  selectedComponentId: string | null;
+  onSelect: (id: string | null) => void;
+  onUpdateComponent: (component: WindowComponent) => void;
+  onDeleteComponent: (id: string) => void;
+  onDropComponent: (e: React.DragEvent, row: number, col: number) => void;
 }
 
 export const GridCanvas: React.FC<GridCanvasProps> = ({
   components,
-  onComponentsChange,
   sectionName,
+  selectedComponentId,
+  onSelect,
+  onUpdateComponent,
+  onDeleteComponent,
+  onDropComponent,
 }) => {
-  const [selectedComponentId, setSelectedComponentId] = React.useState<string | null>(null);
+  const resizingRef = useRef<{ 
+    fieldId: string; 
+    startX: number; 
+    startSpan: number; 
+    containerWidth: number 
+  } | null>(null);
 
-  // Add component at specific position
-  const addComponent = (component: Omit<WindowComponent, 'row' | 'col' | 'colSpan'>, row: number, col: number) => {
-    const newComponent: WindowComponent = {
-      ...component,
-      id: `${component.id}-${Date.now()}`,
-      row,
-      col,
-      colSpan: 3, // Default span
+  const maxRow = components.reduce((max, f) => Math.max(max, f.row), 0) + 1;
+  const gridRows = Math.max(4, maxRow + 1);
+
+  // Resize Handlers
+  const startResize = (e: React.MouseEvent, component: WindowComponent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const container = (e.target as HTMLElement).closest('.grid-container') as HTMLElement;
+    if (!container) return;
+
+    resizingRef.current = {
+      fieldId: component.id,
+      startX: e.clientX,
+      startSpan: component.colSpan,
+      containerWidth: container.offsetWidth
     };
-    onComponentsChange([...components, newComponent]);
+    
+    window.addEventListener('mousemove', onResizeMove);
+    window.addEventListener('mouseup', onResizeEnd);
   };
 
-  // Remove component
-  const removeComponent = (id: string) => {
-    onComponentsChange(components.filter(c => c.id !== id));
-    if (selectedComponentId === id) {
-      setSelectedComponentId(null);
-    }
-  };
-
-  // Update component position
-  const updateComponentPosition = (id: string, row: number, col: number) => {
-    onComponentsChange(
-      components.map(c => (c.id === id ? { ...c, row, col } : c))
-    );
-  };
-
-  // Update component span
-  const updateComponentSpan = (id: string, colSpan: number) => {
-    onComponentsChange(
-      components.map(c => (c.id === id ? { ...c, colSpan: Math.max(1, Math.min(12, colSpan)) } : c))
-    );
-  };
-
-  // Get component at specific grid cell
-  const getComponentAtCell = (row: number, col: number): WindowComponent | null => {
-    return components.find(c => 
-      c.row === row && c.col <= col && c.col + c.colSpan > col
-    ) || null;
-  };
-
-  // Render grid (3 rows x 12 columns)
-  const renderGrid = () => {
-    const rows = 3;
-    const cols = 12;
-    const grid: JSX.Element[] = [];
-
-    for (let row = 0; row < rows; row++) {
-      const rowCells: JSX.Element[] = [];
-      
-      for (let col = 0; col < cols; col++) {
-        const component = getComponentAtCell(row, col);
-        
-        // Skip if this cell is part of a component that starts earlier
-        if (component && component.col !== col) {
-          continue;
-        }
-
-        if (component) {
-          // Render component
-          const isSelected = selectedComponentId === component.id;
-          rowCells.push(
-            <div
-              key={`${row}-${col}`}
-              className={`relative group ${isSelected ? 'ring-2 ring-indigo-500' : ''}`}
-              style={{ gridColumn: `span ${component.colSpan}` }}
-              onClick={() => setSelectedComponentId(component.id)}
-            >
-              {/* Component Card */}
-              <div className="bg-white border-2 border-gray-200 rounded-lg p-3 hover:border-indigo-300 transition-colors cursor-pointer h-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <GripVertical size={14} className="text-gray-400" />
-                    <span className="text-xs font-medium text-gray-700">{component.label}</span>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeComponent(component.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-opacity"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                
-                <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                  <span className="px-1.5 py-0.5 bg-gray-100 rounded">
-                    {component.type === 'widget' ? component.widgetType : 'action'}
-                  </span>
-                  <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
-                    Col: {component.col + 1}
-                  </span>
-                  <span className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">
-                    Span: {component.colSpan}
-                  </span>
-                </div>
-
-                {/* Resize Controls */}
-                {isSelected && (
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 bg-white border border-gray-300 rounded shadow-sm px-1 py-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateComponentSpan(component.id, component.colSpan - 1);
-                      }}
-                      disabled={component.colSpan <= 1}
-                      className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
-                      title="Decrease width"
-                    >
-                      <ChevronLeft size={12} />
-                    </button>
-                    <span className="text-[9px] font-medium text-gray-600 px-1">
-                      {component.colSpan}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        updateComponentSpan(component.id, component.colSpan + 1);
-                      }}
-                      disabled={component.col + component.colSpan >= 12}
-                      className="p-0.5 hover:bg-gray-100 rounded disabled:opacity-30"
-                      title="Increase width"
-                    >
-                      <ChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        } else {
-          // Render empty drop zone
-          rowCells.push(
-            <div
-              key={`${row}-${col}`}
-              className="border border-dashed border-gray-200 rounded bg-gray-50/50 hover:bg-indigo-50/30 hover:border-indigo-300 transition-colors min-h-[60px] flex items-center justify-center"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const componentData = e.dataTransfer.getData('component');
-                if (componentData) {
-                  const component = JSON.parse(componentData);
-                  addComponent(component, row, col);
-                }
-              }}
-            >
-              <span className="text-[9px] text-gray-300 font-medium">
-                {col + 1}
-              </span>
-            </div>
-          );
-        }
+  const onResizeMove = (e: MouseEvent) => {
+    if (!resizingRef.current) return;
+    const { fieldId, startX, startSpan, containerWidth } = resizingRef.current;
+    
+    const colWidth = containerWidth / 12;
+    const deltaX = e.clientX - startX;
+    const deltaCols = Math.round(deltaX / colWidth);
+    
+    const newSpan = Math.max(1, Math.min(12, startSpan + deltaCols));
+    
+    const component = components.find(c => c.id === fieldId);
+    if (component && component.colSpan !== newSpan) {
+      if (component.col + newSpan <= 12) {
+        onUpdateComponent({ ...component, colSpan: newSpan });
       }
-
-      grid.push(
-        <div key={row} className="grid grid-cols-12 gap-2">
-          {rowCells}
-        </div>
-      );
     }
+  };
 
-    return grid;
+  const onResizeEnd = () => {
+    resizingRef.current = null;
+    window.removeEventListener('mousemove', onResizeMove);
+    window.removeEventListener('mouseup', onResizeEnd);
+  };
+
+  const handleDragStart = (e: React.DragEvent, component: WindowComponent) => {
+    e.dataTransfer.setData('fieldId', component.id);
+    e.dataTransfer.setData('sourceSection', sectionName.toLowerCase());
+    e.dataTransfer.setData('type', 'existing_component');
+    onSelect(component.id);
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-          {sectionName} Canvas (12-Column Grid)
-        </h4>
-        {components.length > 0 && (
-          <span className="text-[10px] text-gray-500">
-            {components.length} component{components.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      
-      <div className="space-y-2">
-        {renderGrid()}
+    <div 
+      className="mb-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm transition-all relative group"
+      onDragOver={(e) => e.preventDefault()}
+    >
+      {/* Section Header */}
+      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <GripVertical size={14} className="text-gray-400" />
+          <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} SECTION</span>
+        </div>
       </div>
 
-      {components.length === 0 && (
-        <div className="text-center py-8 text-gray-400 text-xs">
-          Drag components from the library to add them to the grid
-        </div>
-      )}
+      {/* Grid Canvas */}
+      <div 
+        className="p-4 grid grid-cols-12 gap-2 relative min-h-[150px] grid-container"
+        style={{ gridTemplateRows: `repeat(${gridRows}, minmax(3.5rem, auto))` }}
+      >
+        {/* Background Grid Cells */}
+        {Array.from({ length: gridRows * 12 }).map((_, i) => {
+          const r = Math.floor(i / 12);
+          const c = i % 12;
+          return (
+            <div 
+              key={`cell-${r}-${c}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => onDropComponent(e, r, c)}
+              className="border border-dashed border-gray-100 rounded h-full w-full absolute z-0 pointer-events-auto hover:bg-indigo-50/30 transition-colors"
+              style={{ 
+                gridRowStart: r + 1, 
+                gridColumnStart: c + 1,
+                top: `${r * (3.5 + 0.5) + 1}rem`, // Approximate if using absolute, but better to stay within grid flow if possible
+                // Actually, let's use the same technique as VoucherDesigner which uses absolute cells in a grid container
+              }}
+            />
+          );
+        })}
+
+        {/* Components */}
+        {components.map((component) => {
+          const isSelected = selectedComponentId === component.id;
+          
+          return (
+            <div 
+              key={component.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, component)}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onSelect(component.id); 
+              }}
+              className={`
+                rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
+                ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20' : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-400 cursor-move'}
+                ${component.widgetType === 'status' ? 'bg-gray-50/50' : ''}
+                ${component.type === 'action' ? 'bg-indigo-50/50 border-indigo-100 text-indigo-700 font-medium' : ''}
+              `}
+              style={{
+                gridColumnStart: component.col + 1,
+                gridColumnEnd: `span ${component.colSpan}`,
+                gridRowStart: component.row + 1,
+                minHeight: '3.5rem'
+              }}
+            >
+              <div className="flex justify-between items-start w-full">
+                <span className="truncate font-medium pointer-events-none">
+                  {component.label}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteComponent(component.id);
+                  }}
+                  className="opacity-0 group-hover/item:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+
+              <div className="mt-1 flex gap-1">
+                <span className="text-[9px] px-1 bg-gray-100 text-gray-500 rounded lowercase">
+                   {component.type === 'widget' ? component.widgetType : 'action'}
+                </span>
+              </div>
+              
+              {/* Resize Handle */}
+              <div 
+                className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-indigo-400/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center z-30"
+                onMouseDown={(e) => startResize(e, component)}
+              >
+                 <div className="w-0.5 h-4 bg-indigo-500/50 rounded-full"></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

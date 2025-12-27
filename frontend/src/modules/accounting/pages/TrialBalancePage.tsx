@@ -2,8 +2,11 @@
 import { useEffect, useState } from 'react';
 import { accountingApi, TrialBalanceLine } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { formatCompanyDate } from '../../../utils/dateUtils';
 
 const TrialBalancePage: React.FC = () => {
+  const { settings } = useCompanySettings();
   const [data, setData] = useState<TrialBalanceLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +55,7 @@ const TrialBalancePage: React.FC = () => {
       {/* Print Header */}
       <div className="hidden print:block mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Trial Balance Report</h1>
-        <p className="text-sm text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
+        <p className="text-sm text-gray-600">Generated on {formatCompanyDate(new Date(), settings)}</p>
       </div>
 
       {error && (

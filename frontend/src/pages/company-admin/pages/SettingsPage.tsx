@@ -5,6 +5,7 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
 
 const t = (key: string) => key;
 
@@ -25,6 +26,7 @@ const MONTHS = [
 
 export const SettingsPage: React.FC = () => {
   const { profile, isLoading, updateProfile, isUpdating } = useCompanyProfile();
+  const { settings, updateSettings } = useCompanySettings();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -33,41 +35,59 @@ export const SettingsPage: React.FC = () => {
     fiscalYearEnd: 12,
     taxId: '',
     address: '',
+    timezone: 'UTC',
+    dateFormat: 'YYYY-MM-DD'
   });
 
   useEffect(() => {
-    if (profile) {
-      setFormData({
-        name: profile.name || '',
-        baseCurrency: (profile as any).baseCurrency || (profile as any).currency || '',
-        fiscalYearStart: Number((profile as any).fiscalYearStart) || 1,
-        fiscalYearEnd: Number((profile as any).fiscalYearEnd) || 12,
-        taxId: profile.taxId || '',
-        address: profile.address || '',
-      });
+    if (profile || settings) {
+      setFormData(prev => ({
+        ...prev,
+        ...(profile ? {
+          name: profile.name || '',
+          baseCurrency: (profile as any).baseCurrency || (profile as any).currency || '',
+          fiscalYearStart: Number((profile as any).fiscalYearStart) || 1,
+          fiscalYearEnd: Number((profile as any).fiscalYearEnd) || 12,
+          taxId: profile.taxId || '',
+          address: profile.address || '',
+        } : {}),
+        ...(settings ? {
+          timezone: settings.timezone || 'UTC',
+          dateFormat: settings.dateFormat || 'YYYY-MM-DD',
+        } : {})
+      }));
     }
-  }, [profile]);
+  }, [profile, settings]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Update Profile
     updateProfile({
       name: formData.name,
       baseCurrency: formData.baseCurrency,
       fiscalYearStart: Number(formData.fiscalYearStart),
       fiscalYearEnd: Number(formData.fiscalYearEnd),
-      // taxId and address are not supported by UpdateCompanyProfileUseCase yet, but we keep them in state
     } as any);
+
+    // Update Company Settings
+    await updateSettings({
+      timezone: formData.timezone,
+      dateFormat: formData.dateFormat
+    });
   };
 
   const handleReset = () => {
-    if (profile) {
+    if (profile || settings) {
       setFormData({
-        name: profile.name || '',
-        baseCurrency: (profile as any).baseCurrency || (profile as any).currency || '',
-        fiscalYearStart: Number((profile as any).fiscalYearStart) || 1,
-        fiscalYearEnd: Number((profile as any).fiscalYearEnd) || 12,
-        taxId: profile.taxId || '',
-        address: profile.address || '',
+        name: profile?.name || '',
+        baseCurrency: (profile as any)?.baseCurrency || (profile as any)?.currency || '',
+        fiscalYearStart: Number((profile as any)?.fiscalYearStart) || 1,
+        fiscalYearEnd: Number((profile as any)?.fiscalYearEnd) || 12,
+        taxId: profile?.taxId || '',
+        address: profile?.address || '',
+        timezone: settings?.timezone || 'UTC',
+        dateFormat: settings?.dateFormat || 'YYYY-MM-DD',
       });
     }
   };
@@ -211,6 +231,51 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Date & Time Settings Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Date & Time Settings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Timezone *
+                  </label>
+                  <select
+                    value={formData.timezone}
+                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="UTC">UTC (GMT+0)</option>
+                    <option value="Europe/Istanbul">Istanbul (GMT+3)</option>
+                    <option value="Europe/London">London (GMT+0/1)</option>
+                    <option value="America/New_York">New York (GMT-5/4)</option>
+                    <option value="Asia/Dubai">Dubai (GMT+4)</option>
+                    <option value="Asia/Riyadh">Riyadh (GMT+3)</option>
+                    {/* Simplified for now, can add more later */}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preferred Date Format *
+                  </label>
+                  <select
+                    value={formData.dateFormat}
+                    onChange={(e) => setFormData({ ...formData, dateFormat: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2025-12-31)</option>
+                    <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 31/12/2025)</option>
+                    <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 12/31/2025)</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2 italic font-medium">
+                These settings will affect how dates are displayed across all company reports and vouchers.
+              </p>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 justify-end pt-6 border-t">

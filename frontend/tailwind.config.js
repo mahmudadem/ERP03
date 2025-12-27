@@ -6,6 +6,45 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    fontSize: {
+      // 90% of default (16px * 0.9 = 14.4px)
+      xs: ['0.675rem', { lineHeight: '0.9rem' }],    // was 0.75rem
+      sm: ['0.7875rem', { lineHeight: '1.125rem' }], // was 0.875rem
+      base: ['0.9rem', { lineHeight: '1.35rem' }],   // was 1rem
+      lg: ['1.0125rem', { lineHeight: '1.575rem' }], // was 1.125rem
+      xl: ['1.125rem', { lineHeight: '1.6875rem' }], // was 1.25rem
+      '2xl': ['1.35rem', { lineHeight: '1.8rem' }],  // was 1.5rem
+      '3xl': ['1.6875rem', { lineHeight: '2.025rem' }], // was 1.875rem
+      '4xl': ['2.025rem', { lineHeight: '2.25rem' }], // was 2.25rem
+    },
+    spacing: {
+      // 90% of default
+      px: '1px',
+      0: '0',
+      0.5: '0.1125rem',
+      1: '0.225rem',
+      1.5: '0.3375rem',
+      2: '0.45rem',
+      2.5: '0.5625rem',
+      3: '0.675rem',
+      3.5: '0.7875rem',
+      4: '0.9rem',
+      5: '1.125rem',
+      6: '1.35rem',
+      7: '1.575rem',
+      8: '1.8rem',
+      9: '2.025rem',
+      10: '2.25rem',
+      12: '2.7rem',
+      16: '3.6rem',
+      20: '4.5rem',
+      24: '5.4rem',
+      32: '7.2rem',
+      40: '9rem',
+      48: '10.8rem',
+      56: '12.6rem',
+      64: '14.4rem',
+    },
     extend: {
       colors: {
         // Primary Brand

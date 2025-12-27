@@ -47,6 +47,7 @@ interface VoucherTypeDefinition {
     width?: string;
     labelOverride?: string;
   }>;
+  tableStyle?: 'web' | 'classic';
   
   // Business rules (mapped from UI toggles)
   requiresApproval?: boolean;
@@ -183,6 +184,7 @@ export function uiToCanonical(
         labelOverride: col.labelOverride
       };
     }),
+    tableStyle: uiConfig.tableStyle || 'web',
     baseType: uiConfig.baseType || uiConfig.id, // Ensure base strategy is preserved
     requiresApproval,
     preventNegativeCash,

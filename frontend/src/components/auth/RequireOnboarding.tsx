@@ -43,9 +43,13 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
       try {
         const status = await onboardingApi.getOnboardingStatus();
         setOnboardingStatus(status);
-      } catch (err) {
-        console.error('Failed to get onboarding status:', err);
-        setStatusError(true);
+      } catch (err: any) {
+        // If it's a 401 error, the global interceptor will handle it
+        // Don't set statusError(true) which would trigger a redirect to plan page
+        if (err.response?.status !== 401) {
+          console.error('Failed to get onboarding status:', err);
+          setStatusError(true);
+        }
       } finally {
         setStatusLoading(false);
       }

@@ -1,14 +1,31 @@
+@import './theme.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import './theme.css';
 
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 90%; /* Sweet spot for professional dashboards (approx 14.4px) */
+}
+
+/* Hide number input arrows/spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 font-sans antialiased;
+  @apply bg-gray-50 text-gray-900;
+  font-family: var(--font-sans);
+}
+
+#root {
+  @apply min-h-screen;
 }
 
 /* Scrollbar styling for Windows Mode */

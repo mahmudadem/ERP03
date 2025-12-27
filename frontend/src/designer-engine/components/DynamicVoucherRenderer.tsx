@@ -26,6 +26,12 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hiddenFieldIds, setHiddenFieldIds] = useState<Set<string>>(new Set());
 
+  // Sync with initialValues (useful if settings load late)
+  useEffect(() => {
+    if (initialValues?.header) setHeaderValues(initialValues.header);
+    if (initialValues?.lines) setLines(initialValues.lines);
+  }, [initialValues]);
+
   // Evaluate Rules (Header only for now)
   useEffect(() => {
     // TODO: Re-implement rules evaluation for flat headerFields if needed
@@ -115,6 +121,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
             rows={lines}
             onChange={setLines}
             customComponents={customComponents}
+            tableStyle={definition.tableStyle}
             />
         )}
         

@@ -34,6 +34,7 @@ export interface VoucherTypeDefinition {
   // Field Definitions (REQUIRED - Schema V2 with classifications)
   headerFields: FieldDefinition[];
   tableColumns: TableColumn[];
+  tableStyle?: 'web' | 'classic';
   
   // Layout Configuration (REQUIRED - JSON serialized)
   layout: Record<string, any>;

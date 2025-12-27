@@ -1,19 +1,39 @@
 /**
- * Account Selector Component
+ * Currency Selector Component
  * 
- * Direct text input with smart auto-select:
- * - Type account code/name directly
+ * Direct text input for selecting currencies with smart auto-select and navigation.
+ * - Type currency code directly (e.g. USD, EUR)
  * - Exact match: auto-selects on blur/Enter
- * - No exact match: opens search modal with closest matches
+ * - No exact match: opens search modal
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { useAccounts, Account } from '../../../../context/AccountsContext';
 import { Search, X } from 'lucide-react';
 
-interface AccountSelectorProps {
-  value?: string;  // Account code
-  onChange: (account: Account | null) => void;
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+// Standard list of currencies - typically this would come from an API or settings
+const STANDARD_CURRENCIES: Currency[] = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: '$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س' },
+];
+
+interface CurrencySelectorProps {
+  value?: string;  // Currency code
+  onChange: (currencyCode: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -21,16 +41,15 @@ interface AccountSelectorProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
-export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps>(({
+export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorProps>(({
   value,
   onChange,
-  placeholder = 'Account code...',
+  placeholder = 'Cur...',
   disabled = false,
   className = '',
   noBorder = false,
   onKeyDown: externalKeyDown
 }, ref) => {
-  const { validAccounts, isLoading, getAccountByCode } = useAccounts();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -43,13 +62,8 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
 
   // Sync input value with external value
   useEffect(() => {
-    if (value) {
-      const account = getAccountByCode(value);
-      setInputValue(account ? `${account.code} - ${account.name}` : value);
-    } else {
-      setInputValue('');
-    }
-  }, [value, getAccountByCode]);
+    setInputValue(value || '');
+  }, [value]);
 
   // Focus modal input when modal opens
   useEffect(() => {
@@ -59,34 +73,32 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
     }
   }, [showModal]);
 
-  // Find exact match by code or name
-  const findExactMatch = (searchText: string): Account | null => {
-    const search = searchText.trim().toLowerCase();
+  // Find exact match by code
+  const findExactMatch = (searchText: string): Currency | null => {
+    const search = searchText.trim().toUpperCase();
     if (!search) return null;
     
-    // Try exact code match first
-    const codeMatch = validAccounts.find((a: Account) => a.code.toLowerCase() === search);
+    // Try exact code match
+    const codeMatch = STANDARD_CURRENCIES.find(c => c.code === search);
     if (codeMatch) return codeMatch;
-    
-    // Try exact name match
-    const nameMatch = validAccounts.find((a: Account) => a.name.toLowerCase() === search);
-    if (nameMatch) return nameMatch;
     
     return null;
   };
 
   // Find closest matches for modal
-  const getFilteredAccounts = (searchText: string): Account[] => {
+  const getFilteredCurrencies = (searchText: string): Currency[] => {
     const search = searchText.trim().toLowerCase();
-    if (!search) return validAccounts.slice(0, 20); // Show first 20 if no search
     
-    return validAccounts
-      .filter((a: Account) => 
-        a.code.toLowerCase().includes(search) || 
-        a.name.toLowerCase().includes(search)
+    // If empty search, show all
+    if (!search) return STANDARD_CURRENCIES;
+    
+    return STANDARD_CURRENCIES
+      .filter(c => 
+        c.code.toLowerCase().includes(search) || 
+        c.name.toLowerCase().includes(search)
       )
       .sort((a, b) => {
-        // Prioritize: exact match > starts with > includes
+        // Prioritize: exact code match > starts with > includes
         const aCode = a.code.toLowerCase();
         const bCode = b.code.toLowerCase();
         
@@ -96,43 +108,33 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         if (bCode.startsWith(search) && !aCode.startsWith(search)) return 1;
         
         return aCode.localeCompare(bCode);
-      })
-      .slice(0, 20);
+      });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
+    setInputValue(e.target.value.toUpperCase());
   };
 
   const handleInputBlur = () => {
     // If empty, just clear
     if (!inputValue.trim()) {
-      if (value) onChange(null);
+      if (value) onChange('');
       return;
     }
 
-    // If input matches the current selected account's display text, do nothing
-    if (value) {
-      const currentAccount = getAccountByCode(value);
-      if (currentAccount && inputValue === `${currentAccount.code} - ${currentAccount.name}`) {
-        return; 
-      }
+    // If matches current value, do nothing
+    if (value && inputValue === value) {
+      return;
     }
 
-    // Try to find exact match
     const exactMatch = findExactMatch(inputValue);
     
     if (exactMatch) {
-      // Found exact match - update selection
-      if (exactMatch.code !== value) {
-         onChange(exactMatch);
-      }
-      setInputValue(`${exactMatch.code} - ${exactMatch.name}`);
+      // Found exact match
+      onChange(exactMatch.code);
+      setInputValue(exactMatch.code);
     } else {
-      // Logic for partial/no match
-      // If the input looks like a code (digits), keep it as is maybe? 
-      // Or just revert if it was valid before?
-      // For now: open modal to resolve
+      // No exact match - open modal
       setModalSearch(inputValue.trim());
       setHighlightedIndex(0);
       setShowModal(true);
@@ -140,7 +142,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Alt+Down to explicitly open modal - stop propagation
+    // Alt+Down to explicitly open modal
     if (e.altKey && e.key === 'ArrowDown') {
       e.preventDefault();
       setModalSearch(inputValue.trim());
@@ -151,17 +153,14 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
 
     // Enter key handling
     if (e.key === 'Enter') {
-      // If we have text, try to resolve it locally first
       if (inputValue.trim()) {
         const exactMatch = findExactMatch(inputValue);
         if (exactMatch) {
-          // Exact match found - select it
-          onChange(exactMatch);
-          setInputValue(`${exactMatch.code} - ${exactMatch.name}`);
+          onChange(exactMatch.code);
+          setInputValue(exactMatch.code);
           // Pass Enter to grid navigation
           if (externalKeyDown) externalKeyDown(e);
         } else {
-            // No exact match - open modal
             e.preventDefault(); 
             setModalSearch(inputValue.trim());
             setHighlightedIndex(0);
@@ -174,15 +173,10 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
       return;
     } 
     
-    // NAVIGATION KEYS - CRITICAL FOR GRID
-    // Always pass these to the grid handler unless we are doing something specific
+    // Navigation keys - pass to grid
     const isNavKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
     
     if (isNavKey) {
-        // Only consume ArrowDown if we want it to open the modal (optional behavior)
-        // But user request says "move from/to", so let's PRIORITIZE GRID NAVIGATION
-        
-        // Pass to external handler
         if (externalKeyDown) {
             externalKeyDown(e);
             return;
@@ -191,7 +185,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   };
 
   const handleModalKeyDown = (e: React.KeyboardEvent) => {
-    const filtered = getFilteredAccounts(modalSearch);
+    const filtered = getFilteredCurrencies(modalSearch);
     
     switch (e.key) {
       case 'ArrowDown':
@@ -204,31 +198,32 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         break;
       case 'Enter':
         if (filtered[highlightedIndex]) {
-          handleSelectAccount(filtered[highlightedIndex]);
+          handleSelectCurrency(filtered[highlightedIndex]);
         }
         e.preventDefault();
         break;
       case 'Escape':
         setShowModal(false);
+        setInputValue(value || ''); // Revert to original
         inputRef.current?.focus();
         break;
     }
   };
 
-  const handleSelectAccount = (account: Account) => {
-    onChange(account);
-    setInputValue(`${account.code} - ${account.name}`);
+  const handleSelectCurrency = (currency: Currency) => {
+    onChange(currency.code);
+    setInputValue(currency.code);
     setShowModal(false);
     inputRef.current?.focus();
   };
 
   const handleClear = () => {
-    onChange(null);
+    onChange('');
     setInputValue('');
     inputRef.current?.focus();
   };
 
-  const filteredAccounts = getFilteredAccounts(modalSearch);
+  const filteredCurrencies = getFilteredCurrencies(modalSearch);
 
   return (
     <>
@@ -243,34 +238,22 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full text-xs ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-gray-200 rounded bg-white'} 
+          className={`w-full text-xs text-center font-bold ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-gray-200 rounded bg-white'} 
             focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none
             ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
         />
-        {inputValue && !disabled && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute right-1 p-0.5 text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
       </div>
 
       {/* Search Modal */}
       {showModal && (
         <>
-          {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-black/20 z-[9998]" 
             onClick={() => setShowModal(false)}
           />
           
-          {/* Modal */}
           <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
-            <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-96 max-h-[400px] pointer-events-auto">
-              {/* Header */}
+            <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-64 max-h-[400px] pointer-events-auto">
               <div className="p-3 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <Search className="w-4 h-4 text-gray-400" />
@@ -283,37 +266,34 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                       setHighlightedIndex(0);
                     }}
                     onKeyDown={handleModalKeyDown}
-                    placeholder="Search accounts..."
-                    className="flex-1 border-none outline-none text-sm"
+                    placeholder="Search currency..."
+                    className="flex-1 border-none outline-none text-sm uppercase"
                     autoFocus
                   />
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
+                  <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">
                     <X className="w-4 h-4 text-gray-500" />
                   </button>
                 </div>
               </div>
               
-              {/* Results */}
               <div className="max-h-[300px] overflow-y-auto">
-                {isLoading ? (
-                  <div className="p-4 text-center text-gray-500 text-sm">Loading accounts...</div>
-                ) : filteredAccounts.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 text-sm">No accounts found</div>
+                {filteredCurrencies.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 text-sm">No currencies found</div>
                 ) : (
-                  filteredAccounts.map((account, index) => (
+                  filteredCurrencies.map((currency, index) => (
                     <div
-                      key={account.id}
-                      onClick={() => handleSelectAccount(account)}
+                      key={currency.code}
+                      onClick={() => handleSelectCurrency(currency)}
                       onMouseEnter={() => setHighlightedIndex(index)}
                       className={`px-3 py-2 cursor-pointer flex justify-between items-center text-sm
                         ${index === highlightedIndex ? 'bg-indigo-50' : 'hover:bg-gray-50'}
-                        ${account.code === value ? 'bg-indigo-100' : ''}`}
+                        ${currency.code === value ? 'bg-indigo-100' : ''}`}
                     >
-                      <span className="font-medium text-gray-900">{account.code}</span>
-                      <span className="text-gray-500 truncate ml-3">{account.name}</span>
+                      <div className="flex items-center gap-2">
+                         <span className="font-bold w-8">{currency.code}</span>
+                         <span className="text-gray-500 text-xs">{currency.symbol}</span>
+                      </div>
+                      <span className="text-xs text-gray-500 truncate">{currency.name}</span>
                     </div>
                   ))
                 )}
@@ -326,6 +306,6 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   );
 });
 
-AccountSelector.displayName = 'AccountSelector';
+CurrencySelector.displayName = 'CurrencySelector';
 
-export default AccountSelector;
+export default CurrencySelector;

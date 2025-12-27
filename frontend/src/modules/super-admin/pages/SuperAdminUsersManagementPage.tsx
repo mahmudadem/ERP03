@@ -3,6 +3,7 @@ import { superAdminApi, SuperAdminUser, SuperAdminCompany } from '../../../api/s
 import { Button } from '../../../components/ui/Button';
 import { Users, Building2, Shield, Crown, Search, Filter, ChevronRight, Mail, Calendar } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
+import { formatCompanyDate } from '../../../utils/dateUtils';
 
 interface UserWithCompanies extends SuperAdminUser {
   companies?: SuperAdminCompany[];
@@ -244,7 +245,7 @@ export default function SuperAdminUsersManagementPage() {
                       {user.createdAt && (
                         <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                           <Calendar className="w-3 h-3" />
-                          <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
+                          <span>Joined {formatCompanyDate(user.createdAt, null)}</span>
                         </div>
                       )}
                     </div>

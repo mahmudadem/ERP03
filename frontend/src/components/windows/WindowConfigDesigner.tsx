@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import { WindowConfig, WindowComponent, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../types/WindowConfig';
 import { ComponentPropertiesPanel } from './ComponentPropertiesPanel';
+import { GridCanvas } from './GridCanvas';
 
 interface WindowDesignerProps {
   initialConfig?: WindowConfig;
@@ -44,55 +45,87 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
   const selectedComponent = allComponents.find(c => c.id === selectedComponentId) || null;
 
   // Add a new component
-  const addComponent = (template: Omit<WindowComponent, 'row' | 'col' | 'colSpan'>) => {
+  const handleAddNewComponent = (template: Omit<WindowComponent, 'row' | 'col' | 'colSpan'>, section: 'header' | 'footer', row: number, col: number) => {
     const newComponent: WindowComponent = {
       ...template,
       id: `${template.id}-${Date.now()}`,
-      row: 0,
-      col: 0,
+      row,
+      col,
       colSpan: 3,
-      section: 'footer', // Default to footer
+      section,
     };
 
-    setConfig({
-      ...config,
-      footer: {
-        ...config.footer,
-        components: [...(config.footer.components || []), newComponent],
-      },
-    });
+    const updatedConfig = { ...config };
+    if (section === 'header') {
+      updatedConfig.header.components = [...(updatedConfig.header.components || []), newComponent];
+    } else {
+      updatedConfig.footer.components = [...(updatedConfig.footer.components || []), newComponent];
+    }
 
+    setConfig(updatedConfig);
     setSelectedComponentId(newComponent.id);
-    setShowAddMenu(false);
   };
 
   // Update a component
   const updateComponent = (updated: WindowComponent) => {
-    const section = updated.section || 'footer';
-    const otherSection = section === 'header' ? 'footer' : 'header';
+    const updatedConfig = { ...config };
+    
+    // Update in header
+    updatedConfig.header.components = (updatedConfig.header.components || []).map(c => 
+      c.id === updated.id ? updated : c
+    );
+    
+    // Update in footer
+    updatedConfig.footer.components = (updatedConfig.footer.components || []).map(c => 
+      c.id === updated.id ? updated : c
+    );
 
-    // Remove from both sections first
-    const headerComponents = (config.header.components || []).filter(c => c.id !== updated.id);
-    const footerComponents = (config.footer.components || []).filter(c => c.id !== updated.id);
+    setConfig(updatedConfig);
+  };
 
-    // Add to correct section
-    if (section === 'header') {
-      headerComponents.push(updated);
-    } else {
-      footerComponents.push(updated);
+  // Handle Drop orchestration
+  const handleDropToGrid = (e: React.DragEvent, targetSection: 'header' | 'footer', row: number, col: number) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('type');
+
+    if (type === 'new_component') {
+      const componentData = e.dataTransfer.getData('component');
+      if (componentData) {
+        const template = JSON.parse(componentData);
+        handleAddNewComponent(template, targetSection, row, col);
+      }
+    } else if (type === 'existing_component') {
+      const fieldId = e.dataTransfer.getData('fieldId');
+      const sourceSection = e.dataTransfer.getData('sourceSection') as 'header' | 'footer';
+
+      const updatedConfig = { ...config };
+      
+      // Find and remove from source
+      let movedComponent: WindowComponent | undefined;
+      if (sourceSection === 'header') {
+        const idx = updatedConfig.header.components.findIndex(c => c.id === fieldId);
+        if (idx !== -1) [movedComponent] = updatedConfig.header.components.splice(idx, 1);
+      } else {
+        const idx = updatedConfig.footer.components.findIndex(c => c.id === fieldId);
+        if (idx !== -1) [movedComponent] = updatedConfig.footer.components.splice(idx, 1);
+      }
+
+      if (movedComponent) {
+        movedComponent.row = row;
+        movedComponent.col = col;
+        movedComponent.section = targetSection;
+
+        // Add to target
+        if (targetSection === 'header') {
+          updatedConfig.header.components.push(movedComponent);
+        } else {
+          updatedConfig.footer.components.push(movedComponent);
+        }
+        
+        setConfig(updatedConfig);
+        setSelectedComponentId(fieldId);
+      }
     }
-
-    setConfig({
-      ...config,
-      header: {
-        ...config.header,
-        components: headerComponents,
-      },
-      footer: {
-        ...config.footer,
-        components: footerComponents,
-      },
-    });
   };
 
   // Delete a component
@@ -147,80 +180,50 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
                 </button>
               </div>
 
-              {/* Add Component Menu */}
-              {showAddMenu && (
-                <div className="absolute z-10 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
-                  <div className="p-2">
-                    <div className="text-xs font-bold text-gray-500 uppercase px-2 py-1">Widgets</div>
-                    {AVAILABLE_WIDGETS.map(widget => (
-                      <button
-                        key={widget.id}
-                        onClick={() => addComponent(widget)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
-                      >
-                        {widget.label}
-                      </button>
-                    ))}
-                    <div className="text-xs font-bold text-gray-500 uppercase px-2 py-1 mt-2">Actions</div>
-                    {AVAILABLE_ACTIONS.map(action => (
-                      <button
-                        key={action.id}
-                        onClick={() => addComponent(action)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Add Component Menu Removed - Moving to Drag & Drop */}
             </div>
 
             {/* Component List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {allComponents.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  No components yet.<br />Click "Add" to get started.
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div>
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Widgets</h4>
+                <div className="space-y-2">
+                  {AVAILABLE_WIDGETS.map(widget => (
+                    <div
+                      key={widget.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('type', 'new_component');
+                        e.dataTransfer.setData('component', JSON.stringify(widget));
+                      }}
+                      className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-colors flex items-center justify-between group"
+                    >
+                      <span className="text-sm font-medium text-gray-700">{widget.label}</span>
+                      <GripVertical size={14} className="text-gray-300 group-hover:text-indigo-400" />
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                allComponents.map(component => (
-                  <div
-                    key={component.id}
-                    onClick={() => setSelectedComponentId(component.id)}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-colors group ${
-                      selectedComponentId === component.id
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="font-medium text-sm text-gray-900">{component.label}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {component.section || 'footer'} • Row {component.row} • Col {component.col}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteComponent(component.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 p-1"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Actions</h4>
+                <div className="space-y-2">
+                  {AVAILABLE_ACTIONS.map(action => (
+                    <div
+                      key={action.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('type', 'new_component');
+                        e.dataTransfer.setData('component', JSON.stringify(action));
+                      }}
+                      className="p-3 bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-colors flex items-center justify-between group"
+                    >
+                      <span className="text-sm font-medium text-indigo-700">{action.label}</span>
+                      <GripVertical size={14} className="text-indigo-300 group-hover:text-indigo-400" />
                     </div>
-                    <div className="mt-2 flex gap-1">
-                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
-                        {component.type === 'widget' ? component.widgetType : 'action'}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
-                        Span: {component.colSpan}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Basic Settings */}
@@ -269,14 +272,35 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
           </div>
 
           {/* Center Panel - Live Preview */}
-          <div className="flex-1 bg-gray-100 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <h3 className="text-sm font-bold text-gray-700 mb-4">Live Preview</h3>
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-                <div className="text-center text-gray-400 text-sm py-12">
-                  Preview will show components with all applied styling
+          <div className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <GridCanvas 
+                sectionName="Header"
+                components={config.header.components}
+                selectedComponentId={selectedComponentId}
+                onSelect={setSelectedComponentId}
+                onUpdateComponent={updateComponent}
+                onDeleteComponent={deleteComponent}
+                onDropComponent={(e, r, c) => handleDropToGrid(e, 'header', r, c)}
+              />
+
+              {/* Body Placeholder */}
+              <div className="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 p-12 text-center">
+                <div className="flex flex-col items-center gap-2">
+                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Main Content Area (Body)</div>
+                   <div className="text-xs text-gray-400">The primary voucher content will be rendered here.</div>
                 </div>
               </div>
+
+              <GridCanvas 
+                sectionName="Footer"
+                components={config.footer.components}
+                selectedComponentId={selectedComponentId}
+                onSelect={setSelectedComponentId}
+                onUpdateComponent={updateComponent}
+                onDeleteComponent={deleteComponent}
+                onDropComponent={(e, r, c) => handleDropToGrid(e, 'footer', r, c)}
+              />
             </div>
           </div>
 

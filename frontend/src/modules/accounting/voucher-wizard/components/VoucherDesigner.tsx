@@ -999,6 +999,34 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                        </div>
                      </div>
 
+                      {selectedField.id === 'lineItems' && (
+                        <div className="pt-4 border-t border-gray-100">
+                          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Table Style</label>
+                          <div className="grid grid-cols-2 gap-2">
+                             <button
+                               onClick={() => setConfig({...config, tableStyle: 'web'})}
+                               className={`py-2 px-3 rounded border text-xs font-bold transition-all ${
+                                 (config.tableStyle || 'web') === 'web' 
+                                   ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                                   : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-300'
+                               }`}
+                             >
+                               Web Look
+                             </button>
+                             <button
+                               onClick={() => setConfig({...config, tableStyle: 'classic'})}
+                               className={`py-2 px-3 rounded border text-xs font-bold transition-all ${
+                                 config.tableStyle === 'classic' 
+                                   ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                                   : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-300'
+                               }`}
+                             >
+                               Classic Table
+                             </button>
+                          </div>
+                        </div>
+                      )}
+
                      <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Move to Section</label>
                         <select 
@@ -1405,7 +1433,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col p-8">
+      <div className="flex-1 overflow-y-auto p-8">
          {renderContent()}
       </div>
 

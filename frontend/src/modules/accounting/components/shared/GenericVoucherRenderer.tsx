@@ -1,11 +1,16 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { JournalRow } from '../../ai-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
+import { CurrencySelector } from './CurrencySelector';
+import { AmountInput } from './AmountInput';
 import { CustomComponentRegistry } from './registry';
 import { Account } from '../../../../context/AccountsContext';
+import { useCompanySettings } from '../../../../hooks/useCompanySettings';
+import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday } from '../../../../utils/dateUtils';
+import { DatePicker } from './DatePicker';
 
 interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
@@ -14,7 +19,7 @@ interface GenericVoucherRendererProps {
   onChange?: (data: any) => void;
 }
 
-const INITIAL_ROWS: JournalRow[] = Array.from({ length: 5 }).map((_, i) => ({
+const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
   id: i + 1,
   account: '',
   notes: '',
@@ -28,6 +33,8 @@ const INITIAL_ROWS: JournalRow[] = Array.from({ length: 5 }).map((_, i) => ({
 
 export interface GenericVoucherRendererRef {
   getData: () => any;
+  getRows: () => JournalRow[];
+  resetData: () => void;
 }
 
 export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange }, ref) => {
@@ -36,16 +43,243 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
   }
 
+  const { settings } = useCompanySettings();
+
   // Language support with fallback (works without LanguageProvider)
   const t = (key: string) => key; // Simple fallback - just return key
   const isRTL = false; // Default LTR
   
+  const [formData, setFormData] = useState<any>(initialData || {});
   const [rows, setRows] = useState<JournalRow[]>(INITIAL_ROWS);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isFirstRender = useRef(true);
+  
+  // Column resize state (for Classic table)
+  const storageKey = `columnWidths_${definition.id}`;
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [resizing, setResizing] = useState<{ columnId: string; startX: number; startWidth: number } | null>(null);
+  
+  // Line context menu state
+  const [lineContextMenu, setLineContextMenu] = useState<{ x: number; y: number; rowId: number } | null>(null);
+  const [highlightedRows, setHighlightedRows] = useState<Set<number>>(new Set());
+  const [copiedLineData, setCopiedLineData] = useState<JournalRow | null>(null);
+  
+  // Line context menu handlers
+  const handleLineContextMenu = (e: React.MouseEvent, rowId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLineContextMenu({ x: e.clientX, y: e.clientY, rowId });
+  };
+  
+  const closeLineContextMenu = () => setLineContextMenu(null);
+  
+  const handleDeleteLine = (rowId: number) => {
+    setRows((prev: JournalRow[]) => {
+      const next = prev.filter(r => r.id !== rowId);
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
+    closeLineContextMenu();
+  };
+  
+  const handleCopyLine = (rowId: number) => {
+    const row = rows.find(r => r.id === rowId);
+    if (row) {
+      setCopiedLineData(row);
+      navigator.clipboard.writeText(JSON.stringify(row, null, 2));
+    }
+    closeLineContextMenu();
+  };
+  
+  const handlePasteLine = async (rowId: number) => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const data = JSON.parse(clipboardText);
+      if (data && typeof data === 'object') {
+        setRows((prev: JournalRow[]) => {
+          const next = prev.map(r => r.id === rowId ? { ...r, ...data, id: rowId } : r);
+          onChangeRef.current?.({ ...formData, lines: next });
+          return next;
+        });
+      }
+    } catch (err) {
+      // If clipboard doesn't have valid JSON, use internal copied data
+      if (copiedLineData) {
+        setRows((prev: JournalRow[]) => {
+          const next = prev.map(r => r.id === rowId ? { ...copiedLineData, id: rowId } : r);
+          onChangeRef.current?.({ ...formData, lines: next });
+          return next;
+        });
+      }
+    }
+    closeLineContextMenu();
+  };
+  
+  const handleInsertLine = (rowId: number) => {
+    const rowIndex = rows.findIndex(r => r.id === rowId);
+    const newRow: JournalRow = {
+      id: Date.now(), // Unique ID
+      account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+    };
+    setRows((prev: JournalRow[]) => {
+      const next = [
+        ...prev.slice(0, rowIndex + 1),
+        newRow,
+        ...prev.slice(rowIndex + 1)
+      ];
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
+    closeLineContextMenu();
+  };
+  
+  const handleHighlightLine = (rowId: number) => {
+    setHighlightedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+      return newSet;
+    });
+    closeLineContextMenu();
+  };
+  
+  const handleOpenStatement = (rowId: number) => {
+    const row = rows.find(r => r.id === rowId);
+    if (row?.account) {
+      // TODO: Open account statement window
+      console.log('Open statement for account:', row.account);
+      alert(`Account Statement for: ${row.account}\n(Feature to be implemented)`);
+    }
+    closeLineContextMenu();
+  };
+  
+  const handleAccountBalance = (rowId: number) => {
+    const row = rows.find(r => r.id === rowId);
+    if (row?.account) {
+      // TODO: Show account balance
+      console.log('Show balance for account:', row.account);
+      alert(`Account Balance for: ${row.account}\n(Feature to be implemented)`);
+    }
+    closeLineContextMenu();
+  };
+  
+  // Cell navigation - refs for all focusable cells
+  const cellRefs = useRef<Map<string, HTMLInputElement | HTMLSelectElement>>(new Map());
+  
+  const getCellKey = (rowIndex: number, colIndex: number) => `${rowIndex}-${colIndex}`;
+  
+  const handleCellKeyDown = (e: React.KeyboardEvent, rowIndex: number, colIndex: number, totalCols: number) => {
+    const totalRows = rows.length;
+    let newRowIndex = rowIndex;
+    let newColIndex = colIndex;
+    
+    switch (e.key) {
+      case 'ArrowUp':
+        if (rowIndex > 0) {
+          newRowIndex = rowIndex - 1;
+          e.preventDefault();
+        }
+        break;
+      case 'ArrowDown':
+        if (rowIndex < totalRows - 1) {
+          newRowIndex = rowIndex + 1;
+          e.preventDefault();
+        }
+        break;
+      case 'ArrowLeft':
+        if (colIndex > 0) {
+          newColIndex = colIndex - 1;
+          e.preventDefault();
+        }
+        break;
+      case 'ArrowRight':
+        if (colIndex < totalCols - 1) {
+          newColIndex = colIndex + 1;
+          e.preventDefault();
+        }
+        break;
+      case 'Tab':
+        // Let Tab work naturally for form navigation
+        return;
+      case 'Enter':
+        // Move to same column, next row
+        if (rowIndex < totalRows - 1) {
+          newRowIndex = rowIndex + 1;
+          e.preventDefault();
+        }
+        break;
+      default:
+        return;
+    }
+    
+    // Focus the new cell
+    const newKey = getCellKey(newRowIndex, newColIndex);
+    const newCell = cellRefs.current.get(newKey);
+    if (newCell) {
+      newCell.focus();
+      if (newCell instanceof HTMLInputElement) {
+        newCell.select();
+      }
+    }
+  };
+  
+  const registerCellRef = (rowIndex: number, colIndex: number, el: HTMLInputElement | HTMLSelectElement | null) => {
+    const key = getCellKey(rowIndex, colIndex);
+    if (el) {
+      cellRefs.current.set(key, el);
+    } else {
+      cellRefs.current.delete(key);
+    }
+  };
+  
+  // Save column widths to localStorage
+  useEffect(() => {
+    if (Object.keys(columnWidths).length > 0) {
+      localStorage.setItem(storageKey, JSON.stringify(columnWidths));
+    }
+  }, [columnWidths, storageKey]);
+
+  // Ref to hold the latest onChange callback to avoid effect dependencies
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  
+  // Handle column resize
+  useEffect(() => {
+    if (!resizing) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizing.startX;
+      const newWidth = Math.max(50, resizing.startWidth + delta);
+      setColumnWidths((prev: Record<string, number>) => ({ ...prev, [resizing.columnId]: newWidth }));
+    };
+    
+    const handleMouseUp = () => {
+      setResizing(null);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizing]);
   
   // Initialize form data: merge initialData with defaults
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getCompanyToday(settings);
     
     // System field defaults - show proper fallbacks for unsaved vouchers
     const systemDefaults = {
@@ -73,13 +307,21 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // Convert dates from ISO to yyyy-MM-dd format for HTML date inputs
     const processedInitialData = initialData ? {
       ...initialData,
-      date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : undefined,
-      // Keep system values if they exist in initialData
-      voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id || systemDefaults.voucherNumber,
-      status: initialData.status || systemDefaults.status,
-      createdBy: initialData.createdBy || systemDefaults.createdBy,
-      createdAt: initialData.createdAt ? new Date(initialData.createdAt).toLocaleDateString() : systemDefaults.createdAt
+      // Only transform if it exists, don't set to undefined here
+      ...(initialData.date ? { date: formatForInput(initialData.date) } : {}),
+      // Keep system values if they exist, but don't overwrite if they don't
+      voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id,
+      status: initialData.status,
+      createdBy: initialData.createdBy,
+      createdAt: initialData.createdAt ? formatCompanyDate(initialData.createdAt, settings) : undefined
     } : {};
+    
+    // Remove undefined keys to prevent them from overwriting defaults in the next spread
+    Object.keys(processedInitialData).forEach(key => {
+      if (processedInitialData[key] === undefined) {
+        delete processedInitialData[key];
+      }
+    });
     
     // Merge: initialData takes precedence over defaults
     const mergedData = { ...defaults, ...processedInitialData };
@@ -100,14 +342,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }));
       setRows(loadedRows);
     }
-  }, [initialData]);
-  
-  // Call onChange whenever rows or formData changes
-  useEffect(() => {
-    if (onChange) {
-      onChange({ ...formData, rows });
-    }
-  }, [rows, formData, onChange]);
+  }, [initialData, settings]); // Re-run when settings arrive to refresh 'Today' date
   
   // Expose getData method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -179,22 +414,61 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         formId: resultFormId, // Which form was used for rendering
         prefix: resultPrefix // Voucher number prefix
       };
+    },
+    getRows: () => rows,
+    resetData: () => {
+      const today = getCompanyToday(settings);
+      
+      setRows(INITIAL_ROWS);
+      setFormData({
+        date: today,
+        currency: 'USD',
+        exchangeRate: 1,
+        status: 'Draft',
+        voucherNumber: 'Auto-generated'
+      });
     }
   }));
   
   const handleInputChange = (fieldId: string, value: any) => {
-    setFormData(prev => ({ ...prev, [fieldId]: value }));
+    setFormData((prev: any) => {
+      const next = { ...prev, [fieldId]: value };
+      onChangeRef.current?.({ ...next, lines: rows });
+      return next;
+    });
   };
 
   const handleRowChange = (id: number, field: keyof JournalRow, value: any) => {
-    setRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row));
+    setRows((prev: JournalRow[]) => {
+      const next = prev.map(row => {
+        if (row.id === id) {
+          const updated = { ...row, [field]: value };
+          
+          // Mutual exclusion: debit and credit cannot both have values
+          if (field === 'debit' && value > 0) {
+            updated.credit = 0;
+          } else if (field === 'credit' && value > 0) {
+            updated.debit = 0;
+          }
+          
+          return updated;
+        }
+        return row;
+      });
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
   };
 
   const addRow = () => {
-    setRows(prev => [...prev, {
-      id: prev.length + 1,
-      account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
-    }]);
+    setRows(prev => {
+      const next = [...prev, {
+        id: prev.length + 1,
+        account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+      }];
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
   };
 
   // Helper: Get display prefix from definition
@@ -296,16 +570,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
     
     // 1. System Fields (Read Only)
+    // Removed 'date' from this list as it should be editable via CompanyDatePicker
     if (['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt'].includes(fieldId)) {
+       const isDate = fieldId === 'createdAt';
        return (
          <div className="space-y-0.5">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
-            <input 
-              type="text" 
-              readOnly 
-              value={formData[fieldId] || 'Pending'}
-              className="w-full p-1.5 border border-gray-200 rounded bg-gray-50 text-gray-500 text-xs shadow-sm" 
-            />
+            <div className="w-full p-1.5 border border-gray-200 rounded bg-gray-50 text-gray-500 text-xs shadow-sm min-h-[30px] flex items-center">
+              {isDate ? formatCompanyDate(formData[fieldId], settings) : (formData[fieldId] || 'Pending')}
+            </div>
          </div>
        );
     }
@@ -313,64 +586,132 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // 2. Line Items Table
     if (fieldId === 'lineItems') {
         const columns = getTableColumns();
+        const isClassic = (definition as any).tableStyle === 'classic';
+        
+        // Handle resize start
+        const handleResizeStart = (e: React.MouseEvent, columnId: string, currentWidth: number) => {
+            e.preventDefault();
+            setResizing({ columnId, startX: e.clientX, startWidth: currentWidth });
+        };
 
-        return (
-            <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-white">
-                <table className="w-full text-sm min-w-[600px]">
-                    <thead className="bg-gray-50 text-gray-500 font-medium">
-                         <tr>
-                             <th className="p-2 text-start w-10 text-xs">#</th>
-                             {columns.map(col => (
-                                 <th 
-                                   key={col.id} 
-                                   className="p-2 text-start text-xs capitalize"
-                                   style={col.width ? { width: col.width, minWidth: col.width === 'auto' ? '150px' : col.width } : {}}
-                                 >
-                                   {col.label}
-                                 </th>
-                             ))}
-                             <th className="p-2 w-8"></th>
-                         </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {rows.map((row, index) => (
-                            <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="p-2 text-gray-400 text-xs text-center">{index + 1}</td>
+        if (isClassic) {
+            return (
+                <div className="border border-gray-300 rounded overflow-hidden shadow-sm bg-white">
+                    <div className="max-h-[200px] overflow-y-auto">
+                    <table className="w-full text-sm min-w-[600px] border-collapse">
+                        <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 z-10">
+                             <tr className="border-b-2 border-slate-300">
+                                 <th className="p-2 text-center w-10 text-[11px] font-bold text-slate-700 border-r border-slate-300 bg-slate-100/50">#</th>
                                  {columns.map(col => {
-                                     const colId = col.id;
+                                     // Parse initial width from column definition
+                                     let initialWidth = 150; // Default
+                                     if (col.width) {
+                                       if (typeof col.width === 'number') {
+                                         initialWidth = col.width;
+                                       } else if (typeof col.width === 'string') {
+                                         const parsed = parseInt(col.width);
+                                         if (!isNaN(parsed)) initialWidth = parsed;
+                                       }
+                                     }
+                                     
+                                     const colWidth = columnWidths[col.id] || initialWidth;
+                                     
                                      return (
-                                         <td 
-                                           key={`${row.id}-${colId}`} 
-                                           className="p-1"
-                                           style={col.width ? { width: col.width } : {}}
+                                         <th 
+                                           key={col.id} 
+                                           className="p-2 text-start text-[11px] font-bold text-slate-700 uppercase tracking-wide border-r border-slate-300 relative group"
+                                           style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
                                          >
-                                             {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
-                                                 <AccountSelector 
-                                                     value={row.account} 
-                                                     onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
-                                                 />
-                                             ) : colId === 'debit' || colId === 'credit' ? (
-                                                 <input 
-                                                     type="number" 
-                                                     value={row[colId as 'debit' | 'credit'] || 0}
-                                                     onChange={(e) => handleRowChange(row.id, colId as any, parseFloat(e.target.value) || 0)}
-                                                     className="w-full p-1.5 border border-gray-200 rounded text-xs text-end focus:ring-1 focus:ring-indigo-500 outline-none" 
-                                                 />
-                                             ) : (
-                                                 <input 
-                                                   type="text" 
-                                                   value={(row as any)[colId] || ''}
-                                                   onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                                   className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none" 
-                                                 />
-                                             )}
+                                           {col.label}
+                                           {/* Resize handle */}
+                                           <div
+                                             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                             onMouseDown={(e) => handleResizeStart(e, col.id, colWidth)}
+                                           />
+                                         </th>
+                                     );
+                                 })}
+                                 <th className="p-2 w-8 border-gray-300"></th>
+                             </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {rows.map((row, index) => (
+                                 <tr 
+                                   key={row.id} 
+                                   className={`hover:bg-blue-50/40 hover:shadow-sm transition-all duration-150 border-b border-gray-200 group ${highlightedRows.has(row.id) ? 'bg-yellow-100' : ''}`}
+                                 >
+                                    <td 
+                                      className="p-2 text-slate-400 text-[11px] font-medium text-center border-r border-gray-200 bg-slate-50/50 cursor-pointer hover:bg-slate-100"
+                                      onContextMenu={(e) => handleLineContextMenu(e, row.id)}
+                                    >
+                                      {index + 1}
+                                    </td>
+                                     {columns.map((col, colIndex) => {
+                                         const colId = col.id;
+                                         const totalCols = columns.length;
+                                         
+                                         // Parse initial width (same logic as header)
+                                         let initialWidth = 150;
+                                         if (col.width) {
+                                           if (typeof col.width === 'number') {
+                                             initialWidth = col.width;
+                                           } else if (typeof col.width === 'string') {
+                                             const parsed = parseInt(col.width);
+                                             if (!isNaN(parsed)) initialWidth = parsed;
+                                           }
+                                         }
+                                         const colWidth = columnWidths[colId] || initialWidth;
+                                         
+                                         return (
+                                             <td 
+                                               key={`${row.id}-${colId}`} 
+                                               className="p-0 border-r border-gray-200"
+                                               style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
+                                             >
+                                                 {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
+                                                     <div className="p-0.5">
+                                                        <AccountSelector 
+                                                            ref={(el) => registerCellRef(index, colIndex, el)}
+                                                            value={row.account} 
+                                                            onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                                            noBorder={true}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                        />
+                                                     </div>
+                                                 ) : colId === 'debit' || colId === 'credit' ? (
+                                                     <AmountInput
+                                                         ref={(el) => registerCellRef(index, colIndex, el)}
+                                                         value={row[colId as 'debit' | 'credit'] || 0}
+                                                         onChange={(val) => handleRowChange(row.id, colId as 'debit' | 'credit', val)}
+                                                         onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                     />
+                                                 ) : (colId === 'currency' || col.type === 'currency' || col.type === 'currency-selector') ? (
+                                                     <div className="p-0.5">
+                                                        <CurrencySelector 
+                                                            ref={(el) => registerCellRef(index, colIndex, el)}
+                                                            value={(row as any)[colId] || ''}
+                                                            onChange={(val) => handleRowChange(row.id, colId as any, val)} 
+                                                            noBorder={true}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                        />
+                                                     </div>
+                                                 ) : (
+                                                     <input 
+                                                       ref={(el) => registerCellRef(index, colIndex, el)}
+                                                       type="text" 
+                                                       value={(row as any)[colId] || ''}
+                                                       onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                       onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                       className="w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                                     />
+                                                 )}
                                          </td>
                                      );
                                  })}
-                                <td className="p-2 text-center w-8">
+                                <td className="p-1 text-center w-8">
                                     <button 
                                       onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                      className="text-gray-300 hover:text-red-500 transition-colors"
+                                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -379,12 +720,154 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                         ))}
                     </tbody>
                 </table>
-                <button onClick={addRow} className="w-full py-1.5 text-center text-xs font-medium text-indigo-600 bg-indigo-50 border-t border-indigo-100 hover:bg-indigo-100">
+                </div>
+                <button onClick={addRow} className="w-full py-2 text-center text-[11px] font-bold text-indigo-600 bg-slate-50 border-t border-gray-200 hover:bg-indigo-50 transition-colors uppercase tracking-widest">
                     + {t('addLine')}
                 </button>
+                
+                {/* Line Context Menu */}
+                {lineContextMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[9998]" 
+                      onClick={closeLineContextMenu}
+                      onContextMenu={(e) => { e.preventDefault(); closeLineContextMenu(); }}
+                    />
+                    <div 
+                      className="fixed bg-white rounded-md shadow-lg border border-gray-200 z-[9999] py-1 w-48"
+                      style={{ left: lineContextMenu.x, top: lineContextMenu.y }}
+                    >
+                      <button
+                        onClick={() => handleDeleteLine(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Line
+                      </button>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => handleCopyLine(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => handlePasteLine(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Paste
+                      </button>
+                      <button
+                        onClick={() => handleInsertLine(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Insert Below
+                      </button>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => handleHighlightLine(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <span className="w-4 h-4 bg-yellow-300 rounded"></span>
+                        {highlightedRows.has(lineContextMenu.rowId) ? 'Remove Highlight' : 'Highlight'}
+                      </button>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => handleOpenStatement(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Statement
+                      </button>
+                      <button
+                        onClick={() => handleAccountBalance(lineContextMenu.rowId)}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                        Account Balance
+                      </button>
+                    </div>
+                  </>
+                )}
             </div>
         );
     }
+
+    // Default Web Style
+    return (
+        <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-white">
+            <table className="w-full text-sm min-w-[600px]">
+                <thead className="bg-gray-50 text-gray-500 font-medium">
+                     <tr>
+                         <th className="p-2 text-start w-10 text-xs">#</th>
+                         {columns.map(col => (
+                             <th 
+                               key={col.id} 
+                               className="p-2 text-start text-xs capitalize"
+                               style={col.width ? { width: col.width, minWidth: col.width === 'auto' ? '150px' : col.width } : {}}
+                             >
+                               {col.label}
+                             </th>
+                         ))}
+                         <th className="p-2 w-8"></th>
+                     </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                    {rows.map((row, index) => (
+                        <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-2 text-gray-400 text-xs text-center">{index + 1}</td>
+                             {columns.map(col => {
+                                 const colId = col.id;
+                                 return (
+                                     <td 
+                                       key={`${row.id}-${colId}`} 
+                                       className="p-1"
+                                       style={col.width ? { width: col.width } : {}}
+                                     >
+                                         {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
+                                             <AccountSelector 
+                                                 value={row.account} 
+                                                 onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                             />
+                                         ) : colId === 'debit' || colId === 'credit' ? (
+                                             <input 
+                                                 type="number" 
+                                                 value={row[colId as 'debit' | 'credit'] || 0}
+                                                 onChange={(e) => handleRowChange(row.id, colId as any, parseFloat(e.target.value) || 0)}
+                                                 className="w-full p-1.5 border border-gray-200 rounded text-xs text-end focus:ring-1 focus:ring-indigo-500 outline-none font-mono" 
+                                             />
+                                         ) : (
+                                             <input 
+                                               type="text" 
+                                               value={(row as any)[colId] || ''}
+                                               onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                               className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none" 
+                                             />
+                                         )}
+                                     </td>
+                                 );
+                             })}
+                            <td className="p-2 text-center w-8">
+                                <button 
+                                  onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                                  className="text-gray-300 hover:text-red-500 transition-colors"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <button onClick={addRow} className="w-full py-1.5 text-center text-xs font-medium text-indigo-600 bg-indigo-50 border-t border-indigo-100 hover:bg-indigo-100">
+                + {t('addLine')}
+            </button>
+        </div>
+    );
+}
 
     // 3. Standard Inputs (from canonical headerFields)
     
@@ -398,7 +881,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             {/* System fields - display as read-only */}
             {isSystemField ? (
                 <div className="w-full p-1.5 border border-gray-100 rounded bg-gray-50 text-xs text-gray-600 italic">
-                    {formData[fieldId] || 'Pending'}
+                    {fieldId === 'createdAt' || fieldId === 'updatedAt' 
+                      ? formatCompanyDate(formData[fieldId], settings) 
+                      : (formData[fieldId] || 'Pending')}
                 </div>
             ) : fieldId === 'currency' || fieldId === 'paymentMethod' ? (
                  <div className="relative">
@@ -425,12 +910,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                  </div>
             ) : fieldId === 'date' ? (
                  <div className="relative">
-                    <input 
-                      type="date" 
-                      value={formData[fieldId] || ''}
-                      onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                      className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm" 
-                    />
+            <DatePicker 
+              value={formData[fieldId] || ''}
+              onChange={(val: string) => handleInputChange(fieldId, val)}
+            />
                  </div>
             ) : fieldId === 'notes' || fieldId === 'description' ? (
                  <textarea 

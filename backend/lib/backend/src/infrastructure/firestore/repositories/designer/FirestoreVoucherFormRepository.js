@@ -61,6 +61,7 @@ class FirestoreVoucherFormRepository {
             rules: data.rules || [],
             actions: data.actions || [],
             isMultiLine: (_e = data.isMultiLine) !== null && _e !== void 0 ? _e : true,
+            tableStyle: data.tableStyle || 'web',
             defaultCurrency: data.defaultCurrency || null,
             baseType: data.baseType || null,
             createdAt: ((_g = (_f = data.createdAt) === null || _f === void 0 ? void 0 : _f.toDate) === null || _g === void 0 ? void 0 : _g.call(_f)) || data.createdAt || new Date(),
@@ -89,6 +90,7 @@ class FirestoreVoucherFormRepository {
             rules: form.rules || [],
             actions: form.actions || [],
             isMultiLine: (_a = form.isMultiLine) !== null && _a !== void 0 ? _a : true,
+            tableStyle: form.tableStyle || 'web',
             defaultCurrency: form.defaultCurrency || null,
             baseType: form.baseType || null,
             createdAt: form.createdAt || admin.firestore.FieldValue.serverTimestamp(),
@@ -159,7 +161,7 @@ class FirestoreVoucherFormRepository {
             const cleanUpdates = Object.assign({}, updates);
             delete cleanUpdates.id;
             delete cleanUpdates.companyId;
-            cleanUpdates.updatedAt = new Date();
+            cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
             // Remove undefined values
             Object.keys(cleanUpdates).forEach(key => {
                 if (cleanUpdates[key] === undefined) {

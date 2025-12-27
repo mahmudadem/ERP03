@@ -16,9 +16,12 @@ import {
   Package,
   Settings
 } from 'lucide-react';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { formatCompanyDate } from '../../../utils/dateUtils';
 
 const DashboardPage: React.FC = () => {
-  const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const { settings } = useCompanySettings();
+  const currentDate = formatCompanyDate(new Date(), settings);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-2">

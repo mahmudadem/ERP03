@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { DateRange, VoucherFilters } from '../../../hooks/useVouchersWithCache';
+import { DatePicker } from './shared/DatePicker';
 
 interface Props {
   dateRange: DateRange;
@@ -82,18 +83,16 @@ export const VoucherFiltersBar: React.FC<Props> = ({
 
       {/* Date Range */}
       <div className="flex gap-2 items-center w-full lg:w-auto">
-        <input
-          type="date"
-          className="border rounded px-2 py-2 text-sm w-36"
+        <DatePicker
+          className="w-36"
           value={dateRange.from || ''}
-          onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
+          onChange={(val: string) => onDateRangeChange({ ...dateRange, from: val })}
         />
         <span className="text-gray-400">-</span>
-        <input
-          type="date"
-          className="border rounded px-2 py-2 text-sm w-36"
+        <DatePicker
+          className="w-36"
           value={dateRange.to || ''}
-          onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
+          onChange={(val: string) => onDateRangeChange({ ...dateRange, to: val })}
         />
       </div>
 

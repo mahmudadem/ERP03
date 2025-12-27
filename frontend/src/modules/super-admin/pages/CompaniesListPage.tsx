@@ -3,6 +3,7 @@ import { superAdminApi, SuperAdminCompany } from '../../../api/superAdmin';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
+import { formatCompanyDate } from '../../../utils/dateUtils';
 
 export default function CompaniesListPage() {
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
@@ -65,7 +66,7 @@ export default function CompaniesListPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{company.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{company.ownerUid}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {company.createdAt ? new Date(company.createdAt).toLocaleDateString() : '—'}
+                    {company.createdAt ? formatCompanyDate(company.createdAt, null) : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>

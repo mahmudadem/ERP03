@@ -31,8 +31,54 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
   children,
   isMaximized = false,
 }) => {
+  const [position, setPosition] = React.useState({ x: 80, y: 80 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragOffset, setDragOffset] = React.useState({ x: 0, y: 0 });
+  const windowRef = React.useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only drag if clicking the header AND not a button
+    if ((e.target as HTMLElement).closest('.window-header') && 
+        !(e.target as HTMLElement).closest('button')) {
+      setIsDragging(true);
+      const rect = windowRef.current?.getBoundingClientRect();
+      if (rect) {
+        setDragOffset({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        });
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging && !isMaximized) {
+        setPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, isMaximized, dragOffset]);
+
   // Render a component (widget or action) in the grid
   const renderComponent = (component: WindowComponent) => {
+    // ... logic remains same ...
     if (component.type === 'widget' && component.widgetType) {
       const WidgetComponent = WidgetRegistry[component.widgetType];
       return WidgetComponent ? <WidgetComponent widget={component} data={data} /> : null;
@@ -65,12 +111,8 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
 
   // Render a grid section (header or footer)
   const renderGridSection = (components: WindowComponent[] | undefined) => {
-    // Null safety check
-    if (!components || components.length === 0) {
-      return null;
-    }
+    if (!components || components.length === 0) return null;
 
-    // Group by row
     const rows: Record<number, WindowComponent[]> = {};
     components.forEach(comp => {
       if (!rows[comp.row]) rows[comp.row] = [];
@@ -98,66 +140,69 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
     );
   };
 
+  const style: React.CSSProperties = isMaximized
+    ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: 'auto', height: 'auto', zIndex: 50 }
+    : { position: 'fixed', left: position.x, top: position.y, width: '900px', zIndex: 50 };
+
   return (
-    <div className="fixed left-20 top-20 w-[900px] bg-white rounded-lg shadow-2xl border border-gray-300 flex flex-col z-50">
-      {/* Window Header */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-move select-none">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-gray-700">{config.header.title}</h3>
+    <>
+      {isDragging && (
+        <div className="fixed inset-0 z-[9999]" style={{ cursor: 'move' }} />
+      )}
+      
+      <div
+        ref={windowRef}
+        style={style}
+        className="bg-white rounded-lg shadow-2xl border border-gray-300 flex flex-col"
+      >
+        {/* Window Header */}
+        <div 
+          className="window-header px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-move select-none"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium text-gray-700">{config.header.title}</h3>
+            
+            {config.header.showControls && (
+              <div className="flex items-center gap-1">
+                {onMinimize && (
+                  <button onClick={onMinimize} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                )}
+                {onMaximize && (
+                  <button onClick={onMaximize} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                    <Square className="w-3 h-3" />
+                  </button>
+                )}
+                {onClose && (
+                  <button onClick={onClose} className="p-1 hover:bg-red-100 hover:text-red-500 rounded text-gray-500 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           
-          {/* Window Controls */}
-          {config.header.showControls && (
-            <div className="flex items-center gap-1">
-              {onMinimize && (
-                <button
-                  onClick={onMinimize}
-                  className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                  title="Minimize"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-              )}
-              {onMaximize && (
-                <button
-                  onClick={onMaximize}
-                  className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                  title={isMaximized ? "Restore" : "Maximize"}
-                >
-                  <Square className="w-3 h-3" />
-                </button>
-              )}
-              {onClose && (
-                <button
-                  onClick={onClose}
-                  className="p-1 hover:bg-gray-200 rounded text-gray-500"
-                  title="Close"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+          {config.header.components && config.header.components.length > 0 && (
+            <div className="pt-2 border-t border-gray-200">
+              {renderGridSection(config.header.components)}
             </div>
           )}
         </div>
-        
-        {/* Header Components Grid */}
-        {config.header.components && config.header.components.length > 0 && (
-          <div className="pt-2 border-t border-gray-200">
-            {renderGridSection(config.header.components)}
+
+        {/* Window Body */}
+        <div className="flex-1 overflow-y-auto p-4 bg-white max-h-[600px]">
+          {children}
+        </div>
+
+        {/* Window Footer */}
+        {config.footer.components && config.footer.components.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+            {renderGridSection(config.footer.components)}
           </div>
         )}
       </div>
-
-      {/* Window Body */}
-      <div className="flex-1 overflow-y-auto p-4 bg-white max-h-[600px]">
-        {children}
-      </div>
-
-      {/* Window Footer */}
-      {config.footer.components && config.footer.components.length > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-          {renderGridSection(config.footer.components)}
-        </div>
-      )}
-    </div>
+    </>
   );
 };

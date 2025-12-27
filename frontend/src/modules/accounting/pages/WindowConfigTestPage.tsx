@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Eye } from 'lucide-react';
 import { WindowConfigDesigner } from '../../../components/windows/WindowConfigDesigner';
 import { ConfigurableWindow } from '../../../components/windows/ConfigurableWindow';
 import { WindowConfig, DEFAULT_CONFIGS } from '../../../types/WindowConfig';
 
 export const WindowConfigTestPage: React.FC = () => {
   const [showDesigner, setShowDesigner] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<WindowConfig>(DEFAULT_CONFIGS.voucher);
   const [selectedTemplate, setSelectedTemplate] = useState<'voucher' | 'invoice' | 'report'>('voucher');
 
@@ -22,7 +23,7 @@ export const WindowConfigTestPage: React.FC = () => {
   const handleSaveConfig = (config: WindowConfig) => {
     setCurrentConfig(config);
     setShowDesigner(false);
-    alert('Configuration saved! Check the preview window.');
+    // Don't auto-show preview, let user click "Test Preview"
   };
 
   const loadTemplate = (template: 'voucher' | 'invoice' | 'report') => {
@@ -48,7 +49,7 @@ export const WindowConfigTestPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Controls</h2>
           
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-3 gap-6">
             {/* Load Template */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -88,18 +89,34 @@ export const WindowConfigTestPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Open Designer */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Customize Configuration
-              </label>
-              <button
-                onClick={() => setShowDesigner(true)}
-                className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2"
-              >
-                <Settings size={18} />
-                Open Designer
-              </button>
+            {/* Designer / Preview Controls */}
+            <div className="flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customize
+                </label>
+                <button
+                  onClick={() => setShowDesigner(true)}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-2"
+                >
+                  <Settings size={18} />
+                  Open Designer
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Validation
+                </label>
+                <button
+                  onClick={() => setShowPreview(true)}
+                  disabled={showPreview}
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Eye size={18} />
+                  Test Preview
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -146,69 +163,38 @@ export const WindowConfigTestPage: React.FC = () => {
             <li>Click on a component to select it and use resize controls</li>
             <li>Click the trash icon to remove components</li>
             <li>Click "Save Config" to apply changes</li>
-            <li>See the live preview below!</li>
+            <li>Click <strong>"Test Preview"</strong> to see the window in action!</li>
           </ol>
         </div>
 
-        {/* Live Preview */}
-        <div className="bg-gray-100 rounded-lg p-8 min-h-[600px] relative">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Live Preview</h2>
-          
-          <ConfigurableWindow
-            config={currentConfig}
-            data={sampleData}
-            onClose={() => alert('Close clicked')}
-            onMinimize={() => alert('Minimize clicked')}
-            onMaximize={() => alert('Maximize clicked')}
-          >
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-gray-900">
-                Sample {currentConfig.windowType} Content
-              </h3>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    defaultValue="2025-12-26"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows={3}
-                    defaultValue="This is a sample window with configurable header, body, and footer."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    defaultValue="1000"
-                  />
-                </div>
+        {/* Live Preview Area */}
+        <div className="bg-gray-100 rounded-lg p-8 min-h-[500px] relative overflow-hidden border-2 border-dashed border-gray-300 flex items-center justify-center">
+          {!showPreview ? (
+            <div className="text-center">
+              <div className="bg-white p-6 rounded-full shadow-sm inline-block mb-4">
+                <Eye size={48} className="text-gray-300" />
               </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                <p className="text-sm text-green-800">
-                  ✅ The widgets in the footer will show real data from the window state.
-                  Try the designer to add/remove widgets and see the changes here!
-                </p>
-              </div>
+              <p className="text-gray-500 font-medium">Click "Test Preview" to launch the configurable window</p>
             </div>
-          </ConfigurableWindow>
+          ) : (
+            <ConfigurableWindow
+              config={currentConfig}
+              data={sampleData}
+              onClose={() => setShowPreview(false)}
+              onMinimize={() => console.log('Minimize')}
+              onMaximize={() => console.log('Maximize')}
+            >
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Sample {currentConfig.windowType} Content
+                </h3>
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded text-blue-800">
+                  This is a test preview of your window configuration. 
+                  You can now drag this window by the header and close it using the X button.
+                </div>
+              </div>
+            </ConfigurableWindow>
+          )}
         </div>
       </div>
 

@@ -5,11 +5,12 @@
  * Uses GenericVoucherRenderer with real data binding and saves to backend.
  */
 
-import React, { useState, useRef } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Save, Loader2, Send } from 'lucide-react';
 import { VoucherFormConfig } from '../voucher-wizard/types';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIMode } from '../../../api/companyApi';
+import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface VoucherEntryModalProps {
   voucherType: VoucherFormConfig;
   uiMode: UIMode;
   onSave: (data: any) => Promise<void>;
+  initialData?: any;
 }
 
 export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
@@ -24,15 +26,33 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   onClose,
   voucherType,
   uiMode,
-  onSave
+  onSave,
+  initialData
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [, forceUpdate] = useState({}); // To trigger totals update
   const [error, setError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
 
   if (!isOpen) return null;
 
-  const handleSave = async () => {
+  const handleCloseAttempt = () => {
+    if (isDirty) {
+      setShowUnsavedModal(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowUnsavedModal(false);
+    onClose();
+  };
+
+  const handleSave = async (statusOverride?: string) => {
     try {
       setIsSaving(true);
       setError(null);
@@ -55,7 +75,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           ...(formData.metadata || {}),
           formId: voucherType.id
         },
-        status: 'draft'
+        status: typeof statusOverride === 'string' ? statusOverride : (initialData ? initialData.status : 'draft')
       };
       
       await onSave(voucherData);
@@ -72,7 +92,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={handleCloseAttempt}
       />
       
       {/* Modal */}
@@ -85,14 +105,14 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                New {voucherType.name}
+                {initialData ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Fill in the details below • Mode: {uiMode === 'windows' ? 'Windows' : 'Classic'}
+                {initialData ? 'Update details below' : 'Fill in the details below'} • Mode: {uiMode === 'windows' ? 'Windows' : 'Web View'}
               </p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleCloseAttempt}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               disabled={isSaving}
             >
@@ -113,38 +133,99 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               ref={rendererRef}
               definition={voucherType as any}
               mode={uiMode}
+              initialData={initialData}
+              onChange={() => {
+                setIsDirty(true);
+                forceUpdate({});
+              }}
             />
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 px-6 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Voucher
-                </>
-              )}
-            </button>
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+            
+            {/* Totals Display */}
+            <div className="flex items-center gap-4">
+              {(() => {
+                const rows = rendererRef.current?.getRows() || [];
+                const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) || 0), 0);
+                const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0);
+                const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+                const hasValues = totalDebit > 0 || totalCredit > 0;
+                const bgColor = !hasValues ? 'bg-gray-100' : (isBalanced ? 'bg-green-100' : 'bg-red-100');
+                
+                return (
+                  <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-colors border border-gray-200/50 shadow-sm`}>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Debit</span>
+                      <span className="text-base font-bold text-slate-900 font-mono">
+                        {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalDebit)}
+                      </span>
+                    </div>
+                    <div className="w-[1px] h-5 bg-gray-300/60" />
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Credit</span>
+                      <span className="text-base font-bold text-slate-900 font-mono">
+                        {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalCredit)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCloseAttempt}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              
+              <button
+                onClick={() => handleSave('draft')}
+                className="flex items-center gap-2 px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Draft
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleSave('submitted')} 
+                className="flex items-center gap-2 px-6 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                     <Loader2 className="w-4 h-4 animate-spin" />
+                  </>
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Submit
+              </button>
+            </div>
           </div>
         </div>
       </div>
+      
+      <UnsavedChangesModal 
+        isOpen={showUnsavedModal}
+        onCancel={() => setShowUnsavedModal(false)}
+        onConfirm={handleConfirmClose}
+      />
     </div>
   );
 };

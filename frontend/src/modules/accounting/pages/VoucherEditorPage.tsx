@@ -6,9 +6,10 @@ import { DynamicVoucherRenderer } from '../../../designer-engine/components/Dyna
 import { accountingApi } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
-import { AccountSelector } from '../../../components/accounting/AccountSelector';
+import { AccountSelectorCombobox } from '../../../components/accounting/AccountSelectorCombobox';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../services/errorHandler';
+import { getCompanyToday } from '../../../utils/dateUtils';
 
 const VoucherEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +29,10 @@ const VoucherEditorPage: React.FC = () => {
     if (id && id !== 'new') {
       loadVoucherData(id);
     } else {
+      // Re-initialize only if we're in 'new' mode and initialValues haven't been set with settings yet
       setInitialValues({
         header: {
-           date: new Date().toISOString().split('T')[0],
+           date: getCompanyToday(companySettings),
            currency: 'USD'
         },
         lines: [
@@ -39,7 +41,7 @@ const VoucherEditorPage: React.FC = () => {
         ]
       });
     }
-  }, [id]);
+  }, [id, companySettings]); // Now re-runs when settings arrive
 
   const loadVoucherData = async (voucherId: string) => {
     try {
@@ -125,7 +127,7 @@ const VoucherEditorPage: React.FC = () => {
     }
   };
 
-  if (defLoading || dataLoading || !initialValues) {
+  if (defLoading || dataLoading || !initialValues || !companySettings) {
     return <div className="p-8 text-center text-gray-500">Loading editor...</div>;
   }
 
@@ -197,7 +199,7 @@ const VoucherEditorPage: React.FC = () => {
   const isReadOnly = currentVoucher && (currentVoucher.status === 'locked' || currentVoucher.status === 'cancelled');
 
   const customComponents = {
-    'account-selector': AccountSelector
+    'account-selector': AccountSelectorCombobox
   };
 
   return (

@@ -4,6 +4,9 @@
  */
 import React from 'react';
 import { FieldDefinition } from '../types/FieldDefinition';
+import { useCompanySettings } from '../../hooks/useCompanySettings';
+import { formatCompanyDate } from '../../utils/dateUtils';
+import { DatePicker } from '../../modules/accounting/components/shared/DatePicker';
 
 interface Props {
   field: FieldDefinition;
@@ -11,9 +14,12 @@ interface Props {
   error?: string;
   onChange: (value: any) => void;
   customComponents?: Record<string, React.ComponentType<any>>;
+  className?: string;
+  noBorder?: boolean;
 }
 
-export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents }) => {
+export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents, className, noBorder }) => {
+  const { settings } = useCompanySettings();
   
   // Custom Styles from Definition
   const style = field.style || {};
@@ -46,6 +52,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
           field={field}
           error={error}
           disabled={field.readOnly}
+          noBorder={noBorder}
         />
       );
     }
@@ -79,20 +86,10 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
         );
 
       case 'DATE':
-        let dateValue = '';
-        if (value) {
-          const d = new Date(value);
-          if (!isNaN(d.getTime())) {
-            dateValue = d.toISOString().split('T')[0];
-          }
-        }
         return (
-          <input
-            type="date"
-            className={baseInputClass}
-            style={customInputStyle}
-            value={dateValue}
-            onChange={(e) => onChange(e.target.value)}
+          <DatePicker
+            value={value || ''}
+            onChange={onChange}
             disabled={field.readOnly}
           />
         );
@@ -148,7 +145,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
   };
 
   return (
-    <div className={`flex flex-col ${field.hidden ? 'hidden' : ''}`}>
+    <div className={`flex flex-col ${field.hidden ? 'hidden' : ''} ${className || ''}`}>
       <label 
         className="mb-1 text-xs font-medium text-gray-700"
         style={{
