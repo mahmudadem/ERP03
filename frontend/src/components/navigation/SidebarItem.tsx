@@ -60,8 +60,9 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   }, [isAnyChildActive, isSubmenusMode]);
 
   const itemRef = React.useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+  const [coords, setCoords] = React.useState({ top: 0, left: 0, bottom: 0 });
   const [showFlyout, setShowFlyout] = React.useState(false);
+  const [opensUpward, setOpensUpward] = React.useState(false);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const updateCoords = () => {
@@ -69,8 +70,15 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       const rect = itemRef.current.getBoundingClientRect();
       setCoords({
         top: rect.top,
-        left: rect.right
+        left: rect.right,
+        bottom: rect.bottom
       });
+      
+      // Determine direction: if bottom half of screen, default to upward for long menus
+      // (Simplified logic: if below 60% of vertical height, consider upward flip)
+      const viewportHeight = window.innerHeight;
+      const isLowOnScreen = rect.top > viewportHeight * 0.6;
+      setOpensUpward(isLowOnScreen);
     }
   };
 
@@ -189,14 +197,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                 "animate-in fade-in slide-in-from-left-1 duration-200"
               )}
               style={{ 
-                top: coords.top - 4, 
+                ...(opensUpward ? { bottom: (window.innerHeight - coords.bottom) - 4 } : { top: coords.top - 4 }),
                 left: coords.left + (isFlyout ? 1 : 11) 
               }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
               {/* Safe Zone Bridge */}
-              <div className="absolute left-[-22px] top-0 bottom-0 w-[22px] bg-transparent" />
+              <div className={clsx(
+                "absolute top-0 bottom-0 w-[22px] bg-transparent",
+                isFlyout ? "left-[-8px]" : "left-[-22px]"
+              )} />
               
               <div className="relative z-10 space-y-0.5">
                 {children.map((child, idx) => (
