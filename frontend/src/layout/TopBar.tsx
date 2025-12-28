@@ -1,5 +1,6 @@
 import React, { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clsx } from 'clsx';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { Button } from '../components/ui/Button';
@@ -12,7 +13,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { company } = useCompanyAccess();
-  const { uiMode, toggleUiMode, toggleTheme, setUiMode } = useUserPreferences();
+  const { uiMode, setUiMode, theme, toggleTheme } = useUserPreferences();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -37,12 +38,32 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden md:flex items-center gap-2 mr-4 border-r pr-4">
-           <Button variant="ghost" size="sm" onClick={toggleUiMode}>
-             {uiMode === 'classic' ? '🖥️ Switch to Windows' : '🌐 Switch to Web'}
-           </Button>
-           <Button variant="ghost" size="sm" onClick={toggleTheme}>
-             Theme
+        <div className="hidden md:flex items-center gap-3 px-4">
+           {/* UI Mode Toggle */}
+           <div className="flex bg-gray-100 p-1 rounded-lg">
+             <button
+               onClick={() => setUiMode('windows')}
+               className={clsx(
+                 "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                 uiMode === 'windows' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+               )}
+             >
+               🖥️ Windows
+             </button>
+             <button
+               onClick={() => setUiMode('classic')}
+               className={clsx(
+                 "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                 uiMode === 'classic' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+               )}
+             >
+               🌐 Web
+             </button>
+           </div>
+
+           {/* Theme Toggle (Simplified) */}
+           <Button variant="ghost" size="sm" onClick={toggleTheme} className="text-gray-500 hover:text-gray-700">
+             {theme === 'light' ? '🌙' : '☀️'}
            </Button>
         </div>
 

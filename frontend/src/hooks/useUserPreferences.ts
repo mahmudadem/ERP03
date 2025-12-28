@@ -1,30 +1,25 @@
 
 import { useState, useEffect } from 'react';
-import { useCompanySettings } from './useCompanySettings';
 
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
+export type SidebarMode = 'classic' | 'submenus';
 
 export const useUserPreferences = () => {
-  const { settings, updateSettings } = useCompanySettings();
-  
-  // Get uiMode from CompanySettings, fallback to localStorage, then 'windows' as default
+  // Get uiMode from localStorage, default to 'windows'
   const [uiMode, setUiModeState] = useState<UiMode>(() => {
-    return settings?.uiMode || (localStorage.getItem('erp_ui_mode') as UiMode) || 'windows';
+    return (localStorage.getItem('erp_ui_mode') as UiMode) || 'windows';
   });
 
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem('erp_theme') as Theme) || 'light';
   });
 
-  const [language, setLanguage] = useState('en');
+  const [sidebarMode, setSidebarModeState] = useState<SidebarMode>(() => {
+    return (localStorage.getItem('erp_sidebar_mode') as SidebarMode) || 'classic';
+  });
 
-  // Sync with CompanySettings when it loads
-  useEffect(() => {
-    if (settings?.uiMode && settings.uiMode !== uiMode) {
-      setUiModeState(settings.uiMode);
-    }
-  }, [settings?.uiMode]);
+  const [language, setLanguage] = useState('en');
 
   // Persist theme to localStorage
   useEffect(() => {
@@ -36,34 +31,40 @@ export const useUserPreferences = () => {
     }
   }, [theme]);
 
-  const setUiMode = async (mode: UiMode) => {
+  const setUiMode = (mode: UiMode) => {
     setUiModeState(mode);
     localStorage.setItem('erp_ui_mode', mode);
-    
-    // Save to CompanySettings
-    try {
-      await updateSettings({ uiMode: mode });
-    } catch (error) {
-      console.error('Failed to update UI mode in company settings:', error);
-    }
   };
 
-  const toggleUiMode = async () => {
+  const setSidebarMode = (mode: SidebarMode) => {
+    setSidebarModeState(mode);
+    localStorage.setItem('erp_sidebar_mode', mode);
+  };
+
+  const toggleUiMode = () => {
     const newMode = uiMode === 'classic' ? 'windows' : 'classic';
-    await setUiMode(newMode);
+    setUiMode(newMode);
   };
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
+  const toggleSidebarMode = () => {
+    const newMode = sidebarMode === 'classic' ? 'submenus' : 'classic';
+    setSidebarMode(newMode);
+  };
+
   return {
     uiMode,
     theme,
+    sidebarMode,
     language,
     setUiMode,
+    setSidebarMode,
     toggleUiMode,
     toggleTheme,
+    toggleSidebarMode,
     setLanguage
   };
 };

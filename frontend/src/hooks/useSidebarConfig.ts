@@ -7,6 +7,7 @@ import { useVoucherTypes } from './useVoucherTypes';
 type SidebarItem = {
   label: string;
   path?: string;
+  icon?: string;
   children?: SidebarItem[];
 };
 
@@ -16,21 +17,12 @@ export const useSidebarConfig = () => {
   const { voucherTypes } = useVoucherTypes();
 
   const sidebarSections = useMemo(() => {
-    const sections: Record<string, SidebarItem[]> = {
-      MODULES: [],
-      COMPANY_ADMIN: [],
-      SETTINGS: [],
-    };
+    const sections: Record<string, { icon: string; items: SidebarItem[] }> = {};
 
-    // Super Admin items should NEVER appear in regular sidebar
-    // Super admins use the SuperAdminShell with its own dedicated sidebar
-    // If a super admin somehow ends up here, show them nothing to avoid confusion
     if (isSuperAdmin) {
-      // Return empty sections - super admins should be in /super-admin/* routes with SuperAdminShell
       return {};
     }
 
-    // 2. Company User View
     let cachedPerms: string[] = [];
     try {
       const rawPerms = localStorage.getItem('resolvedPermissions');
@@ -58,20 +50,17 @@ export const useSidebarConfig = () => {
     });
     const activeModules: string[] = Array.from(new Set(mapped));
 
-    // Build specific sections for each Module (App Name Grouping)
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {
         label: moduleId.charAt(0).toUpperCase() + moduleId.slice(1),
+        icon: 'LayoutGrid',
         items: []
       };
       let items = def.items.filter((item) => hasPermission(item.permission));
       
-      // Special handling for accounting module - inject dynamic voucher types
       if (moduleId === 'accounting') {
-        // Remove static "Vouchers" link
         items = items.filter(item => item.label !== 'Vouchers');
         
-        // Add dynamic voucher type links - ONLY ENABLED FORMS
         const voucherChildren = [
           { 
             label: 'All Vouchers', 
@@ -79,7 +68,7 @@ export const useSidebarConfig = () => {
             permission: 'accounting.vouchers.view' 
           },
           ...voucherTypes
-            .filter(vt => vt.enabled !== false) // Only show enabled forms
+            .filter(vt => vt.enabled !== false)
             .map(vt => ({
               label: vt.name,
               path: `/accounting/vouchers?type=${vt.id}`,
@@ -89,10 +78,10 @@ export const useSidebarConfig = () => {
         
         const vouchersGroup = {
           label: 'Vouchers',
+          icon: 'FileText',
           children: voucherChildren.filter(item => hasPermission(item.permission))
-        };
+        } as any;
         
-        // Insert vouchers group after Chart of Accounts
         const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
         if (coaIndex >= 0) {
           items = [
@@ -101,7 +90,8 @@ export const useSidebarConfig = () => {
             { 
               label: 'Window Designer', 
               path: '/accounting/window-config-test',
-              permission: 'accounting.settings.manage'
+              permission: 'accounting.settings.manage',
+              icon: 'DraftingCompass'
             },
             ...items.slice(coaIndex + 1)
           ];
@@ -111,7 +101,8 @@ export const useSidebarConfig = () => {
             { 
               label: 'Window Designer', 
               path: '/accounting/window-config-test',
-              permission: 'accounting.settings.manage'
+              permission: 'accounting.settings.manage',
+              icon: 'DraftingCompass'
             },
             ...items
           ];
@@ -119,30 +110,31 @@ export const useSidebarConfig = () => {
       }
       
       if (items.length > 0) {
-        // Create a new section for this App
-        sections[def.label] = items.map(i => ({
-          label: i.label,
-          path: i.path,
-          children: (i as any).children
-        }));
+        sections[def.label] = {
+          icon: def.icon || 'LayoutGrid',
+          items: items.map(i => ({
+            label: i.label,
+            path: i.path,
+            children: (i as any).children,
+            icon: (i as any).icon
+          }))
+        };
       }
     });
 
-    // Remove the generic MODULES key if unused (or keep it empty)
-    delete sections.MODULES;
-
-    // Company Admin menu (Permission Gated or Module Check)
     if (activeModules.includes('companyAdmin') || hasPermission('manage_settings') || hasWildcard) {
-      const companyAdminItems: SidebarItem[] = [
-        { label: 'CA • Overview', path: '/company-admin/overview' },
-        { label: 'CA • Users', path: '/company-admin/users' },
-        { label: 'CA • Roles', path: '/company-admin/roles' },
-        { label: 'CA • Modules', path: '/company-admin/modules' },
-        { label: 'CA • Features', path: '/company-admin/features' },
-        { label: 'CA • Bundles', path: '/company-admin/bundles' },
-        { label: 'CA • Settings', path: '/company-admin/settings' }
-      ];
-      sections.COMPANY_ADMIN.push(...companyAdminItems);
+      sections['Company Settings'] = {
+        icon: 'Settings',
+        items: [
+          { label: 'Overview', path: '/company-admin/overview' },
+          { label: 'Users', path: '/company-admin/users' },
+          { label: 'Roles', path: '/company-admin/roles' },
+          { label: 'Modules', path: '/company-admin/modules' },
+          { label: 'Features', path: '/company-admin/features' },
+          { label: 'Bundles', path: '/company-admin/bundles' },
+          { label: 'General Settings', path: '/company-admin/settings' }
+        ]
+      };
     }
 
     return sections;

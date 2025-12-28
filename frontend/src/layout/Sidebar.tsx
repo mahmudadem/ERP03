@@ -2,6 +2,8 @@ import React from 'react';
 import { useSidebarConfig } from '../hooks/useSidebarConfig';
 import { SidebarSection } from '../components/navigation/SidebarSection';
 import { LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SidebarItem } from '../components/navigation/SidebarItem';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const sections = useSidebarConfig();
+  const { sidebarMode } = useUserPreferences();
 
   return (
     <aside
@@ -46,15 +49,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto py-4 px-3 custom-scroll">
-        {Object.entries(sections).map(([key, items]) => (
-          <SidebarSection
-            key={key}
-            title={key}
-            items={items as any[]}
-            isOpen={isOpen}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {sidebarMode === 'submenus' ? (
+          <div className="space-y-1">
+            {Object.entries(sections).map(([key, data]) => (
+              <SidebarItem
+                key={key}
+                label={key}
+                isOpen={isOpen}
+                onClick={onNavigate}
+                children={(data as any).items}
+                iconName={(data as any).icon}
+              />
+            ))}
+          </div>
+        ) : (
+          Object.entries(sections).map(([key, data]) => (
+            <SidebarSection
+              key={key}
+              title={key}
+              items={(data as any).items}
+              isOpen={isOpen}
+              onNavigate={onNavigate}
+            />
+          ))
+        )}
       </div>
 
       {/* Footer */}

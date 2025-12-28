@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
 
 const t = (key: string) => key;
 
@@ -27,6 +28,7 @@ const MONTHS = [
 export const SettingsPage: React.FC = () => {
   const { profile, isLoading, updateProfile, isUpdating } = useCompanyProfile();
   const { settings, updateSettings } = useCompanySettings();
+  const { theme, toggleTheme } = useUserPreferences();
   
   const [formData, setFormData] = useState({
     name: '',
