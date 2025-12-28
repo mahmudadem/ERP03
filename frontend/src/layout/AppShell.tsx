@@ -7,20 +7,33 @@ import { WindowsDesktop } from '../modules/accounting/components/WindowsDesktop'
 import { AccountsProvider } from '../context/AccountsContext';
 import { useVoucherActions } from '../hooks/useVoucherActions';
 import { clsx } from 'clsx';
+import React from 'react'; // Added React import for React.useEffect
 
 export const AppShell: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { uiMode } = useUserPreferences();
+  const { uiMode, sidebarPinned } = useUserPreferences();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher } = useVoucherActions();
 
   const isWindowsMode = uiMode === 'windows';
+
+  // Sync isSidebarOpen with sidebarPinned if pinned is enabled
+  React.useEffect(() => {
+    if (sidebarPinned) {
+      setIsSidebarOpen(true);
+    }
+  }, [sidebarPinned]);
 
   return (
     <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
       {/* Sidebar */}
       <Sidebar 
         isOpen={isSidebarOpen} 
-        onNavigate={() => window.innerWidth < 1024 && setIsSidebarOpen(false)}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        onNavigate={() => {
+          if (!sidebarPinned && window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+          }
+        }}
       />
 
       {/* Main Content Area */}

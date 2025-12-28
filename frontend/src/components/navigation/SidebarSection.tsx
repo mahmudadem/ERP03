@@ -43,22 +43,24 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       <button 
         onClick={toggleExpand}
         className={clsx(
-          "w-full flex items-center gap-3 px-4 py-2 transition-all duration-300",
+          "w-full flex transition-all duration-300 ease-out",
+          isOpen ? "flex-row items-center gap-3 px-4 py-2" : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
           "text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider",
-          "hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]/50 group",
-          !isOpen && "justify-center px-0"
+          "hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]/50 group"
         )}
       >
         {ResolvedIcon && (
           <div className={clsx(
-            "p-1.5 rounded-lg transition-colors bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+            "rounded-lg transition-all duration-300 flex items-center justify-center shrink-0",
+            isOpen ? "p-1.5 bg-[var(--color-bg-tertiary)]" : "w-10 h-10 bg-primary-50 dark:bg-primary-900/20 text-primary-600 shadow-sm",
             "group-hover:bg-primary-50 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600",
-            !isExpanded && !isOpen && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
+            isOpen && !isExpanded && "bg-primary-50 dark:bg-primary-900/20 text-primary-600"
           )}>
-            <ResolvedIcon className="w-4 h-4" />
+            <ResolvedIcon className={clsx(isOpen ? "w-4 h-4" : "w-6 h-6")} />
           </div>
         )}
-        {isOpen && (
+        
+        {isOpen ? (
           <>
             <span className="truncate flex-1 text-left">{title}</span>
             {isExpanded 
@@ -66,6 +68,10 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
               : <ChevronRight className="w-3 h-3 text-gray-400 shrink-0" />
             }
           </>
+        ) : (
+          <span className="text-[9px] font-black uppercase tracking-tighter text-center w-full truncate px-1">
+            {title}
+          </span>
         )}
       </button>
 

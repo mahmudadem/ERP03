@@ -101,47 +101,60 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const itemContent = (
     <div className={clsx(
-      "flex items-center gap-3 px-3 py-2 rounded-lg w-full",
+      "flex items-center rounded-lg w-full transition-all duration-300 ease-out group relative outline-none",
+      // Layout switching: Row when open/flyout, Col when shrunk
+      (isOpen || isFlyout) ? "flex-row gap-3 px-3 py-2" : "flex-col gap-1.5 px-2 py-3 justify-center items-center",
+      
       isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
-      "transition-all duration-200 ease-out",
-      "group relative outline-none",
       (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
         ? "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
         : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
-      {/* Active Indicator (not for flyout items) */}
-      {!isFlyout && (active || isAnyChildActive) && (
+      {/* Active Indicator (vertical strip for expanded, maybe different for shrunk) */}
+      {!isFlyout && (active || isAnyChildActive) && (isOpen ? (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-r-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
-      )}
+      ) : (
+        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-t-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+      ))}
       
       {/* Icon or First Letter */}
-      {!isChild && (
-        <div className={clsx(
-          "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
-          "transition-all duration-200",
-          (!isOpen && !isFlyout) && "mx-auto",
-          (active || isAnyChildActive)
-            ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
-            : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--color-text-primary)]"
-        )}>
-          {finalIcon || (
-            <span className="text-xs font-semibold">
+      <div className={clsx(
+        "rounded-md flex items-center justify-center shrink-0 transition-all duration-300",
+        (isOpen || isFlyout) 
+          ? (isChild ? "w-5 h-5 -ml-0.5" : "w-6 h-6") 
+          : "w-10 h-10 mb-1",
+        (active || isAnyChildActive)
+          ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
+          : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--color-text-primary)]"
+      )}>
+        {finalIcon ? (
+          React.cloneElement(finalIcon as React.ReactElement, { 
+            className: clsx(
+              (finalIcon as React.ReactElement).props.className,
+              (isOpen || isFlyout) 
+                ? (isChild ? "w-3 h-3" : "w-4 h-4") 
+                : "w-6 h-6"
+            )
+          })
+        ) : (
+          !isChild && (
+            <span className={clsx("font-bold", (isOpen || isFlyout) ? "text-xs" : "text-lg")}>
               {label.charAt(0).toUpperCase()}
             </span>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
       
       {/* Label */}
       <span className={clsx(
-        "whitespace-nowrap truncate flex-1",
-        (!isOpen && !isFlyout) && "hidden"
+        "whitespace-nowrap truncate",
+        (isOpen || isFlyout) ? "flex-1 text-sm" : "text-[9px] font-black uppercase tracking-tighter text-center w-full px-1"
       )}>
         {label}
       </span>
 
-      {/* Chevron for children */}
+      {/* Chevron for children (hide in shrunk mode to save space) */}
       {hasChildren && (isOpen || isFlyout) && (
         <div className="shrink-0">
           {(!isSubmenusMode && isExpanded) ? (

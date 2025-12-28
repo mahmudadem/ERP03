@@ -65,14 +65,16 @@ export const useSidebarConfig = () => {
           { 
             label: 'All Vouchers', 
             path: '/accounting/vouchers', 
-            permission: 'accounting.vouchers.view' 
+            permission: 'accounting.vouchers.view',
+            icon: 'FileSearch'
           },
           ...voucherTypes
             .filter(vt => vt.enabled !== false)
             .map(vt => ({
               label: vt.name,
               path: `/accounting/vouchers?type=${vt.id}`,
-              permission: 'accounting.vouchers.view'
+              permission: 'accounting.vouchers.view',
+              icon: 'File'
             }))
         ];
         

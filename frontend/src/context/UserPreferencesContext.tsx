@@ -9,13 +9,16 @@ interface UserPreferencesContextType {
   sidebarMode: SidebarMode;
   theme: Theme;
   language: string;
+  sidebarPinned: boolean;
   setUiMode: (mode: UiMode) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   setTheme: (theme: Theme) => void;
   setLanguage: (lang: string) => void;
+  setSidebarPinned: (pinned: boolean) => void;
   toggleUiMode: () => void;
   toggleSidebarMode: () => void;
   toggleTheme: () => void;
+  toggleSidebarPinned: () => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -31,6 +34,11 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
   const [sidebarMode, setSidebarModeState] = useState<SidebarMode>(() => {
     return (localStorage.getItem('erp_sidebar_mode') as SidebarMode) || 'classic';
+  });
+
+  const [sidebarPinned, setSidebarPinnedState] = useState<boolean>(() => {
+    const saved = localStorage.getItem('erp_sidebar_pinned');
+    return saved === null ? true : saved === 'true';
   });
 
   const [language, setLanguage] = useState('en');
@@ -53,9 +61,14 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     localStorage.setItem('erp_sidebar_mode', sidebarMode);
   }, [sidebarMode]);
 
+  useEffect(() => {
+    localStorage.setItem('erp_sidebar_pinned', String(sidebarPinned));
+  }, [sidebarPinned]);
+
   const setUiMode = (mode: UiMode) => setUiModeState(mode);
   const setSidebarMode = (mode: SidebarMode) => setSidebarModeState(mode);
   const setTheme = (t: Theme) => setThemeState(t);
+  const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
 
   const toggleUiMode = () => {
     setUiModeState(prev => prev === 'classic' ? 'windows' : 'classic');
@@ -69,19 +82,26 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     setThemeState(prev => prev === 'light' ? 'dark' : 'light');
   };
 
+  const toggleSidebarPinned = () => {
+    setSidebarPinnedState(prev => !prev);
+  };
+
   return (
     <UserPreferencesContext.Provider value={{
       uiMode,
       sidebarMode,
       theme,
       language,
+      sidebarPinned,
       setUiMode,
       setSidebarMode,
       setTheme,
       setLanguage,
+      setSidebarPinned,
       toggleUiMode,
       toggleSidebarMode,
-      toggleTheme
+      toggleTheme,
+      toggleSidebarPinned
     }}>
       {children}
     </UserPreferencesContext.Provider>
