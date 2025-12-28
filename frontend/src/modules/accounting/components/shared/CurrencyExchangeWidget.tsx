@@ -87,29 +87,29 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   return (
     <div className={`
       flex items-center border rounded overflow-hidden transition-all shadow-sm
-      ${hasOverride ? 'border-indigo-400 ring-1 ring-indigo-100' : 'border-gray-200'}
-      ${disabled ? 'bg-gray-50 opacity-75' : 'bg-white'}
+      ${hasOverride ? 'border-primary-400 ring-1 ring-primary-100 dark:ring-primary-900/40' : 'border-[var(--color-border)]'}
+      ${disabled ? 'bg-[var(--color-bg-secondary)] opacity-75' : 'bg-[var(--color-bg-primary)]'}
     `}>
       {/* 1. System/Reference Section */}
-      <div className="flex-1 px-2.5 py-1.5 border-r border-gray-100 bg-gray-50/50 min-w-[120px]">
+      <div className="flex-1 px-2.5 py-1.5 border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 min-w-[120px]">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">System Rate</span>
-          <div className="flex items-center gap-1 text-[10px] font-mono text-gray-500">
+          <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-tighter">System Rate</span>
+          <div className="flex items-center gap-1 text-[10px] font-mono text-[var(--color-text-secondary)]">
             <span>{baseCurrency}</span>
             <span className="opacity-30">→</span>
             <span>{currency}</span>
           </div>
         </div>
-        <div className="text-xs font-semibold text-gray-600 mt-0.5">
+        <div className="text-xs font-semibold text-[var(--color-text-primary)] mt-0.5">
           {systemRate.toFixed(4)}
         </div>
       </div>
 
       {/* 2. Manual Input Section */}
-      <div className="flex-[1.2] px-2.5 py-1.5 relative group">
+      <div className="flex-[1.2] px-2.5 py-1.5 relative group bg-[var(--color-bg-primary)]">
         <label className={`
           absolute -top-1.5 left-2 px-1 text-[8px] font-bold uppercase tracking-widest transition-opacity
-          ${hasOverride ? 'text-indigo-600 opacity-100 bg-white' : 'text-gray-400 opacity-0'}
+          ${hasOverride ? 'text-primary-600 opacity-100 bg-[var(--color-bg-primary)]' : 'text-[var(--color-text-muted)] opacity-0'}
         `}>
           Manual Override
         </label>
@@ -122,12 +122,12 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
             onChange={(e) => handleManualRateChange(e.target.value)}
             disabled={disabled}
             className={`
-              w-full bg-transparent text-xs font-bold outline-none placeholder:text-gray-300 placeholder:font-normal
-              ${hasOverride ? 'text-indigo-700' : 'text-gray-400'}
+              w-full bg-transparent text-xs font-bold outline-none placeholder:text-[var(--color-text-muted)] placeholder:font-normal
+              ${hasOverride ? 'text-primary-600 dark:text-primary-400' : 'text-[var(--color-text-muted)]'}
             `}
           />
           {!hasOverride && (
-            <div className="text-[9px] font-bold text-gray-300 pointer-events-none uppercase tracking-tighter">Enter...</div>
+            <div className="text-[9px] font-bold text-[var(--color-text-muted)] pointer-events-none uppercase tracking-tighter">Enter...</div>
           )}
         </div>
       </div>
@@ -135,23 +135,23 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
       {/* 3. Status/Reset Section */}
       <div className={`
         flex-1 px-2.5 py-1.5 transition-colors min-w-[130px]
-        ${hasOverride ? 'bg-indigo-50/80' : 'bg-white'}
+        ${hasOverride ? 'bg-primary-50/80 dark:bg-primary-900/20' : 'bg-[var(--color-bg-primary)]'}
       `}>
         {hasOverride ? (
           <div className="flex flex-col items-end">
-             <div className="text-[9px] font-bold text-indigo-600 uppercase leading-none">Override Active</div>
+             <div className="text-[9px] font-bold text-primary-600 dark:text-primary-400 uppercase leading-none">Override Active</div>
              <button 
                 onClick={() => handleManualRateChange(systemRate)}
-                className="text-[9px] font-bold text-indigo-400 hover:text-indigo-700 underline mt-1 transition-colors"
+                className="text-[9px] font-bold text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 underline mt-1 transition-colors"
               >
                 Reset to System
               </button>
           </div>
         ) : (
           <div className="flex flex-col items-end">
-            <div className="text-[9px] font-bold text-gray-300 uppercase leading-none">No Override</div>
-            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-              <span className="w-1 h-1 rounded-full bg-green-400"></span>
+            <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase leading-none">No Override</div>
+            <div className="text-[10px] text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-success-500"></span>
               Live Tracking
             </div>
           </div>

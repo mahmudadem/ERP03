@@ -536,7 +536,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const CurrencyComp = CustomComponentRegistry.currencyExchange;
       return (
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
           <CurrencyComp
             currency={formData.currency || 'USD'}
             value={formData.exchangeRate}
@@ -553,7 +553,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const Component = CustomComponentRegistry[fieldId] || CustomComponentRegistry.account;
       return (
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
           <Component
             value={formData[fieldId]}
             onChange={(val: any) => {
@@ -574,12 +574,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     if (['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt'].includes(fieldId)) {
        const isDate = fieldId === 'createdAt';
        return (
-         <div className="space-y-0.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
-            <div className="w-full p-1.5 border border-gray-200 rounded bg-gray-50 text-gray-500 text-xs shadow-sm min-h-[30px] flex items-center">
-              {isDate ? formatCompanyDate(formData[fieldId], settings) : (formData[fieldId] || 'Pending')}
-            </div>
-         </div>
+          <div className="space-y-0.5">
+             <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+             <div className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm min-h-[30px] flex items-center transition-colors">
+               {isDate ? formatCompanyDate(formData[fieldId], settings) : (formData[fieldId] || 'Pending')}
+             </div>
+          </div>
        );
     }
 
@@ -596,12 +596,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
         if (isClassic) {
             return (
-                <div className="border border-gray-300 rounded overflow-hidden shadow-sm bg-white">
-                    <div className="max-h-[200px] overflow-y-auto">
+                <div className="border border-[var(--color-border)] rounded overflow-hidden shadow-sm bg-[var(--color-bg-primary)] transition-colors">
+                    <div className="max-h-[300px] overflow-y-auto custom-scroll">
                     <table className="w-full text-sm min-w-[600px] border-collapse">
-                        <thead className="sticky top-0 bg-gradient-to-r from-slate-50 to-slate-100 z-10">
-                             <tr className="border-b-2 border-slate-300">
-                                 <th className="p-2 text-center w-10 text-[11px] font-bold text-slate-700 border-r border-slate-300 bg-slate-100/50">#</th>
+                        <thead className="sticky top-0 bg-[var(--color-bg-tertiary)] z-10 transition-colors">
+                             <tr className="border-b-2 border-[var(--color-border)]">
+                                 <th className="p-2 text-center w-10 text-[11px] font-bold text-[var(--color-text-primary)] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30">#</th>
                                  {columns.map(col => {
                                      // Parse initial width from column definition
                                      let initialWidth = 150; // Default
@@ -619,29 +619,29 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                      return (
                                          <th 
                                            key={col.id} 
-                                           className="p-2 text-start text-[11px] font-bold text-slate-700 uppercase tracking-wide border-r border-slate-300 relative group"
+                                           className="p-2 text-start text-[11px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide border-r border-[var(--color-border)] relative group transition-colors"
                                            style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
                                          >
                                            {col.label}
                                            {/* Resize handle */}
                                            <div
-                                             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                              onMouseDown={(e) => handleResizeStart(e, col.id, colWidth)}
                                            />
                                          </th>
                                      );
                                  })}
-                                 <th className="p-2 w-8 border-gray-300"></th>
+                                 <th className="p-2 w-8 border-[var(--color-border)] border-r-0"></th>
                              </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-[var(--color-border)] transition-colors">
                             {rows.map((row, index) => (
                                  <tr 
                                    key={row.id} 
-                                   className={`hover:bg-blue-50/40 hover:shadow-sm transition-all duration-150 border-b border-gray-200 group ${highlightedRows.has(row.id) ? 'bg-yellow-100' : ''}`}
+                                   className={`hover:bg-primary-50/40 dark:hover:bg-primary-900/10 hover:shadow-sm transition-all duration-150 border-b border-[var(--color-border)] group ${highlightedRows.has(row.id) ? 'bg-warning-100/50 dark:bg-warning-900/30' : ''}`}
                                  >
                                     <td 
-                                      className="p-2 text-slate-400 text-[11px] font-medium text-center border-r border-gray-200 bg-slate-50/50 cursor-pointer hover:bg-slate-100"
+                                      className="p-2 text-[var(--color-text-muted)] text-[11px] font-medium text-center border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30 cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                                       onContextMenu={(e) => handleLineContextMenu(e, row.id)}
                                     >
                                       {index + 1}
@@ -665,7 +665,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                          return (
                                              <td 
                                                key={`${row.id}-${colId}`} 
-                                               className="p-0 border-r border-gray-200"
+                                               className="p-0 border-r border-[var(--color-border)]"
                                                style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
                                              >
                                                  {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
@@ -702,7 +702,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                        value={(row as any)[colId] || ''}
                                                        onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
                                                        onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
-                                                       className="w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                                       className="w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors" 
                                                      />
                                                  )}
                                          </td>
@@ -711,7 +711,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                 <td className="p-1 text-center w-8">
                                     <button 
                                       onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                                      className="p-1.5 text-[var(--color-text-muted)] hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded transition-all"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -721,7 +721,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     </tbody>
                 </table>
                 </div>
-                <button onClick={addRow} className="w-full py-2 text-center text-[11px] font-bold text-indigo-600 bg-slate-50 border-t border-gray-200 hover:bg-indigo-50 transition-colors uppercase tracking-widest">
+                <button onClick={addRow} className="w-full py-2.5 text-center text-[11px] font-bold text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all uppercase tracking-widest">
                     + {t('addLine')}
                 </button>
                 
@@ -734,59 +734,59 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                       onContextMenu={(e) => { e.preventDefault(); closeLineContextMenu(); }}
                     />
                     <div 
-                      className="fixed bg-white rounded-md shadow-lg border border-gray-200 z-[9999] py-1 w-48"
+                      className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
                       style={{ left: lineContextMenu.x, top: lineContextMenu.y }}
                     >
                       <button
                         onClick={() => handleDeleteLine(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/20 flex items-center gap-3 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete Line
                       </button>
-                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
                       <button
                         onClick={() => handleCopyLine(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-4 h-4 text-[var(--color-text-secondary)]" />
                         Copy
                       </button>
                       <button
                         onClick={() => handlePasteLine(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 text-[var(--color-text-secondary)]" />
                         Paste
                       </button>
                       <button
                         onClick={() => handleInsertLine(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 text-[var(--color-text-secondary)]" />
                         Insert Below
                       </button>
-                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
                       <button
                         onClick={() => handleHighlightLine(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <span className="w-4 h-4 bg-yellow-300 rounded"></span>
+                        <span className={`w-4 h-4 rounded-sm ${highlightedRows.has(lineContextMenu.rowId) ? 'bg-warning-500' : 'bg-warning-300'} border border-warning-400`}></span>
                         {highlightedRows.has(lineContextMenu.rowId) ? 'Remove Highlight' : 'Highlight'}
                       </button>
-                      <div className="border-t border-gray-200 my-1"></div>
+                      <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
                       <button
                         onClick={() => handleOpenStatement(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <Calendar className="w-4 h-4" />
+                        <Calendar className="w-4 h-4 text-[var(--color-text-secondary)]" />
                         Statement
                       </button>
                       <button
                         onClick={() => handleAccountBalance(lineContextMenu.rowId)}
-                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
                       >
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
                         Account Balance
                       </button>
                     </div>
@@ -798,9 +798,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     // Default Web Style
     return (
-        <div className="border border-gray-200 rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-white">
+        <div className="border border-[var(--color-border)] rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-[var(--color-bg-primary)] transition-colors">
             <table className="w-full text-sm min-w-[600px]">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
+                <thead className="bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] font-medium">
                      <tr>
                          <th className="p-2 text-start w-10 text-xs">#</th>
                          {columns.map(col => (
@@ -815,10 +815,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                          <th className="p-2 w-8"></th>
                      </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[var(--color-border)] opacity-80">
                     {rows.map((row, index) => (
-                        <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-2 text-gray-400 text-xs text-center">{index + 1}</td>
+                        <tr key={row.id} className="hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors">
+                            <td className="p-2 text-[var(--color-text-muted)] text-xs text-center">{index + 1}</td>
                              {columns.map(col => {
                                  const colId = col.id;
                                  return (
@@ -837,15 +837,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  type="number" 
                                                  value={row[colId as 'debit' | 'credit'] || 0}
                                                  onChange={(e) => handleRowChange(row.id, colId as any, parseFloat(e.target.value) || 0)}
-                                                 className="w-full p-1.5 border border-gray-200 rounded text-xs text-end focus:ring-1 focus:ring-indigo-500 outline-none font-mono" 
+                                                 className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]" 
                                              />
                                          ) : (
                                              <input 
                                                type="text" 
                                                value={(row as any)[colId] || ''}
                                                onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                               className="w-full p-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none" 
-                                             />
+                                                 className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors" 
+                                               />
                                          )}
                                      </td>
                                  );
@@ -853,7 +853,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                             <td className="p-2 text-center w-8">
                                 <button 
                                   onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                  className="text-gray-300 hover:text-red-500 transition-colors"
+                                   className="text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
                                 >
                                     <Trash2 size={14} />
                                 </button>
@@ -862,9 +862,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     ))}
                 </tbody>
             </table>
-            <button onClick={addRow} className="w-full py-1.5 text-center text-xs font-medium text-indigo-600 bg-indigo-50 border-t border-indigo-100 hover:bg-indigo-100">
-                + {t('addLine')}
-            </button>
+             <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
+                 + {t('addLine')}
+             </button>
         </div>
     );
 }
@@ -877,21 +877,21 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     return (
         <div className="space-y-0.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
             {/* System fields - display as read-only */}
             {isSystemField ? (
-                <div className="w-full p-1.5 border border-gray-100 rounded bg-gray-50 text-xs text-gray-600 italic">
+                <div className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors">
                     {fieldId === 'createdAt' || fieldId === 'updatedAt' 
                       ? formatCompanyDate(formData[fieldId], settings) 
                       : (formData[fieldId] || 'Pending')}
                 </div>
             ) : fieldId === 'currency' || fieldId === 'paymentMethod' ? (
                  <div className="relative">
-                    <select 
-                      value={formData[fieldId] || ''}
-                      onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                      className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm appearance-none pr-6"
-                    >
+                     <select 
+                       value={formData[fieldId] || ''}
+                       onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                       className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-6 transition-colors"
+                     >
                         {fieldId === 'currency' ? (
                           <>
                             <option value="USD">USD</option>
@@ -906,7 +906,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                           </>
                         )}
                     </select>
-                    <ChevronDown className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-gray-400 pointer-events-none`} size={14} />
+                     <ChevronDown className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-[var(--color-text-muted)] pointer-events-none`} size={14} />
                  </div>
             ) : fieldId === 'date' ? (
                  <div className="relative">
@@ -916,17 +916,17 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             />
                  </div>
             ) : fieldId === 'notes' || fieldId === 'description' ? (
-                 <textarea 
-                   value={formData[fieldId] || ''}
-                   onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                   className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm min-h-[60px]" 
-                 />
+                  <textarea 
+                    value={formData[fieldId] || ''}
+                    onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors" 
+                  />
             ) : (
                 <input 
                     type={fieldId === 'exchangeRate' || fieldId === 'amount' ? 'number' : 'text'}
                     value={formData[fieldId] || ''}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                    className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm"
+                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors"
                 />
             )}
         </div>
@@ -950,8 +950,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           return a.col - b.col;
         });
         
-        return (
-          <div className="bg-white px-4 py-3 mb-4">
+         return (
+           <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
             <div className="grid grid-cols-12 gap-x-4 gap-y-2">
               {sortedFields.map((field: any) => (
                 <div 
@@ -975,7 +975,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // Format 2: VoucherTypeDefinition (canonical system) - fallback if no UI override
     if (definition.headerFields && definition.headerFields.length > 0) {
       return (
-        <div className="bg-white px-4 py-3 mb-4">
+        <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
           <div className="grid grid-cols-12 gap-x-4 gap-y-2">
             {definition.headerFields.map((field: any) => (
               <div key={field.id} className="col-span-6 md:col-span-4">
@@ -1004,8 +1004,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
 
     return (
-      <div className="bg-white px-4 py-3 mb-4">
-        <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">Line Items</h3>
+       <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
+         <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">Line Items</h3>
         {renderField('lineItems')}
       </div>
     );
@@ -1033,8 +1033,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     });
     
     return (
-      <div className="bg-white px-4 py-3 mb-4">
-        {title && <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">{title}</h3>}
+       <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
+         {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
         <div className="grid grid-cols-12 gap-x-4 gap-y-2">
           {sortedFields.map((field: any) => (
             <div 
@@ -1086,16 +1086,16 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // If no custom actions defined, render default buttons
       if (!enabledActions.length) {
         return (
-          <div className="bg-gray-50 border-t p-2 grid grid-cols-2 gap-2">
-            <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-              <Save size={14} />
-              Save
-            </button>
-            <button className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">
-              <Printer size={14} />
-              Print
-            </button>
-          </div>
+           <div className="bg-[var(--color-bg-primary)] border-t border-[var(--color-border)] p-3 grid grid-cols-2 gap-3 transition-colors">
+             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-primary-500/10 transition-all bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98]">
+               <Save size={16} />
+               Save
+             </button>
+             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]">
+               <Printer size={16} />
+               Print
+             </button>
+           </div>
         );
       }
       
@@ -1113,29 +1113,29 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const maxRow = actionFields.reduce((max, f) => Math.max(max, f.row || 0), 0) + 1;
     
     return (
-      <div 
-        className="bg-gray-50 border-t p-2 grid grid-cols-12 gap-2"
-        style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
-      >
-        {actionFields.map((field: any, index: number) => (
-          <button 
-            key={field.fieldId || index}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 rounded text-xs font-medium shadow-sm transition-colors bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-            style={{
-              gridColumnStart: (field.col || 0) + 1,
-              gridColumnEnd: `span ${field.colSpan || 4}`,
-              gridRowStart: (field.row || 0) + 1
-            }}
-          >
-            {field.labelOverride || field.fieldId}
-          </button>
-        ))}
-      </div>
+       <div 
+         className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] p-3 grid grid-cols-12 gap-3 transition-colors"
+         style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
+       >
+         {actionFields.map((field: any, index: number) => (
+           <button 
+             key={field.fieldId || index}
+             className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]"
+             style={{
+               gridColumnStart: (field.col || 0) + 1,
+               gridColumnEnd: `span ${field.colSpan || 4}`,
+               gridRowStart: (field.row || 0) + 1
+             }}
+           >
+             {field.labelOverride || field.fieldId}
+           </button>
+         ))}
+       </div>
     );
   };
 
-  return (
-    <div className="flex flex-col h-full bg-white font-sans text-slate-800 overflow-y-auto">
+   return (
+     <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] font-sans text-[var(--color-text-primary)] overflow-y-auto custom-scroll transition-colors">
         {/* Header Fields from Canonical */}
         {renderHeaderFields()}
         

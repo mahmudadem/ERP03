@@ -101,8 +101,8 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
       onWheel={handleWheel}
       placeholder={placeholder}
       className={`w-full h-full px-2 py-1.5 text-right font-mono border-none outline-none bg-transparent 
-        focus:bg-blue-50/30 focus:ring-1 focus:ring-inset focus:ring-blue-400 transition-all
-        text-base ${className}`}
+        focus:bg-primary-50/30 dark:focus:bg-primary-900/20 focus:ring-1 focus:ring-inset focus:ring-primary-500 transition-all
+        text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${className}`}
       style={{
         // Hide number input arrows
         WebkitAppearance: 'none',

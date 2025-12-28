@@ -4,6 +4,7 @@ import { SidebarSection } from '../components/navigation/SidebarSection';
 import { LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SidebarItem } from '../components/navigation/SidebarItem';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { clsx } from 'clsx';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,22 +18,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
 
   return (
     <aside
-      className={`
-        fixed inset-y-0 left-0 z-40
-        bg-white border-r border-gray-100
-        transition-all duration-300 ease-out
-        flex flex-col
-        ${isOpen ? 'w-64' : 'w-20'}
-      `}
+      className={clsx(
+        "fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-out flex flex-col",
+        "bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]",
+        isOpen ? 'w-64' : 'w-20'
+      )}
     >
       {/* Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 shrink-0">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-border)] shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20">
             <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
           {isOpen && (
-            <span className="text-lg font-bold text-gray-900 tracking-tight">
+            <span className="text-lg font-bold text-[var(--color-text-primary)] tracking-tight">
               ERP<span className="text-primary-600">03</span>
             </span>
           )}
@@ -40,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
         {onToggle && (
           <button
             onClick={onToggle}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
           >
             {isOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
           </button>
@@ -70,28 +69,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
               items={(data as any).items}
               isOpen={isOpen}
               onNavigate={onNavigate}
+              iconName={(data as any).icon}
             />
           ))
         )}
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 p-4 border-t border-gray-100">
-        {isOpen ? (
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-white font-medium text-sm shadow-lg shadow-accent-500/20">
-              U
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">User Name</p>
-              <p className="text-xs text-gray-500 truncate">user@example.com</p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-9 h-9 mx-auto rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-white font-medium text-sm">
-            U
-          </div>
-        )}
+      {/* Footer - Company Settings */}
+      <div className="shrink-0 p-3 border-t border-[var(--color-border)]">
+        <SidebarItem
+          label="Company Settings"
+          iconName="Settings"
+          isOpen={isOpen}
+          onClick={onNavigate}
+          children={[
+            { label: 'Overview', path: '/company-admin/overview' },
+            { label: 'Users', path: '/company-admin/users' },
+            { label: 'Roles', path: '/company-admin/roles' },
+            { label: 'Modules', path: '/company-admin/modules' },
+            { label: 'Features', path: '/company-admin/features' },
+            { label: 'Bundles', path: '/company-admin/bundles' },
+            { label: 'General Settings', path: '/company-admin/settings' }
+          ]}
+        />
       </div>
     </aside>
   );

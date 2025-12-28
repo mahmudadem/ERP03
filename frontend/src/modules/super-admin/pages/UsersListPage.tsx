@@ -49,36 +49,36 @@ export default function UsersListPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">All Users</h1>
-        <Button variant="ghost" size="sm" onClick={loadUsers} disabled={loading}>
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">All Users</h1>
+        <Button variant="ghost" size="sm" onClick={loadUsers} disabled={loading} className="text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]">
           {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden bg-[var(--color-bg-primary)] border-[var(--color-border)]">
         {loading && users.length === 0 ? (
-          <div className="p-6 text-gray-500">Loading users...</div>
+          <div className="p-6 text-[var(--color-text-muted)]">Loading users...</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-[var(--color-border)]">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Global Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">User ID</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Global Role</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
               {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{user.email}</td>
+                <tr key={user.id} className="hover:bg-[var(--color-bg-tertiary)]/30 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)] font-mono">{user.id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">{user.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         user.globalRole === 'SUPER_ADMIN'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400'
+                          : 'bg-primary-50 text-primary-800 dark:bg-primary-900/20 dark:text-primary-400'
                       }`}
                     >
                       {user.globalRole}
@@ -86,11 +86,11 @@ export default function UsersListPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {user.globalRole === 'SUPER_ADMIN' ? (
-                      <Button variant="secondary" size="sm" onClick={() => handleDemote(user.id)}>
+                      <Button variant="secondary" size="sm" onClick={() => handleDemote(user.id)} className="bg-[var(--color-bg-tertiary)] border-[var(--color-border)] text-[var(--color-text-primary)]">
                         Demote
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => handlePromote(user.id)}>
+                      <Button size="sm" onClick={() => handlePromote(user.id)} className="bg-primary-600 hover:bg-primary-700 text-white shadow-sm">
                         Promote
                       </Button>
                     )}
@@ -99,7 +99,7 @@ export default function UsersListPage() {
               ))}
               {users.length === 0 && !loading && (
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-500" colSpan={4}>
+                  <td className="px-6 py-4 text-sm text-[var(--color-text-muted)] text-center italic" colSpan={4}>
                     No users found.
                   </td>
                 </tr>

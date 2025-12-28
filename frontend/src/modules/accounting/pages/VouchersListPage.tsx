@@ -244,10 +244,10 @@ const VouchersListPage: React.FC = () => {
 
   return (
     <AccountsProvider>
-      <div className="flex flex-col h-full bg-slate-50 relative">
+      <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] relative transition-colors duration-300">
         <div className="flex-none p-6 pb-0">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pageTitle}</h1>
             <div className="flex items-center gap-3">
               <RequirePermission permission="accounting.vouchers.create">
                 <div className="flex items-center gap-2">
@@ -255,7 +255,7 @@ const VouchersListPage: React.FC = () => {
                     <select 
                       value={selectedType}
                       onChange={(e) => setSelectedType(e.target.value)}
-                      className="p-2 border border-slate-200 rounded text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                      className="p-2 border border-[var(--color-border)] rounded text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                     >
                       {voucherTypes.map(type => (
                         <option key={type.id} value={type.id}>{type.name}</option>
@@ -281,7 +281,7 @@ const VouchersListPage: React.FC = () => {
         </div>
 
         <div className="flex-1 p-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300">
             <VoucherTable 
               vouchers={vouchers} 
               isLoading={isLoading}

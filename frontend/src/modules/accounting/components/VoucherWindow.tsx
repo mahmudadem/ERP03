@@ -228,14 +228,14 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       <div
         ref={windowRef}
         style={style}
-        className={`flex flex-col bg-white rounded-lg shadow-xl overflow-hidden border ${
-          win.isFocused ? 'border-gray-300' : 'border-gray-200'
+        className={`flex flex-col bg-[var(--color-bg-primary)] rounded-lg shadow-2xl overflow-hidden border transition-all duration-300 ${
+          win.isFocused ? 'border-primary-500/50 ring-1 ring-primary-500/20' : 'border-[var(--color-border)]'
         }`}
         onMouseDown={() => focusWindow(win.id)}
       >
       {/* Window Header */}
       <div
-        className="window-header flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-move select-none"
+        className="window-header flex items-center justify-between px-3 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] cursor-move select-none"
         onMouseDown={handleMouseDown}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -244,14 +244,14 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         }}
       >
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-sm text-gray-700">{win.title}</h3>
+          <h3 className="font-bold text-sm text-[var(--color-text-primary)]">{win.title}</h3>
           {win.data?.status && (
-            <span className={`px-2 py-0.5 text-xs rounded ${
-              win.data.status === 'approved' ? 'bg-green-100 text-green-700' :
-              win.data.status === 'draft' ? 'bg-gray-200 text-gray-700' :
-              'bg-blue-100 text-blue-700'
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+              win.data.status.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+              win.data.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
+              'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
             }`}>
-              {win.data.status.toUpperCase()}
+              {win.data.status}
             </span>
           )}
         </div>
@@ -259,21 +259,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         <div className="flex items-center gap-1">
           <button
             onClick={() => minimizeWindow(win.id)}
-            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+            className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             title="Minimize"
           >
             <Minus className="w-4 h-4" />
           </button>
           <button
             onClick={() => maximizeWindow(win.id)}
-            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+            className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             title={win.isMaximized ? "Restore" : "Maximize"}
           >
             <Square className="w-3 h-3" />
           </button>
           <button
             onClick={handleCloseAttempt}
-            className="p-1 hover:bg-gray-200 rounded text-gray-500"
+            className="p-1.5 hover:bg-danger-500/10 rounded-full text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -294,7 +294,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             }}
           />
           <div 
-            className="fixed bg-white rounded-md shadow-lg border border-gray-200 z-[9999] py-1 w-44"
+            className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -303,12 +303,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           >
             <button
               onClick={() => {
-                console.log('Save voucher');
+                handleSave();
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 text-[var(--color-text-secondary)]" />
               Save
             </button>
             <button
@@ -316,20 +316,20 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 window.print();
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-4 h-4 text-[var(--color-text-secondary)]" />
               Print
             </button>
-            <div className="border-t border-gray-200 my-1"></div>
+            <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
             <button
               onClick={() => {
                 minimizeWindow(win.id);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-4 h-4 text-[var(--color-text-secondary)]" />
               Minimize
             </button>
             <button
@@ -337,7 +337,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 setContextMenu(null);
                 handleCloseAttempt();
               }}
-              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              className="w-full px-4 py-2 text-left text-sm text-danger-600 hover:bg-danger-50 flex items-center gap-3 transition-colors"
             >
               <X className="w-4 h-4" />
               Close
@@ -347,7 +347,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       )}
 
       {/* Voucher Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-white overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-hidden custom-scroll transition-colors">
         <GenericVoucherRenderer
           ref={rendererRef}
           definition={win.voucherType as any}
@@ -361,7 +361,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       </div>
 
       {/* Window Footer - Core Actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-colors">
         {/* Totals Display */}
         <div className="flex items-center gap-4">
           {(() => {
@@ -374,13 +374,14 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             const hasValues = totalDebit > 0 || totalCredit > 0;
             
             // Gray when both are 0, green when balanced with values, red when unbalanced
-            const bgColor = !hasValues ? 'bg-gray-100' : (isBalanced ? 'bg-green-100' : 'bg-red-100');
+            const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
+            const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
             
             return (
-              <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-colors border border-gray-200/50 shadow-sm`}>
+              <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Debit</span>
-                  <span className="text-base font-bold text-slate-900 font-mono">
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Debit</span>
+                  <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -389,11 +390,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 </div>
                 
                 {/* Vertical Divider (Pipeline) */}
-                <div className="w-[1px] h-5 bg-gray-300/60" />
+                <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
                 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Credit</span>
-                  <span className="text-base font-bold text-slate-900 font-mono">
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit</span>
+                  <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -408,7 +409,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
-            className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+            className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
             onClick={handleNew}
             title="Create a new voucher in this window"
           >
@@ -416,7 +417,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] disabled:opacity-50 transition-all active:scale-[0.98]"
             disabled={isSaving}
           >
             {isSaving ? (
@@ -435,18 +436,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           {win.data?.status !== 'approved' && (
             <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting...
-              </>
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Send className="w-4 h-4" />
             )}
-            Submit for Approval
+            {isSubmitting ? 'Submitting...' : 'Submit Approval'}
           </button>
           )}
         </div>

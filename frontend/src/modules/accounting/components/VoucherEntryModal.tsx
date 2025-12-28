@@ -98,37 +98,37 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div 
-          className="relative bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col"
+          className="relative bg-[var(--color-bg-primary)] rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col border border-[var(--color-border)] transition-colors duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
                 {initialData ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--color-text-secondary)] mt-1">
                 {initialData ? 'Update details below' : 'Fill in the details below'} • Mode: {uiMode === 'windows' ? 'Windows' : 'Web View'}
               </p>
             </div>
             <button
               onClick={handleCloseAttempt}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
               disabled={isSaving}
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-[var(--color-text-secondary)]" />
             </button>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="mx-6 mt-4 bg-danger-50 dark:bg-danger-900/10 border border-danger-200 dark:border-danger-800 text-danger-700 dark:text-danger-400 px-4 py-3 rounded">
               {error}
             </div>
           )}
 
           {/* Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-6 custom-scroll">
             <GenericVoucherRenderer 
               ref={rendererRef}
               definition={voucherType as any}
@@ -142,7 +142,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)] transition-colors duration-300">
             
             {/* Totals Display */}
             <div className="flex items-center gap-4">
@@ -152,20 +152,24 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0);
                 const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
                 const hasValues = totalDebit > 0 || totalCredit > 0;
-                const bgColor = !hasValues ? 'bg-gray-100' : (isBalanced ? 'bg-green-100' : 'bg-red-100');
+                
+                let bgColor = 'bg-[var(--color-bg-primary)]'; // Default
+                if (hasValues) {
+                  bgColor = isBalanced ? 'bg-success-100 dark:bg-success-900/20' : 'bg-danger-100 dark:bg-danger-900/20';
+                }
                 
                 return (
-                  <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-colors border border-gray-200/50 shadow-sm`}>
+                  <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-colors border border-[var(--color-border)] shadow-sm`}>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Debit</span>
-                      <span className="text-base font-bold text-slate-900 font-mono">
+                      <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Debit</span>
+                      <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                         {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalDebit)}
                       </span>
                     </div>
-                    <div className="w-[1px] h-5 bg-gray-300/60" />
+                    <div className="w-[1px] h-5 bg-[var(--color-border)]" />
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Credit</span>
-                      <span className="text-base font-bold text-slate-900 font-mono">
+                      <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Credit</span>
+                      <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                         {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalCredit)}
                       </span>
                     </div>
@@ -178,7 +182,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCloseAttempt}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-[var(--color-text-primary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
                 disabled={isSaving}
               >
                 Cancel
@@ -186,7 +190,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               
               <button
                 onClick={() => handleSave('draft')}
-                className="flex items-center gap-2 px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2 text-[var(--color-text-primary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
                 disabled={isSaving}
               >
                 {isSaving ? (
@@ -196,7 +200,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
+                    <Save className="w-4 h-4 text-primary-500" />
                     Save Draft
                   </>
                 )}
@@ -204,7 +208,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
               <button
                 onClick={() => handleSave('submitted')} 
-                className="flex items-center gap-2 px-6 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2 text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-md"
                 disabled={isSaving}
               >
                 {isSaving ? (

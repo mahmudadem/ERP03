@@ -26,20 +26,24 @@ const AxiosInitializer: React.FC<{ children: React.ReactNode }> = ({ children })
   return <>{children}</>;
 };
 
+import { UserPreferencesProvider } from './context/UserPreferencesContext';
+
 const App: React.FC = () => {
   return (
     <QueryProvider>
-      <AuthProvider>
-        <CompanyAccessProvider>
-          <AxiosInitializer>
-            <CompanySettingsProvider>
-              <WindowManagerProvider>
-                <RouterProvider router={router} />
-              </WindowManagerProvider>
-            </CompanySettingsProvider>
-          </AxiosInitializer>
-        </CompanyAccessProvider>
-      </AuthProvider>
+      <UserPreferencesProvider>
+        <AuthProvider>
+          <CompanyAccessProvider>
+            <AxiosInitializer>
+              <CompanySettingsProvider>
+                <WindowManagerProvider>
+                  <RouterProvider router={router} />
+                </WindowManagerProvider>
+              </CompanySettingsProvider>
+            </AxiosInitializer>
+          </CompanyAccessProvider>
+        </AuthProvider>
+      </UserPreferencesProvider>
     </QueryProvider>
   );
 };

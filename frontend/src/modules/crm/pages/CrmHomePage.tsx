@@ -7,10 +7,10 @@ const CrmHomePage: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">CRM Overview</h1>
-          <p className="text-slate-500">Manage your customer relationships and leads.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">CRM Overview</h1>
+          <p className="text-[var(--color-text-secondary)]">Manage your customer relationships and leads.</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+        <button className="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700 transition shadow-md shadow-primary-500/10 active:scale-[0.98]">
           New Lead
         </button>
       </div>
@@ -22,20 +22,23 @@ const CrmHomePage: React.FC = () => {
         <StatsCard icon={<Calendar />} label="Meetings" value="0" />
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
-        <h3 className="text-lg font-semibold text-yellow-800">Coming Soon</h3>
-        <p className="text-yellow-700 mt-2">The full CRM module is currently under development. You have successfully activated the license!</p>
+      <div className="bg-warning-50/30 dark:bg-warning-900/10 border border-warning-200/50 dark:border-warning-900/30 rounded-xl p-12 text-center shadow-inner transition-all">
+        <div className="mx-auto w-16 h-16 bg-warning-100 dark:bg-warning-900/40 rounded-full flex items-center justify-center mb-4">
+           <Phone className="w-8 h-8 text-warning-600 dark:text-warning-400" />
+        </div>
+        <h3 className="text-xl font-bold text-warning-800 dark:text-warning-400">Module Under Development</h3>
+        <p className="text-warning-700 dark:text-warning-500 mt-2 font-medium">The full CRM module is currently under development. You have successfully activated the license!</p>
       </div>
     </div>
   );
 };
 
 const StatsCard = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) => (
-  <Card className="p-6 flex items-center space-x-4">
-    <div className="p-3 bg-blue-50 text-blue-600 rounded-full">{icon}</div>
+  <Card className="p-6 flex items-center space-x-4 bg-[var(--color-bg-primary)] border-[var(--color-border)] shadow-sm hover:shadow-md transition-shadow">
+    <div className="p-3 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-xl">{icon}</div>
     <div>
-      <p className="text-sm font-medium text-slate-500">{label}</p>
-      <h4 className="text-2xl font-bold text-slate-900">{value}</h4>
+      <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{label}</p>
+      <h4 className="text-2xl font-extrabold text-[var(--color-text-primary)]">{value}</h4>
     </div>
   </Card>
 );

@@ -15,6 +15,7 @@ interface SidebarItemProps {
   onClick?: () => void;
   children?: any[]; 
   isFlyout?: boolean;
+  isChild?: boolean;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({ 
@@ -25,7 +26,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   iconName,
   onClick,
   children,
-  isFlyout = false
+  isFlyout = false,
+  isChild = false
 }) => {
   const location = useLocation();
   const { sidebarMode } = useUserPreferences();
@@ -99,51 +101,53 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const itemContent = (
     <div className={clsx(
-      "flex items-center gap-3 px-3 py-2 text-sm rounded-lg w-full",
+      "flex items-center gap-3 px-3 py-2 rounded-lg w-full",
+      isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
       "transition-all duration-200 ease-out",
-      "group relative",
+      "group relative outline-none",
       (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
-        ? "bg-primary-50 text-primary-700 font-medium" 
-        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-      isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700"
+        ? "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
+        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]",
+      isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (not for flyout items) */}
       {!isFlyout && (active || isAnyChildActive) && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-r-full" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-r-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
       )}
       
       {/* Icon or First Letter */}
-      <div className={clsx(
-        "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
-        "transition-all duration-200",
-        (!isOpen && !isFlyout) && "mx-auto",
-        (active || isAnyChildActive)
-          ? "bg-primary-100 text-primary-700" 
-          : "bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-700"
-      )}>
-        {finalIcon || (
-          <span className="text-xs font-semibold">
-            {label.charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
+      {!isChild && (
+        <div className={clsx(
+          "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
+          "transition-all duration-200",
+          (!isOpen && !isFlyout) && "mx-auto",
+          (active || isAnyChildActive)
+            ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
+            : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--color-text-primary)]"
+        )}>
+          {finalIcon || (
+            <span className="text-xs font-semibold">
+              {label.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+      )}
       
       {/* Label */}
       <span className={clsx(
         "whitespace-nowrap truncate flex-1",
-        (!isOpen && !isFlyout) && "hidden",
-        "font-medium"
+        (!isOpen && !isFlyout) && "hidden"
       )}>
         {label}
       </span>
 
       {/* Chevron for children */}
       {hasChildren && (isOpen || isFlyout) && (
-        <div>
+        <div className="shrink-0">
           {(!isSubmenusMode && isExpanded) ? (
-            <ChevronDown className="w-4 h-4 text-gray-400" />
+            <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-400 transition-transform duration-200 group-hover:translate-x-0.5" />
+            <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 group-hover:translate-x-0.5" />
           )}
         </div>
       )}
@@ -167,18 +171,18 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           <Portal>
             <div 
               className={clsx(
-                "fixed z-[100] bg-white border border-gray-200 rounded-xl shadow-lg py-2 min-w-[240px]",
-                "backdrop-blur-md bg-white/98",
+                "fixed z-[100] rounded-xl shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
+                "backdrop-blur-md bg-[var(--color-bg-primary)]/95 border-[var(--color-border)]",
                 "animate-in fade-in slide-in-from-left-1 duration-200"
               )}
               style={{ 
                 top: coords.top - 4, 
-                left: coords.left + (isFlyout ? 1 : 11) // 12px sidebar padding + 5px gap
+                left: coords.left + (isFlyout ? 1 : 11) 
               }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              {/* Safe Zone Bridge - Adjusted to ensure it covers the maximum potential gap */}
+              {/* Safe Zone Bridge */}
               <div className="absolute left-[-22px] top-0 bottom-0 w-[22px] bg-transparent" />
               
               <div className="relative z-10 space-y-0.5">
@@ -192,6 +196,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                     children={child.children}
                     isFlyout={true}
                     iconName={child.icon}
+                    isChild={true}
                   />
                 ))}
               </div>
@@ -207,8 +212,17 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     <div className="w-full">
       {hasChildren ? (
         <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full text-left"
+          onClick={() => {
+            if (!isOpen) {
+              // If sidebar is closed, we might want to tell the parent to open it
+              // For now, just expand the accordion locally
+              setIsExpanded(true);
+            } else {
+              setIsExpanded(!isExpanded);
+            }
+            if (onClick) onClick();
+          }}
+          className="w-full text-left outline-none"
           title={!isOpen ? label : undefined}
         >
           {itemContent}
@@ -226,25 +240,19 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
       {/* Render children inline (Classic Mode) */}
       {hasChildren && isExpanded && isOpen && !isSubmenusMode && (
-        <div className="ml-9 mt-1 space-y-1 border-l border-gray-100 pl-2">
-          {children.map((child, idx) => {
-             const childActive = child.path ? isActive(child.path) : false;
-             return (
-               <NavLink
-                 key={child.path || idx}
-                 to={child.path || ''}
-                 onClick={onClick}
-                 className={clsx(
-                   "block px-3 py-2 text-sm rounded-md transition-colors",
-                   childActive
-                     ? "bg-primary-50 text-primary-700 font-medium"
-                     : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                 )}
-               >
-                 {child.label}
-               </NavLink>
-             );
-          })}
+        <div className="ml-6 mt-1 space-y-0.5 border-l border-[var(--color-border)] pl-[1px] transition-all duration-300">
+          {children.map((child, idx) => (
+            <SidebarItem
+              key={child.path || idx}
+              path={child.path}
+              label={child.label}
+              isOpen={isOpen}
+              onClick={onClick}
+              children={child.children}
+              iconName={child.icon}
+              isChild={true}
+            />
+          ))}
         </div>
       )}
     </div>

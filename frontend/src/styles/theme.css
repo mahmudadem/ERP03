@@ -8,8 +8,11 @@
   
   /* Light Theme Colors */
   --color-bg-primary: #ffffff;
+  --color-bg-primary-rgb: 255, 255, 255;
   --color-bg-secondary: #f9fafb;
+  --color-bg-secondary-rgb: 249, 250, 251;
   --color-bg-tertiary: #f3f4f6;
+  --color-bg-tertiary-rgb: 243, 244, 246;
   --color-text-primary: #111827;
   --color-text-secondary: #4b5563;
   --color-text-muted: #9ca3af;
@@ -54,8 +57,11 @@
    ======================================== */
 .dark {
   --color-bg-primary: #1f2937;
+  --color-bg-primary-rgb: 31, 41, 55;
   --color-bg-secondary: #111827;
+  --color-bg-secondary-rgb: 17, 24, 39;
   --color-bg-tertiary: #0f172a;
+  --color-bg-tertiary-rgb: 15, 23, 42;
   --color-text-primary: #f3f4f6;
   --color-text-secondary: #d1d5db;
   --color-text-muted: #6b7280;

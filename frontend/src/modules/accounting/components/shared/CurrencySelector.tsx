@@ -238,9 +238,9 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full text-xs text-center font-bold ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-gray-200 rounded bg-white'} 
-            focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none
-            ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+          className={`w-full text-xs text-center font-bold transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
+            focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+            ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
       </div>
 
@@ -248,15 +248,15 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
       {showModal && (
         <>
           <div 
-            className="fixed inset-0 bg-black/20 z-[9998]" 
+            className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[9998]" 
             onClick={() => setShowModal(false)}
           />
           
-          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
-            <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-64 max-h-[400px] pointer-events-auto">
-              <div className="p-3 border-b border-gray-200">
+          <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
+            <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] w-full max-w-[280px] max-h-[400px] pointer-events-auto flex flex-col transition-colors duration-300">
+              <div className="p-3 border-b border-[var(--color-border)]">
                 <div className="flex items-center gap-2">
-                  <Search className="w-4 h-4 text-gray-400" />
+                  <Search className="w-4 h-4 text-[var(--color-text-muted)]" />
                   <input
                     ref={modalInputRef}
                     type="text"
@@ -267,35 +267,40 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
                     }}
                     onKeyDown={handleModalKeyDown}
                     placeholder="Search currency..."
-                    className="flex-1 border-none outline-none text-sm uppercase"
+                    className="flex-1 bg-transparent border-none outline-none text-sm uppercase text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
                     autoFocus
                   />
-                  <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                    <X className="w-4 h-4 text-gray-500" />
+                  <button 
+                    onClick={() => setShowModal(false)} 
+                    className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4 text-[var(--color-text-secondary)]" />
                   </button>
                 </div>
               </div>
               
-              <div className="max-h-[300px] overflow-y-auto">
+              <div className="flex-1 overflow-y-auto custom-scroll p-1">
                 {filteredCurrencies.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 text-sm">No currencies found</div>
+                  <div className="p-4 text-center text-[var(--color-text-muted)] text-sm">No currencies found</div>
                 ) : (
-                  filteredCurrencies.map((currency, index) => (
-                    <div
-                      key={currency.code}
-                      onClick={() => handleSelectCurrency(currency)}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      className={`px-3 py-2 cursor-pointer flex justify-between items-center text-sm
-                        ${index === highlightedIndex ? 'bg-indigo-50' : 'hover:bg-gray-50'}
-                        ${currency.code === value ? 'bg-indigo-100' : ''}`}
-                    >
-                      <div className="flex items-center gap-2">
-                         <span className="font-bold w-8">{currency.code}</span>
-                         <span className="text-gray-500 text-xs">{currency.symbol}</span>
+                  <div className="space-y-0.5">
+                    {filteredCurrencies.map((currency, index) => (
+                      <div
+                        key={currency.code}
+                        onClick={() => handleSelectCurrency(currency)}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        className={`px-3 py-2 cursor-pointer flex justify-between items-center text-sm rounded-md transition-colors
+                          ${index === highlightedIndex ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-[var(--color-bg-tertiary)]'}
+                          ${currency.code === value ? 'border-l-2 border-primary-500 bg-primary-50/50 dark:bg-primary-900/30' : ''}`}
+                      >
+                        <div className="flex items-center gap-2">
+                           <span className="font-bold w-10 text-[var(--color-text-primary)]">{currency.code}</span>
+                           <span className="text-[var(--color-text-muted)] text-[10px] bg-[var(--color-bg-secondary)] px-1 rounded">{currency.symbol}</span>
+                        </div>
+                        <span className="text-xs text-[var(--color-text-secondary)] truncate ml-2">{currency.name}</span>
                       </div>
-                      <span className="text-xs text-gray-500 truncate">{currency.name}</span>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

@@ -27,15 +27,15 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
   const isComplete = currentStep === WizardStep.Success;
 
   return (
-    <div className="w-full h-full bg-white flex flex-col overflow-hidden">
+    <div className="w-full h-full bg-[var(--color-bg-primary)] flex flex-col overflow-hidden transition-colors">
       
       {/* Header Area: Fixed height, shrinks if needed */}
-      <div className="bg-slate-50 border-b border-slate-200 px-4 py-4 md:px-8 md:py-5 flex-shrink-0 transition-all duration-300">
+      <div className="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] px-4 py-4 md:px-8 md:py-5 flex-shrink-0 transition-all duration-300">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h2 className="text-xl md:text-2xl font-bold text-slate-900">{title}</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">{title}</h2>
                 {/* Hide subtitle on very small screens to save space */}
-                <p className="text-sm md:text-base text-slate-500 mt-1 hidden xs:block">{subtitle}</p>
+                <p className="text-sm md:text-base text-[var(--color-text-secondary)] mt-1 hidden xs:block">{subtitle}</p>
             </div>
         </div>
         
@@ -53,7 +53,7 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                     <li key={step.id} className={cn("relative flex flex-col items-center flex-1")}>
                       {/* Line connector */}
                       {!isLastStep && (
-                        <div className="absolute top-3.5 left-[50%] right-[-50%] h-[2px] bg-slate-200 z-0">
+                        <div className="absolute top-3.5 left-[50%] right-[-50%] h-[2px] bg-[var(--color-border)] z-0">
                           <div 
                             className={cn(
                               "h-full bg-primary-600 transition-all duration-300 ease-in-out",
@@ -65,9 +65,9 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                       
                       {/* Circle Indicator */}
                       <div className={cn(
-                        "relative z-10 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border-2 transition-colors duration-300 bg-white",
+                        "relative z-10 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border-2 transition-colors duration-300 bg-[var(--color-bg-primary)]",
                         isCompleted ? "border-primary-600 bg-primary-600" : 
-                        isActive ? "border-primary-600" : "border-slate-300"
+                        isActive ? "border-primary-600" : "border-[var(--color-border)]"
                       )}>
                         {isCompleted ? (
                           <Check className="h-4 w-4 md:h-5 md:w-5 text-white" aria-hidden="true" />
@@ -81,8 +81,8 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                       
                       {/* Label */}
                       <span className={cn(
-                        "mt-2 text-[10px] md:text-sm font-medium transition-colors duration-300 text-center",
-                        isActive || isCompleted ? "text-primary-600" : "text-slate-500"
+                        "mt-2 text-[10px] md:text-sm font-bold transition-colors duration-300 text-center uppercase tracking-widest",
+                        isActive || isCompleted ? "text-primary-600" : "text-[var(--color-text-muted)]"
                       )}>
                         {step.label}
                       </span>
@@ -96,7 +96,7 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
       </div>
 
       {/* Content Area: Expands to fill remaining height */}
-      <div className="flex-1 bg-white p-4 md:p-6 overflow-hidden flex flex-col min-h-0 relative">
+      <div className="flex-1 bg-[var(--color-bg-primary)] p-4 md:p-6 overflow-hidden flex flex-col min-h-0 relative transition-colors">
         {children}
       </div>
     </div>

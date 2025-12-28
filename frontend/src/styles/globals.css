@@ -11,21 +11,24 @@
 /* Hide number input arrows/spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
   -webkit-appearance: none;
   margin: 0;
 }
 
 input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
 }
 
 #root {
-  @apply min-h-screen;
+  min-height: 100vh;
 }
 
 /* Scrollbar styling for Windows Mode */
@@ -37,8 +40,9 @@ body {
   background: transparent; 
 }
 .window-scroll::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  background-color: var(--color-border);
+  border-radius: 9999px;
 }
 .window-scroll::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+  background-color: var(--color-text-muted);
 }

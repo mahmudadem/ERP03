@@ -29,7 +29,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col lg:flex-row gap-4 items-center flex-wrap">
+    <div className="bg-[var(--color-bg-primary)] p-4 rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col lg:flex-row gap-4 items-center flex-wrap transition-colors duration-300">
       
       {/* Search */}
       <div className="flex-1 w-full lg:w-auto min-w-[200px]">
@@ -37,7 +37,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
           type="text"
           name="search"
           placeholder="Search by ID, Ref, Amount..."
-          className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           value={filters.search || ''}
           onChange={handleInputChange}
         />
@@ -48,7 +48,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         <div className="w-full lg:w-32">
           <select
             name="type"
-            className="w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
             value={filters.type || 'ALL'}
             onChange={handleInputChange}
           >
@@ -69,7 +69,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
       <div className="w-full lg:w-32">
         <select
           name="status"
-          className="w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           value={filters.status || 'ALL'}
           onChange={handleInputChange}
         >
@@ -88,7 +88,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
           value={dateRange.from || ''}
           onChange={(val: string) => onDateRangeChange({ ...dateRange, from: val })}
         />
-        <span className="text-gray-400">-</span>
+        <span className="text-[var(--color-text-muted)]">-</span>
         <DatePicker
           className="w-36"
           value={dateRange.to || ''}

@@ -122,21 +122,6 @@ export const useSidebarConfig = () => {
       }
     });
 
-    if (activeModules.includes('companyAdmin') || hasPermission('manage_settings') || hasWildcard) {
-      sections['Company Settings'] = {
-        icon: 'Settings',
-        items: [
-          { label: 'Overview', path: '/company-admin/overview' },
-          { label: 'Users', path: '/company-admin/users' },
-          { label: 'Roles', path: '/company-admin/roles' },
-          { label: 'Modules', path: '/company-admin/modules' },
-          { label: 'Features', path: '/company-admin/features' },
-          { label: 'Bundles', path: '/company-admin/bundles' },
-          { label: 'General Settings', path: '/company-admin/settings' }
-        ]
-      };
-    }
-
     return sections;
   }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions, voucherTypes]);
 
