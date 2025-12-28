@@ -17,6 +17,7 @@ export interface VoucherListItem {
   reference?: string;
   voucherNo?: string;
   createdBy?: string;
+  createdAt?: string; // ISO String or FireStore timestamp
   // Form tracking
   formId?: string;  // Which form was used to create this voucher
   prefix?: string;  // Voucher number prefix

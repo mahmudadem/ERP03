@@ -17,6 +17,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { AccountsProvider } from '../../../context/AccountsContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { VoucherEntryModal } from '../components/VoucherEntryModal';
+import { VoucherPrintView } from '../components/VoucherPrintView';
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,6 +52,11 @@ const VouchersListPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingVoucher, setEditingVoucher] = React.useState<any>(null);
   const [modalType, setModalType] = React.useState<any>(null);
+  
+  // Print View State
+  const [isPrintViewOpen, setIsPrintViewOpen] = React.useState(false);
+  const [viewingVoucher, setViewingVoucher] = React.useState<any>(null);
+  const [viewingFormType, setViewingFormType] = React.useState<any>(null);
 
   // Update logic to sync URL/Type with client-side filters
   React.useEffect(() => {
@@ -117,7 +123,6 @@ const VouchersListPage: React.FC = () => {
     return () => window.removeEventListener('vouchers-updated', handleRefresh);
   }, [invalidateVouchers]);
 
-
   const handleRowClick = async (id: string) => {
     // Shared Logic: Find the correct Form Definition
     const summary = vouchers.find(v => v.id === id);
@@ -179,6 +184,42 @@ const VouchersListPage: React.FC = () => {
           severity: 'ERROR'
         } as any);
       }
+    }
+  };
+
+  const handleViewPrint = async (id: string) => {
+    const summary = vouchers.find(v => v.id === id);
+    if (!summary) return;
+    
+    // Find form definition (same logic as handleRowClick)
+    const formDefinition = summary.formId 
+      ? voucherTypes.find(t => t.id === summary.formId)
+      : voucherTypes.find(t => {
+          const typeKeywords: Record<string, string[]> = {
+            'journal_entry': ['journal', 'journal_entry'],
+            'payment': ['payment'],
+            'receipt': ['receipt'],
+            'opening_balance': ['opening', 'balance']
+          };
+          const keywords = typeKeywords[summary.type] || [];
+          const formIdLower = (t.id || '').toLowerCase();
+          const formNameLower = (t.name || '').toLowerCase();
+          const formCodeLower = (t.code || '').toLowerCase();
+          return keywords.some(kw => formIdLower.includes(kw) || formNameLower.includes(kw) || formCodeLower.includes(kw));
+        });
+
+    try {
+      const fullVoucher = await accountingApi.getVoucher(id);
+      setViewingVoucher(fullVoucher);
+      setViewingFormType(formDefinition);
+      setIsPrintViewOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch voucher for viewing:', error);
+      errorHandler.showError({
+        code: 'FETCH_ERROR',
+        message: 'Failed to load voucher for viewing',
+        severity: 'ERROR'
+      } as any);
     }
   };
 
@@ -245,6 +286,7 @@ const VouchersListPage: React.FC = () => {
               vouchers={vouchers} 
               isLoading={isLoading}
               error={error ? error.message : null}
+              onViewPrint={handleViewPrint}
               onRowClick={handleRowClick}
               onEdit={(voucher) => handleRowClick(voucher.id)}
               onDelete={async (id) => {
@@ -270,6 +312,15 @@ const VouchersListPage: React.FC = () => {
             uiMode={uiMode}
             onSave={handleSaveWeb}
             initialData={editingVoucher}
+          />
+        )}
+
+        {/* Official View / Print View */}
+        {isPrintViewOpen && viewingVoucher && (
+          <VoucherPrintView 
+            voucher={viewingVoucher}
+            voucherType={viewingFormType}
+            onClose={() => setIsPrintViewOpen(false)}
           />
         )}
 

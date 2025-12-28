@@ -11,6 +11,7 @@ export type { VoucherListItem };
 // Types matching Backend DTOs for single item (detail view might differ slightly from list view)
 export interface VoucherDetailDTO extends VoucherListItem {
   lines?: any[];
+  metadata?: Record<string, any>;
 }
 
 export interface TrialBalanceLine {

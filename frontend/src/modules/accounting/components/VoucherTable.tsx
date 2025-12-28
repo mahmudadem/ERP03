@@ -5,7 +5,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X } from 'lucide-react';
+import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
@@ -24,6 +24,7 @@ interface Props {
   onRowClick?: (id: string) => void;
   onEdit?: (voucher: VoucherListItem) => void;
   onDelete?: (id: string) => void;
+  onViewPrint?: (id: string) => void;
 }
 
 interface ColumnFilter {
@@ -53,7 +54,8 @@ export const VoucherTable: React.FC<Props> = ({
   onPageChange,
   onRowClick,
   onEdit,
-  onDelete
+  onDelete,
+  onViewPrint
 }) => {
   const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
   const pageInfo = pagination || { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 };
@@ -398,8 +400,15 @@ export const VoucherTable: React.FC<Props> = ({
                   <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-3 transition-opacity">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); onRowClick?.(voucher.id); }}
+                        onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
                         className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 bg-slate-50 hover:bg-blue-50 rounded"
+                        title="View Official / Print"
+                      >
+                        <Printer size={18} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onRowClick?.(voucher.id); }}
+                        className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 bg-slate-50 hover:bg-indigo-50 rounded"
                         title="View Details"
                       >
                         <Eye size={18} />
