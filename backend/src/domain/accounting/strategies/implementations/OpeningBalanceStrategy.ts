@@ -1,6 +1,5 @@
 import { IVoucherPostingStrategy } from '../IVoucherPostingStrategy';
-import { VoucherLine } from '../../entities/VoucherLine';
-import { randomUUID } from 'crypto';
+import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
 
 /**
  * OpeningBalanceStrategy
@@ -10,66 +9,65 @@ import { randomUUID } from 'crypto';
  * Validates that total debit balances equal total credit balances.
  */
 export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLine[]> {
-    // Expected header: { balances: Array<{accountId, debitBalance, creditBalance, currency}> }
+  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+    // Expected header: { balances: Array<{accountId, debitBalance, creditBalance, currency, exchangeRate}> }
     
     if (!header.balances || !Array.isArray(header.balances) || header.balances.length === 0) {
       throw new Error('Opening balances required');
     }
 
-    const lines: VoucherLine[] = [];
-    let totalDebitBalance = 0;
-    let totalCreditBalance = 0;
+    const lines: VoucherLineEntity[] = [];
+    let totalDebitBase = 0;
+    let totalCreditBase = 0;
 
-    for (const balance of header.balances) {
-      // Validation: must have accountId
+    header.balances.forEach((balance: any, idx: number) => {
       if (!balance.accountId) {
-        throw new Error('Account ID required for all balances');
+        throw new Error(`Line ${idx + 1}: Account ID required`);
       }
 
-      // Validation: cannot have both debit and credit balance
-      const hasDebit = (balance.debitBalance || 0) > 0;
-      const hasCredit = (balance.creditBalance || 0) > 0;
-      
-      if (hasDebit && hasCredit) {
-        throw new Error('Account cannot have both debit and credit balance');
-      }
-
-      if (!hasDebit && !hasCredit) {
-        throw new Error('Account must have either debit or credit balance');
-      }
-
-      // Create VoucherLine
-      const line = new VoucherLine(
-        randomUUID(),
-        '', // voucherId will be set by UseCase
-        balance.accountId,
-        'Opening Balance'
-      );
-
-      const debitAmount = Number(balance.debitBalance) || 0;
-      const creditAmount = Number(balance.creditBalance) || 0;
+      const debitFx = Number(balance.debitBalance) || 0;
+      const creditFx = Number(balance.creditBalance) || 0;
       const exchangeRate = Number(balance.exchangeRate) || 1;
       const currency = balance.currency || 'USD';
+      const baseCurrency = header.baseCurrency || 'USD';
 
-      line.debitFx = debitAmount;
-      line.creditFx = creditAmount;
-      line.debitBase = debitAmount * exchangeRate;
-      line.creditBase = creditAmount * exchangeRate;
-      line.exchangeRate = exchangeRate;
-      line.lineCurrency = currency;
+      if (debitFx > 0 && creditFx > 0) {
+        throw new Error(`Line ${idx + 1}: Account cannot have both debit and credit balance`);
+      }
 
-      totalDebitBalance += line.debitBase;
-      totalCreditBalance += line.creditBase;
+      if (debitFx <= 0 && creditFx <= 0) {
+        throw new Error(`Line ${idx + 1}: Account must have either debit or credit balance`);
+      }
+
+      const side = debitFx > 0 ? 'Debit' : 'Credit';
+      const amount = debitFx > 0 ? debitFx : creditFx;
+      const baseAmount = amount * exchangeRate;
+
+      const line = new VoucherLineEntity(
+        idx + 1,
+        balance.accountId,
+        side,
+        amount,
+        currency,
+        baseAmount,
+        baseCurrency,
+        exchangeRate,
+        'Opening Balance',
+        balance.costCenterId,
+        balance.metadata || {}
+      );
+
+      totalDebitBase += line.debitAmount;
+      totalCreditBase += line.creditAmount;
 
       lines.push(line);
-    }
+    });
 
     // Validation: total debit balances must equal total credit balances
-    const tolerance = 0.01; // Allow minor rounding differences
-    if (Math.abs(totalDebitBalance - totalCreditBalance) > tolerance) {
+    const tolerance = 0.01;
+    if (Math.abs(totalDebitBase - totalCreditBase) > tolerance) {
       throw new Error(
-        `Total debit balances must equal total credit balances. Total debits: ${totalDebitBalance.toFixed(2)}, Total credits: ${totalCreditBalance.toFixed(2)}`
+        `Total debit balances must equal total credit balances. Total debits: ${totalDebitBase.toFixed(2)}, Total credits: ${totalCreditBase.toFixed(2)}`
       );
     }
 

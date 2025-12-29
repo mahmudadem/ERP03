@@ -59,26 +59,30 @@ export enum VoucherStatus {
   DRAFT = 'draft',
 
   /**
-   * APPROVED - Approved and posted to ledger
-   * - Posted to general ledger
-   * - Cannot be edited (must reverse/adjust)
-   * - Can be locked for period close
+   * APPROVED - Approval workflow completed
+   * - Ready to be posted
+   * - Not yet impacting the ledger
+   * - Can be reverted to DRAFT
    */
   APPROVED = 'approved',
 
   /**
+   * POSTED - Financial impact created
+   * - Immutable: cannot be edited (must reverse/adjust)
+   * - Lines frozen
+   * - Records exist in Ledger
+   */
+  POSTED = 'posted',
+
+  /**
    * LOCKED - Finalized, period closed
    * - Cannot be edited or reversed
-   * - Part of closed period
-   * - Permanent record
    */
   LOCKED = 'locked',
 
   /**
    * REJECTED - Rejected, cannot be posted
-   * - Not posted to ledger
    * - Can return to DRAFT for correction
-   * - Audit trail preserved
    */
   REJECTED = 'rejected'
 }

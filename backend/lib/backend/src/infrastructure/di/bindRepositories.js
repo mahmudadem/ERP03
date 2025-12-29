@@ -132,6 +132,18 @@ exports.diContainer = {
     get roleTemplateRegistryRepository() { return new FirestoreRoleTemplateRegistryRepository_1.FirestoreRoleTemplateRegistryRepository(getDb()); },
     // SHARED
     get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); },
+    // POLICY SYSTEM
+    get policyRegistry() {
+        const { AccountingPolicyRegistry } = require('../../application/accounting/policies/AccountingPolicyRegistry');
+        const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
+        const { FirestoreUserAccessScopeProvider } = require('../accounting/access/FirestoreUserAccessScopeProvider');
+        const { FirestoreAccountLookupService } = require('../accounting/services/FirestoreAccountLookupService');
+        const db = getDb();
+        const configProvider = new FirestoreAccountingPolicyConfigProvider(db);
+        const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
+        const accountLookup = new FirestoreAccountLookupService(db);
+        return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+    },
     // AUTH
     get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); },
     // SYSTEM METADATA

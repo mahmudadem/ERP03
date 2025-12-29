@@ -278,6 +278,59 @@ describe('VoucherEntity', () => {
     });
   });
 
+  describe('post()', () => {
+    it('should create posted version from draft', () => {
+      const draft = new VoucherEntity(
+        'v-001',
+        'company-001',
+        'PAY-2025-001',
+        VoucherType.PAYMENT,
+        '2025-01-15',
+        'Test',
+        'USD',
+        'USD',
+        1.0,
+        createTestLines(),
+        100,
+        100,
+        VoucherStatus.DRAFT,
+        'user-001',
+        new Date()
+      );
+
+      const posted = draft.post('poster-001', new Date());
+
+      expect(posted.status).toBe(VoucherStatus.POSTED);
+      expect(posted.postedBy).toBe('poster-001');
+      expect(posted.postedAt).toBeDefined();
+    });
+
+    it('should create posted version from approved', () => {
+      const approved = new VoucherEntity(
+        'v-001',
+        'company-001',
+        'PAY-2025-001',
+        VoucherType.PAYMENT,
+        '2025-01-15',
+        'Test',
+        'USD',
+        'USD',
+        1.0,
+        createTestLines(),
+        100,
+        100,
+        VoucherStatus.APPROVED,
+        'user-001',
+        new Date(),
+        'approver-001',
+        new Date()
+      );
+
+      const posted = approved.post('poster-001', new Date());
+      expect(posted.status).toBe(VoucherStatus.POSTED);
+    });
+  });
+
   describe('reject()', () => {
     it('should create rejected version from draft', () => {
       const draft = new VoucherEntity(
@@ -310,8 +363,8 @@ describe('VoucherEntity', () => {
   });
 
   describe('lock()', () => {
-    it('should create locked version from approved', () => {
-      const approved = new VoucherEntity(
+    it('should create locked version from posted', () => {
+      const posted = new VoucherEntity(
         'v-001',
         'company-001',
         'PAY-2025-001',
@@ -324,14 +377,19 @@ describe('VoucherEntity', () => {
         createTestLines(),
         100,
         100,
-        VoucherStatus.APPROVED,
+        VoucherStatus.POSTED,
         'user-001',
         new Date(),
         'approver-001',
+        new Date(),
+        undefined,
+        undefined,
+        undefined,
+        'poster-001',
         new Date()
       );
 
-      const locked = approved.lock('locker-001', new Date());
+      const locked = posted.lock('locker-001', new Date());
 
       expect(locked.status).toBe(VoucherStatus.LOCKED);
       expect(locked.lockedBy).toBe('locker-001');
@@ -360,6 +418,32 @@ describe('VoucherEntity', () => {
       expect(() => {
         draft.lock('locker-001', new Date());
       }).toThrow('Cannot lock voucher in status: draft');
+    });
+
+    it('should reject locking approved but unposted voucher', () => {
+      const approved = new VoucherEntity(
+        'v-001',
+        'company-001',
+        'PAY-2025-001',
+        VoucherType.PAYMENT,
+        '2025-01-15',
+        'Test',
+        'USD',
+        'USD',
+        1.0,
+        createTestLines(),
+        100,
+        100,
+        VoucherStatus.APPROVED,
+        'user-001',
+        new Date(),
+        'approver-001',
+        new Date()
+      );
+
+      expect(() => {
+        approved.lock('locker-001', new Date());
+      }).toThrow('Cannot lock voucher in status: approved');
     });
   });
 

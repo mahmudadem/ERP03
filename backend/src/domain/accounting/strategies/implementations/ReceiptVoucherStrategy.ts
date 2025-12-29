@@ -1,6 +1,5 @@
 import { IVoucherPostingStrategy } from '../IVoucherPostingStrategy';
-import { VoucherLine } from '../../entities/VoucherLine';
-import { randomUUID } from 'crypto';
+import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
 
 /**
  * ReceiptVoucherStrategy
@@ -9,30 +8,25 @@ import { randomUUID } from 'crypto';
  * - MANY sources (lines with receiveFromAccountId) - receiving from different accounts
  * - ONE destination (depositToAccountId) - the account money goes to
  * 
- * Example: Receive 500 TRY (at rate 35:1) from multiple customers to USD CashBox
+ * Example: Receive 500 TRY from multiple customers to USD CashBox
  * Input:
  * {
  *   depositToAccountId: "acc_cashbox_usd",
  *   currency: "TRY",
- *   exchangeRate: 35,
+ *   exchangeRate: 0.03,
  *   lines: [
  *     { receiveFromAccountId: "acc_customer_ali", amount: 300, notes: "Inv#101" },
  *     { receiveFromAccountId: "acc_customer_fatima", amount: 200, notes: "Inv#102" }
  *   ]
  * }
- * 
- * Output GL Entries:
- * DR CashBox       500 TRY (14.29 USD base)
- * CR Customer Ali  300 TRY (8.57 USD base)
- * CR Customer Fatima 200 TRY (5.71 USD base)
  */
 export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLine[]> {
-    const lines: VoucherLine[] = [];
+  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+    const lines: VoucherLineEntity[] = [];
     
-    // Extract posting fields
     const depositToAccountId = header.depositToAccountId;
     const currency = header.currency || 'USD';
+    const baseCurrency = header.baseCurrency || 'USD';
     const exchangeRate = Number(header.exchangeRate) || 1;
     const sources = header.lines || [];
     
@@ -44,61 +38,55 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
       throw new Error('Receipt requires at least one source line');
     }
     
-    // Calculate total from sources
     let totalFx = 0;
     
-    // Generate single DEBIT line for destination account
+    // 1. Generate single DEBIT line for destination account
     for (const source of sources) {
       const amountFx = Number(source.amount) || 0;
       totalFx += amountFx;
     }
     
-    const totalBase = totalFx / exchangeRate;
+    const totalBase = totalFx * exchangeRate;
     
-    const debitLine = new VoucherLine(
-      randomUUID(),
-      '', // voucherId set later
+    const debitLine = new VoucherLineEntity(
+      1,
       depositToAccountId,
-      header.description || 'Receipt deposited'
+      'Debit',
+      totalFx,
+      currency,
+      totalBase,
+      baseCurrency,
+      exchangeRate,
+      header.description || 'Receipt deposited',
+      undefined,
+      {}
     );
-    
-    debitLine.debitFx = totalFx;
-    debitLine.creditFx = 0;
-    debitLine.debitBase = totalBase;
-    debitLine.creditBase = 0;
-    debitLine.lineCurrency = currency;
-    debitLine.exchangeRate = exchangeRate;
-    debitLine.fxAmount = totalFx;
-    debitLine.baseAmount = totalBase;
-    
     lines.push(debitLine);
     
-    // Generate CREDIT lines for each source
-    for (const source of sources) {
-      const amountFx = Number(source.amount) || 0;
-      const amountBase = amountFx / exchangeRate;
-      
-      if (!source.receiveFromAccountId) {
-        throw new Error('Each source must have receiveFromAccountId (Receive From account)');
-      }
-      
-      const creditLine = new VoucherLine(
-        randomUUID(),
-        '',
-        source.receiveFromAccountId,
-        source.notes || source.description || 'Receipt source'
-      );
-      
-      creditLine.debitFx = 0;
-      creditLine.creditFx = amountFx;
-      creditLine.debitBase = 0;
-      creditLine.creditBase = amountBase;
-      creditLine.lineCurrency = currency;
-      creditLine.exchangeRate = exchangeRate;
-      creditLine.fxAmount = -amountFx;
-      creditLine.baseAmount = -amountBase;
-      
-      lines.push(creditLine);
+    // 2. Generate CREDIT lines for each source
+    for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        const amountFx = Number(source.amount) || 0;
+        const amountBase = amountFx * exchangeRate;
+        
+        if (!source.receiveFromAccountId) {
+            throw new Error(`Line ${i + 1}: Source must have receiveFromAccountId`);
+        }
+        
+        const creditLine = new VoucherLineEntity(
+            lines.length + 1,
+            source.receiveFromAccountId,
+            'Credit',
+            amountFx,
+            currency,
+            amountBase,
+            baseCurrency,
+            exchangeRate,
+            source.notes || source.description || 'Receipt source',
+            source.costCenterId,
+            source.metadata || {}
+        );
+        lines.push(creditLine);
     }
     
     return lines;

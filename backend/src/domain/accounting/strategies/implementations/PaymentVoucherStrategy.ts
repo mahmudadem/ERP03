@@ -1,6 +1,5 @@
 import { IVoucherPostingStrategy } from '../IVoucherPostingStrategy';
-import { VoucherLine } from '../../entities/VoucherLine';
-import { randomUUID } from 'crypto';
+import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
 
 /**
  * PaymentVoucherStrategy
@@ -20,19 +19,14 @@ import { randomUUID } from 'crypto';
  *     { payToAccountId: "acc_supplier_b", amount: 100, notes: "Inv#002" }
  *   ]
  * }
- * 
- * Output GL Entries:
- * DR Supplier A    200
- * DR Supplier B    100
- * CR Bank          300
  */
 export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLine[]> {
-    const lines: VoucherLine[] = [];
+  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+    const lines: VoucherLineEntity[] = [];
     
-    // Extract posting fields
     const payFromAccountId = header.payFromAccountId;
     const currency = header.currency || 'USD';
+    const baseCurrency = header.baseCurrency || 'USD';
     const exchangeRate = Number(header.exchangeRate) || 1;
     const allocations = header.lines || [];
     
@@ -44,57 +38,51 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
       throw new Error('Payment requires at least one allocation line');
     }
     
-    // Calculate total from allocations
     let totalFx = 0;
     
-    // Generate DEBIT lines for each allocation (destinations)
-    for (const allocation of allocations) {
-      const amountFx = Number(allocation.amount) || 0;
-      const amountBase = amountFx / exchangeRate;
-      totalFx += amountFx;
-      
-      if (!allocation.payToAccountId) {
-        throw new Error('Each allocation must have payToAccountId (Pay To account)');
-      }
-      
-      const debitLine = new VoucherLine(
-        randomUUID(),
-        '', // voucherId set later
-        allocation.payToAccountId,
-        allocation.notes || allocation.description || 'Payment allocation'
-      );
-      
-      debitLine.debitFx = amountFx;
-      debitLine.creditFx = 0;
-      debitLine.debitBase = amountBase;
-      debitLine.creditBase = 0;
-      debitLine.lineCurrency = currency;
-      debitLine.exchangeRate = exchangeRate;
-      debitLine.fxAmount = amountFx;
-      debitLine.baseAmount = amountBase;
-      
-      lines.push(debitLine);
+    // 1. Generate DEBIT lines for each allocation
+    for (let i = 0; i < allocations.length; i++) {
+        const allocation = allocations[i];
+        const amountFx = Number(allocation.amount) || 0;
+        const amountBase = amountFx * exchangeRate;
+        totalFx += amountFx;
+        
+        if (!allocation.payToAccountId) {
+            throw new Error(`Line ${i + 1}: Allocation must have payToAccountId`);
+        }
+        
+        const debitLine = new VoucherLineEntity(
+            i + 1,
+            allocation.payToAccountId,
+            'Debit',
+            amountFx,
+            currency,
+            amountBase,
+            baseCurrency,
+            exchangeRate,
+            allocation.notes || allocation.description || 'Payment allocation',
+            allocation.costCenterId,
+            allocation.metadata || {}
+        );
+        lines.push(debitLine);
     }
     
-    // Generate single CREDIT line for source account
-    const totalBase = totalFx / exchangeRate;
+    // 2. Generate single CREDIT line for source account
+    const totalBase = totalFx * exchangeRate;
     
-    const creditLine = new VoucherLine(
-      randomUUID(),
-      '',
-      payFromAccountId,
-      header.description || 'Payment from account'
+    const creditLine = new VoucherLineEntity(
+        lines.length + 1,
+        payFromAccountId,
+        'Credit',
+        totalFx,
+        currency,
+        totalBase,
+        baseCurrency,
+        exchangeRate,
+        header.description || 'Payment from account',
+        undefined, // Usually no cost center on bank side
+        {}
     );
-    
-    creditLine.debitFx = 0;
-    creditLine.creditFx = totalFx;
-    creditLine.debitBase = 0;
-    creditLine.creditBase = totalBase;
-    creditLine.lineCurrency = currency;
-    creditLine.exchangeRate = exchangeRate;
-    creditLine.fxAmount = -totalFx;
-    creditLine.baseAmount = -totalBase;
-    
     lines.push(creditLine);
     
     return lines;

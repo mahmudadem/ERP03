@@ -1,19 +1,13 @@
 import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
-import { Voucher } from '../../../domain/accounting/models/Voucher';
 
-export class RecordVoucherLedgerUseCase {
-  constructor(
-    private ledgerRepo: ILedgerRepository,
-    private permissionChecker: PermissionChecker
-  ) {}
-
-  async execute(companyId: string, userId: string, voucher: Voucher) {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
-    await this.ledgerRepo.recordForVoucher(voucher);
-  }
-}
-
+/**
+ * DeleteVoucherLedgerUseCase
+ * 
+ * Removes ledger entries for a voucher.
+ * CAUTION: Should only be used for corrections/unposting where allowed by policy.
+ * Standard accounting practice prefers reversal entries.
+ */
 export class DeleteVoucherLedgerUseCase {
   constructor(
     private ledgerRepo: ILedgerRepository,

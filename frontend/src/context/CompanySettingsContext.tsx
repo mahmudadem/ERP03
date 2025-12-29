@@ -44,6 +44,7 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   useEffect(() => {
+    console.debug('[CompanySettingsContext] useEffect calling refresh', { authLoading, userUid: user?.uid, companyId });
     refresh();
   }, [refresh, authLoading, user, companyId]);
 

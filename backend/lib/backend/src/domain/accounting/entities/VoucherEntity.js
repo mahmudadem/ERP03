@@ -18,7 +18,7 @@ const VoucherLineEntity_1 = require("./VoucherLineEntity");
  * - Simple state-based approval (no workflow engine)
  *
  * State Flow:
- * DRAFT → APPROVED → LOCKED
+ * DRAFT → APPROVED → POSTED → LOCKED
  *    ↓
  * REJECTED
  */
@@ -36,7 +36,7 @@ class VoucherEntity {
     // Metadata (Generic extra fields)
     metadata = {}, 
     // Audit trail
-    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt) {
+    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt) {
         this.id = id;
         this.companyId = companyId;
         this.voucherNo = voucherNo;
@@ -60,6 +60,8 @@ class VoucherEntity {
         this.rejectionReason = rejectionReason;
         this.lockedBy = lockedBy;
         this.lockedAt = lockedAt;
+        this.postedBy = postedBy;
+        this.postedAt = postedAt;
         // Invariant: Must have at least 2 lines (debit and credit)
         if (lines.length < 2) {
             throw new Error('Voucher must have at least 2 lines');
@@ -102,6 +104,12 @@ class VoucherEntity {
         return this.status === VoucherTypes_1.VoucherStatus.APPROVED;
     }
     /**
+     * Check if voucher is posted to ledger
+     */
+    get isPosted() {
+        return this.status === VoucherTypes_1.VoucherStatus.POSTED;
+    }
+    /**
      * Check if voucher is locked
      */
     get isLocked() {
@@ -126,10 +134,16 @@ class VoucherEntity {
         return this.isDraft;
     }
     /**
+     * Check if voucher can be posted
+     */
+    get canPost() {
+        return this.isDraft || this.isApproved;
+    }
+    /**
      * Check if voucher can be locked
      */
     get canLock() {
-        return this.isApproved;
+        return this.isPosted;
     }
     /**
      * Check if voucher involves foreign currency
@@ -156,19 +170,78 @@ class VoucherEntity {
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt);
     }
     /**
+     * Create posted version (immutable update)
+     */
+    post(postedBy, postedAt) {
+        if (!this.canPost) {
+            throw new Error(`Cannot post voucher in status: ${this.status}`);
+        }
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.POSTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, postedBy, postedAt);
+    }
+    /**
      * Create locked version (immutable update)
      */
     lock(lockedBy, lockedAt) {
         if (!this.canLock) {
             throw new Error(`Cannot lock voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.LOCKED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, lockedBy, lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.LOCKED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt);
+    }
+    /**
+     * Create a reversal voucher (for corrections)
+     *
+     * Generates a new voucher that exactly negates this voucher's financial impact.
+     * Swaps debits and credits on all lines.
+     *
+     * @param reversalDate - Date for the reversal (typically today)
+     * @param correctionGroupId - UUID linking reversal to replacement
+     * @param reason - Reason for correction
+     * @returns New VoucherEntity in DRAFT status (ready to be posted)
+     */
+    createReversal(reversalDate, correctionGroupId, userId, // Required for createdBy
+    reason) {
+        if (this.status !== VoucherTypes_1.VoucherStatus.POSTED) {
+            throw new Error('Only POSTED vouchers can be reversed');
+        }
+        // Generate reversal lines by swapping debits/credits
+        const reversalLines = this.lines.map((line, index) => new VoucherLineEntity_1.VoucherLineEntity(index + 1, // Re-index from 1
+        line.accountId, line.side === 'Debit' ? 'Credit' : 'Debit', // Opposite side
+        line.creditAmount, // Swap: debit becomes credit
+        line.currency, line.debitAmount, // Swap: credit becomes debit
+        line.baseCurrency, line.exchangeRate));
+        // Swap totals as well
+        const reversalTotalDebit = this.totalCredit;
+        const reversalTotalCredit = this.totalDebit;
+        // Create reversal metadata
+        const reversalMetadata = Object.assign(Object.assign({}, this.metadata), { reversalOfVoucherId: this.id, correctionGroupId, correctionReason: reason });
+        // Create new voucher entity for reversal
+        return new VoucherEntity('', // ID will be generated when saved
+        this.companyId, '', // Voucher number will be generated
+        this.type, reversalDate, `Reversal of ${this.voucherNo}`, this.currency, this.baseCurrency, this.exchangeRate, reversalLines, reversalTotalDebit, reversalTotalCredit, VoucherTypes_1.VoucherStatus.DRAFT, reversalMetadata, userId, new Date());
+    }
+    /**
+     * Check if this voucher is a reversal
+     */
+    get isReversal() {
+        return !!this.metadata.reversalOfVoucherId;
+    }
+    /**
+     * Check if this voucher is a replacement
+     */
+    get isReplacement() {
+        return !!this.metadata.replacesVoucherId;
+    }
+    /**
+     * Get correction group ID if this voucher is part of a correction
+     */
+    get correctionGroupId() {
+        return this.metadata.correctionGroupId;
     }
     /**
      * Convert to plain object for persistence
      */
     toJSON() {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         return {
             id: this.id,
             companyId: this.companyId,
@@ -192,14 +265,16 @@ class VoucherEntity {
             rejectedAt: ((_b = this.rejectedAt) === null || _b === void 0 ? void 0 : _b.toISOString()) || null,
             rejectionReason: this.rejectionReason || null,
             lockedBy: this.lockedBy || null,
-            lockedAt: ((_c = this.lockedAt) === null || _c === void 0 ? void 0 : _c.toISOString()) || null
+            lockedAt: ((_c = this.lockedAt) === null || _c === void 0 ? void 0 : _c.toISOString()) || null,
+            postedBy: this.postedBy || null,
+            postedAt: ((_d = this.postedAt) === null || _d === void 0 ? void 0 : _d.toISOString()) || null
         };
     }
     /**
      * Create from plain object (for deserialization)
      */
     static fromJSON(data) {
-        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, data.description, data.currency, data.baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined);
+        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, data.description, data.currency, data.baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined);
     }
 }
 exports.VoucherEntity = VoucherEntity;

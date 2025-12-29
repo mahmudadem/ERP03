@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { queryClient } from '../queryClient';
 import { companySelectorApi } from '../modules/company-selector/api';
 import { authApi } from '../api/auth';
@@ -81,7 +81,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
 
   const setCompanyId = (newCompanyId: string) => setCompanyIdState(newCompanyId);
 
-  const loadPermissionsForActiveCompany = async () => {
+  const loadPermissionsForActiveCompany = useCallback(async () => {
     if (authLoading || !user) {
       setPermissionsLoaded(resolvedPermissions.length > 0);
       setLoading(false);
@@ -99,26 +99,23 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       if (data.moduleBundles && data.moduleBundles.length) {
         localStorage.setItem('activeModules', JSON.stringify(data.moduleBundles));
       }
-      // roleId and roleName from permissions endpoint are used instead
       setPermissionsLoaded(true);
     } catch (err) {
       console.error('Failed to load permissions', err);
-      // Keep previous permissions on error to avoid clearing sidebar
       setPermissions((prev) => prev);
       setResolvedPermissions((prev) => prev);
       setModuleBundles((prev) => prev);
-      // leave isOwner as-is on error
       setPermissionsLoaded(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user, resolvedPermissions.length]);
 
-  const refreshPermissions = async () => {
+  const refreshPermissions = useCallback(async () => {
     await loadPermissionsForActiveCompany();
-  };
+  }, [loadPermissionsForActiveCompany]);
 
-  const loadActiveCompany = async () => {
+  const loadActiveCompany = useCallback(async () => {
     if (authLoading) return;
     if (!user) {
       setLoading(false);
@@ -130,12 +127,10 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     setPermissionsLoaded(false);
     
     try {
-      // First, check if user is super admin via permissions
       const permData = await authApi.getMyPermissions();
       const isUserSuperAdmin = !!permData.isSuperAdmin;
       setIsSuperAdminState(isUserSuperAdmin);
       
-      // Super admins don't need a company - skip company loading
       if (isUserSuperAdmin) {
         setPermissions(permData.resolvedPermissions || []);
         setResolvedPermissions(permData.resolvedPermissions || []);
@@ -149,11 +144,9 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Regular users - load company as normal
       const data = await companySelectorApi.getActiveCompany();
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
-      // Store company object for UI display
       if (data.company) {
         setCompany({
           id: activeId,
@@ -166,10 +159,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       } else {
         setCompany(null);
       }
-      // roleId, roleName, and isOwner are available in the response but not currently used in context
       const isOwnerFlag = !!(data as any).isOwner;
       setIsOwner(isOwnerFlag);
-      // Pre-seed module bundles from the active company record so ProtectedRoute can use them
       const modules = (data.company && Array.isArray((data.company as any).modules)) ? (data.company as any).modules : [];
       setModuleBundles(modules);
       if (modules.length) {
@@ -185,27 +176,25 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to load active company', error);
-      // Keep existing state to avoid bouncing user; do not blank companyId here
       setPermissionsLoaded(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [authLoading, user, loadPermissionsForActiveCompany]);
 
-  const switchCompany = async (newCompanyId: string) => {
+  const switchCompany = useCallback(async (newCompanyId: string) => {
     setLoading(true);
     setPermissionsLoaded(false);
     try {
       await companySelectorApi.switchCompany(newCompanyId);
       await queryClient.clear();
-      // Optimistically set the active company so ProtectedRoute doesn't bounce us back
       setCompanyIdState(newCompanyId);
       localStorage.setItem('activeCompanyId', newCompanyId);
       await loadActiveCompany();
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadActiveCompany]);
 
   useEffect(() => {
     if (companyId) {
@@ -229,25 +218,43 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handler);
   }, []);
 
+  const contextValue = useMemo((): CompanyAccessContextValue => {
+    console.debug('[CompanyAccessContext] rendering new value', { companyId, loading, permissionsLoaded });
+    return {
+      companyId,
+      company,
+      permissions,
+      resolvedPermissions,
+      moduleBundles,
+      isSuperAdmin: isSuperAdminState,
+      isOwner: isOwnerOrWildcard,
+      loading,
+      permissionsLoaded,
+      setCompanyId,
+      loadActiveCompany,
+      switchCompany,
+      refreshPermissions,
+      loadPermissionsForActiveCompany,
+    };
+  }, [
+    companyId,
+    company,
+    permissions,
+    resolvedPermissions,
+    moduleBundles,
+    isSuperAdminState,
+    isOwnerOrWildcard,
+    loading,
+    permissionsLoaded,
+    setCompanyId,
+    loadActiveCompany,
+    switchCompany,
+    refreshPermissions,
+    loadPermissionsForActiveCompany
+  ]);
+
   return (
-    <CompanyAccessContext.Provider
-      value={{
-        companyId,
-        company,
-        permissions,
-        resolvedPermissions,
-        moduleBundles,
-        isSuperAdmin: isSuperAdminState,
-        isOwner: isOwnerOrWildcard,
-        loading,
-        permissionsLoaded,
-        setCompanyId,
-        loadActiveCompany,
-        switchCompany,
-        refreshPermissions,
-        loadPermissionsForActiveCompany,
-      }}
-    >
+    <CompanyAccessContext.Provider value={contextValue}>
       {children}
     </CompanyAccessContext.Provider>
   );

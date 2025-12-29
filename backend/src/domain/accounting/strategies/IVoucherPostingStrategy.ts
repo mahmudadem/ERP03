@@ -1,5 +1,5 @@
-import { VoucherLine } from '../entities/VoucherLine';
+import { VoucherLineEntity } from '../entities/VoucherLineEntity';
 
 export interface IVoucherPostingStrategy {
-  generateLines(header: any, companyId: string): Promise<VoucherLine[]>;
+  generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]>;
 }

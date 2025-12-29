@@ -1,5 +1,5 @@
 import { LedgerEntry } from '../../../domain/accounting/models/LedgerEntry';
-import { Voucher } from '../../../domain/accounting/entities/Voucher';
+import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 
 export interface TrialBalanceRow {
   accountId: string;
@@ -18,7 +18,7 @@ export interface GLFilters {
 }
 
 export interface ILedgerRepository {
-  recordForVoucher(voucher: Voucher, transaction?: any): Promise<void>;
+  recordForVoucher(voucher: VoucherEntity, transaction?: any): Promise<void>;
   deleteForVoucher(companyId: string, voucherId: string, transaction?: any): Promise<void>;
   getAccountLedger(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<LedgerEntry[]>;
   getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]>;

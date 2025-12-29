@@ -193,6 +193,21 @@ export const diContainer = {
   // SHARED
   get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); },
 
+  // POLICY SYSTEM
+  get policyRegistry() {
+    const { AccountingPolicyRegistry } = require('../../application/accounting/policies/AccountingPolicyRegistry');
+    const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
+    const { FirestoreUserAccessScopeProvider } = require('../accounting/access/FirestoreUserAccessScopeProvider');
+    const { FirestoreAccountLookupService } = require('../accounting/services/FirestoreAccountLookupService');
+    
+    const db = getDb();
+    const configProvider = new FirestoreAccountingPolicyConfigProvider(db);
+    const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
+    const accountLookup = new FirestoreAccountLookupService(db);
+    
+    return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+  },
+
   // AUTH
   get tokenVerifier(): ITokenVerifier { return new FirebaseTokenVerifier(); },
 

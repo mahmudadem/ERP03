@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
-import { Voucher } from '../../../../domain/accounting/entities/Voucher';
+import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
 const serverTimestamp = () => {
@@ -23,14 +23,18 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
     return this.db.collection('companies').doc(companyId).collection('ledger');
   }
 
-  async recordForVoucher(voucher: Voucher, transaction?: admin.firestore.Transaction): Promise<void> {
+  async recordForVoucher(voucher: VoucherEntity, transaction?: admin.firestore.Transaction): Promise<void> {
     try {
       const batch = !transaction ? this.db.batch() : null;
       
       voucher.lines.forEach((line) => {
+        // Line ID is guaranteed unique within voucher by entity logic
         const id = `${voucher.id}_${line.id}`;
-        const debit = line.debitBase || 0;
-        const credit = line.creditBase || 0;
+        
+        // Canonical Posting Model: record debit and credit in base currency
+        const debit = line.debitAmount;
+        const credit = line.creditAmount;
+        
         const docRef = this.col(voucher.companyId).doc(id);
         const data = {
           id,
@@ -41,6 +45,15 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           date: toTimestamp(voucher.date),
           debit,
           credit,
+          currency: line.currency,
+          amount: line.amount,
+          baseCurrency: line.baseCurrency,
+          baseAmount: line.baseAmount,
+          exchangeRate: line.exchangeRate,
+          side: line.side,
+          notes: line.notes || null,
+          costCenterId: line.costCenterId || null,
+          metadata: line.metadata || {},
           createdAt: serverTimestamp(),
         };
 

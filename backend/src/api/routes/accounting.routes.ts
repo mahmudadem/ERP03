@@ -8,6 +8,7 @@ import { VoucherController } from '../controllers/accounting/VoucherController';
 import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
+import { SettingsController } from '../controllers/accounting/SettingsController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
 
@@ -34,7 +35,9 @@ router.post('/vouchers',
 );
 router.put('/vouchers/:id', permissionGuard('accounting.vouchers.edit'), VoucherController.update);
 router.post('/vouchers/:id/approve', permissionGuard('accounting.vouchers.approve'), VoucherController.approve);
-router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock);
+router.post('/vouchers/:id/post', permissionGuard('accounting.vouchers.post'), VoucherController.post);
+router.post('/vouchers/:id/correct', permissionGuard('accounting.vouchers.correct'), VoucherController.correct);
+// router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock); // Disabled - not implemented
 router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'), VoucherController.cancel);
 
 // Reports
@@ -49,6 +52,10 @@ router.get('/designer/voucher-types/:code', permissionGuard('accounting.designer
 router.post('/designer/voucher-types', permissionGuard('accounting.designer.create'), AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', permissionGuard('accounting.designer.modify'), AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
+
+// Policy Configuration
+router.get('/policy-config', permissionGuard('accounting.settings.read'), SettingsController.getSettings);
+router.put('/policy-config', permissionGuard('accounting.settings.write'), SettingsController.updateSettings);
 
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);

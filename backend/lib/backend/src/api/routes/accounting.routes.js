@@ -9,6 +9,7 @@ const VoucherController_1 = require("../controllers/accounting/VoucherController
 const VoucherFormController_1 = require("../controllers/accounting/VoucherFormController");
 const ReportingController_1 = require("../controllers/accounting/ReportingController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
+const SettingsController_1 = require("../controllers/accounting/SettingsController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
 const router = (0, express_1.Router)();
@@ -28,7 +29,9 @@ router.get('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.v
 router.post('/vouchers', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), VoucherController_1.VoucherController.create);
 router.put('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.edit'), VoucherController_1.VoucherController.update);
 router.post('/vouchers/:id/approve', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.approve'), VoucherController_1.VoucherController.approve);
-router.post('/vouchers/:id/lock', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.lock'), VoucherController_1.VoucherController.lock);
+router.post('/vouchers/:id/post', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.post'), VoucherController_1.VoucherController.post);
+router.post('/vouchers/:id/correct', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.correct'), VoucherController_1.VoucherController.correct);
+// router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock); // Disabled - not implemented
 router.post('/vouchers/:id/cancel', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.cancel'), VoucherController_1.VoucherController.cancel);
 // Reports
 router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accounting.reports.profitAndLoss.view'), ReportingController_1.ReportingController.profitAndLoss);
@@ -41,6 +44,9 @@ router.get('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuar
 router.post('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), AccountingDesignerController_1.AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.saveVoucherTypeLayout);
+// Policy Configuration
+router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), SettingsController_1.SettingsController.getSettings);
+router.put('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), SettingsController_1.SettingsController.updateSettings);
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.list);
 router.get('/voucher-forms/by-type/:typeId', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.getByType);

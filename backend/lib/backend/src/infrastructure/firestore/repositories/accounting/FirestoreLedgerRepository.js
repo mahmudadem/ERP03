@@ -50,9 +50,11 @@ class FirestoreLedgerRepository {
         try {
             const batch = !transaction ? this.db.batch() : null;
             voucher.lines.forEach((line) => {
+                // Line ID is guaranteed unique within voucher by entity logic
                 const id = `${voucher.id}_${line.id}`;
-                const debit = line.debitBase || 0;
-                const credit = line.creditBase || 0;
+                // Canonical Posting Model: record debit and credit in base currency
+                const debit = line.debitAmount;
+                const credit = line.creditAmount;
                 const docRef = this.col(voucher.companyId).doc(id);
                 const data = {
                     id,
@@ -63,6 +65,15 @@ class FirestoreLedgerRepository {
                     date: toTimestamp(voucher.date),
                     debit,
                     credit,
+                    currency: line.currency,
+                    amount: line.amount,
+                    baseCurrency: line.baseCurrency,
+                    baseAmount: line.baseAmount,
+                    exchangeRate: line.exchangeRate,
+                    side: line.side,
+                    notes: line.notes || null,
+                    costCenterId: line.costCenterId || null,
+                    metadata: line.metadata || {},
                     createdAt: serverTimestamp(),
                 };
                 if (transaction) {

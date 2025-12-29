@@ -1,17 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GetJournalUseCase = exports.GetGeneralLedgerUseCase = exports.GetTrialBalanceUseCase = exports.DeleteVoucherLedgerUseCase = exports.RecordVoucherLedgerUseCase = void 0;
-class RecordVoucherLedgerUseCase {
-    constructor(ledgerRepo, permissionChecker) {
-        this.ledgerRepo = ledgerRepo;
-        this.permissionChecker = permissionChecker;
-    }
-    async execute(companyId, userId, voucher) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
-        await this.ledgerRepo.recordForVoucher(voucher);
-    }
-}
-exports.RecordVoucherLedgerUseCase = RecordVoucherLedgerUseCase;
+exports.GetJournalUseCase = exports.GetGeneralLedgerUseCase = exports.GetTrialBalanceUseCase = exports.DeleteVoucherLedgerUseCase = void 0;
+/**
+ * DeleteVoucherLedgerUseCase
+ *
+ * Removes ledger entries for a voucher.
+ * CAUTION: Should only be used for corrections/unposting where allowed by policy.
+ * Standard accounting practice prefers reversal entries.
+ */
 class DeleteVoucherLedgerUseCase {
     constructor(ledgerRepo, permissionChecker) {
         this.ledgerRepo = ledgerRepo;

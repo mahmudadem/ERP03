@@ -8,7 +8,7 @@
  * other provider implementation (Keycloak, Auth0, custom JWT, etc.)
  */
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { IAuthProvider, AuthUser, LoginCredentials } from '../services/auth/IAuthProvider';
 import { getFirebaseAuthProvider } from '../services/auth/FirebaseAuthProvider';
 
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children, authProvider }: AuthProviderProps) => {
     return () => unsubscribe();
   }, [provider]);
 
-  const login = async (creds: LoginCredentials) => {
+  const login = useCallback(async (creds: LoginCredentials) => {
     // eslint-disable-next-line no-console
     console.info('[Auth] login attempt', creds.email);
     try {
@@ -73,33 +73,36 @@ export const AuthProvider = ({ children, authProvider }: AuthProviderProps) => {
       console.error('[Auth] login failed', err);
       throw err;
     }
-  };
+  }, [provider]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await provider.logout();
     setUser(null);
-  };
+  }, [provider]);
 
-  const getToken = async () => {
-    return provider.getToken();
-  };
+  const getToken = useCallback(async (forceRefresh?: boolean) => {
+    return provider.getToken(forceRefresh);
+  }, [provider]);
 
-  const refreshToken = async () => {
+  const refreshToken = useCallback(async () => {
     if (provider.refreshToken) {
       return provider.refreshToken();
     }
     // Fallback: force refresh via getToken
     return provider.getToken(true);
-  };
+  }, [provider]);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    logout,
-    getToken,
-    refreshToken,
-  };
+  const value = useMemo((): AuthContextType => {
+    console.debug('[AuthContext] rendering new value', { userUid: user?.uid, loading });
+    return {
+      user,
+      loading,
+      login,
+      logout,
+      getToken,
+      refreshToken,
+    };
+  }, [user, loading, login, logout, getToken, refreshToken]);
 
   return (
     <AuthContext.Provider value={value}>
