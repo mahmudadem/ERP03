@@ -19,6 +19,7 @@ interface AccountSelectorProps {
   className?: string;
   noBorder?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  onBlur?: () => void;
 }
 
 export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps>(({
@@ -28,7 +29,8 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   disabled = false,
   className = '',
   noBorder = false,
-  onKeyDown: externalKeyDown
+  onKeyDown: externalKeyDown,
+  onBlur: externalBlur
 }, ref) => {
   const { validAccounts, isLoading, getAccountByCode } = useAccounts();
   const [inputValue, setInputValue] = useState('');
@@ -133,9 +135,13 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
       // If the input looks like a code (digits), keep it as is maybe? 
       // Or just revert if it was valid before?
       // For now: open modal to resolve
-      setModalSearch(inputValue.trim());
       setHighlightedIndex(0);
       setShowModal(true);
+    }
+
+    // Call external blur
+    if (externalBlur) {
+      externalBlur();
     }
   };
 

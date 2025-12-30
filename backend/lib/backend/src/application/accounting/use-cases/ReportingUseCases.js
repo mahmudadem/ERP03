@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetTrialBalanceUseCase = void 0;
+const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 class GetTrialBalanceUseCase {
     constructor(accountRepo, voucherRepo, permissionChecker) {
         this.accountRepo = accountRepo;
@@ -15,12 +16,12 @@ class GetTrialBalanceUseCase {
             ? await this.accountRepo.getAccounts(companyId)
             : await this.accountRepo.list(companyId);
         const accountMap = new Map(accounts.map(a => [a.id, a]));
-        // 2. Fetch all Approved or Locked vouchers
-        const allVouchers = await this.voucherRepo.getVouchers(companyId);
-        const validVouchers = allVouchers.filter(v => v.status === 'approved' || v.status === 'locked');
+        // 2. Fetch all vouchers and filter by status (V2 interface)
+        const allVouchers = await this.voucherRepo.findByCompany(companyId) || [];
+        const validVouchers = allVouchers.filter(v => v.status === VoucherTypes_1.VoucherStatus.APPROVED ||
+            v.status === VoucherTypes_1.VoucherStatus.POSTED ||
+            v.status === VoucherTypes_1.VoucherStatus.LOCKED);
         // 3. Aggregate Balances
-        // We use a Record to track balances. We pre-fill it with existing accounts to ensure
-        // accounts with 0 balance still appear in the report.
         const balances = {};
         accounts.forEach(acc => {
             balances[acc.id] = { debit: 0, credit: 0 };
@@ -29,30 +30,21 @@ class GetTrialBalanceUseCase {
             if (!voucher.lines)
                 continue;
             for (const line of voucher.lines) {
-                // Handle case where voucher references an account not in the current account list (orphaned)
                 if (!balances[line.accountId]) {
                     balances[line.accountId] = { debit: 0, credit: 0 };
                 }
-                // Base Amount is already in Company Base Currency
-                if (line.baseAmount > 0) {
-                    balances[line.accountId].debit += line.baseAmount;
-                }
-                else {
-                    balances[line.accountId].credit += Math.abs(line.baseAmount);
-                }
+                // V2 VoucherLineEntity uses debitAmount/creditAmount getters
+                balances[line.accountId].debit += line.debitAmount || 0;
+                balances[line.accountId].credit += line.creditAmount || 0;
             }
         }
         // 4. Transform to Result
-        // We iterate over keys of balances to ensure we include orphaned accounts found in vouchers
         const report = Object.keys(balances).map(accId => {
             const b = balances[accId];
             const acc = accountMap.get(accId);
             const code = (acc === null || acc === void 0 ? void 0 : acc.code) || '???';
             const name = (acc === null || acc === void 0 ? void 0 : acc.name) || `Unknown Account (${accId})`;
-            const type = (acc === null || acc === void 0 ? void 0 : acc.type) || 'EXPENSE'; // Fallback type to prevent crash, ideally logged
-            // Net Balance Logic: 
-            // Assets/Expenses (Debit Normal): Debit - Credit
-            // Liabilities/Equity/Income (Credit Normal): Credit - Debit
+            const type = (acc === null || acc === void 0 ? void 0 : acc.type) || 'EXPENSE';
             let net = 0;
             if (['ASSET', 'EXPENSE'].includes(type)) {
                 net = b.debit - b.credit;

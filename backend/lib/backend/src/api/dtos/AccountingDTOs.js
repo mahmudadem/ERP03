@@ -12,27 +12,43 @@ class AccountingDTOMapper {
             active: account.active,
         };
     }
-    static toVoucherDTO(voucher, lines = []) {
+    static toVoucherDTO(voucher) {
         return {
             id: voucher.id,
             companyId: voucher.companyId,
+            voucherNo: voucher.voucherNo,
             type: voucher.type,
-            date: new Date(voucher.date).toISOString(),
+            date: voucher.date,
+            description: voucher.description,
             currency: voucher.currency,
+            baseCurrency: voucher.baseCurrency,
             exchangeRate: voucher.exchangeRate,
             status: voucher.status,
             totalDebit: voucher.totalDebit,
             totalCredit: voucher.totalCredit,
             reference: voucher.reference,
             createdBy: voucher.createdBy,
-            lines: lines.map(line => ({
-                id: line.id,
-                accountId: line.accountId,
-                description: line.description,
-                fxAmount: line.fxAmount,
-                baseAmount: line.baseAmount,
-                costCenterId: line.costCenterId
-            }))
+            createdAt: voucher.createdAt.toISOString(),
+            metadata: voucher.metadata,
+            sourceModule: voucher.sourceModule,
+            formId: voucher.formId,
+            prefix: voucher.prefix,
+            lines: voucher.lines.map(line => AccountingDTOMapper.toVoucherLineDTO(line))
+        };
+    }
+    static toVoucherLineDTO(line) {
+        return {
+            id: line.id,
+            accountId: line.accountId,
+            side: line.side,
+            amount: line.amount,
+            baseAmount: line.baseAmount,
+            currency: line.currency,
+            baseCurrency: line.baseCurrency,
+            exchangeRate: line.exchangeRate,
+            notes: line.notes,
+            costCenterId: line.costCenterId,
+            metadata: line.metadata
         };
     }
 }

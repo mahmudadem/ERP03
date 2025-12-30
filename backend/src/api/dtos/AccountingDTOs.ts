@@ -1,9 +1,11 @@
 /**
  * AccountingDTOs.ts
+ * 
+ * V2 Only - Uses VoucherEntity and VoucherLineEntity
  */
 import { Account } from '../../domain/accounting/entities/Account';
-import { Voucher } from '../../domain/accounting/entities/Voucher';
-import { VoucherLine } from '../../domain/accounting/entities/VoucherLine';
+import { VoucherEntity } from '../../domain/accounting/entities/VoucherEntity';
+import { VoucherLineEntity } from '../../domain/accounting/entities/VoucherLineEntity';
 
 export interface AccountDTO {
   id: string;
@@ -15,54 +17,81 @@ export interface AccountDTO {
 }
 
 export interface VoucherLineDTO {
-  id: string;
+  id: number;
   accountId: string;
-  description: string | null;
-  fxAmount: number;
+  side: 'Debit' | 'Credit';
+  amount: number;
   baseAmount: number;
+  currency: string;
+  baseCurrency: string;
+  exchangeRate: number;
+  notes?: string | null;
   costCenterId?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export interface VoucherDTO {
   id: string;
   companyId: string;
+  voucherNo: string;
   type: string;
   date: string;
+  description: string;
   currency: string;
+  baseCurrency: string;
   exchangeRate: number;
   status: string;
   totalDebit: number;
   totalCredit: number;
   reference?: string | null;
-  lines?: VoucherLineDTO[]; // Optional in list view, required in detail
+  lines: VoucherLineDTO[];
   createdBy: string;
+  createdAt: string;
+  metadata?: Record<string, any>;
+  // Computed/legacy compatibility
+  sourceModule?: string | null;
+  formId?: string | null;
+  prefix?: string | null;
 }
 
 export interface CreateVoucherRequest {
-  companyId: string;
   type: string; // VoucherType
   date: string;
-  currency: string;
+  description?: string;
+  currency?: string;
+  baseCurrency?: string;
   exchangeRate?: number;
   reference?: string;
   lines: {
     accountId: string;
-    description: string;
-    fxAmount: number;
+    side: 'Debit' | 'Credit';
+    amount: number;
+    currency?: string;
+    baseCurrency?: string;
+    exchangeRate?: number;
+    notes?: string;
     costCenterId?: string;
+    metadata?: Record<string, any>;
   }[];
+  metadata?: Record<string, any>;
 }
 
 export interface UpdateVoucherRequest {
   date?: string;
+  description?: string;
   reference?: string;
   lines?: {
-    id?: string; // If present, update; else create
+    id?: number;
     accountId: string;
-    description: string;
-    fxAmount: number;
+    side: 'Debit' | 'Credit';
+    amount: number;
+    currency?: string;
+    exchangeRate?: number;
+    notes?: string;
     costCenterId?: string;
+    metadata?: Record<string, any>;
   }[];
+  metadata?: Record<string, any>;
 }
 
 export class AccountingDTOMapper {
@@ -77,27 +106,44 @@ export class AccountingDTOMapper {
     };
   }
 
-  static toVoucherDTO(voucher: Voucher, lines: VoucherLine[] = []): VoucherDTO {
+  static toVoucherDTO(voucher: VoucherEntity): VoucherDTO {
     return {
       id: voucher.id,
       companyId: voucher.companyId,
+      voucherNo: voucher.voucherNo,
       type: voucher.type,
-      date: new Date(voucher.date as any).toISOString(),
+      date: voucher.date,
+      description: voucher.description,
       currency: voucher.currency,
+      baseCurrency: voucher.baseCurrency,
       exchangeRate: voucher.exchangeRate,
       status: voucher.status,
       totalDebit: voucher.totalDebit,
       totalCredit: voucher.totalCredit,
       reference: voucher.reference,
       createdBy: voucher.createdBy,
-      lines: lines.map(line => ({
-        id: line.id,
-        accountId: line.accountId,
-        description: line.description,
-        fxAmount: line.fxAmount,
-        baseAmount: line.baseAmount,
-        costCenterId: line.costCenterId
-      }))
+      createdAt: voucher.createdAt.toISOString(),
+      metadata: voucher.metadata,
+      sourceModule: voucher.sourceModule,
+      formId: voucher.formId,
+      prefix: voucher.prefix,
+      lines: voucher.lines.map(line => AccountingDTOMapper.toVoucherLineDTO(line))
+    };
+  }
+
+  static toVoucherLineDTO(line: VoucherLineEntity): VoucherLineDTO {
+    return {
+      id: line.id,
+      accountId: line.accountId,
+      side: line.side,
+      amount: line.amount,
+      baseAmount: line.baseAmount,
+      currency: line.currency,
+      baseCurrency: line.baseCurrency,
+      exchangeRate: line.exchangeRate,
+      notes: line.notes,
+      costCenterId: line.costCenterId,
+      metadata: line.metadata
     };
   }
 }

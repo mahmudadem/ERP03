@@ -15,7 +15,7 @@ import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTyp
  */
 
 // Re-export canonical type
-export { VoucherTypeDefinition };
+export type { VoucherTypeDefinition };
 
 // Window management (UI only)
 export interface WindowState {
@@ -32,6 +32,7 @@ export interface WindowState {
 }
 
 // Journal UI (UI only)
+
 export interface JournalRow {
   id: number;
   account: string;

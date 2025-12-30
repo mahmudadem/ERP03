@@ -11,7 +11,7 @@ import { validateUniqueness } from '../validators/uniquenessValidator';
 
 // Firebase imports
 import { db } from '../../../../config/firebase';
-import { collection, doc, getDocs, getDoc, setDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 
 /**
  * Load default system voucher templates from Firestore
@@ -26,7 +26,7 @@ export async function loadDefaultTemplates(): Promise<VoucherFormConfig[]> {
     
     snapshot.forEach(doc => {
       try {
-        const canonical = doc.data() as any;
+        const canonical = { id: doc.id, ...doc.data() } as any;
         const uiConfig = canonicalToUi(canonical);
         templates.push(uiConfig);
       } catch (err) {
@@ -53,7 +53,7 @@ export async function loadCompanyForms(companyId: string): Promise<VoucherFormCo
     
     snapshot.forEach(doc => {
       try {
-        const canonical = doc.data() as any;
+        const canonical = { id: doc.id, ...doc.data() } as any;
         const uiConfig = canonicalToUi(canonical);
         forms.push(uiConfig);
       } catch (err) {
@@ -367,6 +367,20 @@ export async function checkFormDeletable(
     return { canDelete: true };
   } catch (error) {
     return { canDelete: false, reason: 'Error checking form status' };
+  }
+}
+
+/**
+ * Delete a voucher form
+ */
+export async function deleteVoucherForm(companyId: string, formId: string): Promise<boolean> {
+  try {
+    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    await deleteDoc(formRef);
+    return true;
+  } catch (error) {
+    console.error('Failed to delete form:', error);
+    return false;
   }
 }
 

@@ -18,20 +18,22 @@ import { AccountsProvider } from '../../../../context/AccountsContext';
 import { FormCard } from './FormCard';
 import { WarningModal } from './WarningModal';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
-import { voucherFormApi } from '../../../../api/voucherFormApi';
+import { errorHandler } from '../../../../services/errorHandler';
 
 interface Props { // Renamed from VoucherFormDesignerProps as per the snippet
   templates?: VoucherFormConfig[]; // System-wide templates for Step 1
   onExit?: () => void;
-  onVoucherSaved?: (voucher: VoucherFormConfig, isEdit: boolean) => void; // Kept original onVoucherSaved
-  onDeleteForm?: (formId: string) => void; // Added from snippet
+  onVoucherSaved?: (voucher: VoucherFormConfig, isEdit: boolean) => void;
+  onDeleteForm?: (formId: string) => void;
+  onToggleEnabled?: (formId: string, enabled: boolean) => void;
 }
 
 export const VoucherFormDesigner: React.FC<Props> = ({ 
   templates = [], // Defaulted templates
   onExit,
-  onVoucherSaved, // Kept original onVoucherSaved
-  onDeleteForm // Added from snippet
+  onVoucherSaved,
+  onDeleteForm,
+  onToggleEnabled
 }) => {
   // Reverted to original state management for now, as useVoucherForms is not defined.
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
@@ -96,8 +98,11 @@ export const VoucherFormDesigner: React.FC<Props> = ({
       await deleteForm(id);
       if (onDeleteForm) onDeleteForm(id);
     } catch (error) {
-      console.error('Failed to delete form:', error);
-      alert('Failed to delete form. It may be in use.');
+      errorHandler.showError({
+        code: 'DELETE_FAILED',
+        message: 'Failed to delete form. It may be in use.',
+        severity: 'ERROR'
+      } as any);
     }
   };
 
@@ -106,14 +111,19 @@ export const VoucherFormDesigner: React.FC<Props> = ({
     if (!form) return;
 
     try {
-      // Update in backend first
-      await voucherFormApi.update(formId, { enabled });
-      
       // Update local state
       await updateForm({ ...form, enabled });
+
+      // Notify parent to sync state (Parent handles database persistence)
+      if (onToggleEnabled) {
+          onToggleEnabled(formId, enabled);
+      }
     } catch (error) {
-      console.error('Failed to toggle form:', error);
-      alert('Failed to update form status. Please try again.');
+      errorHandler.showError({
+        code: 'UPDATE_FAILED',
+        message: 'Failed to update form status. Please try again.',
+        severity: 'ERROR'
+      } as any);
     }
   };
 

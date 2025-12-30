@@ -23,7 +23,8 @@ import { FirestoreUserRepository } from '../firestore/repositories/core/Firestor
 import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/FirestoreCompanyUserRepository';
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
-import { FirestoreVoucherRepository } from '../firestore/repositories/accounting/FirestoreVoucherRepository';
+import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
+import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
@@ -118,10 +119,10 @@ export const diContainer = {
 
   // ACCOUNTING
   get accountRepository(): AccRepo.IAccountRepository { return new AccountRepositoryFirestore(getDb()); },
-  get voucherRepository(): AccRepo.IVoucherRepository {
-    return DB_TYPE === 'SQL'
-      ? new PrismaVoucherRepository(getPrismaClient())
-      : new FirestoreVoucherRepository(getDb());
+  get voucherRepository(): IVoucherRepository {
+    // V2 Repository is the only implementation (legacy removed)
+    // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
+    return new FirestoreVoucherRepositoryV2(getDb());
   },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
@@ -206,6 +207,12 @@ export const diContainer = {
     const accountLookup = new FirestoreAccountLookupService(db);
     
     return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+  },
+
+  // ACCOUNTING POLICY CONFIG (for use cases that need approval settings)
+  get accountingPolicyConfigProvider() {
+    const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
+    return new FirestoreAccountingPolicyConfigProvider(getDb());
   },
 
   // AUTH

@@ -8,5 +8,6 @@ export {
   saveVoucherForm,
   cloneVoucherForm,
   toggleFormEnabled,
-  checkFormDeletable
+  checkFormDeletable,
+  deleteVoucherForm
 } from './voucherWizardService';

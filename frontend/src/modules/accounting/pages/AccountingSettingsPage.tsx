@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save } from 'lucide-react';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -24,7 +24,7 @@ interface PolicyConfig {
 }
 
 export const AccountingSettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('policies');
+  const [activeTab, setActiveTab] = useState('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
@@ -49,14 +49,15 @@ export const AccountingSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Granular tabs as per implementation plan
   const tabs = [
+    { id: 'general', label: 'General Settings', icon: Globe },
     { id: 'policies', label: 'Policy Configuration', icon: Shield },
-    { id: 'general', label: 'General', icon: Settings },
+    { id: 'approval', label: 'Approval System', icon: Shield },
+    { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
+    { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
     { id: 'fiscal', label: 'Fiscal Year', icon: Building2 },
   ];
-
-  // Diagnostic: log renders to detect loops
-  console.debug('AccountingSettingsPage Render', { loading, companyId });
 
   useEffect(() => {
     if (coreSettings) {
@@ -82,13 +83,14 @@ export const AccountingSettingsPage: React.FC = () => {
     
     setLoading(true);
     try {
-      const response = await client.get(
-        `tenant/accounting/policy-config`
-      );
+      // Note: client interceptor unwraps { success, data } - returns data directly
+      const data = await client.get(`tenant/accounting/policy-config`);
+      console.log('[AccountingSettings] Load response:', data);
       
-      if (response.data.success) {
-        setConfig(response.data.data);
-        setOriginalConfig(response.data.data);
+      if (data) {
+        console.log('[AccountingSettings] Setting config:', data);
+        setConfig(data as any);
+        setOriginalConfig(data as any);
       }
     } catch (error: any) {
       errorHandler.showError(error.response?.data?.error?.message || 'Failed to load settings');
@@ -102,23 +104,21 @@ export const AccountingSettingsPage: React.FC = () => {
     
     setSaving(true);
     try {
-      // 1. Save Policy Config
-      const policyResponse = await client.put(
-        `tenant/accounting/policy-config`,
-        config
-      );
+      // Note: client interceptor unwraps responses
+      // PUT returns {success, message} which has no nested data, so it returns the object as-is
+      const result = await client.put(`tenant/accounting/policy-config`, config) as any;
       
-      if (!policyResponse.data.success) {
-        throw new Error(policyResponse.data.error?.message || 'Failed to save policy settings');
+      // Check if success (interceptor returns the whole {success, message} for PUT responses)
+      if (result?.success === false) {
+        throw new Error(result.error?.message || 'Failed to save policy settings');
       }
 
-      // 2. Save Core Settings if changed
       const coreChanged = JSON.stringify(localCoreSettings) !== JSON.stringify(originalCoreSettings);
       if (coreChanged) {
         await updateCoreSettings(localCoreSettings);
       }
 
-      errorHandler.showSuccess('Settings saved successfully');
+      errorHandler.showSuccess('settings_saved');
       setOriginalConfig(config);
       setOriginalCoreSettings(localCoreSettings);
     } catch (error: any) {
@@ -140,429 +140,526 @@ export const AccountingSettingsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p className="mt-2 text-gray-600">Loading settings...</p>
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading settings...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Settings className="text-indigo-600" size={32} />
-          Accounting Settings
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Configure your accounting module preferences and policies
-        </p>
+    <div className="h-full flex flex-col bg-gray-50">
+      {/* Header with Save Button */}
+      <div className="flex-none px-8 py-6 bg-white border-b border-gray-200 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Accounting Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage your company's accounting preferences and policies
+          </p>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={!hasChanges || saving}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+        >
+          {saving ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save size={18} />
+          )}
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {/* Tab Headers */}
-        <div className="border-b border-gray-200 bg-gray-50">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Vertical Sidebar Navigation */}
+        <aside className="w-64 border-r border-gray-200 bg-gray-50 overflow-y-auto hidden md:block">
+          <nav className="p-4 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                    ${activeTab === tab.id
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                    ${isActive
+                      ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-gray-200'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }
                   `}
                 >
-                  <Icon size={18} />
+                  <Icon 
+                    size={18} 
+                    className={isActive ? 'text-indigo-600' : 'text-gray-400'} 
+                  />
                   {tab.label}
                 </button>
               );
             })}
           </nav>
-        </div>
+        </aside>
 
-        {/* Tab Content */}
-        <div className="p-6">
-          {activeTab === 'policies' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Shield className="text-indigo-600" size={24} />
-                  Policy Configuration
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Configure posting policies and validation rules for financial transactions
-                </p>
-              </div>
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto bg-white">
+          <div className="max-w-4xl p-8">
+            {/* Mobile Tab Dropdown */}
+            <div className="md:hidden mb-6">
+              <select
+                className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value)}
+              >
+                {tabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>{tab.label}</option>
+                ))}
+              </select>
+            </div>
 
-              {/* Approval Required */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <label className="flex items-center gap-2 font-medium text-gray-900">
-                      <Shield size={18} className="text-blue-500" />
-                      Approval Required
-                    </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Require approval before posting vouchers
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded">
-                      <AlertTriangle size={16} />
-                      Unapproved vouchers cannot be posted when enabled
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={config.approvalRequired}
-                      onChange={(e) => setConfig({ ...config, approvalRequired: e.target.checked })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
+            {/* General Settings Tab */}
+            {activeTab === 'general' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">General Settings</h2>
+                  <p className="text-gray-600">
+                    Configure general company preferences that affect the accounting module
+                  </p>
                 </div>
-              </div>
 
-              {/* Period Lock */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <label className="flex items-center gap-2 font-medium text-gray-900">
-                      <Lock size={18} className="text-red-500" />
-                      Period Lock
+                <div className="space-y-6">
+                  {/* Timezone */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <label className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                      <Globe size={20} className="text-blue-500" />
+                      Company Timezone
                     </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Prevent posting to closed accounting periods
+                    <p className="text-sm text-gray-500 mb-4">
+                      Select the primary timezone for financial reports and transaction timestamps
                     </p>
+                    <select
+                      className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      value={localCoreSettings.timezone}
+                      onChange={(e) => setLocalCoreSettings({ ...localCoreSettings, timezone: e.target.value })}
+                    >
+                      <option value="UTC">UTC (Universal Time)</option>
+                      <option value="Europe/Istanbul">Europe/Istanbul (UTC+03:00)</option>
+                      <option value="Europe/London">Europe/London (GMT/BST)</option>
+                      <option value="America/New_York">America/New_York (EST/EDT)</option>
+                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                    </select>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={config.periodLockEnabled}
-                      onChange={(e) => setConfig({ ...config, periodLockEnabled: e.target.checked })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-                
-                {config.periodLockEnabled && (
-                  <div className="mt-3 pl-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Locked Through Date
-                    </label>
-                    <input
-                      type="date"
-                      className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      value={config.lockedThroughDate || ''}
-                      onChange={(e) => setConfig({ ...config, lockedThroughDate: e.target.value })}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      All dates ≤ this date will be locked for posting
-                    </p>
-                  </div>
-                )}
-              </div>
 
-              {/* Account Access Control */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <label className="flex items-center gap-2 font-medium text-gray-900">
-                      <Building2 size={18} className="text-green-500" />
-                      Account Access Control
+                  {/* Date Format */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <label className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                      <Calendar size={20} className="text-green-500" />
+                      Date Format
                     </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Restrict posting based on user access scopes and account ownership
+                    <p className="text-sm text-gray-500 mb-4">
+                      Choose how dates are displayed across the application
                     </p>
-                    <div className="mt-2 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 px-3 py-2 rounded">
-                      <AlertTriangle size={16} />
-                      Users can only post to accounts they have access to
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={config.accountAccessEnabled}
-                      onChange={(e) => setConfig({ ...config, accountAccessEnabled: e.target.checked })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Cost Center Required */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <label className="flex items-center gap-2 font-medium text-gray-900">
-                      <DollarSign size={18} className="text-purple-500" />
-                      Cost Center Required
-                    </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Require cost center assignment on specific account types
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={config.costCenterPolicy.enabled}
-                      onChange={(e) => setConfig({
-                        ...config,
-                        costCenterPolicy: {
-                          ...config.costCenterPolicy,
-                          enabled: e.target.checked
-                        }
-                      })}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-                
-                {config.costCenterPolicy.enabled && (
-                  <div className="mt-3 pl-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Required for Account Types
-                    </label>
-                    <div className="space-y-2">
-                      {['expense', 'revenue', 'asset', 'liability'].map((type) => (
-                        <label key={type} className="flex items-center gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+                      {['DD/MM/YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY'].map((format) => (
+                        <label 
+                          key={format}
+                          className={`
+                            flex items-center p-4 border rounded-xl cursor-pointer transition-all
+                            ${localCoreSettings.dateFormat === format 
+                              ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
+                          `}
+                        >
                           <input
-                            type="checkbox"
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            checked={config.costCenterPolicy.requiredFor.accountTypes?.includes(type)}
-                            onChange={(e) => {
-                              const current = config.costCenterPolicy.requiredFor.accountTypes || [];
-                                const updated = e.target.checked
-                                  ? [...current, type]
-                                  : current.filter((t: string) => t !== type);
-                              setConfig({
-                                ...config,
-                                costCenterPolicy: {
-                                  ...config.costCenterPolicy,
-                                  requiredFor: {
-                                    ...config.costCenterPolicy.requiredFor,
-                                    accountTypes: updated
-                                  }
-                                }
-                              });
-                            }}
+                            type="radio"
+                            className="sr-only"
+                            checked={localCoreSettings.dateFormat === format}
+                            onChange={() => setLocalCoreSettings({ ...localCoreSettings, dateFormat: format })}
                           />
-                          <span className="text-sm text-gray-700 capitalize">{type}</span>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-900">{format}</span>
+                            <span className="text-xs text-gray-500">
+                              Example: {(() => {
+                                const d = new Date();
+                                const day = String(d.getDate()).padStart(2, '0');
+                                const month = String(d.getMonth() + 1).padStart(2, '0');
+                                const year = String(d.getFullYear());
+                                if (format === 'DD/MM/YYYY') return `${day}/${month}/${year}`;
+                                if (format === 'YYYY-MM-DD') return `${year}-${month}-${day}`;
+                                if (format === 'MM/DD/YYYY') return `${month}/${day}/${year}`;
+                                if (format === 'DD.MM.YYYY') return `${day}.${month}.${year}`;
+                                return format;
+                              })()}
+                            </span>
+                          </div>
                         </label>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Policy Error Mode */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <label className="block font-medium text-gray-900 mb-2">
-                  Policy Error Mode
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Choose how policy violations are reported
-                </p>
-                <div className="space-y-3">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="policyErrorMode"
-                      value="FAIL_FAST"
-                      checked={config.policyErrorMode === 'FAIL_FAST'}
-                      onChange={(e) => setConfig({ ...config, policyErrorMode: e.target.value as any })}
-                      className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">Fail Fast (Default)</div>
-                      <div className="text-sm text-gray-600">Stop at first policy violation</div>
+                  {/* UI Mode */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <label className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+                      <Layout size={20} className="text-purple-500" />
+                      Interface Style
+                    </label>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Choose the primary desktop experience
+                    </p>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => setLocalCoreSettings({ ...localCoreSettings, uiMode: 'classic' })}
+                        className={`flex-1 p-5 border rounded-2xl text-left transition-all ${
+                          localCoreSettings.uiMode === 'classic' 
+                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200' 
+                          : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-bold text-gray-900">Classic</div>
+                        <div className="text-xs text-gray-500">Tabbed, flat interface</div>
+                      </button>
+                      <button
+                        onClick={() => setLocalCoreSettings({ ...localCoreSettings, uiMode: 'windows' })}
+                        className={`flex-1 p-5 border rounded-2xl text-left transition-all ${
+                          localCoreSettings.uiMode === 'windows' 
+                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200' 
+                          : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-bold text-gray-900">Windows (V3)</div>
+                        <div className="text-xs text-gray-500">Multi-window multitasking</div>
+                      </button>
                     </div>
-                  </label>
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="policyErrorMode"
-                      value="AGGREGATE"
-                      checked={config.policyErrorMode === 'AGGREGATE'}
-                      onChange={(e) => setConfig({ ...config, policyErrorMode: e.target.value as any })}
-                      className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">Aggregate</div>
-                      <div className="text-sm text-gray-600">Collect all policy violations before failing</div>
-                    </div>
-                  </label>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Metadata */}
-              {config.updatedAt && (
-                <div className="text-sm text-gray-500 border-t pt-4">
-                  Last updated: {new Date(config.updatedAt).toLocaleString()}
-                  {config.updatedBy && ` by ${config.updatedBy}`}
+            {/* Policy Configuration Tab */}
+            {activeTab === 'policies' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Policy Configuration</h2>
+                  <p className="text-gray-600">
+                    Manage ledger control policies and transactional rules
+                  </p>
                 </div>
-              )}
-            </div>
-          )}
 
-          {activeTab === 'general' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <Settings className="text-indigo-600" size={24} />
-                  General Settings
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Configure general company preferences that affect the accounting module and platform behavior
-                </p>
+                <div className="space-y-6">
+                  {/* Period Lock */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-start gap-6">
+                      <div className="flex-1">
+                        <label className="flex items-center gap-2 font-bold text-gray-900">
+                          <Lock size={20} className="text-red-500" />
+                          Period Lock
+                        </label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Prevent posting to closed accounting periods
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${config.periodLockEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
+                          {config.periodLockEnabled ? 'ON' : 'OFF'}
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={config.periodLockEnabled}
+                            onChange={(e) => setConfig({ ...config, periodLockEnabled: e.target.checked })}
+                          />
+                          <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
+                            <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.periodLockEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                    
+                    {config.periodLockEnabled && (
+                      <div className="mt-6 pt-6 border-t border-gray-100">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Locked Through Date
+                        </label>
+                        <input
+                          type="date"
+                          className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={config.lockedThroughDate || ''}
+                          onChange={(e) => setConfig({ ...config, lockedThroughDate: e.target.value })}
+                        />
+                        <p className="mt-2 text-xs text-gray-500">
+                          Transactions on or before this date cannot be modified or posted.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Account Access Control */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex items-start gap-6">
+                      <div className="flex-1">
+                        <label className="flex items-center gap-2 font-bold text-gray-900">
+                          <Building2 size={20} className="text-green-500" />
+                          Account Access Control
+                        </label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Enforce permission-based access to specific ledger accounts
+                        </p>
+                        <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
+                          <Shield size={14} />
+                          Users can only post to accounts they have access to
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${config.accountAccessEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
+                          {config.accountAccessEnabled ? 'ON' : 'OFF'}
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={config.accountAccessEnabled}
+                            onChange={(e) => setConfig({ ...config, accountAccessEnabled: e.target.checked })}
+                          />
+                          <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
+                            <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.accountAccessEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
 
-              {/* Timezone */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <label className="flex items-center gap-2 font-medium text-gray-900 mb-2">
-                  <Globe size={18} className="text-blue-500" />
-                  Company Timezone
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Select the primary timezone for financial reports and transaction timestamps
-                </p>
-                <select
-                  className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  value={localCoreSettings.timezone}
-                  onChange={(e) => setLocalCoreSettings({ ...localCoreSettings, timezone: e.target.value })}
-                >
-                  <option value="UTC">UTC (Universal Time)</option>
-                  <option value="Europe/Istanbul">Europe/Istanbul (UTC+03:00)</option>
-                  <option value="Europe/London">Europe/London (GMT/BST)</option>
-                  <option value="America/New_York">America/New_York (EST/EDT)</option>
-                  <option value="Asia/Dubai">Asia/Dubai (GST)</option>
-                </select>
+            {/* Approval System Tab */}
+            {activeTab === 'approval' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Approval System</h2>
+                  <p className="text-gray-600">
+                    Configure workflow rules for voucher approvals
+                  </p>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-start gap-6">
+                    <div className="flex-1">
+                      <label className="flex items-center gap-2 font-bold text-gray-900">
+                        <Shield size={20} className="text-blue-500" />
+                        Approval Required
+                      </label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Require approval before posting vouchers to the ledger
+                      </p>
+                      <div className="mt-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50 px-4 py-3 rounded-xl border border-amber-100">
+                        <AlertTriangle size={18} />
+                        <div>
+                          <p className="font-semibold">Voucher Enforcement Active</p>
+                          <p className="text-xs mt-0.5 opacity-90">Unapproved vouchers cannot be posted until approved by an authorized user.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-xs font-bold uppercase tracking-wider ${config.approvalRequired ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {config.approvalRequired ? 'ON' : 'OFF'}
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={config.approvalRequired}
+                          onChange={(e) => setConfig({ ...config, approvalRequired: e.target.checked })}
+                        />
+                        <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
+                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.approvalRequired ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
 
-              {/* Date Format */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <label className="flex items-center gap-2 font-medium text-gray-900 mb-2">
-                  <Calendar size={18} className="text-green-500" />
-                  Date Format
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Choose how dates are displayed across the application
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
-                  {['DD/MM/YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY'].map((format) => (
-                    <label 
-                      key={format}
-                      className={`
-                        flex items-center p-3 border rounded-lg cursor-pointer transition-all
-                        ${localCoreSettings.dateFormat === format 
-                          ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' 
-                          : 'border-gray-200 hover:border-gray-300'}
-                      `}
-                    >
+            {/* Cost Center Required Tab */}
+            {activeTab === 'cost-center' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Cost Center Required</h2>
+                  <p className="text-gray-600">
+                    Define when cost center assignment is mandatory
+                  </p>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-start gap-6 mb-4">
+                    <div className="flex-1">
+                      <label className="flex items-center gap-2 font-bold text-gray-900">
+                        <DollarSign size={20} className="text-purple-500" />
+                        Enforce Cost Centers
+                      </label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Require cost center assignment on specific account types
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-xs font-bold uppercase tracking-wider ${config.costCenterPolicy.enabled ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {config.costCenterPolicy.enabled ? 'ON' : 'OFF'}
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={config.costCenterPolicy.enabled}
+                          onChange={(e) => setConfig({
+                            ...config,
+                            costCenterPolicy: {
+                              ...config.costCenterPolicy,
+                              enabled: e.target.checked
+                            }
+                          })}
+                        />
+                        <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
+                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.costCenterPolicy.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {config.costCenterPolicy.enabled && (
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                      <p className="text-sm font-semibold text-gray-900 mb-4">Required for Account Types:</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        {['EXPENSE', 'ASSET', 'LIABILITY', 'REVENUE'].map((type) => (
+                          <label key={type} className="flex items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                              checked={config.costCenterPolicy.requiredFor.accountTypes?.includes(type)}
+                              onChange={(e) => {
+                                const current = config.costCenterPolicy.requiredFor.accountTypes || [];
+                                const updated = e.target.checked
+                                  ? [...current, type]
+                                  : current.filter((t: string) => t !== type);
+                                setConfig({
+                                  ...config,
+                                  costCenterPolicy: {
+                                    ...config.costCenterPolicy,
+                                    requiredFor: {
+                                      ...config.costCenterPolicy.requiredFor,
+                                      accountTypes: updated
+                                    }
+                                  }
+                                });
+                              }}
+                            />
+                            <span className="ml-3 text-sm font-medium text-gray-700">{type}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Policy Error Mode Tab */}
+            {activeTab === 'error-mode' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Policy Error Mode</h2>
+                  <p className="text-gray-600">
+                    Control how validation failures are reported
+                  </p>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 font-bold text-gray-900 mb-2">
+                    <AlertTriangle size={20} className="text-amber-500" />
+                    Validation Behavior
+                  </div>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Choose how the system reacts when multiple policy rules are violated
+                  </p>
+                  <div className="space-y-4">
+                    <label className={`
+                      flex items-start p-4 border rounded-xl cursor-pointer transition-all
+                      ${config.policyErrorMode === 'FAIL_FAST' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-gray-200 hover:bg-gray-50'}
+                    `}>
                       <input
                         type="radio"
                         className="sr-only"
-                        checked={localCoreSettings.dateFormat === format}
-                        onChange={() => setLocalCoreSettings({ ...localCoreSettings, dateFormat: format })}
+                        checked={config.policyErrorMode === 'FAIL_FAST'}
+                        onChange={() => setConfig({ ...config, policyErrorMode: 'FAIL_FAST' })}
                       />
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{format}</span>
-                        <span className="text-xs text-gray-500">Example: {(() => {
-                          const d = new Date();
-                          const day = String(d.getDate()).padStart(2, '0');
-                          const month = String(d.getMonth() + 1).padStart(2, '0');
-                          const year = String(d.getFullYear());
-                          if (format === 'DD/MM/YYYY') return `${day}/${month}/${year}`;
-                          if (format === 'YYYY-MM-DD') return `${year}-${month}-${day}`;
-                          if (format === 'MM/DD/YYYY') return `${month}/${day}/${year}`;
-                          if (format === 'DD.MM.YYYY') return `${day}.${month}.${year}`;
-                          return format;
-                        })()}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-gray-900">FAIL_FAST</span>
+                          {config.policyErrorMode === 'FAIL_FAST' && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Recommended</span>}
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          Stop and report on the first error encountered. Faster performance but may require multiple attempts to fix all issues.
+                        </p>
                       </div>
                     </label>
-                  ))}
+
+                    <label className={`
+                      flex items-start p-4 border rounded-xl cursor-pointer transition-all
+                      ${config.policyErrorMode === 'AGGREGATE' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-gray-200 hover:bg-gray-50'}
+                    `}>
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        checked={config.policyErrorMode === 'AGGREGATE'}
+                        onChange={() => setConfig({ ...config, policyErrorMode: 'AGGREGATE' })}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-gray-900">AGGREGATE</span>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          Run all checks and report all errors at once. Provides a comprehensive list of what needs fixing.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* UI Mode */}
-              <div className="border border-gray-200 rounded-lg p-4">
-                <label className="flex items-center gap-2 font-medium text-gray-900 mb-2">
-                  <Layout size={18} className="text-purple-500" />
-                  Interface Style
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Choose the primary desktop experience
-                </p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setLocalCoreSettings({ ...localCoreSettings, uiMode: 'classic' })}
-                    className={`flex-1 p-4 border rounded-xl text-left transition-all ${
-                      localCoreSettings.uiMode === 'classic' 
-                      ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' 
-                      : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="font-bold text-gray-900">Classic</div>
-                    <div className="text-xs text-gray-500">Tabbed, flat interface</div>
-                  </button>
-                  <button
-                    onClick={() => setLocalCoreSettings({ ...localCoreSettings, uiMode: 'windows' })}
-                    className={`flex-1 p-4 border rounded-xl text-left transition-all ${
-                      localCoreSettings.uiMode === 'windows' 
-                      ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' 
-                      : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="font-bold text-gray-900">Windows (V3)</div>
-                    <div className="text-xs text-gray-500">Multi-window multitasking</div>
-                  </button>
+            {/* Fiscal Year Tab */}
+            {activeTab === 'fiscal' && (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Fiscal Year</h2>
+                  <p className="text-gray-600">
+                    Define your company's financial reporting period
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl p-12 text-center">
+                  <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mx-auto mb-4 text-gray-400">
+                    <Building2 size={32} />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Under Construction</h3>
+                  <p className="text-gray-500 max-w-xs mx-auto mt-2">
+                    Fiscal year settings are being migrated to the new policy framework.
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'fiscal' && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Fiscal Year Settings</h2>
-              <p className="text-gray-600">
-                Configure fiscal year start date and year-end closing preferences.
-              </p>
-              {/* Fiscal year settings will go here */}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          onClick={loadSettings}
-          disabled={!hasChanges || saving}
-          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Reset
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges || saving}
-          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {saving && (
-            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-          )}
-          {saving ? 'Saving...' : 'Save Settings'}
-        </button>
+            {/* Metadata */}
+            {config.updatedAt && (
+              <div className="mt-8 pt-4 border-t text-sm text-gray-500">
+                Last updated: {new Date(config.updatedAt).toLocaleString()}
+                {config.updatedBy && ` by ${config.updatedBy}`}
+              </div>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

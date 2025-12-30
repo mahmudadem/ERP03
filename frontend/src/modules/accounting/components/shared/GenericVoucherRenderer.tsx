@@ -17,6 +17,7 @@ interface GenericVoucherRendererProps {
   mode?: 'classic' | 'windows';
   initialData?: any;
   onChange?: (data: any) => void;
+  onBlur?: () => void;
 }
 
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
@@ -37,7 +38,7 @@ export interface GenericVoucherRendererRef {
   resetData: () => void;
 }
 
-export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange }, ref) => {
+export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur }, ref) => {
   // GUARD: Validate canonical (only if schemaVersion is present)
   if (definition.schemaVersion && definition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
@@ -253,6 +254,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  const onBlurRef = useRef(onBlur);
+  useEffect(() => {
+    onBlurRef.current = onBlur;
+  }, [onBlur]);
+
   
   // Handle column resize
   useEffect(() => {
@@ -329,17 +335,21 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // If initialData has lines, populate rows
     if (initialData?.lines && Array.isArray(initialData.lines)) {
-      const loadedRows = initialData.lines.map((line: any, index: number) => ({
-        id: index + 1,
-        account: line.accountId || line.account || '',
-        notes: line.description || line.notes || '',
-        debit: line.debitFx || line.debit || 0,
-        credit: line.creditFx || line.credit || 0,
-        currency: line.lineCurrency || line.currency || 'USD',
-        parity: line.exchangeRate || line.parity || 1.0,
-        equivalent: line.baseAmount || line.equivalent || 0,
-        category: line.category || ''
-      }));
+      const loadedRows = initialData.lines.map((line: any, index: number) => {
+        // Strict V2 format: use side to determine debit/credit
+        const amt = Math.abs(Number(line.amount) || 0);
+        return {
+          id: index + 1,
+          account: line.accountId || line.account || '',
+          notes: line.notes || line.description || '',
+          debit: line.side === 'Debit' ? amt : 0,
+          credit: line.side === 'Credit' ? amt : 0,
+          currency: line.currency || line.lineCurrency || 'USD',
+          parity: line.exchangeRate || line.parity || 1.0,
+          equivalent: line.baseAmount || line.equivalent || 0,
+          category: line.costCenterId || line.category || ''
+        };
+      });
       setRows(loadedRows);
     }
   }, [initialData, settings]); // Re-run when settings arrive to refresh 'Today' date
@@ -398,8 +408,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           description: row.notes || '',  // Map notes → description
           debitFx: row.debit || 0,
           creditFx: row.credit || 0,
-          debitBase: row.debit || 0,  // For now, assume same as Fx
-          creditBase: row.credit || 0,
+          debitBase: row.debit * (row.parity || 1),  // Use parity for base conversion
+          creditBase: row.credit * (row.parity || 1),
           lineCurrency: row.currency || 'USD',
           exchangeRate: row.parity || 1
         }));
@@ -433,6 +443,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const handleInputChange = (fieldId: string, value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev, [fieldId]: value };
+      
+      // If header-level exchange rate changes, we might want to update all lines
+      // that are using the default currency parity. But for now, lines handle their own parity.
+      
       onChangeRef.current?.({ ...next, lines: rows });
       return next;
     });
@@ -450,6 +464,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           } else if (field === 'credit' && value > 0) {
             updated.debit = 0;
           }
+
+          // Handle numeric fields safely without stripping partial decimals
+          if (['debit', 'credit', 'parity'].includes(field as string)) {
+            // Keep the raw value in state to allow typing decimals (e.g., "1.")
+            // but use the parsed value for calculations
+            updated[field as 'debit' | 'credit' | 'parity'] = value as any;
+          }
+
+          // MULTI-CURRENCY LOGIC: Re-calculate equivalent (Base Amount)
+          // Equivalent = Transaction Amount * Parity
+          const debit = parseFloat(updated.debit as any) || 0;
+          const credit = parseFloat(updated.credit as any) || 0;
+          const parity = parseFloat(updated.parity as any) || 1.0;
+          const amount = debit || credit || 0;
+          // Round to 2 decimals to prevent floating point errors (e.g. 110.000000000001)
+          updated.equivalent = Math.round(amount * parity * 100) / 100;
           
           return updated;
         }
@@ -482,12 +512,26 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // Only return defaults if property is missing entirely
     if (rawColumns === undefined || rawColumns === null) {
-      return [
+      const baseColumns = [
         { id: 'account', label: t('account') || 'Account', width: '25%' },
         { id: 'debit', label: t('debit') || 'Debit', width: '15%' },
-        { id: 'credit', label: t('credit') || 'Credit', width: '15%' },
-        { id: 'notes', label: t('notes') || 'Notes', width: 'auto' }
+        { id: 'credit', label: t('credit') || 'Credit', width: '15%' }
       ];
+      
+      // Safety Net: If it's a Journal Entry, include multi-currency columns in the default view
+      const isJE = definition.code?.toLowerCase().includes('journal') || 
+                   (definition as any).baseType?.toLowerCase().includes('journal-entry');
+                   
+      if (isJE) {
+        baseColumns.push(
+          { id: 'currency', label: t('currency') || 'Currency', width: '80px' },
+          { id: 'parity', label: t('parity') || 'Rate', width: '80px' },
+          { id: 'equivalent', label: t('equivalent') || 'Equivalent', width: '100px' }
+        );
+      }
+      
+      baseColumns.push({ id: 'notes', label: t('notes') || 'Notes', width: 'auto' });
+      return baseColumns;
     }
 
     if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
@@ -676,6 +720,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
                                                             noBorder={true}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                            onBlur={() => onBlurRef.current?.()}
                                                         />
                                                      </div>
                                                  ) : colId === 'debit' || colId === 'credit' ? (
@@ -684,7 +729,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                          value={row[colId as 'debit' | 'credit'] || 0}
                                                          onChange={(val) => handleRowChange(row.id, colId as 'debit' | 'credit', val)}
                                                          onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
-                                                     />
+                                                         onBlur={() => onBlurRef.current?.()}
+                                                      />
                                                  ) : (colId === 'currency' || col.type === 'currency' || col.type === 'currency-selector') ? (
                                                      <div className="p-0.5">
                                                         <CurrencySelector 
@@ -693,6 +739,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             onChange={(val) => handleRowChange(row.id, colId as any, val)} 
                                                             noBorder={true}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                            onBlur={() => onBlurRef.current?.()}
                                                         />
                                                      </div>
                                                  ) : (
@@ -702,6 +749,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                        value={(row as any)[colId] || ''}
                                                        onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
                                                        onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                       onBlur={() => onBlurRef.current?.()}
                                                        className="w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors" 
                                                      />
                                                  )}
@@ -819,7 +867,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     {rows.map((row, index) => (
                         <tr key={row.id} className="hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors">
                             <td className="p-2 text-[var(--color-text-muted)] text-xs text-center">{index + 1}</td>
-                             {columns.map(col => {
+                             {columns.map((col, colIdx) => {
                                  const colId = col.id;
                                  return (
                                      <td 
@@ -829,22 +877,43 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                      >
                                          {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
                                              <AccountSelector 
+                                                 ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.account} 
                                                  onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                 onBlur={() => onBlurRef.current?.()}
                                              />
-                                         ) : colId === 'debit' || colId === 'credit' ? (
+                                         ) : colId === 'currency' ? (
+                                             <CurrencySelector
+                                                 ref={(el) => registerCellRef(index, colIdx, el)}
+                                                 value={row.currency}
+                                                 onChange={(val) => handleRowChange(row.id, 'currency', val)}
+                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                 onBlur={() => onBlurRef.current?.()}
+                                                 noBorder
+                                             />
+                                         ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
                                              <input 
+                                                 ref={(el) => registerCellRef(index, colIdx, el)}
                                                  type="number" 
-                                                 value={row[colId as 'debit' | 'credit'] || 0}
-                                                 onChange={(e) => handleRowChange(row.id, colId as any, parseFloat(e.target.value) || 0)}
-                                                 className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]" 
+                                                 step="any"
+                                                 value={colId === 'equivalent' ? (parseFloat(row[colId as keyof JournalRow] as any) || 0).toFixed(2) : (row[colId as keyof JournalRow] ?? '')}
+                                                 onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                 onBlur={() => onBlurRef.current?.()}
+                                                 readOnly={colId === 'equivalent'}
+                                                 title={colId === 'equivalent' ? "Equivalent = Amount * Parity (Read-only)" : ""}
+                                                 className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${colId === 'equivalent' ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                                              />
                                          ) : (
                                              <input 
+                                               ref={(el) => registerCellRef(index, colIdx, el)}
                                                type="text" 
                                                value={(row as any)[colId] || ''}
                                                onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                                 className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors" 
+                                               onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                               onBlur={() => onBlurRef.current?.()}
+                                               className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors" 
                                                />
                                          )}
                                      </td>
@@ -861,6 +930,50 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                         </tr>
                     ))}
                 </tbody>
+                <tfoot className="bg-[var(--color-bg-secondary)] border-t-2 border-[var(--color-border)] sticky bottom-0 z-10">
+                    <tr>
+                        <td className="p-2 text-center text-[10px] font-bold text-[var(--color-text-muted)]">∑</td>
+                        {columns.map((col, idx) => {
+                            const isDebitCol = col.id === 'debit';
+                            const isCreditCol = col.id === 'credit';
+                            const isEquivCol = col.id === 'equivalent';
+                            
+                            // Calculate simple transaction totals for Debit/Credit columns
+                            if (isDebitCol || isCreditCol) {
+                                const total = rows.reduce((sum, r) => sum + (r[col.id as 'debit' | 'credit'] || 0), 0);
+                                return (
+                                    <td key={`total-${col.id}`} className="p-2 text-end font-mono text-xs font-bold text-[var(--color-text-primary)]">
+                                        {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                );
+                            }
+
+                            // Calculate Equivalent (Base Currency) totals for the Equivalent column
+                            if (isEquivCol) {
+                                const equivDebit = rows.reduce((sum, r) => sum + ((parseFloat(r.debit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+                                const equivCredit = rows.reduce((sum, r) => sum + ((parseFloat(r.credit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+                                const balanced = Math.abs(equivDebit - equivCredit) < 0.01;
+                                
+                                return (
+                                    <td key={`total-${col.id}`} className="p-2 text-end">
+                                      <div className="flex flex-col items-end">
+                                        <div className="flex gap-2 text-[10px] text-[var(--color-text-muted)] font-bold uppercase">
+                                          <span>D: {equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                          <span>C: {equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className={`text-xs font-mono font-bold ${balanced ? 'text-success-600' : 'text-danger-600'}`}>
+                                          Diff: {(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </div>
+                                      </div>
+                                    </td>
+                                );
+                            }
+
+                            return <td key={`total-empty-${idx}`} className="p-2"></td>;
+                        })}
+                        <td></td>
+                    </tr>
+                </tfoot>
             </table>
              <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
                  + {t('addLine')}
@@ -890,6 +1003,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                      <select 
                        value={formData[fieldId] || ''}
                        onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                       onBlur={() => onBlurRef.current?.()}
                        className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-6 transition-colors"
                      >
                         {fieldId === 'currency' ? (
@@ -919,6 +1033,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                   <textarea 
                     value={formData[fieldId] || ''}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                    onBlur={() => onBlurRef.current?.()}
                     className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors" 
                   />
             ) : (
@@ -926,6 +1041,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     type={fieldId === 'exchangeRate' || fieldId === 'amount' ? 'number' : 'text'}
                     value={formData[fieldId] || ''}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                    onBlur={() => onBlurRef.current?.()}
                     className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors"
                 />
             )}

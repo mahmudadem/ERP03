@@ -1,5 +1,5 @@
 import { IVoucherPostingStrategy } from '../IVoucherPostingStrategy';
-import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
+import { VoucherLineEntity, roundMoney } from '../../entities/VoucherLineEntity';
 
 /**
  * JournalEntryStrategy
@@ -7,15 +7,17 @@ import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
  * Handles manual general ledger entries.
  * No automatic posting logic - accepts user-defined debit/credit lines.
  * Validates that entries balance (debits = credits).
+ * 
+ * Accepts both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx).
  */
 export class JournalEntryStrategy implements IVoucherPostingStrategy {
   async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
-    // Expected header: { lines: Array<{accountId, debitFx, creditFx, debitBase, creditBase, description, lineCurrency, exchangeRate}> }
-    
     if (!header.lines || !Array.isArray(header.lines) || header.lines.length === 0) {
       throw new Error('Journal entry must have at least one line');
     }
 
+    const baseCurrency = header.baseCurrency || 'USD';
+    const headerRate = Number(header.exchangeRate) || 1;
     const lines: VoucherLineEntity[] = [];
     let totalDebitBase = 0;
     let totalCreditBase = 0;
@@ -25,33 +27,43 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
         throw new Error(`Line ${idx + 1}: Account ID required`);
       }
 
-      const debitFx = Number(inputLine.debitFx) || 0;
-      const creditFx = Number(inputLine.creditFx) || 0;
-      const debitBase = Number(inputLine.debitBase) || 0;
-      const creditBase = Number(inputLine.creditBase) || 0;
+      // Strict V2 format: side and amount are required
+      if (!inputLine.side || inputLine.amount === undefined) {
+        throw new Error(`Line ${idx + 1}: Missing required V2 fields: side, amount`);
+      }
+
+      const side = inputLine.side;
+      const amount = Math.abs(Number(inputLine.amount) || 0);
+      let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
       
-      if (debitFx > 0 && creditFx > 0) {
-        throw new Error(`Line ${idx + 1}: Line cannot have both debit and credit`);
+      // Calculate baseAmount if not provided
+      if (baseAmount === 0 && amount > 0) {
+        const rate = Number(inputLine.exchangeRate) || headerRate;
+        baseAmount = roundMoney(amount * rate);
       }
 
-      if (debitFx <= 0 && creditFx <= 0) {
-        throw new Error(`Line ${idx + 1}: Line must have either debit or credit`);
+      // Validate we have valid amounts
+      if (amount <= 0) {
+        throw new Error(`Line ${idx + 1}: Amount must be positive`);
+      }
+      
+      if (baseAmount <= 0) {
+        throw new Error(`Line ${idx + 1}: Base amount must be positive`);
       }
 
-      const side = debitFx > 0 ? 'Debit' : 'Credit';
-      const amount = debitFx > 0 ? debitFx : creditFx;
-      const baseAmount = debitBase > 0 ? debitBase : creditBase;
+      const lineCurrency = inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency;
+      const lineRate = Number(inputLine.exchangeRate) || headerRate;
 
       const line = new VoucherLineEntity(
         idx + 1,
         inputLine.accountId,
         side,
-        amount,
-        inputLine.lineCurrency || 'USD',
-        baseAmount,
-        header.baseCurrency || 'USD',
-        Number(inputLine.exchangeRate) || 1,
-        inputLine.description || undefined,
+        baseAmount,              // baseAmount
+        baseCurrency,            // baseCurrency
+        amount,                  // amount
+        lineCurrency,            // currency
+        lineRate,
+        inputLine.notes || inputLine.description || undefined,
         inputLine.costCenterId,
         inputLine.metadata || {}
       );

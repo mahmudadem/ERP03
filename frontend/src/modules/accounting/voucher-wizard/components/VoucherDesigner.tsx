@@ -66,6 +66,8 @@ const AVAILABLE_TABLE_COLUMNS = [
     { id: 'credit', label: 'Credit' },
     { id: 'notes', label: 'Notes' },
     { id: 'currency', label: 'Currency' },
+    { id: 'parity', label: 'Parity' },
+    { id: 'equivalent', label: 'Equivalent' },
     { id: 'category', label: 'Category' },
 ];
 

@@ -36,7 +36,11 @@ class OpeningBalanceStrategy {
             const side = debitFx > 0 ? 'Debit' : 'Credit';
             const amount = debitFx > 0 ? debitFx : creditFx;
             const baseAmount = amount * exchangeRate;
-            const line = new VoucherLineEntity_1.VoucherLineEntity(idx + 1, balance.accountId, side, amount, currency, baseAmount, baseCurrency, exchangeRate, 'Opening Balance', balance.costCenterId, balance.metadata || {});
+            const line = new VoucherLineEntity_1.VoucherLineEntity(idx + 1, balance.accountId, side, baseAmount, // baseAmount (base currency)
+            baseCurrency, // baseCurrency
+            amount, // amount (FX currency)
+            currency, // currency
+            exchangeRate, 'Opening Balance', balance.costCenterId, balance.metadata || {});
             totalDebitBase += line.debitAmount;
             totalCreditBase += line.creditAmount;
             lines.push(line);

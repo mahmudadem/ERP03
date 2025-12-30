@@ -71,7 +71,8 @@ export class VoucherController {
       const useCase = new UpdateVoucherUseCase(
         diContainer.voucherRepository as any,
         diContainer.accountRepository as any,
-        permissionChecker
+        permissionChecker,
+        diContainer.accountingPolicyConfigProvider
       );
       await useCase.execute(companyId, userId, req.params.id, req.body);
       res.json({ success: true });

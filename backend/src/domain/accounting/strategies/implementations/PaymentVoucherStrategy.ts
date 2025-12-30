@@ -55,10 +55,10 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
             i + 1,
             allocation.payToAccountId,
             'Debit',
-            amountFx,
-            currency,
-            amountBase,
-            baseCurrency,
+            amountBase,        // baseAmount
+            baseCurrency,      // baseCurrency
+            amountFx,          // amount
+            currency,          // currency
             exchangeRate,
             allocation.notes || allocation.description || 'Payment allocation',
             allocation.costCenterId,
@@ -74,13 +74,13 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
         lines.length + 1,
         payFromAccountId,
         'Credit',
-        totalFx,
-        currency,
-        totalBase,
-        baseCurrency,
+        totalBase,         // baseAmount
+        baseCurrency,      // baseCurrency
+        totalFx,           // amount
+        currency,          // currency
         exchangeRate,
         header.description || 'Payment from account',
-        undefined, // Usually no cost center on bank side
+        undefined,
         {}
     );
     lines.push(creditLine);

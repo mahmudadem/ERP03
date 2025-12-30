@@ -59,6 +59,14 @@ export enum VoucherStatus {
   DRAFT = 'draft',
 
   /**
+   * PENDING - Submitted for approval
+   * - Waiting for approver action
+   * - Cannot be edited by creator
+   * - Can be approved or rejected
+   */
+  PENDING = 'pending',
+
+  /**
    * APPROVED - Approval workflow completed
    * - Ready to be posted
    * - Not yet impacting the ledger

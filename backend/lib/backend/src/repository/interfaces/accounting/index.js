@@ -15,7 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./IAccountRepository"), exports);
-__exportStar(require("./IVoucherRepository"), exports);
+// IVoucherRepository is now in domain/accounting/repositories/IVoucherRepository.ts
 __exportStar(require("./ICostCenterRepository"), exports);
 __exportStar(require("./IExchangeRateRepository"), exports);
 __exportStar(require("./ILedgerRepository"), exports);

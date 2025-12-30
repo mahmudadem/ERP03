@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Printer, Download, Image as ImageIcon, X, FileText } from 'lucide-react';
 import { VoucherDetailDTO } from '../../../api/accountingApi';
-import { formatCompanyDate } from '../../../utils/dateUtils';
+import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAccounts } from '../../../context/AccountsContext';
@@ -141,13 +141,15 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                      <span className="font-bold text-slate-900 w-24 text-sm">Created At:</span>
                      <span className="text-sm">
                        {voucher.createdAt 
-                         ? `${new Date(voucher.createdAt).toLocaleDateString()} ${new Date(voucher.createdAt).toLocaleTimeString()}`
+                         ? `${formatCompanyDate(voucher.createdAt, settings)} ${formatCompanyTime(voucher.createdAt, settings)}`
                          : 'N/A'}
                      </span>
                    </div>
                    <div className="flex items-center gap-2">
                      <span className="font-bold text-slate-900 w-24 text-sm">Print Time:</span>
-                     <span className="text-sm">{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
+                     <span className="text-sm">
+                       {formatCompanyDate(new Date(), settings)} {formatCompanyTime(new Date(), settings)}
+                     </span>
                    </div>
 
                    {/* 2. Dynamic Definition Fields (from the Designer) */}
@@ -249,14 +251,14 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                           if (colId === 'account') {
                             const account = getAccountById(line.accountId) || getAccountByCode(line.accountId);
                             displayValue = account ? `${account.code} - ${account.name}` : (line.accountCode || line.accountId || '-');
-                          } else if (colId === 'description') {
-                            displayValue = line.description || '-';
                           } else if (colId === 'debit') {
-                            const val = line.debitFx ?? line.debit ?? 0;
+                            const val = line.side === 'Debit' ? Math.abs(Number(line.amount) || 0) : 0;
                             displayValue = val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
                           } else if (colId === 'credit') {
-                            const val = line.creditFx ?? line.credit ?? 0;
+                            const val = line.side === 'Credit' ? Math.abs(Number(line.amount) || 0) : 0;
                             displayValue = val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-';
+                          } else if (colId === 'description') {
+                            displayValue = line.notes || line.description || '-';
                           } else {
                             displayValue = line[colId] || (line.metadata && line.metadata[colId]) || '-';
                           }

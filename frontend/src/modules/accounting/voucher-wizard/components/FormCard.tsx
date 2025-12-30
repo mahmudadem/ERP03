@@ -56,24 +56,28 @@ export const FormCard: React.FC<FormCardProps> = ({
               </button>
             </RequirePermission>
             
-            {/* Enable/Disable Toggle Switch - for ALL forms */}
+            {/* Enable/Disable Toggle - Professional Look */}
             <RequirePermission permission="accounting.designer.modify">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-full px-2 py-1 ml-1 group/toggle">
                 <button
-                  onClick={() => onToggleEnabled(form.id, !isEnabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isEnabled ? 'bg-green-500' : 'bg-gray-300'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleEnabled(form.id, !isEnabled);
+                  }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+                    isEnabled ? 'bg-green-500' : 'bg-slate-300'
                   }`}
-                  title={isEnabled ? "Click to disable" : "Click to enable"}
+                  title={isEnabled ? "Deactivate" : "Activate"}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isEnabled ? 'translate-x-6' : 'translate-x-1'
+                    aria-hidden="true"
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ease-in-out ${
+                      isEnabled ? 'translate-x-4' : 'translate-x-0'
                     }`}
                   />
                 </button>
-                <span className="text-xs text-gray-500 font-medium">
-                  {isEnabled ? 'Active' : 'Inactive'}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 w-11 text-center">
+                  {isEnabled ? 'Active' : 'Off'}
                 </span>
               </div>
             </RequirePermission>

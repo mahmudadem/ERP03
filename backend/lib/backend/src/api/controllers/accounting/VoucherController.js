@@ -71,7 +71,7 @@ class VoucherController {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
-            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
+            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.accountingPolicyConfigProvider);
             await useCase.execute(companyId, userId, req.params.id, req.body);
             res.json({ success: true });
         }

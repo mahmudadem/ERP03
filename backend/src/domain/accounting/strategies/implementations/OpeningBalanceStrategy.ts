@@ -47,10 +47,10 @@ export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
         idx + 1,
         balance.accountId,
         side,
-        amount,
-        currency,
-        baseAmount,
-        baseCurrency,
+        baseAmount,        // baseAmount (base currency)
+        baseCurrency,      // baseCurrency
+        amount,            // amount (FX currency)
+        currency,          // currency
         exchangeRate,
         'Opening Balance',
         balance.costCenterId,

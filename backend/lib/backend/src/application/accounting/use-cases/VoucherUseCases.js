@@ -74,11 +74,33 @@ class CreateVoucherUseCase {
                 lines = await strategy.generateLines(strategyInput, companyId);
             }
             else {
-                lines = (payload.lines || []).map((l, idx) => new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId, l.side || (l.debitFx > 0 ? 'Debit' : 'Credit'), l.amount || l.debitFx || l.creditFx, l.currency || payload.currency, l.baseAmount || (l.debitBase || l.creditBase), l.baseCurrency || baseCurrency, l.exchangeRate || payload.exchangeRate || 1, l.notes || l.description, l.costCenterId, l.metadata || {}));
+                // Map incoming lines to V2 VoucherLineEntity
+                // Handle both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx)
+                lines = (payload.lines || []).map((l, idx) => {
+                    // Determine side
+                    const side = l.side || (l.debitFx > 0 || l.debitBase > 0 ? 'Debit' : 'Credit');
+                    // Get FX amount (transaction currency)
+                    const fxAmount = Math.abs(l.amount || l.debitFx || l.creditFx || 0);
+                    // Get base amount (company currency)
+                    const baseAmt = Math.abs(l.baseAmount || l.debitBase || l.creditBase || fxAmount);
+                    // Currency codes
+                    const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
+                    const lineBaseCurrency = l.baseCurrency || baseCurrency;
+                    // Exchange rate
+                    const rate = l.exchangeRate || payload.exchangeRate || 1;
+                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId, side, baseAmt, // baseAmount (base currency)
+                    lineBaseCurrency, // baseCurrency  
+                    fxAmount, // amount (FX currency)
+                    lineCurrency, // currency
+                    rate, // exchangeRate
+                    l.notes || l.description, l.costCenterId, l.metadata || {});
+                });
             }
             const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
             const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
-            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, payload.metadata || {}, userId, new Date());
+            // Build metadata including source tracking fields
+            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign({}, payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
+            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, voucherMetadata, userId, new Date());
             await this.voucherRepo.save(voucher);
             return voucher;
         });
@@ -91,10 +113,11 @@ exports.CreateVoucherUseCase = CreateVoucherUseCase;
  * Updates a voucher while in DRAFT/REJECTED status.
  */
 class UpdateVoucherUseCase {
-    constructor(voucherRepo, accountRepo, permissionChecker) {
+    constructor(voucherRepo, accountRepo, permissionChecker, policyConfigProvider) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.permissionChecker = permissionChecker;
+        this.policyConfigProvider = policyConfigProvider;
     }
     async execute(companyId, userId, voucherId, payload) {
         var _a;
@@ -105,17 +128,51 @@ class UpdateVoucherUseCase {
         if (!voucher.canEdit) {
             throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_INVALID_STATUS, `Cannot update voucher with status: ${voucher.status}. POSTED vouchers must be corrected via reverse/new.`);
         }
+        // Check approval settings to determine allowed status transitions
+        let approvalRequired = true; // Default to requiring approval
+        if (this.policyConfigProvider) {
+            try {
+                const config = await this.policyConfigProvider.getConfig(companyId);
+                approvalRequired = config.approvalRequired;
+            }
+            catch (e) {
+                // If config not found, default to requiring approval
+            }
+        }
         // Simplified update logic: create new entity with merged data
         // In production, you would probably have a clearer mapping
         const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
         const lines = payload.lines ? payload.lines.map((l, idx) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId || ((_a = voucher.lines[idx]) === null || _a === void 0 ? void 0 : _a.accountId), l.side || ((_b = voucher.lines[idx]) === null || _b === void 0 ? void 0 : _b.side), l.amount || ((_c = voucher.lines[idx]) === null || _c === void 0 ? void 0 : _c.amount), l.currency || ((_d = voucher.lines[idx]) === null || _d === void 0 ? void 0 : _d.currency), l.baseAmount || ((_e = voucher.lines[idx]) === null || _e === void 0 ? void 0 : _e.baseAmount), baseCurrency, l.exchangeRate || ((_f = voucher.lines[idx]) === null || _f === void 0 ? void 0 : _f.exchangeRate), l.notes || ((_g = voucher.lines[idx]) === null || _g === void 0 ? void 0 : _g.notes), l.costCenterId || ((_h = voucher.lines[idx]) === null || _h === void 0 ? void 0 : _h.costCenterId), Object.assign(Object.assign({}, (_j = voucher.lines[idx]) === null || _j === void 0 ? void 0 : _j.metadata), l.metadata));
+            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId || ((_a = voucher.lines[idx]) === null || _a === void 0 ? void 0 : _a.accountId), l.side || ((_b = voucher.lines[idx]) === null || _b === void 0 ? void 0 : _b.side), l.baseAmount || ((_c = voucher.lines[idx]) === null || _c === void 0 ? void 0 : _c.baseAmount), baseCurrency, l.amount || ((_d = voucher.lines[idx]) === null || _d === void 0 ? void 0 : _d.amount), l.currency || ((_e = voucher.lines[idx]) === null || _e === void 0 ? void 0 : _e.currency), l.exchangeRate || ((_f = voucher.lines[idx]) === null || _f === void 0 ? void 0 : _f.exchangeRate), l.notes || ((_g = voucher.lines[idx]) === null || _g === void 0 ? void 0 : _g.notes), l.costCenterId || ((_h = voucher.lines[idx]) === null || _h === void 0 ? void 0 : _h.costCenterId), Object.assign(Object.assign({}, (_j = voucher.lines[idx]) === null || _j === void 0 ? void 0 : _j.metadata), l.metadata));
         }) : voucher.lines;
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
-        const updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_a = payload.description) !== null && _a !== void 0 ? _a : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, voucher.status, Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt);
+        const updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_a = payload.description) !== null && _a !== void 0 ? _a : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
+        // Allow status update only for valid transitions (respects approvalRequired setting)
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt);
         await this.voucherRepo.save(updatedVoucher);
+    }
+    /**
+     * Resolve status transition with validation.
+     * Only allows valid transitions during update:
+     * - If approvalRequired=true: DRAFT → PENDING (submit for approval)
+     * - If approvalRequired=false: DRAFT → APPROVED (skip pending, auto-approve)
+     * - REJECTED → PENDING (resubmit after rejection)
+     */
+    resolveStatus(currentStatus, requestedStatus, approvalRequired = true) {
+        if (!requestedStatus) {
+            return currentStatus;
+        }
+        // When requesting 'pending' (submit for approval)
+        if (requestedStatus === 'pending') {
+            if (currentStatus === VoucherTypes_1.VoucherStatus.DRAFT || currentStatus === VoucherTypes_1.VoucherStatus.REJECTED) {
+                // If approval is required, go to PENDING. Otherwise, skip to APPROVED.
+                return approvalRequired ? VoucherTypes_1.VoucherStatus.PENDING : VoucherTypes_1.VoucherStatus.APPROVED;
+            }
+        }
+        // For other cases, keep current status (invalid transitions ignored)
+        return currentStatus;
     }
 }
 exports.UpdateVoucherUseCase = UpdateVoucherUseCase;

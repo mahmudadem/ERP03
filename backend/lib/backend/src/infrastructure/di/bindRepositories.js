@@ -12,7 +12,7 @@ const FirestoreUserRepository_1 = require("../firestore/repositories/core/Firest
 const FirestoreCompanyUserRepository_1 = require("../firestore/repositories/core/FirestoreCompanyUserRepository");
 const FirestoreCompanySettingsRepository_1 = require("../firestore/repositories/core/FirestoreCompanySettingsRepository");
 const FirestoreSystemRepositories_1 = require("../firestore/repositories/system/FirestoreSystemRepositories");
-const FirestoreVoucherRepository_1 = require("../firestore/repositories/accounting/FirestoreVoucherRepository");
+const FirestoreVoucherRepositoryV2_1 = require("../firestore/repositories/accounting/FirestoreVoucherRepositoryV2");
 const FirestoreAccountingRepositories_1 = require("../firestore/repositories/accounting/FirestoreAccountingRepositories");
 const FirestoreLedgerRepository_1 = require("../firestore/repositories/accounting/FirestoreLedgerRepository");
 const AccountRepositoryFirestore_1 = require("../firestore/accounting/AccountRepositoryFirestore");
@@ -47,7 +47,6 @@ const FirestoreRoleTemplateRegistryRepository_1 = require("../firestore/reposito
 const FirestoreSystemMetadataRepository_1 = require("../repositories/FirestoreSystemMetadataRepository");
 // Import Prisma Implementations
 const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
-const PrismaVoucherRepository_1 = require("../prisma/repositories/PrismaVoucherRepository");
 const prismaClient_1 = require("../prisma/prismaClient");
 const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
 const FirebaseTokenVerifier_1 = require("../auth/FirebaseTokenVerifier");
@@ -75,9 +74,9 @@ exports.diContainer = {
     // ACCOUNTING
     get accountRepository() { return new AccountRepositoryFirestore_1.AccountRepositoryFirestore(getDb()); },
     get voucherRepository() {
-        return DB_TYPE === 'SQL'
-            ? new PrismaVoucherRepository_1.PrismaVoucherRepository((0, prismaClient_1.getPrismaClient)())
-            : new FirestoreVoucherRepository_1.FirestoreVoucherRepository(getDb());
+        // V2 Repository is the only implementation (legacy removed)
+        // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
+        return new FirestoreVoucherRepositoryV2_1.FirestoreVoucherRepositoryV2(getDb());
     },
     get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(getDb()); },
     get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(getDb()); },
@@ -143,6 +142,11 @@ exports.diContainer = {
         const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
         const accountLookup = new FirestoreAccountLookupService(db);
         return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+    },
+    // ACCOUNTING POLICY CONFIG (for use cases that need approval settings)
+    get accountingPolicyConfigProvider() {
+        const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
+        return new FirestoreAccountingPolicyConfigProvider(getDb());
     },
     // AUTH
     get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); },

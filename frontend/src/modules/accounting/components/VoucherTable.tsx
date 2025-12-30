@@ -148,10 +148,19 @@ export const VoucherTable: React.FC<Props> = ({
       
       // Handle date comparison
       if (sortField === 'date') {
-        aVal = new Date(aVal as string).getTime();
-        bVal = new Date(bVal as string).getTime();
+        const aDate = new Date(a.date).getTime();
+        const bDate = new Date(b.date).getTime();
+        
+        if (aDate === bDate) {
+          // If logical dates are same, sub-sort by creation time
+          const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return sortDirection === 'asc' ? aCreated - bCreated : bCreated - aCreated;
+        }
+        
+        return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
       }
-      
+
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
@@ -367,7 +376,9 @@ export const VoucherTable: React.FC<Props> = ({
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-primary)]">
                     <div className="flex flex-col">
                       <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
-                      <span className="text-xs text-[var(--color-text-secondary)]">{formatCompanyTime(voucher.date, settings)}</span>
+                      <span className="text-xs text-[var(--color-text-secondary)]">
+                        {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">

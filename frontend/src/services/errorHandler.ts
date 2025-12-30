@@ -86,19 +86,18 @@ class ErrorHandlerService {
     // Use toast for other errors
     const duration = options?.duration || 4000;
     
-    switch (error.severity) {
-      case ErrorSeverity.INFO:
-        toast(message, { duration, icon: 'ℹ️' });
-        break;
-      case ErrorSeverity.WARNING:
-        toast(message, { duration, icon: '⚠️', style: { background: '#FEF3C7', color: '#92400E' } });
-        break;
-      case ErrorSeverity.ERROR:
-        toast.error(message, { duration });
-        break;
-      case ErrorSeverity.CRITICAL:
-        toast.error(message, { duration: 6000 });
-        break;
+    // Use string comparison for severity (API may return string values)
+    const severity = String(error.severity);
+    
+    if (severity === 'info' || severity === ErrorSeverity.INFO) {
+      toast(message, { duration, icon: 'ℹ️' });
+    } else if (severity === 'warning' || severity === ErrorSeverity.WARNING) {
+      toast(message, { duration, icon: '⚠️', style: { background: '#FEF3C7', color: '#92400E' } });
+    } else if (severity === 'critical' || severity === ErrorSeverity.CRITICAL) {
+      toast.error(message, { duration: 6000 });
+    } else {
+      // Default to error toast
+      toast.error(message, { duration });
     }
   }
 

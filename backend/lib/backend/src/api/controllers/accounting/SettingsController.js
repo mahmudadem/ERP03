@@ -129,12 +129,15 @@ class SettingsController {
                 };
             }
             // Update Firestore
+            console.log('[SettingsController] Saving to path:', `companies/${companyId}/settings/accounting`);
+            console.log('[SettingsController] Update data:', JSON.stringify(updateData, null, 2));
             await db
                 .collection('companies')
                 .doc(companyId)
                 .collection('settings')
                 .doc('accounting')
                 .set(updateData, { merge: true });
+            console.log('[SettingsController] Save successful');
             res.json({
                 success: true,
                 message: 'Settings updated successfully'

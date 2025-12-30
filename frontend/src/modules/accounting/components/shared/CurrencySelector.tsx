@@ -39,6 +39,7 @@ interface CurrencySelectorProps {
   className?: string;
   noBorder?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  onBlur?: () => void;
 }
 
 export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorProps>(({
@@ -48,7 +49,8 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   disabled = false,
   className = '',
   noBorder = false,
-  onKeyDown: externalKeyDown
+  onKeyDown: externalKeyDown,
+  onBlur: externalBlur
 }, ref) => {
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -119,25 +121,25 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
     // If empty, just clear
     if (!inputValue.trim()) {
       if (value) onChange('');
-      return;
-    }
-
-    // If matches current value, do nothing
-    if (value && inputValue === value) {
-      return;
-    }
-
-    const exactMatch = findExactMatch(inputValue);
-    
-    if (exactMatch) {
-      // Found exact match
-      onChange(exactMatch.code);
-      setInputValue(exactMatch.code);
+    } else if (value && inputValue === value) {
+      // If matches current value, do nothing
     } else {
-      // No exact match - open modal
-      setModalSearch(inputValue.trim());
-      setHighlightedIndex(0);
-      setShowModal(true);
+      const exactMatch = findExactMatch(inputValue);
+      
+      if (exactMatch) {
+        // Found exact match
+        onChange(exactMatch.code);
+        setInputValue(exactMatch.code);
+      } else {
+        // No exact match - open modal
+        setHighlightedIndex(0);
+        setShowModal(true);
+      }
+    }
+
+    // Call external blur
+    if (externalBlur) {
+      externalBlur();
     }
   };
 

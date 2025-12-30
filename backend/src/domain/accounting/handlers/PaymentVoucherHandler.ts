@@ -117,10 +117,10 @@ export class PaymentVoucherHandler {
       1,  // Line ID
       input.expenseAccountId,
       'Debit',
-      amount,
-      currency,
-      baseAmount,
-      baseCurrency,
+      baseAmount,        // baseAmount
+      baseCurrency,      // baseCurrency
+      amount,            // amount
+      currency,          // currency
       exchangeRate,
       input.notes || input.description,
       input.costCenterId
@@ -131,10 +131,10 @@ export class PaymentVoucherHandler {
       2,  // Line ID
       input.cashAccountId,
       'Credit',
-      amount,
-      currency,
-      baseAmount,
-      baseCurrency,
+      baseAmount,        // baseAmount
+      baseCurrency,      // baseCurrency
+      amount,            // amount
+      currency,          // currency
       exchangeRate,
       input.notes || input.description,
       input.costCenterId

@@ -68,11 +68,6 @@ export function useVoucherTypes() {
 
         // FALLBACK: Load from legacy voucherTypes (Firebase direct)
         let vouchers = await loadCompanyForms(companyId);
-        
-        if (vouchers.length === 0) {
-          const { loadDefaultTemplates } = await import('../modules/accounting/voucher-wizard/services/voucherWizardService');
-          vouchers = await loadDefaultTemplates();
-        }
 
         
         // Only show enabled vouchers in sidebar

@@ -4,21 +4,76 @@
  * 
  * Purpose:
  * Transforms Accounting Domain Entities to/from Firestore structure.
+ * 
+ * V2 ONLY - Legacy Voucher/VoucherLine classes have been removed.
+ * VoucherEntity now uses built-in toJSON()/fromJSON() for persistence.
  */
 import * as admin from 'firebase-admin';
 import { Account } from '../../../domain/accounting/entities/Account';
-import { Voucher } from '../../../domain/accounting/entities/Voucher';
-import { VoucherLine } from '../../../domain/accounting/entities/VoucherLine';
 
-const toTimestamp = (val?: any) => {
-  if (!val) return admin.firestore.FieldValue.serverTimestamp();
-  const date = val instanceof Date ? val : new Date(val);
-  // In emulators Timestamp can be undefined; fall back to raw Date
-  return (admin.firestore as any)?.Timestamp?.fromDate
-    ? admin.firestore.Timestamp.fromDate(date)
-    : date;
+/**
+ * Safely convert any date value to Firestore-compatible format.
+ * Handles: Date objects, ISO strings, timestamps, or null/undefined.
+ */
+const toFirestoreDate = (val?: any): any => {
+  if (val === null || val === undefined) {
+    return admin.firestore.FieldValue.serverTimestamp();
+  }
+  
+  const TimestampClass = admin.firestore?.Timestamp;
+  
+  if (TimestampClass && val instanceof TimestampClass) {
+    return val;
+  }
+  
+  if (val instanceof Date) {
+    try {
+      if (TimestampClass?.fromDate) {
+        return TimestampClass.fromDate(val);
+      }
+      return val.toISOString();
+    } catch {
+      return val.toISOString();
+    }
+  }
+  
+  if (typeof val === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      return val;
+    }
+    
+    try {
+      const date = new Date(val);
+      if (!isNaN(date.getTime())) {
+        if (TimestampClass?.fromDate) {
+          return TimestampClass.fromDate(date);
+        }
+        return date.toISOString();
+      }
+    } catch {
+      // Ignore
+    }
+    return val;
+  }
+  
+  if (typeof val === 'number') {
+    try {
+      if (TimestampClass?.fromMillis) {
+        return TimestampClass.fromMillis(val);
+      }
+      return new Date(val).toISOString();
+    } catch {
+      return val;
+    }
+  }
+  
+  return val;
 };
 
+/**
+ * Account Mapper
+ * Used for converting Account entities to/from Firestore
+ */
 export class AccountMapper {
   static toDomain(data: any): Account {
     return new Account(
@@ -47,110 +102,39 @@ export class AccountMapper {
       isProtected: entity.isProtected,
       active: entity.active,
       parentId: entity.parentId || null,
-      createdAt: toTimestamp(entity.createdAt),
-      updatedAt: toTimestamp(entity.updatedAt)
+      createdAt: toFirestoreDate(entity.createdAt),
+      updatedAt: toFirestoreDate(entity.updatedAt)
     };
   }
 }
 
+/**
+ * VoucherMapper - DEPRECATED
+ * 
+ * VoucherEntity V2 now uses built-in toJSON() and fromJSON() methods.
+ * The FirestoreVoucherRepositoryV2 uses these directly.
+ * 
+ * This class is kept for backwards compatibility with any remaining
+ * code that might reference it, but should not be used for new code.
+ */
 export class VoucherMapper {
-  static toDomain(data: any): Voucher {
-    const lines = (data.lines || []).map((l: any) => {
-      const line = new VoucherLine(
-        l.id,
-        l.voucherId,
-        l.accountId,
-        l.description ?? null,
-        l.fxAmount ?? 0,
-        l.baseAmount ?? 0,
-        l.rateAccToBase ?? 1,
-        l.costCenterId
-      );
-      line.debitFx = l.debitFx;
-      line.creditFx = l.creditFx;
-      line.debitBase = l.debitBase ?? l.baseAmount;
-      line.creditBase = l.creditBase;
-      line.lineCurrency = l.lineCurrency;
-      line.exchangeRate = l.exchangeRate ?? l.rateAccToBase;
-      line.metadata = l.metadata || {};
-      return line;
-    });
-
-    const voucher = new Voucher(
-      data.id,
-      data.companyId,
-      data.type,
-      data.date?.toDate?.() || data.date,
-      data.currency,
-      data.exchangeRate,
-      data.status,
-      data.totalDebit ?? data.totalDebitBase ?? 0,
-      data.totalCredit ?? data.totalCreditBase ?? 0,
-      data.createdBy,
-      data.reference,
-      lines
-    );
-    voucher.voucherNo = data.voucherNo;
-    voucher.baseCurrency = data.baseCurrency || data.currency;
-    voucher.totalDebitBase = data.totalDebitBase ?? data.totalDebit;
-    voucher.totalCreditBase = data.totalCreditBase ?? data.totalCredit;
-    voucher.createdAt = data.createdAt?.toDate?.() || data.createdAt;
-    voucher.updatedAt = data.updatedAt?.toDate?.() || data.updatedAt;
-    voucher.approvedBy = data.approvedBy;
-    voucher.lockedBy = data.lockedBy;
-    voucher.description = data.description ?? null;
-    voucher.metadata = data.metadata || {};
-    // Form metadata
-    (voucher as any).formId = data.formId || null;
-    (voucher as any).prefix = data.prefix || null;
-    return voucher;
+  /**
+   * @deprecated Use VoucherEntity.fromJSON() directly
+   */
+  static toDomain(data: any): any {
+    // Import dynamically to avoid circular deps in case of removal
+    const { VoucherEntity } = require('../../../domain/accounting/entities/VoucherEntity');
+    return VoucherEntity.fromJSON(data);
   }
 
-  static toPersistence(entity: Voucher): any {
-    const lines = entity.lines.map(l => ({
-      id: l.id,
-      voucherId: l.voucherId,
-      accountId: l.accountId,
-      description: l.description ?? null,
-      fxAmount: l.fxAmount,
-      baseAmount: l.baseAmount ?? l.debitBase ?? l.creditBase ?? 0,
-      debitBase: l.debitBase,
-      creditBase: l.creditBase,
-      rateAccToBase: l.rateAccToBase ?? l.exchangeRate ?? 1,
-      costCenterId: l.costCenterId || null,
-      debitFx: l.debitFx,
-      creditFx: l.creditFx,
-      lineCurrency: l.lineCurrency,
-      exchangeRate: l.exchangeRate,
-      metadata: l.metadata || {}
-    }));
-
-    return {
-      id: entity.id,
-      companyId: entity.companyId,
-      type: entity.type,
-      date: toTimestamp(entity.date),
-      currency: entity.currency,
-      exchangeRate: entity.exchangeRate,
-      status: entity.status,
-      totalDebit: entity.totalDebit ?? entity.totalDebitBase ?? 0,
-      totalCredit: entity.totalCredit ?? entity.totalCreditBase ?? 0,
-      totalDebitBase: entity.totalDebitBase ?? entity.totalDebit ?? 0,
-      totalCreditBase: entity.totalCreditBase ?? entity.totalCredit ?? 0,
-      voucherNo: entity.voucherNo,
-      baseCurrency: entity.baseCurrency,
-      createdBy: entity.createdBy,
-      approvedBy: entity.approvedBy || null,
-      lockedBy: entity.lockedBy || null,
-      reference: entity.reference || null,
-      description: entity.description ?? null,
-      metadata: entity.metadata || {},
-      // Form metadata
-      formId: (entity as any).formId || null,
-      prefix: (entity as any).prefix || null,
-      createdAt: toTimestamp(entity.createdAt),
-      updatedAt: toTimestamp(entity.updatedAt),
-      lines: lines
-    };
+  /**
+   * @deprecated Use voucher.toJSON() directly
+   */
+  static toPersistence(entity: any): any {
+    if (typeof entity.toJSON === 'function') {
+      return entity.toJSON();
+    }
+    // Fallback for any edge cases
+    return entity;
   }
 }

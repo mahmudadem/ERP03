@@ -81,10 +81,18 @@ class PaymentVoucherHandler {
         const baseAmount = amount * exchangeRate;
         // Line 1: DEBIT Expense/Payable
         const debitLine = new VoucherLineEntity_1.VoucherLineEntity(1, // Line ID
-        input.expenseAccountId, 'Debit', amount, currency, baseAmount, baseCurrency, exchangeRate, input.notes || input.description, input.costCenterId);
+        input.expenseAccountId, 'Debit', baseAmount, // baseAmount
+        baseCurrency, // baseCurrency
+        amount, // amount
+        currency, // currency
+        exchangeRate, input.notes || input.description, input.costCenterId);
         // Line 2: CREDIT Cash/Bank
         const creditLine = new VoucherLineEntity_1.VoucherLineEntity(2, // Line ID
-        input.cashAccountId, 'Credit', amount, currency, baseAmount, baseCurrency, exchangeRate, input.notes || input.description, input.costCenterId);
+        input.cashAccountId, 'Credit', baseAmount, // baseAmount
+        baseCurrency, // baseCurrency
+        amount, // amount
+        currency, // currency
+        exchangeRate, input.notes || input.description, input.costCenterId);
         // ALWAYS return exactly 2 lines
         // This is the contract of a payment voucher
         return [debitLine, creditLine];

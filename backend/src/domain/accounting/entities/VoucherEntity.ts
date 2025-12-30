@@ -1,5 +1,6 @@
 import { VoucherType, VoucherStatus } from '../types/VoucherTypes';
-import { VoucherLineEntity } from './VoucherLineEntity';
+import { VoucherLineEntity, MONEY_EPS, moneyEquals } from './VoucherLineEntity';
+
 
 /**
  * Voucher Aggregate Root (Immutable)
@@ -44,7 +45,7 @@ export class VoucherEntity {
     // State
     public readonly status: VoucherStatus,
     
-    // Metadata (Generic extra fields)
+    // Metadata (Generic extra fields - includes formId, prefix, sourceModule)
     public readonly metadata: Record<string, any> = {},
     
     // Audit trail
@@ -58,47 +59,82 @@ export class VoucherEntity {
     public readonly lockedBy?: string,
     public readonly lockedAt?: Date,
     public readonly postedBy?: string,
-    public readonly postedAt?: Date
+    public readonly postedAt?: Date,
+    
+    // Additional fields migrated from legacy
+    public readonly reference?: string | null,     // External reference (invoice #, check #, etc.)
+    public readonly updatedAt?: Date | null        // Last modification timestamp
   ) {
     // Invariant: Must have at least 2 lines (debit and credit)
     if (lines.length < 2) {
       throw new Error('Voucher must have at least 2 lines');
     }
     
-    // Invariant: Debits must equal credits (within rounding tolerance)
+    // Invariant: Debits must equal credits IN BASE CURRENCY (within MONEY_EPS tolerance)
+    // This is the core accounting invariant - balancing is ALWAYS on baseAmount
     const calculatedDebit = lines.reduce((sum, line) => sum + line.debitAmount, 0);
     const calculatedCredit = lines.reduce((sum, line) => sum + line.creditAmount, 0);
     
-    if (Math.abs(calculatedDebit - calculatedCredit) > 0.01) {
+    if (!moneyEquals(calculatedDebit, calculatedCredit)) {
       throw new Error(
-        `Voucher not balanced: Debit=${calculatedDebit}, Credit=${calculatedCredit}`
+        `Voucher not balanced in base currency: Debit=${calculatedDebit}, Credit=${calculatedCredit}`
       );
     }
     
     // Invariant: Totals must match line totals
-    if (Math.abs(totalDebit - calculatedDebit) > 0.01) {
+    if (!moneyEquals(totalDebit, calculatedDebit)) {
       throw new Error('Total debit does not match sum of debit lines');
     }
     
-    if (Math.abs(totalCredit - calculatedCredit) > 0.01) {
+    if (!moneyEquals(totalCredit, calculatedCredit)) {
       throw new Error('Total credit does not match sum of credit lines');
     }
     
-    // Invariant: All lines must use the same currencies
-    const invalidLines = lines.filter(
-      line => line.currency !== currency || line.baseCurrency !== baseCurrency
-    );
+    // Invariant: All lines must use the SAME baseCurrency (company base currency)
+    // NOTE: FX currencies (line.currency) may differ - mixed FX is allowed
+    const invalidBaseLines = lines.filter(line => line.baseCurrency !== baseCurrency);
     
-    if (invalidLines.length > 0) {
-      throw new Error('All lines must use the same transaction and base currency');
+    if (invalidBaseLines.length > 0) {
+      throw new Error(
+        `All lines must use the same base currency (${baseCurrency}). ` +
+        `Found lines with: ${[...new Set(invalidBaseLines.map(l => l.baseCurrency))].join(', ')}`
+      );
     }
   }
 
+  // ========== Convenience getters for metadata fields ==========
+  
+  /** Source module that created this voucher (accounting, pos, inventory, hr) */
+  get sourceModule(): string | undefined {
+    return this.metadata?.sourceModule;
+  }
+  
+  /** Form/template ID used to create this voucher */
+  get formId(): string | undefined {
+    return this.metadata?.formId;
+  }
+  
+  /** Voucher number prefix (JE-, PV-, RV-, etc.) */
+  get prefix(): string | undefined {
+    return this.metadata?.prefix;
+  }
+
+  /** Total debit in base currency (same as totalDebit for now) */
+  get totalDebitBase(): number {
+    return this.totalDebit;
+  }
+
+  /** Total credit in base currency (same as totalCredit for now) */
+  get totalCreditBase(): number {
+    return this.totalCredit;
+  }
+
+
   /**
-   * Check if voucher is balanced
+   * Check if voucher is balanced (within MONEY_EPS tolerance)
    */
   get isBalanced(): boolean {
-    return Math.abs(this.totalDebit - this.totalCredit) < 0.01;
+    return moneyEquals(this.totalDebit, this.totalCredit);
   }
 
   /**
@@ -137,6 +173,13 @@ export class VoucherEntity {
   }
 
   /**
+   * Check if voucher is pending approval
+   */
+  get isPending(): boolean {
+    return this.status === VoucherStatus.PENDING;
+  }
+
+  /**
    * Check if voucher can be edited
    */
   get canEdit(): boolean {
@@ -147,7 +190,7 @@ export class VoucherEntity {
    * Check if voucher can be approved
    */
   get canApprove(): boolean {
-    return this.isDraft;
+    return this.isPending; // Only PENDING vouchers can be approved
   }
 
   /**
@@ -342,10 +385,10 @@ export class VoucherEntity {
         index + 1, // Re-index from 1
         line.accountId,
         line.side === 'Debit' ? 'Credit' : 'Debit', // Opposite side
-        line.creditAmount, // Swap: debit becomes credit
-        line.currency,
-        line.debitAmount,  // Swap: credit becomes debit
-        line.baseCurrency,
+        line.baseAmount,     // baseAmount stays the same
+        line.baseCurrency,   // baseCurrency
+        line.amount,         // amount stays the same
+        line.currency,       // currency
         line.exchangeRate
       )
     );
@@ -421,6 +464,8 @@ export class VoucherEntity {
       lines: this.lines.map(line => line.toJSON()),
       totalDebit: this.totalDebit,
       totalCredit: this.totalCredit,
+      totalDebitBase: this.totalDebitBase,
+      totalCreditBase: this.totalCreditBase,
       status: this.status,
       metadata: this.metadata,
       createdBy: this.createdBy,
@@ -433,7 +478,14 @@ export class VoucherEntity {
       lockedBy: this.lockedBy || null,
       lockedAt: this.lockedAt?.toISOString() || null,
       postedBy: this.postedBy || null,
-      postedAt: this.postedAt?.toISOString() || null
+      postedAt: this.postedAt?.toISOString() || null,
+      // Legacy fields
+      reference: this.reference || null,
+      updatedAt: this.updatedAt?.toISOString() || null,
+      // Metadata convenience fields (also in metadata object)
+      sourceModule: this.sourceModule || null,
+      formId: this.formId || null,
+      prefix: this.prefix || null
     };
   }
 
@@ -447,7 +499,7 @@ export class VoucherEntity {
       data.voucherNo,
       data.type as VoucherType,
       data.date,
-      data.description,
+      data.description ?? '',
       data.currency,
       data.baseCurrency,
       data.exchangeRate,
@@ -466,7 +518,10 @@ export class VoucherEntity {
       data.lockedBy,
       data.lockedAt ? new Date(data.lockedAt) : undefined,
       data.postedBy,
-      data.postedAt ? new Date(data.postedAt) : undefined
+      data.postedAt ? new Date(data.postedAt) : undefined,
+      // Additional legacy fields
+      data.reference,
+      data.updatedAt ? new Date(data.updatedAt) : undefined
     );
   }
 }

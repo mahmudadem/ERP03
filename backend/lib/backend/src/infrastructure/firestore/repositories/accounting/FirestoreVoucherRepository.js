@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherRepository = void 0;
-const BaseFirestoreRepository_1 = require("../BaseFirestoreRepository");
 const AccountingMappers_1 = require("../../mappers/AccountingMappers");
 const InfrastructureError_1 = require("../../../errors/InfrastructureError");
-class FirestoreVoucherRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
-    constructor() {
-        super(...arguments);
-        this.collectionName = 'vouchers'; // Used within company subcollection
+class FirestoreVoucherRepository {
+    constructor(db) {
+        this.db = db;
     }
     /**
      * Get the vouchers subcollection for a specific company
@@ -22,17 +20,31 @@ class FirestoreVoucherRepository extends BaseFirestoreRepository_1.BaseFirestore
         return AccountingMappers_1.VoucherMapper.toPersistence(entity);
     }
     async createVoucher(voucher, transaction) {
+        var _a;
         try {
+            console.log('[FirestoreVoucherRepository] createVoucher called for:', voucher.id);
             const data = this.toPersistence(voucher);
+            console.log('[FirestoreVoucherRepository] toPersistence completed, data keys:', Object.keys(data));
             const voucherRef = this.getVouchersCollection(voucher.companyId).doc(voucher.id);
             if (transaction) {
+                console.log('[FirestoreVoucherRepository] Using transaction.set');
                 transaction.set(voucherRef, data);
             }
             else {
+                console.log('[FirestoreVoucherRepository] Using direct set');
                 await voucherRef.set(data);
             }
+            console.log('[FirestoreVoucherRepository] createVoucher completed successfully');
         }
         catch (error) {
+            console.error('[FirestoreVoucherRepository] createVoucher FAILED:', {
+                voucherId: voucher === null || voucher === void 0 ? void 0 : voucher.id,
+                companyId: voucher === null || voucher === void 0 ? void 0 : voucher.companyId,
+                errorName: error === null || error === void 0 ? void 0 : error.name,
+                errorMessage: error === null || error === void 0 ? void 0 : error.message,
+                errorCode: error === null || error === void 0 ? void 0 : error.code,
+                errorStack: (_a = error === null || error === void 0 ? void 0 : error.stack) === null || _a === void 0 ? void 0 : _a.split('\n').slice(0, 5).join('\n'),
+            });
             throw new InfrastructureError_1.InfrastructureError('Error creating voucher', error);
         }
     }
@@ -152,6 +164,51 @@ class FirestoreVoucherRepository extends BaseFirestoreRepository_1.BaseFirestore
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error fetching vouchers by date range', error);
+        }
+    }
+    /**
+     * Find all vouchers for a company
+     */
+    async findByCompany(companyId, limit = 100) {
+        try {
+            const query = this.getVouchersCollection(companyId)
+                .orderBy('date', 'desc')
+                .limit(limit);
+            const snapshot = await query.get();
+            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error finding vouchers by company', error);
+        }
+    }
+    /**
+     * Find voucher by ID
+     */
+    async findById(companyId, voucherId) {
+        return this.getVoucher(companyId, voucherId);
+    }
+    /**
+     * Save a voucher (create or update)
+     */
+    async save(voucher) {
+        const existing = await this.getVoucher(voucher.companyId, voucher.id);
+        if (existing) {
+            await this.updateVoucher(voucher.companyId, voucher.id, voucher);
+        }
+        else {
+            await this.createVoucher(voucher);
+        }
+    }
+    /**
+     * Delete a voucher
+     */
+    async delete(companyId, voucherId) {
+        try {
+            await this.deleteVoucher(companyId, voucherId);
+            return true;
+        }
+        catch (_a) {
+            return false;
         }
     }
 }

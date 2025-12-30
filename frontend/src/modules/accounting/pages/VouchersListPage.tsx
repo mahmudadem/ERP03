@@ -60,6 +60,9 @@ const VouchersListPage: React.FC = () => {
 
   // Update logic to sync URL/Type with client-side filters
   React.useEffect(() => {
+    // Wait for voucher types to be loaded before trying to resolve IDs from URL
+    if (typesLoading && voucherTypes.length === 0) return;
+
     if (isJournalEntry) {
       // Journal Entry view: show everything (clear filters)
       if (clientFilters.formId || clientFilters.type) {
@@ -74,9 +77,13 @@ const VouchersListPage: React.FC = () => {
       const found = voucherTypes.find(vt => 
         vt.id === typeFromUrl || 
         (vt as any)._typeId === typeFromUrl ||
-        vt.code?.toLowerCase() === typeFromUrl.toLowerCase()
+        vt.code?.toLowerCase() === typeFromUrl?.toLowerCase()
       );
       
+      // CRITICAL: We only apply the filter if we actually found the form definition
+      // or if types are fully loaded and we still can't find it (to handle deleted types)
+      if (!found && typesLoading) return;
+
       const targetId = found?.id || typeFromUrl || '';
       const backendType = found ? (found as any).baseType || found.code || found.id : typeFromUrl;
       
@@ -85,11 +92,12 @@ const VouchersListPage: React.FC = () => {
       }
       
       // Set client-side filters
+      // Use the actual found ID (UUID) for formId filter
       if (clientFilters.formId !== targetId) {
         setClientFilters({ formId: targetId, type: backendType || undefined });
       }
     }
-  }, [typeFromUrl, isJournalEntry, voucherTypes]);
+  }, [typeFromUrl, isJournalEntry, voucherTypes, typesLoading]);
 
   // Dynamic Title
   const currentVoucherType = voucherTypes.find(vt => vt.id === selectedType);
@@ -274,7 +282,7 @@ const VouchersListPage: React.FC = () => {
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
             filters={clientFilters} 
-            onChange={setClientFilters} 
+            onChange={(partial) => setClientFilters(prev => ({ ...prev, ...partial }))} 
             hideTypeFilter={!isJournalEntry} 
             voucherTypes={voucherTypes}
           />

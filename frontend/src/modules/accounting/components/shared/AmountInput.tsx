@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 interface AmountInputProps {
   value: number;
   onChange: (value: number) => void;
+  onBlur?: () => void;
   className?: string;
   placeholder?: string;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -11,6 +12,7 @@ interface AmountInputProps {
 export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
   value,
   onChange,
+  onBlur,
   className = '',
   placeholder = '0.00',
   onKeyDown: externalKeyDown
@@ -46,6 +48,11 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
     onChange(numValue);
     // Update display to show formatted value or empty if 0
     setDisplayValue(numValue === 0 ? '' : numValue.toString());
+    
+    // Trigger external blur
+    if (onBlur) {
+      onBlur();
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

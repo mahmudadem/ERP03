@@ -45,13 +45,20 @@ class PaymentVoucherStrategy {
             if (!allocation.payToAccountId) {
                 throw new Error(`Line ${i + 1}: Allocation must have payToAccountId`);
             }
-            const debitLine = new VoucherLineEntity_1.VoucherLineEntity(i + 1, allocation.payToAccountId, 'Debit', amountFx, currency, amountBase, baseCurrency, exchangeRate, allocation.notes || allocation.description || 'Payment allocation', allocation.costCenterId, allocation.metadata || {});
+            const debitLine = new VoucherLineEntity_1.VoucherLineEntity(i + 1, allocation.payToAccountId, 'Debit', amountBase, // baseAmount
+            baseCurrency, // baseCurrency
+            amountFx, // amount
+            currency, // currency
+            exchangeRate, allocation.notes || allocation.description || 'Payment allocation', allocation.costCenterId, allocation.metadata || {});
             lines.push(debitLine);
         }
         // 2. Generate single CREDIT line for source account
         const totalBase = totalFx * exchangeRate;
-        const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, payFromAccountId, 'Credit', totalFx, currency, totalBase, baseCurrency, exchangeRate, header.description || 'Payment from account', undefined, // Usually no cost center on bank side
-        {});
+        const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, payFromAccountId, 'Credit', totalBase, // baseAmount
+        baseCurrency, // baseCurrency
+        totalFx, // amount
+        currency, // currency
+        exchangeRate, header.description || 'Payment from account', undefined, {});
         lines.push(creditLine);
         return lines;
     }

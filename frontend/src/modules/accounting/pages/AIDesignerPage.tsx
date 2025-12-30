@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { VoucherFormDesigner, WizardProvider, loadDefaultTemplates, loadCompanyForms, saveVoucherForm, VoucherFormConfig } from '../voucher-wizard';
+import { 
+  VoucherFormDesigner, 
+  WizardProvider, 
+  loadDefaultTemplates, 
+  loadCompanyForms, 
+  saveVoucherForm, 
+  toggleFormEnabled,
+  deleteVoucherForm,
+  VoucherFormConfig 
+} from '../voucher-wizard';
 import { Button } from '../../../components/ui/Button';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -55,7 +64,7 @@ export default function AIDesignerPage() {
       const result = await saveVoucherForm(companyId, config, user.uid, isEdit);
       
       if (result.success) {
-        // Reload all forms to ensure we're in sync with database
+        // Reload all forms to ensure we are in sync with database
         const updatedForms = await loadCompanyForms(companyId);
         setForms(updatedForms);
         setError(null);
@@ -65,6 +74,34 @@ export default function AIDesignerPage() {
     } catch (err) {
       console.error('Failed to save voucher form:', err);
       setError('Failed to save voucher form. Please try again.');
+    }
+  };
+
+  const handleToggleEnabled = async (formId: string, enabled: boolean) => {
+    if (!companyId) return;
+    
+    // Optimistic update
+    setForms(prev => prev.map(f => f.id === formId ? { ...f, enabled } : f));
+    
+    try {
+      await toggleFormEnabled(companyId, formId, enabled);
+    } catch (err) {
+      console.error('Failed to toggle form state in database:', err);
+      // Revert on failure
+      setForms(prev => prev.map(f => f.id === formId ? { ...f, enabled: !enabled } : f));
+      setError('Failed to update form status in database.');
+    }
+  };
+
+  const handleDeleteForm = async (formId: string) => {
+    if (!companyId) return;
+    
+    try {
+      await deleteVoucherForm(companyId, formId);
+      setForms(prev => prev.filter(f => f.id !== formId));
+    } catch (err) {
+      console.error('Failed to delete form from database:', err);
+      setError('Failed to delete form from database.');
     }
   };
 
@@ -101,6 +138,8 @@ export default function AIDesignerPage() {
       <VoucherFormDesigner
         templates={templates}
         onVoucherSaved={handleVoucherSaved}
+        onToggleEnabled={handleToggleEnabled}
+        onDeleteForm={handleDeleteForm}
         onExit={() => {/* Could navigate away if needed */}}
       />
     </WizardProvider>

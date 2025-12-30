@@ -355,6 +355,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           initialData={win.data}
           onChange={() => {
             setIsDirty(true);
+          }}
+          onBlur={() => {
             forceUpdate(prev => prev + 1);
           }}
         />
@@ -368,8 +370,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             // Get current rows from renderer
             const rows = rendererRef.current?.getRows() || [];
             
-            const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) || 0), 0);
-            const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0);
+            // For balanced state, we MUST use equivalent (Base Amount)
+            const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) * (parseFloat(row.parity) || 1)), 0);
+            const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) * (parseFloat(row.parity) || 1)), 0);
             const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
             const hasValues = totalDebit > 0 || totalCredit > 0;
             
@@ -377,10 +380,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
             const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
             
+            const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+            
             return (
               <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Debit</span>
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({baseCurrency})</span>
                   <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,
@@ -393,7 +398,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
                 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit</span>
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({baseCurrency})</span>
                   <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,

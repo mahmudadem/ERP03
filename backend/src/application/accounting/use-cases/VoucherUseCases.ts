@@ -13,6 +13,7 @@ import { VoucherStatus, VoucherType } from '../../../domain/accounting/types/Vou
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
+import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
 
 /**
  * CreateVoucherUseCase
@@ -60,23 +61,52 @@ export class CreateVoucherUseCase {
         
         lines = await strategy.generateLines(strategyInput, companyId);
       } else {
-        lines = (payload.lines || []).map((l: any, idx: number) => new VoucherLineEntity(
-          idx + 1,
-          l.accountId!,
-          l.side || (l.debitFx > 0 ? 'Debit' : 'Credit'),
-          l.amount || l.debitFx || l.creditFx,
-          l.currency || payload.currency,
-          l.baseAmount || (l.debitBase || l.creditBase),
-          l.baseCurrency || baseCurrency,
-          l.exchangeRate || payload.exchangeRate || 1,
-          l.notes || l.description,
-          l.costCenterId,
-          l.metadata || {}
-        ));
+        // Map incoming lines to V2 VoucherLineEntity
+        // Handle both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx)
+        lines = (payload.lines || []).map((l: any, idx: number) => {
+          // Determine side
+          const side = l.side || (l.debitFx > 0 || l.debitBase > 0 ? 'Debit' : 'Credit');
+          
+          // Get FX amount (transaction currency)
+          const fxAmount = Math.abs(l.amount || l.debitFx || l.creditFx || 0);
+          
+          // Get base amount (company currency)
+          const baseAmt = Math.abs(l.baseAmount || l.debitBase || l.creditBase || fxAmount);
+          
+          // Currency codes
+          const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
+          const lineBaseCurrency = l.baseCurrency || baseCurrency;
+          
+          // Exchange rate
+          const rate = l.exchangeRate || payload.exchangeRate || 1;
+          
+          return new VoucherLineEntity(
+            idx + 1,
+            l.accountId!,
+            side,
+            baseAmt,           // baseAmount (base currency)
+            lineBaseCurrency,  // baseCurrency  
+            fxAmount,          // amount (FX currency)
+            lineCurrency,      // currency
+            rate,              // exchangeRate
+            l.notes || l.description,
+            l.costCenterId,
+            l.metadata || {}
+          );
+        });
       }
+
 
       const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
       const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
+
+      // Build metadata including source tracking fields
+      const voucherMetadata = {
+        ...payload.metadata,
+        ...(payload.sourceModule && { sourceModule: payload.sourceModule }),
+        ...(payload.formId && { formId: payload.formId }),
+        ...(payload.prefix && { prefix: payload.prefix }),
+      };
 
       const voucher = new VoucherEntity(
         voucherId,
@@ -92,7 +122,7 @@ export class CreateVoucherUseCase {
         totalDebit,
         totalCredit,
         VoucherStatus.DRAFT,
-        payload.metadata || {},
+        voucherMetadata,
         userId,
         new Date()
       );
@@ -112,7 +142,8 @@ export class UpdateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
     private accountRepo: IAccountRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private policyConfigProvider?: IAccountingPolicyConfigProvider
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string, payload: any): Promise<void> {
@@ -128,6 +159,17 @@ export class UpdateVoucherUseCase {
       );
     }
 
+    // Check approval settings to determine allowed status transitions
+    let approvalRequired = true; // Default to requiring approval
+    if (this.policyConfigProvider) {
+      try {
+        const config = await this.policyConfigProvider.getConfig(companyId);
+        approvalRequired = config.approvalRequired;
+      } catch (e) {
+        // If config not found, default to requiring approval
+      }
+    }
+
     // Simplified update logic: create new entity with merged data
     // In production, you would probably have a clearer mapping
     const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
@@ -135,10 +177,10 @@ export class UpdateVoucherUseCase {
       idx + 1,
       l.accountId || voucher.lines[idx]?.accountId,
       l.side || voucher.lines[idx]?.side,
-      l.amount || voucher.lines[idx]?.amount,
-      l.currency || voucher.lines[idx]?.currency,
       l.baseAmount || voucher.lines[idx]?.baseAmount,
       baseCurrency,
+      l.amount || voucher.lines[idx]?.amount,
+      l.currency || voucher.lines[idx]?.currency,
       l.exchangeRate || voucher.lines[idx]?.exchangeRate,
       l.notes || voucher.lines[idx]?.notes,
       l.costCenterId || voucher.lines[idx]?.costCenterId,
@@ -161,7 +203,8 @@ export class UpdateVoucherUseCase {
       lines,
       totalDebit,
       totalCredit,
-      voucher.status, // Keep status same
+      // Allow status update only for valid transitions (respects approvalRequired setting)
+      this.resolveStatus(voucher.status, payload.status, approvalRequired),
       { ...voucher.metadata, ...payload.metadata },
       voucher.createdBy,
       voucher.createdAt,
@@ -177,6 +220,30 @@ export class UpdateVoucherUseCase {
     );
 
     await this.voucherRepo.save(updatedVoucher);
+  }
+
+  /**
+   * Resolve status transition with validation.
+   * Only allows valid transitions during update:
+   * - If approvalRequired=true: DRAFT → PENDING (submit for approval)
+   * - If approvalRequired=false: DRAFT → APPROVED (skip pending, auto-approve)
+   * - REJECTED → PENDING (resubmit after rejection)
+   */
+  private resolveStatus(currentStatus: VoucherStatus, requestedStatus?: string, approvalRequired: boolean = true): VoucherStatus {
+    if (!requestedStatus) {
+      return currentStatus;
+    }
+
+    // When requesting 'pending' (submit for approval)
+    if (requestedStatus === 'pending') {
+      if (currentStatus === VoucherStatus.DRAFT || currentStatus === VoucherStatus.REJECTED) {
+        // If approval is required, go to PENDING. Otherwise, skip to APPROVED.
+        return approvalRequired ? VoucherStatus.PENDING : VoucherStatus.APPROVED;
+      }
+    }
+
+    // For other cases, keep current status (invalid transitions ignored)
+    return currentStatus;
   }
 }
 

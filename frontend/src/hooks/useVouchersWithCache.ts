@@ -38,19 +38,16 @@ export const useVouchersWithCache = (companyId: string) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['vouchers-debug', companyId], // Changed key to force fresh fetch
+    queryKey: ['vouchers', companyId], 
     queryFn: async () => {
-      // Fetch vouchers with date range filtering
       return accountingApi.listVouchers({
-        // from: dateRange.from,  // COMMENTED OUT
-        // to: dateRange.to,      // COMMENTED OUT
         page: 1,
-        pageSize: 10000,
+        pageSize: 1000, // Reduced from 10000 for better performance
       });
     },
     enabled: !!companyId,
-    staleTime: 0, // Force fresh fetch every time
-    gcTime: 0, // Don't cache (React Query v5)
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
   
   // Response IS the array directly, not wrapped in { items: [...] }
@@ -98,7 +95,7 @@ export const useVouchersWithCache = (companyId: string) => {
   // Invalidate cache when vouchers are created/updated/deleted
   const invalidateVouchers = () => {
     
-    queryClient.invalidateQueries({ queryKey: ['vouchers-debug', companyId] });
+    queryClient.invalidateQueries({ queryKey: ['vouchers', companyId] });
   };
 
   return {
