@@ -314,8 +314,9 @@ export class ApproveVoucherUseCase {
     
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
     
-    if (voucher.status !== VoucherStatus.DRAFT) {
-      throw new Error(`Cannot approve voucher with status: ${voucher.status}`);
+    // V1 Flow: PENDING → APPROVED (via /verify endpoint)
+    if (voucher.status !== VoucherStatus.PENDING) {
+      throw new Error(`Cannot approve voucher with status: ${voucher.status}. Voucher must be in PENDING status.`);
     }
     
     const approvedVoucher = voucher.approve(userId, new Date());
