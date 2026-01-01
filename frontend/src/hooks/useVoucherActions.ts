@@ -82,47 +82,31 @@ export const useVoucherActions = () => {
   };
 
   const handleSaveVoucher = async (windowId: string, data: any) => {
-    try {
-      await saveVoucherInternal(data);
-      errorHandler.showSuccess('voucher_saved');
-    } catch (error: any) {
-      errorHandler.showError(error);
-    }
+    await saveVoucherInternal(data);
+    errorHandler.showSuccess('SAVE');
   };
 
   const handleSubmitVoucher = async (windowId: string, data: any) => {
-    try {
-      const saved = await saveVoucherInternal(data);
-      if (saved && saved.id) {
-         await accountingApi.updateVoucher(saved.id, { status: 'pending' });
-         errorHandler.showSuccess('voucher_submitted');
-         window.dispatchEvent(new CustomEvent('vouchers-updated'));
-      } else {
-         throw new Error('Could not retrieve Voucher ID after save.');
-      }
-    } catch (error: any) {
-       errorHandler.showError(error);
+    const saved = await saveVoucherInternal(data);
+    if (saved && saved.id) {
+       await accountingApi.sendVoucherToApproval(saved.id);
+       errorHandler.showSuccess('voucher_submitted');
+       window.dispatchEvent(new CustomEvent('vouchers-updated'));
+    } else {
+       throw new Error('Could not retrieve Voucher ID after save.');
     }
   };
 
   const handleApproveVoucher = async (windowId: string, id: string) => {
-    try {
-      await accountingApi.approveVoucher(id);
-      errorHandler.showSuccess('voucher_approved');
-      window.dispatchEvent(new CustomEvent('vouchers-updated'));
-    } catch (error: any) {
-      errorHandler.showError(error);
-    }
+    await accountingApi.approveVoucher(id);
+    errorHandler.showSuccess('voucher_approved');
+    window.dispatchEvent(new CustomEvent('vouchers-updated'));
   };
 
   const handleRejectVoucher = async (windowId: string, id: string) => {
-    try {
-      await accountingApi.cancelVoucher(id);
-      errorHandler.showSuccess('voucher_rejected');
-      window.dispatchEvent(new CustomEvent('vouchers-updated'));
-    } catch (error: any) {
-      errorHandler.showError(error);
-    }
+    await accountingApi.cancelVoucher(id);
+    errorHandler.showSuccess('voucher_rejected');
+    window.dispatchEvent(new CustomEvent('vouchers-updated'));
   };
 
   return {

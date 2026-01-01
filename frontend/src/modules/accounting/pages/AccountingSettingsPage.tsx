@@ -7,7 +7,13 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
 
 interface PolicyConfig {
-  approvalRequired: boolean;
+  // Approval Policy V1 Toggles
+  financialApprovalEnabled: boolean;      // FA: Role-based financial approval
+  custodyConfirmationEnabled: boolean;    // CC: User-bound custody confirmation
+  
+  // Legacy (kept for backward compatibility)
+  approvalRequired: boolean;              // Maps to financialApprovalEnabled
+  
   periodLockEnabled: boolean;
   lockedThroughDate?: string;
   accountAccessEnabled: boolean;
@@ -30,7 +36,9 @@ export const AccountingSettingsPage: React.FC = () => {
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
 
   const [config, setConfig] = useState<PolicyConfig>({
-    approvalRequired: false,
+    financialApprovalEnabled: false,
+    custodyConfirmationEnabled: false,
+    approvalRequired: false,  // Legacy sync
     periodLockEnabled: false,
     accountAccessEnabled: false,
     costCenterPolicy: {
@@ -116,11 +124,10 @@ export const AccountingSettingsPage: React.FC = () => {
       }
 
       // ALWAYS ENSURE BIDIRECTIONAL SYNC
-      // If Approval is ON, Strict Mode must be ON.
-      // If Approval is OFF, Strict Mode must be OFF.
+      // financialApprovalEnabled controls strictApprovalMode
       const settingsToSave = { 
         ...localCoreSettings,
-        strictApprovalMode: config.approvalRequired 
+        strictApprovalMode: config.financialApprovalEnabled 
       };
 
       // Force save regardless of optimization if approval setting is involved
@@ -445,101 +452,164 @@ export const AccountingSettingsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Approval System Tab */}
+            {/* Approval System Tab - Static Approval Policy V1 */}
             {activeTab === 'approval' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Approval System</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Approval Policy V1</h2>
                   <p className="text-gray-600">
-                    Configure workflow rules for voucher approvals
+                    Configure dual-gate workflow for voucher approvals and custody confirmation
                   </p>
                 </div>
 
+                {/* Governance Warning */}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Lock size={20} className="text-red-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-bold text-red-800">Governance-Level Settings</p>
+                      <p className="text-sm text-red-700 mt-1">
+                        These toggles control financial posting gates. Only Owner or System Administrator roles should modify these settings.
+                        Changing these settings affects ALL vouchers company-wide.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Mode Indicator */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Current Operating Mode</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {!config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Mode A: Auto-Post (Both OFF)'}
+                        {!config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Mode B: Custody Only'}
+                        {config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Mode C: Financial Approval Only'}
+                        {config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Mode D: Full Dual-Gate'}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {!config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Vouchers are posted immediately on save.'}
+                        {!config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Vouchers require custodian confirmation before posting.'}
+                        {config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Vouchers require manager approval before posting.'}
+                        {config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Vouchers require BOTH approval AND custody confirmation before posting.'}
+                      </p>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full ${
+                      config.financialApprovalEnabled || config.custodyConfirmationEnabled 
+                        ? 'bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]' 
+                        : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]'
+                    }`} />
+                  </div>
+                </div>
+
+                {/* Financial Approval Toggle */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start gap-6">
                     <div className="flex-1">
                       <label className="flex items-center gap-2 font-bold text-gray-900">
                         <Shield size={20} className="text-blue-500" />
-                        Approval Required
+                        Financial Approval (FA)
                       </label>
                       <p className="text-sm text-gray-500 mt-1">
-                        Require approval before posting vouchers to the ledger
+                        Require role-based approval before vouchers can be posted to the ledger
                       </p>
-                      <div className="mt-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50 px-4 py-3 rounded-xl border border-amber-100">
-                        <AlertTriangle size={18} />
-                        <div>
-                          <p className="font-semibold">Voucher Enforcement Active</p>
-                          <p className="text-xs mt-0.5 opacity-90">Unapproved vouchers cannot be posted until approved by an authorized user.</p>
-                        </div>
+                      <div className="mt-3 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                        <strong>Who can approve:</strong> Owner, Finance Manager, or users with Approver role
                       </div>
+                      {config.financialApprovalEnabled && (
+                        <div className="mt-4 flex items-center gap-3 text-sm text-amber-700 bg-amber-50 px-4 py-3 rounded-xl border border-amber-100">
+                          <AlertTriangle size={18} />
+                          <div>
+                            <p className="font-semibold">Enforcement Active</p>
+                            <p className="text-xs mt-0.5 opacity-90">Vouchers cannot be posted until approved by an authorized user.</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${config.approvalRequired ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        {config.approvalRequired ? 'ON' : 'OFF'}
+                      <span className={`text-xs font-bold uppercase tracking-wider ${config.financialApprovalEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {config.financialApprovalEnabled ? 'ON' : 'OFF'}
                       </span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
-                          checked={config.approvalRequired}
+                          checked={config.financialApprovalEnabled}
                           onChange={(e) => {
                             const val = e.target.checked;
-                            setConfig({ ...config, approvalRequired: val });
-                            // AUTOMATIC SYNC: If approval is OFF, strict mode MUST be OFF
-                            if (!val) {
-                              setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: false }));
-                            } else {
-                              // If approval is back ON, default strict mode to ON
-                              setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: true }));
-                            }
+                            setConfig({ 
+                              ...config, 
+                              financialApprovalEnabled: val,
+                              approvalRequired: val  // Sync legacy field
+                            });
+                            // Sync with core settings
+                            setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: val }));
                           }}
                         />
                         <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
-                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.approvalRequired ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.financialApprovalEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </div>
                       </label>
                     </div>
                   </div>
                 </div>
 
-                {/* UI Mode / Strict Mode sync */}
+                {/* Custody Confirmation Toggle */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                   <div className="flex items-start gap-6">
                     <div className="flex-1">
                       <label className="flex items-center gap-2 font-bold text-gray-900">
-                        <Shield size={20} className="text-indigo-500" />
-                        Strict Interface Mode
+                        <Lock size={20} className="text-purple-500" />
+                        Custody Confirmation (CC)
                       </label>
                       <p className="text-sm text-gray-500 mt-1">
-                        Determines if vouchers use the Draft → Pending lifecycle.
+                        Require custodian confirmation for accounts with assigned custodians
                       </p>
-                      {!config.approvalRequired && (
-                        <p className="text-xs text-amber-600 font-medium mt-1">
-                          Note: Auto-forced to OFF because Approval Required is OFF.
-                        </p>
+                      <div className="mt-3 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+                        <strong>Who can confirm:</strong> Only the specific user assigned as custodian for each account
+                      </div>
+                      {config.custodyConfirmationEnabled && (
+                        <div className="mt-4 flex items-center gap-3 text-sm text-purple-700 bg-purple-50 px-4 py-3 rounded-xl border border-purple-100">
+                          <Lock size={18} />
+                          <div>
+                            <p className="font-semibold">Custody Gate Active</p>
+                            <p className="text-xs mt-0.5 opacity-90">Vouchers touching custody accounts require confirmation from ALL assigned custodians.</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${ (config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'text-indigo-600' : 'text-gray-400'}`}>
-                        {(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'ON' : 'OFF'}
+                      <span className={`text-xs font-bold uppercase tracking-wider ${config.custodyConfirmationEnabled ? 'text-purple-600' : 'text-gray-400'}`}>
+                        {config.custodyConfirmationEnabled ? 'ON' : 'OFF'}
                       </span>
-                      <label className={`relative inline-flex items-center ${!config.approvalRequired ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
                           className="sr-only peer"
-                          checked={config.approvalRequired && localCoreSettings.strictApprovalMode}
-                          disabled={!config.approvalRequired}
-                          onChange={(e) => setLocalCoreSettings({ ...localCoreSettings, strictApprovalMode: e.target.checked })}
+                          checked={config.custodyConfirmationEnabled}
+                          onChange={(e) => {
+                            setConfig({ ...config, custodyConfirmationEnabled: e.target.checked });
+                          }}
                         />
-                        <div className={`w-12 h-6 rounded-full transition-colors ${(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-purple-600">
+                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.custodyConfirmationEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </div>
                       </label>
                     </div>
                   </div>
                 </div>
+
+                {/* Hard Policy Statement */}
+                <div className="bg-gray-900 text-white rounded-xl p-5">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hard Policy</p>
+                  <p className="text-sm leading-relaxed">
+                    Financial posting to the ledger <strong>WILL NOT</strong> occur until ALL enabled gates are satisfied.
+                    No exceptions. No partial posting. This ensures audit-grade consistency.
+                  </p>
+                </div>
               </div>
             )}
+
 
             {/* Cost Center Required Tab */}
             {activeTab === 'cost-center' && (

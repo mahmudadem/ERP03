@@ -126,7 +126,7 @@ export const accountingApi = {
   },
 
   approveVoucher: (id: string): Promise<VoucherDetailDTO> => {
-    return client.post(`/tenant/accounting/vouchers/${id}/approve`);
+    return client.post(`/tenant/accounting/vouchers/${id}/verify`);
   },
 
   lockVoucher: (id: string): Promise<VoucherDetailDTO> => {
