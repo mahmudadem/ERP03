@@ -86,12 +86,54 @@ export class VoucherController {
     }
   }
 
+  /**
+   * Submit voucher for approval (Draft → Pending)
+   * Used when strictApprovalMode / financialApprovalEnabled is ON
+   */
   static async approve(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
       
-      // 1. Approve the voucher
+      // Use SubmitVoucherUseCase for Draft → Pending transition
+      const { SubmitVoucherUseCase } = await import('../../../application/accounting/use-cases/SubmitVoucherUseCase');
+      const { ApprovalPolicyService } = await import('../../../domain/accounting/policies/ApprovalPolicyService');
+      
+      // Create account metadata getter (simplified - returns empty for now, will be enhanced)
+      const getAccountMetadata = async (cid: string, accountIds: string[]) => {
+        // TODO: Fetch actual account metadata with requiresApproval/custodianUserId
+        return accountIds.map(id => ({
+          accountId: id,
+          requiresApproval: true, // Default to require approval when FA is enabled
+          requiresCustodyConfirmation: false,
+          custodianUserId: undefined
+        }));
+      };
+      
+      const submitUseCase = new SubmitVoucherUseCase(
+        diContainer.voucherRepository as any,
+        diContainer.accountingPolicyConfigProvider as any,
+        new ApprovalPolicyService(),
+        getAccountMetadata
+      );
+      
+      const voucher = await submitUseCase.execute(companyId, req.params.id, userId);
+      res.json({ success: true, data: voucher.toJSON(), message: 'Voucher submitted for approval' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Verify/Approve voucher (Pending → Approved → Posted)
+   * Final approval by manager, satisfies the Financial Approval gate
+   */
+  static async verify(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      
+      // 1. Approve the voucher (Pending → Approved)
       const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository as any, permissionChecker);
       await useCase.execute(companyId, userId, req.params.id);
       
@@ -111,6 +153,7 @@ export class VoucherController {
       next(err);
     }
   }
+
 
 
   static async post(req: Request, res: Response, next: NextFunction) {
