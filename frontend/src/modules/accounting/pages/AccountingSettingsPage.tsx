@@ -9,6 +9,7 @@ import { errorHandler } from '../../../services/errorHandler';
 interface PolicyConfig {
   // Approval Policy V1 Toggles
   financialApprovalEnabled: boolean;      // FA: Role-based financial approval
+  faApplyMode: 'ALL' | 'MARKED_ONLY';     // FA scope: all vouchers or only marked accounts
   custodyConfirmationEnabled: boolean;    // CC: User-bound custody confirmation
   
   // Legacy (kept for backward compatibility)
@@ -37,6 +38,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
   const [config, setConfig] = useState<PolicyConfig>({
     financialApprovalEnabled: false,
+    faApplyMode: 'ALL',
     custodyConfirmationEnabled: false,
     approvalRequired: false,  // Legacy sync
     periodLockEnabled: false,
@@ -553,6 +555,43 @@ export const AccountingSettingsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* FA Apply Mode Selector - Only visible when FA is ON */}
+                {config.financialApprovalEnabled && (
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5 ml-4">
+                    <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-3">Apply Financial Approval To:</p>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="faApplyMode"
+                          value="ALL"
+                          checked={config.faApplyMode === 'ALL'}
+                          onChange={() => setConfig({ ...config, faApplyMode: 'ALL' })}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        />
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">All Vouchers</p>
+                          <p className="text-xs text-gray-500">Every voucher requires approval before posting (recommended for strict control)</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="faApplyMode"
+                          value="MARKED_ONLY"
+                          checked={config.faApplyMode === 'MARKED_ONLY'}
+                          onChange={() => setConfig({ ...config, faApplyMode: 'MARKED_ONLY' })}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        />
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">Marked Accounts Only</p>
+                          <p className="text-xs text-gray-500">Only vouchers touching accounts with "Requires Approval" flag need approval</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {/* Custody Confirmation Toggle */}
                 <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">

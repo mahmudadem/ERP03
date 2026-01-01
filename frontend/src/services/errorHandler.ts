@@ -48,20 +48,80 @@ class ErrorHandlerService {
   translateError(error: ApiError): string {
     const translationKey = `errors.${error.code}`;
     
+    // Check if the translation key exists
+    const hasTranslation = i18n.exists(translationKey);
+    
+    // If it's a generic error code (INFRA_999) or translation is missing, 
+    // we should prioritize the technical message if it exists and looks human-readable.
+    if (error.code === 'INFRA_999' || !hasTranslation) {
+       return error.message || i18n.t('errors.INFRA_999');
+    }
+
     // Try to translate with context
     const translated = i18n.t(translationKey, {
       ...error.context,
       field: error.field,
-      defaultValue: error.message, // Fallback to technical message
+      // If translation key is missing, i18next returns the key itself.
+      // We use defaultValue to return the technical message instead.
+      defaultValue: error.message || i18n.t('errors.INFRA_999'),
     });
     
     return translated;
   }
 
   /**
+   * Normalize any error-like object into an ApiError
+   */
+  normalizeError(error: any): ApiError {
+    if (error?.code && error?.message && error?.severity) {
+      return {
+        ...error,
+        code: String(error.code).toUpperCase() as any
+      };
+    }
+
+    // Handle Axios Error
+    if (error?.isAxiosError) {
+      const apiError = error.response?.data?.error;
+      if (apiError) {
+        return {
+          ...apiError,
+          code: String(apiError.code).toUpperCase() as any
+        };
+      }
+
+      return {
+        code: (error.response?.status === 404 ? 'VOUCH_003' : 'INFRA_999') as any,
+        message: error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Network request failed',
+        severity: ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    // Handle string error
+    if (typeof error === 'string') {
+      return {
+        code: 'INFRA_999' as any,
+        message: error,
+        severity: ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    // Handle standard Error
+    return {
+      code: 'INFRA_999' as any,
+      message: error?.message || 'An unexpected error occurred',
+      severity: ErrorSeverity.ERROR,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
    * Show error to user (Toast or Modal)
    */
-  showError(error: ApiError, options?: ErrorHandlerOptions) {
+  showError(err: any, options?: ErrorHandlerOptions) {
+    const error = this.normalizeError(err);
     const message = this.translateError(error);
     
     console.error('[Error]', {

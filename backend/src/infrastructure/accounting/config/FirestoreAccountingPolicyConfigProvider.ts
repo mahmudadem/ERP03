@@ -71,6 +71,7 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
     return {
       // Approval Policy V1 - all gates OFF by default (Mode A: Auto-Post)
       financialApprovalEnabled: false,
+      faApplyMode: 'ALL',  // Default: apply to all vouchers when FA is ON
       custodyConfirmationEnabled: false,
       approvalRequired: false,  // Legacy sync
       

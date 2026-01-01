@@ -10,6 +10,10 @@ class AccountingDTOMapper {
             type: account.type,
             currency: account.currency,
             active: account.active,
+            // Approval Policy V1 fields
+            requiresApproval: account.requiresApproval,
+            requiresCustodyConfirmation: account.requiresCustodyConfirmation,
+            custodianUserId: account.custodianUserId,
         };
     }
     static toVoucherDTO(voucher) {

@@ -43,8 +43,8 @@ class ReverseAndReplaceVoucherUseCase {
             if (!originalVoucher) {
                 throw new Error('Original voucher not found');
             }
-            if (originalVoucher.status !== VoucherTypes_1.VoucherStatus.POSTED) {
-                throw new Error(`Cannot correct voucher in status: ${originalVoucher.status}. Only POSTED vouchers can be corrected.`);
+            if (originalVoucher.status !== VoucherTypes_1.VoucherStatus.POSTED && originalVoucher.status !== VoucherTypes_1.VoucherStatus.APPROVED) {
+                throw new Error(`Cannot correct voucher in status: ${originalVoucher.status}. Only POSTED or APPROVED vouchers can be corrected.`);
             }
             // Step 2: Check idempotency - has this voucher already been reversed?
             const existingReversal = await this.findExistingReversal(companyId, originalVoucherId);

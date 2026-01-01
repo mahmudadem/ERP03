@@ -13,9 +13,10 @@ interface Props {
   onChange: (newRows: any[]) => void;
   customComponents?: Record<string, React.ComponentType<any>>;
   tableStyle?: 'web' | 'classic';
+  readOnly?: boolean;
 }
 
-export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChange, customComponents, tableStyle = 'web' }) => {
+export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChange, customComponents, tableStyle = 'web', readOnly }) => {
   const isClassic = tableStyle === 'classic';
   
   const handleRowChange = (index: number, fieldName: string, value: any) => {
@@ -73,17 +74,20 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
                         onChange={(val) => handleRowChange(index, col.name, val)}
                         customComponents={customComponents}
                         noBorder={true}
+                        readOnly={readOnly}
                       />
                     </div>
                   </td>
                 ))}
                 <td className="p-1 text-center w-10">
-                  <button 
-                    onClick={() => removeRow(index)}
-                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-                  >
-                    ×
-                  </button>
+                  {!readOnly && (
+                    <button 
+                      onClick={() => removeRow(index)}
+                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                    >
+                      ×
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -91,7 +95,8 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
         </table>
         <button 
           onClick={addRow} 
-          className="w-full py-2 text-center text-[11px] font-bold text-indigo-600 bg-slate-50 border-t border-gray-200 hover:bg-indigo-50 transition-colors uppercase tracking-widest"
+          disabled={readOnly}
+          className={`w-full py-2 text-center text-[11px] font-bold text-indigo-600 bg-slate-50 border-t border-gray-200 transition-colors uppercase tracking-widest ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-50'}`}
         >
           + Add Line
         </button>
@@ -153,11 +158,13 @@ export const DynamicTableRenderer: React.FC<Props> = ({ definition, rows, onChan
          </table>
        </div>
        
-       <div className="mt-2">
-         <Button variant="secondary" size="sm" onClick={addRow}>
-           + {definition.addRowLabel || 'Add Row'}
-         </Button>
-       </div>
+       {!readOnly && (
+         <div className="mt-2">
+           <Button variant="secondary" size="sm" onClick={addRow}>
+             + {definition.addRowLabel || 'Add Row'}
+           </Button>
+         </div>
+       )}
     </div>
   );
 };

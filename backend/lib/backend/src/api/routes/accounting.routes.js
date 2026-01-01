@@ -29,6 +29,7 @@ router.get('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.v
 router.post('/vouchers', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), VoucherController_1.VoucherController.create);
 router.put('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.edit'), VoucherController_1.VoucherController.update);
 router.post('/vouchers/:id/approve', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.approve'), VoucherController_1.VoucherController.approve);
+router.post('/vouchers/:id/verify', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.approve'), VoucherController_1.VoucherController.verify);
 router.post('/vouchers/:id/post', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.post'), VoucherController_1.VoucherController.post);
 router.post('/vouchers/:id/correct', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.correct'), VoucherController_1.VoucherController.correct);
 // router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock); // Disabled - not implemented

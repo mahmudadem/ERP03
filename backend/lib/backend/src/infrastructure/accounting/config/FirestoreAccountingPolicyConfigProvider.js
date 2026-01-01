@@ -54,6 +54,10 @@ class FirestoreAccountingPolicyConfigProvider {
     }
     getDefaultConfig() {
         return {
+            // Approval Policy V1 - all gates OFF by default (Mode A: Auto-Post)
+            financialApprovalEnabled: false,
+            faApplyMode: 'ALL',
+            custodyConfirmationEnabled: false,
             approvalRequired: false,
             periodLockEnabled: false,
             accountAccessEnabled: false,

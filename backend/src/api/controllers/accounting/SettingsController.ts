@@ -103,6 +103,7 @@ export class SettingsController {
       const updateData: any = {
         // Approval Policy V1 toggles
         financialApprovalEnabled: req.body.financialApprovalEnabled ?? false,
+        faApplyMode: req.body.faApplyMode || 'ALL',  // Default to ALL
         custodyConfirmationEnabled: req.body.custodyConfirmationEnabled ?? false,
         
         // Legacy field (synced with financialApprovalEnabled)

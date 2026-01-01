@@ -78,7 +78,7 @@ class SettingsController {
      * Updates accounting policy configuration
      */
     static async updateSettings(req, res, next) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e, _f, _g;
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
@@ -112,9 +112,14 @@ class SettingsController {
             const db = admin.firestore();
             // Build update payload
             const updateData = {
-                approvalRequired: (_a = req.body.approvalRequired) !== null && _a !== void 0 ? _a : false,
-                periodLockEnabled: (_b = req.body.periodLockEnabled) !== null && _b !== void 0 ? _b : false,
-                accountAccessEnabled: (_c = req.body.accountAccessEnabled) !== null && _c !== void 0 ? _c : false,
+                // Approval Policy V1 toggles
+                financialApprovalEnabled: (_a = req.body.financialApprovalEnabled) !== null && _a !== void 0 ? _a : false,
+                faApplyMode: req.body.faApplyMode || 'ALL',
+                custodyConfirmationEnabled: (_b = req.body.custodyConfirmationEnabled) !== null && _b !== void 0 ? _b : false,
+                // Legacy field (synced with financialApprovalEnabled)
+                approvalRequired: (_d = (_c = req.body.financialApprovalEnabled) !== null && _c !== void 0 ? _c : req.body.approvalRequired) !== null && _d !== void 0 ? _d : false,
+                periodLockEnabled: (_e = req.body.periodLockEnabled) !== null && _e !== void 0 ? _e : false,
+                accountAccessEnabled: (_f = req.body.accountAccessEnabled) !== null && _f !== void 0 ? _f : false,
                 policyErrorMode: req.body.policyErrorMode || 'FAIL_FAST',
                 updatedAt: new Date().toISOString(),
                 updatedBy: userId
@@ -124,7 +129,7 @@ class SettingsController {
             }
             if (req.body.costCenterPolicy !== undefined) {
                 updateData.costCenterPolicy = {
-                    enabled: (_d = req.body.costCenterPolicy.enabled) !== null && _d !== void 0 ? _d : false,
+                    enabled: (_g = req.body.costCenterPolicy.enabled) !== null && _g !== void 0 ? _g : false,
                     requiredFor: req.body.costCenterPolicy.requiredFor || {}
                 };
             }

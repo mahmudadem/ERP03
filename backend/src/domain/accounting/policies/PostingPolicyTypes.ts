@@ -67,6 +67,13 @@ export interface AccountingPolicyConfig {
   financialApprovalEnabled: boolean;
   
   /**
+   * FA Application Mode:
+   * - 'ALL': When FA is ON, ALL vouchers require approval (company-wide)
+   * - 'MARKED_ONLY': Only vouchers touching accounts with requiresApproval=true need approval
+   */
+  faApplyMode: 'ALL' | 'MARKED_ONLY';
+  
+  /**
    * Custody Confirmation (CC) - User-bound custody gate
    * When enabled, vouchers touching accounts with requiresCustodyConfirmation=true
    * must be confirmed by the assigned custodian before posting.

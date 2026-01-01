@@ -15,6 +15,7 @@ interface Props {
   onChange: (fieldName: string, value: any) => void;
   hiddenFieldIds: Set<string>;
   customComponents?: Record<string, React.ComponentType<any>>;
+  readOnly?: boolean;
 }
 
 export const DynamicSectionRenderer: React.FC<Props> = ({ 
@@ -24,7 +25,8 @@ export const DynamicSectionRenderer: React.FC<Props> = ({
   errors, 
   onChange,
   hiddenFieldIds,
-  customComponents
+  customComponents,
+  readOnly
 }) => {
   // Filter fields that belong to this section
   const sectionFields = section.fieldIds
@@ -59,6 +61,7 @@ export const DynamicSectionRenderer: React.FC<Props> = ({
                 error={errors[fieldKey]}
                 onChange={(val) => onChange(fieldKey, val)}
                 customComponents={customComponents}
+                readOnly={readOnly}
               />
             </div>
           );

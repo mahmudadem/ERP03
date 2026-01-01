@@ -11,15 +11,20 @@ import { evaluateVisibility } from '../utils/evaluateRules';
 import { validateForm } from '../utils/validateForm';
 import { Button } from '../../components/ui/Button';
 import { errorHandler } from '../../services/errorHandler';
+import { useCompanySettings } from '../../hooks/useCompanySettings';
+import { Loader2, Save, CheckCircle, Send } from 'lucide-react';
 
 interface Props {
   definition: VoucherTypeDefinition;
   initialValues?: any;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any, status?: string) => void;
   customComponents?: Record<string, React.ComponentType<any>>;
+  readOnly?: boolean;
 }
 
-export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialValues, onSubmit, customComponents }) => {
+export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialValues, onSubmit, customComponents, readOnly }) => {
+  const { settings, isLoading: settingsLoading } = useCompanySettings();
+
   // Header State
   const [headerValues, setHeaderValues] = useState<any>(initialValues?.header || {});
   const [lines, setLines] = useState<any[]>(initialValues?.lines || []);
@@ -45,31 +50,25 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
     setHeaderValues((prev: any) => ({ ...prev, [field]: val }));
   };
 
-  const handleSave = () => {
-    // Validate Header
-    // TODO: Re-implement validation for flat fields
-    /*
-    if (definition?.headerFields) {
-        const headerErrors = validateForm(definition.header, headerValues);
-        if (Object.keys(headerErrors).length > 0) {
-        setErrors(headerErrors);
-        errorHandler.showError({
-          code: 'VAL_001',
-          message: 'Please correct the errors in the header.',
-          severity: 'WARNING'
-        } as any);
-        return;
-        }
-    }
-    */
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleSave = async (status?: string) => {
     // Prepare Payload
     const payload = {
       ...headerValues,
       items: lines
     };
     
-    onSubmit(payload);
+    if (status === 'submitted') setIsSubmitting(true);
+    else setIsSaving(true);
+
+    try {
+      await onSubmit(payload, status);
+    } finally {
+      setIsSaving(false);
+      setIsSubmitting(false);
+    }
   };
 
   // Calculate Totals (Mock simple summation logic for now)
@@ -79,10 +78,30 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
   return (
     <div className="space-y-6">
-      {/* 1. Header Sections */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-           <h2 className="font-bold text-lg text-gray-800">{definition.name}</h2>
+           <div className="flex items-center gap-3">
+             <h2 className="font-bold text-lg text-gray-800">{definition.name}</h2>
+             
+             {/* Status Indicator Dot */}
+             <div className="group relative">
+                <div 
+                  className={`w-2 h-2 rounded-full transition-all cursor-help ${
+                    settingsLoading ? 'bg-gray-400 animate-pulse' : 
+                    (settings?.strictApprovalMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
+                  }`} 
+                />
+                <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700 font-normal">
+                  <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                    <span className="text-gray-400">Policy:</span>
+                    <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
+                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+           </div>
            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">{definition.code}</span>
         </div>
         
@@ -101,6 +120,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
                   onChange={handleHeaderChange}
                   hiddenFieldIds={hiddenFieldIds}
                   customComponents={customComponents}
+                  readOnly={readOnly}
             />
           ) : (
             <div className="text-gray-400 italic">No header fields defined.</div>
@@ -122,6 +142,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
             onChange={setLines}
             customComponents={customComponents}
             tableStyle={definition.tableStyle}
+            readOnly={readOnly}
             />
         )}
         
@@ -145,9 +166,52 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
       </div>
 
       {/* 3. Actions */}
-      <div className="flex justify-end gap-3 sticky bottom-4 z-10 bg-white/80 p-4 backdrop-blur-sm rounded-lg border shadow-lg">
+      <div className="flex justify-end gap-3 sticky bottom-4 z-10 bg-white/80 p-4 backdrop-blur-sm rounded-lg border shadow-lg transition-colors">
          <Button variant="secondary" onClick={() => window.history.back()}>Discard</Button>
-         <Button variant="primary" onClick={handleSave} className="min-w-[120px]">Save Voucher</Button>
+         
+         <button
+            onClick={() => handleSave()}
+            className={`flex items-center gap-2 px-6 py-2 text-sm font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
+              settingsLoading 
+                ? 'bg-white border-gray-200 text-gray-500' 
+                : settings?.strictApprovalMode === true
+                  // Strict Mode: 'Save as Draft' is Secondary action
+                  ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  // Simple Mode: 'Save & Post' is Primary action
+                  : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+            }`}
+            disabled={isSaving || settingsLoading || readOnly}
+          >
+            {isSaving || settingsLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
+              </>
+            ) : (
+              <>
+                {settings?.strictApprovalMode === true ? <Save className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                {settings?.strictApprovalMode === true ? 'Save as Draft' : 'Save & Post'}
+              </>
+            )}
+          </button>
+
+          {/* Submit button only shown when strict mode is explicitly true */}
+          {!settingsLoading && settings?.strictApprovalMode === true && (!headerValues.status || headerValues.status?.toLowerCase() === 'draft' || headerValues.status?.toLowerCase() === 'rejected') && (
+            <button
+              onClick={() => handleSave('submitted')} 
+              className="flex items-center gap-2 px-8 py-2 text-sm font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+              disabled={isSubmitting || readOnly}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Approval
+                </>
+              )}
+            </button>
+          )}
       </div>
     </div>
   );

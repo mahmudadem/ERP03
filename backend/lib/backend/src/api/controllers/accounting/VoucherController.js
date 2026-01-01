@@ -59,7 +59,7 @@ class VoucherController {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
-            const useCase = new VoucherUseCases_1.CreateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleSettingsRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.voucherTypeDefinitionRepository);
+            const useCase = new VoucherUseCases_1.CreateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleSettingsRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.policyRegistry);
             const voucher = await useCase.execute(companyId, userId, req.body);
             res.json({ success: true, data: voucher });
         }
@@ -71,7 +71,7 @@ class VoucherController {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
-            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.accountingPolicyConfigProvider);
+            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.accountingPolicyConfigProvider, bindRepositories_1.diContainer.ledgerRepository);
             await useCase.execute(companyId, userId, req.params.id, req.body);
             res.json({ success: true });
         }
@@ -79,13 +79,53 @@ class VoucherController {
             next(err);
         }
     }
+    /**
+     * Submit voucher for approval (Draft → Pending)
+     * Used when strictApprovalMode / financialApprovalEnabled is ON
+     */
     static async approve(req, res, next) {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
+            // Use SubmitVoucherUseCase for Draft → Pending transition
+            const { SubmitVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/SubmitVoucherUseCase')));
+            const { ApprovalPolicyService } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/policies/ApprovalPolicyService')));
+            // Create account metadata getter that fetches actual account data
+            const getAccountMetadata = async (cid, accountIds) => {
+                const accounts = await Promise.all(accountIds.map(id => bindRepositories_1.diContainer.accountRepository.getById(cid, id)));
+                return accounts
+                    .filter(acc => acc !== null)
+                    .map(acc => ({
+                    accountId: acc.id,
+                    requiresApproval: acc.requiresApproval || false,
+                    requiresCustodyConfirmation: acc.requiresCustodyConfirmation || false,
+                    custodianUserId: acc.custodianUserId || undefined
+                }));
+            };
+            const submitUseCase = new SubmitVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, new ApprovalPolicyService(), getAccountMetadata);
+            const voucher = await submitUseCase.execute(companyId, req.params.id, userId);
+            res.json({ success: true, data: voucher.toJSON(), message: 'Voucher submitted for approval' });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    /**
+     * Verify/Approve voucher (Pending → Approved → Posted)
+     * Final approval by manager, satisfies the Financial Approval gate
+     */
+    static async verify(req, res, next) {
+        try {
+            const companyId = req.user.companyId;
+            const userId = req.user.uid;
+            // 1. Approve the voucher (Pending → Approved)
             const useCase = new VoucherUseCases_1.ApproveVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker);
             await useCase.execute(companyId, userId, req.params.id);
-            res.json({ success: true });
+            // 2. AUTO-POST after approval (seamlessly transition to POSTED status)
+            const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
+            const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.policyRegistry);
+            await postUseCase.execute(companyId, userId, req.params.id);
+            res.json({ success: true, message: 'Voucher approved and posted' });
         }
         catch (err) {
             next(err);

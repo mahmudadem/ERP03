@@ -40,13 +40,18 @@ const ErrorCodes_1 = require("../../../errors/ErrorCodes");
  * NEVER persists ledger lines.
  */
 class CreateVoucherUseCase {
-    constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo) {
+    constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post
+    policyRegistry // Needed for auto-post
+    ) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.settingsRepo = settingsRepo;
         this.permissionChecker = permissionChecker;
         this.transactionManager = transactionManager;
         this.voucherTypeRepo = voucherTypeRepo;
+        this.policyConfigProvider = policyConfigProvider;
+        this.ledgerRepo = ledgerRepo;
+        this.policyRegistry = policyRegistry;
     }
     async execute(companyId, userId, payload) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
@@ -99,6 +104,23 @@ class CreateVoucherUseCase {
             const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign({}, payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
             const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, voucherMetadata, userId, new Date());
             await this.voucherRepo.save(voucher);
+            // Check if Approval is OFF -> Auto-Post
+            let approvalRequired = true;
+            if (this.policyConfigProvider) {
+                try {
+                    const config = await this.policyConfigProvider.getConfig(companyId);
+                    approvalRequired = config.approvalRequired;
+                }
+                catch (e) { }
+            }
+            if (!approvalRequired && this.ledgerRepo) {
+                // Use PostVoucherUseCase internally
+                const postUseCase = new PostVoucherUseCase(this.voucherRepo, this.ledgerRepo, this.permissionChecker, this.transactionManager, this.policyRegistry);
+                await postUseCase.execute(companyId, userId, voucher.id);
+                // Return the posted version
+                const postedVoucher = await this.voucherRepo.findById(companyId, voucher.id);
+                return postedVoucher || voucher;
+            }
             return voucher;
         });
     }
@@ -110,11 +132,13 @@ exports.CreateVoucherUseCase = CreateVoucherUseCase;
  * Updates a voucher while in DRAFT/REJECTED status.
  */
 class UpdateVoucherUseCase {
-    constructor(voucherRepo, accountRepo, permissionChecker, policyConfigProvider) {
+    constructor(voucherRepo, accountRepo, permissionChecker, transactionManager, policyConfigProvider, ledgerRepo) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.permissionChecker = permissionChecker;
+        this.transactionManager = transactionManager;
         this.policyConfigProvider = policyConfigProvider;
+        this.ledgerRepo = ledgerRepo;
     }
     async execute(companyId, userId, voucherId, payload) {
         var _a;
@@ -122,9 +146,6 @@ class UpdateVoucherUseCase {
         if (!voucher)
             throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
-        if (!voucher.canEdit) {
-            throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_INVALID_STATUS, `Cannot update voucher with status: ${voucher.status}. POSTED vouchers must be corrected via reverse/new.`);
-        }
         // Check approval settings to determine allowed status transitions
         let approvalRequired = true; // Default to requiring approval
         if (this.policyConfigProvider) {
@@ -132,12 +153,12 @@ class UpdateVoucherUseCase {
                 const config = await this.policyConfigProvider.getConfig(companyId);
                 approvalRequired = config.approvalRequired;
             }
-            catch (e) {
-                // If config not found, default to requiring approval
-            }
+            catch (e) { }
+        }
+        if (!voucher.canEdit && (approvalRequired || voucher.status !== VoucherTypes_1.VoucherStatus.POSTED)) {
+            throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_INVALID_STATUS, `Cannot update voucher with status: ${voucher.status}. Vouchers must be reversed or corrected unless Approval is OFF.`);
         }
         // Simplified update logic: create new entity with merged data
-        // In production, you would probably have a clearer mapping
         const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
         const lines = payload.lines ? payload.lines.map((l, idx) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j;
@@ -145,10 +166,30 @@ class UpdateVoucherUseCase {
         }) : voucher.lines;
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
-        const updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_a = payload.description) !== null && _a !== void 0 ? _a : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
+        let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_a = payload.description) !== null && _a !== void 0 ? _a : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
-        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt);
-        await this.voucherRepo.save(updatedVoucher);
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, payload.reference || voucher.reference, new Date());
+        // If PENDING, mark as edited (Audit badge)
+        if (updatedVoucher.isPending) {
+            updatedVoucher = updatedVoucher.markAsEdited();
+        }
+        return this.transactionManager.runTransaction(async (transaction) => {
+            // If POSTED and Approval is OFF, we refresh ledger entries
+            if (voucher.isPosted && !approvalRequired) {
+                if (!this.ledgerRepo)
+                    throw new Error('Ledger repository required for updating posted vouchers');
+                // 1. Delete old ledger records
+                await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+                // 2. Save updated voucher
+                await this.voucherRepo.save(updatedVoucher);
+                // 3. Re-record to ledger
+                await this.ledgerRepo.recordForVoucher(updatedVoucher, transaction);
+            }
+            else {
+                // Standard save
+                await this.voucherRepo.save(updatedVoucher);
+            }
+        });
     }
     /**
      * Resolve status transition with validation.

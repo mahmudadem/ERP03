@@ -64,7 +64,7 @@ const VoucherEditorPage: React.FC = () => {
     }
   };
 
-  const handleSave = async (formData: any) => {
+  const handleSave = async (formData: any, statusOverride?: string) => {
     try {
       // For dynamic templates, we pass the formData directly to the backend.
       // The backend Strategy will handle line generation.
@@ -82,12 +82,26 @@ const VoucherEditorPage: React.FC = () => {
       };
 
       if (id === 'new') {
-        const created = await accountingApi.createVoucher(payload);
-        errorHandler.showSuccess('common:success.SAVE');
+        const payloadWithStatus = {
+          ...payload,
+          status: statusOverride || 'draft'
+        };
+        const created = await accountingApi.createVoucher(payloadWithStatus);
+        
+        if (statusOverride === 'submitted') {
+          await accountingApi.sendVoucherToApproval(created.id);
+        }
+        
+        errorHandler.showSuccess('SAVE');
         navigate(`/accounting/vouchers/${created.id}`);
       } else {
         await accountingApi.updateVoucher(id!, payload);
-        errorHandler.showSuccess('common:success.SAVE');
+        
+        if (statusOverride === 'submitted') {
+          await accountingApi.sendVoucherToApproval(id!);
+        }
+        
+        errorHandler.showSuccess('SAVE');
         loadVoucherData(id!);
       }
     } catch (err: any) {
@@ -196,7 +210,18 @@ const VoucherEditorPage: React.FC = () => {
     );
   };
 
-  const isReadOnly = currentVoucher && (currentVoucher.status === 'locked' || currentVoucher.status === 'cancelled');
+  const isReadOnly = React.useMemo(() => {
+    if (!currentVoucher?.status) return false;
+    const status = currentVoucher.status.toLowerCase();
+    
+    // In STRICT mode, many statuses are read-only
+    if (companySettings?.strictApprovalMode === true) {
+      return ['posted', 'approved', 'locked'].includes(status);
+    }
+    
+    // In SIMPLE mode (default), only locked is read-only
+    return status === 'locked';
+  }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
 
   const customComponents = {
     'account-selector': AccountSelectorCombobox
@@ -215,6 +240,25 @@ const VoucherEditorPage: React.FC = () => {
              </p>
            </div>
            {renderStatusBadge()}
+
+           {/* Status Indicator Dot - Visual Clue for Approval Mode */}
+           <div className="group relative">
+              <div 
+                className={`w-2 h-2 rounded-full transition-all cursor-help ${
+                  !companySettings ? 'bg-gray-400 animate-pulse' : 
+                  (companySettings?.strictApprovalMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
+                }`} 
+              />
+              <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700 font-normal">
+                <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
+                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                  <span className="text-gray-400">Policy:</span>
+                  <span className={companySettings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
+                    {companySettings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                  </span>
+                </div>
+              </div>
+           </div>
         </div>
         
         {renderActionButtons()}

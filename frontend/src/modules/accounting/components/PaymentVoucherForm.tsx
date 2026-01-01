@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { accountingApi } from '../../../api/accountingApi';
-import { AccountSelectorSimple } from './AccountSelectorSimple';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
-import { getCompanyToday, formatCompanyDate } from '../../../utils/dateUtils';
+import { getCompanyToday } from '../../../utils/dateUtils';
+import { AccountSelector } from './shared/AccountSelector';
+import { Account } from '../../../context/AccountsContext';
 
 interface PaymentAllocation {
   payToAccountId: string;
@@ -29,7 +31,6 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
     { payToAccountId: '', amount: 0, notes: '' }
   ]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Auto-calculate total from allocations
   const totalAmount = useMemo(() => {
@@ -54,11 +55,9 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
-      // Get company-local "today" date in YYYY-MM-DD format
       const localDate = getCompanyToday(settings);
       
       const payload = {
@@ -69,18 +68,22 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
         exchangeRate: 1,
         totalAmount,
         description,
-        lines: allocations.filter(a => a.payToAccountId && a.amount > 0)
+        lines: allocations
+          .filter(a => a.payToAccountId && a.amount > 0)
+          .map(a => ({
+            accountId: a.payToAccountId,
+            amount: a.amount,
+            notes: a.notes,
+            side: 'Credit' 
+          }))
       };
 
-      const result = await accountingApi.createVoucher(payload);
+      await accountingApi.createVoucher(payload);
+      errorHandler.showSuccess('voucher_saved');
       
-      errorHandler.showSuccess(`Payment voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: $${totalAmount.toFixed(2)}`);
-      
-      if (onSuccess) {
-        onSuccess();
-      }
+      if (onSuccess) onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Failed to create payment voucher');
+      // The enhanced errorHandler now handles the translation and technical message display automatically
       errorHandler.showError(err);
     } finally {
       setLoading(false);
@@ -88,232 +91,147 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
   };
 
   return (
-    <div className="payment-voucher-form">
-      <h2>New Payment Voucher</h2>
-      
-      {error && (
-        <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
-          {error}
+    <div className="payment-voucher-form p-6 max-w-4xl mx-auto transition-colors">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+           <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">New Payment Voucher</h2>
+           <p className="text-sm text-[var(--color-text-muted)] mt-1">Record a disbursement or expense payment.</p>
         </div>
-      )}
+      </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header Section */}
-        <div className="form-section">
-          <h3>Payment Header</h3>
+        <div className="form-section bg-[var(--color-bg-secondary)] p-6 rounded-xl border border-[var(--color-border)] shadow-sm">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">Payment Source</h3>
           
-          <AccountSelectorSimple
-            value={payFromAccountId}
-            onChange={setPayFromAccountId}
-            label="Pay From Account"
-            required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1">
+               <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Pay From Account *</label>
+               <AccountSelector
+                 value={payFromAccountId}
+                 onChange={(acc: Account | null) => setPayFromAccountId(acc?.id || '')}
+                 placeholder="Search bank / cash account..."
+               />
+            </div>
 
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                placeholder="Overall payment description..."
+                className="w-full p-2 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none transition-colors"
+              />
+            </div>
           </div>
         </div>
 
         {/* Allocations Section */}
-        <div className="form-section">
-          <h3>Payment Allocations</h3>
+        <div className="form-section bg-[var(--color-bg-secondary)] p-6 rounded-xl border border-[var(--color-border)] shadow-sm">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">Payment Allocations</h3>
           
-          <table className="allocations-table">
-            <thead>
-              <tr>
-                <th>Pay To Account *</th>
-                <th>Amount *</th>
-                <th>Notes</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allocations.map((alloc, index) => (
-                <tr key={index}>
-                  <td>
-                    <AccountSelectorSimple
-                      value={alloc.payToAccountId}
-                      onChange={(id) => handleAllocationChange(index, 'payToAccountId', id)}
-                      label=""
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={alloc.amount || ''}
-                      onChange={(e) => handleAllocationChange(index, 'amount', Number(e.target.value))}
-                      required
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      value={alloc.notes}
-                      onChange={(e) => handleAllocationChange(index, 'notes', e.target.value)}
-                      placeholder="Notes (e.g., Invoice #)"
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAllocation(index)}
-                      disabled={allocations.length === 1}
-                    >
-                      Remove
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Pay To Account *</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-40">Amount *</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Notes</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-20 text-center">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {allocations.map((alloc, index) => (
+                  <tr key={index} className="group hover:bg-[var(--color-bg-tertiary)]/50 transition-colors">
+                    <td className="py-3 pr-4">
+                      <AccountSelector
+                        value={alloc.payToAccountId}
+                        onChange={(acc: Account | null) => handleAllocationChange(index, 'payToAccountId', acc?.id || '')}
+                        placeholder="Search destination..."
+                        noBorder
+                        className="bg-transparent"
+                      />
+                    </td>
+                    <td className="py-3 px-2">
+                       <div className="relative flex items-center">
+                          <span className="absolute left-2 text-[var(--color-text-muted)] text-sm font-mono">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={alloc.amount || ''}
+                            onChange={(e) => handleAllocationChange(index, 'amount', Number(e.target.value))}
+                            required
+                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none font-mono"
+                          />
+                       </div>
+                    </td>
+                    <td className="py-3 px-2">
+                      <input
+                        type="text"
+                        value={alloc.notes}
+                        onChange={(e) => handleAllocationChange(index, 'notes', e.target.value)}
+                        placeholder="Invoice #, etc."
+                        className="w-full p-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none"
+                      />
+                    </td>
+                    <td className="py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAllocation(index)}
+                        disabled={allocations.length === 1}
+                        className="p-2 text-danger-500 hover:bg-danger-100/50 rounded-lg transition-colors disabled:opacity-30"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <button type="button" onClick={handleAddAllocation} className="add-allocation-btn">
-            + Add Allocation
+          <button 
+            type="button" 
+            onClick={handleAddAllocation} 
+            className="mt-4 flex items-center gap-2 text-sm font-bold text-primary-600 hover:text-primary-700 transition-colors bg-primary-50 dark:bg-primary-900/10 px-4 py-2 rounded-lg"
+          >
+            <Plus className="w-4 h-4" /> Add Another Line
           </button>
         </div>
 
-        {/* Summary Section */}
-        <div className="form-section summary-section">
-          <h3>Summary</h3>
-          <div className="summary-row">
-            <span>Total Amount (USD):</span>
-            <strong>{totalAmount.toFixed(2)}</strong>
+        {/* Summary & Footer */}
+        <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] p-6 rounded-xl border border-[var(--color-border)] shadow-inner">
+          <div className="flex items-center gap-8">
+            <div>
+              <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase block mb-1">Total Payment</span>
+              <span className="text-2xl font-mono font-bold text-primary-600 dark:text-primary-400">
+                {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(totalAmount)}
+                <span className="text-sm ml-1 opacity-60">USD</span>
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <button 
+              type="button" 
+              onClick={onCancel} 
+              disabled={loading}
+              className="px-6 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading || !payFromAccountId || totalAmount === 0}
+              className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-bold shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? 'Processing...' : 'Save Payment'}
+            </button>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="form-actions">
-          <button type="button" onClick={onCancel} disabled={loading}>
-            Cancel
-          </button>
-          <button type="submit" disabled={loading || !payFromAccountId || totalAmount === 0}>
-            {loading ? 'Saving...' : 'Save as Draft'}
-          </button>
-        </div>
       </form>
-
-      <style>{`
-        .payment-voucher-form {
-          max-width: 900px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-        .form-section {
-          background: #f9f9f9;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
-          border-radius: 8px;
-        }
-        .form-section h3 {
-          margin-top: 0;
-          margin-bottom: 1rem;
-          color: #333;
-        }
-        .form-group {
-          margin-bottom: 1rem;
-        }
-        .form-group label {
-          display: block;
-          margin-bottom: 0.25rem;
-          font-weight: 500;
-          color: #555;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-          width: 100%;
-          padding: 0.5rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-        }
-        .allocations-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 1rem;
-        }
-        .allocations-table th,
-        .allocations-table td {
-          padding: 0.5rem;
-          text-align: left;
-          border-bottom: 1px solid #ddd;
-        }
-        .allocations-table th {
-          background: #f0f0f0;
-          font-weight: 600;
-        }
-        .allocations-table input {
-          width: 100%;
-          padding: 0.4rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-        }
-        .add-allocation-btn {
-          background: #4CAF50;
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-        .add-allocation-btn:hover {
-          background: #45a049;
-        }
-        .summary-section {
-          background: #e8f5e9;
-        }
-        .summary-row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-          font-size: 16px;
-        }
-        .form-actions {
-          display: flex;
-          gap: 1rem;
-          justify-content: flex-end;
-        }
-        .form-actions button {
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          border: none;
-          cursor: pointer;
-          font-size: 14px;
-        }
-        .form-actions button[type="submit"] {
-          background: #2196F3;
-          color: white;
-        }
-        .form-actions button[type="submit"]:hover:not(:disabled) {
-          background: #1976D2;
-        }
-        .form-actions button[type="submit"]:disabled {
-          background: #ccc;
-          cursor: not-allowed;
-        }
-        .form-actions button[type="button"] {
-          background: #f5f5f5;
-          color: #333;
-        }
-        .error-message {
-          padding: 1rem;
-          background: #ffebee;
-          border-left: 4px solid #f44336;
-          border-radius: 4px;
-        }
-      `}</style>
     </div>
   );
 };

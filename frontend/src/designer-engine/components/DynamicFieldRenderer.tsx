@@ -16,9 +16,10 @@ interface Props {
   customComponents?: Record<string, React.ComponentType<any>>;
   className?: string;
   noBorder?: boolean;
+  readOnly?: boolean;
 }
 
-export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents, className, noBorder }) => {
+export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents, className, noBorder, readOnly }) => {
   const { settings } = useCompanySettings();
   
   // Custom Styles from Definition
@@ -39,7 +40,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
   const baseInputClass = `
     w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors
     ${error ? 'border-red-500 bg-red-50' : (style.borderColor ? '' : 'border-gray-300')}
-    ${field.readOnly ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : (style.backgroundColor ? '' : 'bg-white')}
+    ${(field.readOnly || readOnly) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : (style.backgroundColor ? '' : 'bg-white')}
   `;
 
   const renderInput = () => {
@@ -68,7 +69,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             placeholder={field.placeholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            disabled={field.readOnly}
+            disabled={field.readOnly || readOnly}
           />
         );
 
@@ -81,7 +82,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             placeholder={field.placeholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            disabled={field.readOnly}
+            disabled={field.readOnly || readOnly}
           />
         );
 
@@ -90,7 +91,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
           <DatePicker
             value={value || ''}
             onChange={onChange}
-            disabled={field.readOnly}
+            disabled={field.readOnly || readOnly}
           />
         );
 
@@ -102,7 +103,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               checked={!!value}
               onChange={(e) => onChange(e.target.checked)}
-              disabled={field.readOnly}
+              disabled={field.readOnly || readOnly}
             />
             <span className="ml-2 text-sm text-gray-700" style={{ color: style.color }}>{field.placeholder || 'Yes'}</span>
           </div>
@@ -115,7 +116,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             style={customInputStyle}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            disabled={field.readOnly}
+            disabled={field.readOnly || readOnly}
           >
             <option value="">Select...</option>
             {field.options?.map((opt) => (
@@ -135,7 +136,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             placeholder={field.placeholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
-            disabled={field.readOnly}
+            disabled={field.readOnly || readOnly}
           />
         );
 
