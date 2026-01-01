@@ -373,13 +373,26 @@ export async function checkFormDeletable(
 /**
  * Delete a voucher form
  */
+// Import API client
+import client from '../../../../api/client';
+
+/**
+ * Delete a voucher form
+ * 
+ * Uses secure Backend API to enforce usage checks.
+ */
 export async function deleteVoucherForm(companyId: string, formId: string): Promise<boolean> {
   try {
-    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
-    await deleteDoc(formRef);
+    // New Secure Method: Call Backend API
+    await client.delete(`/tenant/accounting/voucher-forms/${formId}`);
     return true;
   } catch (error) {
-    console.error('Failed to delete form:', error);
+    console.error('Failed to delete form via API:', error);
+    // Explicitly re-throw if it's a conflict (409) so UI can show the specific message
+    const status = (error as any).response?.status;
+    if (status === 409 || status === 403) {
+      throw error;
+    }
     return false;
   }
 }

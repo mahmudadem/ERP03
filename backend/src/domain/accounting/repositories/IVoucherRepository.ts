@@ -103,4 +103,15 @@ export interface IVoucherRepository {
    * @returns true if exists, false otherwise
    */
   existsByNumber(companyId: string, voucherNo: string): Promise<boolean>;
+
+  /**
+   * Count vouchers that use a specific form layout
+   * 
+   * Used for dependency checks before deleting a form.
+   * Implementation should use efficient database counting if available.
+   * 
+   * @param companyId Company ID
+   * @param formId Form ID
+   */
+  countByFormId(companyId: string, formId: string): Promise<number>;
 }

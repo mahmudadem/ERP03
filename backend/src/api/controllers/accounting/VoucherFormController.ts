@@ -183,6 +183,16 @@ export class VoucherFormController {
           error: 'Cannot delete system or locked forms' 
         });
       }
+
+      // Check for usage in existing vouchers
+      const usageCount = await diContainer.voucherRepository.countByFormId(companyId, id);
+      if (usageCount > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `Cannot delete form in use. It is used by ${usageCount} voucher(s).`,
+          usageCount
+        });
+      }
       
       await diContainer.voucherFormRepository.delete(companyId, id);
       res.json({ success: true, message: 'Form deleted' });

@@ -105,8 +105,30 @@ export const useVoucherActions = () => {
     }
   };
 
+  const handleApproveVoucher = async (windowId: string, id: string) => {
+    try {
+      await accountingApi.approveVoucher(id);
+      errorHandler.showSuccess('voucher_approved');
+      window.dispatchEvent(new CustomEvent('vouchers-updated'));
+    } catch (error: any) {
+      errorHandler.showError(error);
+    }
+  };
+
+  const handleRejectVoucher = async (windowId: string, id: string) => {
+    try {
+      await accountingApi.cancelVoucher(id);
+      errorHandler.showSuccess('voucher_rejected');
+      window.dispatchEvent(new CustomEvent('vouchers-updated'));
+    } catch (error: any) {
+      errorHandler.showError(error);
+    }
+  };
+
   return {
     handleSaveVoucher,
-    handleSubmitVoucher
+    handleSubmitVoucher,
+    handleApproveVoucher,
+    handleRejectVoucher
   };
 };

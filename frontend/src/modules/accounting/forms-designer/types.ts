@@ -2,7 +2,7 @@ import React from 'react';
 import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTypeDefinition';
 
 /**
- * AI Designer Types
+ * Forms Designer Types
  * 
  * MIGRATED TO CANONICAL SCHEMA V2
  * 
@@ -14,8 +14,8 @@ import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTyp
  * Canonical VoucherTypeDefinition is the ONLY persisted model.
  */
 
-// Re-export canonical type
-export type { VoucherTypeDefinition };
+// Re-export canonical type directly from engine to avoid local clash
+export type { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTypeDefinition';
 
 // Window management (UI only)
 export interface WindowState {

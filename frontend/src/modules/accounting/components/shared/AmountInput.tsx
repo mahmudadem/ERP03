@@ -4,6 +4,7 @@ interface AmountInputProps {
   value: number;
   onChange: (value: number) => void;
   onBlur?: () => void;
+  disabled?: boolean;
   className?: string;
   placeholder?: string;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
@@ -13,6 +14,7 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
   value,
   onChange,
   onBlur,
+  disabled = false,
   className = '',
   placeholder = '0.00',
   onKeyDown: externalKeyDown
@@ -106,10 +108,11 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       onWheel={handleWheel}
+      disabled={disabled}
       placeholder={placeholder}
       className={`w-full h-full px-2 py-1.5 text-right font-mono border-none outline-none bg-transparent 
         focus:bg-primary-50/30 dark:focus:bg-primary-900/20 focus:ring-1 focus:ring-inset focus:ring-primary-500 transition-all
-        text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${className}`}
+        text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${disabled ? 'opacity-70 cursor-not-allowed' : ''} ${className}`}
       style={{
         // Hide number input arrows
         WebkitAppearance: 'none',

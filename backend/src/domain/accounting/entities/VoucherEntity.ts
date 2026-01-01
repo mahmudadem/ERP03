@@ -180,10 +180,13 @@ export class VoucherEntity {
   }
 
   /**
-   * Check if voucher can be edited
+   * Check if voucher can be edited.
+   * - DRAFT/REJECTED: Always editable.
+   * - PENDING: Editable (will trigger 'Edited' marker).
+   * - POSTED/LOCKED: Immutable (unless policy allows correction/re-post).
    */
   get canEdit(): boolean {
-    return this.isDraft || this.isRejected;
+    return this.isDraft || this.isRejected || this.isPending;
   }
 
   /**
@@ -318,6 +321,42 @@ export class VoucherEntity {
       this.lockedAt,
       postedBy,
       postedAt
+    );
+  }
+
+  /**
+   * Mark voucher as edited (immutable update).
+   * Used for PENDING vouchers to show a badge indicating they were modified after submission.
+   */
+  markAsEdited(): VoucherEntity {
+    return new VoucherEntity(
+      this.id,
+      this.companyId,
+      this.voucherNo,
+      this.type,
+      this.date,
+      this.description,
+      this.currency,
+      this.baseCurrency,
+      this.exchangeRate,
+      this.lines,
+      this.totalDebit,
+      this.totalCredit,
+      this.status,
+      { ...this.metadata, isEdited: true },
+      this.createdBy,
+      this.createdAt,
+      this.approvedBy,
+      this.approvedAt,
+      this.rejectedBy,
+      this.rejectedAt,
+      this.rejectionReason,
+      this.lockedBy,
+      this.lockedAt,
+      this.postedBy,
+      this.postedAt,
+      this.reference,
+      new Date() // UpdatedAt
     );
   }
 
@@ -493,6 +532,9 @@ export class VoucherEntity {
    * Create from plain object (for deserialization)
    */
   static fromJSON(data: any): VoucherEntity {
+    // Legacy support: ensure baseCurrency exists (default to USD if missing)
+    const baseCurrency = data.baseCurrency || 'USD';
+
     return new VoucherEntity(
       data.id,
       data.companyId,
@@ -501,9 +543,9 @@ export class VoucherEntity {
       data.date,
       data.description ?? '',
       data.currency,
-      data.baseCurrency,
+      baseCurrency,
       data.exchangeRate,
-      (data.lines || []).map((lineData: any) => VoucherLineEntity.fromJSON(lineData)),
+      (data.lines || []).map((lineData: any) => VoucherLineEntity.fromJSON(lineData, baseCurrency)),
       data.totalDebit,
       data.totalCredit,
       data.status as VoucherStatus,

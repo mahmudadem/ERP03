@@ -109,10 +109,8 @@ model Voucher {
   baseCurrency     String
   exchangeRate     Float    @default(1.0)
   status           String
-  totalDebit       Float    @default(0)
-  totalCredit      Float    @default(0)
-  totalDebitBase   Float    @default(0)
-  totalCreditBase  Float    @default(0)
+  totalDebit       Float    @default(0) // Total base currency debits
+  totalCredit      Float    @default(0) // Total base currency credits
   createdBy        String
   approvedBy       String?
   lockedBy         String?
@@ -135,11 +133,11 @@ model VoucherLine {
   voucherId    String
   accountId    String
   description  String?
-  debitFx      Float   @default(0)
-  creditFx     Float   @default(0)
-  debitBase    Float   @default(0)
-  creditBase   Float   @default(0)
-  lineCurrency String
+  side         String  // "Debit" or "Credit"
+  amount       Float   @default(0) // Transaction currency amount
+  baseAmount   Float   @default(0) // Base currency amount
+  currency     String  // Transaction currency code
+  baseCurrency String  // Base currency code (company base)
   exchangeRate Float   @default(1.0)
   costCenterId String?
   metadata     Json?    @default("{}")

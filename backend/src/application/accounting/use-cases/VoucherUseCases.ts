@@ -28,7 +28,10 @@ export class CreateVoucherUseCase {
     private settingsRepo: ICompanyModuleSettingsRepository,
     private permissionChecker: PermissionChecker,
     private transactionManager: ITransactionManager,
-    private voucherTypeRepo: IVoucherTypeDefinitionRepository
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private policyConfigProvider?: IAccountingPolicyConfigProvider,
+    private ledgerRepo?: ILedgerRepository, // Needed for auto-post
+    private policyRegistry?: any // Needed for auto-post
   ) {}
 
   async execute(companyId: string, userId: string, payload: any): Promise<VoucherEntity> {
@@ -62,31 +65,29 @@ export class CreateVoucherUseCase {
         lines = await strategy.generateLines(strategyInput, companyId);
       } else {
         // Map incoming lines to V2 VoucherLineEntity
-        // Handle both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx)
+        // Strictly V2 format (side, amount, baseAmount)
         lines = (payload.lines || []).map((l: any, idx: number) => {
-          // Determine side
-          const side = l.side || (l.debitFx > 0 || l.debitBase > 0 ? 'Debit' : 'Credit');
+          if (!l.side || l.amount === undefined) {
+            throw new BusinessError(
+              ErrorCode.VAL_REQUIRED_FIELD,
+              `Line ${idx + 1}: Missing required V2 fields: side, amount`
+            );
+          }
+
+          const fxAmount = Math.abs(Number(l.amount) || 0);
+          const baseAmt = Math.abs(Number(l.baseAmount) || fxAmount); // Fallback to FX if base missing
           
-          // Get FX amount (transaction currency)
-          const fxAmount = Math.abs(l.amount || l.debitFx || l.creditFx || 0);
-          
-          // Get base amount (company currency)
-          const baseAmt = Math.abs(l.baseAmount || l.debitBase || l.creditBase || fxAmount);
-          
-          // Currency codes
           const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
           const lineBaseCurrency = l.baseCurrency || baseCurrency;
-          
-          // Exchange rate
-          const rate = l.exchangeRate || payload.exchangeRate || 1;
+          const rate = Number(l.exchangeRate) || Number(payload.exchangeRate) || 1;
           
           return new VoucherLineEntity(
             idx + 1,
             l.accountId!,
-            side,
-            baseAmt,           // baseAmount (base currency)
+            l.side,
+            baseAmt,           // baseAmount
             lineBaseCurrency,  // baseCurrency  
-            fxAmount,          // amount (FX currency)
+            fxAmount,          // amount
             lineCurrency,      // currency
             rate,              // exchangeRate
             l.notes || l.description,
@@ -128,6 +129,32 @@ export class CreateVoucherUseCase {
       );
 
       await this.voucherRepo.save(voucher);
+
+      // Check if Approval is OFF -> Auto-Post
+      let approvalRequired = true;
+      if (this.policyConfigProvider) {
+        try {
+          const config = await this.policyConfigProvider.getConfig(companyId);
+          approvalRequired = config.approvalRequired;
+        } catch (e) {}
+      }
+
+      if (!approvalRequired && this.ledgerRepo) {
+        // Use PostVoucherUseCase internally
+        const postUseCase = new PostVoucherUseCase(
+          this.voucherRepo,
+          this.ledgerRepo,
+          this.permissionChecker,
+          this.transactionManager,
+          this.policyRegistry
+        );
+        await postUseCase.execute(companyId, userId, voucher.id);
+        
+        // Return the posted version
+        const postedVoucher = await this.voucherRepo.findById(companyId, voucher.id);
+        return postedVoucher || voucher;
+      }
+
       return voucher;
     });
   }
@@ -143,7 +170,9 @@ export class UpdateVoucherUseCase {
     private voucherRepo: IVoucherRepository,
     private accountRepo: IAccountRepository,
     private permissionChecker: PermissionChecker,
-    private policyConfigProvider?: IAccountingPolicyConfigProvider
+    private transactionManager: ITransactionManager,
+    private policyConfigProvider?: IAccountingPolicyConfigProvider,
+    private ledgerRepo?: ILedgerRepository
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string, payload: any): Promise<void> {
@@ -152,26 +181,23 @@ export class UpdateVoucherUseCase {
     
     await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
     
-    if (!voucher.canEdit) {
-      throw new BusinessError(
-        ErrorCode.VOUCH_INVALID_STATUS,
-        `Cannot update voucher with status: ${voucher.status}. POSTED vouchers must be corrected via reverse/new.`
-      );
-    }
-
     // Check approval settings to determine allowed status transitions
     let approvalRequired = true; // Default to requiring approval
     if (this.policyConfigProvider) {
       try {
         const config = await this.policyConfigProvider.getConfig(companyId);
         approvalRequired = config.approvalRequired;
-      } catch (e) {
-        // If config not found, default to requiring approval
-      }
+      } catch (e) {}
+    }
+
+    if (!voucher.canEdit && (approvalRequired || voucher.status !== VoucherStatus.POSTED)) {
+      throw new BusinessError(
+        ErrorCode.VOUCH_INVALID_STATUS,
+        `Cannot update voucher with status: ${voucher.status}. Vouchers must be reversed or corrected unless Approval is OFF.`
+      );
     }
 
     // Simplified update logic: create new entity with merged data
-    // In production, you would probably have a clearer mapping
     const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
     const lines = payload.lines ? payload.lines.map((l: any, idx: number) => new VoucherLineEntity(
       idx + 1,
@@ -190,7 +216,7 @@ export class UpdateVoucherUseCase {
     const totalDebit = lines.reduce((s: number, l: any) => s + l.debitAmount, 0);
     const totalCredit = lines.reduce((s: number, l: any) => s + l.creditAmount, 0);
 
-    const updatedVoucher = new VoucherEntity(
+    let updatedVoucher = new VoucherEntity(
       voucherId,
       companyId,
       payload.voucherNo || voucher.voucherNo,
@@ -216,10 +242,34 @@ export class UpdateVoucherUseCase {
       voucher.lockedBy,
       voucher.lockedAt,
       voucher.postedBy,
-      voucher.postedAt
+      voucher.postedAt,
+      payload.reference || voucher.reference,
+      new Date()
     );
 
-    await this.voucherRepo.save(updatedVoucher);
+    // If PENDING, mark as edited (Audit badge)
+    if (updatedVoucher.isPending) {
+       updatedVoucher = updatedVoucher.markAsEdited();
+    }
+
+    return this.transactionManager.runTransaction(async (transaction) => {
+      // If POSTED and Approval is OFF, we refresh ledger entries
+      if (voucher.isPosted && !approvalRequired) {
+        if (!this.ledgerRepo) throw new Error('Ledger repository required for updating posted vouchers');
+        
+        // 1. Delete old ledger records
+        await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+        
+        // 2. Save updated voucher
+        await this.voucherRepo.save(updatedVoucher);
+        
+        // 3. Re-record to ledger
+        await this.ledgerRepo.recordForVoucher(updatedVoucher, transaction);
+      } else {
+        // Standard save
+        await this.voucherRepo.save(updatedVoucher);
+      }
+    });
   }
 
   /**

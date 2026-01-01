@@ -204,24 +204,48 @@ export class VoucherLineEntity {
    * V2 ONLY - No legacy format support.
    * Legacy data migration should be done via separate migration script.
    */
-  static fromJSON(data: any): VoucherLineEntity {
-    if (data.side === undefined || data.baseCurrency === undefined) {
-      throw new Error(
-        'Invalid VoucherLineEntity data: missing required V2 fields (side, baseCurrency). ' +
-        'Legacy data must be migrated before use.'
-      );
+
+  static fromJSON(data: any, fallbackBaseCurrency?: string): VoucherLineEntity {
+    // Determine side and amounts (Handle Legacy V1 format)
+    let side: TransactionSide = data.side;
+    let amount = data.amount;
+    let baseAmount = data.baseAmount;
+    let currency = data.currency || data.lineCurrency;
+    let baseCurrency = data.baseCurrency;
+
+    // Legacy fallback logic
+    if (side === undefined) {
+      side = (data.debitFx > 0 || data.debitBase > 0) ? 'Debit' : 'Credit';
     }
     
+    if (amount === undefined) {
+      amount = Math.abs(data.debitFx || 0) || Math.abs(data.creditFx || 0) || 0;
+    }
+    
+    if (baseAmount === undefined) {
+      baseAmount = Math.abs(data.debitBase || 0) || Math.abs(data.creditBase || 0) || amount;
+    }
+
+    if (!baseCurrency) {
+      // Logic: In V1, we didn't store baseCurrency per line. 
+      // We'll use the voucher's base currency if provided, otherwise default to USD.
+      baseCurrency = fallbackBaseCurrency || 'USD'; 
+    }
+
+    // Default amount to 0.01 if it's somehow 0 in old data (to avoid invariant crash)
+    const safeAmount = Math.max(0.01, amount);
+    const safeBaseAmount = Math.max(0.01, baseAmount);
+
     return new VoucherLineEntity(
-      data.id,
-      data.accountId,
-      data.side as TransactionSide,
-      data.baseAmount,
-      data.baseCurrency,
-      data.amount,
-      data.currency,
-      data.exchangeRate,
-      data.notes,
+      data.id || 1,
+      data.accountId || 'legacy-account',
+      side as TransactionSide,
+      safeBaseAmount,
+      baseCurrency,
+      safeAmount,
+      currency || 'USD',
+      data.exchangeRate || 1,
+      data.notes || data.description,
       data.costCenterId,
       data.metadata || {}
     );

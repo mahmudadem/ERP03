@@ -43,7 +43,8 @@ export const AccountingSettingsPage: React.FC = () => {
   const [localCoreSettings, setLocalCoreSettings] = useState({
     timezone: 'UTC',
     dateFormat: 'DD/MM/YYYY',
-    uiMode: 'windows' as 'windows' | 'classic'
+    uiMode: 'windows' as 'windows' | 'classic',
+    strictApprovalMode: true
   });
   const [originalCoreSettings, setOriginalCoreSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +65,8 @@ export const AccountingSettingsPage: React.FC = () => {
       const newCore = {
         timezone: coreSettings.timezone || 'UTC',
         dateFormat: coreSettings.dateFormat || 'DD/MM/YYYY',
-        uiMode: coreSettings.uiMode || 'windows'
+        uiMode: coreSettings.uiMode || 'windows',
+        strictApprovalMode: coreSettings.strictApprovalMode !== false
       };
       setLocalCoreSettings(newCore);
       setOriginalCoreSettings(newCore);
@@ -113,14 +115,23 @@ export const AccountingSettingsPage: React.FC = () => {
         throw new Error(result.error?.message || 'Failed to save policy settings');
       }
 
-      const coreChanged = JSON.stringify(localCoreSettings) !== JSON.stringify(originalCoreSettings);
-      if (coreChanged) {
-        await updateCoreSettings(localCoreSettings);
-      }
+      // ALWAYS ENSURE BIDIRECTIONAL SYNC
+      // If Approval is ON, Strict Mode must be ON.
+      // If Approval is OFF, Strict Mode must be OFF.
+      const settingsToSave = { 
+        ...localCoreSettings,
+        strictApprovalMode: config.approvalRequired 
+      };
 
-      errorHandler.showSuccess('settings_saved');
+      // Force save regardless of optimization if approval setting is involved
+      await updateCoreSettings(settingsToSave);
+
+      // Explicit confirmation
+      const modeText = settingsToSave.strictApprovalMode ? "Strict Mode [ON]" : "Strict Mode [OFF]";
+      errorHandler.showSuccess(`Settings saved! ${modeText}`);
+
       setOriginalConfig(config);
-      setOriginalCoreSettings(localCoreSettings);
+      setOriginalCoreSettings(settingsToSave); // Update with what we actually saved
     } catch (error: any) {
       const errorData = error.response?.data?.error;
       if (errorData?.details?.violations) {
@@ -471,10 +482,57 @@ export const AccountingSettingsPage: React.FC = () => {
                           type="checkbox"
                           className="sr-only peer"
                           checked={config.approvalRequired}
-                          onChange={(e) => setConfig({ ...config, approvalRequired: e.target.checked })}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setConfig({ ...config, approvalRequired: val });
+                            // AUTOMATIC SYNC: If approval is OFF, strict mode MUST be OFF
+                            if (!val) {
+                              setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: false }));
+                            } else {
+                              // If approval is back ON, default strict mode to ON
+                              setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: true }));
+                            }
+                          }}
                         />
                         <div className="w-12 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-indigo-600">
                           <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.approvalRequired ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* UI Mode / Strict Mode sync */}
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-start gap-6">
+                    <div className="flex-1">
+                      <label className="flex items-center gap-2 font-bold text-gray-900">
+                        <Shield size={20} className="text-indigo-500" />
+                        Strict Interface Mode
+                      </label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Determines if vouchers use the Draft → Pending lifecycle.
+                      </p>
+                      {!config.approvalRequired && (
+                        <p className="text-xs text-amber-600 font-medium mt-1">
+                          Note: Auto-forced to OFF because Approval Required is OFF.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-xs font-bold uppercase tracking-wider ${ (config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        {(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'ON' : 'OFF'}
+                      </span>
+                      <label className={`relative inline-flex items-center ${!config.approvalRequired ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={config.approvalRequired && localCoreSettings.strictApprovalMode}
+                          disabled={!config.approvalRequired}
+                          onChange={(e) => setLocalCoreSettings({ ...localCoreSettings, strictApprovalMode: e.target.checked })}
+                        />
+                        <div className={`w-12 h-6 rounded-full transition-colors ${(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${(config.approvalRequired && localCoreSettings.strictApprovalMode) ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </div>
                       </label>
                     </div>

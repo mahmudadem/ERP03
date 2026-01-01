@@ -18,8 +18,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
-      { label: 'Designer', path: '/accounting/designer', permission: 'accounting.designer.view', icon: 'Palette' },
-      { label: 'AI Designer', path: '/accounting/ai-designer', permission: 'accounting.designer.view', icon: 'Sparkles' },
+      { label: 'Forms Designer', path: '/accounting/forms-designer', permission: 'accounting.designer.view', icon: 'Layout' },
       { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
       { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
       { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings.view', icon: 'Settings' }

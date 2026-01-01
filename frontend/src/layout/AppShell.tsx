@@ -12,7 +12,7 @@ import React from 'react'; // Added React import for React.useEffect
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
-  const { handleSaveVoucher, handleSubmitVoucher } = useVoucherActions();
+  const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher } = useVoucherActions();
 
   const isWindowsMode = uiMode === 'windows';
 
@@ -58,6 +58,8 @@ export const AppShell: React.FC = () => {
           <WindowsDesktop 
             onSaveVoucher={handleSaveVoucher} 
             onSubmitVoucher={handleSubmitVoucher}
+            onApproveVoucher={handleApproveVoucher}
+            onRejectVoucher={handleRejectVoucher}
           />
         </AccountsProvider>
       )}

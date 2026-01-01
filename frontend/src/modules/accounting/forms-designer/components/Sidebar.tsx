@@ -15,7 +15,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenVoucher, isMobile, onClose }) => {
   const [vouchersOpen, setVouchersOpen] = useState(true);
   const { isRTL, language, toggleLanguage, t } = useLanguage();
-  const { vouchers } = useVouchers();
+  const { definitions: vouchers } = useVouchers();
 
   return (
     <div className="w-64 bg-slate-900 text-slate-300 flex flex-col h-full shadow-xl">

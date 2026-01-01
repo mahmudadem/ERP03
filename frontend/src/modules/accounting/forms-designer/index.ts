@@ -1,6 +1,5 @@
 /**
- * AI Designer - Voucher Designer and Renderer
- * Original code from ai-designer folder
+ * Forms Designer - Voucher Designer and Renderer
  * This module provides the designer component for voucher templates
  */
 
@@ -8,7 +7,7 @@
 export { VoucherDesigner } from './components/VoucherDesigner';
 
 // Main Renderer Component (used by designer)
-export { GenericVoucherRenderer } from './components/GenericVoucherRenderer';
+export { GenericVoucherRenderer } from '../components/shared/GenericVoucherRenderer';
 
 // Contexts (required by components)
 export { VoucherProvider, useVouchers } from './VoucherContext';

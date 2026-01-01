@@ -6,7 +6,7 @@ import {
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { FieldDefinition } from '../../../../designer-engine/types/FieldDefinition';
 import { UIMode } from '../types';
-import { GenericVoucherRenderer } from './GenericVoucherRenderer';
+import { GenericVoucherRenderer } from '../../components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
 
 /**
@@ -137,7 +137,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
                 <strong>⚠️ Note:</strong> Field configuration is simplified in this version.
-                For advanced field setup, use the full Designer V1 or admin tools.
+                For advanced field setup, use more advanced admin tools or direct schema configuration.
               </p>
             </div>
 

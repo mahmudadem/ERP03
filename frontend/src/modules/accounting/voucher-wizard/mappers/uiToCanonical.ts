@@ -9,66 +9,9 @@
 
 import { VoucherFormConfig, FieldLayout, VoucherAction, UIMode, SectionType } from '../types';
 import { SYSTEM_FIELDS, AVAILABLE_FIELDS } from '../components/VoucherDesigner';
-
-// TODO: Import actual VoucherTypeDefinition from your schema
-interface VoucherTypeDefinition {
-  id: string;
-  code: string;
-  module: string;
-  name: string;
-  schemaVersion: 2;
-  prefix: string;
-  nextNumber: number;
-  enabled: boolean;
-  isSystemDefault?: boolean;
-  inUse?: boolean;
-  
-  // Layout
-  layout: {
-    classic: LayoutSchema;
-    windows: LayoutSchema;
-  };
-  headerFields: Array<{
-    id: string;
-    name: string;
-    label: string;
-    type: string;
-    required: boolean;
-    readOnly: boolean;
-    isPosting: boolean;
-    postingRole: string | null;
-    schemaVersion: number;
-  }>;
-  
-  // Configuration
-  isMultiLine: boolean;
-  tableColumns?: Array<{
-    fieldId: string;
-    width?: string;
-    labelOverride?: string;
-  }>;
-  tableStyle?: 'web' | 'classic';
-  
-  // Business rules (mapped from UI toggles)
-  requiresApproval?: boolean;
-  preventNegativeCash?: boolean;
-  allowFutureDates?: boolean;
-  mandatoryAttachments?: boolean;
-  
-  // Actions
-  enabledActions: string[];
-  
-  // Strategy
-  baseType?: string;
-  
-  // Metadata
-  metadata?: Record<string, any>;
-  createdAt?: Date;
-  updatedAt?: Date;
-  createdBy?: string;
-  updatedBy?: string;
-  companyId?: string;
-}
+import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
+import { FieldDefinition } from '../../../../designer-engine/types/FieldDefinition';
+import { PostingRole } from '../../../../designer-engine/types/PostingRole';
 
 interface LayoutSchema {
   sections: {
@@ -97,14 +40,16 @@ export function uiToCanonical(
   isEdit: boolean = false
 ): VoucherTypeDefinition {
   // Map UI types to Backend FieldType enum
-  const mapFieldType = (type: string): string => {
+  const mapFieldType = (type: string): FieldDefinition['type'] => {
     switch (type) {
       case 'number': return 'NUMBER';
       case 'date': return 'DATE';
-      case 'checkbox': return 'BOOLEAN';
+      case 'checkbox': return 'CHECKBOX';
       case 'select': return 'SELECT';
-      case 'account-selector': return 'REFERENCE';
-      default: return 'STRING';
+      case 'account-selector': return 'account-selector';
+      case 'textarea': return 'TEXTAREA';
+      case 'relation': return 'RELATION';
+      default: return 'TEXT';
     }
   };
 
@@ -144,10 +89,10 @@ export function uiToCanonical(
                 type: mapFieldType(meta.type || 'text'),
                 required: meta.mandatory || false,
                 readOnly: meta.type === 'system',
-                isPosting: false, // Default to false
-                postingRole: null, // Default to null
+                isPosting: (meta as any).isPosting || false,
+                postingRole: (meta as any).postingRole || null,
                 schemaVersion: 2
-              });
+              } as FieldDefinition);
             }
           }
         });

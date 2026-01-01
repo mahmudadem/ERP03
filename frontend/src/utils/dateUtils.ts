@@ -13,7 +13,10 @@ export const formatCompanyDate = (
 ): string => {
   if (!date) return '-';
 
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : 
+            (date && typeof (date as any).toDate === 'function') ? (date as any).toDate() :
+            (date && typeof (date as any).seconds === 'number') ? new Date((date as any).seconds * 1000) : 
+            (date && typeof (date as any)._seconds === 'number') ? new Date((date as any)._seconds * 1000) : date;
   
   if (isNaN(d.getTime())) return '-';
 

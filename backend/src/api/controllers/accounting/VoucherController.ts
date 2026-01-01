@@ -55,7 +55,10 @@ export class VoucherController {
         diContainer.companyModuleSettingsRepository as any,
         permissionChecker,
         diContainer.transactionManager as any,
-        diContainer.voucherTypeDefinitionRepository as any
+        diContainer.voucherTypeDefinitionRepository as any,
+        diContainer.accountingPolicyConfigProvider as any,
+        diContainer.ledgerRepository as any,
+        diContainer.policyRegistry as any
       );
       const voucher = await useCase.execute(companyId, userId, req.body);
       res.json({ success: true, data: voucher });
@@ -72,7 +75,9 @@ export class VoucherController {
         diContainer.voucherRepository as any,
         diContainer.accountRepository as any,
         permissionChecker,
-        diContainer.accountingPolicyConfigProvider
+        diContainer.transactionManager as any,
+        diContainer.accountingPolicyConfigProvider as any,
+        diContainer.ledgerRepository as any
       );
       await useCase.execute(companyId, userId, req.params.id, req.body);
       res.json({ success: true });
@@ -85,9 +90,23 @@ export class VoucherController {
     try {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
+      
+      // 1. Approve the voucher
       const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository as any, permissionChecker);
       await useCase.execute(companyId, userId, req.params.id);
-      res.json({ success: true });
+      
+      // 2. AUTO-POST after approval (seamlessly transition to POSTED status)
+      const { PostVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherUseCases');
+      const postUseCase = new PostVoucherUseCase(
+        diContainer.voucherRepository as any,
+        diContainer.ledgerRepository as any,
+        permissionChecker,
+        diContainer.transactionManager as any,
+        diContainer.policyRegistry as any
+      );
+      await postUseCase.execute(companyId, userId, req.params.id);
+
+      res.json({ success: true, message: 'Voucher approved and posted' });
     } catch (err) {
       next(err);
     }

@@ -15,11 +15,11 @@ import { useAuth } from '../../../context/AuthContext';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 /**
- * AI Designer Page (Voucher Wizard Integration)
+ * Forms Designer Page (Voucher Wizard Integration)
  * 
  * Integrated with the extracted voucher wizard and real database operations
  */
-export default function AIDesignerPage() {
+export default function FormsDesignerPage() {
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
   const [templates, setTemplates] = useState<VoucherFormConfig[]>([]);
@@ -41,7 +41,7 @@ export default function AIDesignerPage() {
           loadCompanyForms(companyId)
         ]);
         
-        setTemplates(loadedTemplates); // Keep all templates for creating new
+        setTemplates(loadedTemplates); // Keep templates for reference
         setForms(loadedForms); // Show ONLY company-specific forms in the main list
       } catch (err) {
         console.error('Failed to load voucher data:', err);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
-import { JournalRow } from '../../ai-designer/types';
+import { JournalRow } from '../../forms-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
@@ -18,6 +18,7 @@ interface GenericVoucherRendererProps {
   initialData?: any;
   onChange?: (data: any) => void;
   onBlur?: () => void;
+  readOnly?: boolean;
 }
 
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
@@ -38,7 +39,7 @@ export interface GenericVoucherRendererRef {
   resetData: () => void;
 }
 
-export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur }, ref) => {
+export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
   // GUARD: Validate canonical (only if schemaVersion is present)
   if (definition.schemaVersion && definition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
@@ -56,6 +57,35 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
+
+  // Sync state with initialData updates (e.g. after fetch completes)
+  useEffect(() => {
+    if (initialData) {
+      setFormData((prev: any) => {
+        // Only update if ID changed or we were empty (basic equality check logic is complex, 
+        // but for now we trust parent passes canonical data updates)
+        // Actually, preventing overwrite of dirty state is hard.
+        // But usually initialData goes null -> value.
+        // We will simple overwrite if the ID changes or we have no ID.
+        if (prev?.id !== initialData.id || !prev?.id) {
+           return initialData;
+        }
+        return prev;
+      });
+      
+      if (initialData.lines) {
+         setRows((prev) => {
+             // Only if lines are significantly different or we are switching records
+             if (!initialData.lines) return prev;
+             // If we have no rows or different voucher ID, take it.
+             if (initialData.id !== formData.id) {
+                 return initialData.lines.map((l: any, i: number) => ({...l, id: l.id || i + 1, _rowId: i + 1}));
+             }
+             return prev;
+         });
+      }
+    }
+  }, [initialData?.id]); // Only re-sync if the ID changes largely.
   
   // Column resize state (for Classic table)
   const storageKey = `columnWidths_${definition.id}`;
@@ -319,7 +349,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id,
       status: initialData.status,
       createdBy: initialData.createdBy,
-      createdAt: initialData.createdAt ? formatCompanyDate(initialData.createdAt, settings) : undefined
+      createdAt: initialData.createdAt, // Keep original timestamp for proper date+time display
+      updatedBy: initialData.updatedBy,
+      updatedAt: initialData.updatedAt
     } : {};
     
     // Remove undefined keys to prevent them from overwriting defaults in the next spread
@@ -403,16 +435,20 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // Map rows to backend VoucherLine format
       const backendLines = rows
         .filter(row => row.account && (row.debit > 0 || row.credit > 0))
-        .map(row => ({
-          accountId: row.account,  // Map account → accountId
-          description: row.notes || '',  // Map notes → description
-          debitFx: row.debit || 0,
-          creditFx: row.credit || 0,
-          debitBase: row.debit * (row.parity || 1),  // Use parity for base conversion
-          creditBase: row.credit * (row.parity || 1),
-          lineCurrency: row.currency || 'USD',
-          exchangeRate: row.parity || 1
-        }));
+        .map(row => {
+          const isDebit = (row.debit || 0) > 0;
+          const amt = isDebit ? row.debit : row.credit;
+          
+          return {
+            accountId: row.account,
+            description: row.notes || '',
+            side: isDebit ? 'Debit' : 'Credit',
+            amount: Math.abs(Number(amt) || 0),
+            baseAmount: Math.round((Math.abs(Number(amt) || 0) * (row.parity || 1)) * 100) / 100,
+            lineCurrency: row.currency || 'USD',
+            exchangeRate: row.parity || 1
+          };
+        });
       
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
@@ -564,7 +600,21 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
   // --- Field Renderers ---
 
-  const renderField = (fieldId: string, labelOverride?: string) => {
+  const renderField = (fieldId: string, labelOverride?: string, typeOverride?: string) => {
+    // Helper to get field value with case-insensitive lookup
+    const getFieldValue = (fid: string) => {
+      const lower = fid.toLowerCase();
+      return formData[fid] ?? formData[lower] ?? '';
+    };
+
+    // SAFETY: Strip any legacy debug labels if they come from the database/override
+    const cleanLabel = (label: string) => {
+      if (!label) return label;
+      return label.replace(/🔴\s*TEST:\s*/gi, '').replace(/TEST:\s*/gi, '');
+    };
+
+    const finalLabel = cleanLabel(labelOverride || t(fieldId) || fieldId);
+    
     // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
     if (fieldId === 'exchangeRate') {
       const hasCurrency = (definition.headerFields || []).some(f => f.id === 'currency' || f.id === 'currencyExchange');
@@ -580,10 +630,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const CurrencyComp = CustomComponentRegistry.currencyExchange;
       return (
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
           <CurrencyComp
             currency={formData.currency || 'USD'}
             value={formData.exchangeRate}
+            disabled={readOnly}
             onChange={(rate: number) => {
               handleInputChange('exchangeRate', rate);
             }}
@@ -597,9 +648,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const Component = CustomComponentRegistry[fieldId] || CustomComponentRegistry.account;
       return (
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
           <Component
             value={formData[fieldId]}
+            disabled={readOnly}
             onChange={(val: any) => {
                // Adaptation for AccountSelector which returns an account object
                if ((fieldId === 'account' || fieldId === 'accountSelector') && val?.code) {
@@ -615,13 +667,51 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // 1. System Fields (Read Only)
     // Removed 'date' from this list as it should be editable via CompanyDatePicker
-    if (['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt'].includes(fieldId)) {
-       const isDate = fieldId === 'createdAt';
+    const lowerFid = fieldId.toLowerCase();
+    if (['vouchernumber', 'voucherno', 'status', 'createdby', 'createdat', 'updatedby', 'updatedat'].includes(lowerFid)) {
+       const isDate = lowerFid === 'createdat' || lowerFid === 'updatedat';
+       // Case-insensitive value lookup
+       const rawValue = formData[fieldId] ?? formData[lowerFid] ?? '';
+       
+       let displayValue;
+       if (isDate) {
+           // If it's already a formatted string (e.g., "31/12/2025"), use it directly
+           // Otherwise, format it using formatCompanyDate and add time
+           if (typeof rawValue === 'string' && rawValue.includes('/')) {
+               displayValue = rawValue;
+           } else if (rawValue) {
+               // Parse ISO timestamp and format with date + time
+               const date = new Date(rawValue);
+               if (!isNaN(date.getTime())) {
+                   const dateStr = formatCompanyDate(rawValue, settings);
+                   const timeStr = date.toLocaleTimeString('en-US', { 
+                       hour: '2-digit', 
+                       minute: '2-digit',
+                       hour12: true 
+                   });
+                   displayValue = `${dateStr} ${timeStr}`;
+               } else {
+                   displayValue = formatCompanyDate(rawValue, settings);
+               }
+           } else {
+               displayValue = '-';
+           }
+       } else if ((lowerFid === 'createdby' || lowerFid === 'updatedby') && typeof rawValue === 'string' && rawValue.length > 15) {
+           // Truncate long user IDs
+           displayValue = rawValue.substring(0, 12) + '...';
+       } else {
+           displayValue = rawValue || 'Pending';
+       }
+       
        return (
           <div className="space-y-0.5">
-             <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
-             <div className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm min-h-[30px] flex items-center transition-colors">
-               {isDate ? formatCompanyDate(formData[fieldId], settings) : (formData[fieldId] || 'Pending')}
+             <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+             <div 
+                 className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm min-h-[30px] flex items-center transition-colors"
+                 style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                 title={rawValue}
+             >
+               {displayValue}
              </div>
           </div>
        );
@@ -719,6 +809,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             value={row.account} 
                                                             onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
                                                             noBorder={true}
+                                                            disabled={readOnly}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
                                                             onBlur={() => onBlurRef.current?.()}
                                                         />
@@ -727,6 +818,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                      <AmountInput
                                                          ref={(el) => registerCellRef(index, colIndex, el)}
                                                          value={row[colId as 'debit' | 'credit'] || 0}
+                                                         disabled={readOnly}
                                                          onChange={(val) => handleRowChange(row.id, colId as 'debit' | 'credit', val)}
                                                          onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
                                                          onBlur={() => onBlurRef.current?.()}
@@ -736,6 +828,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                         <CurrencySelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
                                                             value={(row as any)[colId] || ''}
+                                                            disabled={readOnly}
                                                             onChange={(val) => handleRowChange(row.id, colId as any, val)} 
                                                             noBorder={true}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
@@ -747,31 +840,36 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                        ref={(el) => registerCellRef(index, colIndex, el)}
                                                        type="text" 
                                                        value={(row as any)[colId] || ''}
+                                                       disabled={readOnly}
                                                        onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
                                                        onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
                                                        onBlur={() => onBlurRef.current?.()}
-                                                       className="w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors" 
+                                                       className={`w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors ${readOnly ? 'cursor-not-allowed opacity-70' : ''}`} 
                                                      />
                                                  )}
                                          </td>
                                      );
                                  })}
                                 <td className="p-1 text-center w-8">
-                                    <button 
-                                      onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                      className="p-1.5 text-[var(--color-text-muted)] hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded transition-all"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {!readOnly && (
+                                      <button 
+                                        onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                                        className="p-1.5 text-[var(--color-text-muted)] hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded transition-all"
+                                      >
+                                          <Trash2 size={14} />
+                                      </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
                 </div>
-                <button onClick={addRow} className="w-full py-2.5 text-center text-[11px] font-bold text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all uppercase tracking-widest">
-                    + {t('addLine')}
-                </button>
+                {!readOnly && (
+                  <button onClick={addRow} className="w-full py-2.5 text-center text-[11px] font-bold text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all uppercase tracking-widest">
+                      + {t('addLine')}
+                  </button>
+                )}
                 
                 {/* Line Context Menu */}
                 {lineContextMenu && (
@@ -879,6 +977,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                              <AccountSelector 
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.account} 
+                                                 disabled={readOnly}
                                                  onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
@@ -887,6 +986,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                              <CurrencySelector
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.currency}
+                                                 disabled={readOnly}
                                                  onChange={(val) => handleRowChange(row.id, 'currency', val)}
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
@@ -897,35 +997,39 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  type="number" 
                                                  step="any"
+                                                 disabled={readOnly || colId === 'equivalent'}
                                                  value={colId === 'equivalent' ? (parseFloat(row[colId as keyof JournalRow] as any) || 0).toFixed(2) : (row[colId as keyof JournalRow] ?? '')}
                                                  onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
                                                  readOnly={colId === 'equivalent'}
                                                  title={colId === 'equivalent' ? "Equivalent = Amount * Parity (Read-only)" : ""}
-                                                 className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${colId === 'equivalent' ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
+                                                 className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${colId === 'equivalent' || readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                                              />
                                          ) : (
                                              <input 
                                                ref={(el) => registerCellRef(index, colIdx, el)}
                                                type="text" 
                                                value={(row as any)[colId] || ''}
+                                               disabled={readOnly}
                                                onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
                                                onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                onBlur={() => onBlurRef.current?.()}
-                                               className="w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors" 
+                                               className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                                                />
                                          )}
                                      </td>
                                  );
                              })}
                             <td className="p-2 text-center w-8">
-                                <button 
-                                  onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                   className="text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
+                                {!readOnly && (
+                                  <button 
+                                    onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                                     className="text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
+                                  >
+                                      <Trash2 size={14} />
+                                  </button>
+                                )}
                             </td>
                         </tr>
                     ))}
@@ -975,9 +1079,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     </tr>
                 </tfoot>
             </table>
-             <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
-                 + {t('addLine')}
-             </button>
+              {!readOnly && (
+               <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
+                   + {t('addLine')}
+               </button>
+              )}
         </div>
     );
 }
@@ -986,25 +1092,61 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // System fields list - these are read-only display fields
     const systemFields = ['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
-    const isSystemField = systemFields.includes(fieldId);
+    const lowerFieldId = fieldId.toLowerCase();
+    const isSystemField = systemFields.some(sf => sf.toLowerCase() === lowerFieldId) || 
+                          lowerFieldId.endsWith('createdat') || 
+                          lowerFieldId.endsWith('updatedat') || 
+                          lowerFieldId.endsWith('createdby') || 
+                          lowerFieldId.endsWith('updatedby');
+    
+    // DEBUG: Log for system fields
+    if (fieldId.toLowerCase().includes('created') || fieldId.toLowerCase().includes('updated')) {
+        console.log(`🔍 ${fieldId} → isSystemField: ${isSystemField}, lowerFieldId: ${lowerFieldId}`);
+    }
 
     return (
         <div className="space-y-0.5">
-            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{labelOverride || t(fieldId) || fieldId}</label>
+            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
             {/* System fields - display as read-only */}
-            {isSystemField ? (
-                <div className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors">
-                    {fieldId === 'createdAt' || fieldId === 'updatedAt' 
-                      ? formatCompanyDate(formData[fieldId], settings) 
-                      : (formData[fieldId] || 'Pending')}
+            {(isSystemField || lowerFieldId.includes('created') || lowerFieldId.includes('updated')) ? (
+                <div 
+                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors block" 
+                    style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={getFieldValue(fieldId)}
+                >
+                    {(() => {
+                        // Normalize field name for checks
+                        const normId = lowerFieldId.includes('createdby') ? 'createdBy' : 
+                                      lowerFieldId.includes('updatedby') ? 'updatedBy' : 
+                                      lowerFieldId.includes('createdat') ? 'createdAt' : 
+                                      lowerFieldId.includes('updatedat') ? 'updatedAt' : fieldId;
+                        
+                        // Get value using helper
+                        const rawVal = getFieldValue(fieldId);
+
+                        /* Removed forced min0dXFj test */
+
+                        const val = (normId === 'createdAt' || normId === 'updatedAt')
+                            ? formatCompanyDate(rawVal, settings) 
+                            : (normId === 'createdBy' && formData.createdByName) ? formData.createdByName
+                            : (normId === 'updatedBy' && formData.updatedByName) ? formData.updatedByName
+                            : rawVal || 'Pending';
+                        
+                        // Aggressive truncation for user ID fields
+                        if ((normId === 'createdBy' || normId === 'updatedBy') && typeof val === 'string' && val.length > 15) {
+                            return val.substring(0, 12) + '...';
+                        }
+                        return val;
+                    })()}
                 </div>
             ) : fieldId === 'currency' || fieldId === 'paymentMethod' ? (
                  <div className="relative">
                      <select 
                        value={formData[fieldId] || ''}
+                       disabled={readOnly}
                        onChange={(e) => handleInputChange(fieldId, e.target.value)}
                        onBlur={() => onBlurRef.current?.()}
-                       className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-6 transition-colors"
+                       className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-6 transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                      >
                         {fieldId === 'currency' ? (
                           <>
@@ -1026,23 +1168,26 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                  <div className="relative">
             <DatePicker 
               value={formData[fieldId] || ''}
+              disabled={readOnly}
               onChange={(val: string) => handleInputChange(fieldId, val)}
             />
                  </div>
-            ) : fieldId === 'notes' || fieldId === 'description' ? (
+            ) : (typeOverride === 'textarea' || (!typeOverride && (fieldId === 'notes' || fieldId === 'description'))) ? (
                   <textarea 
                     value={formData[fieldId] || ''}
+                    disabled={readOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors" 
+                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                   />
             ) : (
                 <input 
                     type={fieldId === 'exchangeRate' || fieldId === 'amount' ? 'number' : 'text'}
-                    value={formData[fieldId] || ''}
+                    value={getFieldValue(fieldId)}
+                    disabled={readOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors"
+                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                 />
             )}
         </div>
@@ -1076,10 +1221,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                   style={{ 
                     gridColumnStart: (field.col || 0) + 1,
                     gridColumnEnd: `span ${field.colSpan || 4}`,
-                    gridRowStart: (field.row || 0) + 1
+                    gridRowStart: (field.row || 0) + 1,
+                    gridRowEnd: `span ${field.rowSpan || 1}`
                   }}
                 >
-                  {renderField(field.fieldId, field.labelOverride)}
+                  {renderField(field.fieldId, field.labelOverride, field.typeOverride)}
                 </div>
               ))}
             </div>
@@ -1159,10 +1305,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
               style={{ 
                 gridColumnStart: (field.col || 0) + 1,
                 gridColumnEnd: `span ${field.colSpan || 4}`,
-                gridRowStart: (field.row || 0) + 1
+                gridRowStart: (field.row || 0) + 1,
+                gridRowEnd: `span ${field.rowSpan || 1}`
               }}
             >
-              {renderField(field.fieldId, field.labelOverride)}
+              {renderField(field.fieldId, field.labelOverride, field.typeOverride)}
             </div>
           ))}
         </div>

@@ -5,28 +5,36 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send } from 'lucide-react';
+import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
+import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
+import { VoucherCorrectionModal } from './VoucherCorrectionModal';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
 
 interface VoucherWindowProps {
   win: VoucherWindowType;
   onSave: (id: string, data: any) => Promise<void>;
   onSubmit: (id: string, data: any) => Promise<void>;
+  onApprove?: (id: string) => Promise<void>;
+  onReject?: (id: string) => Promise<void>;
 }
 
 export const VoucherWindow: React.FC<VoucherWindowProps> = ({ 
   win, 
   onSave,
-  onSubmit
+  onSubmit,
+  onApprove,
+  onReject
 }) => {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow, updateWindowPosition, updateWindowSize, updateWindowData } = useWindowManager();
+  const { settings, isLoading: settingsLoading, refresh: refreshSettings, updateSettings } = useCompanySettings();
   const windowRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
-  
+
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -44,6 +52,22 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [, forceUpdate] = useState(0); // Force re-render for totals
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [showConfirmSubmitModal, setShowConfirmSubmitModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [correctionMode, setCorrectionMode] = useState<'REVERSE_ONLY' | 'REVERSE_AND_REPLACE'>('REVERSE_ONLY');
+
+  const refreshVoucher = async () => {
+    if (!win.data?.id) return;
+    try {
+      const updated = await accountingApi.getVoucher(win.data.id);
+      updateWindowData(win.id, updated);
+      if (updated.lines) setLiveLines(updated.lines);
+    } catch (error) {
+      console.error('Failed to refresh voucher:', error);
+    }
+  };
 
   const handleCloseAttempt = () => {
     if (isDirty) {
@@ -159,21 +183,43 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
   };
 
-  // Handle submit for approval
-  const handleSubmit = async () => {
-    if (!rendererRef.current) {
-      return;
-    }
+  // Handle submit for approval - Stage 1 (Confirmation)
+  const handleSubmit = () => {
+    setShowConfirmSubmitModal(true);
+  };
+
+  // Handle submit for approval - Stage 2 (Execution)
+  const handleConfirmSubmit = async () => {
+    if (!rendererRef.current) return;
     
-    setIsSaving(true);
+    setShowConfirmSubmitModal(false);
+    setIsSubmitting(true);
+    
     try {
       const formData = rendererRef.current.getData();
       await onSubmit(win.id, formData);
+      
+      // Success! Reset dirty state to prevent "Unsaved Changes" prompt
+      setIsDirty(false);
+      setShowSuccessModal(true);
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
+  };
+
+  // Post-Success Action: Close
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    closeWindow(win.id);
+  };
+
+  // Post-Success Action: New
+  const handleSuccessNew = () => {
+    handleNew();
+    setIsDirty(false); // Ensure clean state for new form
+    setShowSuccessModal(false);
   };
 
   const handleDataChange = (newData: any) => {
@@ -192,6 +238,29 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       });
     }
   };
+
+  const isVoucherReadOnly = React.useMemo(() => {
+    if (!win.data?.status) return false;
+    const status = win.data.status.toLowerCase();
+    
+    // In STRICT mode, many statuses are read-only
+    if (settings?.strictApprovalMode === true) {
+      return ['posted', 'approved', 'locked'].includes(status);
+    }
+    
+    // In SIMPLE mode (default), only locked is read-only
+    return status === 'locked';
+  }, [win.data?.status, settings?.strictApprovalMode]);
+
+  useEffect(() => {
+    if (!settingsLoading && settings) {
+      console.log('[VoucherWindow] Active Settings:', {
+        companyId: settings.companyId,
+        strictApprovalMode: settings.strictApprovalMode,
+        isVoucherReadOnly
+      });
+    }
+  }, [settings, settingsLoading, isVoucherReadOnly]);
 
   if (win.isMinimized) return null;
 
@@ -246,13 +315,43 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-sm text-[var(--color-text-primary)]">{win.title}</h3>
           {win.data?.status && (
-            <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-              win.data.status.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
-              win.data.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
-              'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-            }`}>
-              {win.data.status}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                win.data.status.toLowerCase() === 'approved' || win.data.status.toLowerCase() === 'posted' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+                win.data.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
+                win.data.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
+                'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+              }`}>
+                {win.data.status}
+              </span>
+              
+              {/* Status Indicator Dot - Visual Clue for Approval Mode */}
+              <div className="group relative ml-1">
+                <div 
+                  className={`w-2 h-2 rounded-full transition-all cursor-help ${
+                    settingsLoading ? 'bg-gray-400 animate-pulse' : 
+                    (settings?.strictApprovalMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
+                  }`} 
+                />
+                <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700">
+                  <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                    <span className="text-gray-400">Policy:</span>
+                    <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
+                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                    </span>
+                    <span className="text-gray-400">CID:</span>
+                    <span className="font-mono opacity-70">{settings?.companyId?.slice(0, 8)}...</span>
+                  </div>
+                </div>
+              </div>
+
+              {win.data.status.toLowerCase() === 'pending' && win.data.metadata?.isEdited && (
+                <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 text-amber-600 rounded-md border border-amber-100 animate-pulse">
+                  (EDITED)
+                </span>
+              )}
+            </div>
           )}
         </div>
         
@@ -321,6 +420,37 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               <Printer className="w-4 h-4 text-[var(--color-text-secondary)]" />
               Print
             </button>
+            
+            {/* Show correction options for posted or approved vouchers */}
+            {win.data && (win.data.status?.toLowerCase() === 'posted' || win.data.status?.toLowerCase() === 'approved') && (
+              <>
+                <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
+                <button
+                  onClick={() => {
+                    setCorrectionMode('REVERSE_ONLY');
+                    setShowCorrectionModal(true);
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+                >
+                  <RotateCcw className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                  Reverse Voucher
+                </button>
+                {settings?.strictApprovalMode === false && (
+                  <button
+                    onClick={() => {
+                      setCorrectionMode('REVERSE_AND_REPLACE');
+                      setShowCorrectionModal(true);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                    Reverse & Replace
+                  </button>
+                )}
+              </>
+            )}
             <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
             <button
               onClick={() => {
@@ -353,8 +483,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           definition={win.voucherType as any}
           mode="windows"
           initialData={win.data}
-          onChange={() => {
+          readOnly={isVoucherReadOnly}
+          onChange={(newData: any) => {
             setIsDirty(true);
+            if (newData?.lines) {
+              setLiveLines(newData.lines);
+            }
           }}
           onBlur={() => {
             forceUpdate(prev => prev + 1);
@@ -367,12 +501,40 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         {/* Totals Display */}
         <div className="flex items-center gap-4">
           {(() => {
-            // Get current rows from renderer
-            const rows = rendererRef.current?.getRows() || [];
+            // Get current rows directly from live state update
+            // Fallback to rendererRef for initial load only if liveLines is empty
+            const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
             
             // For balanced state, we MUST use equivalent (Base Amount)
-            const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) * (parseFloat(row.parity) || 1)), 0);
-            const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) * (parseFloat(row.parity) || 1)), 0);
+            const safeParse = (val: any) => {
+              const num = parseFloat(val);
+              return isNaN(num) ? 0 : num;
+            };
+
+            const getLineAmounts = (row: any) => {
+              // Handle V2 Format (from onChange / liveLines)
+              if (row.side) {
+                const amount = safeParse(row.amount);
+                const parity = safeParse(row.exchangeRate || row.parity || 1);
+                const baseAmount = amount * parity;
+                
+                return {
+                  debit: row.side === 'Debit' ? baseAmount : 0,
+                  credit: row.side === 'Credit' ? baseAmount : 0
+                };
+              }
+              
+              // Handle V1 Format (from rendererRef / internal state)
+              const parity = safeParse(row.parity || 1);
+              return {
+                debit: safeParse(row.debit) * parity,
+                credit: safeParse(row.credit) * parity
+              };
+            };
+
+            const totalDebit = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).debit, 0);
+            const totalCredit = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).credit, 0);
+            
             const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
             const hasValues = totalDebit > 0 || totalCredit > 0;
             
@@ -422,23 +584,32 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-bg-tertiary)] disabled:opacity-50 transition-all active:scale-[0.98]"
-            disabled={isSaving}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
+              settingsLoading 
+                ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
+                : settings?.strictApprovalMode === true
+                  // Strict Mode: 'Save as Draft' is Secondary action
+                  ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                  // Simple Mode: 'Save & Post' is Primary action (matches Submit button style)
+                  : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+            }`}
+            disabled={isSaving || settingsLoading}
           >
-            {isSaving ? (
+            {isSaving || settingsLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
+                {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                Save as Draft
+                {settings?.strictApprovalMode === true ? <Save className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                {settings?.strictApprovalMode === true ? 'Save as Draft' : 'Save & Post'}
               </>
             )}
           </button>
           
-          {win.data?.status !== 'approved' && (
+          {/* Submit button only shown when strict mode is explicitly true */}
+          {!settingsLoading && settings?.strictApprovalMode === true && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
             <button
             onClick={handleSubmit}
             className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
@@ -451,6 +622,52 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             )}
             {isSubmitting ? 'Submitting...' : 'Submit Approval'}
           </button>
+          )}
+
+          {win.data?.status?.toLowerCase() === 'pending' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (onApprove && win.data?.id) {
+                    setIsSubmitting(true);
+                    try {
+                      await onApprove(win.data.id);
+                      setIsDirty(false);
+                      setShowSuccessModal(true);
+                    } catch (error: any) {
+                      errorHandler.showError(error);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-md shadow-success-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Approve
+              </button>
+              <button
+                onClick={async () => {
+                  if (onReject && win.data?.id) {
+                    setIsSubmitting(true);
+                    try {
+                      await onReject(win.data.id);
+                      setIsDirty(false);
+                      await refreshVoucher();
+                    } catch (error: any) {
+                      errorHandler.showError(error);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-600 text-white rounded-lg hover:bg-danger-700 shadow-md shadow-danger-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                Reject
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -483,6 +700,85 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       isOpen={showUnsavedModal}
       onCancel={() => setShowUnsavedModal(false)}
       onConfirm={handleConfirmClose}
+    />
+
+    {/* Confirmation Modal */}
+    {showConfirmSubmitModal && (
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
+              <Send size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Submit for Approval?</h3>
+              <p className="text-sm text-gray-500 mt-1">This will lock the voucher and notify approvers. You cannot edit it afterwards.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 w-full mt-2">
+              <button 
+                onClick={() => setShowConfirmSubmitModal(false)}
+                className="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmSubmit}
+                className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-lg shadow-primary-500/30 transition-all active:scale-[0.98]"
+              >
+                Confirm Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Success Modal */}
+    {showSuccessModal && (
+      <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center text-success-600 mb-2">
+              <CheckCircle size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Submitted Successfully!</h3>
+              <p className="text-sm text-gray-500 mt-1">Voucher has been sent for approval.</p>
+            </div>
+            
+            <div className="flex flex-col gap-3 w-full mt-4">
+              <button 
+                onClick={handleSuccessNew}
+                className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-lg shadow-primary-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={16} /> Create Another Voucher
+              </button>
+              <button 
+                onClick={handleSuccessClose}
+                className="w-full px-4 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Voucher Correction Modal */}
+    <VoucherCorrectionModal
+      isOpen={showCorrectionModal}
+      onClose={() => setShowCorrectionModal(false)}
+      voucherId={win.data?.id || ''}
+      voucherNumber={win.data?.voucherNumber || win.data?.voucherNo || ''}
+      originalVoucher={win.data}
+      initialMode={correctionMode}
+      onSuccess={(result) => {
+        // Refresh voucher data to show reversed status
+        updateWindowData(win.id, { ...win.data, status: 'reversed' });
+        setShowCorrectionModal(false);
+      }}
     />
     </>
   );

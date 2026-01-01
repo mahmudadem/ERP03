@@ -75,22 +75,19 @@ class CreateVoucherUseCase {
             }
             else {
                 // Map incoming lines to V2 VoucherLineEntity
-                // Handle both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx)
+                // Strictly V2 format (side, amount, baseAmount)
                 lines = (payload.lines || []).map((l, idx) => {
-                    // Determine side
-                    const side = l.side || (l.debitFx > 0 || l.debitBase > 0 ? 'Debit' : 'Credit');
-                    // Get FX amount (transaction currency)
-                    const fxAmount = Math.abs(l.amount || l.debitFx || l.creditFx || 0);
-                    // Get base amount (company currency)
-                    const baseAmt = Math.abs(l.baseAmount || l.debitBase || l.creditBase || fxAmount);
-                    // Currency codes
+                    if (!l.side || l.amount === undefined) {
+                        throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VAL_REQUIRED_FIELD, `Line ${idx + 1}: Missing required V2 fields: side, amount`);
+                    }
+                    const fxAmount = Math.abs(Number(l.amount) || 0);
+                    const baseAmt = Math.abs(Number(l.baseAmount) || fxAmount); // Fallback to FX if base missing
                     const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
                     const lineBaseCurrency = l.baseCurrency || baseCurrency;
-                    // Exchange rate
-                    const rate = l.exchangeRate || payload.exchangeRate || 1;
-                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId, side, baseAmt, // baseAmount (base currency)
+                    const rate = Number(l.exchangeRate) || Number(payload.exchangeRate) || 1;
+                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId, l.side, baseAmt, // baseAmount
                     lineBaseCurrency, // baseCurrency  
-                    fxAmount, // amount (FX currency)
+                    fxAmount, // amount
                     lineCurrency, // currency
                     rate, // exchangeRate
                     l.notes || l.description, l.costCenterId, l.metadata || {});

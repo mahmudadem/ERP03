@@ -46,6 +46,27 @@ i18n
             voucher_deleted: "Voucher deleted successfully!",
             form_saved: "Form saved successfully!",
             settings_updated: "Settings updated successfully!"
+          },
+          fields: {
+            voucherNumber: "Voucher No.",
+            status: "Status",
+            createdBy: "Created By",
+            createdAt: "Created At",
+            date: "Date",
+            currency: "Currency",
+            exchangeRate: "Exchange Rate",
+            reference: "Reference",
+            notes: "Notes",
+            description: "Description",
+            attachments: "Attachments",
+            account: "Account",
+            debit: "Debit",
+            credit: "Credit",
+            amount: "Amount",
+            lineDescription: "Line Description",
+            costCenter: "Cost Center",
+            parity: "Parity",
+            equivalent: "Equivalent"
           }
         }
       },
@@ -90,6 +111,27 @@ i18n
             voucher_deleted: "تم حذف القيد بنجاح!",
             form_saved: "تم حفظ النموذج بنجاح!",
             settings_updated: "تم تحديث الإعدادات بنجاح!"
+          },
+          fields: {
+            voucherNumber: "رقم القيد",
+            status: "الحالة",
+            createdBy: "أنشئ بواسطة",
+            createdAt: "تاريخ الإنشاء",
+            date: "التاريخ",
+            currency: "العملة",
+            exchangeRate: "سعر الصرف",
+            reference: "المرجع",
+            notes: "ملاحظات",
+            description: "الوصف",
+            attachments: "المرفقات",
+            account: "الحساب",
+            debit: "مدين",
+            credit: "دائن",
+            amount: "المبلغ",
+            lineDescription: "وصف البند",
+            costCenter: "مركز التكلفة",
+            parity: "التعادل",
+            equivalent: "المعادل"
           }
         }
       }

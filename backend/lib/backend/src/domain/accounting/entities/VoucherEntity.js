@@ -325,7 +325,9 @@ class VoucherEntity {
      */
     static fromJSON(data) {
         var _a;
-        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, (_a = data.description) !== null && _a !== void 0 ? _a : '', data.currency, data.baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, 
+        // Legacy support: ensure baseCurrency exists (default to USD if missing)
+        const baseCurrency = data.baseCurrency || 'USD';
+        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, (_a = data.description) !== null && _a !== void 0 ? _a : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, 
         // Additional legacy fields
         data.reference, data.updatedAt ? new Date(data.updatedAt) : undefined);
     }

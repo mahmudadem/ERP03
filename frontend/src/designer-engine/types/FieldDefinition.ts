@@ -64,4 +64,6 @@ export interface FieldDefinition {
   };
     
   defaultValue?: any;
+  validationRules?: any;
+  visibilityRules?: any;
 }

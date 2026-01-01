@@ -39,8 +39,21 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
 
   const updateSettings = async (partial: Partial<CompanySettings>) => {
     if (!companyId) return;
-    await companyApi.updateSettings(companyId, partial);
-    await refresh();
+    
+    // OPTIMISTIC UPDATE: Apply changes to local state immediately
+    // This ensures UI buttons (e.g. VoucherWindow) update instantly without waiting for network
+    setSettings(prev => prev ? { ...prev, ...partial } : null);
+    
+    try {
+      await companyApi.updateSettings(companyId, partial);
+    } catch (err) {
+      // Revert or re-fetch on error
+      console.error('Failed to update settings, reverting...', err);
+      // We rely on refresh() to restore truth if available, or error handling
+    } finally {
+      // Always fetch fresh truth from server to ensure consistency
+      await refresh();
+    }
   };
 
   useEffect(() => {

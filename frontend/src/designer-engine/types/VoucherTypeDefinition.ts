@@ -47,4 +47,25 @@ export interface VoucherTypeDefinition {
   
   // Workflow Metadata (OPTIONAL)
   workflow?: any;
+  uiModeOverrides?: any;
+  isMultiLine?: boolean;
+  rules?: any[];
+  actions?: any[];
+  defaultCurrency?: string;
+  prefix?: string;
+  nextNumber?: number;
+  enabled?: boolean;
+  inUse?: boolean;
+  isSystemDefault?: boolean;
+  metadata?: Record<string, any>;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+  requiresApproval?: boolean;
+  preventNegativeCash?: boolean;
+  allowFutureDates?: boolean;
+  mandatoryAttachments?: boolean;
+  enabledActions?: string[];
+  baseType?: string;
 }

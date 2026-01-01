@@ -26,9 +26,9 @@ export const useFormUsageCheck = (formId: string | undefined) => {
           pageSize: 1, // Just need to know if any exist
         });
         
-        // Response is array directly
-        const vouchers = Array.isArray(response) ? response : [];
-        const count = vouchers.length;
+        // Handle response structure (it returns { items: [], total: 0 } or just array)
+        const vouchers = (response as any).items || (Array.isArray(response) ? response : []);
+        const count = typeof (response as any).total === 'number' ? (response as any).total : vouchers.length;
         
         setVoucherCount(count);
         setIsInUse(count > 0);
@@ -42,6 +42,8 @@ export const useFormUsageCheck = (formId: string | undefined) => {
     };
 
     checkUsage();
+    setIsInUse(false);
+    setVoucherCount(0);
   }, [formId]);
 
   return { isInUse, voucherCount, isChecking };

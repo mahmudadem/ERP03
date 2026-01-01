@@ -25,41 +25,17 @@ class JournalEntryStrategy {
             if (!inputLine.accountId) {
                 throw new Error(`Line ${idx + 1}: Account ID required`);
             }
-            // Support both V2 format (side, amount) and legacy format (debitFx, creditFx)
-            let side;
-            let amount;
-            let baseAmount;
-            if (inputLine.side && inputLine.amount !== undefined) {
-                // V2 format
-                side = inputLine.side;
-                amount = Math.abs(Number(inputLine.amount) || 0);
-                baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
-                // Calculate baseAmount if not provided
-                if (baseAmount === 0 && amount > 0) {
-                    const rate = Number(inputLine.exchangeRate) || headerRate;
-                    baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * rate);
-                }
+            // Strict V2 format: side and amount are required
+            if (!inputLine.side || inputLine.amount === undefined) {
+                throw new Error(`Line ${idx + 1}: Missing required V2 fields: side, amount`);
             }
-            else {
-                // Legacy format
-                const debitFx = Number(inputLine.debitFx) || 0;
-                const creditFx = Number(inputLine.creditFx) || 0;
-                const debitBase = Number(inputLine.debitBase) || 0;
-                const creditBase = Number(inputLine.creditBase) || 0;
-                if (debitFx > 0 && creditFx > 0) {
-                    throw new Error(`Line ${idx + 1}: Line cannot have both debit and credit`);
-                }
-                if (debitFx <= 0 && creditFx <= 0) {
-                    throw new Error(`Line ${idx + 1}: Line must have either debit or credit`);
-                }
-                side = debitFx > 0 ? 'Debit' : 'Credit';
-                amount = debitFx > 0 ? debitFx : creditFx;
-                baseAmount = debitBase > 0 ? debitBase : creditBase;
-                // Calculate baseAmount if not provided
-                if (baseAmount === 0 && amount > 0) {
-                    const rate = Number(inputLine.exchangeRate) || headerRate;
-                    baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * rate);
-                }
+            const side = inputLine.side;
+            const amount = Math.abs(Number(inputLine.amount) || 0);
+            let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
+            // Calculate baseAmount if not provided
+            if (baseAmount === 0 && amount > 0) {
+                const rate = Number(inputLine.exchangeRate) || headerRate;
+                baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * rate);
             }
             // Validate we have valid amounts
             if (amount <= 0) {

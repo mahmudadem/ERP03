@@ -59,9 +59,9 @@ export class PostingFieldExtractor {
     // This is a simplified version - extend based on your line field definitions
     return lines.map(line => {
       const filtered: any = {};
-      // Common posting fields in lines
-      const postingFieldKeys = ['accountId', 'debitFx', 'creditFx', 'debitBase', 'creditBase', 
-                                'lineCurrency', 'exchangeRate', 'description'];
+      // V2 Posting Fields (canonical for all line-based vouchers)
+      const postingFieldKeys = ['accountId', 'side', 'amount', 'baseAmount', 
+                                'currency', 'lineCurrency', 'exchangeRate', 'description', 'notes'];
       
       for (const key of postingFieldKeys) {
         if (key in line) {

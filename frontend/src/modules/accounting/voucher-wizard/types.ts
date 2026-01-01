@@ -28,6 +28,8 @@ export interface FieldLayout {
   row: number;
   col: number;
   colSpan: number;
+  rowSpan?: number;
+  typeOverride?: string;
   labelOverride?: string;
 }
 

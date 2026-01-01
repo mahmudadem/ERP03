@@ -35,7 +35,7 @@ const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/Sidebar
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
 
 // Designer
-const DesignerEngine = lazy(() => import('../designer-engine/index'));
+
 
 // RBAC
 const RolesListPage = lazy(() => import('../modules/settings/rbac/RolesListPage'));
@@ -101,9 +101,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
-  { path: '/accounting/designer', label: 'Voucher Designer', component: lazy(() => import('../modules/accounting/designer/pages/VoucherTypeDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
-  { path: '/accounting/designer-v2', label: 'Voucher Designer V2 (NEW)', component: lazy(() => import('../modules/accounting/designer-v2/pages/VoucherDesignerPage').then(m => ({ default: m.VoucherDesignerPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
-  { path: '/accounting/ai-designer', label: 'AI Designer (Original)', component: lazy(() => import('../modules/accounting/pages/AIDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
+  { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
   { path: '/accounting/window-config-test', label: '🎨 Window Config Test', component: lazy(() => import('../modules/accounting/pages/WindowConfigTestPage').then(m => ({ default: m.WindowConfigTestPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
@@ -133,7 +131,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/rbac/users', label: 'Assign Users', component: AssignUsersRolesPage, section: 'SETTINGS', requiredPermission: 'system.roles.manage' },
 
   // DESIGNER
-  { path: '/designer', label: 'Form Designer', component: DesignerEngine, section: 'SETTINGS', requiredPermission: 'accounting.designer.modify' },
+
 
   // SUPER ADMIN
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },

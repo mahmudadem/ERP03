@@ -93,6 +93,26 @@ class FirestoreVoucherRepositoryV2 {
         const snapshot = await query.get();
         return !snapshot.empty;
     }
+    async countByFormId(companyId, formId) {
+        const collection = this.getCollection(companyId);
+        // Check both potential locations for formId:
+        // 1. In metadata (metadata.formId) - New Standard
+        // 2. Or if we decide to promote it to top-level property later
+        // Using metadata.formId as established in the design
+        const query = collection.where('metadata.formId', '==', formId);
+        try {
+            // Use efficient server-side count
+            const snapshot = await query.count().get();
+            return snapshot.data().count;
+        }
+        catch (err) {
+            console.warn('Firestore count aggregation failed, falling back to empty check', err);
+            // Fallback for emulators or versions that might not support count (though unlikely in admin sdk)
+            const fallbackQuery = query.select().limit(1); // Select only ID
+            const fallbackSnap = await fallbackQuery.get();
+            return fallbackSnap.empty ? 0 : 1; // Return at least 1 if found
+        }
+    }
 }
 exports.FirestoreVoucherRepositoryV2 = FirestoreVoucherRepositoryV2;
 //# sourceMappingURL=FirestoreVoucherRepositoryV2.js.map

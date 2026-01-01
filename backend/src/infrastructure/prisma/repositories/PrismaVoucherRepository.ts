@@ -53,4 +53,8 @@ export class PrismaVoucherRepository implements IVoucherRepository {
   async existsByNumber(companyId: string, voucherNo: string): Promise<boolean> {
     throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
   }
+
+  async countByFormId(companyId: string, formId: string): Promise<number> {
+    throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+  }
 }

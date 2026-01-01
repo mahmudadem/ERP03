@@ -35,6 +35,50 @@ export interface AccountDTO {
   isActive?: boolean;
 }
 
+// Voucher Correction Types
+export type CorrectionMode = 'REVERSE_ONLY' | 'REVERSE_AND_REPLACE';
+
+export interface CorrectionOptions {
+  reversalDate?: 'today' | string;
+  reason?: string;
+  replaceStartsAsDraft?: boolean;
+}
+
+export interface ReplacementPayload {
+  date?: string;
+  description?: string;
+  reference?: string;
+  lines?: Array<{
+    accountId: string;
+    debitFx?: number;
+    creditFx?: number;
+    debitBase?: number;
+    creditBase?: number;
+    side?: 'Debit' | 'Credit';
+    currency?: string;
+    rate?: number;
+    memo?: string;
+  }>;
+  metadata?: Record<string, any>;
+}
+
+export interface CorrectionRequest {
+  correctionMode: CorrectionMode;
+  options?: CorrectionOptions;
+  replacePayload?: ReplacementPayload;
+}
+
+export interface CorrectionResponse {
+  reverseVoucherId: string;
+  replaceVoucherId?: string;
+  correctionGroupId: string;
+  summary: {
+    reversalPosted: boolean;
+    replacementCreated: boolean;
+    replacementPosted: boolean;
+  };
+}
+
 export const accountingApi = {
   
   getAccounts: (): Promise<AccountDTO[]> => {
@@ -91,6 +135,11 @@ export const accountingApi = {
 
   cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
     return client.post(`/tenant/accounting/vouchers/${id}/cancel`);
+  },
+
+  // --- CORRECTIONS ---
+  reverseAndReplaceVoucher: (id: string, request: CorrectionRequest): Promise<CorrectionResponse> => {
+    return client.post(`/tenant/accounting/vouchers/${id}/correct`, request);
   },
 
   // --- REPORTS ---

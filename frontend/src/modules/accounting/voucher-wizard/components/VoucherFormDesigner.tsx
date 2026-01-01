@@ -28,13 +28,14 @@ interface Props { // Renamed from VoucherFormDesignerProps as per the snippet
   onToggleEnabled?: (formId: string, enabled: boolean) => void;
 }
 
-export const VoucherFormDesigner: React.FC<Props> = ({ 
-  templates = [], // Defaulted templates
-  onExit,
-  onVoucherSaved,
-  onDeleteForm,
-  onToggleEnabled
-}) => {
+export const VoucherFormDesigner: React.FC<Props> = (props) => {
+  const { 
+    templates = [], 
+    onExit,
+    onVoucherSaved,
+    onDeleteForm,
+    onToggleEnabled
+  } = props;
   // Reverted to original state management for now, as useVoucherForms is not defined.
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
   const [editingForm, setEditingForm] = useState<VoucherFormConfig | null>(null);
@@ -97,10 +98,11 @@ export const VoucherFormDesigner: React.FC<Props> = ({
     try {
       await deleteForm(id);
       if (onDeleteForm) onDeleteForm(id);
-    } catch (error) {
+    } catch (error: any) {
+      const serverMessage = error.response?.data?.error || error.message;
       errorHandler.showError({
         code: 'DELETE_FAILED',
-        message: 'Failed to delete form. It may be in use.',
+        message: serverMessage || 'Failed to delete form. It may be in use.',
         severity: 'ERROR'
       } as any);
     }
