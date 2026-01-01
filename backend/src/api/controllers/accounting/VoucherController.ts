@@ -99,15 +99,19 @@ export class VoucherController {
       const { SubmitVoucherUseCase } = await import('../../../application/accounting/use-cases/SubmitVoucherUseCase');
       const { ApprovalPolicyService } = await import('../../../domain/accounting/policies/ApprovalPolicyService');
       
-      // Create account metadata getter (simplified - returns empty for now, will be enhanced)
+      // Create account metadata getter that fetches actual account data
       const getAccountMetadata = async (cid: string, accountIds: string[]) => {
-        // TODO: Fetch actual account metadata with requiresApproval/custodianUserId
-        return accountIds.map(id => ({
-          accountId: id,
-          requiresApproval: true, // Default to require approval when FA is enabled
-          requiresCustodyConfirmation: false,
-          custodianUserId: undefined
-        }));
+        const accounts = await Promise.all(
+          accountIds.map(id => diContainer.accountRepository.getById(cid, id))
+        );
+        return accounts
+          .filter(acc => acc !== null)
+          .map(acc => ({
+            accountId: acc!.id,
+            requiresApproval: acc!.requiresApproval || false,
+            requiresCustodyConfirmation: acc!.requiresCustodyConfirmation || false,
+            custodianUserId: acc!.custodianUserId || undefined
+          }));
       };
       
       const submitUseCase = new SubmitVoucherUseCase(

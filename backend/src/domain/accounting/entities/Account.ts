@@ -18,7 +18,11 @@ export class Account {
     public uuid?: string,        // System UUID for error tracing/logs
     public parentId?: string | null,
     public createdAt?: Date,
-    public updatedAt?: Date
+    public updatedAt?: Date,
+    // Approval Policy V1 fields
+    public requiresApproval: boolean = false,           // Triggers FA gate when voucher touches this account
+    public requiresCustodyConfirmation: boolean = false, // Triggers CC gate when voucher touches this account
+    public custodianUserId?: string | null              // User who must confirm custody (when CC is required)
   ) {
     this.isActive = active;
   }

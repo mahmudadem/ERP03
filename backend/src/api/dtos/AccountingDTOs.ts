@@ -14,6 +14,10 @@ export interface AccountDTO {
   type: string;
   currency: string;
   active: boolean;
+  // Approval Policy V1 fields
+  requiresApproval?: boolean;
+  requiresCustodyConfirmation?: boolean;
+  custodianUserId?: string | null;
 }
 
 export interface VoucherLineDTO {
@@ -103,6 +107,10 @@ export class AccountingDTOMapper {
       type: account.type,
       currency: account.currency,
       active: account.active,
+      // Approval Policy V1 fields
+      requiresApproval: account.requiresApproval,
+      requiresCustodyConfirmation: account.requiresCustodyConfirmation,
+      custodianUserId: account.custodianUserId,
     };
   }
 
