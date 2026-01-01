@@ -86,19 +86,40 @@ export class VoucherValidationService {
       }
     }
     
-    // 5. Currency consistency
-    const invalidLines = voucher.lines.filter(
-      line => line.currency !== voucher.currency || line.baseCurrency !== voucher.baseCurrency
-    );
-    if (invalidLines.length > 0) {
-      throw createPostingError(
-        'CURRENCY_MISMATCH',
-        'All lines must use the same transaction and base currency as the voucher header',
-        ErrorCategory.CORE_INVARIANT,
-        undefined,
-        undefined,
-        correlationId
+    // 5. Currency consistency (skip for journal entries which support multi-currency lines)
+    // Journal entries allow different transaction currencies per line, but base currency must balance
+    const isJournalEntry = voucher.type.toLowerCase() === 'journal_entry' || voucher.type.toLowerCase() === 'journalentry';
+    
+    if (!isJournalEntry) {
+      // For other voucher types, enforce same currency as header
+      const invalidLines = voucher.lines.filter(
+        line => line.currency !== voucher.currency || line.baseCurrency !== voucher.baseCurrency
       );
+      if (invalidLines.length > 0) {
+        throw createPostingError(
+          'CURRENCY_MISMATCH',
+          'All lines must use the same transaction and base currency as the voucher header',
+          ErrorCategory.CORE_INVARIANT,
+          undefined,
+          undefined,
+          correlationId
+        );
+      }
+    } else {
+      // For journal entries: only check that base currency matches across all lines
+      const invalidBaseLines = voucher.lines.filter(
+        line => line.baseCurrency !== voucher.baseCurrency
+      );
+      if (invalidBaseLines.length > 0) {
+        throw createPostingError(
+          'BASE_CURRENCY_MISMATCH',
+          'All lines in a journal entry must use the same base currency for ledger posting',
+          ErrorCategory.CORE_INVARIANT,
+          undefined,
+          undefined,
+          correlationId
+        );
+      }
     }
   }
 
