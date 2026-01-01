@@ -101,7 +101,13 @@ export class SettingsController {
 
       // Build update payload
       const updateData: any = {
-        approvalRequired: req.body.approvalRequired ?? false,
+        // Approval Policy V1 toggles
+        financialApprovalEnabled: req.body.financialApprovalEnabled ?? false,
+        custodyConfirmationEnabled: req.body.custodyConfirmationEnabled ?? false,
+        
+        // Legacy field (synced with financialApprovalEnabled)
+        approvalRequired: req.body.financialApprovalEnabled ?? req.body.approvalRequired ?? false,
+        
         periodLockEnabled: req.body.periodLockEnabled ?? false,
         accountAccessEnabled: req.body.accountAccessEnabled ?? false,
         policyErrorMode: req.body.policyErrorMode || 'FAIL_FAST',
