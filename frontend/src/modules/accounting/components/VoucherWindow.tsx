@@ -1,4 +1,5 @@
-/**
+
+ /**
  * Voucher Window Component - Legacy Style
  * 
  * Floating, draggable, resizable window matching legacy design.
@@ -351,6 +352,45 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   (EDITED)
                 </span>
               )}
+              
+              {/* Completion Status for Pending Vouchers - shows gate progress */}
+              {win.data.status.toLowerCase() === 'pending' && (
+                <div className="group relative cursor-help">
+                  <span className={`px-2 py-0.5 text-[9px] font-semibold rounded-full ${
+                    win.data.metadata?.pendingFinancialApproval 
+                      ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
+                      : win.data.metadata?.pendingCustodyConfirmations?.length > 0
+                        ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                        : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  }`}>
+                    {win.data.metadata?.pendingFinancialApproval 
+                      ? '⏳ Awaiting Approval' 
+                      : win.data.metadata?.pendingCustodyConfirmations?.length > 0
+                        ? `⏳ Custody (${win.data.metadata.pendingCustodyConfirmations.length})`
+                        : '✓ All Gates Satisfied'}
+                  </span>
+                  {/* Tooltip with details */}
+                  <div className="absolute left-0 top-5 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl z-50 min-w-48">
+                    <p className="font-bold border-b border-gray-600 pb-1 mb-1">Gate Status</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={win.data.metadata?.pendingFinancialApproval ? 'text-amber-300' : 'text-emerald-300'}>
+                          {win.data.metadata?.pendingFinancialApproval ? '⏳' : '✓'}
+                        </span>
+                        <span>Financial Approval</span>
+                      </div>
+                      {win.data.metadata?.custodyConfirmationRequired && (
+                        <div className="flex items-center gap-2">
+                          <span className={win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? 'text-amber-300' : 'text-emerald-300'}>
+                            {win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? '⏳' : '✓'}
+                          </span>
+                          <span>Custody ({win.data.metadata?.pendingCustodyConfirmations?.length || 0} pending)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -591,7 +631,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   // Strict Mode: 'Save as Draft' is Secondary action
                   ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
                   // Simple Mode: 'Save & Post' is Primary action (matches Submit button style)
-                  : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
+                  : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
             }`}
             disabled={isSaving || settingsLoading}
           >
@@ -602,8 +642,19 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               </>
             ) : (
               <>
-                {settings?.strictApprovalMode === true ? <Save className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                {settings?.strictApprovalMode === true ? 'Save as Draft' : 'Save & Post'}
+                {(() => {
+                  if (settings?.strictApprovalMode !== true) return <CheckCircle className="w-4 h-4" />;
+                  const status = win.data?.status?.toLowerCase();
+                  if (status === 'pending' || status === 'approved' || status === 'posted') return <Save className="w-4 h-4" />;
+                  return <Save className="w-4 h-4" />;
+                })()}
+                {(() => {
+                  if (settings?.strictApprovalMode !== true) return 'Save & Post';
+                  const status = win.data?.status?.toLowerCase();
+                  if (status === 'pending') return 'Update Pending Voucher';
+                  if (status === 'approved' || status === 'posted') return 'Save Changes';
+                  return 'Save as Draft';
+                })()}
               </>
             )}
           </button>
@@ -612,7 +663,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           {!settingsLoading && settings?.strictApprovalMode === true && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
             <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+            className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -641,7 +692,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     }
                   }
                 }}
-                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-md shadow-success-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
@@ -662,7 +713,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     }
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-600 text-white rounded-lg hover:bg-danger-700 shadow-md shadow-danger-500/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+                className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-600 text-white rounded-lg hover:bg-danger-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
                 Reject
@@ -704,7 +755,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
     {/* Confirmation Modal */}
     {showConfirmSubmitModal && (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
         <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
@@ -724,7 +775,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               </button>
               <button 
                 onClick={handleConfirmSubmit}
-                className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-lg shadow-primary-500/30 transition-all active:scale-[0.98]"
+                className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-md transition-all active:scale-[0.98]"
               >
                 Confirm Submit
               </button>
@@ -736,7 +787,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
     {/* Success Modal */}
     {showSuccessModal && (
-      <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
         <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center text-success-600 mb-2">
@@ -750,7 +801,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             <div className="flex flex-col gap-3 w-full mt-4">
               <button 
                 onClick={handleSuccessNew}
-                className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-lg shadow-primary-500/20 transition-all flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
               >
                 <Plus size={16} /> Create Another Voucher
               </button>
