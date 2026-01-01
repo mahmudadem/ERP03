@@ -71,9 +71,10 @@ export class ApprovalPolicyService {
   ): ApprovalGateResult {
     const mode = this.getOperatingMode(config);
     
-    // Determine which gates are triggered by the accounts
-    const needsFA = config.financialApprovalEnabled &&
-      touchedAccounts.some(acc => acc.requiresApproval);
+    // V1 Behavior:
+    // - FA: When enabled, ALL vouchers require approval (company-wide enforcement)
+    // - CC: Only triggered for accounts with requiresCustodyConfirmation=true (account-level)
+    const needsFA = config.financialApprovalEnabled;  // V1: All vouchers when ON
     
     const needsCC = config.custodyConfirmationEnabled &&
       touchedAccounts.some(acc => acc.requiresCustodyConfirmation);
