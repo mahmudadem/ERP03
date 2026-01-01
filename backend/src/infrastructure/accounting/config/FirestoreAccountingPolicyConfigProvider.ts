@@ -69,7 +69,11 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
 
   private getDefaultConfig(): AccountingPolicyConfig {
     return {
-      approvalRequired: false,
+      // Approval Policy V1 - all gates OFF by default (Mode A: Auto-Post)
+      financialApprovalEnabled: false,
+      custodyConfirmationEnabled: false,
+      approvalRequired: false,  // Legacy sync
+      
       periodLockEnabled: false,
       accountAccessEnabled: false,
       costCenterPolicy: {

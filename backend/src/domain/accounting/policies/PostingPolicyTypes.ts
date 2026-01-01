@@ -57,10 +57,26 @@ export type PolicyResult =
  * Loaded from backend config source (Firestore, JSON, etc.)
  */
 export interface AccountingPolicyConfig {
-  // Approval Policy
+  // ========== Approval Policy V1 Toggles ==========
+  
+  /**
+   * Financial Approval (FA) - Role-based approval gate
+   * When enabled, vouchers touching accounts with requiresApproval=true
+   * must be approved by a user with approval role before posting.
+   */
+  financialApprovalEnabled: boolean;
+  
+  /**
+   * Custody Confirmation (CC) - User-bound custody gate
+   * When enabled, vouchers touching accounts with requiresCustodyConfirmation=true
+   * must be confirmed by the assigned custodian before posting.
+   */
+  custodyConfirmationEnabled: boolean;
+  
+  // Legacy field (maps to financialApprovalEnabled for backward compatibility)
   approvalRequired: boolean;
   
-  // Period Lock Policy
+  // ========== Period Lock Policy ==========
   periodLockEnabled: boolean;
   lockedThroughDate?: string; // ISO date (YYYY-MM-DD) - all dates <= this are locked
   
