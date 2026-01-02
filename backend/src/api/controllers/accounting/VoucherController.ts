@@ -98,6 +98,7 @@ export class VoucherController {
       // Use SubmitVoucherUseCase for Draft → Pending transition
       const { SubmitVoucherUseCase } = await import('../../../application/accounting/use-cases/SubmitVoucherUseCase');
       const { ApprovalPolicyService } = await import('../../../domain/accounting/policies/ApprovalPolicyService');
+      const { VoucherStatus } = await import('../../../domain/accounting/types/VoucherTypes');
       
       // Create account metadata getter that fetches actual account data
       const getAccountMetadata = async (cid: string, accountIds: string[]) => {
@@ -121,7 +122,33 @@ export class VoucherController {
         getAccountMetadata
       );
       
-      const voucher = await submitUseCase.execute(companyId, req.params.id, userId);
+      let voucher = await submitUseCase.execute(companyId, req.params.id, userId);
+
+      // AUTO-POST if the voucher was automatically approved (Mode A or no gates triggered)
+      if (voucher.status === VoucherStatus.APPROVED) {
+        const { PostVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherUseCases');
+        const postUseCase = new PostVoucherUseCase(
+          diContainer.voucherRepository as any,
+          diContainer.ledgerRepository as any,
+          permissionChecker,
+          diContainer.transactionManager as any,
+          diContainer.policyRegistry as any
+        );
+        await postUseCase.execute(companyId, userId, req.params.id);
+        
+        // Refresh voucher data after posting to get POSTED status and updated metadata
+        const postedVoucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+        if (postedVoucher) {
+          voucher = postedVoucher;
+        }
+        
+        return res.json({ 
+          success: true, 
+          data: voucher.toJSON(), 
+          message: 'Voucher submitted and posted' 
+        });
+      }
+      
       res.json({ success: true, data: voucher.toJSON(), message: 'Voucher submitted for approval' });
     } catch (err) {
       next(err);
@@ -152,7 +179,14 @@ export class VoucherController {
       );
       await postUseCase.execute(companyId, userId, req.params.id);
 
-      res.json({ success: true, message: 'Voucher approved and posted' });
+      // Refresh to get latest state for frontend
+      const voucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+
+      res.json({ 
+        success: true, 
+        data: voucher ? voucher.toJSON() : null,
+        message: 'Voucher approved and posted' 
+      });
     } catch (err) {
       next(err);
     }
