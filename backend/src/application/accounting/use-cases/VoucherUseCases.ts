@@ -193,7 +193,8 @@ export class UpdateVoucherUseCase {
     if (!voucher.canEdit && (approvalRequired || voucher.status !== VoucherStatus.POSTED)) {
       throw new BusinessError(
         ErrorCode.VOUCH_INVALID_STATUS,
-        `Cannot update voucher with status: ${voucher.status}. Vouchers must be reversed or corrected unless Approval is OFF.`
+        `Cannot update voucher with status: ${voucher.status}. Vouchers must be reversed or corrected unless Approval is OFF.`,
+        { status: voucher.status }
       );
     }
 
