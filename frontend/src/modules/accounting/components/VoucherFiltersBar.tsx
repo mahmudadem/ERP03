@@ -53,7 +53,12 @@ export const VoucherFiltersBar: React.FC<Props> = ({
 
   const handleClear = () => {
     // Reset filters
-    const defaultFilters = {};
+    const defaultFilters = {
+      status: undefined,
+      type: undefined,
+      search: undefined,
+      formId: undefined 
+    };
     setLocalFilters(defaultFilters);
     
     // Reset date range to the system default (2000-01-01)
@@ -116,9 +121,10 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         >
           <option value="ALL">All Status</option>
           <option value="DRAFT">Draft</option>
-          <option value="PENDING">Pending Approval</option>
+          <option value="PENDING">Pending</option>
           <option value="APPROVED">Approved</option>
           <option value="POSTED">Posted</option>
+          <option value="REVERSED">Reversed</option>
           <option value="LOCKED">Locked</option>
           <option value="VOID">Void</option>
         </select>

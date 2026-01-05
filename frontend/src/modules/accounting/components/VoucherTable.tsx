@@ -105,11 +105,70 @@ export const VoucherTable: React.FC<Props> = ({
   const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
   
-  // Get unique values for filters
-  const uniqueStatuses = useMemo(() => 
-    Array.from(new Set(safeVouchers.map(v => v.status))).sort(),
-    [safeVouchers]
-  );
+  // 1. Pre-calculate Maps for efficient lookups (Hoisted from display logic)
+  const { voucherMap, reversalGroups, isActuallyReversedMap, isReversalRejectedMap, hasReversalMap } = useMemo(() => {
+    const vMap = new Map<string, VoucherListItem>();
+    safeVouchers.forEach(v => vMap.set(v.id, v));
+
+    const topLevel = safeVouchers.filter(v => !v.reversalOfVoucherId);
+    const reversals = safeVouchers.filter(v => v.reversalOfVoucherId);
+
+    const rGroups = reversals.reduce((acc, r) => {
+      const pid = r.reversalOfVoucherId!;
+      if (!acc[pid]) acc[pid] = [];
+      acc[pid].push(r);
+      return acc;
+    }, {} as Record<string, VoucherListItem[]>);
+
+    // Identify status derived from children
+    const actuallyReversed = new Set(
+      Object.entries(rGroups)
+        .filter(([pid, group]) => group.some(r => !!r.postedAt))
+        .map(([pid]) => pid)
+    );
+
+    const reversalRejected = new Set(
+      Object.entries(rGroups)
+        .filter(([pid, group]) => group.some(r => r.status.toLowerCase() === 'rejected'))
+        .map(([pid]) => pid)
+    );
+
+    const hasReversal = new Set(Object.keys(rGroups));
+
+    return { 
+      voucherMap: vMap, 
+      reversalGroups: rGroups, 
+      isActuallyReversedMap: actuallyReversed, 
+      isReversalRejectedMap: reversalRejected,
+      hasReversalMap: hasReversal
+    };
+  }, [safeVouchers]);
+
+  // Helper: Get Derived Status for Display/Filtering
+  const getDerivedStatus = useCallback((voucher: VoucherListItem) => {
+    // 1. Check Reversal Status
+    const hasVisibleReversal = hasReversalMap.has(voucher.id);
+    const isReversed = !voucher.reversalOfVoucherId && (
+      hasVisibleReversal 
+        ? isActuallyReversedMap.has(voucher.id) 
+        : !!voucher.metadata?.isReversed
+    );
+
+    if (isReversed) return 'Reversed';
+    if (!!voucher.postedAt) return 'Posted';
+    
+    // Capitalize raw status
+    return voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
+  }, [hasReversalMap, isActuallyReversedMap]);
+
+  // Get unique values for filters (Using Derived Status)
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    safeVouchers.forEach(v => {
+      statuses.add(getDerivedStatus(v));
+    });
+    return Array.from(statuses).sort();
+  }, [safeVouchers, getDerivedStatus]);
   
   const uniqueTypes = useMemo(() => 
     Array.from(new Set(safeVouchers.map(v => v.type))).sort(),
@@ -129,6 +188,8 @@ export const VoucherTable: React.FC<Props> = ({
 
   // Shared matching logic for both filtering and auto-expansion (Origin-Aware)
   const checkMatch = useCallback((item: VoucherListItem) => {
+    const hasActiveFilters = Object.keys(filters).length > 0 || Object.keys(externalFilters).length > 0;
+
     // 1. Check Date Range
     const from = filters.dateFrom || dateRange?.from;
     const to = filters.dateTo || dateRange?.to;
@@ -136,20 +197,42 @@ export const VoucherTable: React.FC<Props> = ({
     if (from && item.date < from) return false;
     if (to && item.date > to) return false;
     
-    // 2. Check Status
+    // 2. Check Status (Using Derived Status)
     const statusFilter = filters.statuses || (externalFilters.status && externalFilters.status !== 'ALL' ? [externalFilters.status] : null);
     if (statusFilter && statusFilter.length > 0) {
-      const match = statusFilter.some(s => s.toLowerCase() === item.status.toLowerCase());
+      const derivedStatus = getDerivedStatus(item);
+      // DEBUG: Log match attempt for analysis
+      if (statusFilter.some(s => s.toLowerCase() === 'posted')) {
+         console.log('DEBUG_STATUS_CHECK', { 
+           id: item.id,
+           rawStatus: item.status,
+           derived: derivedStatus, 
+           filters: statusFilter,
+           matchResult: statusFilter.some(s => s.toLowerCase() === derivedStatus.toLowerCase())
+         });
+      }
+      const match = statusFilter.some(s => s.toLowerCase() === derivedStatus.toLowerCase());
       if (!match) return false;
     }
     
-    // 3. Check Type (Origin-Aware):
+    // 3. Check Type (Origin-Aware & Optimized)
     const typeFilter = filters.types || (externalFilters.type && externalFilters.type !== 'ALL' ? [externalFilters.type] : null);
     if (typeFilter && typeFilter.length > 0) {
-      const isDirectMatch = typeFilter.some(t => t.toLowerCase() === item.type.toLowerCase());
-      const isReversalMatch = (item.type.toLowerCase() === 'reversal') && 
-                            item.metadata?.originType && 
-                            typeFilter.some(t => t.toLowerCase() === item.metadata?.originType?.toLowerCase());
+      const itemType = item.type.toLowerCase();
+      const isDirectMatch = typeFilter.some(t => t.toLowerCase() === itemType);
+      
+      let isReversalMatch = false;
+      if (itemType === 'reversal') {
+         if (item.reversalOfVoucherId) {
+           const parent = voucherMap.get(item.reversalOfVoucherId);
+           if (parent) {
+             isReversalMatch = typeFilter.some(t => t.toLowerCase() === parent.type.toLowerCase());
+           }
+         }
+         if (!isReversalMatch && item.metadata?.originType) {
+            isReversalMatch = typeFilter.some(t => t.toLowerCase() === item.metadata?.originType?.toLowerCase());
+         }
+      }
       
       if (!isDirectMatch && !isReversalMatch) return false;
     }
@@ -162,7 +245,7 @@ export const VoucherTable: React.FC<Props> = ({
     }
 
     return true;
-  }, [filters, externalFilters, dateRange]);
+  }, [filters, externalFilters, dateRange, getDerivedStatus, voucherMap]);
 
   // AUTO-EXPAND rows that contain filtered results
   useEffect(() => {
@@ -214,38 +297,13 @@ export const VoucherTable: React.FC<Props> = ({
     }
   };
   
-  // Data Transformation: Group reversals by their parent voucher
-  const { displayVouchers, hasReversalMap, isActuallyReversedMap, isReversalRejectedMap } = useMemo(() => {
-    // 1. Separate top-level vouchers from reversals
+  // Data Transformation: Use pre-calculated maps and apply filtering/sorting
+  const { displayVouchers } = useMemo(() => {
+    // 1. Separate top-level vouchers from reversals (Using filtered set logic if needed, but here we iterate all)
+    // Actually, we want to filter the top-level list based on checkMatch
     const topLevel = safeVouchers.filter(v => !v.reversalOfVoucherId);
-    const reversals = safeVouchers.filter(v => v.reversalOfVoucherId);
-    
-    // 2. Map reversals to their parent IDs for quick lookup
-    const reversalGroups = reversals.reduce((acc, r) => {
-      const pid = r.reversalOfVoucherId!;
-      if (!acc[pid]) acc[pid] = [];
-      acc[pid].push(r);
-      return acc;
-    }, {} as Record<string, VoucherListItem[]>);
-    
-    // 3. Mark which vouchers have POSTED reversals for status badge
-    const isActuallyReversedMap = new Set(
-      Object.entries(reversalGroups)
-        .filter(([pid, group]) => group.some(r => !!r.postedAt))
-        .map(([pid]) => pid)
-    );
 
-    // 3.1 Identify rejected reversals specifically
-    const isReversalRejectedMap = new Set(
-      Object.entries(reversalGroups)
-        .filter(([pid, group]) => group.some(r => r.status.toLowerCase() === 'rejected'))
-        .map(([pid]) => pid)
-    );
-
-    // 3.2 Mark which vouchers have ANY reversal attempt (for icons/indicators)
-    const hasReversalMap = new Set(Object.keys(reversalGroups));
-    
-    // 4. Identify which top-level items match directly or via children
+    // 2. Filter top-level items
     const filtered = topLevel.filter(v => {
       // Does the parent match?
       if (checkMatch(v)) return true;
@@ -255,6 +313,7 @@ export const VoucherTable: React.FC<Props> = ({
       return children.some(child => checkMatch(child));
     });
     
+    // 3. Sort
     const sorted = filtered.sort((a, b) => {
       let aVal: any = a[sortField];
       let bVal: any = b[sortField];
@@ -276,12 +335,11 @@ export const VoucherTable: React.FC<Props> = ({
       return 0;
     });
 
-    // 5. Flatten the structure for rendering (parent followed by its visible reversals)
+    // 4. Flatten structure
     const result: Array<{ voucher: VoucherListItem, isNested: boolean }> = [];
     sorted.forEach(v => {
       result.push({ voucher: v, isNested: false });
       
-      // If parent is expanded, add its reversals
       if (expandedRows.has(v.id) && reversalGroups[v.id]) {
         reversalGroups[v.id].forEach(rev => {
           result.push({ voucher: rev, isNested: true });
@@ -289,8 +347,8 @@ export const VoucherTable: React.FC<Props> = ({
       }
     });
     
-    return { displayVouchers: result, hasReversalMap, isActuallyReversedMap, isReversalRejectedMap };
-  }, [safeVouchers, sortField, sortDirection, filters, expandedRows]);
+    return { displayVouchers: result };
+  }, [safeVouchers, sortField, sortDirection, filters, expandedRows, checkMatch, reversalGroups]);
   
   // Render sort icon
   const renderSortIcon = (field: keyof VoucherListItem) => {
@@ -445,7 +503,53 @@ export const VoucherTable: React.FC<Props> = ({
               <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Credit Account</th>
               
               {/* Status Header */}
-              <th className="w-24 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Status</th>
+              <th className="w-24 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+                <div className="flex items-center justify-center gap-2">
+                  <span>Status</span>
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
+                    <button 
+                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')} 
+                      className={clsx("p-1 hover:text-primary-600", filters.statuses?.length ? 'text-primary-600 opacity-100' : '')}
+                    >
+                      <Filter className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                {activeFilterColumn === 'status' && (
+                  <div ref={filterRef} className="absolute top-full right-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)] text-left">
+                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                      {uniqueStatuses.map(status => (
+                        <label key={status} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
+                          <input 
+                            type="checkbox" 
+                            checked={filters.statuses?.includes(status) || false} 
+                            onChange={(e) => {
+                              const current = filters.statuses || [];
+                              const updated = e.target.checked ? [...current, status] : current.filter(s => s !== status);
+                              setFilters({ ...filters, statuses: updated.length > 0 ? updated : undefined });
+                            }} 
+                            className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" 
+                          />
+                          <span className="text-sm">{status}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-[var(--color-border)] flex justify-end">
+                       <Button 
+                         variant="primary" 
+                         size="sm" 
+                         className="text-xs px-2 py-1 h-auto"
+                         onClick={() => {
+                            window.alert('Filter Applied: ' + JSON.stringify(filters.statuses || 'None'));
+                            setActiveFilterColumn(null);
+                         }}
+                       >
+                         Apply
+                       </Button>
+                    </div>
+                  </div>
+                )}
+              </th>
 
               <th className="w-32 px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Amount</th>
               <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Ref</th>

@@ -111,7 +111,25 @@ export const useVouchersWithCache = (companyId: string) => {
         if (v.type?.toLowerCase() !== filters.type?.toLowerCase()) return false;
       }
       
-      if (filters.status && v.status !== filters.status) return false;
+      if (filters.status) {
+        const filterS = filters.status.toUpperCase();
+        // Smart Check mirroring VoucherTable's derived status
+        const isPosted = !!v.postedAt;
+        // Basic Metadata check for caching hook (UI has more complex check but this covers 99%)
+        const isReversed = !!v.metadata?.isReversed; 
+
+        if (filterS === 'POSTED') {
+           // Show if posted AND not visually reversed
+           if (!isPosted || isReversed) return false;
+        } else if (filterS === 'REVERSED') {
+           if (!isReversed) return false;
+        } else {
+           // For specific statuses (DRAFT, APPROVED, PENDING, etc.)
+           // verify it is NOT posted or reversed (which take precedence)
+           if (isPosted || isReversed) return false;
+           if (v.status.toUpperCase() !== filterS) return false;
+        }
+      }
       
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
