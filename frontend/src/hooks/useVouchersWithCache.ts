@@ -72,7 +72,9 @@ export const useVouchersWithCache = (companyId: string) => {
   const filteredVouchers = useMemo(() => {
     // 1. Define match criteria
     const matchesFilters = (v: VoucherListItem) => {
-      if (filters.formId && v.formId !== filters.formId) return false;
+      // If formId is filtered, it must match. 
+      // LEGACY SUPPORT: If voucher has no formId, we allow it to pass this check and rely on 'type' match.
+      if (filters.formId && v.formId && v.formId !== filters.formId) return false;
       
       if (filters.type) {
         if (v.type?.toLowerCase() !== filters.type?.toLowerCase()) return false;

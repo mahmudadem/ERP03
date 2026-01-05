@@ -130,15 +130,18 @@ export const VoucherTable: React.FC<Props> = ({
     
     // 2. Check Status
     const statusFilter = filters.statuses || (externalFilters.status && externalFilters.status !== 'ALL' ? [externalFilters.status] : null);
-    if (statusFilter && statusFilter.length > 0 && !statusFilter.includes(item.status)) return false;
+    if (statusFilter && statusFilter.length > 0) {
+      const match = statusFilter.some(s => s.toLowerCase() === item.status.toLowerCase());
+      if (!match) return false;
+    }
     
     // 3. Check Type (Origin-Aware):
     const typeFilter = filters.types || (externalFilters.type && externalFilters.type !== 'ALL' ? [externalFilters.type] : null);
     if (typeFilter && typeFilter.length > 0) {
-      const isDirectMatch = typeFilter.includes(item.type);
+      const isDirectMatch = typeFilter.some(t => t.toLowerCase() === item.type.toLowerCase());
       const isReversalMatch = (item.type.toLowerCase() === 'reversal') && 
                             item.metadata?.originType && 
-                            typeFilter.includes(item.metadata.originType);
+                            typeFilter.some(t => t.toLowerCase() === item.metadata?.originType?.toLowerCase());
       
       if (!isDirectMatch && !isReversalMatch) return false;
     }
