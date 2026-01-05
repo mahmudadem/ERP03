@@ -305,7 +305,8 @@ const VouchersListPage: React.FC = () => {
           <div className="bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300">
             <VoucherTable 
               vouchers={vouchers} 
-              isLoading={isLoading}
+              voucherTypes={voucherTypes}
+              isLoading={vouchersLoading || typesLoading}
               error={error ? error.message : null}
               onViewPrint={handleViewPrint}
               onRowClick={handleRowClick}

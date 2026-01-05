@@ -30,6 +30,7 @@ export interface VoucherListItem {
   prefix?: string;  // Voucher number prefix
   reversalOfVoucherId?: string; // ID of the voucher this one reverses
   metadata?: Record<string, any>;
+  lines?: any[]; // Snapshot of lines for quick display (e.g. Account names)
 }
 
 export interface VoucherListFilters {

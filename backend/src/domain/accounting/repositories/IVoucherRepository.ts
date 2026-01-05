@@ -114,4 +114,12 @@ export interface IVoucherRepository {
    * @param formId Form ID
    */
   countByFormId(companyId: string, formId: string): Promise<number>;
+
+  /**
+   * Find a reversal voucher for a specific original voucher
+   * 
+   * @param companyId Company ID
+   * @param originalVoucherId ID of the original voucher being reversed
+   */
+  findByReversalOfVoucherId(companyId: string, originalVoucherId: string): Promise<VoucherEntity | null>;
 }

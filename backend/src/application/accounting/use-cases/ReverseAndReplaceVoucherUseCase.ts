@@ -70,9 +70,11 @@ export class ReverseAndReplaceVoucherUseCase {
       }
 
       // Step 2: Check idempotency - has this voucher already been reversed?
-      const existingReversal = await this.findExistingReversal(companyId, originalVoucherId);
+      // Use the new targeted query for reversal check
+      const existingReversal = await this.voucherRepo.findByReversalOfVoucherId(companyId, originalVoucherId);
+      
       if (existingReversal) {
-        // Already reversed - return existing correction
+        // Already reversed - return existing correction status
         const existingReplacement = await this.findExistingReplacement(companyId, originalVoucherId);
         
         return {
@@ -81,6 +83,7 @@ export class ReverseAndReplaceVoucherUseCase {
           correctionGroupId: existingReversal.correctionGroupId || 'unknown',
           summary: {
             reversalPosted: existingReversal.isPosted,
+            reversalStatus: existingReversal.status,
             replacementCreated: !!existingReplacement,
             replacementPosted: existingReplacement?.isPosted || false
           }
@@ -216,19 +219,13 @@ export class ReverseAndReplaceVoucherUseCase {
   }
 
   /**
-   * Find existing reversal for a voucher (idempotency check)
-   */
-  private async findExistingReversal(companyId: string, originalVoucherId: string) {
-    // Structural check using the new field
-    const vouchers = await this.voucherRepo.findByCompany(companyId);
-    return vouchers.find(v => v.reversalOfVoucherId === originalVoucherId);
-  }
-
-  /**
    * Find existing replacement for a voucher
    */
   private async findExistingReplacement(companyId: string, originalVoucherId: string) {
+    // Replacement is identified by metadata.replacesVoucherId
+    // Since this is less frequent, we keep the collection find for now, 
+    // but in a real high-scale system, this should also be a targeted repo method.
     const vouchers = await this.voucherRepo.findByCompany(companyId);
-    return vouchers.find(v => v.metadata.replacesVoucherId === originalVoucherId);
+    return vouchers.find(v => v.metadata?.replacesVoucherId === originalVoucherId);
   }
 }

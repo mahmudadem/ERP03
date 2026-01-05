@@ -11,9 +11,13 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
+import { useAccounts } from '../../../context/AccountsContext';
+import { VoucherFormConfig } from '../voucher-wizard/types';
+import { Info } from 'lucide-react';
 
 interface Props {
   vouchers: VoucherListItem[];
+  voucherTypes?: VoucherFormConfig[];
   pagination?: {
     page: number;
     pageSize: number;
@@ -57,6 +61,7 @@ const getStatusVariant = (status: string) => {
 
 export const VoucherTable: React.FC<Props> = ({ 
   vouchers = [], 
+  voucherTypes = [],
   pagination, 
   isLoading,
   error,
@@ -70,6 +75,7 @@ export const VoucherTable: React.FC<Props> = ({
   const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
   const pageInfo = pagination || { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 };
   const { settings } = useCompanySettings();
+  const { getAccountById } = useAccounts();
   
   // States for row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -278,16 +284,50 @@ export const VoucherTable: React.FC<Props> = ({
   return (
     <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300">
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-[var(--color-border)]">
-          <thead className="bg-[var(--color-bg-tertiary)] transition-colors duration-300">
-            <tr>
-              <th className="w-10"></th> {/* Expand icon column */}
+      {/* Status Legend */}
+      <div className="px-6 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center justify-between">
+        <div className="flex items-center gap-4 text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+          <div className="flex items-center gap-1.5">
+            <Badge variant="success" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">A</Badge>
+            <span>Approved</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="warning" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">P</Badge>
+            <span>Pending</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="default" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">D</Badge>
+            <span>Draft</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="info" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">L</Badge>
+            <span>Locked</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="warning" className="w-5 h-5 flex items-center justify-center p-0 rounded-full bg-amber-500 text-white border-none shadow-none">R</Badge>
+            <span>Reversed</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="error" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">C</Badge>
+            <span>Cancelled</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)] italic">
+          <Info size={12} />
+          <span>Balanced amount shown for posted vouchers</span>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto relative">
+        <table className="w-full divide-y divide-[var(--color-border)] table-fixed min-w-[1200px]">
+          <thead className="bg-[var(--color-bg-secondary)] select-none">
+            <tr className="divide-x divide-[var(--color-border)]/50">
+              <th className="w-12 px-2 py-3"></th>
               
-              {/* Date & Time Header */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              {/* Date Header */}
+              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
                 <div className="flex items-center gap-2">
-                  <span>Date & Time</span>
+                  <span>Date</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleSort('date')} className="p-1 hover:text-primary-600">
                       {renderSortIcon('date')}
@@ -319,8 +359,7 @@ export const VoucherTable: React.FC<Props> = ({
                 )}
               </th>
 
-              {/* Number Header */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th className="w-40 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
                 <div className="flex items-center gap-2">
                   <span>Number</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -334,13 +373,19 @@ export const VoucherTable: React.FC<Props> = ({
                 </div>
                 {activeFilterColumn === 'number' && (
                   <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
-                    <input type="text" placeholder="Search number..." value={filters.searchNumber || ''} onChange={(e) => setFilters({ ...filters, searchNumber: e.target.value })} className="w-full text-sm bg-[var(--color-bg-tertiary)] border-[var(--color-border)] rounded px-2 py-1" />
+                    <input 
+                      type="text" 
+                      placeholder="Search number..." 
+                      className="w-full px-2 py-1 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none" 
+                      value={filters.searchNumber || ''} 
+                      onChange={(e) => setFilters({ ...filters, searchNumber: e.target.value })}
+                    />
                   </div>
                 )}
               </th>
 
               {/* Type Header */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
                 <div className="flex items-center gap-2">
                   <span>Type</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -370,46 +415,16 @@ export const VoucherTable: React.FC<Props> = ({
                 )}
               </th>
 
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Prefix</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Source</th>
+              <th className="w-48 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Voucher Name</th>
+              <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Debit Account</th>
+              <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Credit Account</th>
               
               {/* Status Header */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
-                <div className="flex items-center gap-2">
-                  <span>Status</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleSort('status')} className="p-1 hover:text-primary-600">
-                      {renderSortIcon('status')}
-                    </button>
-                    <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')} className={clsx("p-1 hover:text-primary-600", filters.statuses?.length ? 'text-primary-600 opacity-100' : '')}>
-                      <Filter className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                {activeFilterColumn === 'status' && (
-                  <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)]">
-                    <div className="space-y-1">
-                      {uniqueStatuses.map(status => (
-                        <label key={status} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
-                          <input type="checkbox" checked={filters.statuses?.includes(status) || false} onChange={(e) => {
-                            const current = filters.statuses || [];
-                            const updated = e.target.checked ? [...current, status] : current.filter(s => s !== status);
-                            setFilters({ ...filters, statuses: updated.length > 0 ? updated : undefined });
-                          }} className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" />
-                          <span className="text-sm capitalize">{status}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </th>
+              <th className="w-24 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Status</th>
 
-              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Debit</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Credit</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Ref</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-blue-500 uppercase tracking-wider">ID (Debug)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-purple-500 uppercase tracking-wider">RevOf (Debug)</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Actions</th>
+              <th className="w-32 px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Amount</th>
+              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Ref</th>
+              <th className="w-24 px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)] transition-colors duration-300">
@@ -420,169 +435,148 @@ export const VoucherTable: React.FC<Props> = ({
                 </td>
               </tr>
             ) : (
-              displayVouchers.map(({ voucher, isNested }) => (
-                <tr 
-                  key={voucher.id} 
-                  className={clsx(
-                    "transition-colors group cursor-pointer",
-                    isNested ? "bg-amber-50/30 dark:bg-amber-900/5 hover:bg-amber-50 dark:hover:bg-amber-900/10" : "hover:bg-primary-50 dark:hover:bg-primary-900/10"
-                  )}
-                  onClick={() => onRowClick?.(voucher.id)}
-                >
-                  <td className="pl-4 py-2">
-                    {!isNested && hasReversalMap.has(voucher.id) && (
-                      <button 
-                        onClick={(e) => toggleRow(voucher.id, e)}
-                        className={clsx(
-                          "p-1.5 rounded-md border transition-all duration-200 shadow-sm",
-                          expandedRows.has(voucher.id) 
-                            ? "bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:border-amber-800"
-                            : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-white hover:border-primary-300 hover:text-primary-600 dark:bg-gray-800/50 dark:border-gray-700"
-                        )}
-                        title={expandedRows.has(voucher.id) ? "Hide Reversals" : "View Reversals"}
-                      >
-                         {expandedRows.has(voucher.id) ? (
-                           <ChevronDown className="w-4 h-4" />
-                         ) : (
-                           <ChevronRight className="w-4 h-4" />
-                         )}
-                      </button>
+              displayVouchers.map(({ voucher, isNested }) => {
+                const voucherTypeInfo = voucherTypes.find(vt => vt.id === voucher.formId || (vt as any)._typeId === voucher.formId);
+                const voucherName = voucherTypeInfo?.name || voucher.type;
+                
+                // Extract primary accounts
+                const debitLines = voucher.lines?.filter(l => l.side === 'Debit') || [];
+                const creditLines = voucher.lines?.filter(l => l.side === 'Credit') || [];
+                
+                const debitAccountName = debitLines.length === 1 
+                  ? (getAccountById(debitLines[0].accountId)?.name || debitLines[0].accountId)
+                  : (debitLines.length > 1 ? 'Multiple Accounts' : '-');
+                  
+                const creditAccountName = creditLines.length === 1 
+                  ? (getAccountById(creditLines[0].accountId)?.name || creditLines[0].accountId)
+                  : (creditLines.length > 1 ? 'Multiple Accounts' : '-');
+
+                const isBalanced = Math.abs(voucher.totalDebit - voucher.totalCredit) < 0.01;
+                const displayAmount = isBalanced ? voucher.totalDebit : `D: ${voucher.totalDebit} / C: ${voucher.totalCredit}`;
+
+                return (
+                  <tr 
+                    key={voucher.id} 
+                    className={clsx(
+                      "transition-colors group cursor-pointer border-b border-[var(--color-border)]",
+                      isNested ? "bg-amber-50/30 dark:bg-amber-900/5 hover:bg-amber-50 dark:hover:bg-amber-900/10" : "hover:bg-primary-50 dark:hover:bg-primary-900/10"
                     )}
-                  </td>
-                  <td className={clsx("px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-primary)]", isNested && "pl-12")}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
-                      <span className="text-xs text-[var(--color-text-secondary)]">
-                        {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
-                    <div className="flex items-center gap-2">
-                       {voucher.voucherNo || voucher.id}
-                       {isNested && <Badge variant="warning" className="text-[9px] px-1 py-0 shadow-sm">REV</Badge>}
-                       {!isNested && hasReversalMap.has(voucher.id) && (
-                         <Badge variant="default" className="text-[9px] px-1 py-0 border border-amber-200 text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 shadow-none">
-                           Reversed
-                         </Badge>
-                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                    <span className={clsx(
-                      "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                      isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
-                    )}>
-                      {voucher.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
-                    {(voucher as any).prefix || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)] truncate max-w-[120px]" title={(voucher as any).formId || ''}>
-                    {(voucher as any).formId || '-'}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Badge variant={getStatusVariant(voucher.status)}>
-                        {voucher.status.toUpperCase()}
-                      </Badge>
-                      
-                      {voucher.status === 'approved' && (
-                        <Badge 
-                          variant={(voucher as any).postedAt ? 'success' : 'warning'}
-                          title={(voucher as any).postedAt 
-                            ? `Posted on ${formatCompanyDate((voucher as any).postedAt, settings)} (Mode: ${
-                                voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'Strict' : 'Flexible'
-                              })`
-                            : undefined
-                          }
+                    onClick={() => onRowClick?.(voucher.id)}
+                  >
+                    <td className="px-2 py-3 text-center">
+                      {!isNested && hasReversalMap.has(voucher.id) && (
+                        <button 
+                          onClick={(e) => toggleRow(voucher.id, e)}
+                          className={clsx(
+                            "p-1 rounded-md border transition-all duration-200",
+                            expandedRows.has(voucher.id) 
+                              ? "bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:border-amber-800"
+                              : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-white hover:border-primary-300 hover:text-primary-600 dark:bg-gray-800/50 dark:border-gray-700"
+                          )}
                         >
-                          {(voucher as any).postedAt ? 'POSTED' : 'NOT POSTED'}
-                        </Badge>
+                           {expandedRows.has(voucher.id) ? (
+                             <ChevronDown size={14} />
+                           ) : (
+                             <ChevronRight size={14} />
+                           )}
+                        </button>
                       )}
-                      
-                      {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
-                        <Badge variant="error" title="This voucher is immutable because it was created under Strict Mode.">
-                          <Lock className="w-3 h-3 inline-block mr-1" />
-                          LOCKED
+                    </td>
+                    <td className={clsx("px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)]", isNested && "pl-12")}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
+                        <span className="text-[10px] text-[var(--color-text-secondary)]">
+                          {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
+                      <div className="flex items-center gap-2">
+                         {voucher.voucherNo || voucher.id.slice(-8)}
+                         {isNested && <Badge variant="warning" className="text-[9px] px-1 py-0 shadow-sm">REV</Badge>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
+                      <span className={clsx(
+                        "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium",
+                        isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
+                      )}>
+                        {voucher.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)] font-medium truncate" title={voucherName}>
+                      {voucherName}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)] truncate" title={debitAccountName}>
+                      {debitAccountName}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)] truncate" title={creditAccountName}>
+                      {creditAccountName}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Badge 
+                          variant={getStatusVariant(voucher.status)}
+                          className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm"
+                          title={voucher.status.toUpperCase()}
+                        >
+                          {voucher.status === 'approved' ? 'A' : (voucher.status === 'pending' ? 'P' : (voucher.status === 'draft' ? 'D' : (voucher.status === 'cancelled' || voucher.status === 'rejected' ? 'C' : '?')))}
                         </Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-primary)] text-right font-mono">
-                    {voucher.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {voucher.currency}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-primary)] text-right font-mono">
-                    {voucher.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {voucher.currency}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)] truncate max-w-[150px]">
-                    {voucher.reference || '-'}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-mono text-blue-500 opacity-60 cursor-pointer hover:underline"
-                      onClick={(e) => { e.stopPropagation(); console.log('DEBUG_VOUCHER_ROW:', voucher); }}>
-                    {voucher.id.slice(-6)}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-mono text-purple-500 opacity-60">
-                    {/* Diagnostic fallback: check top-level AND metadata */}
-                    {voucher.reversalOfVoucherId ? voucher.reversalOfVoucherId.slice(-6) : (voucher.metadata?.reversalOfVoucherId ? `M:${voucher.metadata.reversalOfVoucherId.slice(-6)}` : '-')}
-                  </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-3 transition-opacity">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
-                        className="text-[var(--color-text-muted)] hover:text-primary-600 transition-colors p-1.5 bg-[var(--color-bg-tertiary)] hover:bg-primary-50 dark:hover:bg-primary-900/40 rounded"
-                        title="View Official / Print"
-                      >
-                        <Printer size={18} />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onRowClick?.(voucher.id); }}
-                        className="text-[var(--color-text-muted)] hover:text-primary-600 transition-colors p-1.5 bg-[var(--color-bg-tertiary)] hover:bg-primary-50 dark:hover:bg-primary-900/40 rounded"
-                        title="View Details"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
-                        disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                        className={clsx(
-                          "transition-colors p-1.5 rounded",
-                          (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                            ? "text-gray-400 cursor-not-allowed opacity-50"
-                            : "text-[var(--color-text-muted)] hover:text-primary-600 bg-[var(--color-bg-tertiary)] hover:bg-primary-50 dark:hover:bg-primary-900/40"
+                        
+                        {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
+                          <Badge variant="info" className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm" title="Audit Locked (Strict Mode)">
+                            L
+                          </Badge>
                         )}
-                        title={isNested 
-                            ? "Reversals are immutable."
-                            : (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED 
-                                ? "Audit-locked. Use reversal to correct." 
-                                : "Edit Voucher")
-                        }
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
-                        disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                        className={clsx(
-                          "transition-colors p-1.5 rounded",
-                          (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                            ? "text-gray-400 cursor-not-allowed opacity-50"
-                            : "text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-[var(--color-bg-tertiary)] hover:bg-red-50 dark:hover:bg-red-900/40"
+                        
+                        {!isNested && hasReversalMap.has(voucher.id) && (
+                          <Badge variant="warning" className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm bg-amber-500 text-white border-none" title="Voucher has been Reversed">
+                            R
+                          </Badge>
                         )}
-                        title={isNested 
-                            ? "Reversals cannot be deleted."
-                            : (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED 
-                                ? "Audit-locked. Cannot delete." 
-                                : "Delete Voucher")
-                        }
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)] text-right font-mono font-semibold">
+                      {typeof displayAmount === 'number' 
+                        ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${voucher.currency}`
+                        : displayAmount}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-muted)] truncate" title={voucher.reference || ''}>
+                      {voucher.reference || '-'}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
+                          className="hover:text-primary-600 transition-colors p-1"
+                          title="View Official / Print"
+                        >
+                          <Printer size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onRowClick?.(voucher.id); }}
+                          className="hover:text-primary-600 transition-colors p-1"
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
+                          disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                          className={clsx(
+                            "transition-colors p-1",
+                            (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "hover:text-primary-600"
+                          )}
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

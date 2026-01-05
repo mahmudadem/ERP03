@@ -632,52 +632,75 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
-            onClick={handleNew}
-            title="Create a new voucher in this window"
-          >
-            New
-          </button>
-          <button
-            onClick={handleSave}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
-              settingsLoading 
-                ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
-                : settings?.strictApprovalMode === true
-                  // Strict Mode: 'Save as Draft' is Secondary action
-                  ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                  // Simple Mode: 'Save & Post' is Primary action (matches Submit button style)
-                  : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
-            }`}
-            disabled={isSaving || settingsLoading}
-          >
-            {isSaving || settingsLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
-              </>
-            ) : (
-              <>
-                {(() => {
-                  if (settings?.strictApprovalMode !== true) return <CheckCircle className="w-4 h-4" />;
-                  const status = win.data?.status?.toLowerCase();
-                  if (status === 'pending' || status === 'approved' || status === 'posted') return <Save className="w-4 h-4" />;
-                  return <Save className="w-4 h-4" />;
-                })()}
-                {(() => {
-                  if (settings?.strictApprovalMode !== true) {
-                    const isPosted = !!win.data?.postedAt;
-                    return isPosted ? 'Update & Post' : 'Save & Post';
-                  }
-                  const status = win.data?.status?.toLowerCase();
-                  if (status === 'pending') return 'Update Pending Voucher';
-                  if (status === 'approved' || status === 'posted') return 'Save Changes';
-                  return 'Save as Draft';
-                })()}
-              </>
-            )}
-          </button>
+          {!isVoucherReadOnly && (
+            <button
+              className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
+              onClick={handleNew}
+              title="Create a new voucher in this window"
+            >
+              New
+            </button>
+          )}
+
+          {(() => {
+            const status = win.data?.status?.toLowerCase();
+            const isReversal = !!win.data?.reversalOfVoucherId || win.data?.type === 'REVERSAL';
+            const hasReversedFlag = win.data?.metadata?.isReversed === true; // In case we added this flag
+            
+            if (isVoucherReadOnly) {
+              // FOR IMMUTABLE VOUCHERS: Show Reverse instead of Save
+              // (Don't show for reversals themselves or if already reversed)
+              if (isReversal || hasReversedFlag) return null;
+
+              return (
+                <button
+                  onClick={() => {
+                    setCorrectionMode('REVERSE_ONLY');
+                    setShowCorrectionModal(true);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-sm transition-all active:scale-[0.98]"
+                  title="This voucher is locked. Create a reversal to correct it."
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reverse Voucher
+                </button>
+              );
+            }
+
+            // FOR EDITABLE VOUCHERS: Show standard Save/Post logic
+            return (
+              <button
+                onClick={handleSave}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
+                  settingsLoading 
+                    ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
+                    : settings?.strictApprovalMode === true
+                      ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
+                }`}
+                disabled={isSaving || settingsLoading}
+              >
+                {isSaving || settingsLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
+                  </>
+                ) : (
+                  <>
+                    {settings?.strictApprovalMode !== true ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {(() => {
+                      if (settings?.strictApprovalMode !== true) {
+                        return win.data?.postedAt ? 'Update & Post' : 'Save & Post';
+                      }
+                      const s = win.data?.status?.toLowerCase();
+                      if (s === 'pending') return 'Update Pending Voucher';
+                      return 'Save as Draft';
+                    })()}
+                  </>
+                )}
+              </button>
+            );
+          })()}
           
           {/* Submit button only shown when strict mode is explicitly true */}
           {!settingsLoading && settings?.strictApprovalMode === true && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (

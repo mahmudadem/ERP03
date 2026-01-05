@@ -153,4 +153,16 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
       return fallbackSnap.empty ? 0 : 1; // Return at least 1 if found
     }
   }
+
+  async findByReversalOfVoucherId(companyId: string, originalVoucherId: string): Promise<VoucherEntity | null> {
+    const collection = this.getCollection(companyId);
+    const query = collection.where('reversalOfVoucherId', '==', originalVoucherId).limit(1);
+    
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    return VoucherEntity.fromJSON(snapshot.docs[0].data());
+  }
 }
