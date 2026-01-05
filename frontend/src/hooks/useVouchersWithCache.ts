@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { accountingApi } from '../api/accountingApi';
 import { VoucherListItem } from '../types/accounting/VoucherListTypes';
+import { useCompanyAccess } from '../context/CompanyAccessContext';
 
 export interface DateRange {
   from: string; // ISO date string
@@ -15,21 +16,51 @@ export interface VoucherFilters {
   search?: string;
 }
 
-// Default: last 12 months (expanded for debugging)
-export const getDefaultDateRange = (): DateRange => {
+// Default: 2000-01-01 (per user request) to today
+export const getDefaultDateRange = (fiscalYearStart?: string): DateRange => {
   const to = new Date();
-  const from = new Date();
-  from.setMonth(from.getMonth() - 12); // Changed from 3 to 12 months
+  
+  // Use fiscal year start if provided, otherwise default to 2000-01-01
+  let fromStr = '2000-01-01';
+  if (fiscalYearStart) {
+    try {
+      const fyDate = new Date(fiscalYearStart);
+      if (!isNaN(fyDate.getTime())) {
+        fromStr = fiscalYearStart.split('T')[0];
+      }
+    } catch {
+      // Keep default
+    }
+  }
   
   return {
-    from: from.toISOString().split('T')[0],
+    from: fromStr,
     to: to.toISOString().split('T')[0],
   };
 };
 
 export const useVouchersWithCache = (companyId: string) => {
   const queryClient = useQueryClient();
-  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+  const { company } = useCompanyAccess();
+  
+  // Initialize with fiscalYearStart if available, otherwise default
+  const [dateRange, setDateRange] = useState<DateRange>(() => 
+    getDefaultDateRange(company?.fiscalYearStart)
+  );
+  
+  // Sync default date range if company data loads later
+  useEffect(() => {
+    if (company?.fiscalYearStart) {
+      setDateRange(prev => {
+        // Only update if we are still using the default/initial value
+        if (prev.from === '2000-01-01') {
+          return getDefaultDateRange(company.fiscalYearStart);
+        }
+        return prev;
+      });
+    }
+  }, [company?.fiscalYearStart]);
+
   const [filters, setFilters] = useState<VoucherFilters>({});
 
   const {
@@ -59,10 +90,6 @@ export const useVouchersWithCache = (companyId: string) => {
     // DIAGNOSTIC LOG: See verbatim data from API
     if (raw.length > 0) {
       console.log('RAW_API_LOG: First voucher sample:', raw[0]);
-      const reversals = raw.filter((v: any) => v.type === 'REVERSAL' || v.voucherNo?.startsWith('RV-'));
-      if (reversals.length > 0) {
-        console.log('RAW_API_LOG: Reversal sample:', reversals[0]);
-      }
     }
     
     return raw;
@@ -72,6 +99,10 @@ export const useVouchersWithCache = (companyId: string) => {
   const filteredVouchers = useMemo(() => {
     // 1. Define match criteria
     const matchesFilters = (v: VoucherListItem) => {
+      // --- DATE RANGE FILTER ---
+      if (dateRange.from && v.date < dateRange.from) return false;
+      if (dateRange.to && v.date > dateRange.to) return false;
+
       // If formId is filtered, it must match. 
       // LEGACY SUPPORT: If voucher has no formId, we allow it to pass this check and rely on 'type' match.
       if (filters.formId && v.formId && v.formId !== filters.formId) return false;
@@ -122,11 +153,10 @@ export const useVouchersWithCache = (companyId: string) => {
     });
 
     return allVouchers.filter(v => resultIds.has(v.id));
-  }, [allVouchers, filters]);
+  }, [allVouchers, filters, dateRange]);
 
   // Invalidate cache when vouchers are created/updated/deleted
   const invalidateVouchers = () => {
-    
     queryClient.invalidateQueries({ queryKey: ['vouchers', companyId] });
   };
 
@@ -143,3 +173,4 @@ export const useVouchersWithCache = (companyId: string) => {
     invalidateVouchers,
   };
 };
+

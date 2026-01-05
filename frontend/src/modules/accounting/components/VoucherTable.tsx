@@ -32,6 +32,7 @@ interface Props {
   onDelete?: (id: string) => void;
   onViewPrint?: (id: string) => void;
   onRefresh?: (id: string) => void;
+  dateRange?: { from: string; to: string };
   externalFilters?: {
     search?: string;
     type?: string;
@@ -70,6 +71,7 @@ export const VoucherTable: React.FC<Props> = ({
   onEdit,
   onDelete,
   onViewPrint,
+  dateRange,
   externalFilters = {}
 }) => {
   const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
@@ -125,8 +127,12 @@ export const VoucherTable: React.FC<Props> = ({
 
   // Shared matching logic for both filtering and auto-expansion (Origin-Aware)
   const checkMatch = useCallback((item: VoucherListItem) => {
-    // 1. Check Date Range (External primary)
-    // No direct date range in filters for now? VoucherListPage manages this via query.
+    // 1. Check Date Range
+    const from = filters.dateFrom || dateRange?.from;
+    const to = filters.dateTo || dateRange?.to;
+    
+    if (from && item.date < from) return false;
+    if (to && item.date > to) return false;
     
     // 2. Check Status
     const statusFilter = filters.statuses || (externalFilters.status && externalFilters.status !== 'ALL' ? [externalFilters.status] : null);
@@ -154,7 +160,7 @@ export const VoucherTable: React.FC<Props> = ({
     }
 
     return true;
-  }, [filters, externalFilters]);
+  }, [filters, externalFilters, dateRange]);
 
   // AUTO-EXPAND rows that contain filtered results
   useEffect(() => {
@@ -572,8 +578,22 @@ export const VoucherTable: React.FC<Props> = ({
                               ? "text-gray-300 cursor-not-allowed"
                               : "hover:text-primary-600"
                           )}
+                          title="Edit Voucher"
                         >
                           <Edit size={16} />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
+                          disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                          className={clsx(
+                            "transition-colors p-1",
+                            (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "hover:text-red-600"
+                          )}
+                          title="Delete Voucher"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>

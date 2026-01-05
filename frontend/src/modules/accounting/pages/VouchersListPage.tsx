@@ -314,6 +314,7 @@ const VouchersListPage: React.FC = () => {
               onDelete={(id) => setDeleteVoucherId(id)}
               onRefresh={() => invalidateVouchers()}
               externalFilters={clientFilters}
+              dateRange={dateRange}
             />
           </div>
         </div>

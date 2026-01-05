@@ -52,9 +52,19 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   };
 
   const handleClear = () => {
+    // Reset filters
     const defaultFilters = {};
     setLocalFilters(defaultFilters);
+    
+    // Reset date range to the system default (2000-01-01)
+    // We import the logic directly to avoid another round-trip
+    const to = new Date().toISOString().split('T')[0];
+    const defaultRange = { from: '2000-01-01', to };
+    setLocalDateRange(defaultRange);
+    
+    // Immediately apply the cleared state
     onChange(defaultFilters);
+    onDateRangeChange(defaultRange);
   };
 
   return (
@@ -142,10 +152,11 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         <Button 
           variant="secondary" 
           onClick={handleClear}
-          className="lg:p-2.5"
-          title="Clear Filters"
+          className="flex-1 lg:flex-none gap-2"
+          leftIcon={<RotateCcw size={16} />}
+          title="Reset all filters and dates"
         >
-          <RotateCcw size={16} />
+          Clear
         </Button>
       </div>
 
