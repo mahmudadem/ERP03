@@ -56,6 +56,7 @@ export interface VoucherDTO {
   sourceModule?: string | null;
   formId?: string | null;
   prefix?: string | null;
+  reversalOfVoucherId?: string | null;
 }
 
 export interface CreateVoucherRequest {
@@ -135,6 +136,7 @@ export class AccountingDTOMapper {
       sourceModule: voucher.sourceModule,
       formId: voucher.formId,
       prefix: voucher.prefix,
+      reversalOfVoucherId: voucher.reversalOfVoucherId,
       lines: voucher.lines.map(line => AccountingDTOMapper.toVoucherLineDTO(line))
     };
   }

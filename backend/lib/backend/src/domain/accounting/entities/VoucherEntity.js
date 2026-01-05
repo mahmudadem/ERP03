@@ -353,8 +353,7 @@ class VoucherEntity {
      * @param reason - Reason for correction
      * @returns New VoucherEntity in DRAFT status (ready to be posted)
      */
-    createReversal(reversalVoucherId, // NEW ARGUMENT
-    reversalDate, correctionGroupId, userId, ledgerLines, reason) {
+    createReversal(reversalVoucherId, reversalDate, correctionGroupId, userId, ledgerLines, reason) {
         if (!this.isPosted) {
             throw new Error('Only POSTED vouchers can be reversed');
         }
@@ -370,12 +369,11 @@ class VoucherEntity {
         const reversalTotalDebit = reversalLines.reduce((sum, l) => sum + l.debitAmount, 0);
         const reversalTotalCredit = reversalLines.reduce((sum, l) => sum + l.creditAmount, 0);
         // Create reversal metadata
-        const reversalMetadata = Object.assign(Object.assign({}, this.metadata), { reversalOfVoucherId: this.id, correctionGroupId, correctionReason: reason });
+        const reversalMetadata = Object.assign(Object.assign({}, this.metadata), { reversalOfVoucherId: this.id, correctionGroupId, correctionReason: reason, originType: this.type, originVoucherNo: this.voucherNo, prefix: 'RV-' // Set prefix to RV- per user request
+         });
         // Create new voucher entity for reversal
-        return new VoucherEntity(reversalVoucherId, // Use the provided ID
-        this.companyId, '', // Voucher number will be generated
-        VoucherTypes_1.VoucherType.REVERSAL, // MANDATORY: Distinct voucher type
-        reversalDate, `Reversal of ${this.voucherNo}`, this.currency, this.baseCurrency, this.exchangeRate, reversalLines, reversalTotalDebit, reversalTotalCredit, VoucherTypes_1.VoucherStatus.DRAFT, reversalMetadata, userId, new Date(), undefined, // approvedBy
+        return new VoucherEntity(reversalVoucherId, this.companyId, `RV-${this.voucherNo}`, // Use RV- prefix and original number
+        VoucherTypes_1.VoucherType.REVERSAL, reversalDate, `Reversal of ${this.voucherNo}`, this.currency, this.baseCurrency, this.exchangeRate, reversalLines, reversalTotalDebit, reversalTotalCredit, VoucherTypes_1.VoucherStatus.DRAFT, reversalMetadata, userId, new Date(), undefined, // approvedBy
         undefined, // approvedAt
         undefined, // rejectedBy
         undefined, // rejectedAt
@@ -456,10 +454,14 @@ class VoucherEntity {
      * Create from plain object (for deserialization)
      */
     static fromJSON(data) {
-        var _a;
+        var _a, _b;
         // Legacy support: ensure baseCurrency exists (default to USD if missing)
         const baseCurrency = data.baseCurrency || 'USD';
-        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, (_a = data.description) !== null && _a !== void 0 ? _a : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, data.postingLockPolicy, data.reversalOfVoucherId, 
+        // Naming normalization (handles legacy V1 vs modern V2)
+        const id = data.id || data.voucherId;
+        const voucherNo = data.voucherNo || data.voucherNumber || '';
+        const reversalOfVoucherId = data.reversalOfVoucherId || ((_a = data.metadata) === null || _a === void 0 ? void 0 : _a.reversalOfVoucherId) || null;
+        return new VoucherEntity(id, data.companyId, voucherNo, data.type, data.date, (_b = data.description) !== null && _b !== void 0 ? _b : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, data.postingLockPolicy, reversalOfVoucherId, 
         // Additional legacy fields
         data.reference, data.updatedAt ? new Date(data.updatedAt) : undefined);
     }

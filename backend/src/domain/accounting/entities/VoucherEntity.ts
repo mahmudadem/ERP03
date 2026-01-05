@@ -693,11 +693,16 @@ export class VoucherEntity {
   static fromJSON(data: any): VoucherEntity {
     // Legacy support: ensure baseCurrency exists (default to USD if missing)
     const baseCurrency = data.baseCurrency || 'USD';
+    
+    // Naming normalization (handles legacy V1 vs modern V2)
+    const id = data.id || data.voucherId;
+    const voucherNo = data.voucherNo || data.voucherNumber || '';
+    const reversalOfVoucherId = data.reversalOfVoucherId || data.metadata?.reversalOfVoucherId || null;
 
     return new VoucherEntity(
-      data.id,
+      id,
       data.companyId,
-      data.voucherNo,
+      voucherNo,
       data.type as VoucherType,
       data.date,
       data.description ?? '',
@@ -721,7 +726,7 @@ export class VoucherEntity {
       data.postedBy,
       data.postedAt ? new Date(data.postedAt) : undefined,
       data.postingLockPolicy as PostingLockPolicy,
-      data.reversalOfVoucherId,
+      reversalOfVoucherId,
       // Additional legacy fields
       data.reference,
       data.updatedAt ? new Date(data.updatedAt) : undefined

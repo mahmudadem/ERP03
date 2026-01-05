@@ -1,12 +1,12 @@
 /**
  * VoucherTable.tsx
  */
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock } from 'lucide-react';
+import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
@@ -28,6 +28,12 @@ interface Props {
   onDelete?: (id: string) => void;
   onViewPrint?: (id: string) => void;
   onRefresh?: (id: string) => void;
+  externalFilters?: {
+    search?: string;
+    type?: string;
+    status?: string;
+    formId?: string;
+  };
 }
 
 interface ColumnFilter {
@@ -58,7 +64,8 @@ export const VoucherTable: React.FC<Props> = ({
   onRowClick,
   onEdit,
   onDelete,
-  onViewPrint
+  onViewPrint,
+  externalFilters = {}
 }) => {
   const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
   const pageInfo = pagination || { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 };
@@ -110,50 +117,75 @@ export const VoucherTable: React.FC<Props> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Shared matching logic for both filtering and auto-expansion (Origin-Aware)
+  const checkMatch = useCallback((item: VoucherListItem) => {
+    // 1. Check Date Range (External primary)
+    // No direct date range in filters for now? VoucherListPage manages this via query.
+    
+    // 2. Check Status
+    const statusFilter = filters.statuses || (externalFilters.status && externalFilters.status !== 'ALL' ? [externalFilters.status] : null);
+    if (statusFilter && statusFilter.length > 0 && !statusFilter.includes(item.status)) return false;
+    
+    // 3. Check Type (Origin-Aware):
+    const typeFilter = filters.types || (externalFilters.type && externalFilters.type !== 'ALL' ? [externalFilters.type] : null);
+    if (typeFilter && typeFilter.length > 0) {
+      const isDirectMatch = typeFilter.includes(item.type);
+      const isReversalMatch = (item.type.toLowerCase() === 'reversal') && 
+                            item.metadata?.originType && 
+                            typeFilter.includes(item.metadata.originType);
+      
+      if (!isDirectMatch && !isReversalMatch) return false;
+    }
+
+    // 4. Check Search (Local and Global)
+    const searchTerm = (filters.searchNumber || externalFilters.search || '').toLowerCase();
+    if (searchTerm) {
+      const searchableValue = (item.voucherNo || item.id || '').toLowerCase();
+      if (!searchableValue.includes(searchTerm)) return false;
+    }
+
+    return true;
+  }, [filters, externalFilters]);
+
   // AUTO-EXPAND rows that contain filtered results
   useEffect(() => {
-    const isSearching = filters.searchNumber || filters.statuses?.length || filters.types?.length || filters.dateFrom || filters.dateTo;
+    const isSearching = !!(filters.searchNumber || externalFilters.search || 
+                         filters.statuses?.length || externalFilters.status ||
+                         filters.types?.length || externalFilters.type ||
+                         filters.dateFrom || filters.dateTo);
     if (isSearching && safeVouchers.length > 0) {
       const topLevel = safeVouchers.filter(v => !v.reversalOfVoucherId);
       const reversals = safeVouchers.filter(v => !!v.reversalOfVoucherId);
       
-      const checkMatch = (item: VoucherListItem) => {
-        if (filters.dateFrom && new Date(item.date) < new Date(filters.dateFrom)) return false;
-        if (filters.dateTo) {
-          const toDate = new Date(filters.dateTo);
-          toDate.setHours(23, 59, 59, 999);
-          if (new Date(item.date) > toDate) return false;
-        }
-        if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes(item.status)) return false;
-        if (filters.types && filters.types.length > 0 && !filters.types.includes(item.type)) return false;
-        if (filters.searchNumber) {
-          const s = filters.searchNumber.toLowerCase();
-          if (!(item.voucherNo || item.id).toLowerCase().includes(s)) return false;
-        }
-        return true;
-      };
-
-      const newExpanded = new Set(expandedRows);
-      let changed = false;
+      const autoExpandTargetIds: string[] = [];
 
       topLevel.forEach(v => {
         // If parent doesn't match but child does, expand parent
         if (!checkMatch(v)) {
           const children = reversals.filter(r => r.reversalOfVoucherId === v.id);
-          if (children.some(checkMatch)) {
-            if (!newExpanded.has(v.id)) {
-              newExpanded.add(v.id);
-              changed = true;
-            }
+          const hasMatchingChild = children.some(checkMatch);
+          if (hasMatchingChild) {
+            autoExpandTargetIds.push(v.id);
           }
         }
       });
 
-      if (changed) {
-        setExpandedRows(newExpanded);
+      if (autoExpandTargetIds.length > 0) {
+        console.log('AUTO_EXPAND_TRIGGER:', autoExpandTargetIds);
+        setExpandedRows(prev => {
+          const next = new Set(prev);
+          let changed = false;
+          autoExpandTargetIds.forEach(id => {
+            if (!next.has(id)) {
+              next.add(id);
+              changed = true;
+            }
+          });
+          return changed ? next : prev;
+        });
       }
     }
-  }, [filters, safeVouchers]);
+  }, [filters, safeVouchers, checkMatch]);
   
   // Handle column header click for sorting
   const handleSort = (field: keyof VoucherListItem) => {
@@ -184,23 +216,6 @@ export const VoucherTable: React.FC<Props> = ({
     
     // 4. Identify which top-level items match directly or via children
     const filtered = topLevel.filter(v => {
-      // Logic to check if an item (parent or any of its children) matches filters
-      const checkMatch = (item: VoucherListItem) => {
-        if (filters.dateFrom && new Date(item.date) < new Date(filters.dateFrom)) return false;
-        if (filters.dateTo) {
-          const toDate = new Date(filters.dateTo);
-          toDate.setHours(23, 59, 59, 999);
-          if (new Date(item.date) > toDate) return false;
-        }
-        if (filters.statuses && filters.statuses.length > 0 && !filters.statuses.includes(item.status)) return false;
-        if (filters.types && filters.types.length > 0 && !filters.types.includes(item.type)) return false;
-        if (filters.searchNumber) {
-          const s = filters.searchNumber.toLowerCase();
-          if (!(item.voucherNo || item.id).toLowerCase().includes(s)) return false;
-        }
-        return true;
-      };
-
       // Does the parent match?
       if (checkMatch(v)) return true;
 
@@ -418,16 +433,19 @@ export const VoucherTable: React.FC<Props> = ({
                     {!isNested && hasReversalMap.has(voucher.id) && (
                       <button 
                         onClick={(e) => toggleRow(voucher.id, e)}
-                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                        className={clsx(
+                          "p-1.5 rounded-md border transition-all duration-200 shadow-sm",
+                          expandedRows.has(voucher.id) 
+                            ? "bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/40 dark:border-amber-800"
+                            : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-white hover:border-primary-300 hover:text-primary-600 dark:bg-gray-800/50 dark:border-gray-700"
+                        )}
+                        title={expandedRows.has(voucher.id) ? "Hide Reversals" : "View Reversals"}
                       >
-                         <svg 
-                           className={clsx("w-4 h-4 transition-transform duration-200", expandedRows.has(voucher.id) ? "rotate-90" : "")} 
-                           fill="none" 
-                           stroke="currentColor" 
-                           viewBox="0 0 24 24"
-                         >
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="9 5l7 7-7 7" />
-                         </svg>
+                         {expandedRows.has(voucher.id) ? (
+                           <ChevronDown className="w-4 h-4" />
+                         ) : (
+                           <ChevronRight className="w-4 h-4" />
+                         )}
                       </button>
                     )}
                   </td>
@@ -442,7 +460,12 @@ export const VoucherTable: React.FC<Props> = ({
                   <td className="px-6 py-2 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
                     <div className="flex items-center gap-2">
                        {voucher.voucherNo || voucher.id}
-                       {isNested && <Badge variant="warning" className="text-[9px] px-1 py-0">REV</Badge>}
+                       {isNested && <Badge variant="warning" className="text-[9px] px-1 py-0 shadow-sm">REV</Badge>}
+                       {!isNested && hasReversalMap.has(voucher.id) && (
+                         <Badge variant="default" className="text-[9px] px-1 py-0 border border-amber-200 text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 shadow-none">
+                           Reversed
+                         </Badge>
+                       )}
                     </div>
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
@@ -496,11 +519,13 @@ export const VoucherTable: React.FC<Props> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)] truncate max-w-[150px]">
                     {voucher.reference || '-'}
                   </td>
-                  <td className="px-6 py-2 whitespace-nowrap text-xs font-mono text-blue-500 opacity-60">
+                  <td className="px-6 py-2 whitespace-nowrap text-xs font-mono text-blue-500 opacity-60 cursor-pointer hover:underline"
+                      onClick={(e) => { e.stopPropagation(); console.log('DEBUG_VOUCHER_ROW:', voucher); }}>
                     {voucher.id.slice(-6)}
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-xs font-mono text-purple-500 opacity-60">
-                    {voucher.reversalOfVoucherId ? voucher.reversalOfVoucherId.slice(-6) : '-'}
+                    {/* Diagnostic fallback: check top-level AND metadata */}
+                    {voucher.reversalOfVoucherId ? voucher.reversalOfVoucherId.slice(-6) : (voucher.metadata?.reversalOfVoucherId ? `M:${voucher.metadata.reversalOfVoucherId.slice(-6)}` : '-')}
                   </td>
                   <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-3 transition-opacity">

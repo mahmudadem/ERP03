@@ -51,9 +51,22 @@ export const useVouchersWithCache = (companyId: string) => {
   });
   
   // Response IS the array directly, not wrapped in { items: [...] }
-  const allVouchers: VoucherListItem[] = Array.isArray(vouchersResponse) 
-    ? vouchersResponse 
-    : (vouchersResponse as any)?.data || [];
+  const allVouchers: VoucherListItem[] = useMemo(() => {
+    const raw = Array.isArray(vouchersResponse) 
+      ? vouchersResponse 
+      : (vouchersResponse as any)?.data || [];
+    
+    // DIAGNOSTIC LOG: See verbatim data from API
+    if (raw.length > 0) {
+      console.log('RAW_API_LOG: First voucher sample:', raw[0]);
+      const reversals = raw.filter((v: any) => v.type === 'REVERSAL' || v.voucherNo?.startsWith('RV-'));
+      if (reversals.length > 0) {
+        console.log('RAW_API_LOG: Reversal sample:', reversals[0]);
+      }
+    }
+    
+    return raw;
+  }, [vouchersResponse]);
 
   // Filter client-side (INSTANT, NO API CALL)
   const filteredVouchers = useMemo(() => {

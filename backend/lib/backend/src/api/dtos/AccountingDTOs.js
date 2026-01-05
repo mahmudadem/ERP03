@@ -37,6 +37,7 @@ class AccountingDTOMapper {
             sourceModule: voucher.sourceModule,
             formId: voucher.formId,
             prefix: voucher.prefix,
+            reversalOfVoucherId: voucher.reversalOfVoucherId,
             lines: voucher.lines.map(line => AccountingDTOMapper.toVoucherLineDTO(line))
         };
     }

@@ -29,6 +29,7 @@ export interface VoucherListItem {
   formId?: string;  // Which form was used to create this voucher
   prefix?: string;  // Voucher number prefix
   reversalOfVoucherId?: string; // ID of the voucher this one reverses
+  metadata?: Record<string, any>;
 }
 
 export interface VoucherListFilters {

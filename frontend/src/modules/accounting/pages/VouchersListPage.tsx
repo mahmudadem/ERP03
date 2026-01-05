@@ -312,6 +312,7 @@ const VouchersListPage: React.FC = () => {
               onEdit={(voucher) => handleRowClick(voucher.id)}
               onDelete={(id) => setDeleteVoucherId(id)}
               onRefresh={() => invalidateVouchers()}
+              externalFilters={clientFilters}
             />
           </div>
         </div>
