@@ -36,7 +36,7 @@ class VoucherEntity {
     // Metadata (Generic extra fields - includes formId, prefix, sourceModule)
     metadata = {}, 
     // Audit trail
-    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt, 
+    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt, postingLockPolicy, reversalOfVoucherId, 
     // Additional fields migrated from legacy
     reference, // External reference (invoice #, check #, etc.)
     updatedAt // Last modification timestamp
@@ -66,6 +66,8 @@ class VoucherEntity {
         this.lockedAt = lockedAt;
         this.postedBy = postedBy;
         this.postedAt = postedAt;
+        this.postingLockPolicy = postingLockPolicy;
+        this.reversalOfVoucherId = reversalOfVoucherId;
         this.reference = reference;
         this.updatedAt = updatedAt;
         // Invariant: Must have at least 2 lines (debit and credit)
@@ -137,16 +139,110 @@ class VoucherEntity {
         return this.status === VoucherTypes_1.VoucherStatus.APPROVED;
     }
     /**
-     * Check if voucher is posted to ledger
+     * Check if voucher is posted to ledger (V1: derived from postedAt)
+     * POSTED is NOT a workflow state. It is a financial effect indicator.
      */
     get isPosted() {
-        return this.status === VoucherTypes_1.VoucherStatus.POSTED;
+        return !!this.postedAt;
     }
     /**
-     * Check if voucher is locked
+     * Governance Guard for EDITING posted vouchers
+     *
+     * PostingLockPolicy Semantics:
+     * - STRICT_LOCKED: Voucher was posted under Strict Mode → IMMUTABLE FOREVER (no config can unlock)
+     * - FLEXIBLE_LOCKED: Voucher was posted under Flexible Mode → Editable IF allowEditDeletePosted=true
+     *
+     * Rules:
+     * 1. STRICT_LOCKED vouchers → BLOCKED (unconditional invariant)
+     * 2. FLEXIBLE_LOCKED + STRICT mode → BLOCKED
+     * 3. FLEXIBLE_LOCKED + FLEXIBLE mode + toggle OFF → BLOCKED
+     * 4. FLEXIBLE_LOCKED + FLEXIBLE mode + toggle ON → ALLOWED (caller must resync ledger)
+     *
+     * @param isStrictMode - Whether company is currently in Strict Approval Mode
+     * @param allowEditDeletePosted - Toggle from settings (only applies in FLEXIBLE mode to FLEXIBLE_LOCKED vouchers)
+     * @throws Error if edit is forbidden
      */
-    get isLocked() {
-        return this.status === VoucherTypes_1.VoucherStatus.LOCKED;
+    assertCanEdit(isStrictMode, allowEditDeletePosted = false) {
+        // Rule 1: CANCELLED vouchers cannot be edited
+        if (this.status === VoucherTypes_1.VoucherStatus.CANCELLED) {
+            throw new Error('Voucher is CANCELLED and cannot be modified.');
+        }
+        // Rule 2: Non-posted vouchers can always be edited (workflow permit)
+        if (!this.isPosted) {
+            return; // Edit allowed
+        }
+        // Rule 3: UNCONDITIONAL INVARIANT - Strict-Forever Lock
+        // Vouchers posted under STRICT policy are IMMUTABLE FOREVER
+        // This takes precedence over any runtime config (mode switch cannot unlock)
+        if (this.postingLockPolicy === VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED) {
+            throw new Error('VOUCHER_STRICT_LOCK_FOREVER: This voucher was posted under Strict policy and is immutable forever. Use Reversal.');
+        }
+        // Rule 4: STRICT MODE - Posted vouchers (FLEXIBLE_LOCKED) CANNOT be edited
+        if (isStrictMode) {
+            throw new Error('VOUCHER_POSTED_EDIT_FORBIDDEN: Posted vouchers cannot be edited in Strict Mode. Use Reversal to correct.');
+        }
+        // Rule 5: FLEXIBLE MODE - Check toggle
+        if (!allowEditDeletePosted) {
+            throw new Error('VOUCHER_POSTED_EDIT_FORBIDDEN: Posted vouchers cannot be edited. Enable "Allow Edit/Delete Posted" in settings or use Reversal.');
+        }
+        // FLEXIBLE + toggle ON + FLEXIBLE_LOCKED voucher → Edit allowed (caller must perform ledger resync)
+    }
+    /**
+     * Governance Guard for DELETING posted vouchers
+     *
+     * PostingLockPolicy Semantics:
+     * - STRICT_LOCKED: Voucher was posted under Strict Mode → IMMUTABLE FOREVER (no config can unlock)
+     * - FLEXIBLE_LOCKED: Voucher was posted under Flexible Mode → Deletable IF allowEditDeletePosted=true
+     *
+     * Rules:
+     * 1. STRICT_LOCKED vouchers → BLOCKED (unconditional invariant)
+     * 2. FLEXIBLE_LOCKED + STRICT mode → BLOCKED
+     * 3. FLEXIBLE_LOCKED + FLEXIBLE mode + toggle OFF → BLOCKED
+     * 4. FLEXIBLE_LOCKED + FLEXIBLE mode + toggle ON → ALLOWED (caller must delete ledger entries)
+     *
+     * @param isStrictMode - Whether company is currently in Strict Approval Mode
+     * @param allowEditDeletePosted - Toggle from settings (only applies in FLEXIBLE mode to FLEXIBLE_LOCKED vouchers)
+     * @throws Error if delete is forbidden
+     */
+    assertCanDelete(isStrictMode, allowEditDeletePosted = false) {
+        // Rule 1: Already CANCELLED vouchers cannot be deleted again
+        if (this.status === VoucherTypes_1.VoucherStatus.CANCELLED) {
+            throw new Error('Voucher is already cancelled.');
+        }
+        // Rule 2: Non-posted vouchers can always be deleted
+        if (!this.isPosted) {
+            return; // Delete allowed
+        }
+        // Rule 3: UNCONDITIONAL INVARIANT - Strict-Forever Lock
+        // Vouchers posted under STRICT policy are IMMUTABLE FOREVER
+        // This takes precedence over any runtime config (mode switch cannot unlock)
+        if (this.postingLockPolicy === VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED) {
+            throw new Error('VOUCHER_STRICT_LOCK_FOREVER: This voucher was posted under Strict policy and is immutable forever. Use Reversal.');
+        }
+        // Rule 4: STRICT MODE - Posted vouchers (FLEXIBLE_LOCKED) CANNOT be deleted
+        if (isStrictMode) {
+            throw new Error('VOUCHER_POSTED_DELETE_FORBIDDEN: Posted vouchers cannot be deleted in Strict Mode. Use Reversal to correct.');
+        }
+        // Rule 5: FLEXIBLE MODE - Check toggle
+        if (!allowEditDeletePosted) {
+            throw new Error('VOUCHER_POSTED_DELETE_FORBIDDEN: Posted vouchers cannot be deleted. Enable "Allow Edit/Delete Posted" in settings or use Reversal.');
+        }
+        // FLEXIBLE + toggle ON + FLEXIBLE_LOCKED voucher → Delete allowed (caller must delete ledger entries)
+    }
+    /**
+     * @deprecated Use assertCanEdit or assertCanDelete instead
+     * Legacy mutation guard - kept for backward compatibility during transition
+     */
+    assertCanMutate() {
+        if (this.postingLockPolicy === VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED) {
+            throw new Error('VOUCHER_LOCKED_STRICT: This voucher belongs to an audit-compliant period and is permanently locked.');
+        }
+        if (this.status === VoucherTypes_1.VoucherStatus.CANCELLED) {
+            throw new Error(`Voucher is CANCELLED and cannot be modified.`);
+        }
+        if (this.isPosted && this.postingLockPolicy === VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED) {
+            throw new Error('VOUCHER_LOCKED_POLICY: This voucher is currently locked. Enable "Allow Edit/Delete Posted" in settings to modify.');
+        }
     }
     /**
      * Check if voucher is rejected
@@ -161,31 +257,44 @@ class VoucherEntity {
         return this.status === VoucherTypes_1.VoucherStatus.PENDING;
     }
     /**
-     * Check if voucher can be edited.
-     * - DRAFT/REJECTED: Always editable.
-     * - PENDING: Editable (will trigger 'Edited' marker).
-     * - POSTED/LOCKED: Immutable (unless policy allows correction/re-post).
+     * Check if voucher can be edited (basic workflow check).
+     * Note: This does NOT check period lock or allowEditPostedVouchersEnabled.
+     * Those checks must be done in the use case layer.
      */
     get canEdit() {
-        return this.isDraft || this.isRejected || this.isPending;
+        // Posted vouchers require additional policy check in use case
+        if (this.isPosted)
+            return false; // Default: not editable. Use case may override.
+        return this.isDraft || this.isRejected || this.isPending || this.isApproved;
+    }
+    /**
+     * Submit voucher for approval (DRAFT/REJECTED -> PENDING)
+     */
+    submit(submittedBy) {
+        if (this.status !== VoucherTypes_1.VoucherStatus.DRAFT && this.status !== VoucherTypes_1.VoucherStatus.REJECTED) {
+            throw new Error(`Cannot submit voucher in status: ${this.status}`);
+        }
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.PENDING, this.metadata, this.createdBy, this.createdAt, undefined, // approvedBy cleared
+        undefined, // approvedAt cleared
+        undefined, // rejectedBy cleared
+        undefined, // rejectedAt cleared
+        undefined, // rejectionReason cleared
+        this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date() // UpdatedAt
+        );
     }
     /**
      * Check if voucher can be approved
      */
     get canApprove() {
-        return this.isPending; // Only PENDING vouchers can be approved
+        // Allow approving DRAFT directly (Fast-track / Auto-approval)
+        return this.isPending || this.status === VoucherTypes_1.VoucherStatus.DRAFT;
     }
     /**
-     * Check if voucher can be posted
+     * Check if voucher can be posted to ledger.
+     * V1: Only APPROVED vouchers that are NOT already posted can be posted.
      */
     get canPost() {
-        return this.isDraft || this.isApproved;
-    }
-    /**
-     * Check if voucher can be locked
-     */
-    get canLock() {
-        return this.isPosted;
+        return this.isApproved && !this.isPosted;
     }
     /**
      * Check if voucher involves foreign currency
@@ -200,7 +309,7 @@ class VoucherEntity {
         if (!this.canApprove) {
             throw new Error(`Cannot approve voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.metadata, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.metadata, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt);
     }
     /**
      * Create rejected version (immutable update)
@@ -209,67 +318,77 @@ class VoucherEntity {
         if (!this.isDraft && !this.isApproved) {
             throw new Error(`Cannot reject voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt);
     }
     /**
      * Create posted version (immutable update)
+     * This method should ONLY be called AFTER ledger write succeeds.
      */
-    post(postedBy, postedAt) {
+    post(postedBy, postedAt, lockPolicy = VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED) {
         if (!this.canPost) {
-            throw new Error(`Cannot post voucher in status: ${this.status}`);
+            throw new Error(`Cannot post voucher: status=${this.status}, isPosted=${this.isPosted}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.POSTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, postedBy, postedAt);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, // V1: Status stays APPROVED
+        this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, postedBy, postedAt, lockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt);
     }
     /**
      * Mark voucher as edited (immutable update).
      * Used for PENDING vouchers to show a badge indicating they were modified after submission.
      */
     markAsEdited() {
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { isEdited: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.reference, new Date() // UpdatedAt
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { isEdited: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date() // UpdatedAt
         );
     }
-    /**
-     * Create locked version (immutable update)
-     */
-    lock(lockedBy, lockedAt) {
-        if (!this.canLock) {
-            throw new Error(`Cannot lock voucher in status: ${this.status}`);
-        }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.LOCKED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt);
-    }
+    // V1: lock() method removed. Period locking is enforced via lockedThroughDate in use cases.
     /**
      * Create a reversal voucher (for corrections)
      *
-     * Generates a new voucher that exactly negates this voucher's financial impact.
-     * Swaps debits and credits on all lines.
+     * V2 Audit-Grade: Generates reversal from ACTUAL POSTED LEDGER LINES.
+     * Negates the financial impact recorded in the ledger, not just the original voucher lines.
      *
      * @param reversalDate - Date for the reversal (typically today)
      * @param correctionGroupId - UUID linking reversal to replacement
+     * @param userId - User creating the reversal
+     * @param ledgerLines - The actual posted ledger entries for the original voucher
      * @param reason - Reason for correction
      * @returns New VoucherEntity in DRAFT status (ready to be posted)
      */
-    createReversal(reversalDate, correctionGroupId, userId, // Required for createdBy
-    reason) {
-        if (this.status !== VoucherTypes_1.VoucherStatus.POSTED) {
+    createReversal(reversalVoucherId, // NEW ARGUMENT
+    reversalDate, correctionGroupId, userId, ledgerLines, reason) {
+        if (!this.isPosted) {
             throw new Error('Only POSTED vouchers can be reversed');
         }
-        // Generate reversal lines by swapping debits/credits
-        const reversalLines = this.lines.map((line, index) => new VoucherLineEntity_1.VoucherLineEntity(index + 1, // Re-index from 1
-        line.accountId, line.side === 'Debit' ? 'Credit' : 'Debit', // Opposite side
-        line.baseAmount, // baseAmount stays the same
-        line.baseCurrency, // baseCurrency
-        line.amount, // amount stays the same
-        line.currency, // currency
-        line.exchangeRate));
-        // Swap totals as well
-        const reversalTotalDebit = this.totalCredit;
-        const reversalTotalCredit = this.totalDebit;
+        if (!ledgerLines || ledgerLines.length === 0) {
+            throw new Error('Cannot create reversal: No ledger lines provided. Audit source missing.');
+        }
+        // Generate reversal lines by inverting ACTUAL LEDGER entries
+        const reversalLines = ledgerLines.map((entry, index) => {
+            return new VoucherLineEntity_1.VoucherLineEntity(index + 1, entry.accountId, entry.side === 'Debit' ? 'Credit' : 'Debit', // INVERT SIDE
+            entry.baseAmount, entry.baseCurrency, entry.amount, entry.currency, entry.exchangeRate, `[REVERSAL] ${entry.notes || ''}`.trim(), entry.costCenterId, Object.assign(Object.assign({}, entry.metadata), { sourceLedgerEntryId: entry.id }));
+        });
+        // Calculate totals from reversal lines to ensure balance
+        const reversalTotalDebit = reversalLines.reduce((sum, l) => sum + l.debitAmount, 0);
+        const reversalTotalCredit = reversalLines.reduce((sum, l) => sum + l.creditAmount, 0);
         // Create reversal metadata
         const reversalMetadata = Object.assign(Object.assign({}, this.metadata), { reversalOfVoucherId: this.id, correctionGroupId, correctionReason: reason });
         // Create new voucher entity for reversal
-        return new VoucherEntity('', // ID will be generated when saved
+        return new VoucherEntity(reversalVoucherId, // Use the provided ID
         this.companyId, '', // Voucher number will be generated
-        this.type, reversalDate, `Reversal of ${this.voucherNo}`, this.currency, this.baseCurrency, this.exchangeRate, reversalLines, reversalTotalDebit, reversalTotalCredit, VoucherTypes_1.VoucherStatus.DRAFT, reversalMetadata, userId, new Date());
+        VoucherTypes_1.VoucherType.REVERSAL, // MANDATORY: Distinct voucher type
+        reversalDate, `Reversal of ${this.voucherNo}`, this.currency, this.baseCurrency, this.exchangeRate, reversalLines, reversalTotalDebit, reversalTotalCredit, VoucherTypes_1.VoucherStatus.DRAFT, reversalMetadata, userId, new Date(), undefined, // approvedBy
+        undefined, // approvedAt
+        undefined, // rejectedBy
+        undefined, // rejectedAt
+        reason, // rejectionReason (used as correction reason)
+        undefined, // lockedBy
+        undefined, // lockedAt
+        undefined, // postedBy
+        undefined, // postedAt
+        undefined, // postingLockPolicy
+        this.id, // reversalOfVoucherId (STRUCTURAL)
+        undefined, // reference
+        new Date() // updatedAt
+        );
     }
     /**
      * Check if this voucher is a reversal
@@ -322,6 +441,8 @@ class VoucherEntity {
             lockedAt: ((_c = this.lockedAt) === null || _c === void 0 ? void 0 : _c.toISOString()) || null,
             postedBy: this.postedBy || null,
             postedAt: ((_d = this.postedAt) === null || _d === void 0 ? void 0 : _d.toISOString()) || null,
+            postingLockPolicy: this.postingLockPolicy || null,
+            reversalOfVoucherId: this.reversalOfVoucherId || null,
             // Legacy fields
             reference: this.reference || null,
             updatedAt: ((_e = this.updatedAt) === null || _e === void 0 ? void 0 : _e.toISOString()) || null,
@@ -338,7 +459,7 @@ class VoucherEntity {
         var _a;
         // Legacy support: ensure baseCurrency exists (default to USD if missing)
         const baseCurrency = data.baseCurrency || 'USD';
-        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, (_a = data.description) !== null && _a !== void 0 ? _a : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, 
+        return new VoucherEntity(data.id, data.companyId, data.voucherNo, data.type, data.date, (_a = data.description) !== null && _a !== void 0 ? _a : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, data.metadata || {}, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, data.postingLockPolicy, data.reversalOfVoucherId, 
         // Additional legacy fields
         data.reference, data.updatedAt ? new Date(data.updatedAt) : undefined);
     }

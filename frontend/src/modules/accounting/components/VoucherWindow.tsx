@@ -177,6 +177,10 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     try {
       const formData = rendererRef.current.getData();
       await onSave(win.id, formData);
+
+      // Success! Reset dirty state
+      setIsDirty(false);
+      setShowSuccessModal(true);
     } catch (error: any) {
       errorHandler.showError(error);
     } finally {
@@ -317,14 +321,27 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           <h3 className="font-bold text-sm text-[var(--color-text-primary)]">{win.title}</h3>
           {win.data?.status && (
             <div className="flex items-center gap-1.5">
+              {/* V1: Workflow Badge */}
               <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                win.data.status.toLowerCase() === 'approved' || win.data.status.toLowerCase() === 'posted' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+                win.data.status.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
                 win.data.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
                 win.data.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
+                win.data.status.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
                 'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
               }`}>
                 {win.data.status}
               </span>
+              
+              {/* V1: Posting Badge (derived from postedAt) */}
+              {win.data.status.toLowerCase() === 'approved' && (
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                  win.data.postedAt 
+                    ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                }`}>
+                  {win.data.postedAt ? 'POSTED' : 'NOT POSTED'}
+                </span>
+              )}
               
               {/* Status Indicator Dot - Visual Clue for Approval Mode */}
               <div className="group relative ml-1">
@@ -649,7 +666,10 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   return <Save className="w-4 h-4" />;
                 })()}
                 {(() => {
-                  if (settings?.strictApprovalMode !== true) return 'Save & Post';
+                  if (settings?.strictApprovalMode !== true) {
+                    const isPosted = !!win.data?.postedAt;
+                    return isPosted ? 'Update & Post' : 'Save & Post';
+                  }
                   const status = win.data?.status?.toLowerCase();
                   if (status === 'pending') return 'Update Pending Voucher';
                   if (status === 'approved' || status === 'posted') return 'Save Changes';
@@ -794,8 +814,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               <CheckCircle size={32} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-gray-900">Submitted Successfully!</h3>
-              <p className="text-sm text-gray-500 mt-1">Voucher has been sent for approval.</p>
+              <h3 className="text-xl font-bold text-gray-900">
+                {win.data?.status?.toLowerCase() === 'posted' ? 'Posted Successfully!' : 
+                 win.data?.status?.toLowerCase() === 'draft' ? 'Saved Successfully!' : 
+                 'Submitted Successfully!'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {win.data?.status?.toLowerCase() === 'posted' ? 'Voucher has been posted to the ledger.' : 
+                 win.data?.status?.toLowerCase() === 'draft' ? 'Voucher saved as draft.' : 
+                 'Voucher has been sent for approval.'}
+              </p>
             </div>
             
             <div className="flex flex-col gap-3 w-full mt-4">
@@ -826,8 +854,17 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       originalVoucher={win.data}
       initialMode={correctionMode}
       onSuccess={(result) => {
-        // Refresh voucher data to show reversed status
-        updateWindowData(win.id, { ...win.data, status: 'reversed' });
+        // 1. Refresh voucher data to show reversed status locally
+        updateWindowData(win.id, { 
+          ...win.data, 
+          status: 'reversed',
+          postedAt: null // Correction negates posting
+        });
+        
+        // 2. TRIGGER GLOBAL REFRESH for the list page
+        globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
+        
+        errorHandler.showSuccess('Voucher reversal submitted for approval.');
         setShowCorrectionModal(false);
       }}
     />

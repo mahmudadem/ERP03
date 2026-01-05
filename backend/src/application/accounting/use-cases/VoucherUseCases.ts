@@ -9,7 +9,7 @@ import { PermissionChecker } from '../../rbac/PermissionChecker';
 import { VoucherPostingStrategyFactory } from '../../../domain/accounting/factories/VoucherPostingStrategyFactory';
 import { PostingFieldExtractor } from '../../../domain/accounting/services/PostingFieldExtractor';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
-import { VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
+import { VoucherStatus, VoucherType, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
@@ -140,19 +140,38 @@ export class CreateVoucherUseCase {
       }
 
       if (!approvalRequired && this.ledgerRepo) {
-        // Use PostVoucherUseCase internally
-        const postUseCase = new PostVoucherUseCase(
-          this.voucherRepo,
-          this.ledgerRepo,
-          this.permissionChecker,
-          this.transactionManager,
-          this.policyRegistry
-        );
-        await postUseCase.execute(companyId, userId, voucher.id);
+        // Flexible Mode (Mode A): Auto-approve, then post inline
+        // Capturing ledgerRepo to satisfy TypeScript strict null checks across async calls
+        const ledgerRepo = this.ledgerRepo; 
+        const registry = this.policyRegistry;
+
+        // Security: Ensure user has post permission (since we bypassed PostVoucherUseCase)
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.post');
+
+        // 1. Approve the voucher
+        const approvedVoucher = voucher.approve(userId, new Date());
         
-        // Return the posted version
-        const postedVoucher = await this.voucherRepo.findById(companyId, voucher.id);
-        return postedVoucher || voucher;
+        // 2. Determine lock policy based on current config
+        let lockPolicy = PostingLockPolicy.FLEXIBLE_LOCKED;
+        if (registry) {
+          try {
+            const config = await registry.getConfig(companyId);
+            if (config.allowEditPostedVouchersEnabled) {
+              lockPolicy = PostingLockPolicy.FLEXIBLE_EDITABLE;
+            }
+          } catch (e) {}
+        }
+        
+        // 3. Post the approved voucher directly (don't re-fetch)
+        const postedVoucher = approvedVoucher.post(userId, new Date(), lockPolicy);
+        
+        // 4. Record to ledger using captured repo
+        await ledgerRepo.recordForVoucher(postedVoucher, transaction);
+        
+        // 5. Persist the posted voucher
+        await this.voucherRepo.save(postedVoucher);
+        
+        return postedVoucher;
       }
 
       return voucher;
@@ -190,13 +209,48 @@ export class UpdateVoucherUseCase {
       } catch (e) {}
     }
 
-    if (!voucher.canEdit && (approvalRequired || voucher.status !== VoucherStatus.POSTED)) {
+    // V3: Governance Guard for Editing Posted Vouchers
+    // Determine mode and toggle from config
+    let isStrictMode = true; // Default to strict
+    let allowEditDeletePosted = false;
+    if (this.policyConfigProvider) {
+      try {
+        const config = await this.policyConfigProvider.getConfig(companyId);
+        console.log('[UpdateVoucherUseCase] Loaded Policy Config:', JSON.stringify(config, null, 2));
+        
+        isStrictMode = (config.strictApprovalMode || config.financialApprovalEnabled || config.approvalRequired) ?? true;
+        allowEditDeletePosted = config.allowEditDeletePosted ?? false;
+        
+        console.log('[UpdateVoucherUseCase] Policy Decision:', { isStrictMode, allowEditDeletePosted });
+      } catch (e) {
+        console.error('[UpdateVoucherUseCase] Failed to load config:', e);
+      }
+    }
+
+    try {
+      voucher.assertCanEdit(isStrictMode, allowEditDeletePosted);
+    } catch (error: any) {
+      const isStrictForever = error.message.includes('VOUCHER_STRICT_LOCK_FOREVER');
+      const isEditForbidden = error.message.includes('VOUCHER_POSTED_EDIT_FORBIDDEN');
+      
+      let errorCode = ErrorCode.VOUCH_LOCKED;
+      if (isStrictForever) errorCode = ErrorCode.VOUCHER_STRICT_LOCK_FOREVER;
+      else if (isEditForbidden) errorCode = ErrorCode.VOUCHER_POSTED_EDIT_FORBIDDEN;
+      
       throw new BusinessError(
-        ErrorCode.VOUCH_INVALID_STATUS,
-        `Cannot update voucher with status: ${voucher.status}. Vouchers must be reversed or corrected unless Approval is OFF.`,
-        { status: voucher.status }
+        errorCode,
+        error.message,
+        { 
+          status: voucher.status, 
+          isPosted: voucher.isPosted,
+          postingLockPolicy: voucher.postingLockPolicy,
+          httpStatus: 423 
+        }
       );
     }
+
+    // Track if voucher was posted before update (for ledger resync)
+    const wasPosted = voucher.isPosted;
 
     // Simplified update logic: create new entity with merged data
     const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
@@ -244,6 +298,8 @@ export class UpdateVoucherUseCase {
       voucher.lockedAt,
       voucher.postedBy,
       voucher.postedAt,
+      voucher.postingLockPolicy,
+      voucher.reversalOfVoucherId,
       payload.reference || voucher.reference,
       new Date()
     );
@@ -254,8 +310,8 @@ export class UpdateVoucherUseCase {
     }
 
     return this.transactionManager.runTransaction(async (transaction) => {
-      // If POSTED and Approval is OFF, we refresh ledger entries
-      if (voucher.isPosted && !approvalRequired) {
+      // If the voucher was already POSTED, we must refresh ledger entries to reflect new changes
+      if (voucher.isPosted) {
         if (!this.ledgerRepo) throw new Error('Ledger repository required for updating posted vouchers');
         
         // 1. Delete old ledger records
@@ -430,8 +486,24 @@ export class PostVoucherUseCase {
           }
         }
         
-        // 3. State Transition (Freezes lines + immutability check)
-        const postedVoucher = voucher.post(userId, new Date());
+        // 3. State Transition (Freezes lines + Mode Snapshotting)
+        let lockPolicy = PostingLockPolicy.FLEXIBLE_LOCKED;
+        if (this.policyRegistry) {
+          try {
+            const config = await this.policyRegistry.getConfig(companyId);
+            const isStrictNow = config.financialApprovalEnabled || config.custodyConfirmationEnabled;
+            
+            if (isStrictNow) {
+              lockPolicy = PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
+            } else if (config.allowEditPostedVouchersEnabled) {
+              lockPolicy = PostingLockPolicy.FLEXIBLE_EDITABLE;
+            } else {
+              lockPolicy = PostingLockPolicy.FLEXIBLE_LOCKED;
+            }
+          } catch (e) {}
+        }
+
+        const postedVoucher = voucher.post(userId, new Date(), lockPolicy);
         
         // 4. Single Source of Truth: Record to Ledger
         await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
@@ -457,26 +529,110 @@ export class CancelVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
     private ledgerRepo: ILedgerRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private policyConfigProvider?: IAccountingPolicyConfigProvider
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string): Promise<void> {
     const voucher = await this.voucherRepo.findById(companyId, voucherId);
     if (!voucher) throw new Error('Voucher not found');
     
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.delete');
     
-    if (voucher.status === VoucherStatus.LOCKED) {
-      throw new Error('Cannot cancel a locked voucher');
+    // V3: Governance Guard for Deleting Posted Vouchers
+    let isStrictMode = true; // Default to strict
+    let allowEditDeletePosted = false;
+    if (this.policyConfigProvider) {
+      try {
+        const config = await this.policyConfigProvider.getConfig(companyId);
+        isStrictMode = (config.strictApprovalMode || config.financialApprovalEnabled || config.approvalRequired) ?? true;
+        allowEditDeletePosted = config.allowEditDeletePosted ?? false;
+      } catch (e) {}
     }
-
-    // If it was posted, we must delete ledger entries
-    if (voucher.status === VoucherStatus.POSTED) {
+    
+    try {
+      voucher.assertCanDelete(isStrictMode, allowEditDeletePosted);
+    } catch (error: any) {
+      const isStrictForever = error.message.includes('VOUCHER_STRICT_LOCK_FOREVER');
+      const isDeleteForbidden = error.message.includes('VOUCHER_POSTED_DELETE_FORBIDDEN');
+      
+      let errorCode = ErrorCode.VOUCH_LOCKED;
+      if (isStrictForever) errorCode = ErrorCode.VOUCHER_STRICT_LOCK_FOREVER;
+      else if (isDeleteForbidden) errorCode = ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN;
+      
+      throw new BusinessError(
+        errorCode,
+        `Cannot delete voucher: ${error.message}`,
+        { 
+          status: voucher.status, 
+          isPosted: voucher.isPosted, 
+          postingLockPolicy: voucher.postingLockPolicy,
+          httpStatus: 423 
+        }
+      );
+    }
+    
+    // V1: If voucher was posted, delete ledger entries
+    if (voucher.isPosted) {
        await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
     }
     
-    const cancelledVoucher = voucher.reject(userId, new Date(), 'Cancelled by user');
+    const cancelledVoucher = voucher.reject(userId, new Date(), 'Deleted by user');
     await this.voucherRepo.save(cancelledVoucher);
+  }
+}
+
+export class DeleteVoucherUseCase {
+  constructor(
+    private voucherRepo: IVoucherRepository,
+    private ledgerRepo: ILedgerRepository,
+    private permissionChecker: PermissionChecker,
+    private configProvider: IAccountingPolicyConfigProvider
+  ) {}
+
+  async execute(companyId: string, userId: string, voucherId: string) {
+    const voucher = await this.voucherRepo.findById(companyId, voucherId);
+    if (!voucher) throw new Error('Voucher not found');
+    
+    // Explicit DELETE permission check (distinct from CANCEL)
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.delete');
+
+    // Load policy
+    let config;
+    try {
+      config = await this.configProvider.getConfig(companyId);
+    } catch (e) {
+      config = {} as any;
+    }
+
+    // Policy Check - Align with PostVoucherUseCase & UpdateVoucherUseCase
+    const isStrictMode = (config.strictApprovalMode || config.financialApprovalEnabled || config.approvalRequired) ?? true;
+    const allowEditDeletePosted = config.allowEditDeletePosted ?? false;
+    
+    try {
+      voucher.assertCanDelete(isStrictMode, allowEditDeletePosted);
+    } catch (error: any) {
+      const isStrictForever = error.message.includes('VOUCHER_STRICT_LOCK_FOREVER');
+      const isDeleteForbidden = error.message.includes('VOUCHER_POSTED_DELETE_FORBIDDEN');
+      
+      let errorCode = ErrorCode.VOUCH_LOCKED;
+      if (isStrictForever) errorCode = ErrorCode.VOUCHER_STRICT_LOCK_FOREVER;
+      else if (isDeleteForbidden) errorCode = ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN;
+      
+      throw new BusinessError(
+        errorCode,
+        `Cannot delete voucher: ${error.message}`,
+        { httpStatus: 423 }
+      );
+    }
+    
+    // Clean up ledger entries if posted
+    if (voucher.isPosted) {
+       await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+    }
+    
+    // HARD DELETE the voucher record
+    await this.voucherRepo.delete(companyId, voucherId);
   }
 }
 

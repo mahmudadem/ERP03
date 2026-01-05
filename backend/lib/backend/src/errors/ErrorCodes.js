@@ -35,12 +35,17 @@ var ErrorCode;
     ErrorCode["VOUCH_UNBALANCED"] = "VOUCH_005";
     ErrorCode["VOUCH_MISSING_LINES"] = "VOUCH_006";
     ErrorCode["VOUCH_LOCKED"] = "VOUCH_007";
+    ErrorCode["VOUCHER_LOCKED_STRICT"] = "VOUCH_008";
+    ErrorCode["VOUCHER_POSTED_EDIT_FORBIDDEN"] = "VOUCH_009";
+    ErrorCode["VOUCHER_POSTED_DELETE_FORBIDDEN"] = "VOUCH_010";
+    ErrorCode["VOUCHER_STRICT_LOCK_FOREVER"] = "VOUCH_011";
     // ========== ACCOUNTING BUSINESS LOGIC ==========
     ErrorCode["ACC_INSUFFICIENT_BALANCE"] = "ACC_001";
     ErrorCode["ACC_ACCOUNT_NOT_FOUND"] = "ACC_002";
     ErrorCode["ACC_ACCOUNT_INACTIVE"] = "ACC_003";
     ErrorCode["ACC_PERIOD_CLOSED"] = "ACC_004";
     ErrorCode["ACC_INVALID_ACCOUNT_TYPE"] = "ACC_005";
+    ErrorCode["LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER"] = "ACC_006";
     // ========== INFRASTRUCTURE ==========
     ErrorCode["INFRA_DATABASE_ERROR"] = "INFRA_001";
     ErrorCode["INFRA_NETWORK_ERROR"] = "INFRA_002";

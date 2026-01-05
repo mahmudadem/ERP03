@@ -4,23 +4,31 @@
  * Defines contracts for the Voucher List feature (Filters, API Response, Item Shape).
  */
 
+import { PostingLockPolicy } from './PostingLockPolicy';
+
 export interface VoucherListItem {
   id: string;
   companyId: string;
   type: string; // e.g., 'INV', 'REC'
   date: string; // ISO String
   currency: string;
-  // Updated status types to lowercase to match new backend logic
-  status: 'draft' | 'pending' | 'approved' | 'locked' | 'cancelled';
+  // V1: Workflow states only. POSTED is derived from postedAt.
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled';
   totalDebit: number;
   totalCredit: number;
   reference?: string;
   voucherNo?: string;
   createdBy?: string;
   createdAt?: string; // ISO String or FireStore timestamp
+  // V1: Posting indicator (financial effect)
+  postedAt?: string;  // ISO String - when ledger entries were created
+  postedBy?: string;  // User who triggered posting
+  // V2: Audit Lock Policy
+  postingLockPolicy?: PostingLockPolicy;
   // Form tracking
   formId?: string;  // Which form was used to create this voucher
   prefix?: string;  // Voucher number prefix
+  reversalOfVoucherId?: string; // ID of the voucher this one reverses
 }
 
 export interface VoucherListFilters {

@@ -26,6 +26,9 @@
   ],
   "exclude": [
     "src/tests",
-    "src/seeder"
+    "src/seeder",
+    "src/**/__tests__/*",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
   ]
 }

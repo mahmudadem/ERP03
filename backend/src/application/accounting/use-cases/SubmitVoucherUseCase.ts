@@ -109,6 +109,8 @@ export class SubmitVoucherUseCase {
     };
     
     // Create new entity with updated status and metadata
+    // V1 CRITICAL: postedAt/postedBy are NOT set here. 
+    // They must ONLY be set AFTER ledger write succeeds (by PostVoucherUseCase).
     return new VoucherEntity(
       voucher.id,
       voucher.companyId,
@@ -133,8 +135,10 @@ export class SubmitVoucherUseCase {
       undefined, // rejectionReason
       voucher.lockedBy,
       voucher.lockedAt,
-      shouldAutoApprove ? submitterId : undefined,  // postedBy  
-      shouldAutoApprove ? now : undefined,          // postedAt
+      undefined,  // postedBy - V1: NEVER set here, only after ledger write
+      undefined,  // postedAt - V1: NEVER set here, only after ledger write
+      voucher.postingLockPolicy, // postingLockPolicy (preserve existing)
+      voucher.reversalOfVoucherId, // reversalOfVoucherId (preserve existing)
       voucher.reference,
       now // updatedAt
     );

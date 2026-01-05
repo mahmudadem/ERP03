@@ -12,6 +12,7 @@ export interface TrialBalanceRow {
 
 export interface GLFilters {
   accountId?: string;
+  voucherId?: string;
   fromDate?: string;
   toDate?: string;
   voucherType?: string;

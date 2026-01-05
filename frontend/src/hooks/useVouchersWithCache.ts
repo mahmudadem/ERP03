@@ -57,39 +57,56 @@ export const useVouchersWithCache = (companyId: string) => {
 
   // Filter client-side (INSTANT, NO API CALL)
   const filteredVouchers = useMemo(() => {
-    
-    let result = allVouchers;
-
-    if (filters.formId) {
+    // 1. Define match criteria
+    const matchesFilters = (v: VoucherListItem) => {
+      if (filters.formId && v.formId !== filters.formId) return false;
       
+      if (filters.type) {
+        if (v.type?.toLowerCase() !== filters.type?.toLowerCase()) return false;
+      }
       
-      result = result.filter((v) => v.formId === filters.formId);
+      if (filters.status && v.status !== filters.status) return false;
       
-      
-    }
-
-    if (filters.type) {
-      
-      // Case-insensitive comparison
-      result = result.filter((v) => v.type?.toLowerCase() === filters.type?.toLowerCase());
-      
-    }
-
-    if (filters.status) {
-      result = result.filter((v) => v.status === filters.status);
-    }
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      result = result.filter(
-        (v: VoucherListItem) =>
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = 
           v.voucherNo?.toLowerCase().includes(searchLower) ||
-          v.reference?.toLowerCase().includes(searchLower)
-      );
-    }
+          v.reference?.toLowerCase().includes(searchLower) ||
+          v.id.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+      
+      return true;
+    };
 
-    
-    return result;
+    // 2. Identify "Primary Matches"
+    const primaryMatchIds = new Set(allVouchers.filter(matchesFilters).map(v => v.id));
+
+    // 3. Expand result set to include related hierarchy items
+    // We want: 
+    // - Every primary match
+    // - The parent of any primary match (if the match is a reversal)
+    // - Any reversal of a primary match (the "history")
+    const resultIds = new Set<string>();
+
+    allVouchers.forEach(v => {
+      if (primaryMatchIds.has(v.id)) {
+        resultIds.add(v.id);
+        // If this is a reversal, we MUST include its parent for the table to render it nested
+        if (v.reversalOfVoucherId) {
+          resultIds.add(v.reversalOfVoucherId);
+        }
+      }
+    });
+
+    // Second pass to catch "children of primary matches"
+    allVouchers.forEach(v => {
+      if (v.reversalOfVoucherId && primaryMatchIds.has(v.reversalOfVoucherId)) {
+        resultIds.add(v.id);
+      }
+    });
+
+    return allVouchers.filter(v => resultIds.has(v.id));
   }, [allVouchers, filters]);
 
   // Invalidate cache when vouchers are created/updated/deleted

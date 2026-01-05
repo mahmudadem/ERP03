@@ -4,8 +4,11 @@ exports.ReverseAndReplaceVoucherUseCase = void 0;
 const uuid_1 = require("uuid");
 const VoucherUseCases_1 = require("./VoucherUseCases");
 const CorrectionTypes_1 = require("../../../domain/accounting/types/CorrectionTypes");
-const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const DateNormalization_1 = require("../../../domain/accounting/utils/DateNormalization");
+const AppError_1 = require("../../../errors/AppError");
+const ErrorCodes_1 = require("../../../errors/ErrorCodes");
+const SubmitVoucherUseCase_1 = require("./SubmitVoucherUseCase");
+const ApprovalPolicyService_1 = require("../../../domain/accounting/policies/ApprovalPolicyService");
 /**
  * ReverseAndReplaceVoucherUseCase
  *
@@ -25,8 +28,8 @@ const DateNormalization_1 = require("../../../domain/accounting/utils/DateNormal
 class ReverseAndReplaceVoucherUseCase {
     constructor(voucherRepo, ledgerRepo, permissionChecker, transactionManager, policyRegistry, // AccountingPolicyRegistry
     accountRepo, // IAccountRepository
-    settingsRepo // ICompanyModuleSettingsRepository
-    ) {
+    settingsRepo, // ICompanyModuleSettingsRepository
+    policyConfigProvider) {
         this.voucherRepo = voucherRepo;
         this.ledgerRepo = ledgerRepo;
         this.permissionChecker = permissionChecker;
@@ -34,6 +37,7 @@ class ReverseAndReplaceVoucherUseCase {
         this.policyRegistry = policyRegistry;
         this.accountRepo = accountRepo;
         this.settingsRepo = settingsRepo;
+        this.policyConfigProvider = policyConfigProvider;
     }
     async execute(companyId, userId, originalVoucherId, correctionMode, replacePayload, options = {}) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.correct');
@@ -43,8 +47,9 @@ class ReverseAndReplaceVoucherUseCase {
             if (!originalVoucher) {
                 throw new Error('Original voucher not found');
             }
-            if (originalVoucher.status !== VoucherTypes_1.VoucherStatus.POSTED && originalVoucher.status !== VoucherTypes_1.VoucherStatus.APPROVED) {
-                throw new Error(`Cannot correct voucher in status: ${originalVoucher.status}. Only POSTED or APPROVED vouchers can be corrected.`);
+            // Step 2: Validation - Only POSTED vouchers can be corrected (Reversed)
+            if (!originalVoucher.isPosted) {
+                throw new Error(`Cannot reverse voucher in status "${originalVoucher.status}". Only POSTED vouchers (those with financial effect) can be reversed.`);
             }
             // Step 2: Check idempotency - has this voucher already been reversed?
             const existingReversal = await this.findExistingReversal(companyId, originalVoucherId);
@@ -78,54 +83,60 @@ class ReverseAndReplaceVoucherUseCase {
                 // Default: use original voucher date
                 reversalDate = originalVoucher.date;
             }
-            // Step 5: Create reversal voucher
-            const reversalVoucher = originalVoucher.createReversal(reversalDate, correctionGroupId, userId, // Added userId
-            options.reason);
+            // Step 5: Fetch ACTUAL ledger entries (Audit Source of Truth)
+            const ledgerLines = await this.ledgerRepo.getGeneralLedger(companyId, { voucherId: originalVoucherId });
+            // V2 FAIL-FAST: Ensure ledger entries exist before creating reversal
+            if (!ledgerLines || ledgerLines.length === 0) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER, 'Cannot reverse: no posted ledger lines found for this posted voucher.', { voucherId: originalVoucherId, httpStatus: 409 });
+            }
+            // Step 6: Create reversal voucher using ledger entries
+            const reversalVoucherId = (0, uuid_1.v4)(); // Generate ID for persistence
+            const reversalVoucher = originalVoucher.createReversal(reversalVoucherId, reversalDate, correctionGroupId, userId, ledgerLines, options.reason);
             // Save reversal as DRAFT first
             const savedReversal = await this.voucherRepo.save(reversalVoucher);
-            // Step 5: Post reversal via PostVoucherUseCase (policies apply)
-            const postUseCase = new VoucherUseCases_1.PostVoucherUseCase(this.voucherRepo, this.ledgerRepo, this.permissionChecker, this.transactionManager, this.policyRegistry);
-            try {
-                await postUseCase.execute(companyId, userId, savedReversal.id);
+            // DEEP INTEGRATION: Submit reversal for approval (Governance: Formal Gates)
+            // Using SubmitVoucherUseCase to evaluate policies, custodians, and managers
+            if (!this.policyConfigProvider) {
+                throw new Error('policyConfigProvider required for strict reversal approval');
             }
-            catch (error) {
-                // Policy or validation blocked reversal
-                // Clean up draft reversal and propagate error
-                throw new Error(`Reversal blocked: ${error.message}`);
-            }
+            const getAccountMetadata = async (cid, accountIds) => {
+                const accounts = await Promise.all(accountIds.map(id => { var _a; return (_a = this.accountRepo) === null || _a === void 0 ? void 0 : _a.getById(cid, id); }));
+                return accounts
+                    .filter(acc => acc !== null)
+                    .map(acc => ({
+                    accountId: acc.id,
+                    requiresApproval: acc.requiresApproval || false,
+                    requiresCustodyConfirmation: acc.requiresCustodyConfirmation || false,
+                    custodianUserId: acc.custodianUserId || undefined
+                }));
+            };
+            const submitUseCase = new SubmitVoucherUseCase_1.SubmitVoucherUseCase(this.voucherRepo, this.policyConfigProvider, new ApprovalPolicyService_1.ApprovalPolicyService(), getAccountMetadata);
+            const pendingReversal = await submitUseCase.execute(companyId, savedReversal.id, userId);
+            // NOTE: Reversal is now PENDING (or APPROVED if Mode A)
+            // If APPROVED, it will NOT auto-post here because this transaction is meant to create correction entries.
+            // The user/system should post it via the normal verify/post flow.
             let replacementVoucherId;
-            let replacementPosted = false;
             // Step 6: Create replacement voucher if requested
             if (correctionMode === CorrectionTypes_1.CorrectionMode.REVERSE_AND_REPLACE) {
                 if (!replacePayload) {
                     throw new Error('Replacement payload required for REVERSE_AND_REPLACE mode');
                 }
-                const createUseCase = new VoucherUseCases_1.CreateVoucherUseCase(this.voucherRepo, this.accountRepo, this.settingsRepo, this.permissionChecker, this.transactionManager, this.voucherTypeRepo || null // Fixed: should ideally be passed in constructor
-                );
+                const createUseCase = new VoucherUseCases_1.CreateVoucherUseCase(this.voucherRepo, this.accountRepo, this.settingsRepo, this.permissionChecker, this.transactionManager, this.voucherTypeRepo || null);
                 // Build replacement voucher payload
                 const replacementPayloadWithMetadata = Object.assign(Object.assign({}, replacePayload), { type: originalVoucher.type, metadata: Object.assign(Object.assign({}, replacePayload.metadata), { replacesVoucherId: originalVoucherId, correctionGroupId, correctionReason: options.reason }) });
                 const replacement = await createUseCase.execute(companyId, userId, replacementPayloadWithMetadata);
                 replacementVoucherId = replacement.id;
-                // Optionally auto-post replacement if requested AND policies allow
-                if (options.replaceStartsAsDraft === false) {
-                    try {
-                        await postUseCase.execute(companyId, userId, replacement.id);
-                        replacementPosted = true;
-                    }
-                    catch (error) {
-                        // Policy blocked - replacement stays as DRAFT
-                        // This is acceptable, user can post manually later
-                    }
-                }
+                // Replacement also starts as DRAFT - can be submitted for approval separately
             }
             return {
-                reverseVoucherId: savedReversal.id,
+                reverseVoucherId: pendingReversal.id,
                 replaceVoucherId: replacementVoucherId,
                 correctionGroupId,
                 summary: {
-                    reversalPosted: true,
+                    reversalPosted: pendingReversal.isPosted,
+                    reversalStatus: pendingReversal.status,
                     replacementCreated: !!replacementVoucherId,
-                    replacementPosted
+                    replacementPosted: false
                 }
             };
         });
@@ -134,9 +145,9 @@ class ReverseAndReplaceVoucherUseCase {
      * Find existing reversal for a voucher (idempotency check)
      */
     async findExistingReversal(companyId, originalVoucherId) {
-        // Query for vouchers with reversalOfVoucherId = originalVoucherId
+        // Structural check using the new field
         const vouchers = await this.voucherRepo.findByCompany(companyId);
-        return vouchers.find(v => v.metadata.reversalOfVoucherId === originalVoucherId);
+        return vouchers.find(v => v.reversalOfVoucherId === originalVoucherId);
     }
     /**
      * Find existing replacement for a voucher

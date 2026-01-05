@@ -75,7 +75,14 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
       custodyConfirmationEnabled: false,
       approvalRequired: false,  // Legacy sync
       
+      // Mode A Controls (V1)
+      autoPostEnabled: true,                    // Default: auto-post when approved
+
+      
+      // Period Lock
       periodLockEnabled: false,
+      lockedThroughDate: undefined,
+      
       accountAccessEnabled: false,
       costCenterPolicy: {
         enabled: false,

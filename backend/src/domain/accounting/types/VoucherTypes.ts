@@ -36,18 +36,49 @@ export enum VoucherType {
    * Used for: Initial balances when starting system
    * Posting: Various debits/credits based on opening balances
    */
-  OPENING_BALANCE = 'opening_balance'
+  OPENING_BALANCE = 'opening_balance',
+  
+  /**
+   * Reversal Voucher
+   * Used for: Correcting posted vouchers by inverting their ledger effects.
+   * Posting: Inverse of the original voucher referenced.
+   */
+  REVERSAL = 'reversal'
 }
 
 /**
- * Voucher Status Enumeration
+ * Posting Lock Policy
+ * Defines the structural immutability of a voucher once posted.
+ */
+export enum PostingLockPolicy {
+  /**
+   * STRICT_LOCKED - Permanent, structural lock. No mutations allowed.
+   */
+  STRICT_LOCKED = 'STRICT_LOCKED',
+
+  /**
+   * FLEXIBLE_EDITABLE - Mutability allowed; updates trigger ledger re-sync.
+   */
+  FLEXIBLE_EDITABLE = 'FLEXIBLE_EDITABLE',
+
+  /**
+   * FLEXIBLE_LOCKED - Flexible mode but editing is currently disabled.
+   */
+  FLEXIBLE_LOCKED = 'FLEXIBLE_LOCKED'
+}
+
+/**
+ * Voucher Status Enumeration (V1 Locked)
  * 
- * Simple state-based workflow (no complex approval chains)
+ * Workflow States ONLY. POSTED is NOT a workflow state.
+ * POSTED is a derived financial effect badge based on voucher.postedAt.
  * 
  * Flow:
- * DRAFT → APPROVED → LOCKED
- *    ↓
- * REJECTED
+ * DRAFT → PENDING → APPROVED
+ *            ↓
+ *        REJECTED
+ *            ↓
+ *       CANCELLED
  */
 export enum VoucherStatus {
   /**
@@ -61,38 +92,30 @@ export enum VoucherStatus {
   /**
    * PENDING - Submitted for approval
    * - Waiting for approver action
-   * - Cannot be edited by creator
+   * - May be editable (marks as "edited")
    * - Can be approved or rejected
    */
   PENDING = 'pending',
 
   /**
    * APPROVED - Approval workflow completed
-   * - Ready to be posted
-   * - Not yet impacting the ledger
-   * - Can be reverted to DRAFT
+   * - All required gates satisfied
+   * - May or may not be POSTED (check postedAt)
+   * - Financial effect created only when postedAt is set
    */
   APPROVED = 'approved',
 
   /**
-   * POSTED - Financial impact created
-   * - Immutable: cannot be edited (must reverse/adjust)
-   * - Lines frozen
-   * - Records exist in Ledger
-   */
-  POSTED = 'posted',
-
-  /**
-   * LOCKED - Finalized, period closed
-   * - Cannot be edited or reversed
-   */
-  LOCKED = 'locked',
-
-  /**
-   * REJECTED - Rejected, cannot be posted
+   * REJECTED - Rejected by approver
    * - Can return to DRAFT for correction
    */
-  REJECTED = 'rejected'
+  REJECTED = 'rejected',
+
+  /**
+   * CANCELLED - Cancelled by user
+   * - Terminal state, no further action
+   */
+  CANCELLED = 'cancelled'
 }
 
 /**

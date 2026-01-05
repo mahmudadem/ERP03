@@ -25,7 +25,8 @@ export class SimpleVoucherNumberGenerator implements IVoucherNumberGenerator {
       [VoucherType.PAYMENT]: 'PAY',
       [VoucherType.RECEIPT]: 'REC',
       [VoucherType.JOURNAL_ENTRY]: 'JV',
-      [VoucherType.OPENING_BALANCE]: 'OB'
+      [VoucherType.OPENING_BALANCE]: 'OB',
+      [VoucherType.REVERSAL]: 'REV'
     };
 
     return prefixes[type];

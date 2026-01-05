@@ -75,6 +75,8 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         >
           <option value="ALL">All Status</option>
           <option value="DRAFT">Draft</option>
+          <option value="PENDING">Pending Approval</option>
+          <option value="APPROVED">Approved</option>
           <option value="POSTED">Posted</option>
           <option value="LOCKED">Locked</option>
           <option value="VOID">Void</option>

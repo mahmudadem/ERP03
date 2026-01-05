@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetTrialBalanceUseCase = void 0;
-const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 class GetTrialBalanceUseCase {
     constructor(accountRepo, voucherRepo, permissionChecker) {
         this.accountRepo = accountRepo;
@@ -16,11 +15,10 @@ class GetTrialBalanceUseCase {
             ? await this.accountRepo.getAccounts(companyId)
             : await this.accountRepo.list(companyId);
         const accountMap = new Map(accounts.map(a => [a.id, a]));
-        // 2. Fetch all vouchers and filter by status (V2 interface)
+        // 2. Fetch all vouchers and filter by status (V1: use isApproved and isPosted)
         const allVouchers = await this.voucherRepo.findByCompany(companyId) || [];
-        const validVouchers = allVouchers.filter(v => v.status === VoucherTypes_1.VoucherStatus.APPROVED ||
-            v.status === VoucherTypes_1.VoucherStatus.POSTED ||
-            v.status === VoucherTypes_1.VoucherStatus.LOCKED);
+        // V1: Include APPROVED vouchers (which may or may not be posted) and any posted vouchers
+        const validVouchers = allVouchers.filter(v => v.isApproved || v.isPosted);
         // 3. Aggregate Balances
         const balances = {};
         accounts.forEach(acc => {

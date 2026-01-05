@@ -106,6 +106,13 @@ export class SettingsController {
         faApplyMode: req.body.faApplyMode || 'ALL',  // Default to ALL
         custodyConfirmationEnabled: req.body.custodyConfirmationEnabled ?? false,
         
+        // V3 Controls
+        strictApprovalMode: req.body.strictApprovalMode ?? req.body.financialApprovalEnabled ?? true,
+        allowEditDeletePosted: req.body.allowEditDeletePosted ?? false,
+        
+        // Mode A Controls
+        autoPostEnabled: req.body.autoPostEnabled ?? true,
+
         // Legacy field (synced with financialApprovalEnabled)
         approvalRequired: req.body.financialApprovalEnabled ?? req.body.approvalRequired ?? false,
         

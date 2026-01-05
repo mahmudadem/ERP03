@@ -59,7 +59,11 @@ class FirestoreAccountingPolicyConfigProvider {
             faApplyMode: 'ALL',
             custodyConfirmationEnabled: false,
             approvalRequired: false,
+            // Mode A Controls (V1)
+            autoPostEnabled: true,
+            // Period Lock
             periodLockEnabled: false,
+            lockedThroughDate: undefined,
             accountAccessEnabled: false,
             costCenterPolicy: {
                 enabled: false,

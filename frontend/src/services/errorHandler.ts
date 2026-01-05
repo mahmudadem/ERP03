@@ -90,6 +90,17 @@ class ErrorHandlerService {
         };
       }
 
+      // V2: Handle 423 Locked status (Audit compliance)
+      if (error.response?.status === 423) {
+        return {
+          code: 'VOUCH_008' as any,
+          message: error.response?.data?.message || 'This voucher is permanently locked for audit compliance. Please use reversal to make corrections.',
+          severity: ErrorSeverity.ERROR,
+          timestamp: new Date().toISOString(),
+          context: { httpStatus: 423 }
+        };
+      }
+
       return {
         code: (error.response?.status === 404 ? 'VOUCH_003' : 'INFRA_999') as any,
         message: error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Network request failed',

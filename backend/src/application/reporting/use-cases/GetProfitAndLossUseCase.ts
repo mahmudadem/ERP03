@@ -44,13 +44,10 @@ export class GetProfitAndLossUseCase {
 
     console.log(`📊 Fetched ${vouchers.length} vouchers from repository`);
 
-    // Filter only locked/posted vouchers (V2 uses VoucherStatus enum)
-    const postedVouchers = vouchers.filter(v => 
-      v.status === VoucherStatus.LOCKED || 
-      v.status === VoucherStatus.POSTED
-    );
+    // V1: Filter only vouchers with financial effect (isPosted = true means postedAt exists)
+    const postedVouchers = vouchers.filter(v => v.isPosted);
 
-    console.log(`🔒 Found ${postedVouchers.length} locked vouchers (filtered from ${vouchers.length} total)`);
+    console.log(`🔒 Found ${postedVouchers.length} posted vouchers (filtered from ${vouchers.length} total)`);
 
     // Calculate revenue and expenses
     const revenueMap = new Map<string, { accountName: string; amount: number }>();

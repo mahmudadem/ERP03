@@ -7,6 +7,7 @@ import { useVouchersWithCache } from '../../../hooks/useVouchersWithCache';
 import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
 import { VoucherTable } from '../components/VoucherTable';
 import { Button } from '../../../components/ui/Button';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -57,6 +58,9 @@ const VouchersListPage: React.FC = () => {
   const [isPrintViewOpen, setIsPrintViewOpen] = React.useState(false);
   const [viewingVoucher, setViewingVoucher] = React.useState<any>(null);
   const [viewingFormType, setViewingFormType] = React.useState<any>(null);
+
+  // Delete Modal State
+  const [deleteVoucherId, setDeleteVoucherId] = React.useState<string | null>(null);
 
   // Update logic to sync URL/Type with client-side filters
   React.useEffect(() => {
@@ -257,6 +261,15 @@ const VouchersListPage: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pageTitle}</h1>
             <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => invalidateVouchers()} 
+                className="gap-2"
+                title="Refresh List"
+              >
+                <RefreshCw size={16} />
+                Refresh
+              </Button>
               <RequirePermission permission="accounting.vouchers.create">
                 <div className="flex items-center gap-2">
                   {isJournalEntry && (
@@ -297,16 +310,8 @@ const VouchersListPage: React.FC = () => {
               onViewPrint={handleViewPrint}
               onRowClick={handleRowClick}
               onEdit={(voucher) => handleRowClick(voucher.id)}
-              onDelete={async (id) => {
-                if (window.confirm('Are you sure you want to delete this voucher?')) {
-                   try {
-                      await accountingApi.deleteVoucher(id);
-                      invalidateVouchers(); 
-                   } catch (e: any) {
-                      errorHandler.showError(e);
-                    }
-                }
-              }}
+              onDelete={(id) => setDeleteVoucherId(id)}
+              onRefresh={() => invalidateVouchers()}
             />
           </div>
         </div>
@@ -330,6 +335,53 @@ const VouchersListPage: React.FC = () => {
             voucherType={viewingFormType}
             onClose={() => setIsPrintViewOpen(false)}
           />
+        )}
+        
+        {/* Delete Confirmation Modal */}
+        {deleteVoucherId && (
+          <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
+             <div className="bg-white rounded-xl shadow-2xl w-[480px] p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="text-red-600" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Confirm Deletion</h3>
+                      <p className="text-sm text-gray-500">Are you sure you want to delete this voucher?</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800">
+                    <strong>Warning:</strong> After confirming deletion, you cannot undo this action ever, and the entry will be lost forever.
+                  </div>
+                  
+                  <div className="flex items-center justify-end gap-3 mt-2">
+                    <button 
+                      onClick={() => setDeleteVoucherId(null)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                         try {
+                            await accountingApi.deleteVoucher(deleteVoucherId);
+                            invalidateVouchers();
+                            setDeleteVoucherId(null);
+                            errorHandler.showSuccess('Voucher deleted permanently');
+                         } catch (e: any) {
+                            console.error('Delete failed:', e);
+                         }
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                    >
+                      Confirm Deletion
+                    </button>
+                  </div>
+                </div>
+             </div>
+          </div>
         )}
 
       </div>

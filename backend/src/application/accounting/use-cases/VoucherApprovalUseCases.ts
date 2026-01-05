@@ -40,12 +40,15 @@ export class ApproveVoucherUseCase {
     voucherId: string,
     approverId: string
   ): Promise<VoucherEntity> {
-    // Step 1: Load voucher
+    // Load voucher
     const voucher = await this.voucherRepository.findById(companyId, voucherId);
     
     if (!voucher) {
       throw new Error(`Voucher not found: ${voucherId}`);
     }
+
+    // V2: Structural Guard (Hard Lock)
+    voucher.assertCanMutate();
 
     // Step 2: Validate can approve
     if (!voucher.canApprove) {
@@ -104,10 +107,10 @@ export class RejectVoucherUseCase {
       throw new Error(`Voucher not found: ${voucherId}`);
     }
 
-    // Validate can reject (can reject DRAFT or APPROVED)
-    if (voucher.isLocked) {
-      throw new Error('Cannot reject locked voucher');
-    }
+    // V2: Structural Guard (Hard Lock)
+    voucher.assertCanMutate();
+
+    // V1: Cannot reject posted vouchers (they have financial effect)\n    if (voucher.isPosted) {\n      throw new Error('Cannot reject a posted voucher. Use reversal instead.');\n    }
 
     if (voucher.isRejected) {
       throw new Error('Voucher is already rejected');
@@ -126,10 +129,8 @@ export class RejectVoucherUseCase {
 /**
  * Lock Voucher Use Case
  * 
- * ADR-005 Compliant - Simple State Transition
- * 
- * Locks an approved voucher (for period close).
- * APPROVED → LOCKED
+ * V1 DEPRECATED: Per-voucher locking is replaced by period locking.
+ * Use lockedThroughDate in company settings to lock all vouchers up to a date.
  */
 export class LockVoucherUseCase {
   constructor(
@@ -137,39 +138,16 @@ export class LockVoucherUseCase {
   ) {}
 
   /**
-   * Lock a voucher
-   * 
-   * @param companyId Company ID
-   * @param voucherId Voucher ID to lock
-   * @param lockerId User ID performing lock
-   * @returns Locked voucher entity
+   * V1 DEPRECATED: Use lockedThroughDate in company settings instead.
    */
   async execute(
     companyId: string,
     voucherId: string,
     lockerId: string
   ): Promise<VoucherEntity> {
-    // Load voucher
-    const voucher = await this.voucherRepository.findById(companyId, voucherId);
-    
-    if (!voucher) {
-      throw new Error(`Voucher not found: ${voucherId}`);
-    }
-
-    // Validate can lock
-    if (!voucher.canLock) {
-      throw new Error(
-        `Cannot lock voucher in status "${voucher.status}". ` +
-        `Voucher must be APPROVED before locking.`
-      );
-    }
-
-    // Create locked version
-    const lockedVoucher = voucher.lock(lockerId, new Date());
-
-    // Save
-    const savedVoucher = await this.voucherRepository.save(lockedVoucher);
-
-    return savedVoucher;
+    throw new Error(
+      'LockVoucherUseCase is deprecated in V1. ' +
+      'Use lockedThroughDate in company settings to lock periods.'
+    );
   }
 }

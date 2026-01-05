@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetProfitAndLossUseCase = void 0;
-const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 class GetProfitAndLossUseCase {
     constructor(voucherRepository, permissionChecker) {
         this.voucherRepository = voucherRepository;
@@ -16,10 +15,9 @@ class GetProfitAndLossUseCase {
         const toDateStr = input.toDate.toISOString().split('T')[0];
         const vouchers = await this.voucherRepository.findByDateRange(input.companyId, fromDateStr, toDateStr);
         console.log(`📊 Fetched ${vouchers.length} vouchers from repository`);
-        // Filter only locked/posted vouchers (V2 uses VoucherStatus enum)
-        const postedVouchers = vouchers.filter(v => v.status === VoucherTypes_1.VoucherStatus.LOCKED ||
-            v.status === VoucherTypes_1.VoucherStatus.POSTED);
-        console.log(`🔒 Found ${postedVouchers.length} locked vouchers (filtered from ${vouchers.length} total)`);
+        // V1: Filter only vouchers with financial effect (isPosted = true means postedAt exists)
+        const postedVouchers = vouchers.filter(v => v.isPosted);
+        console.log(`🔒 Found ${postedVouchers.length} posted vouchers (filtered from ${vouchers.length} total)`);
         // Calculate revenue and expenses
         const revenueMap = new Map();
         const expenseMap = new Map();

@@ -75,13 +75,17 @@ class SubmitVoucherUseCase {
             // Confirmation records (empty initially)
             financialApproval: null, custodyConfirmations: [] });
         // Create new entity with updated status and metadata
+        // V1 CRITICAL: postedAt/postedBy are NOT set here. 
+        // They must ONLY be set AFTER ledger write succeeds (by PostVoucherUseCase).
         return new VoucherEntity_1.VoucherEntity(voucher.id, voucher.companyId, voucher.voucherNo, voucher.type, voucher.date, voucher.description, voucher.currency, voucher.baseCurrency, voucher.exchangeRate, voucher.lines, voucher.totalDebit, voucher.totalCredit, targetStatus, approvalMetadata, voucher.createdBy, voucher.createdAt, shouldAutoApprove ? submitterId : undefined, // approvedBy
         shouldAutoApprove ? now : undefined, // approvedAt
         undefined, // rejectedBy
         undefined, // rejectedAt
         undefined, // rejectionReason
-        voucher.lockedBy, voucher.lockedAt, shouldAutoApprove ? submitterId : undefined, // postedBy  
-        shouldAutoApprove ? now : undefined, // postedAt
+        voucher.lockedBy, voucher.lockedAt, undefined, // postedBy - V1: NEVER set here, only after ledger write
+        undefined, // postedAt - V1: NEVER set here, only after ledger write
+        voucher.postingLockPolicy, // postingLockPolicy (preserve existing)
+        voucher.reversalOfVoucherId, // reversalOfVoucherId (preserve existing)
         voucher.reference, now // updatedAt
         );
     }

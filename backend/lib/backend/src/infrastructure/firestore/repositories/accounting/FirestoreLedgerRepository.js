@@ -74,6 +74,7 @@ class FirestoreLedgerRepository {
                     notes: line.notes || null,
                     costCenterId: line.costCenterId || null,
                     metadata: line.metadata || {},
+                    isPosted: true,
                     createdAt: serverTimestamp(),
                 };
                 if (transaction) {
@@ -170,6 +171,12 @@ class FirestoreLedgerRepository {
             let ref = this.col(companyId);
             if (filters.accountId)
                 ref = ref.where('accountId', '==', filters.accountId);
+            // V2 Audit Rule: If filtering by voucherId for core financial logic (like reversals),
+            // we MUST only read posted-only data to avoid reading uncommitted or draft rows.
+            if (filters.voucherId) {
+                ref = ref.where('voucherId', '==', filters.voucherId);
+                ref = ref.where('isPosted', '==', true);
+            }
             if (filters.fromDate)
                 ref = ref.where('date', '>=', filters.fromDate);
             if (filters.toDate)

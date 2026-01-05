@@ -83,9 +83,54 @@ export interface AccountingPolicyConfig {
   // Legacy field (maps to financialApprovalEnabled for backward compatibility)
   approvalRequired: boolean;
   
+  // ========== Mode A Controls (Solo/Flexible Mode) ==========
+  
+  /**
+   * Strict Approval Mode (V3)
+   * When true: System operates in STRICT MODE
+   *   - Approval workflow is enabled
+   *   - Posted vouchers are permanently immutable
+   *   - Corrections ONLY via reversal
+   * When false: System operates in FLEXIBLE MODE
+   *   - Approval can be bypassed (submit = approved)
+   *   - Posted vouchers can be edited/deleted if allowEditDeletePosted is ON
+   * Default: true
+   */
+  strictApprovalMode?: boolean;
+  
+  /**
+   * Auto-Post Enabled (V1)
+   * When true: Vouchers are posted to ledger immediately when approved
+   * When false: Vouchers remain Approved but NOT POSTED until explicit PostToLedger action
+   * Default: true
+   */
+  autoPostEnabled: boolean;
+  
+  /**
+   * Allow Edit/Delete Posted Vouchers (V3)
+   * ONLY APPLIES IN FLEXIBLE MODE (strictApprovalMode=false)
+   * When true: Posted vouchers can be edited (ledger resynced) or deleted (ledger cleared)
+   * When false: Posted vouchers are immutable, corrections via reversal only
+   * Default: false
+   */
+  allowEditDeletePosted?: boolean;
+  
+  /**
+   * @deprecated Use allowEditDeletePosted instead
+   * Legacy field for backward compatibility
+   */
+
+  
   // ========== Period Lock Policy ==========
   periodLockEnabled: boolean;
-  lockedThroughDate?: string; // ISO date (YYYY-MM-DD) - all dates <= this are locked
+  
+  /**
+   * Locked Through Date (V1)
+   * HARD RULE: if voucher.date <= lockedThroughDate => voucher is immutable
+   * This overrides all other settings including allowEditPostedVouchersEnabled
+   * ISO date format: YYYY-MM-DD
+   */
+  lockedThroughDate?: string;
   
   /**
    * Account access control policy configuration
