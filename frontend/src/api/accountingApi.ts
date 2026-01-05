@@ -133,6 +133,10 @@ export const accountingApi = {
     return client.post(`/tenant/accounting/vouchers/${id}/lock`);
   },
 
+  rejectVoucher: (id: string, reason?: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/tenant/accounting/vouchers/${id}/reject`, { reason });
+  },
+
   cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
     return client.post(`/tenant/accounting/vouchers/${id}/cancel`);
   },

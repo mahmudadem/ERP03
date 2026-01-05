@@ -312,6 +312,15 @@ const VouchersListPage: React.FC = () => {
               onRowClick={handleRowClick}
               onEdit={(voucher) => handleRowClick(voucher.id)}
               onDelete={(id) => setDeleteVoucherId(id)}
+              onCancel={async (id) => {
+                try {
+                  await accountingApi.cancelVoucher(id);
+                  invalidateVouchers();
+                  errorHandler.showSuccess('Voucher cancelled successfully');
+                } catch (e: any) {
+                  console.error('Cancel failed:', e);
+                }
+              }}
               onRefresh={() => invalidateVouchers()}
               externalFilters={clientFilters}
               dateRange={dateRange}

@@ -511,6 +511,15 @@ export class PostVoucherUseCase {
         // 5. Finalizing persistence
         await this.voucherRepo.save(postedVoucher);
 
+        // EXTRA: If this is a reversal, officially mark the original as reversed
+        if (postedVoucher.reversalOfVoucherId) {
+          const originalVoucher = await this.voucherRepo.findById(companyId, postedVoucher.reversalOfVoucherId);
+          if (originalVoucher) {
+            const reversedOriginal = originalVoucher.markAsReversed(postedVoucher.id);
+            await this.voucherRepo.save(reversedOriginal);
+          }
+        }
+
         // Log success
         logger.info('POST_SUCCESS', {
           postedVoucherId: postedVoucher.id,
@@ -577,7 +586,7 @@ export class CancelVoucherUseCase {
        await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
     }
     
-    const cancelledVoucher = voucher.reject(userId, new Date(), 'Deleted by user');
+    const cancelledVoucher = voucher.cancel(userId, new Date(), 'Deleted by user');
     await this.voucherRepo.save(cancelledVoucher);
   }
 }

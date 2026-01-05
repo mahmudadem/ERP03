@@ -40,6 +40,7 @@ router.post('/vouchers/:id/post', permissionGuard('accounting.vouchers.post'), V
 router.post('/vouchers/:id/correct', permissionGuard('accounting.vouchers.correct'), VoucherController.correct);
 router.delete('/vouchers/:id', permissionGuard('accounting.vouchers.delete'), VoucherController.delete);
 // router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock); // Disabled - not implemented
+router.post('/vouchers/:id/reject', permissionGuard('accounting.vouchers.approve'), VoucherController.reject);
 router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'), VoucherController.cancel);
 
 // Reports

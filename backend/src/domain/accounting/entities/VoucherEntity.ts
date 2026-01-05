@@ -408,8 +408,12 @@ export class VoucherEntity {
    * Create rejected version (immutable update)
    */
   reject(rejectedBy: string, rejectedAt: Date, reason: string): VoucherEntity {
-    if (!this.isDraft && !this.isApproved) {
-      throw new Error(`Cannot reject voucher in status: ${this.status}`);
+    if (this.isPosted) {
+      throw new Error('Cannot reject a posted voucher. Use reversal instead.');
+    }
+
+    if (this.status !== VoucherStatus.PENDING) {
+      throw new Error(`Cannot reject voucher in status: ${this.status}. Rejection is only allowed for PENDING vouchers.`);
     }
     
     return new VoucherEntity(
@@ -442,6 +446,48 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       this.updatedAt
+    );
+  }
+
+  /**
+   * Create cancelled version (immutable update)
+   * Terminal state for Drafts or Approved vouchers that should not be processed.
+   */
+  cancel(cancelledBy: string, cancelledAt: Date, reason: string = 'Cancelled by user'): VoucherEntity {
+    if (this.isPosted) {
+      throw new Error('Cannot cancel a posted voucher. Use reversal instead.');
+    }
+
+    return new VoucherEntity(
+      this.id,
+      this.companyId,
+      this.voucherNo,
+      this.type,
+      this.date,
+      this.description,
+      this.currency,
+      this.baseCurrency,
+      this.exchangeRate,
+      this.lines,
+      this.totalDebit,
+      this.totalCredit,
+      VoucherStatus.CANCELLED,
+      this.metadata,
+      this.createdBy,
+      this.createdAt,
+      this.approvedBy,
+      this.approvedAt,
+      cancelledBy,
+      cancelledAt,
+      reason,
+      this.lockedBy,
+      this.lockedAt,
+      this.postedBy,
+      this.postedAt,
+      this.postingLockPolicy,
+      this.reversalOfVoucherId,
+      this.reference,
+      new Date() // updatedAt
     );
   }
 
@@ -526,12 +572,12 @@ export class VoucherEntity {
   }
 
   /**
-   * Mark voucher as reversed (immutable update).
-   * Persists the linkage to the reversal voucher on the parent record.
+   * Link a reversal attempt to this voucher.
+   * Tracks that a reversal is in progress but does NOT mark it as finalized.
    * 
    * @param reversalVoucherId - ID of the voucher that reverses this one
    */
-  markAsReversed(reversalVoucherId: string): VoucherEntity {
+  linkReversal(reversalVoucherId: string): VoucherEntity {
     return new VoucherEntity(
       this.id,
       this.companyId,
@@ -546,7 +592,7 @@ export class VoucherEntity {
       this.totalDebit,
       this.totalCredit,
       this.status,
-      { ...this.metadata, reversedByVoucherId: reversalVoucherId, isReversed: true },
+      { ...this.metadata, reversedByVoucherId: reversalVoucherId },
       this.createdBy,
       this.createdAt,
       this.approvedBy,
@@ -561,7 +607,51 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date() // UpdatedAt
+      new Date()
+    );
+  }
+
+  /**
+   * Mark voucher as reversed (finalized immutable update).
+   * Sets isReversed=true. Should only be called when reversal voucher is POSTED.
+   * 
+   * @param reversalVoucherId - ID of the voucher that reverses this one
+   */
+  markAsReversed(reversalVoucherId?: string): VoucherEntity {
+    return new VoucherEntity(
+      this.id,
+      this.companyId,
+      this.voucherNo,
+      this.type,
+      this.date,
+      this.description,
+      this.currency,
+      this.baseCurrency,
+      this.exchangeRate,
+      this.lines,
+      this.totalDebit,
+      this.totalCredit,
+      this.status,
+      { 
+        ...this.metadata, 
+        reversedByVoucherId: reversalVoucherId || this.metadata?.reversedByVoucherId, 
+        isReversed: true 
+      },
+      this.createdBy,
+      this.createdAt,
+      this.approvedBy,
+      this.approvedAt,
+      this.rejectedBy,
+      this.rejectedAt,
+      this.rejectionReason,
+      this.lockedBy,
+      this.lockedAt,
+      this.postedBy,
+      this.postedAt,
+      this.postingLockPolicy,
+      this.reversalOfVoucherId,
+      this.reference,
+      new Date()
     );
   }
 

@@ -251,6 +251,26 @@ export class VoucherController {
     }
   }
 
+  static async reject(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const { reason } = req.body;
+
+      const { RejectVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherApprovalUseCases');
+      const useCase = new RejectVoucherUseCase(diContainer.voucherRepository as any);
+      const voucher = await useCase.execute(companyId, req.params.id, userId, reason || 'Rejected by approver');
+
+      res.json({ 
+        success: true, 
+        data: voucher.toJSON(),
+        message: 'Voucher rejected' 
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async correct(req: Request, res: Response, next: NextFunction) {
     try {
       // SECURITY: userId must come from auth context only

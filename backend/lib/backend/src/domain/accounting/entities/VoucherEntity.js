@@ -315,10 +315,24 @@ class VoucherEntity {
      * Create rejected version (immutable update)
      */
     reject(rejectedBy, rejectedAt, reason) {
-        if (!this.isDraft && !this.isApproved) {
-            throw new Error(`Cannot reject voucher in status: ${this.status}`);
+        if (this.isPosted) {
+            throw new Error('Cannot reject a posted voucher. Use reversal instead.');
+        }
+        if (this.status !== VoucherTypes_1.VoucherStatus.PENDING) {
+            throw new Error(`Cannot reject voucher in status: ${this.status}. Rejection is only allowed for PENDING vouchers.`);
         }
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt);
+    }
+    /**
+     * Create cancelled version (immutable update)
+     * Terminal state for Drafts or Approved vouchers that should not be processed.
+     */
+    cancel(cancelledBy, cancelledAt, reason = 'Cancelled by user') {
+        if (this.isPosted) {
+            throw new Error('Cannot cancel a posted voucher. Use reversal instead.');
+        }
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.CANCELLED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, cancelledBy, cancelledAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date() // updatedAt
+        );
     }
     /**
      * Create posted version (immutable update)

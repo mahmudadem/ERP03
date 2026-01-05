@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw } from 'lucide-react';
+import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -71,6 +71,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const forceStrictMode = React.useMemo(() => {
     return settings?.strictApprovalMode === true || isReversal;
   }, [settings?.strictApprovalMode, isReversal]);
+
+  // V1: nested check (simple version for now to satisfy types)
+  const isNested = React.useMemo(() => {
+    return !!win.data?.reversalOfVoucherId;
+  }, [win.data?.reversalOfVoucherId]);
 
   const refreshVoucher = async () => {
     if (!win.data?.id) return;
@@ -224,6 +229,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       errorHandler.showError(error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!win.data?.id) return;
+    try {
+      await accountingApi.cancelVoucher(win.data.id);
+      errorHandler.showSuccess('Voucher cancelled successfully');
+      setContextMenu(null);
+      // Trigger global refresh so list updates
+      globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
+      // Close window after cancellation as it's a terminal state
+      closeWindow(win.id);
+    } catch (error: any) {
+      errorHandler.showError(error);
     }
   };
 
@@ -530,6 +550,18 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     Reverse & Replace
                   </button>
                 )}
+              </>
+            )}
+            {win.data && (win.data.status?.toLowerCase() === 'draft' || win.data.status?.toLowerCase() === 'approved') && !win.data.postedAt && !isNested && (
+              <>
+                <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
+                <button
+                  onClick={handleCancel}
+                  className="w-full px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors"
+                >
+                  <Ban className="w-4 h-4" />
+                  Cancel / Void Voucher
+                </button>
               </>
             )}
             <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>

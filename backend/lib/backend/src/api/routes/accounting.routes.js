@@ -34,6 +34,7 @@ router.post('/vouchers/:id/post', (0, permissionGuard_1.permissionGuard)('accoun
 router.post('/vouchers/:id/correct', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.correct'), VoucherController_1.VoucherController.correct);
 router.delete('/vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.delete'), VoucherController_1.VoucherController.delete);
 // router.post('/vouchers/:id/lock', permissionGuard('accounting.vouchers.lock'), VoucherController.lock); // Disabled - not implemented
+router.post('/vouchers/:id/reject', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.approve'), VoucherController_1.VoucherController.reject);
 router.post('/vouchers/:id/cancel', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.cancel'), VoucherController_1.VoucherController.cancel);
 // Reports
 router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accounting.reports.profitAndLoss.view'), ReportingController_1.ReportingController.profitAndLoss);

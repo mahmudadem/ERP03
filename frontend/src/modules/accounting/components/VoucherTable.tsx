@@ -6,7 +6,7 @@ import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown, CheckCircle, RotateCcw } from 'lucide-react';
+import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown, CheckCircle, RotateCcw, Ban, RefreshCw } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
@@ -32,6 +32,7 @@ interface Props {
   onDelete?: (id: string) => void;
   onViewPrint?: (id: string) => void;
   onRefresh?: (id: string) => void;
+  onCancel?: (id: string) => void;
   dateRange?: { from: string; to: string };
   externalFilters?: {
     search?: string;
@@ -71,6 +72,7 @@ export const VoucherTable: React.FC<Props> = ({
   onEdit,
   onDelete,
   onViewPrint,
+  onCancel,
   dateRange,
   externalFilters = {}
 }) => {
@@ -213,7 +215,7 @@ export const VoucherTable: React.FC<Props> = ({
   };
   
   // Data Transformation: Group reversals by their parent voucher
-  const { displayVouchers, hasReversalMap } = useMemo(() => {
+  const { displayVouchers, hasReversalMap, isActuallyReversedMap, isReversalRejectedMap } = useMemo(() => {
     // 1. Separate top-level vouchers from reversals
     const topLevel = safeVouchers.filter(v => !v.reversalOfVoucherId);
     const reversals = safeVouchers.filter(v => v.reversalOfVoucherId);
@@ -226,7 +228,21 @@ export const VoucherTable: React.FC<Props> = ({
       return acc;
     }, {} as Record<string, VoucherListItem[]>);
     
-    // 3. Mark which vouchers have completions
+    // 3. Mark which vouchers have POSTED reversals for status badge
+    const isActuallyReversedMap = new Set(
+      Object.entries(reversalGroups)
+        .filter(([pid, group]) => group.some(r => !!r.postedAt))
+        .map(([pid]) => pid)
+    );
+
+    // 3.1 Identify rejected reversals specifically
+    const isReversalRejectedMap = new Set(
+      Object.entries(reversalGroups)
+        .filter(([pid, group]) => group.some(r => r.status.toLowerCase() === 'rejected'))
+        .map(([pid]) => pid)
+    );
+
+    // 3.2 Mark which vouchers have ANY reversal attempt (for icons/indicators)
     const hasReversalMap = new Set(Object.keys(reversalGroups));
     
     // 4. Identify which top-level items match directly or via children
@@ -273,7 +289,7 @@ export const VoucherTable: React.FC<Props> = ({
       }
     });
     
-    return { displayVouchers: result, hasReversalMap };
+    return { displayVouchers: result, hasReversalMap, isActuallyReversedMap, isReversalRejectedMap };
   }, [safeVouchers, sortField, sortDirection, filters, expandedRows]);
   
   // Render sort icon
@@ -511,6 +527,17 @@ export const VoucherTable: React.FC<Props> = ({
                              <RotateCcw size={12} className="text-amber-600" />
                            </span>
                          )}
+                         {!isNested && hasReversalMap.has(voucher.id) && !isActuallyReversedMap.has(voucher.id) && (
+                           isReversalRejectedMap.has(voucher.id) ? (
+                             <span title="Reversal Rejected">
+                               <RefreshCw size={12} className="text-red-500" />
+                             </span>
+                           ) : (
+                             <span title="Reversal Pending Approval">
+                               <RefreshCw size={12} className="text-amber-500 animate-pulse" />
+                             </span>
+                           )
+                         )}
                          <span className={clsx(
                            voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold text-[var(--color-text-primary)]",
                            isNested && "text-xs italic"
@@ -539,7 +566,16 @@ export const VoucherTable: React.FC<Props> = ({
                     <td className="px-6 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center">
                         {(() => {
-                          const isReversed = !isNested && (hasReversalMap.has(voucher.id) || !!voucher.metadata?.reversedByVoucherId || !!voucher.metadata?.isReversed);
+                          // Smart Reversal Status:
+                          // 1. If we see the child reversal in the list (hasReversalMap), we trust the computed 'isActuallyReversedMap' 
+                          //    (which checks if child is posted). We IGNORE the metadata flag because it might be stuck as true from old logic.
+                          // 2. If we DON'T see the child (pagination), we fall back to metadata.
+                          const hasVisibleReversal = hasReversalMap.has(voucher.id);
+                          const isReversed = !isNested && (
+                            hasVisibleReversal 
+                              ? isActuallyReversedMap.has(voucher.id) 
+                              : !!voucher.metadata?.isReversed
+                          );
                           const isPosted = !!voucher.postedAt;
                           
                           let label = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
@@ -616,6 +652,15 @@ export const VoucherTable: React.FC<Props> = ({
                         >
                           <Trash2 size={16} />
                         </button>
+                        {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
+                            className="hover:text-amber-600 transition-colors p-1"
+                            title="Cancel / Void Voucher"
+                          >
+                            <Ban size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
