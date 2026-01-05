@@ -431,6 +431,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         else if (codeLower.includes('receipt')) backendType = 'receipt';
         else if (codeLower.includes('opening')) backendType = 'opening_balance';
       }
+
+      // 5. REVERSAL PROTECTION: If this voucher is already identified as a reversal (e.g., from backend or correction flow),
+      // do NOT let the form definition override it back to 'journal_entry' or 'payment'.
+      if (formData.type === 'reversal' || formData.reversalOfVoucherId) {
+        backendType = 'reversal';
+      }
       
       // Map rows to backend VoucherLine format
       const backendLines = rows
@@ -1408,7 +1414,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         {/* Line Items Table (if multi-line and not already in BODY) */}
         {!bodyHasLineItems() && renderLineItems()}
         
-        {/* Extra Section (if defined) */}
+         {/* Extra Section (if defined) */}
         {renderSection('EXTRA', 'Additional Information')}
 
         {/* Action Buttons - from config or default */}

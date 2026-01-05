@@ -525,6 +525,46 @@ export class VoucherEntity {
     );
   }
 
+  /**
+   * Mark voucher as reversed (immutable update).
+   * Persists the linkage to the reversal voucher on the parent record.
+   * 
+   * @param reversalVoucherId - ID of the voucher that reverses this one
+   */
+  markAsReversed(reversalVoucherId: string): VoucherEntity {
+    return new VoucherEntity(
+      this.id,
+      this.companyId,
+      this.voucherNo,
+      this.type,
+      this.date,
+      this.description,
+      this.currency,
+      this.baseCurrency,
+      this.exchangeRate,
+      this.lines,
+      this.totalDebit,
+      this.totalCredit,
+      this.status,
+      { ...this.metadata, reversedByVoucherId: reversalVoucherId, isReversed: true },
+      this.createdBy,
+      this.createdAt,
+      this.approvedBy,
+      this.approvedAt,
+      this.rejectedBy,
+      this.rejectedAt,
+      this.rejectionReason,
+      this.lockedBy,
+      this.lockedAt,
+      this.postedBy,
+      this.postedAt,
+      this.postingLockPolicy,
+      this.reversalOfVoucherId,
+      this.reference,
+      new Date() // UpdatedAt
+    );
+  }
+
   // V1: lock() method removed. Period locking is enforced via lockedThroughDate in use cases.
 
   /**

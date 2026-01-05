@@ -12,6 +12,7 @@ import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManag
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
+import { clsx } from 'clsx';
 import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
 import { VoucherCorrectionModal } from './VoucherCorrectionModal';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -58,6 +59,18 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<'REVERSE_ONLY' | 'REVERSE_AND_REPLACE'>('REVERSE_ONLY');
+
+  const isReversal = React.useMemo(() => {
+    return !!win.data?.reversalOfVoucherId || win.data?.type?.toLowerCase() === 'reversal';
+  }, [win.data?.reversalOfVoucherId, win.data?.type]);
+
+  const isAlreadyReversed = React.useMemo(() => {
+    return !!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed;
+  }, [win.data?.metadata?.reversedByVoucherId, win.data?.metadata?.isReversed]);
+
+  const forceStrictMode = React.useMemo(() => {
+    return settings?.strictApprovalMode === true || isReversal;
+  }, [settings?.strictApprovalMode, isReversal]);
 
   const refreshVoucher = async () => {
     if (!win.data?.id) return;
@@ -248,14 +261,19 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!win.data?.status) return false;
     const status = win.data.status.toLowerCase();
     
-    // In STRICT mode, many statuses are read-only
-    if (settings?.strictApprovalMode === true) {
-      return ['posted', 'approved', 'locked'].includes(status);
+    // Any voucher that is already posted or locked is read-only
+    const finalizedStatuses = ['posted', 'locked', 'void', 'cancelled', 'reversed'];
+    if (finalizedStatuses.includes(status) || win.data.postedAt) {
+      return true;
     }
     
-    // In SIMPLE mode (default), only locked is read-only
-    return status === 'locked';
-  }, [win.data?.status, settings?.strictApprovalMode]);
+    // In STRICT mode, 'approved' is also read-only
+    if (settings?.strictApprovalMode === true) {
+      return status === 'approved';
+    }
+    
+    return false;
+  }, [win.data?.status, win.data?.postedAt, settings?.strictApprovalMode]);
 
   useEffect(() => {
     if (!settingsLoading && settings) {
@@ -333,7 +351,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               </span>
               
               {/* V1: Posting Badge (derived from postedAt) */}
-              {win.data.status.toLowerCase() === 'approved' && (
+              {(win.data.status.toLowerCase() === 'approved' || win.data.status.toLowerCase() === 'posted') && (
                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
                   win.data.postedAt 
                     ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
@@ -478,29 +496,35 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               Print
             </button>
             
-            {/* Show correction options for posted or approved vouchers */}
-            {win.data && (win.data.status?.toLowerCase() === 'posted' || win.data.status?.toLowerCase() === 'approved') && (
+            {/* Show correction options for posted/approved vouchers that aren't already reversed */}
+            {win.data && (win.data.status?.toLowerCase() === 'posted' || win.data.status?.toLowerCase() === 'approved') && !isReversal && !isAlreadyReversed && (
               <>
                 <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
                 <button
                   onClick={() => {
+                    const met = win.data?.metadata;
+                    if (met?.reversedByVoucherId || met?.isReversed) return;
                     setCorrectionMode('REVERSE_ONLY');
                     setShowCorrectionModal(true);
                     setContextMenu(null);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+                  disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
+                  className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                  Reverse Voucher
+                  {win.data?.metadata?.reversedByVoucherId || win.data?.metadata?.isReversed ? 'Already Reversed' : 'Reverse Voucher'}
                 </button>
                 {settings?.strictApprovalMode === false && (
                   <button
                     onClick={() => {
+                      const met = win.data?.metadata;
+                      if (met?.reversedByVoucherId || met?.isReversed) return;
                       setCorrectionMode('REVERSE_AND_REPLACE');
                       setShowCorrectionModal(true);
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+                    disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
+                    className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)]" />
                     Reverse & Replace
@@ -643,26 +667,30 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           )}
 
           {(() => {
-            const status = win.data?.status?.toLowerCase();
-            const isReversal = !!win.data?.reversalOfVoucherId || win.data?.type === 'REVERSAL';
-            const hasReversedFlag = win.data?.metadata?.isReversed === true; // In case we added this flag
-            
             if (isVoucherReadOnly) {
-              // FOR IMMUTABLE VOUCHERS: Show Reverse instead of Save
-              // (Don't show for reversals themselves or if already reversed)
-              if (isReversal || hasReversedFlag) return null;
+              const isDisabled = isReversal || isAlreadyReversed;
 
               return (
                 <button
                   onClick={() => {
+                    if (isDisabled) return;
                     setCorrectionMode('REVERSE_ONLY');
                     setShowCorrectionModal(true);
                   }}
-                  className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-amber-600 text-white rounded-lg hover:bg-amber-700 shadow-sm transition-all active:scale-[0.98]"
-                  title="This voucher is locked. Create a reversal to correct it."
+                  disabled={isDisabled}
+                  className={clsx(
+                    "flex items-center gap-2 px-6 py-2 text-xs font-bold rounded-lg shadow-sm transition-all active:scale-[0.98]",
+                    isDisabled 
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" 
+                      : "bg-amber-600 text-white hover:bg-amber-700"
+                  )}
+                  title={isDisabled 
+                    ? (isReversal ? "This is a reversal voucher and cannot be reversed again." : "This voucher has already been reversed.")
+                    : "This voucher is locked. Create a reversal to correct it."
+                  }
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Reverse Voucher
+                  {isAlreadyReversed ? 'Already Reversed' : (isReversal ? 'Reversal' : 'Reverse Voucher')}
                 </button>
               );
             }
@@ -674,7 +702,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
                   settingsLoading 
                     ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
-                    : settings?.strictApprovalMode === true
+                    : forceStrictMode
                       ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
                       : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
                 }`}
@@ -683,13 +711,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 {isSaving || settingsLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
+                    {settingsLoading ? 'Loading...' : (forceStrictMode ? 'Saving...' : 'Posting...')}
                   </>
                 ) : (
                   <>
-                    {settings?.strictApprovalMode !== true ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {!forceStrictMode ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                     {(() => {
-                      if (settings?.strictApprovalMode !== true) {
+                      if (!forceStrictMode) {
                         return win.data?.postedAt ? 'Update & Post' : 'Save & Post';
                       }
                       const s = win.data?.status?.toLowerCase();
@@ -702,8 +730,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             );
           })()}
           
-          {/* Submit button only shown when strict mode is explicitly true */}
-          {!settingsLoading && settings?.strictApprovalMode === true && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
+          {/* Submit button shown when strict mode is true OR it's a reversal */}
+          {!settingsLoading && forceStrictMode && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
             <button
             onClick={handleSubmit}
             className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
@@ -877,11 +905,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       originalVoucher={win.data}
       initialMode={correctionMode}
       onSuccess={(result) => {
-        // 1. Refresh voucher data to show reversed status locally
+        // 1. Update local window data with reversal linkage
         updateWindowData(win.id, { 
           ...win.data, 
-          status: 'reversed',
-          postedAt: null // Correction negates posting
+          // Inject reversal info into metadata so UI buttons respond immediately
+          metadata: {
+            ...win.data?.metadata,
+            reversedByVoucherId: result.reverseVoucherId,
+            isReversed: true
+          }
         });
         
         // 2. TRIGGER GLOBAL REFRESH for the list page

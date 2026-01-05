@@ -47,6 +47,9 @@ class PrismaVoucherRepository {
     async countByFormId(companyId, formId) {
         throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
     }
+    async findByReversalOfVoucherId(companyId, originalVoucherId) {
+        throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+    }
 }
 exports.PrismaVoucherRepository = PrismaVoucherRepository;
 //# sourceMappingURL=PrismaVoucherRepository.js.map

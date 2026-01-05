@@ -6,7 +6,7 @@ import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown } from 'lucide-react';
+import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown, CheckCircle, RotateCcw } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
@@ -501,8 +501,22 @@ export const VoucherTable: React.FC<Props> = ({
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
                       <div className="flex items-center gap-2">
-                         {voucher.voucherNo || voucher.id.slice(-8)}
-                         {isNested && <Badge variant="warning" className="text-[9px] px-1 py-0 shadow-sm">REV</Badge>}
+                         {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
+                           <span title="Audit Locked">
+                             <Lock size={12} className="text-amber-600" />
+                           </span>
+                         )}
+                         {isNested && (
+                           <span title="Reversal">
+                             <RotateCcw size={12} className="text-amber-600" />
+                           </span>
+                         )}
+                         <span className={clsx(
+                           voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold text-[var(--color-text-primary)]",
+                           isNested && "text-xs italic"
+                         )}>
+                            {voucher.voucherNo || voucher.id.slice(-8)}
+                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
@@ -523,26 +537,40 @@ export const VoucherTable: React.FC<Props> = ({
                       {creditAccountName}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Badge 
-                          variant={getStatusVariant(voucher.status)}
-                          className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm"
-                          title={voucher.status.toUpperCase()}
-                        >
-                          {voucher.status === 'approved' ? 'A' : (voucher.status === 'pending' ? 'P' : (voucher.status === 'draft' ? 'D' : (voucher.status === 'cancelled' || voucher.status === 'rejected' ? 'C' : '?')))}
-                        </Badge>
-                        
-                        {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
-                          <Badge variant="info" className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm" title="Audit Locked (Strict Mode)">
-                            L
-                          </Badge>
-                        )}
-                        
-                        {!isNested && hasReversalMap.has(voucher.id) && (
-                          <Badge variant="warning" className="w-6 h-6 flex items-center justify-center p-0 rounded-full text-[10px] font-bold shadow-sm bg-amber-500 text-white border-none" title="Voucher has been Reversed">
-                            R
-                          </Badge>
-                        )}
+                      <div className="flex items-center justify-center">
+                        {(() => {
+                          const isReversed = !isNested && (hasReversalMap.has(voucher.id) || !!voucher.metadata?.reversedByVoucherId || !!voucher.metadata?.isReversed);
+                          const isPosted = !!voucher.postedAt;
+                          
+                          let label = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
+                          let variant: any = getStatusVariant(voucher.status);
+                          let Icon = null;
+
+                          if (isReversed) {
+                            label = 'Reversed';
+                            variant = 'warning';
+                            Icon = RotateCcw;
+                          } else if (isPosted) {
+                            label = 'Posted';
+                            variant = 'success';
+                            Icon = CheckCircle;
+                          }
+
+                          return (
+                            <Badge 
+                              variant={variant}
+                              className={clsx(
+                                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
+                                (isPosted && !isReversed) && "bg-emerald-600 text-white border-none",
+                                isReversed && "bg-amber-500 text-white border-none"
+                              )}
+                              title={voucher.postedAt ? `Posted on ${formatCompanyDate(voucher.postedAt, settings)}` : label}
+                            >
+                              {Icon && <Icon size={10} className="stroke-[3px]" />}
+                              {label}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)] text-right font-mono font-semibold">
@@ -561,13 +589,6 @@ export const VoucherTable: React.FC<Props> = ({
                           title="View Official / Print"
                         >
                           <Printer size={16} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onRowClick?.(voucher.id); }}
-                          className="hover:text-primary-600 transition-colors p-1"
-                          title="View Details"
-                        >
-                          <Eye size={16} />
                         </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}

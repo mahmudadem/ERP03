@@ -132,6 +132,11 @@ export class ReverseAndReplaceVoucherUseCase {
       // Save reversal as DRAFT first
       const savedReversal = await this.voucherRepo.save(reversalVoucher);
       
+      // PERSIST LINKAGE: Mark the original voucher as reversed
+      // This ensures the original record always knows it has been corrected
+      const reversedOriginal = originalVoucher.markAsReversed(reversalVoucherId);
+      await this.voucherRepo.save(reversedOriginal);
+      
       // DEEP INTEGRATION: Submit reversal for approval (Governance: Formal Gates)
       // Using SubmitVoucherUseCase to evaluate policies, custodians, and managers
       if (!this.policyConfigProvider) {

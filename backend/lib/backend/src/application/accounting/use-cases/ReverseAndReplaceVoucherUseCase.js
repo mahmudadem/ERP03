@@ -52,9 +52,10 @@ class ReverseAndReplaceVoucherUseCase {
                 throw new Error(`Cannot reverse voucher in status "${originalVoucher.status}". Only POSTED vouchers (those with financial effect) can be reversed.`);
             }
             // Step 2: Check idempotency - has this voucher already been reversed?
-            const existingReversal = await this.findExistingReversal(companyId, originalVoucherId);
+            // Use the new targeted query for reversal check
+            const existingReversal = await this.voucherRepo.findByReversalOfVoucherId(companyId, originalVoucherId);
             if (existingReversal) {
-                // Already reversed - return existing correction
+                // Already reversed - return existing correction status
                 const existingReplacement = await this.findExistingReplacement(companyId, originalVoucherId);
                 return {
                     reverseVoucherId: existingReversal.id,
@@ -62,6 +63,7 @@ class ReverseAndReplaceVoucherUseCase {
                     correctionGroupId: existingReversal.correctionGroupId || 'unknown',
                     summary: {
                         reversalPosted: existingReversal.isPosted,
+                        reversalStatus: existingReversal.status,
                         replacementCreated: !!existingReplacement,
                         replacementPosted: (existingReplacement === null || existingReplacement === void 0 ? void 0 : existingReplacement.isPosted) || false
                     }
@@ -94,6 +96,10 @@ class ReverseAndReplaceVoucherUseCase {
             const reversalVoucher = originalVoucher.createReversal(reversalVoucherId, reversalDate, correctionGroupId, userId, ledgerLines, options.reason);
             // Save reversal as DRAFT first
             const savedReversal = await this.voucherRepo.save(reversalVoucher);
+            // PERSIST LINKAGE: Mark the original voucher as reversed
+            // This ensures the original record always knows it has been corrected
+            const reversedOriginal = originalVoucher.markAsReversed(reversalVoucherId);
+            await this.voucherRepo.save(reversedOriginal);
             // DEEP INTEGRATION: Submit reversal for approval (Governance: Formal Gates)
             // Using SubmitVoucherUseCase to evaluate policies, custodians, and managers
             if (!this.policyConfigProvider) {
@@ -142,19 +148,14 @@ class ReverseAndReplaceVoucherUseCase {
         });
     }
     /**
-     * Find existing reversal for a voucher (idempotency check)
-     */
-    async findExistingReversal(companyId, originalVoucherId) {
-        // Structural check using the new field
-        const vouchers = await this.voucherRepo.findByCompany(companyId);
-        return vouchers.find(v => v.reversalOfVoucherId === originalVoucherId);
-    }
-    /**
      * Find existing replacement for a voucher
      */
     async findExistingReplacement(companyId, originalVoucherId) {
+        // Replacement is identified by metadata.replacesVoucherId
+        // Since this is less frequent, we keep the collection find for now, 
+        // but in a real high-scale system, this should also be a targeted repo method.
         const vouchers = await this.voucherRepo.findByCompany(companyId);
-        return vouchers.find(v => v.metadata.replacesVoucherId === originalVoucherId);
+        return vouchers.find(v => { var _a; return ((_a = v.metadata) === null || _a === void 0 ? void 0 : _a.replacesVoucherId) === originalVoucherId; });
     }
 }
 exports.ReverseAndReplaceVoucherUseCase = ReverseAndReplaceVoucherUseCase;

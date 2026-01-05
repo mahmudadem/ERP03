@@ -113,6 +113,15 @@ class FirestoreVoucherRepositoryV2 {
             return fallbackSnap.empty ? 0 : 1; // Return at least 1 if found
         }
     }
+    async findByReversalOfVoucherId(companyId, originalVoucherId) {
+        const collection = this.getCollection(companyId);
+        const query = collection.where('reversalOfVoucherId', '==', originalVoucherId).limit(1);
+        const snapshot = await query.get();
+        if (snapshot.empty) {
+            return null;
+        }
+        return VoucherEntity_1.VoucherEntity.fromJSON(snapshot.docs[0].data());
+    }
 }
 exports.FirestoreVoucherRepositoryV2 = FirestoreVoucherRepositoryV2;
 //# sourceMappingURL=FirestoreVoucherRepositoryV2.js.map

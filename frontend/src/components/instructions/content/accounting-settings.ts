@@ -8,7 +8,7 @@
  * - Warnings for irreversible actions
  */
 
-import { PageInstructions } from './types';
+import { PageInstructions } from '../types';
 
 export const accountingSettingsInstructions: PageInstructions = {
   pageId: 'accounting-settings',
