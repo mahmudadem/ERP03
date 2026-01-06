@@ -13,7 +13,25 @@ import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
 import { useAccounts } from '../../../context/AccountsContext';
 import { VoucherFormConfig } from '../voucher-wizard/types';
-import { Info } from 'lucide-react';
+import { Info, GripVertical } from 'lucide-react';
+
+const STORAGE_KEY = 'erp_voucher_list_column_widths';
+
+const DEFAULT_COLUMN_WIDTHS = {
+  expand: 48,
+  date: 128,
+  number: 160,
+  type: 128,
+  name: 192,
+  debitAccount: 180,
+  creditAccount: 180,
+  creationMode: 80,
+  approvedAt: 128,
+  status: 96,
+  amount: 128,
+  ref: 128,
+  actions: 96
+};
 
 interface Props {
   vouchers: VoucherListItem[];
@@ -100,7 +118,91 @@ export const VoucherTable: React.FC<Props> = ({
   const [sortField, setSortField] = useState<keyof VoucherListItem>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
-  // Filter state
+  // Resizable Columns state
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        return { ...DEFAULT_COLUMN_WIDTHS, ...JSON.parse(saved) };
+      } catch (e) {
+        return DEFAULT_COLUMN_WIDTHS;
+      }
+    }
+    return DEFAULT_COLUMN_WIDTHS;
+  });
+
+  const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!resizingRef.current || !tableContainerRef.current) return;
+    const { column, startX, startWidth } = resizingRef.current;
+    const deltaX = e.clientX - startX;
+    
+    let newWidth = Math.max(50, startWidth + deltaX);
+    
+    // Boundary check: Total width should not exceed container width
+    const containerWidth = tableContainerRef.current.clientWidth;
+    const otherColumnsWidth = Object.entries(columnWidths)
+      .filter(([key]) => key !== column)
+      .reduce((sum, [, width]) => sum + width, 0);
+      
+    if (newWidth + otherColumnsWidth > containerWidth) {
+      newWidth = containerWidth - otherColumnsWidth;
+    }
+
+    if (newWidth < 50) newWidth = 50;
+    
+    setColumnWidths(prev => ({
+      ...prev,
+      [column]: newWidth
+    }));
+  }, [columnWidths]);
+
+  const handleResizeEnd = useCallback(() => {
+    resizingRef.current = null;
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+    document.body.style.cursor = '';
+  }, [handleResizeMove]);
+
+  const handleResizeStart = useCallback((column: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = {
+      column,
+      startX: e.clientX,
+      startWidth: columnWidths[column] || 100
+    };
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+    document.body.style.cursor = 'col-resize';
+  }, [columnWidths, handleResizeMove, handleResizeEnd]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  // Normalize widths on mount if they exceed container width
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      const containerWidth = tableContainerRef.current.clientWidth;
+      const totalWidth = Object.values(columnWidths).reduce((a, b) => a + b, 0);
+      if (totalWidth > containerWidth && containerWidth > 0) {
+        const ratio = containerWidth / totalWidth;
+        setColumnWidths(prev => {
+          const scaled = { ...prev };
+          Object.keys(scaled).forEach(key => {
+            scaled[key] = Math.max(50, Math.floor(scaled[key] * ratio));
+          });
+          return scaled;
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   const [filters, setFilters] = useState<ColumnFilter>({});
   const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -401,14 +503,17 @@ export const VoucherTable: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto relative">
-        <table className="w-full divide-y divide-[var(--color-border)] table-fixed min-w-[1200px]">
+      <div ref={tableContainerRef} className="overflow-x-auto relative max-w-full">
+        <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ width: '100%', maxWidth: '100%' }}>
           <thead className="bg-[var(--color-bg-secondary)] select-none">
             <tr className="divide-x divide-[var(--color-border)]/50">
-              <th className="w-12 px-2 py-3"></th>
+              <th className="px-2 py-3" style={{ width: columnWidths.expand }}></th>
               
               {/* Date Header */}
-              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
+                style={{ width: columnWidths.date }}
+              >
                 <div className="flex items-center gap-2">
                   <span>Date</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -440,9 +545,13 @@ export const VoucherTable: React.FC<Props> = ({
                     </div>
                   </div>
                 )}
+                <div onMouseDown={(e) => handleResizeStart('date', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
               </th>
 
-              <th className="w-40 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
+                style={{ width: columnWidths.number }}
+              >
                 <div className="flex items-center gap-2">
                   <span>Number</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -465,10 +574,14 @@ export const VoucherTable: React.FC<Props> = ({
                     />
                   </div>
                 )}
+                <div onMouseDown={(e) => handleResizeStart('number', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
               </th>
 
               {/* Type Header */}
-              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
+                style={{ width: columnWidths.type }}
+              >
                 <div className="flex items-center gap-2">
                   <span>Type</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -496,16 +609,35 @@ export const VoucherTable: React.FC<Props> = ({
                     </div>
                   </div>
                 )}
+                <div onMouseDown={(e) => handleResizeStart('type', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
               </th>
 
-              <th className="w-48 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Voucher Name</th>
-              <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Debit Account</th>
-              <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Credit Account</th>
-              <th className="w-20 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">C-Mode</th>
-              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Approved At</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.name }}>
+                Voucher Name
+                <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.debitAccount }}>
+                Debit Account
+                <div onMouseDown={(e) => handleResizeStart('debitAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.creditAccount }}>
+                Credit Account
+                <div onMouseDown={(e) => handleResizeStart('creditAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.creationMode }}>
+                C-Mode
+                <div onMouseDown={(e) => handleResizeStart('creationMode', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.approvedAt }}>
+                Approved At
+                <div onMouseDown={(e) => handleResizeStart('approvedAt', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
               
               {/* Status Header */}
-              <th className="w-24 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
+              <th 
+                className="px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
+                style={{ width: columnWidths.status }}
+              >
                 <div className="flex items-center justify-center gap-2">
                   <span>Status</span>
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
@@ -542,7 +674,6 @@ export const VoucherTable: React.FC<Props> = ({
                          size="sm" 
                          className="text-xs px-2 py-1 h-auto"
                          onClick={() => {
-                            window.alert('Filter Applied: ' + JSON.stringify(filters.statuses || 'None'));
                             setActiveFilterColumn(null);
                          }}
                        >
@@ -551,11 +682,21 @@ export const VoucherTable: React.FC<Props> = ({
                     </div>
                   </div>
                 )}
+                <div onMouseDown={(e) => handleResizeStart('status', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
               </th>
 
-              <th className="w-32 px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Amount</th>
-              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Ref</th>
-              <th className="w-24 px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.amount }}>
+                Amount
+                <div onMouseDown={(e) => handleResizeStart('amount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.ref }}>
+                Ref
+                <div onMouseDown={(e) => handleResizeStart('ref', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.actions }}>
+                Actions
+                <div onMouseDown={(e) => handleResizeStart('actions', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+              </th>
             </tr>
           </thead>
           <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)] transition-colors duration-300">
