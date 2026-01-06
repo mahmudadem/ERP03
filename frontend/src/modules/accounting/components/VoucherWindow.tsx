@@ -16,6 +16,8 @@ import { clsx } from 'clsx';
 import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
 import { VoucherCorrectionModal } from './VoucherCorrectionModal';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { AccountingPolicyConfig } from '../../../api/accountingApi';
+import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 
 interface VoucherWindowProps {
   win: VoucherWindowType;
@@ -59,6 +61,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<'REVERSE_ONLY' | 'REVERSE_AND_REPLACE'>('REVERSE_ONLY');
+  const [policyConfig, setPolicyConfig] = useState<AccountingPolicyConfig | null>(null);
+  const [policyLoading, setPolicyLoading] = useState(true);
 
   const isReversal = React.useMemo(() => {
     return !!win.data?.reversalOfVoucherId || win.data?.type?.toLowerCase() === 'reversal';
@@ -122,6 +126,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     setResizeType(type);
     focusWindow(win.id);
   };
+
+  useEffect(() => {
+    const fetchPolicy = async () => {
+      setPolicyLoading(true);
+      try {
+        const config = await accountingApi.getPolicyConfig();
+        setPolicyConfig(config);
+      } catch (error) {
+        console.error('[VoucherWindow] Failed to fetch policy config:', error);
+      } finally {
+        setPolicyLoading(false);
+      }
+    };
+    fetchPolicy();
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -194,6 +213,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     setIsSaving(true);
     try {
       const formData = rendererRef.current.getData();
+      
+      // Inject creation mode for audit transparency
+      formData.metadata = {
+        ...formData.metadata,
+        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+      };
+
       await onSave(win.id, formData);
 
       // Success! Reset dirty state
@@ -220,6 +246,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     
     try {
       const formData = rendererRef.current.getData();
+
+      // Inject creation mode for audit transparency
+      formData.metadata = {
+        ...formData.metadata,
+        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+      };
+
       await onSubmit(win.id, formData);
       
       // Success! Reset dirty state to prevent "Unsaved Changes" prompt
@@ -281,19 +314,33 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!win.data?.status) return false;
     const status = win.data.status.toLowerCase();
     
-    // Any voucher that is already posted or locked is read-only
-    const finalizedStatuses = ['posted', 'locked', 'void', 'cancelled', 'reversed'];
-    if (finalizedStatuses.includes(status) || win.data.postedAt) {
-      return true;
+    // Rule 1: CANCELLED vouchers are always read-only
+    if (status === 'cancelled' || status === 'void') return true;
+
+    // Rule 2: Non-posted vouchers are editable (Workflow phase)
+    if (!win.data.postedAt) {
+       // In STRICT mode, 'approved' is also read-only (waiting for auto-post or manual post)
+       const isStrictNow = policyConfig ? policyConfig.strictApprovalMode : settings?.strictApprovalMode;
+       if (isStrictNow && status === 'approved') return true;
+       return false; 
     }
-    
-    // In STRICT mode, 'approved' is also read-only
-    if (settings?.strictApprovalMode === true) {
-      return status === 'approved';
-    }
-    
+
+    // Rule 3: STRICT FOREVER - Born and posted under strict policy
+    if (win.data.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED) return true;
+
+    // Rule 4: CURRENT SYSTEM LOCK
+    // If system is in Strict mode, all posted vouchers (even Flexible ones) are locked
+    const isStrictNow = policyConfig ? policyConfig.strictApprovalMode : settings?.strictApprovalMode;
+    if (isStrictNow) return true;
+
+    // Rule 5: FLEXIBLE MODE - Check the module-specific toggle
+    // If we have policyConfig, we trust its allowEditDeletePosted toggle.
+    const allowEdit = policyConfig ? policyConfig.allowEditDeletePosted : false;
+    if (!allowEdit) return true;
+
+    // FLEXIBLE + toggle ON + FLEXIBLE_LOCKED voucher -> Edit allowed
     return false;
-  }, [win.data?.status, win.data?.postedAt, settings?.strictApprovalMode]);
+  }, [win.data, settings, policyConfig]);
 
   useEffect(() => {
     if (!settingsLoading && settings) {

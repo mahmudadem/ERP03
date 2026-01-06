@@ -354,14 +354,23 @@ class VoucherEntity {
         );
     }
     /**
-     * Mark voucher as reversed (immutable update).
-     * Persists the linkage to the reversal voucher on the parent record.
+     * Link a reversal attempt to this voucher.
+     * Tracks that a reversal is in progress but does NOT mark it as finalized.
+     *
+     * @param reversalVoucherId - ID of the voucher that reverses this one
+     */
+    linkReversal(reversalVoucherId) {
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date());
+    }
+    /**
+     * Mark voucher as reversed (finalized immutable update).
+     * Sets isReversed=true. Should only be called when reversal voucher is POSTED.
      *
      * @param reversalVoucherId - ID of the voucher that reverses this one
      */
     markAsReversed(reversalVoucherId) {
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId, isReversed: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date() // UpdatedAt
-        );
+        var _a;
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId || ((_a = this.metadata) === null || _a === void 0 ? void 0 : _a.reversedByVoucherId), isReversed: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date());
     }
     // V1: lock() method removed. Period locking is enforced via lockedThroughDate in use cases.
     /**

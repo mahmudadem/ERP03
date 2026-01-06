@@ -79,6 +79,21 @@ export interface CorrectionResponse {
   };
 }
 
+export interface AccountingPolicyConfig {
+  financialApprovalEnabled: boolean;
+  custodyConfirmationEnabled: boolean;
+  strictApprovalMode: boolean;
+  allowEditDeletePosted: boolean;
+  autoPostEnabled: boolean;
+  approvalRequired: boolean;
+  periodLockEnabled: boolean;
+  lockedThroughDate?: string;
+  accountAccessEnabled: boolean;
+  policyErrorMode: 'FAIL_FAST' | 'AGGREGATE';
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 export const accountingApi = {
   
   getAccounts: (): Promise<AccountDTO[]> => {
@@ -156,5 +171,9 @@ export const accountingApi = {
     params.append('from', fromDate);
     params.append('to', toDate);
     return client.get(`/tenant/accounting/reports/profit-loss?${params.toString()}`);
+  },
+
+  getPolicyConfig: (): Promise<AccountingPolicyConfig> => {
+    return client.get('/tenant/accounting/policy-config');
   }
 };

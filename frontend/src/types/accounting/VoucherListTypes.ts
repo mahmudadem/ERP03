@@ -23,6 +23,8 @@ export interface VoucherListItem {
   // V1: Posting indicator (financial effect)
   postedAt?: string;  // ISO String - when ledger entries were created
   postedBy?: string;  // User who triggered posting
+  approvedAt?: string; // ISO String - when voucher was approved
+  approvedBy?: string; // User who approved the voucher
   // V2: Audit Lock Policy
   postingLockPolicy?: PostingLockPolicy;
   // Form tracking

@@ -89,7 +89,8 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         typeId: (voucherType as any).baseType || voucherType.id,
         metadata: {
           ...(formData.metadata || {}),
-          formId: voucherType.id
+          formId: voucherType.id,
+          creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
         },
         status: typeof statusOverride === 'string' ? statusOverride : (initialData ? initialData.status : 'draft')
       };

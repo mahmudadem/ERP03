@@ -501,6 +501,8 @@ export const VoucherTable: React.FC<Props> = ({
               <th className="w-48 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Voucher Name</th>
               <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Debit Account</th>
               <th className="w-[15%] px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Credit Account</th>
+              <th className="w-20 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">C-Mode</th>
+              <th className="w-32 px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Approved At</th>
               
               {/* Status Header */}
               <th className="w-24 px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative">
@@ -666,6 +668,34 @@ export const VoucherTable: React.FC<Props> = ({
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)] truncate" title={creditAccountName}>
                       {creditAccountName}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-center">
+                      {(() => {
+                        const mode = voucher.metadata?.creationMode || 
+                                    (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'STRICT' : 
+                                     voucher.postingLockPolicy === PostingLockPolicy.FLEXIBLE_LOCKED ? 'FLEXIBLE' : '-');
+                        
+                        if (mode === '-') return <span className="text-gray-400">-</span>;
+
+                        return (
+                          <span className={clsx(
+                            "inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tight",
+                            mode === 'STRICT' ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                          )}>
+                            {mode}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)]">
+                      {voucher.approvedAt ? (
+                        <div className="flex flex-col">
+                          <span>{formatCompanyDate(voucher.approvedAt, settings)}</span>
+                          <span className="text-[10px] opacity-70">{formatCompanyTime(voucher.approvedAt, settings)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 font-mono">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center">

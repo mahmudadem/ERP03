@@ -53,8 +53,30 @@ export const CompanySettingsProvider: React.FC<{ children: React.ReactNode }> = 
     } finally {
       // Always fetch fresh truth from server to ensure consistency
       await refresh();
+      
+      // BROADCAST: Notify other tabs that settings have changed
+      try {
+        const bc = new BroadcastChannel('erp_company_settings_sync');
+        bc.postMessage({ type: 'SETTINGS_UPDATED', companyId });
+        bc.close(); // Clean up immediate channel
+      } catch (e) {
+        console.warn('[CompanySettingsContext] Broadcast failed', e);
+      }
     }
   };
+
+  useEffect(() => {
+    // LISTEN: For settings updates from other tabs
+    const bc = new BroadcastChannel('erp_company_settings_sync');
+    bc.onmessage = (event) => {
+      if (event.data?.type === 'SETTINGS_UPDATED' && event.data?.companyId === companyId) {
+        console.debug('[CompanySettingsContext] Received sync signal, refreshing...');
+        refresh();
+      }
+    };
+
+    return () => bc.close();
+  }, [companyId, refresh]);
 
   useEffect(() => {
     console.debug('[CompanySettingsContext] useEffect calling refresh', { authLoading, userUid: user?.uid, companyId });
