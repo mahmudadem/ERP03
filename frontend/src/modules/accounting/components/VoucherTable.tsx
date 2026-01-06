@@ -13,9 +13,11 @@ import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
 import { useAccounts } from '../../../context/AccountsContext';
 import { VoucherFormConfig } from '../voucher-wizard/types';
-import { Info, GripVertical } from 'lucide-react';
+import { Info, GripVertical, Settings2, Check } from 'lucide-react';
 
-const STORAGE_KEY = 'erp_voucher_list_column_widths';
+const STORAGE_KEY_WIDTHS = 'erp_voucher_list_column_widths';
+const STORAGE_KEY_FONT_SIZE = 'erp_voucher_list_font_size';
+const STORAGE_KEY_VISIBLE_COLUMNS = 'erp_voucher_list_visible_columns';
 
 const DEFAULT_COLUMN_WIDTHS = {
   expand: 48,
@@ -31,6 +33,21 @@ const DEFAULT_COLUMN_WIDTHS = {
   amount: 128,
   ref: 128,
   actions: 96
+};
+
+const COLUMN_LABELS: Record<string, string> = {
+  date: 'Date',
+  number: 'Number',
+  type: 'Type',
+  name: 'Voucher Name',
+  debitAccount: 'Debit Account',
+  creditAccount: 'Credit Account',
+  creationMode: 'C-Mode',
+  approvedAt: 'Approved At',
+  status: 'Status',
+  amount: 'Amount',
+  ref: 'Ref',
+  actions: 'Actions'
 };
 
 interface Props {
@@ -121,7 +138,7 @@ export const VoucherTable: React.FC<Props> = ({
   // Resizable Columns state
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY_WIDTHS);
     if (saved) {
       try {
         return { ...DEFAULT_COLUMN_WIDTHS, ...JSON.parse(saved) };
@@ -131,6 +148,41 @@ export const VoucherTable: React.FC<Props> = ({
     }
     return DEFAULT_COLUMN_WIDTHS;
   });
+
+  const [fontSize, setFontSize] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_FONT_SIZE) || 'text-sm';
+  });
+
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_VISIBLE_COLUMNS);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return Object.keys(COLUMN_LABELS);
+      }
+    }
+    return Object.keys(COLUMN_LABELS);
+  });
+
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleColumn = (col: string) => {
+    setVisibleColumns(prev => 
+      prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
+    );
+  };
 
   const resizingRef = useRef<{ column: string; startX: number; startWidth: number } | null>(null);
 
@@ -181,8 +233,16 @@ export const VoucherTable: React.FC<Props> = ({
   }, [columnWidths, handleResizeMove, handleResizeEnd]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(columnWidths));
+    localStorage.setItem(STORAGE_KEY_WIDTHS, JSON.stringify(columnWidths));
   }, [columnWidths]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_FONT_SIZE, fontSize);
+  }, [fontSize]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_VISIBLE_COLUMNS, JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
 
   // Normalize widths on mount if they exceed container width
   useEffect(() => {
@@ -469,240 +529,286 @@ export const VoucherTable: React.FC<Props> = ({
   return (
     <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300">
 
-      {/* Status Legend */}
-      <div className="px-6 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex items-center justify-between">
-        <div className="flex items-center gap-4 text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-          <div className="flex items-center gap-1.5">
-            <Badge variant="success" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">A</Badge>
-            <span>Approved</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="warning" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">P</Badge>
-            <span>Pending</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="default" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">D</Badge>
-            <span>Draft</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="info" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">L</Badge>
-            <span>Locked</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="warning" className="w-5 h-5 flex items-center justify-center p-0 rounded-full bg-amber-500 text-white border-none shadow-none">R</Badge>
-            <span>Reversed</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="error" className="w-5 h-5 flex items-center justify-center p-0 rounded-full">C</Badge>
-            <span>Cancelled</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)] italic">
-          <Info size={12} />
-          <span>Balanced amount shown for posted vouchers</span>
-        </div>
-      </div>
 
       <div ref={tableContainerRef} className="overflow-x-auto relative max-w-full">
         <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ width: '100%', maxWidth: '100%' }}>
           <thead className="bg-[var(--color-bg-secondary)] select-none">
             <tr className="divide-x divide-[var(--color-border)]/50">
-              <th className="px-2 py-3" style={{ width: columnWidths.expand }}></th>
+              <th className="px-2 py-3 text-center" style={{ width: columnWidths.expand }}>
+                <div className="relative inline-block text-left" ref={settingsRef}>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
+                    className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors text-[var(--color-text-secondary)]"
+                    title="Table Settings"
+                  >
+                    <Settings2 size={16} />
+                  </button>
+                  
+                  {showSettings && (
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[100] p-4 text-xs normal-case font-normal text-[var(--color-text-primary)]">
+                      <div className="mb-4">
+                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">Font Size</h3>
+                        <div className="flex gap-2">
+                          {['text-xs', 'text-sm', 'text-base'].map(size => (
+                            <button
+                              key={size}
+                              onClick={() => setFontSize(size)}
+                              className={clsx(
+                                "px-2 py-1 rounded border transition-all truncate flex-1",
+                                fontSize === size 
+                                  ? "bg-primary-600 text-white border-primary-600" 
+                                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-primary-500"
+                              )}
+                            >
+                              {size.replace('text-', '').toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">Visible Columns</h3>
+                        <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto pr-1">
+                          {Object.entries(COLUMN_LABELS).map(([key, label]) => (
+                            <button
+                              key={key}
+                              onClick={() => toggleColumn(key)}
+                              className={clsx(
+                                "flex items-center justify-between px-2 py-1.5 rounded transition-colors text-left",
+                                visibleColumns.includes(key)
+                                  ? "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+                              )}
+                            >
+                              <span>{label}</span>
+                              {visibleColumns.includes(key) && <Check size={14} />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </th>
               
               {/* Date Header */}
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
-                style={{ width: columnWidths.date }}
-              >
-                <div className="flex items-center gap-2">
-                  <span>Date</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleSort('date')} className="p-1 hover:text-primary-600">
-                      {renderSortIcon('date')}
-                    </button>
-                    <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'date' ? null : 'date')} className={clsx("p-1 hover:text-primary-600", (filters.dateFrom || filters.dateTo) ? 'text-primary-600 opacity-100' : '')}>
-                      <Filter className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                {activeFilterColumn === 'date' && (
-                  <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">From</label>
-                        <DatePicker 
-                          value={filters.dateFrom || ''} 
-                          onChange={(val: string) => setFilters({ ...filters, dateFrom: val })} 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1">To</label>
-                        <DatePicker 
-                          value={filters.dateTo || ''} 
-                          onChange={(val: string) => setFilters({ ...filters, dateTo: val })} 
-                        />
-                      </div>
+              {visibleColumns.includes('date') && (
+                <th 
+                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  style={{ width: columnWidths.date }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Date</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleSort('date')} className="p-1 hover:text-primary-600">
+                        {renderSortIcon('date')}
+                      </button>
+                      <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'date' ? null : 'date')} className={clsx("p-1 hover:text-primary-600", (filters.dateFrom || filters.dateTo) ? 'text-primary-600 opacity-100' : '')}>
+                        <Filter className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
-                )}
-                <div onMouseDown={(e) => handleResizeStart('date', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+                  {activeFilterColumn === 'date' && (
+                    <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">From</label>
+                          <DatePicker 
+                            value={filters.dateFrom || ''} 
+                            onChange={(val: string) => setFilters({ ...filters, dateFrom: val })} 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">To</label>
+                          <DatePicker 
+                            value={filters.dateTo || ''} 
+                            onChange={(val: string) => setFilters({ ...filters, dateTo: val })} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div onMouseDown={(e) => handleResizeStart('date', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
 
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
-                style={{ width: columnWidths.number }}
-              >
-                <div className="flex items-center gap-2">
-                  <span>Number</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleSort('voucherNo')} className="p-1 hover:text-primary-600">
-                      {renderSortIcon('voucherNo')}
-                    </button>
-                    <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'number' ? null : 'number')} className={clsx("p-1 hover:text-primary-600", filters.searchNumber ? 'text-primary-600 opacity-100' : '')}>
-                      <Filter className="w-3 h-3" />
-                    </button>
+              {visibleColumns.includes('number') && (
+                <th 
+                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  style={{ width: columnWidths.number }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Number</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleSort('voucherNo')} className="p-1 hover:text-primary-600">
+                        {renderSortIcon('voucherNo')}
+                      </button>
+                      <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'number' ? null : 'number')} className={clsx("p-1 hover:text-primary-600", filters.searchNumber ? 'text-primary-600 opacity-100' : '')}>
+                        <Filter className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                {activeFilterColumn === 'number' && (
-                  <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
-                    <input 
-                      type="text" 
-                      placeholder="Search number..." 
-                      className="w-full px-2 py-1 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none" 
-                      value={filters.searchNumber || ''} 
-                      onChange={(e) => setFilters({ ...filters, searchNumber: e.target.value })}
-                    />
-                  </div>
-                )}
-                <div onMouseDown={(e) => handleResizeStart('number', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+                  {activeFilterColumn === 'number' && (
+                    <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
+                      <input 
+                        type="text" 
+                        placeholder="Search number..." 
+                        className="w-full px-2 py-1 text-xs border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none" 
+                        value={filters.searchNumber || ''} 
+                        onChange={(e) => setFilters({ ...filters, searchNumber: e.target.value })}
+                      />
+                    </div>
+                  )}
+                  <div onMouseDown={(e) => handleResizeStart('number', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
 
               {/* Type Header */}
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
-                style={{ width: columnWidths.type }}
-              >
-                <div className="flex items-center gap-2">
-                  <span>Type</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleSort('type')} className="p-1 hover:text-primary-600">
-                      {renderSortIcon('type')}
-                    </button>
-                    <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'type' ? null : 'type')} className={clsx("p-1 hover:text-primary-600", filters.types?.length ? 'text-primary-600 opacity-100' : '')}>
-                      <Filter className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                {activeFilterColumn === 'type' && (
-                  <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)]">
-                    <div className="space-y-1">
-                      {uniqueTypes.map(type => (
-                        <label key={type} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
-                          <input type="checkbox" checked={filters.types?.includes(type) || false} onChange={(e) => {
-                            const current = filters.types || [];
-                            const updated = e.target.checked ? [...current, type] : current.filter(t => t !== type);
-                            setFilters({ ...filters, types: updated.length > 0 ? updated : undefined });
-                          }} className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" />
-                          <span className="text-sm">{type}</span>
-                        </label>
-                      ))}
+              {visibleColumns.includes('type') && (
+                <th 
+                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  style={{ width: columnWidths.type }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>Type</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleSort('type')} className="p-1 hover:text-primary-600">
+                        {renderSortIcon('type')}
+                      </button>
+                      <button onClick={() => setActiveFilterColumn(activeFilterColumn === 'type' ? null : 'type')} className={clsx("p-1 hover:text-primary-600", filters.types?.length ? 'text-primary-600 opacity-100' : '')}>
+                        <Filter className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
-                )}
-                <div onMouseDown={(e) => handleResizeStart('type', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+                  {activeFilterColumn === 'type' && (
+                    <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)]">
+                      <div className="space-y-1">
+                        {uniqueTypes.map(type => (
+                          <label key={type} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
+                            <input type="checkbox" checked={filters.types?.includes(type) || false} onChange={(e) => {
+                              const current = filters.types || [];
+                              const updated = e.target.checked ? [...current, type] : current.filter(t => t !== type);
+                              setFilters({ ...filters, types: updated.length > 0 ? updated : undefined });
+                            }} className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" />
+                            <span className="text-xs">{type}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div onMouseDown={(e) => handleResizeStart('type', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
 
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.name }}>
-                Voucher Name
-                <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.debitAccount }}>
-                Debit Account
-                <div onMouseDown={(e) => handleResizeStart('debitAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.creditAccount }}>
-                Credit Account
-                <div onMouseDown={(e) => handleResizeStart('creditAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.creationMode }}>
-                C-Mode
-                <div onMouseDown={(e) => handleResizeStart('creationMode', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.approvedAt }}>
-                Approved At
-                <div onMouseDown={(e) => handleResizeStart('approvedAt', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+              {visibleColumns.includes('name') && (
+                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.name }}>
+                  Voucher Name
+                  <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('debitAccount') && (
+                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.debitAccount }}>
+                  Debit Account
+                  <div onMouseDown={(e) => handleResizeStart('debitAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('creditAccount') && (
+                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creditAccount }}>
+                  Credit Account
+                  <div onMouseDown={(e) => handleResizeStart('creditAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('creationMode') && (
+                <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creationMode }}>
+                  C-Mode
+                  <div onMouseDown={(e) => handleResizeStart('creationMode', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('approvedAt') && (
+                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.approvedAt }}>
+                  Approved At
+                  <div onMouseDown={(e) => handleResizeStart('approvedAt', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
               
               {/* Status Header */}
-              <th 
-                className="px-6 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative"
-                style={{ width: columnWidths.status }}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span>Status</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
-                    <button 
-                      onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')} 
-                      className={clsx("p-1 hover:text-primary-600", filters.statuses?.length ? 'text-primary-600 opacity-100' : '')}
-                    >
-                      <Filter className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-                {activeFilterColumn === 'status' && (
-                  <div ref={filterRef} className="absolute top-full right-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)] text-left">
-                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                      {uniqueStatuses.map(status => (
-                        <label key={status} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
-                          <input 
-                            type="checkbox" 
-                            checked={filters.statuses?.includes(status) || false} 
-                            onChange={(e) => {
-                              const current = filters.statuses || [];
-                              const updated = e.target.checked ? [...current, status] : current.filter(s => s !== status);
-                              setFilters({ ...filters, statuses: updated.length > 0 ? updated : undefined });
-                            }} 
-                            className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" 
-                          />
-                          <span className="text-sm">{status}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-[var(--color-border)] flex justify-end">
-                       <Button 
-                         variant="primary" 
-                         size="sm" 
-                         className="text-xs px-2 py-1 h-auto"
-                         onClick={() => {
-                            setActiveFilterColumn(null);
-                         }}
-                       >
-                         Apply
-                       </Button>
+              {visibleColumns.includes('status') && (
+                <th 
+                  className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  style={{ width: columnWidths.status }}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span>Status</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
+                      <button 
+                        onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')} 
+                        className={clsx("p-1 hover:text-primary-600", filters.statuses?.length ? 'text-primary-600 opacity-100' : '')}
+                      >
+                        <Filter className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
-                )}
-                <div onMouseDown={(e) => handleResizeStart('status', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+                  {activeFilterColumn === 'status' && (
+                    <div ref={filterRef} className="absolute top-full right-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[150px] normal-case font-normal text-[var(--color-text-primary)] text-left">
+                      <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                        {uniqueStatuses.map(status => (
+                          <label key={status} className="flex items-center gap-2 p-1 hover:bg-[var(--color-bg-tertiary)] rounded cursor-pointer transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={filters.statuses?.includes(status) || false} 
+                              onChange={(e) => {
+                                const current = filters.statuses || [];
+                                const updated = e.target.checked ? [...current, status] : current.filter(s => s !== status);
+                                setFilters({ ...filters, statuses: updated.length > 0 ? updated : undefined });
+                              }} 
+                              className="rounded border-[var(--color-border)] text-primary-600 bg-[var(--color-bg-primary)]" 
+                            />
+                            <span className="text-xs">{status}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-[var(--color-border)] flex justify-end">
+                         <Button 
+                           variant="primary" 
+                           size="sm" 
+                           className="text-xs px-2 py-1 h-auto"
+                           onClick={() => {
+                              setActiveFilterColumn(null);
+                           }}
+                         >
+                           Apply
+                         </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div onMouseDown={(e) => handleResizeStart('status', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
 
-              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.amount }}>
-                Amount
-                <div onMouseDown={(e) => handleResizeStart('amount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.ref }}>
-                Ref
-                <div onMouseDown={(e) => handleResizeStart('ref', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group" style={{ width: columnWidths.actions }}>
-                Actions
-                <div onMouseDown={(e) => handleResizeStart('actions', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
-              </th>
+              {visibleColumns.includes('amount') && (
+                <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.amount }}>
+                  Amount
+                  <div onMouseDown={(e) => handleResizeStart('amount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('ref') && (
+                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.ref }}>
+                  Ref
+                  <div onMouseDown={(e) => handleResizeStart('ref', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+              {visibleColumns.includes('actions') && (
+                <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.actions }}>
+                  Actions
+                  <div onMouseDown={(e) => handleResizeStart('actions', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)] transition-colors duration-300">
             {displayVouchers.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-6 py-12 text-center text-[var(--color-text-muted)] text-sm">
+                <td colSpan={visibleColumns.length + 1} className={clsx("px-6 py-12 text-center text-[var(--color-text-muted)]", fontSize)}>
                   No vouchers found matching your filters.
                 </td>
               </tr>
@@ -754,190 +860,225 @@ export const VoucherTable: React.FC<Props> = ({
                         </button>
                       )}
                     </td>
-                    <td className={clsx("px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)]", isNested && "pl-12")}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
-                        <span className="text-[10px] text-[var(--color-text-secondary)]">
-                          {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-[var(--color-text-secondary)]">
-                      <div className="flex items-center gap-2">
-                         {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
-                           <span title="Audit Locked">
-                             <Lock size={12} className="text-amber-600" />
-                           </span>
-                         )}
-                         {isNested && (
-                           <span title="Reversal">
-                             <RotateCcw size={12} className="text-amber-600" />
-                           </span>
-                         )}
-                         {!isNested && hasReversalMap.has(voucher.id) && !isActuallyReversedMap.has(voucher.id) && (
-                           isReversalRejectedMap.has(voucher.id) ? (
-                             <span title="Reversal Rejected">
-                               <RefreshCw size={12} className="text-red-500" />
-                             </span>
-                           ) : (
-                             <span title="Reversal Pending Approval">
-                               <RefreshCw size={12} className="text-amber-500 animate-pulse" />
-                             </span>
-                           )
-                         )}
-                         <span className={clsx(
-                           voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold text-[var(--color-text-primary)]",
-                           isNested && "text-xs italic"
-                         )}>
-                            {voucher.voucherNo || voucher.id.slice(-8)}
-                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">
-                      <span className={clsx(
-                        "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium",
-                        isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
-                      )}>
-                        {voucher.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)] font-medium truncate" title={voucherName}>
-                      {voucherName}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)] truncate" title={debitAccountName}>
-                      {debitAccountName}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)] truncate" title={creditAccountName}>
-                      {creditAccountName}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-center">
-                      {(() => {
-                        const mode = voucher.metadata?.creationMode || 
-                                    (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'STRICT' : 
-                                     voucher.postingLockPolicy === PostingLockPolicy.FLEXIBLE_LOCKED ? 'FLEXIBLE' : '-');
-                        
-                        if (mode === '-') return <span className="text-gray-400">-</span>;
 
-                        return (
-                          <span className={clsx(
-                            "inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tight",
-                            mode === 'STRICT' ? "bg-indigo-50 text-indigo-600 border border-indigo-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                          )}>
-                            {mode}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-secondary)]">
-                      {voucher.approvedAt ? (
+                    {visibleColumns.includes('date') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)]", isNested && "pl-12", fontSize)}>
                         <div className="flex flex-col">
-                          <span>{formatCompanyDate(voucher.approvedAt, settings)}</span>
-                          <span className="text-[10px] opacity-70">{formatCompanyTime(voucher.approvedAt, settings)}</span>
+                          <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
+                          <span className={clsx("text-[var(--color-text-secondary)] opacity-70", fontSize === 'text-xs' ? 'text-[10px]' : 'text-xs')}>
+                            {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
+                          </span>
                         </div>
-                      ) : (
-                        <span className="text-gray-400 font-mono">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center">
-                        {(() => {
-                          // Smart Reversal Status:
-                          // 1. If we see the child reversal in the list (hasReversalMap), we trust the computed 'isActuallyReversedMap' 
-                          //    (which checks if child is posted). We IGNORE the metadata flag because it might be stuck as true from old logic.
-                          // 2. If we DON'T see the child (pagination), we fall back to metadata.
-                          const hasVisibleReversal = hasReversalMap.has(voucher.id);
-                          const isReversed = !isNested && (
-                            hasVisibleReversal 
-                              ? isActuallyReversedMap.has(voucher.id) 
-                              : !!voucher.metadata?.isReversed
-                          );
-                          const isPosted = !!voucher.postedAt;
-                          
-                          let label = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
-                          let variant: any = getStatusVariant(voucher.status);
-                          let Icon = null;
+                      </td>
+                    )}
 
-                          if (isReversed) {
-                            label = 'Reversed';
-                            variant = 'warning';
-                            Icon = RotateCcw;
-                          } else if (isPosted) {
-                            label = 'Posted';
-                            variant = 'success';
-                            Icon = CheckCircle;
-                          }
+                    {visibleColumns.includes('number') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap font-mono text-[var(--color-text-secondary)]", fontSize)}>
+                        <div className="flex items-center gap-2">
+                           {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
+                             <span title="Audit Locked">
+                               <Lock size={12} className="text-amber-600" />
+                             </span>
+                           )}
+                           {isNested && (
+                             <span title="Reversal">
+                               <RotateCcw size={12} className="text-amber-600" />
+                             </span>
+                           )}
+                           {!isNested && hasReversalMap.has(voucher.id) && !isActuallyReversedMap.has(voucher.id) && (
+                             isReversalRejectedMap.has(voucher.id) ? (
+                               <span title="Reversal Rejected">
+                                 <RefreshCw size={12} className="text-red-500" />
+                               </span>
+                             ) : (
+                               <span title="Reversal Pending Approval">
+                                 <RefreshCw size={12} className="text-amber-500 animate-pulse" />
+                               </span>
+                             )
+                           )}
+                           <span className={clsx(
+                             voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && "font-bold text-[var(--color-text-primary)]",
+                             isNested && "italic"
+                           )}>
+                              {voucher.voucherNo || voucher.id.slice(-8)}
+                           </span>
+                        </div>
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('type') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)]", fontSize)}>
+                        <span className={clsx(
+                          "inline-flex items-center px-1.5 py-0.5 rounded font-medium",
+                          isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]",
+                          fontSize
+                        )}>
+                          {voucher.type}
+                        </span>
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('name') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)] font-medium truncate", fontSize)} title={voucherName}>
+                        {voucherName}
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('debitAccount') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={debitAccountName}>
+                        {debitAccountName}
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('creditAccount') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={creditAccountName}>
+                        {creditAccountName}
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('creationMode') && (
+                      <td className="px-6 py-3 whitespace-nowrap text-center">
+                        {(() => {
+                          const mode = voucher.metadata?.creationMode || 
+                                      (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'STRICT' : 
+                                       voucher.postingLockPolicy === PostingLockPolicy.FLEXIBLE_LOCKED ? 'FLEXIBLE' : '-');
+                          
+                          if (mode === '-') return <span className={clsx("text-gray-400", fontSize)}>-</span>;
 
                           return (
-                            <Badge 
-                              variant={variant}
-                              className={clsx(
-                                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
-                                (isPosted && !isReversed) && "bg-emerald-600 text-white border-none",
-                                isReversed && "bg-amber-500 text-white border-none"
-                              )}
-                              title={voucher.postedAt ? `Posted on ${formatCompanyDate(voucher.postedAt, settings)}` : label}
-                            >
-                              {Icon && <Icon size={10} className="stroke-[3px]" />}
-                              {label}
-                            </Badge>
+                            <span className={clsx(
+                              "inline-flex items-center px-1 py-0.5 rounded font-bold uppercase tracking-tight border",
+                              mode === 'STRICT' ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-emerald-50 text-emerald-600 border-emerald-100",
+                              fontSize
+                            )}>
+                              {mode}
+                            </span>
                           );
                         })()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--color-text-primary)] text-right font-mono font-semibold">
-                      {typeof displayAmount === 'number' 
-                        ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${voucher.currency}`
-                        : displayAmount}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-[var(--color-text-muted)] truncate" title={voucher.reference || ''}>
-                      {voucher.reference || '-'}
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
-                          className="hover:text-primary-600 transition-colors p-1"
-                          title="View Official / Print"
-                        >
-                          <Printer size={16} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
-                          disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                          className={clsx(
-                            "transition-colors p-1",
-                            (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                              ? "text-gray-300 cursor-not-allowed"
-                              : "hover:text-primary-600"
-                          )}
-                          title="Edit Voucher"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
-                          disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                          className={clsx(
-                            "transition-colors p-1",
-                            (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                              ? "text-gray-300 cursor-not-allowed"
-                              : "hover:text-red-600"
-                          )}
-                          title="Delete Voucher"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
-                            className="hover:text-amber-600 transition-colors p-1"
-                            title="Cancel / Void Voucher"
-                          >
-                            <Ban size={16} />
-                          </button>
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('approvedAt') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)]", fontSize)}>
+                        {voucher.approvedAt ? (
+                          <div className="flex flex-col">
+                            <span>{formatCompanyDate(voucher.approvedAt, settings)}</span>
+                            <span className={clsx("opacity-70", fontSize === 'text-xs' ? 'text-[10px]' : 'text-xs')}>{formatCompanyTime(voucher.approvedAt, settings)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 font-mono">-</span>
                         )}
-                      </div>
-                    </td>
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('status') && (
+                      <td className="px-6 py-3 whitespace-nowrap text-center text-xs">
+                        <div className="flex items-center justify-center">
+                          {(() => {
+                            const hasVisibleReversal = hasReversalMap.has(voucher.id);
+                            const isReversed = !isNested && (
+                              hasVisibleReversal 
+                                ? isActuallyReversedMap.has(voucher.id) 
+                                : !!voucher.metadata?.isReversed
+                            );
+                            const isPosted = !!voucher.postedAt;
+                            
+                            let label = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
+                            let variant: any = getStatusVariant(voucher.status);
+                            let Icon = null;
+
+                            if (isReversed) {
+                              label = 'Reversed';
+                              variant = 'warning';
+                              Icon = RotateCcw;
+                            } else if (isPosted) {
+                              label = 'Posted';
+                              variant = 'success';
+                              Icon = CheckCircle;
+                            }
+
+                            return (
+                              <Badge 
+                                variant={variant}
+                                className={clsx(
+                                  "flex items-center gap-1 px-2 py-0.5 rounded-full font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
+                                  (isPosted && !isReversed) && "bg-emerald-600 text-white border-none",
+                                  isReversed && "bg-amber-500 text-white border-none",
+                                  fontSize
+                                )}
+                                title={voucher.postedAt ? `Posted on ${formatCompanyDate(voucher.postedAt, settings)}` : label}
+                              >
+                                {Icon && <Icon size={fontSize === 'text-xs' ? 10 : 12} className="stroke-[3px]" />}
+                                {label}
+                              </Badge>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('amount') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)] text-right font-mono font-semibold", fontSize)}>
+                        {typeof displayAmount === 'number' 
+                          ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${voucher.currency}`
+                          : displayAmount}
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('ref') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-muted)] truncate", fontSize)} title={voucher.reference || ''}>
+                        {voucher.reference || '-'}
+                      </td>
+                    )}
+
+                    {visibleColumns.includes('actions') && (
+                      <td className="px-6 py-3 whitespace-nowrap text-right font-medium">
+                        <div className="flex items-center justify-end gap-2 text-[var(--color-text-secondary)]">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
+                            className="hover:text-primary-600 transition-colors p-1"
+                            title="View Official / Print"
+                          >
+                            <Printer size={16} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
+                            disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                            className={clsx(
+                              "transition-colors p-1",
+                              (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
+                                ? "text-gray-300 cursor-not-allowed"
+                                : "hover:text-primary-600"
+                            )}
+                            title="Edit Voucher"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
+                            disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                            className={clsx(
+                              "transition-colors p-1",
+                              (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
+                                ? "text-gray-300 cursor-not-allowed"
+                                : "hover:text-red-600"
+                            )}
+                            title="Delete Voucher"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                          {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
+                              className="hover:text-amber-600 transition-colors p-1"
+                              title="Cancel / Void Voucher"
+                            >
+                              <Ban size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })

@@ -72,6 +72,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     return !!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed;
   }, [win.data?.metadata?.reversedByVoucherId, win.data?.metadata?.isReversed]);
 
+  const isCancelled = React.useMemo(() => {
+    const status = win.data?.status?.toLowerCase();
+    return status === 'cancelled' || status === 'void';
+  }, [win.data?.status]);
+
   const forceStrictMode = React.useMemo(() => {
     return settings?.strictApprovalMode === true || isReversal;
   }, [settings?.strictApprovalMode, isReversal]);
@@ -747,6 +752,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
           {(() => {
             if (isVoucherReadOnly) {
+              if (isCancelled) return null;
               const isDisabled = isReversal || isAlreadyReversed;
 
               return (
