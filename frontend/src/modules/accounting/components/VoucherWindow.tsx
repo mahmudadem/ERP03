@@ -215,10 +215,30 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       return;
     }
     
+    const formData = rendererRef.current.getData();
+    const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+    
+    // FX Rate Validation: Block save if any FX line is missing exchange rate
+    const lines = formData.lines || [];
+    const fxLinesWithoutRate = lines.filter((line: any) => {
+      const lineCurrency = line.currency?.toUpperCase() || baseCurrency;
+      const hasRate = line.exchangeRate && line.exchangeRate > 0;
+      const hasParity = line.parity && line.parity > 0;
+      const isFx = lineCurrency !== baseCurrency.toUpperCase();
+      return isFx && !hasRate && !hasParity;
+    });
+    
+    if (fxLinesWithoutRate.length > 0) {
+      const currencies = [...new Set(fxLinesWithoutRate.map((l: any) => l.currency || 'Unknown'))];
+      errorHandler.showError(
+        `Cannot save: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing exchange rates. ` +
+        `Please enter the exchange rate for each FX line before saving.`
+      );
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      const formData = rendererRef.current.getData();
-      
       // Inject creation mode for audit transparency
       formData.metadata = {
         ...formData.metadata,
@@ -246,12 +266,33 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const handleConfirmSubmit = async () => {
     if (!rendererRef.current) return;
     
+    const formData = rendererRef.current.getData();
+    const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+    
+    // FX Rate Validation: Block submit if any FX line is missing exchange rate
+    const lines = formData.lines || [];
+    const fxLinesWithoutRate = lines.filter((line: any) => {
+      const lineCurrency = line.currency?.toUpperCase() || baseCurrency;
+      const hasRate = line.exchangeRate && line.exchangeRate > 0;
+      const hasParity = line.parity && line.parity > 0;
+      const isFx = lineCurrency !== baseCurrency.toUpperCase();
+      return isFx && !hasRate && !hasParity;
+    });
+    
+    if (fxLinesWithoutRate.length > 0) {
+      const currencies = [...new Set(fxLinesWithoutRate.map((l: any) => l.currency || 'Unknown'))];
+      setShowConfirmSubmitModal(false);
+      errorHandler.showError(
+        `Cannot submit: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing exchange rates. ` +
+        `Please enter the exchange rate for each FX line before submitting.`
+      );
+      return;
+    }
+    
     setShowConfirmSubmitModal(false);
     setIsSubmitting(true);
     
     try {
-      const formData = rendererRef.current.getData();
-
       // Inject creation mode for audit transparency
       formData.metadata = {
         ...formData.metadata,
