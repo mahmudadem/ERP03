@@ -4,4 +4,6 @@ export * from './IAccountRepository';
 export * from './ICostCenterRepository';
 export * from './IExchangeRateRepository';
 export * from './ILedgerRepository';
+export * from './ICurrencyRepository';
+export * from './ICompanyCurrencyRepository';
 

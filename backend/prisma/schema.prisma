@@ -77,6 +77,63 @@ model CompanyRole {
   @@map("company_roles")
 }
 
+// ============================================
+// Currency & Exchange Rate Models
+// ============================================
+
+// Global Currency Definition
+// Currency properties are fixed globally - companies enable/disable but cannot modify
+model Currency {
+  code          String   @id        // ISO 4217 code (e.g., "USD", "EUR", "JPY")
+  name          String              // Display name (e.g., "US Dollar")
+  symbol        String              // Currency symbol (e.g., "$", "€", "¥")
+  decimalPlaces Int      @default(2) // 0 for JPY, 3 for BHD/KWD, 2 for most
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  companyCurrencies CompanyCurrency[]
+
+  @@map("currencies")
+}
+
+// Company-enabled currencies (join table)
+// Only tracks enable/disable state - rate history stored in ExchangeRate
+model CompanyCurrency {
+  id           String   @id @default(uuid())
+  companyId    String
+  currencyCode String
+  isEnabled    Boolean  @default(true)
+  enabledAt    DateTime @default(now())
+  disabledAt   DateTime?
+
+  currency Currency @relation(fields: [currencyCode], references: [code])
+
+  @@unique([companyId, currencyCode])
+  @@index([companyId])
+  @@map("company_currencies")
+}
+
+// Exchange Rate Reference Store
+// Stores historical rates for lookup and suggestions
+// NO unique constraint on (companyId, fromCurrency, toCurrency, date) - allows multiple rates per day
+model ExchangeRate {
+  id           String   @id @default(uuid())
+  companyId    String
+  fromCurrency String   // Source currency code
+  toCurrency   String   // Target currency code (typically base currency)
+  rate         Float    // Exchange rate value
+  date         DateTime // Effective date (date only, time ignored)
+  source       String   @default("MANUAL") // MANUAL | REFERENCE
+  createdAt    DateTime @default(now())
+  createdBy    String?  // User who entered the rate
+
+  @@index([companyId, fromCurrency, toCurrency, date])
+  @@index([companyId, date])
+  @@map("exchange_rates")
+}
+
 // Accounting Module
 model Account {
   id         String   @id
