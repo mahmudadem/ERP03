@@ -1,11 +1,11 @@
 /**
  * Firestore implementation for Accounting Currency Repositories
  * 
- * Handles Currency and CompanyCurrency for the multi-currency feature.
+ * Reads from system_metadata/currencies/items collection (global data).
+ * Manages CompanyCurrency for enable/disable per company.
  */
 
 import * as admin from 'firebase-admin';
-import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { Currency } from '../../../../domain/accounting/entities/Currency';
 import { ICurrencyRepository } from '../../../../repository/interfaces/accounting/ICurrencyRepository';
 import { 
@@ -15,12 +15,15 @@ import {
 
 /**
  * Firestore implementation of ICurrencyRepository for Accounting.
- * Manages global currency definitions with decimalPlaces.
+ * Reads global currencies from system_metadata/currencies/items collection.
  */
-export class FirestoreAccountingCurrencyRepository extends BaseFirestoreRepository<Currency> implements ICurrencyRepository {
-  protected collectionName = 'currencies';
+export class FirestoreAccountingCurrencyRepository implements ICurrencyRepository {
+  // Reads from the system_metadata pattern used by seedSystemMetadata.ts
+  private readonly collectionPath = 'system_metadata/currencies/items';
+
+  constructor(private db: admin.firestore.Firestore) {}
   
-  protected toDomain(data: any): Currency {
+  private toDomain(data: any): Currency {
     return new Currency({
       code: data.code,
       name: data.name,
@@ -29,48 +32,51 @@ export class FirestoreAccountingCurrencyRepository extends BaseFirestoreReposito
       isActive: data.isActive ?? true,
     });
   }
-  
-  protected toPersistence(entity: Currency): any {
-    return {
-      code: entity.code,
-      name: entity.name,
-      symbol: entity.symbol,
-      decimalPlaces: entity.decimalPlaces,
-      isActive: entity.isActive,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-  }
 
   async findAll(): Promise<Currency[]> {
-    const snapshot = await this.db.collection(this.collectionName).get();
+    const snapshot = await this.db.collection(this.collectionPath).get();
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }
 
   async findActive(): Promise<Currency[]> {
-    const snapshot = await this.db.collection(this.collectionName)
-      .where('isActive', '==', true)
-      .orderBy('code')
-      .get();
-    return snapshot.docs.map(doc => this.toDomain(doc.data()));
+    // system_metadata currencies are all active by default
+    const snapshot = await this.db.collection(this.collectionPath).orderBy('code').get();
+    return snapshot.docs
+      .map(doc => this.toDomain(doc.data()))
+      .filter(c => c.isActive);
   }
 
   async findByCode(code: string): Promise<Currency | null> {
-    const doc = await this.db.collection(this.collectionName).doc(code.toUpperCase()).get();
+    const doc = await this.db.collection(this.collectionPath).doc(code.toUpperCase()).get();
     if (!doc.exists) return null;
     return this.toDomain(doc.data());
   }
 
   async save(currency: Currency): Promise<void> {
-    await this.db.collection(this.collectionName)
+    await this.db.collection(this.collectionPath)
       .doc(currency.code)
-      .set(this.toPersistence(currency), { merge: true });
+      .set({
+        code: currency.code,
+        name: currency.name,
+        symbol: currency.symbol,
+        decimalPlaces: currency.decimalPlaces,
+        isActive: currency.isActive,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
   }
 
   async seedCurrencies(currencies: Currency[]): Promise<void> {
     const batch = this.db.batch();
     for (const currency of currencies) {
-      const ref = this.db.collection(this.collectionName).doc(currency.code);
-      batch.set(ref, this.toPersistence(currency), { merge: true });
+      const ref = this.db.collection(this.collectionPath).doc(currency.code);
+      batch.set(ref, {
+        code: currency.code,
+        name: currency.name,
+        symbol: currency.symbol,
+        decimalPlaces: currency.decimalPlaces,
+        isActive: currency.isActive,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     }
     await batch.commit();
   }
