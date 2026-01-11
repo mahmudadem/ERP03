@@ -11,8 +11,32 @@ class CostCenterMapper {
     static toPersistence(e: CostCenter) { return { ...e }; }
 }
 class ExchangeRateMapper {
-    static toDomain(d: any) { return new ExchangeRate(d.id, d.fromCurrency, d.toCurrency, d.rate, d.date?.toDate?.()); }
-    static toPersistence(e: ExchangeRate) { return { ...e, date: admin.firestore.Timestamp.fromDate(e.date) }; }
+    static toDomain(d: any) { 
+      return new ExchangeRate({
+        id: d.id,
+        companyId: d.companyId || '',
+        fromCurrency: d.fromCurrency,
+        toCurrency: d.toCurrency,
+        rate: d.rate,
+        date: d.date?.toDate?.() || new Date(d.date),
+        source: d.source || 'MANUAL',
+        createdAt: d.createdAt?.toDate?.() || new Date(),
+        createdBy: d.createdBy,
+      }); 
+    }
+    static toPersistence(e: ExchangeRate) { 
+      return { 
+        id: e.id,
+        companyId: e.companyId,
+        fromCurrency: e.fromCurrency,
+        toCurrency: e.toCurrency,
+        rate: e.rate,
+        date: admin.firestore.Timestamp.fromDate(e.date),
+        source: e.source,
+        createdAt: admin.firestore.Timestamp.fromDate(e.createdAt),
+        createdBy: e.createdBy,
+      }; 
+    }
 }
 
 export class FirestoreCostCenterRepository extends BaseFirestoreRepository<CostCenter> implements ICostCenterRepository {
@@ -36,16 +60,108 @@ export class FirestoreExchangeRateRepository extends BaseFirestoreRepository<Exc
   protected toDomain = ExchangeRateMapper.toDomain;
   protected toPersistence = ExchangeRateMapper.toPersistence;
 
-  async setRate(rate: ExchangeRate): Promise<void> { return this.save(rate); }
+  async save(rate: ExchangeRate): Promise<void> { 
+    return super.save(rate); 
+  }
+
+  /** @deprecated Use save() instead */
+  async setRate(rate: ExchangeRate): Promise<void> { 
+    return this.save(rate); 
+  }
+
+  /** @deprecated Use getLatestRate() instead */
   async getRate(from: string, to: string, date: Date): Promise<ExchangeRate | null> {
-      // MVP: Simplified query, ignoring date range for exact match or latest
-      const snap = await this.db.collection(this.collectionName)
-        .where('fromCurrency', '==', from)
-        .where('toCurrency', '==', to)
-        .orderBy('date', 'desc')
-        .limit(1)
-        .get();
-      if (snap.empty) return null;
-      return this.toDomain(snap.docs[0].data());
+    const snap = await this.db.collection(this.collectionName)
+      .where('fromCurrency', '==', from)
+      .where('toCurrency', '==', to)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    return this.toDomain(snap.docs[0].data());
+  }
+
+  async getLatestRate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    date: Date
+  ): Promise<ExchangeRate | null> {
+    const dateStart = new Date(date);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(date);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('fromCurrency', '==', fromCurrency.toUpperCase())
+      .where('toCurrency', '==', toCurrency.toUpperCase())
+      .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
+      .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
+      .orderBy('date', 'desc')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    return this.toDomain(snap.docs[0].data());
+  }
+
+  async getRatesForDate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    date: Date
+  ): Promise<ExchangeRate[]> {
+    const dateStart = new Date(date);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(date);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('fromCurrency', '==', fromCurrency.toUpperCase())
+      .where('toCurrency', '==', toCurrency.toUpperCase())
+      .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
+      .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
+      .orderBy('date', 'desc')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snap.docs.map(d => this.toDomain(d.data()));
+  }
+
+  async getRecentRates(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    limit: number = 10
+  ): Promise<ExchangeRate[]> {
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('fromCurrency', '==', fromCurrency.toUpperCase())
+      .where('toCurrency', '==', toCurrency.toUpperCase())
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+
+    return snap.docs.map(d => this.toDomain(d.data()));
+  }
+
+  async getMostRecentRate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string
+  ): Promise<ExchangeRate | null> {
+    const snap = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('fromCurrency', '==', fromCurrency.toUpperCase())
+      .where('toCurrency', '==', toCurrency.toUpperCase())
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    return this.toDomain(snap.docs[0].data());
   }
 }
