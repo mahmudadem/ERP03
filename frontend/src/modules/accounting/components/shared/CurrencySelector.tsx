@@ -58,23 +58,44 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   // Forward the ref
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
-  // Fetch currencies from API on mount
+  // Fetch COMPANY-ENABLED currencies from API on mount
+  // Only currencies that the company has enabled will appear
   useEffect(() => {
     let mounted = true;
     
     const fetchCurrencies = async () => {
       try {
-        const response = await accountingApi.getCurrencies();
+        // Fetch company-enabled currencies (not global list)
+        const response = await accountingApi.getCompanyCurrencies();
         if (mounted && response.currencies) {
-          setCurrencies(response.currencies.map((c: CurrencyDTO) => ({
-            code: c.code,
-            name: c.name,
-            symbol: c.symbol,
-            decimalPlaces: c.decimalPlaces,
-          })));
+          // Also fetch full currency details for the enabled ones
+          const globalResponse = await accountingApi.getCurrencies();
+          const globalMap = new Map(
+            globalResponse.currencies?.map((c: CurrencyDTO) => [c.code, c]) || []
+          );
+          
+          // Map enabled currencies to full details
+          const enabledCurrencies = response.currencies
+            .filter((cc: any) => cc.isEnabled)
+            .map((cc: any) => {
+              const full = globalMap.get(cc.currencyCode);
+              return full ? {
+                code: full.code,
+                name: full.name,
+                symbol: full.symbol,
+                decimalPlaces: full.decimalPlaces,
+              } : {
+                code: cc.currencyCode,
+                name: cc.currencyCode,
+                symbol: cc.currencyCode,
+                decimalPlaces: 2,
+              };
+            });
+          
+          setCurrencies(enabledCurrencies.length > 0 ? enabledCurrencies : FALLBACK_CURRENCIES);
         }
       } catch (error) {
-        console.warn('Failed to fetch currencies, using fallback:', error);
+        console.warn('Failed to fetch company currencies, using fallback:', error);
         // Keep fallback currencies
       } finally {
         if (mounted) setLoading(false);

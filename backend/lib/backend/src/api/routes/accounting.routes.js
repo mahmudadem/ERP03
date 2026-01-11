@@ -10,6 +10,7 @@ const VoucherFormController_1 = require("../controllers/accounting/VoucherFormCo
 const ReportingController_1 = require("../controllers/accounting/ReportingController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
+const CurrencyController_1 = require("../controllers/accounting/CurrencyController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
 const router = (0, express_1.Router)();
@@ -58,5 +59,15 @@ router.post('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting
 router.put('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), VoucherFormController_1.VoucherFormController.update);
 router.delete('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), VoucherFormController_1.VoucherFormController.delete);
 router.post('/voucher-forms/:id/clone', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), VoucherFormController_1.VoucherFormController.clone);
+// Currencies
+router.get('/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.listCurrencies);
+router.get('/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.getCurrency);
+router.get('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.listCompanyCurrencies);
+router.post('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.enableCurrency);
+router.delete('/company/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.disableCurrency);
+// Exchange Rates
+router.get('/exchange-rates/suggested', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.getSuggestedRate);
+router.post('/exchange-rates', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.saveRate);
+router.post('/exchange-rates/check-deviation', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.checkRateDeviation);
 exports.default = router;
 //# sourceMappingURL=accounting.routes.js.map

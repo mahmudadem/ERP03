@@ -14,6 +14,7 @@ const FirestoreCompanySettingsRepository_1 = require("../firestore/repositories/
 const FirestoreSystemRepositories_1 = require("../firestore/repositories/system/FirestoreSystemRepositories");
 const FirestoreVoucherRepositoryV2_1 = require("../firestore/repositories/accounting/FirestoreVoucherRepositoryV2");
 const FirestoreAccountingRepositories_1 = require("../firestore/repositories/accounting/FirestoreAccountingRepositories");
+const FirestoreCurrencyRepositories_1 = require("../firestore/repositories/accounting/FirestoreCurrencyRepositories");
 const FirestoreLedgerRepository_1 = require("../firestore/repositories/accounting/FirestoreLedgerRepository");
 const AccountRepositoryFirestore_1 = require("../firestore/accounting/AccountRepositoryFirestore");
 const FirestoreInventoryRepositories_1 = require("../firestore/repositories/inventory/FirestoreInventoryRepositories");
@@ -81,6 +82,8 @@ exports.diContainer = {
     get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(getDb()); },
     get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(getDb()); },
     get ledgerRepository() { return new FirestoreLedgerRepository_1.FirestoreLedgerRepository(getDb()); },
+    get accountingCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreAccountingCurrencyRepository(getDb()); },
+    get companyCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreCompanyCurrencyRepository(getDb()); },
     // INVENTORY
     get itemRepository() { return new FirestoreInventoryRepositories_1.FirestoreItemRepository(getDb()); },
     get warehouseRepository() { return new FirestoreInventoryRepositories_1.FirestoreWarehouseRepository(getDb()); },

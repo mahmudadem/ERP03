@@ -34,8 +34,33 @@ class CostCenterMapper {
     static toPersistence(e) { return Object.assign({}, e); }
 }
 class ExchangeRateMapper {
-    static toDomain(d) { var _a, _b; return new ExchangeRate_1.ExchangeRate(d.id, d.fromCurrency, d.toCurrency, d.rate, (_b = (_a = d.date) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)); }
-    static toPersistence(e) { return Object.assign(Object.assign({}, e), { date: admin.firestore.Timestamp.fromDate(e.date) }); }
+    static toDomain(d) {
+        var _a, _b, _c, _d;
+        return new ExchangeRate_1.ExchangeRate({
+            id: d.id,
+            companyId: d.companyId || '',
+            fromCurrency: d.fromCurrency,
+            toCurrency: d.toCurrency,
+            rate: d.rate,
+            date: ((_b = (_a = d.date) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(d.date),
+            source: d.source || 'MANUAL',
+            createdAt: ((_d = (_c = d.createdAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || new Date(),
+            createdBy: d.createdBy,
+        });
+    }
+    static toPersistence(e) {
+        return {
+            id: e.id,
+            companyId: e.companyId,
+            fromCurrency: e.fromCurrency,
+            toCurrency: e.toCurrency,
+            rate: e.rate,
+            date: admin.firestore.Timestamp.fromDate(e.date),
+            source: e.source,
+            createdAt: admin.firestore.Timestamp.fromDate(e.createdAt),
+            createdBy: e.createdBy,
+        };
+    }
 }
 class FirestoreCostCenterRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
     constructor() {
@@ -62,13 +87,76 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
         this.toDomain = ExchangeRateMapper.toDomain;
         this.toPersistence = ExchangeRateMapper.toPersistence;
     }
-    async setRate(rate) { return this.save(rate); }
+    async save(rate) {
+        return super.save(rate);
+    }
+    /** @deprecated Use save() instead */
+    async setRate(rate) {
+        return this.save(rate);
+    }
+    /** @deprecated Use getLatestRate() instead */
     async getRate(from, to, date) {
-        // MVP: Simplified query, ignoring date range for exact match or latest
         const snap = await this.db.collection(this.collectionName)
             .where('fromCurrency', '==', from)
             .where('toCurrency', '==', to)
+            .orderBy('createdAt', 'desc')
+            .limit(1)
+            .get();
+        if (snap.empty)
+            return null;
+        return this.toDomain(snap.docs[0].data());
+    }
+    async getLatestRate(companyId, fromCurrency, toCurrency, date) {
+        const dateStart = new Date(date);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(date);
+        dateEnd.setHours(23, 59, 59, 999);
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('fromCurrency', '==', fromCurrency.toUpperCase())
+            .where('toCurrency', '==', toCurrency.toUpperCase())
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
             .orderBy('date', 'desc')
+            .orderBy('createdAt', 'desc')
+            .limit(1)
+            .get();
+        if (snap.empty)
+            return null;
+        return this.toDomain(snap.docs[0].data());
+    }
+    async getRatesForDate(companyId, fromCurrency, toCurrency, date) {
+        const dateStart = new Date(date);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(date);
+        dateEnd.setHours(23, 59, 59, 999);
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('fromCurrency', '==', fromCurrency.toUpperCase())
+            .where('toCurrency', '==', toCurrency.toUpperCase())
+            .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
+            .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
+            .orderBy('date', 'desc')
+            .orderBy('createdAt', 'desc')
+            .get();
+        return snap.docs.map(d => this.toDomain(d.data()));
+    }
+    async getRecentRates(companyId, fromCurrency, toCurrency, limit = 10) {
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('fromCurrency', '==', fromCurrency.toUpperCase())
+            .where('toCurrency', '==', toCurrency.toUpperCase())
+            .orderBy('createdAt', 'desc')
+            .limit(limit)
+            .get();
+        return snap.docs.map(d => this.toDomain(d.data()));
+    }
+    async getMostRecentRate(companyId, fromCurrency, toCurrency) {
+        const snap = await this.db.collection(this.collectionName)
+            .where('companyId', '==', companyId)
+            .where('fromCurrency', '==', fromCurrency.toUpperCase())
+            .where('toCurrency', '==', toCurrency.toUpperCase())
+            .orderBy('createdAt', 'desc')
             .limit(1)
             .get();
         if (snap.empty)

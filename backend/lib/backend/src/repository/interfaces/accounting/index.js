@@ -19,4 +19,6 @@ __exportStar(require("./IAccountRepository"), exports);
 __exportStar(require("./ICostCenterRepository"), exports);
 __exportStar(require("./IExchangeRateRepository"), exports);
 __exportStar(require("./ILedgerRepository"), exports);
+__exportStar(require("./ICurrencyRepository"), exports);
+__exportStar(require("./ICompanyCurrencyRepository"), exports);
 //# sourceMappingURL=index.js.map
