@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins } from 'lucide-react';
+import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -70,7 +71,8 @@ export const AccountingSettingsPage: React.FC = () => {
   // Granular tabs as per implementation plan
   const tabs = [
     { id: 'general', label: 'General Settings', icon: Globe },
-    { id: 'policies', label: 'Approval & Posting', icon: Shield },  // Merged: Policy + Approval
+    { id: 'currencies', label: 'Currencies', icon: Coins },
+    { id: 'policies', label: 'Approval & Posting', icon: Shield },
     { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
     { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
     { id: 'fiscal', label: 'Fiscal Year', icon: Building2 },
@@ -372,6 +374,11 @@ export const AccountingSettingsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Currencies Tab */}
+            {activeTab === 'currencies' && (
+              <CompanyCurrencySettings />
             )}
 
             {/* Policy Configuration Tab (Merged: Approval & Posting) */}
