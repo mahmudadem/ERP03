@@ -11,12 +11,14 @@ import { AccountingDesignerController } from '../controllers/accounting/Accounti
 import { SettingsController } from '../controllers/accounting/SettingsController';
 import { CurrencyController } from '../controllers/accounting/CurrencyController';
 import { authMiddleware } from '../middlewares/authMiddleware';
+import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
 
 
 const router = Router();
-// authMiddleware should be applied at tenant router level, but keeping here for safety if mounted elsewhere
+// Apply auth and company context middlewares
 router.use(authMiddleware);
+router.use(companyContextMiddleware);
 
 // Accounts
 router.get('/accounts', permissionGuard('accounting.accounts.view'), AccountController.list);
