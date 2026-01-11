@@ -5,19 +5,10 @@
  */
 
 import { Request, Response } from 'express';
-import { getPrismaClient } from '../../../infrastructure/prisma/prismaClient';
-import { PrismaCurrencyRepository } from '../../../infrastructure/prisma/repositories/PrismaCurrencyRepository';
-import { PrismaCompanyCurrencyRepository } from '../../../infrastructure/prisma/repositories/PrismaCompanyCurrencyRepository';
-import { PrismaExchangeRateRepository } from '../../../infrastructure/prisma/repositories/PrismaExchangeRateRepository';
+import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ListCurrenciesUseCase, GetCurrencyUseCase } from '../../../application/accounting/use-cases/CurrencyUseCases';
 import { ListCompanyCurrenciesUseCase, EnableCurrencyForCompanyUseCase, DisableCurrencyForCompanyUseCase } from '../../../application/accounting/use-cases/CompanyCurrencyUseCases';
 import { GetSuggestedRateUseCase, SaveReferenceRateUseCase, DetectRateDeviationService } from '../../../application/accounting/services/ExchangeRateService';
-import { Currency } from '../../../domain/accounting/entities/Currency';
-
-const prisma = getPrismaClient();
-const currencyRepo = new PrismaCurrencyRepository(prisma);
-const companyCurrencyRepo = new PrismaCompanyCurrencyRepository(prisma);
-const exchangeRateRepo = new PrismaExchangeRateRepository(prisma);
 
 export class CurrencyController {
   /**
@@ -26,7 +17,7 @@ export class CurrencyController {
    */
   static async listCurrencies(req: Request, res: Response) {
     try {
-      const useCase = new ListCurrenciesUseCase(currencyRepo);
+      const useCase = new ListCurrenciesUseCase(diContainer.accountingCurrencyRepository);
       const currencies = await useCase.execute();
       res.json({ currencies: currencies.map(c => c.toJSON()) });
     } catch (error: any) {
@@ -42,7 +33,7 @@ export class CurrencyController {
   static async getCurrency(req: Request, res: Response) {
     try {
       const { code } = req.params;
-      const useCase = new GetCurrencyUseCase(currencyRepo);
+      const useCase = new GetCurrencyUseCase(diContainer.accountingCurrencyRepository);
       const currency = await useCase.execute(code);
       
       if (!currency) {
@@ -67,7 +58,7 @@ export class CurrencyController {
         return res.status(400).json({ error: 'Company ID required' });
       }
 
-      const useCase = new ListCompanyCurrenciesUseCase(companyCurrencyRepo);
+      const useCase = new ListCompanyCurrenciesUseCase(diContainer.companyCurrencyRepository);
       const companyCurrencies = await useCase.execute(companyId);
       res.json({ currencies: companyCurrencies });
     } catch (error: any) {
@@ -102,9 +93,9 @@ export class CurrencyController {
       }
 
       const useCase = new EnableCurrencyForCompanyUseCase(
-        currencyRepo,
-        companyCurrencyRepo,
-        exchangeRateRepo
+        diContainer.accountingCurrencyRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.exchangeRateRepository
       );
 
       const result = await useCase.execute({
@@ -136,7 +127,7 @@ export class CurrencyController {
         return res.status(400).json({ error: 'Company ID required' });
       }
 
-      const useCase = new DisableCurrencyForCompanyUseCase(companyCurrencyRepo);
+      const useCase = new DisableCurrencyForCompanyUseCase(diContainer.companyCurrencyRepository);
       await useCase.execute(companyId, code);
 
       res.json({ success: true });
@@ -164,7 +155,7 @@ export class CurrencyController {
         return res.status(400).json({ error: 'fromCurrency and toCurrency are required' });
       }
 
-      const useCase = new GetSuggestedRateUseCase(exchangeRateRepo);
+      const useCase = new GetSuggestedRateUseCase(diContainer.exchangeRateRepository);
       const result = await useCase.execute(
         companyId,
         fromCurrency as string,
@@ -208,7 +199,7 @@ export class CurrencyController {
         return res.status(400).json({ error: 'A positive rate is required' });
       }
 
-      const useCase = new SaveReferenceRateUseCase(exchangeRateRepo);
+      const useCase = new SaveReferenceRateUseCase(diContainer.exchangeRateRepository);
       const savedRate = await useCase.execute({
         companyId,
         fromCurrency,
@@ -244,7 +235,7 @@ export class CurrencyController {
         return res.status(400).json({ error: 'fromCurrency, toCurrency, and proposedRate are required' });
       }
 
-      const service = new DetectRateDeviationService(exchangeRateRepo);
+      const service = new DetectRateDeviationService(diContainer.exchangeRateRepository);
       const warnings = await service.detectDeviations(
         companyId,
         fromCurrency,

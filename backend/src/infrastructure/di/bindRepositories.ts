@@ -26,6 +26,7 @@ import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermission
 import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
 import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
+import { FirestoreAccountingCurrencyRepository, FirestoreCompanyCurrencyRepository } from '../firestore/repositories/accounting/FirestoreCurrencyRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
@@ -127,6 +128,8 @@ export const diContainer = {
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(getDb()); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(getDb()); },
   get ledgerRepository(): AccRepo.ILedgerRepository { return new FirestoreLedgerRepository(getDb()); },
+  get accountingCurrencyRepository(): AccRepo.ICurrencyRepository { return new FirestoreAccountingCurrencyRepository(getDb()); },
+  get companyCurrencyRepository(): AccRepo.ICompanyCurrencyRepository { return new FirestoreCompanyCurrencyRepository(getDb()); },
 
   // INVENTORY
   get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },
