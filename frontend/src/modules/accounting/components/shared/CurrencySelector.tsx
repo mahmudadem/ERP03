@@ -1,34 +1,28 @@
 /**
- * Currency Selector Component
+ * Currency Selector Component (Updated)
  * 
- * Direct text input for selecting currencies with smart auto-select and navigation.
+ * Fetches currencies from API instead of using hardcoded list.
  * - Type currency code directly (e.g. USD, EUR)
  * - Exact match: auto-selects on blur/Enter
  * - No exact match: opens search modal
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
+import { accountingApi, CurrencyDTO } from '../../../../api/accountingApi';
 
 export interface Currency {
   code: string;
   name: string;
   symbol: string;
+  decimalPlaces?: number;
 }
 
-// Standard list of currencies - typically this would come from an API or settings
-const STANDARD_CURRENCIES: Currency[] = [
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'British Pound', symbol: '£' },
-  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: '$' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: '$' },
-  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
-  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
-  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
-  { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س' },
+// Fallback currencies for when API is unavailable
+const FALLBACK_CURRENCIES: Currency[] = [
+  { code: 'USD', name: 'US Dollar', symbol: '$', decimalPlaces: 2 },
+  { code: 'EUR', name: 'Euro', symbol: '€', decimalPlaces: 2 },
+  { code: 'TRY', name: 'Turkish Lira', symbol: '₺', decimalPlaces: 2 },
 ];
 
 interface CurrencySelectorProps {
@@ -52,6 +46,8 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   onKeyDown: externalKeyDown,
   onBlur: externalBlur
 }, ref) => {
+  const [currencies, setCurrencies] = useState<Currency[]>(FALLBACK_CURRENCIES);
+  const [loading, setLoading] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -61,6 +57,33 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
 
   // Forward the ref
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+  // Fetch currencies from API on mount
+  useEffect(() => {
+    let mounted = true;
+    
+    const fetchCurrencies = async () => {
+      try {
+        const response = await accountingApi.getCurrencies();
+        if (mounted && response.currencies) {
+          setCurrencies(response.currencies.map((c: CurrencyDTO) => ({
+            code: c.code,
+            name: c.name,
+            symbol: c.symbol,
+            decimalPlaces: c.decimalPlaces,
+          })));
+        }
+      } catch (error) {
+        console.warn('Failed to fetch currencies, using fallback:', error);
+        // Keep fallback currencies
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchCurrencies();
+    return () => { mounted = false; };
+  }, []);
 
   // Sync input value with external value
   useEffect(() => {
@@ -80,8 +103,7 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
     const search = searchText.trim().toUpperCase();
     if (!search) return null;
     
-    // Try exact code match
-    const codeMatch = STANDARD_CURRENCIES.find(c => c.code === search);
+    const codeMatch = currencies.find(c => c.code === search);
     if (codeMatch) return codeMatch;
     
     return null;
@@ -91,16 +113,14 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   const getFilteredCurrencies = (searchText: string): Currency[] => {
     const search = searchText.trim().toLowerCase();
     
-    // If empty search, show all
-    if (!search) return STANDARD_CURRENCIES;
+    if (!search) return currencies;
     
-    return STANDARD_CURRENCIES
+    return currencies
       .filter(c => 
         c.code.toLowerCase().includes(search) || 
         c.name.toLowerCase().includes(search)
       )
       .sort((a, b) => {
-        // Prioritize: exact code match > starts with > includes
         const aCode = a.code.toLowerCase();
         const bCode = b.code.toLowerCase();
         
@@ -118,33 +138,28 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   };
 
   const handleInputBlur = () => {
-    // If empty, just clear
     if (!inputValue.trim()) {
       if (value) onChange('');
     } else if (value && inputValue === value) {
-      // If matches current value, do nothing
+      // No change
     } else {
       const exactMatch = findExactMatch(inputValue);
       
       if (exactMatch) {
-        // Found exact match
         onChange(exactMatch.code);
         setInputValue(exactMatch.code);
       } else {
-        // No exact match - open modal
         setHighlightedIndex(0);
         setShowModal(true);
       }
     }
 
-    // Call external blur
     if (externalBlur) {
       externalBlur();
     }
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Alt+Down to explicitly open modal
     if (e.altKey && e.key === 'ArrowDown') {
       e.preventDefault();
       setModalSearch(inputValue.trim());
@@ -153,14 +168,12 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
       return;
     }
 
-    // Enter key handling
     if (e.key === 'Enter') {
       if (inputValue.trim()) {
         const exactMatch = findExactMatch(inputValue);
         if (exactMatch) {
           onChange(exactMatch.code);
           setInputValue(exactMatch.code);
-          // Pass Enter to grid navigation
           if (externalKeyDown) externalKeyDown(e);
         } else {
             e.preventDefault(); 
@@ -169,13 +182,11 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
             setShowModal(true);
         }
       } else {
-        // Empty input - pass Enter to grid
         if (externalKeyDown) externalKeyDown(e);
       }
       return;
     } 
     
-    // Navigation keys - pass to grid
     const isNavKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
     
     if (isNavKey) {
@@ -206,7 +217,7 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
         break;
       case 'Escape':
         setShowModal(false);
-        setInputValue(value || ''); // Revert to original
+        setInputValue(value || '');
         inputRef.current?.focus();
         break;
     }
@@ -216,12 +227,6 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
     onChange(currency.code);
     setInputValue(currency.code);
     setShowModal(false);
-    inputRef.current?.focus();
-  };
-
-  const handleClear = () => {
-    onChange('');
-    setInputValue('');
     inputRef.current?.focus();
   };
 
@@ -239,11 +244,12 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={disabled || loading}
           className={`w-full text-xs text-center font-bold transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
+        {loading && <Loader2 className="absolute right-1 w-3 h-3 animate-spin text-[var(--color-text-muted)]" />}
       </div>
 
       {/* Search Modal */}

@@ -175,5 +175,82 @@ export const accountingApi = {
 
   getPolicyConfig: (): Promise<AccountingPolicyConfig> => {
     return client.get('/tenant/accounting/policy-config');
-  }
+  },
+
+  // --- CURRENCIES ---
+  
+  /** Get all active currencies from the system */
+  getCurrencies: (): Promise<{ currencies: CurrencyDTO[] }> => {
+    return client.get('/tenant/accounting/currencies');
+  },
+
+  /** Get currencies enabled for the current company */
+  getCompanyCurrencies: (): Promise<{ currencies: CompanyCurrencyDTO[] }> => {
+    return client.get('/tenant/accounting/company/currencies');
+  },
+
+  /** Enable a currency for the company (requires initial rate) */
+  enableCurrency: (currencyCode: string, initialRate: number, initialRateDate?: string): Promise<{ success: boolean; companyCurrency: CompanyCurrencyDTO }> => {
+    return client.post('/tenant/accounting/company/currencies', { currencyCode, initialRate, initialRateDate });
+  },
+
+  /** Disable a currency for the company */
+  disableCurrency: (currencyCode: string): Promise<{ success: boolean }> => {
+    return client.delete(`/tenant/accounting/company/currencies/${currencyCode}`);
+  },
+
+  // --- EXCHANGE RATES ---
+
+  /** Get suggested exchange rate for a currency pair. Returns null if no rate exists. */
+  getSuggestedRate: (fromCurrency: string, toCurrency: string, date?: string): Promise<SuggestedRateDTO> => {
+    const params = new URLSearchParams({ fromCurrency, toCurrency });
+    if (date) params.append('date', date);
+    return client.get(`/tenant/accounting/exchange-rates/suggested?${params.toString()}`);
+  },
+
+  /** Save a reference exchange rate */
+  saveExchangeRate: (fromCurrency: string, toCurrency: string, rate: number, date?: string): Promise<{ success: boolean; exchangeRate: any }> => {
+    return client.post('/tenant/accounting/exchange-rates', { fromCurrency, toCurrency, rate, date });
+  },
+
+  /** Check for rate deviation warnings */
+  checkRateDeviation: (fromCurrency: string, toCurrency: string, proposedRate: number): Promise<RateDeviationDTO> => {
+    return client.post('/tenant/accounting/exchange-rates/check-deviation', { fromCurrency, toCurrency, proposedRate });
+  },
 };
+
+// Currency DTOs
+export interface CurrencyDTO {
+  code: string;
+  name: string;
+  symbol: string;
+  decimalPlaces: number;
+  isActive: boolean;
+}
+
+export interface CompanyCurrencyDTO {
+  id: string;
+  companyId: string;
+  currencyCode: string;
+  isEnabled: boolean;
+  enabledAt: string;
+  disabledAt?: string | null;
+}
+
+export interface SuggestedRateDTO {
+  rate: number | null;
+  source: 'EXACT_DATE' | 'MOST_RECENT' | 'NONE';
+  rateDate: string | null;
+}
+
+export interface RateDeviationWarning {
+  type: 'PERCENTAGE_DEVIATION' | 'DECIMAL_SHIFT' | 'FIRST_RATE';
+  message: string;
+  suggestedRate?: number;
+  percentageDeviation?: number;
+}
+
+export interface RateDeviationDTO {
+  warnings: RateDeviationWarning[];
+  hasWarnings: boolean;
+}

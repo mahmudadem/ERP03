@@ -9,6 +9,7 @@ import { VoucherFormController } from '../controllers/accounting/VoucherFormCont
 import { ReportingController } from '../controllers/accounting/ReportingController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { SettingsController } from '../controllers/accounting/SettingsController';
+import { CurrencyController } from '../controllers/accounting/CurrencyController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
 
@@ -68,5 +69,17 @@ router.post('/voucher-forms', permissionGuard('accounting.designer.create'), Vou
 router.put('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.update);
 router.delete('/voucher-forms/:id', permissionGuard('accounting.designer.modify'), VoucherFormController.delete);
 router.post('/voucher-forms/:id/clone', permissionGuard('accounting.designer.create'), VoucherFormController.clone);
+
+// Currencies
+router.get('/currencies', permissionGuard('accounting.accounts.view'), CurrencyController.listCurrencies);
+router.get('/currencies/:code', permissionGuard('accounting.accounts.view'), CurrencyController.getCurrency);
+router.get('/company/currencies', permissionGuard('accounting.accounts.view'), CurrencyController.listCompanyCurrencies);
+router.post('/company/currencies', permissionGuard('accounting.settings.write'), CurrencyController.enableCurrency);
+router.delete('/company/currencies/:code', permissionGuard('accounting.settings.write'), CurrencyController.disableCurrency);
+
+// Exchange Rates
+router.get('/exchange-rates/suggested', permissionGuard('accounting.vouchers.create'), CurrencyController.getSuggestedRate);
+router.post('/exchange-rates', permissionGuard('accounting.vouchers.create'), CurrencyController.saveRate);
+router.post('/exchange-rates/check-deviation', permissionGuard('accounting.vouchers.create'), CurrencyController.checkRateDeviation);
 
 export default router;
