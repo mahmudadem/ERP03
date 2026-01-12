@@ -23,24 +23,22 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
   const [pendingSave, setPendingSave] = useState<{ from: string; to: string; rate: number; date: string } | null>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check for inverse rate suggestion when FROM/TO changes
+  // Fetch inverse rate suggestion when FROM or TO changes
   useEffect(() => {
     const fetchInverseRateSuggestion = async () => {
       if (from && to && from !== to) {
         setLoadingSuggestion(true);
+        // Reset rate when currencies change to fetch fresh rate
+        setRate('');
+        setDeviation(null);
+        
         try {
-          const response = await accountingApi.getLatestRatesMatrix();
-          const matrix = response.matrix;
-          // Check if the reverse rate exists (TO → FROM)
-          if (matrix[to] && matrix[to][from]) {
-            const reverseRate = matrix[to][from];
-            const suggestedInverse = 1 / reverseRate;
+          const result = await accountingApi.getSuggestedRate(to, from);
+          if (result.rate) {
+            const suggestedInverse = 1 / result.rate;
             setSuggestedRate(suggestedInverse);
-            
-            // Auto-fill the rate if it's empty
-            if (!rate) {
-              setRate(suggestedInverse.toFixed(4));
-            }
+            // Always auto-fill with new rate when currencies change
+            setRate(suggestedInverse.toFixed(4));
           } else {
             setSuggestedRate(null);
           }
@@ -52,6 +50,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
         }
       } else {
         setSuggestedRate(null);
+        setRate('');
       }
     };
 
