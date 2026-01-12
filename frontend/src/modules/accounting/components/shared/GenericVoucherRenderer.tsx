@@ -30,7 +30,7 @@ const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
   notes: '',
   debit: 0,
   credit: 0,
-  currency: 'USD',
+  currency: '', // Start blank, populate on account selection
   parity: 1.0,
   equivalent: 0,
   category: ''
@@ -615,18 +615,17 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
           if (field === 'account') {
             const acc = value as Account | null | string;
+            // Default to voucher currency if account doesn't have a specific one
+            const defaultCurrency = formData.currency || 'USD';
+            
             if (acc && typeof acc === 'object') {
               updated.account = acc.code;
-              if (acc.currency) {
-                updated.currency = acc.currency;
-              }
+              updated.currency = acc.currency || defaultCurrency;
             } else {
               updated.account = acc as string;
               // If it's just a code, resolve currency from context
               const resolvedAcc = getAccountByCode(updated.account);
-              if (resolvedAcc?.currency) {
-                updated.currency = resolvedAcc.currency;
-              }
+              updated.currency = resolvedAcc?.currency || defaultCurrency;
             }
           }
 
@@ -759,7 +758,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     setRows(prev => {
       const next = [...prev, {
         id: prev.length + 1,
-        account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+        account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: ''
       }];
       onChangeRef.current?.({ ...formData, lines: next });
       return next;
