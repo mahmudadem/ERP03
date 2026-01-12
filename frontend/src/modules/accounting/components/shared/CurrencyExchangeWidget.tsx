@@ -31,6 +31,8 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   const [loading, setLoading] = useState(false);
   const [manualRate, setManualRate] = useState<number | undefined>(value);
   const [warnings, setWarnings] = useState<RateDeviationWarning[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingRate, setPendingRate] = useState<number | null>(null);
 
   // Fetch suggested rate when currency changes
   useEffect(() => {
@@ -121,9 +123,41 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   const handleManualRateChange = (newRate: number | string) => {
     const val = typeof newRate === 'string' ? (parseFloat(newRate) || undefined) : newRate;
     setManualRate(val);
-    if (val !== undefined && val > 0) {
-      onChange?.(val);
+  };
+
+  const handleBlur = async () => {
+    if (manualRate === undefined || manualRate <= 0) {
+      return;
     }
+
+    // Check if this is a significant deviation (>10%)
+    const percentageWarning = warnings.find(w => w.type === 'PERCENTAGE_DEVIATION');
+    const deviationPercentage = percentageWarning?.percentageDeviation ? Math.abs(percentageWarning.percentageDeviation * 100) : 0;
+
+    if (deviationPercentage >= 10) {
+      // Show confirmation modal for significant deviations
+      setPendingRate(manualRate);
+      setShowConfirmModal(true);
+    } else {
+      // Small deviation or no deviation - apply immediately
+      onChange?.(manualRate);
+    }
+  };
+
+  const handleConfirmRate = () => {
+    if (pendingRate !== null) {
+      setManualRate(pendingRate);
+      onChange?.(pendingRate);
+    }
+    setShowConfirmModal(false);
+    setPendingRate(null);
+  };
+
+  const handleCancelRate = () => {
+    setShowConfirmModal(false);
+    setPendingRate(null);
+    // Reset input to current value
+    setManualRate(manualRate);
   };
 
   const effectiveRate = manualRate ?? suggestedRate ?? null;
@@ -175,6 +209,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
               placeholder={suggestedRate?.toString() || 'Enter rate...'}
               value={manualRate || ''}
               onChange={(e) => handleManualRateChange(e.target.value)}
+              onBlur={handleBlur}
               disabled={disabled || currency === baseCurrency}
               className={`
                 w-full bg-transparent text-xs font-bold outline-none placeholder:text-[var(--color-text-muted)] placeholder:font-normal
@@ -235,6 +270,53 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
               <span>{warning.message}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Confirmation Modal for Significant Deviations */}
+      {showConfirmModal && pendingRate !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleCancelRate}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <AlertTriangle size={24} className="text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  Rate Deviation Warning
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  The rate you entered <strong>({pendingRate.toFixed(4)})</strong> differs significantly from the system rate.
+                </p>
+                {warnings.length > 0 && (
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    {warnings.map((warning, idx) => (
+                      <p key={idx} className="text-xs text-yellow-800 dark:text-yellow-200">
+                        {warning.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                  This could be a typing mistake. Are you sure you want to use this rate?
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={handleCancelRate}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmRate}
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-all font-medium flex items-center gap-2"
+                  >
+                    Use This Rate
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
