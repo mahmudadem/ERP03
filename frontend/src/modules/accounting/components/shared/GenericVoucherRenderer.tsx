@@ -100,51 +100,82 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     console.log('[PARITY RECALC] Voucher currency or rate changed:', { voucherCurrency, voucherRate });
     
-    // Fetch rates for all foreign currency lines
+    // Fetch rates for all foreign currency lines (Optimized to batch requests)
     const recalculateAllParities = async () => {
-      const updatedRows = await Promise.all(
-        rows.map(async (row) => {
-          const lineCurrency = row.currency || voucherCurrency;
-          const debit = parseFloat(row.debit as any) || 0;
-          const credit = parseFloat(row.credit as any) || 0;
-          const amount = debit || credit || 0;
-          
-          // If line currency = voucher currency, parity = 1
-          if (lineCurrency.toUpperCase() === voucherCurrency.toUpperCase()) {
-            if (row.parity !== 1.0) {
-              console.log('[PARITY RECALC] Resetting line to parity = 1 (same as voucher currency)');
-              return { ...row, parity: 1.0, equivalent: amount };
-            }
-            return row;
-          }
-          
-          // If line is in different currency, fetch the rate
-          try {
-            console.log('[PARITY RECALC] Fetching rate:', lineCurrency, '→', voucherCurrency);
-            const result = await accountingApi.getSuggestedRate(
-              lineCurrency,
-              voucherCurrency,
-              formData.date || getCompanyToday(settings)
-            );
-            
-            if (result.rate) {
-              const parity = result.rate;
-              console.log('[PARITY RECALC] Setting parity:', parity, 'for', lineCurrency, 'line');
-              return {
-                ...row,
-                parity,
-                equivalent: Math.round(amount * parity * 100) / 100
-              };
-            }
-          } catch (error) {
-            console.error('[PARITY RECALC] Failed to fetch rate:', error);
-          }
-          
-          return row;
-        })
-      );
+      // 1. Identify unique currencies that need updating
+      const currenciesToFetch = new Set<string>();
+      rows.forEach(row => {
+        const lineCurrency = row.currency || voucherCurrency;
+        // If line is different from voucher, and we don't have a simple inverse calc available
+        if (lineCurrency.toUpperCase() !== voucherCurrency.toUpperCase()) {
+           // If voucher is base/USD, we need to fetch rate for this foreign currency
+           // regardless of whether we have it in form data (since form data is 1.0 for USD voucher)
+           currenciesToFetch.add(lineCurrency.toUpperCase());
+        }
+      });
       
-      // Check if anything changed
+      const uniqueCurrencies = Array.from(currenciesToFetch);
+      console.log('[PARITY RECALC] Unique currencies to fetch:', uniqueCurrencies);
+      
+      if (uniqueCurrencies.length === 0) return;
+
+      // 2. Fetch rates for unique currencies
+      const ratesMap = new Map<string, number>();
+      
+      await Promise.all(uniqueCurrencies.map(async (currency) => {
+        try {
+          console.log('[PARITY RECALC] Fetching rate for:', currency);
+          const result = await accountingApi.getSuggestedRate(
+            currency,
+            voucherCurrency,
+            formData.date || getCompanyToday(settings)
+          );
+          
+          if (result.rate) {
+            ratesMap.set(currency, result.rate);
+          }
+        } catch (error) {
+          console.error(`[PARITY RECALC] Failed to fetch rate for ${currency}:`, error);
+        }
+      }));
+
+      // 3. Update all lines with fetched rates
+      const updatedRows = rows.map(row => {
+        const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
+        const vCurrency = voucherCurrency.toUpperCase();
+        
+        // Case 1: Same as voucher currency -> Parity 1
+        if (lineCurrency === vCurrency && row.parity !== 1.0) {
+           return { ...row, parity: 1.0, equivalent: (parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0) };
+        }
+        
+        // Case 2: Different currency, we have a fetched rate
+        if (lineCurrency !== vCurrency && ratesMap.has(lineCurrency)) {
+            const rate = ratesMap.get(lineCurrency)!;
+            const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
+            return {
+                ...row,
+                parity: rate,
+                equivalent: Math.round(amount * rate * 100) / 100
+            };
+        }
+
+         // Case 3: Line is base currency (USD) and voucher is foreign (EUR) -> Use inverse of voucher rate
+         // (This handles the generic case without API call if we missed it above)
+         if (lineCurrency === baseCurrency.toUpperCase() && vCurrency !== baseCurrency.toUpperCase() && voucherRate !== 1.0) {
+             const parity = 1 / voucherRate;
+             const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
+             return {
+                 ...row,
+                 parity,
+                 equivalent: Math.round(amount * parity * 100) / 100
+             };
+         }
+        
+        return row;
+      });
+
+      // 4. Update state if changed
       const hasChanges = updatedRows.some((row, i) => row.parity !== rows[i]?.parity);
       if (hasChanges) {
         setRows(updatedRows);
