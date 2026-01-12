@@ -39,7 +39,9 @@ export class CreateVoucherUseCase {
     
     return this.transactionManager.runTransaction(async (transaction) => {
       const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
-      const baseCurrency = settings?.baseCurrency || payload.baseCurrency || payload.currency;
+      // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
+      // Ledger entries MUST be in base currency only (accounting rule)
+      const baseCurrency = settings?.baseCurrency || 'USD';
       const autoNumbering = settings?.autoNumbering !== false;
 
       const voucherId = payload.id || randomUUID();
@@ -253,7 +255,8 @@ export class UpdateVoucherUseCase {
     const wasPosted = voucher.isPosted;
 
     // Simplified update logic: create new entity with merged data
-    const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
+    // CRITICAL: baseCurrency must remain the company's base currency, never from payload
+    const baseCurrency = voucher.baseCurrency; // Use existing voucher's base currency (company's base)
     const lines = payload.lines ? payload.lines.map((l: any, idx: number) => new VoucherLineEntity(
       idx + 1,
       l.accountId || voucher.lines[idx]?.accountId,

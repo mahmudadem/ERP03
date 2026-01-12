@@ -557,13 +557,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // 2. TRIGGER ASYNC PARITY FETCH if currency or account changed
     if ((field === 'currency' || field === 'account') && targetRow) {
       const lineCurrency = targetRow.currency || 'USD';
-      const baseCurrency = (definition as any)?.defaultCurrency || company?.baseCurrency || 'USD';
+      // CRITICAL: Use voucher's transaction currency, NOT company base currency
+      // This ensures line rates convert to the voucher currency (e.g., TRY→EUR if voucher is in EUR)
+      const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
       
-      if (lineCurrency.toUpperCase() !== baseCurrency.toUpperCase()) {
+      if (lineCurrency.toUpperCase() !== voucherCurrency.toUpperCase()) {
         try {
           const result = await accountingApi.getSuggestedRate(
             lineCurrency, 
-            baseCurrency, 
+            voucherCurrency,  // Changed from baseCurrency to voucherCurrency
             formData.date || getCompanyToday(settings)
           );
           
