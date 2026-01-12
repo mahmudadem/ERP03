@@ -61,8 +61,8 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
           setRateSource(response.source);
           setManualRate(undefined);
           
-          // If we have a suggested rate, use it as default
-          if (response.rate !== null && !value) {
+          // Always use suggested rate and update parent form
+          if (response.rate !== null) {
             onChange?.(response.rate);
           }
         }
