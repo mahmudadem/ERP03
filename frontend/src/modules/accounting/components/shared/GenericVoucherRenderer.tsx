@@ -561,13 +561,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // This ensures line rates convert to the voucher currency (e.g., TRY→EUR if voucher is in EUR)
       const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
       
+      console.log('[PARITY FETCH]', {
+        field,
+        lineCurrency,
+        voucherCurrency,
+        willFetch: lineCurrency.toUpperCase() !== voucherCurrency.toUpperCase()
+      });
+      
       if (lineCurrency.toUpperCase() !== voucherCurrency.toUpperCase()) {
         try {
+          console.log('[PARITY FETCH] Fetching rate:', lineCurrency, '→', voucherCurrency);
           const result = await accountingApi.getSuggestedRate(
             lineCurrency, 
             voucherCurrency,  // Changed from baseCurrency to voucherCurrency
             formData.date || getCompanyToday(settings)
           );
+          
+          console.log('[PARITY FETCH] Result:', result);
           
           if (result.rate) {
             setRows((prev: JournalRow[]) => {
@@ -577,6 +587,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                   const debit = parseFloat(r.debit as any) || 0;
                   const credit = parseFloat(r.credit as any) || 0;
                   const amount = debit || credit || 0;
+                  console.log('[PARITY FETCH] Setting parity:', parity, 'for row', id);
                   return { 
                     ...r, 
                     parity, 
@@ -590,7 +601,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             });
           }
         } catch (error) {
-          console.error('Failed to fetch suggested rate:', error);
+          console.error('[PARITY FETCH] Failed to fetch suggested rate:', error);
         }
       } else if (targetRow.parity !== 1.0) {
         // Reset parity to 1.0 if it's the base currency
