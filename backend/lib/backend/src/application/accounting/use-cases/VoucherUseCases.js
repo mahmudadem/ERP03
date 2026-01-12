@@ -57,7 +57,9 @@ class CreateVoucherUseCase {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
         return this.transactionManager.runTransaction(async (transaction) => {
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
-            const baseCurrency = (settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || payload.baseCurrency || payload.currency;
+            // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
+            // Ledger entries MUST be in base currency only (accounting rule)
+            const baseCurrency = (settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || 'USD';
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
             const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
@@ -212,7 +214,8 @@ class UpdateVoucherUseCase {
         // Track if voucher was posted before update (for ledger resync)
         const wasPosted = voucher.isPosted;
         // Simplified update logic: create new entity with merged data
-        const baseCurrency = payload.baseCurrency || voucher.baseCurrency;
+        // CRITICAL: baseCurrency must remain the company's base currency, never from payload
+        const baseCurrency = voucher.baseCurrency; // Use existing voucher's base currency (company's base)
         const lines = payload.lines ? payload.lines.map((l, idx) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j;
             return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId || ((_a = voucher.lines[idx]) === null || _a === void 0 ? void 0 : _a.accountId), l.side || ((_b = voucher.lines[idx]) === null || _b === void 0 ? void 0 : _b.side), l.baseAmount || ((_c = voucher.lines[idx]) === null || _c === void 0 ? void 0 : _c.baseAmount), baseCurrency, l.amount || ((_d = voucher.lines[idx]) === null || _d === void 0 ? void 0 : _d.amount), l.currency || ((_e = voucher.lines[idx]) === null || _e === void 0 ? void 0 : _e.currency), l.exchangeRate || ((_f = voucher.lines[idx]) === null || _f === void 0 ? void 0 : _f.exchangeRate), l.notes || ((_g = voucher.lines[idx]) === null || _g === void 0 ? void 0 : _g.notes), l.costCenterId || ((_h = voucher.lines[idx]) === null || _h === void 0 ? void 0 : _h.costCenterId), Object.assign(Object.assign({}, (_j = voucher.lines[idx]) === null || _j === void 0 ? void 0 : _j.metadata), l.metadata));
