@@ -92,6 +92,39 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
   }, [initialData?.id]); // Only re-sync if the ID changes largely.
   
+  // Recalculate parities when voucher exchange rate changes
+  useEffect(() => {
+    const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
+    const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
+    const baseCurrency = company?.baseCurrency || 'USD';
+    
+    // Only recalculate if we have a valid rate and it's not 1
+    if (voucherRate !== 1.0 && voucherCurrency !== baseCurrency) {
+      console.log('[PARITY RECALC] Exchange rate changed to:', voucherRate);
+      
+      setRows((prev: JournalRow[]) => {
+        const next = prev.map(row => {
+          // Recalculate parity for base currency lines (USD in EUR voucher)
+          if (row.currency?.toUpperCase() === baseCurrency.toUpperCase()) {
+            const parity = 1 / voucherRate;
+            const debit = parseFloat(row.debit as any) || 0;
+            const credit = parseFloat(row.credit as any) || 0;
+            const amount = debit || credit || 0;
+            console.log('[PARITY RECALC] Updating USD line parity to:', parity);
+            return {
+              ...row,
+              parity,
+              equivalent: Math.round(amount * parity * 100) / 100
+            };
+          }
+          return row;
+        });
+        onChangeRef.current?.({ ...formData, lines: next });
+        return next;
+      });
+    }
+  }, [formData.exchangeRate, formData.currency]);
+  
   // Column resize state (for Classic table)
   const storageKey = `columnWidths_${definition.id}`;
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
