@@ -142,7 +142,7 @@ export class GetSuggestedRateUseCase {
     fromCurrency: string,
     toCurrency: string,
     date: Date
-  ): Promise<{ rate: ExchangeRate | null; source: 'EXACT_DATE' | 'MOST_RECENT' | 'NONE' }> {
+  ): Promise<{ rate: ExchangeRate | null; source: 'EXACT_DATE' | 'MOST_RECENT' | 'INVERSE' | 'NONE' }> {
     // Same currency = rate of 1
     if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) {
       return {
@@ -172,6 +172,24 @@ export class GetSuggestedRateUseCase {
 
     if (mostRecent) {
       return { rate: mostRecent, source: 'MOST_RECENT' };
+    }
+
+    // Try inverse rate (e.g., if USD→EUR not found, try EUR→USD and calculate 1/rate)
+    const inverseRate = await this.exchangeRateRepo.getMostRecentRate(
+      companyId,
+      toCurrency,  // Swap: look for EUR→USD
+      fromCurrency
+    );
+
+    if (inverseRate && inverseRate.rate > 0) {
+      // Calculate inverse: if EUR→USD = 1.13, then USD→EUR = 1/1.13 = 0.885
+      const calculatedRate: ExchangeRate = {
+        ...inverseRate,
+        fromCurrency: fromCurrency,
+        toCurrency: toCurrency,
+        rate: 1 / inverseRate.rate,
+      };
+      return { rate: calculatedRate, source: 'INVERSE' };
     }
 
     // No rate exists - caller must prompt user for manual entry

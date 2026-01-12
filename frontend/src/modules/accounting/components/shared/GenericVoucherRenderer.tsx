@@ -560,6 +560,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
       const baseCurrency = company?.baseCurrency || 'USD';
       
+      console.log('[PARITY CALC] Full formData:', JSON.stringify(formData, null, 2));
       console.log('[PARITY CALC]', {
         field,
         lineCurrency,
