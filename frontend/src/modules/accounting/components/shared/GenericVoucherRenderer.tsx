@@ -92,7 +92,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
   }, [initialData?.id]); // Only re-sync if the ID changes largely.
   
-  // Recalculate parities when voucher exchange rate changes
+  // Recalculate parities when voucher currency or exchange rate changes
   useEffect(() => {
     const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
     const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
@@ -100,41 +100,59 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     console.log('[PARITY RECALC] Voucher currency or rate changed:', { voucherCurrency, voucherRate });
     
-    setRows((prev: JournalRow[]) => {
-      const next = prev.map(row => {
-        const debit = parseFloat(row.debit as any) || 0;
-        const credit = parseFloat(row.credit as any) || 0;
-        const amount = debit || credit || 0;
-        
-        // If voucher is in base currency (USD), all lines should have parity = 1
-        if (voucherCurrency.toUpperCase() === baseCurrency.toUpperCase()) {
-          if (row.parity !== 1.0) {
-            console.log('[PARITY RECALC] Resetting line to parity = 1 (voucher is base currency)');
-            return { ...row, parity: 1.0, equivalent: amount };
+    // Fetch rates for all foreign currency lines
+    const recalculateAllParities = async () => {
+      const updatedRows = await Promise.all(
+        rows.map(async (row) => {
+          const lineCurrency = row.currency || voucherCurrency;
+          const debit = parseFloat(row.debit as any) || 0;
+          const credit = parseFloat(row.credit as any) || 0;
+          const amount = debit || credit || 0;
+          
+          // If line currency = voucher currency, parity = 1
+          if (lineCurrency.toUpperCase() === voucherCurrency.toUpperCase()) {
+            if (row.parity !== 1.0) {
+              console.log('[PARITY RECALC] Resetting line to parity = 1 (same as voucher currency)');
+              return { ...row, parity: 1.0, equivalent: amount };
+            }
+            return row;
           }
-        }
-        // If voucher is in foreign currency (EUR) and line is in base currency (USD)
-        else if (row.currency?.toUpperCase() === baseCurrency.toUpperCase() && voucherRate !== 1.0) {
-          const parity = 1 / voucherRate;
-          console.log('[PARITY RECALC] Updating USD line parity to:', parity);
-          return {
-            ...row,
-            parity,
-            equivalent: Math.round(amount * parity * 100) / 100
-          };
-        }
-        
-        return row;
-      });
+          
+          // If line is in different currency, fetch the rate
+          try {
+            console.log('[PARITY RECALC] Fetching rate:', lineCurrency, '→', voucherCurrency);
+            const result = await accountingApi.getSuggestedRate(
+              lineCurrency,
+              voucherCurrency,
+              formData.date || getCompanyToday(settings)
+            );
+            
+            if (result.rate) {
+              const parity = result.rate;
+              console.log('[PARITY RECALC] Setting parity:', parity, 'for', lineCurrency, 'line');
+              return {
+                ...row,
+                parity,
+                equivalent: Math.round(amount * parity * 100) / 100
+              };
+            }
+          } catch (error) {
+            console.error('[PARITY RECALC] Failed to fetch rate:', error);
+          }
+          
+          return row;
+        })
+      );
       
-      // Only trigger onChange if something actually changed
-      const hasChanges = next.some((row, i) => row.parity !== prev[i]?.parity);
+      // Check if anything changed
+      const hasChanges = updatedRows.some((row, i) => row.parity !== rows[i]?.parity);
       if (hasChanges) {
-        onChangeRef.current?.({ ...formData, lines: next });
+        setRows(updatedRows);
+        onChangeRef.current?.({ ...formData, lines: updatedRows });
       }
-      
-      return next;
-    });
+    };
+    
+    recalculateAllParities();
   }, [formData.exchangeRate, formData.currency]);
   
   // Column resize state (for Classic table)
