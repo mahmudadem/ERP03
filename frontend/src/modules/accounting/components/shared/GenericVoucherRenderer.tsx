@@ -195,6 +195,104 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     recalculateAllParities();
   }, [formData.exchangeRate, formData.currency]);
+
+  // --- Math & Auto-Balance Logic ---
+  const evaluateMathExpression = (expression: string): number | null => {
+    // Only allow safe characters: 0-9 . + - * / ( ) space
+    if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(expression)) return null;
+    try {
+      // Create a specific function context to prevent accessing global/window
+      // eslint-disable-next-line no-new-func
+      const result = new Function('return ' + expression)();
+      return isFinite(result) ? result : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Editing state for amount fields (allows typing "10+5")
+  const [editingCell, setEditingCell] = useState<{ rowId: number, field: string } | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+
+  const handleAmountFocus = (rowId: number, field: string, currentValue: number) => {
+    setEditingCell({ rowId, field });
+    setEditValue(currentValue === 0 ? '' : currentValue.toString());
+  };
+
+  const handleAmountChange = (val: string) => {
+    setEditValue(val);
+    // Don't update row state immediately to avoid parsing partial expressions
+  };
+
+  const handleAmountBlur = (rowId: number, field: keyof JournalRow) => {
+    if (!editingCell) return;
+    
+    // Evaluate if it looks like math
+    let finalValue = parseFloat(editValue);
+    
+    // Simple check if it contains math operators
+    if (/[\+\-\*\/]/.test(editValue)) {
+       const result = evaluateMathExpression(editValue);
+       if (result !== null) {
+         finalValue = result;
+       }
+    }
+
+    if (isNaN(finalValue)) finalValue = 0;
+    
+    // Update row
+    handleRowChange(rowId, field, finalValue);
+    
+    // Clear edit state
+    setEditingCell(null);
+    setEditValue('');
+    onBlurRef.current?.();
+  };
+
+  const handleAmountKeyDown = (e: React.KeyboardEvent, rowId: number, field: 'debit' | 'credit', idx: number, colIdx: number) => {
+    // Check for Ctrl+C (Auto Balance)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Calculate target to balance existing lines
+      // Goal: Sum(Debit * Parity) = Sum(Credit * Parity)
+      
+      let otherDebitBase = 0;
+      let otherCreditBase = 0;
+      
+      rows.forEach(r => {
+        if (r.id === rowId) return; // Skip current
+        const p = parseFloat(r.parity as any) || 1.0;
+        const d = (parseFloat(r.debit as any) || 0) * p;
+        const c = (parseFloat(r.credit as any) || 0) * p;
+        otherDebitBase += d;
+        otherCreditBase += c;
+      });
+      
+      let requiredBase = 0;
+      if (field === 'credit') {
+        // Use Credit to balance Debit excess
+        requiredBase = Math.max(0, otherDebitBase - otherCreditBase);
+      } else {
+        // Use Debit to balance Credit excess
+        requiredBase = Math.max(0, otherCreditBase - otherDebitBase);
+      }
+      
+      // Convert back to line currency
+      const currentParity = rows.find(r => r.id === rowId)?.parity || 1.0;
+      const finalAmount = requiredBase / currentParity;
+      const rounded = Math.round(finalAmount * 100) / 100;
+      
+      // Update immediately
+      handleRowChange(rowId, field, rounded);
+      setEditValue(rounded.toString());
+      return; // Handled
+    }
+    
+    // Standard navigation
+    handleCellKeyDown(e, idx, colIdx, (definition as any).tableColumns?.length || 8);
+  };
   
   // Column resize state (for Classic table)
   const storageKey = `columnWidths_${definition.id}`;
@@ -1223,15 +1321,43 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                          ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
                                              <input 
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
-                                                 type="number" 
-                                                 step="any"
+                                                 type="text" 
                                                  disabled={readOnly || colId === 'equivalent'}
-                                                 value={colId === 'equivalent' ? (parseFloat(row[colId as keyof JournalRow] as any) || 0).toFixed(2) : (row[colId as keyof JournalRow] ?? '')}
-                                                 onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
-                                                 onBlur={() => onBlurRef.current?.()}
+                                                 value={
+                                                   (editingCell?.rowId === row.id && editingCell?.field === colId) 
+                                                   ? editValue 
+                                                   : colId === 'equivalent' 
+                                                     ? (parseFloat(row[colId as keyof JournalRow] as any) || 0).toFixed(2) 
+                                                     : (row[colId as keyof JournalRow] ?? '')
+                                                 }
+                                                 onChange={(e) => {
+                                                   if (colId === 'debit' || colId === 'credit') {
+                                                     handleAmountChange(e.target.value);
+                                                   } else {
+                                                     handleRowChange(row.id, colId as any, e.target.value);
+                                                   }
+                                                 }}
+                                                 onFocus={() => {
+                                                   if (colId === 'debit' || colId === 'credit') {
+                                                     handleAmountFocus(row.id, colId, row[colId as 'debit' | 'credit'] as number);
+                                                   }
+                                                 }}
+                                                 onBlur={() => {
+                                                   if (colId === 'debit' || colId === 'credit') {
+                                                     handleAmountBlur(row.id, colId as 'debit' | 'credit');
+                                                   } else {
+                                                     onBlurRef.current?.();
+                                                   }
+                                                 }}
+                                                 onKeyDown={(e) => {
+                                                   if (colId === 'debit' || colId === 'credit') {
+                                                     handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIdx);
+                                                   } else {
+                                                     handleCellKeyDown(e, index, colIdx, columns.length);
+                                                   }
+                                                 }}
                                                  readOnly={colId === 'equivalent'}
-                                                 title={colId === 'equivalent' ? "Equivalent = Amount * Parity (Read-only)" : ""}
+                                                 title={colId === 'equivalent' ? "Equivalent (Read-only)" : "Math allowed (e.g. 10+5). Ctrl+C to balance."}
                                                  className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${colId === 'equivalent' || readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                                              />
                                          ) : (
