@@ -70,13 +70,15 @@ class CurrencyController {
      * Body: { currencyCode, initialRate, initialRateDate }
      */
     static async enableCurrency(req, res) {
+        var _a;
         try {
             const companyId = req.companyId;
-            const userId = req.uid;
-            const baseCurrency = req.baseCurrency || 'USD';
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!companyId) {
                 return res.status(400).json({ error: 'Company ID required' });
             }
+            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
+            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
             const { currencyCode, initialRate, initialRateDate } = req.body;
             if (!currencyCode) {
                 return res.status(400).json({ error: 'currencyCode is required' });
@@ -111,13 +113,107 @@ class CurrencyController {
             if (!companyId) {
                 return res.status(400).json({ error: 'Company ID required' });
             }
-            const useCase = new CompanyCurrencyUseCases_1.DisableCurrencyForCompanyUseCase(bindRepositories_1.diContainer.companyCurrencyRepository);
+            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
+            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
+            const useCase = new CompanyCurrencyUseCases_1.DisableCurrencyForCompanyUseCase(bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherRepository, baseCurrency);
             await useCase.execute(companyId, code);
             res.json({ success: true });
         }
         catch (error) {
             console.error('Error disabling currency:', error);
             res.status(400).json({ error: error.message });
+        }
+    }
+    /**
+     * GET /exchange-rates/history
+     * List recent exchange rates for a context (company, optionally specific pair)
+     * Query: fromCurrency, toCurrency, limit
+     */
+    static async listRateHistory(req, res) {
+        try {
+            const companyId = req.companyId;
+            const { fromCurrency, toCurrency, limit } = req.query;
+            if (!companyId) {
+                return res.status(400).json({ error: 'Company ID required' });
+            }
+            const historyLimit = limit ? Number(limit) : 20;
+            const rates = await bindRepositories_1.diContainer.exchangeRateRepository.getRecentRates(companyId, fromCurrency || undefined, // Repository handles undefined as "all pairs" if implemented, or we can filter
+            toCurrency || undefined, historyLimit);
+            res.json({ rates: rates.map(r => r.toJSON()) });
+        }
+        catch (error) {
+            console.error('Error listing rate history:', error);
+            res.status(500).json({ error: error.message });
+        }
+    }
+    /**
+     * GET /exchange-rates/matrix
+     * Get latest rates for all enabled currencies
+     */
+    static async getLatestRatesMatrix(req, res) {
+        try {
+            const companyId = req.companyId;
+            if (!companyId)
+                return res.status(400).json({ error: 'Company ID required' });
+            // 1. Get enabled codes
+            const companyCurrencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
+            const enabledCodes = companyCurrencies.filter(c => c.isEnabled).map(c => c.currencyCode);
+            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
+            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
+            const allCodes = Array.from(new Set([baseCurrency, ...enabledCodes]));
+            // 2. Fetch recent rates (limit 200 to cover many pairs)
+            const allRecent = await bindRepositories_1.diContainer.exchangeRateRepository.getRecentRates(companyId, undefined, undefined, 200);
+            const matrix = {};
+            // Initialize matrix
+            allCodes.forEach(from => {
+                matrix[from] = {};
+                allCodes.forEach(to => {
+                    if (from === to)
+                        matrix[from][to] = 1.0;
+                });
+            });
+            // Fill with latest stored rates
+            // Since they are ordered by createdAt desc, we only take the first occurance for each pair
+            allRecent.forEach(rate => {
+                const from = rate.fromCurrency.toUpperCase();
+                const to = rate.toCurrency.toUpperCase();
+                if (allCodes.includes(from) && allCodes.includes(to)) {
+                    if (matrix[from][to] === undefined) {
+                        matrix[from][to] = rate.rate;
+                    }
+                }
+            });
+            // Helper function to round to specified decimal places for precision
+            const roundToPrecision = (num, decimals = 8) => {
+                return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals);
+            };
+            // Track which pairs have manually stored rates (from database)
+            const manuallyStored = new Set();
+            allRecent.forEach(rate => {
+                const from = rate.fromCurrency.toUpperCase();
+                const to = rate.toCurrency.toUpperCase();
+                if (allCodes.includes(from) && allCodes.includes(to)) {
+                    manuallyStored.add(`${from}-${to}`);
+                }
+            });
+            // Calculate inverse rates ONLY for pairs without manually stored rates
+            let inversesCalculated = 0;
+            allCodes.forEach(from => {
+                allCodes.forEach(to => {
+                    if (from !== to && matrix[to][from] !== undefined && !manuallyStored.has(`${from}-${to}`)) {
+                        // Only calculate inverse if this pair was NOT manually stored
+                        const inverseRate = 1 / matrix[to][from];
+                        const calculatedInverse = roundToPrecision(inverseRate, 8);
+                        matrix[from][to] = calculatedInverse;
+                        inversesCalculated++;
+                    }
+                });
+            });
+            res.json({ matrix, currencies: allCodes });
+        }
+        catch (error) {
+            console.error('Error getting rates matrix:', error);
+            res.status(500).json({ error: error.message });
         }
     }
     /**
@@ -156,9 +252,10 @@ class CurrencyController {
      * Body: { fromCurrency, toCurrency, rate, date }
      */
     static async saveRate(req, res) {
+        var _a;
         try {
             const companyId = req.companyId;
-            const userId = req.uid;
+            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
             if (!companyId) {
                 return res.status(400).json({ error: 'Company ID required' });
             }
@@ -168,6 +265,22 @@ class CurrencyController {
             }
             if (rate === undefined || rate <= 0) {
                 return res.status(400).json({ error: 'A positive rate is required' });
+            }
+            // IMPORTANT: Delete any existing inverse rate (toCurrency→fromCurrency) to prevent conflicts
+            // This ensures that when we save EUR→TRY=55, any old TRY→EUR entries are removed
+            // so the matrix will calculate TRY→EUR as 1/55 instead of using stale stored values
+            try {
+                const inverseRates = await bindRepositories_1.diContainer.exchangeRateRepository.getRecentRates(companyId, toCurrency.toUpperCase(), fromCurrency.toUpperCase(), 100 // Get all inverse rates
+                );
+                if (inverseRates.length > 0) {
+                    // Delete each inverse rate
+                    for (const inverseRate of inverseRates) {
+                        await bindRepositories_1.diContainer.exchangeRateRepository.delete(inverseRate.id);
+                    }
+                }
+            }
+            catch (cleanupError) {
+                // Continue anyway - cleanup failure is not critical
             }
             const useCase = new ExchangeRateService_1.SaveReferenceRateUseCase(bindRepositories_1.diContainer.exchangeRateRepository);
             const savedRate = await useCase.execute({

@@ -43,6 +43,9 @@ export class DetectRateDeviationService {
       10
     );
 
+    console.log(`[Deviation Check] ${fromCurrency}→${toCurrency}: Proposed=${proposedRate}`);
+    console.log(`[Deviation Check] Found ${recentRates.length} recent rates:`, recentRates.map(r => ({ rate: r.rate, date: r.date, createdAt: r.createdAt })));
+
     if (recentRates.length === 0) {
       // First rate for this pair - just inform
       warnings.push({
@@ -55,6 +58,8 @@ export class DetectRateDeviationService {
     // Calculate average of recent rates
     const avgRate = recentRates.reduce((sum, r) => sum + r.rate, 0) / recentRates.length;
     const mostRecentRate = recentRates[0].rate;
+
+    console.log(`[Deviation Check] Most recent rate: ${mostRecentRate}, Average: ${avgRate.toFixed(4)}`);
 
     // 1. Check percentage deviation from average
     const percentageDeviation = Math.abs(proposedRate - avgRate) / avgRate;

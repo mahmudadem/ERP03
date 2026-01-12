@@ -80,6 +80,8 @@ router.post('/company/currencies', permissionGuard('accounting.settings.write'),
 router.delete('/company/currencies/:code', permissionGuard('accounting.settings.write'), CurrencyController.disableCurrency);
 
 // Exchange Rates
+router.get('/exchange-rates/history', permissionGuard('accounting.vouchers.view'), CurrencyController.listRateHistory);
+router.get('/exchange-rates/matrix', permissionGuard('accounting.accounts.view'), CurrencyController.getLatestRatesMatrix);
 router.get('/exchange-rates/suggested', permissionGuard('accounting.vouchers.create'), CurrencyController.getSuggestedRate);
 router.post('/exchange-rates', permissionGuard('accounting.vouchers.create'), CurrencyController.saveRate);
 router.post('/exchange-rates/check-deviation', permissionGuard('accounting.vouchers.create'), CurrencyController.checkRateDeviation);

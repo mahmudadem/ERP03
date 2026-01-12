@@ -5,7 +5,7 @@
  * Manages CompanyCurrency for enable/disable per company.
  */
 
-import * as admin from 'firebase-admin';
+import { Firestore, Timestamp, DocumentSnapshot } from 'firebase-admin/firestore';
 import { Currency } from '../../../../domain/accounting/entities/Currency';
 import { ICurrencyRepository } from '../../../../repository/interfaces/accounting/ICurrencyRepository';
 import { 
@@ -21,7 +21,7 @@ export class FirestoreAccountingCurrencyRepository implements ICurrencyRepositor
   // Reads from the system_metadata pattern used by seedSystemMetadata.ts
   private readonly collectionPath = 'system_metadata/currencies/items';
 
-  constructor(private db: admin.firestore.Firestore) {}
+  constructor(private db: Firestore) {}
   
   private toDomain(data: any): Currency {
     return new Currency({
@@ -89,9 +89,9 @@ export class FirestoreAccountingCurrencyRepository implements ICurrencyRepositor
 export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepository {
   private collectionName = 'company_currencies';
 
-  constructor(private db: admin.firestore.Firestore) {}
+  constructor(private db: Firestore) {}
 
-  private toRecord(doc: admin.firestore.DocumentSnapshot): CompanyCurrencyRecord {
+  private toRecord(doc: DocumentSnapshot): CompanyCurrencyRecord {
     const data = doc.data()!;
     return {
       id: doc.id,
@@ -134,7 +134,7 @@ export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepos
       companyId,
       currencyCode: code,
       isEnabled: true,
-      enabledAt: admin.firestore.Timestamp.fromDate(now),
+      enabledAt: Timestamp.fromDate(now),
       disabledAt: null,
     }, { merge: true });
 
@@ -152,7 +152,7 @@ export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepos
     const docId = `${companyId}_${currencyCode.toUpperCase()}`;
     await this.db.collection(this.collectionName).doc(docId).update({
       isEnabled: false,
-      disabledAt: admin.firestore.Timestamp.fromDate(new Date()),
+      disabledAt: Timestamp.fromDate(new Date()),
     });
   }
 }

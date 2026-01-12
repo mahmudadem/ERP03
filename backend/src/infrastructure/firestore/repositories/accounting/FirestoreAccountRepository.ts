@@ -111,4 +111,13 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
       throw new InfrastructureError('Error getting account by code', error);
     }
   }
+
+  async countByCurrency(companyId: string, currencyCode: string): Promise<number> {
+    try {
+      const snapshot = await this.col(companyId).where('currency', '==', currencyCode.toUpperCase()).count().get();
+      return snapshot.data().count;
+    } catch (error) {
+      throw new InfrastructureError('Error counting accounts by currency', error);
+    }
+  }
 }

@@ -122,4 +122,12 @@ export interface IVoucherRepository {
    * @param originalVoucherId ID of the original voucher being reversed
    */
   findByReversalOfVoucherId(companyId: string, originalVoucherId: string): Promise<VoucherEntity | null>;
+
+  /**
+   * Count vouchers using a specific currency (header or lines)
+   * 
+   * @param companyId Company ID
+   * @param currencyCode Currency code to check
+   */
+  countByCurrency(companyId: string, currencyCode: string): Promise<number>;
 }

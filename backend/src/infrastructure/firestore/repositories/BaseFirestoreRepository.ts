@@ -8,14 +8,14 @@
  * Usage:
  * Extend this class and implement `collectionName`, `toDomain`, and `toPersistence`.
  */
-import * as admin from 'firebase-admin';
+import { Firestore, Transaction, DocumentSnapshot } from 'firebase-admin/firestore';
 import { InfrastructureError } from '../../errors/InfrastructureError';
 
 export abstract class BaseFirestoreRepository<T> {
   protected abstract collectionName: string;
-  protected db: admin.firestore.Firestore;
+  protected db: Firestore;
 
-  constructor(db: admin.firestore.Firestore) {
+  constructor(db: Firestore) {
     this.db = db;
   }
 
@@ -25,7 +25,7 @@ export abstract class BaseFirestoreRepository<T> {
   /**
    * Saves an entity (Create or Update).
    */
-  async save(entity: T, transaction?: admin.firestore.Transaction): Promise<void> {
+  async save(entity: T, transaction?: Transaction): Promise<void> {
     try {
       const data = this.toPersistence(entity);
       // specific logic relies on the entity having an 'id' field
@@ -50,9 +50,9 @@ export abstract class BaseFirestoreRepository<T> {
   /**
    * Finds an entity by ID.
    */
-  async findById(id: string, transaction?: admin.firestore.Transaction): Promise<T | null> {
+  async findById(id: string, transaction?: Transaction): Promise<T | null> {
     try {
-      let doc: admin.firestore.DocumentSnapshot;
+      let doc: DocumentSnapshot;
       if (transaction) {
         doc = await transaction.get(this.db.collection(this.collectionName).doc(id));
       } else {
@@ -69,7 +69,7 @@ export abstract class BaseFirestoreRepository<T> {
   /**
    * Deletes an entity by ID.
    */
-  async delete(id: string, transaction?: admin.firestore.Transaction): Promise<void> {
+  async delete(id: string, transaction?: Transaction): Promise<void> {
     try {
       if (transaction) {
         transaction.delete(this.db.collection(this.collectionName).doc(id));

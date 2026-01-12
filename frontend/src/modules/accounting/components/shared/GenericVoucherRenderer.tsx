@@ -8,9 +8,12 @@ import { CurrencySelector } from './CurrencySelector';
 import { AmountInput } from './AmountInput';
 import { CustomComponentRegistry } from './registry';
 import { Account } from '../../../../context/AccountsContext';
+import { useAccounts } from '../../../../context/AccountsContext';
 import { useCompanySettings } from '../../../../hooks/useCompanySettings';
 import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday } from '../../../../utils/dateUtils';
 import { DatePicker } from './DatePicker';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
+import { accountingApi } from '../../../../api/accountingApi';
 
 interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
@@ -46,6 +49,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }
 
   const { settings } = useCompanySettings();
+  const { getAccountByCode } = useAccounts();
+  const { company } = useCompanyAccess();
 
   // Language support with fallback (works without LanguageProvider)
   const t = (key: string) => key; // Simple fallback - just return key
@@ -494,12 +499,33 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     });
   };
 
-  const handleRowChange = (id: number, field: keyof JournalRow, value: any) => {
+  const handleRowChange = async (id: number, field: keyof JournalRow, value: any) => {
+    // 1. Update state synchronously for snappiness
+    let targetRow: JournalRow | undefined;
+
     setRows((prev: JournalRow[]) => {
       const next = prev.map(row => {
         if (row.id === id) {
           const updated = { ...row, [field]: value };
           
+          // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
+          if (field === 'account') {
+            const acc = value as Account | null | string;
+            if (acc && typeof acc === 'object') {
+              updated.account = acc.code;
+              if (acc.currency) {
+                updated.currency = acc.currency;
+              }
+            } else {
+              updated.account = acc as string;
+              // If it's just a code, resolve currency from context
+              const resolvedAcc = getAccountByCode(updated.account);
+              if (resolvedAcc?.currency) {
+                updated.currency = resolvedAcc.currency;
+              }
+            }
+          }
+
           // Mutual exclusion: debit and credit cannot both have values
           if (field === 'debit' && value > 0) {
             updated.credit = 0;
@@ -509,20 +535,17 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
           // Handle numeric fields safely without stripping partial decimals
           if (['debit', 'credit', 'parity'].includes(field as string)) {
-            // Keep the raw value in state to allow typing decimals (e.g., "1.")
-            // but use the parsed value for calculations
             updated[field as 'debit' | 'credit' | 'parity'] = value as any;
           }
 
           // MULTI-CURRENCY LOGIC: Re-calculate equivalent (Base Amount)
-          // Equivalent = Transaction Amount * Parity
           const debit = parseFloat(updated.debit as any) || 0;
           const credit = parseFloat(updated.credit as any) || 0;
           const parity = parseFloat(updated.parity as any) || 1.0;
           const amount = debit || credit || 0;
-          // Round to 2 decimals to prevent floating point errors (e.g. 110.000000000001)
           updated.equivalent = Math.round(amount * parity * 100) / 100;
           
+          targetRow = updated;
           return updated;
         }
         return row;
@@ -530,6 +553,59 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       onChangeRef.current?.({ ...formData, lines: next });
       return next;
     });
+
+    // 2. TRIGGER ASYNC PARITY FETCH if currency or account changed
+    if ((field === 'currency' || field === 'account') && targetRow) {
+      const lineCurrency = targetRow.currency || 'USD';
+      const baseCurrency = (definition as any)?.defaultCurrency || company?.baseCurrency || 'USD';
+      
+      if (lineCurrency.toUpperCase() !== baseCurrency.toUpperCase()) {
+        try {
+          const result = await accountingApi.getSuggestedRate(
+            lineCurrency, 
+            baseCurrency, 
+            formData.date || getCompanyToday(settings)
+          );
+          
+          if (result.rate) {
+            setRows((prev: JournalRow[]) => {
+              const next = prev.map(r => {
+                if (r.id === id) {
+                  const parity = result.rate || 1.0;
+                  const debit = parseFloat(r.debit as any) || 0;
+                  const credit = parseFloat(r.credit as any) || 0;
+                  const amount = debit || credit || 0;
+                  return { 
+                    ...r, 
+                    parity, 
+                    equivalent: Math.round(amount * parity * 100) / 100 
+                  };
+                }
+                return r;
+              });
+              onChangeRef.current?.({ ...formData, lines: next });
+              return next;
+            });
+          }
+        } catch (error) {
+          console.error('Failed to fetch suggested rate:', error);
+        }
+      } else if (targetRow.parity !== 1.0) {
+        // Reset parity to 1.0 if it's the base currency
+        setRows((prev: JournalRow[]) => {
+          const next = prev.map(r => {
+            if (r.id === id) {
+              const debit = parseFloat(r.debit as any) || 0;
+              const credit = parseFloat(r.credit as any) || 0;
+              return { ...r, parity: 1.0, equivalent: debit || credit || 0 };
+            }
+            return r;
+          });
+          onChangeRef.current?.({ ...formData, lines: next });
+          return next;
+        });
+      }
+    }
   };
 
   const addRow = () => {
@@ -567,7 +643,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (isJE) {
         baseColumns.push(
           { id: 'currency', label: t('currency') || 'Currency', width: '80px' },
-          { id: 'parity', label: t('parity') || 'Rate', width: '80px' },
+          { id: 'parity', label: t('parity') || 'Parity', width: '80px' },
           { id: 'equivalent', label: t('equivalent') || 'Equivalent', width: '100px' }
         );
       }
@@ -813,7 +889,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                         <AccountSelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
                                                             value={row.account} 
-                                                            onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                                            onChange={(val) => handleRowChange(row.id, 'account', val)} 
                                                             noBorder={true}
                                                             disabled={readOnly}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
@@ -834,7 +910,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                         <CurrencySelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
                                                             value={(row as any)[colId] || ''}
-                                                            disabled={readOnly}
+                                                            disabled={readOnly || !!getAccountByCode(row.account)?.currency}
                                                             onChange={(val) => handleRowChange(row.id, colId as any, val)} 
                                                             noBorder={true}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
@@ -984,7 +1060,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.account} 
                                                  disabled={readOnly}
-                                                 onChange={(val) => handleRowChange(row.id, 'account', !val ? '' : (typeof val === 'string' ? val : val.code))} 
+                                                 onChange={(val) => handleRowChange(row.id, 'account', val)} 
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
                                              />
@@ -992,7 +1068,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                              <CurrencySelector
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.currency}
-                                                 disabled={readOnly}
+                                                 disabled={readOnly || !!getAccountByCode(row.account)?.currency}
                                                  onChange={(val) => handleRowChange(row.id, 'currency', val)}
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}

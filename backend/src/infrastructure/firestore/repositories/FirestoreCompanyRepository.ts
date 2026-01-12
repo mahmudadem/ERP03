@@ -1,13 +1,13 @@
 
-import * as admin from 'firebase-admin';
+import { Firestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { Company } from '../../../domain/core/entities/Company';
 
 export class FirestoreCompanyRepository implements ICompanyRepository {
-  private db: admin.firestore.Firestore;
+  private db: Firestore;
   private collectionName = 'companies';
 
-  constructor(dbInstance: admin.firestore.Firestore) {
+  constructor(dbInstance: Firestore) {
     this.db = dbInstance;
   }
 
@@ -21,11 +21,11 @@ export class FirestoreCompanyRepository implements ICompanyRepository {
       taxId: company.taxId,
       address: company.address || null,
       baseCurrency: company.baseCurrency,
-      fiscalYearStart: admin.firestore.Timestamp.fromDate(fiscalStart),
-      fiscalYearEnd: admin.firestore.Timestamp.fromDate(fiscalEnd),
+      fiscalYearStart: Timestamp.fromDate(fiscalStart),
+      fiscalYearEnd: Timestamp.fromDate(fiscalEnd),
       modules: company.modules,
-      createdAt: admin.firestore.Timestamp.fromDate(company.createdAt),
-      updatedAt: admin.firestore.Timestamp.fromDate(company.updatedAt),
+      createdAt: Timestamp.fromDate(company.createdAt),
+      updatedAt: Timestamp.fromDate(company.updatedAt),
     });
   }
 
@@ -72,13 +72,13 @@ export class FirestoreCompanyRepository implements ICompanyRepository {
 
   async enableModule(companyId: string, moduleName: string): Promise<void> {
     await this.db.collection(this.collectionName).doc(companyId).update({
-      modules: admin.firestore.FieldValue.arrayUnion(moduleName)
+      modules: FieldValue.arrayUnion(moduleName)
     });
   }
 
   async disableModule(companyId: string, moduleName: string): Promise<void> {
     await this.db.collection(this.collectionName).doc(companyId).update({
-      modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+      modules: FieldValue.arrayRemove(moduleName)
     });
   }
 

@@ -62,8 +62,8 @@ export interface IExchangeRateRepository {
    */
   getRecentRates(
     companyId: string,
-    fromCurrency: string,
-    toCurrency: string,
+    fromCurrency?: string,
+    toCurrency?: string,
     limit?: number
   ): Promise<ExchangeRate[]>;
 

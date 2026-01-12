@@ -101,4 +101,12 @@ export class AccountRepositoryFirestore implements IAccountRepository {
     async getAccounts(companyId: string): Promise<Account[]> {
         return this.list(companyId);
     }
+
+    async countByCurrency(companyId: string, currencyCode: string): Promise<number> {
+        const snapshot = await this.getCollection(companyId)
+            .where('currency', '==', currencyCode.toUpperCase())
+            .count()
+            .get();
+        return snapshot.data().count;
+    }
 }

@@ -8,21 +8,13 @@
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
-import { accountingApi, CurrencyDTO } from '../../../../api/accountingApi';
+import { Search, X, Loader2, Globe, ChevronDown, Check } from 'lucide-react';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
+import { useCompanyCurrencies, Currency } from '../../hooks/useCompanyCurrencies';
 
-export interface Currency {
-  code: string;
-  name: string;
-  symbol: string;
-  decimalPlaces?: number;
-}
-
-// Fallback currencies for when API is unavailable
 const FALLBACK_CURRENCIES: Currency[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$', decimalPlaces: 2 },
   { code: 'EUR', name: 'Euro', symbol: '€', decimalPlaces: 2 },
-  { code: 'TRY', name: 'Turkish Lira', symbol: '₺', decimalPlaces: 2 },
 ];
 
 interface CurrencySelectorProps {
@@ -46,8 +38,7 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   onKeyDown: externalKeyDown,
   onBlur: externalBlur
 }, ref) => {
-  const [currencies, setCurrencies] = useState<Currency[]>(FALLBACK_CURRENCIES);
-  const [loading, setLoading] = useState(true);
+  const { data: currencies = [], isLoading, isError } = useCompanyCurrencies();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -58,53 +49,8 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   // Forward the ref
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
-  // Fetch COMPANY-ENABLED currencies from API on mount
-  // Only currencies that the company has enabled will appear
-  useEffect(() => {
-    let mounted = true;
-    
-    const fetchCurrencies = async () => {
-      try {
-        // Fetch company-enabled currencies (not global list)
-        const response = await accountingApi.getCompanyCurrencies();
-        if (mounted && response.currencies) {
-          // Also fetch full currency details for the enabled ones
-          const globalResponse = await accountingApi.getCurrencies();
-          const globalMap = new Map(
-            globalResponse.currencies?.map((c: CurrencyDTO) => [c.code, c]) || []
-          );
-          
-          // Map enabled currencies to full details
-          const enabledCurrencies = response.currencies
-            .filter((cc: any) => cc.isEnabled)
-            .map((cc: any) => {
-              const full = globalMap.get(cc.currencyCode);
-              return full ? {
-                code: full.code,
-                name: full.name,
-                symbol: full.symbol,
-                decimalPlaces: full.decimalPlaces,
-              } : {
-                code: cc.currencyCode,
-                name: cc.currencyCode,
-                symbol: cc.currencyCode,
-                decimalPlaces: 2,
-              };
-            });
-          
-          setCurrencies(enabledCurrencies.length > 0 ? enabledCurrencies : FALLBACK_CURRENCIES);
-        }
-      } catch (error) {
-        console.warn('Failed to fetch company currencies, using fallback:', error);
-        // Keep fallback currencies
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchCurrencies();
-    return () => { mounted = false; };
-  }, []);
+  const { company } = useCompanyAccess();
+  const baseCurrencyCode = company?.baseCurrency || 'USD';
 
   // Sync input value with external value
   useEffect(() => {
@@ -265,12 +211,12 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
-          disabled={disabled || loading}
+          disabled={disabled || isLoading}
           className={`w-full text-xs text-center font-bold transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
-        {loading && <Loader2 className="absolute right-1 w-3 h-3 animate-spin text-[var(--color-text-muted)]" />}
+        {isLoading && <Loader2 className="absolute right-1 w-3 h-3 animate-spin text-[var(--color-text-muted)]" />}
       </div>
 
       {/* Search Modal */}

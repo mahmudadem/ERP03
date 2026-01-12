@@ -3,7 +3,7 @@ import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { ICostCenterRepository, IExchangeRateRepository } from '../../../../repository/interfaces/accounting';
 import { CostCenter } from '../../../../domain/accounting/entities/CostCenter';
 import { ExchangeRate } from '../../../../domain/accounting/entities/ExchangeRate';
-import * as admin from 'firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {
@@ -31,10 +31,10 @@ class ExchangeRateMapper {
         fromCurrency: e.fromCurrency,
         toCurrency: e.toCurrency,
         rate: e.rate,
-        date: admin.firestore.Timestamp.fromDate(e.date),
+        date: Timestamp.fromDate(e.date),
         source: e.source,
-        createdAt: admin.firestore.Timestamp.fromDate(e.createdAt),
-        createdBy: e.createdBy,
+        createdAt: Timestamp.fromDate(e.createdAt),
+        createdBy: e.createdBy || null,
       }; 
     }
 }
@@ -96,8 +96,8 @@ export class FirestoreExchangeRateRepository extends BaseFirestoreRepository<Exc
       .where('companyId', '==', companyId)
       .where('fromCurrency', '==', fromCurrency.toUpperCase())
       .where('toCurrency', '==', toCurrency.toUpperCase())
-      .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
-      .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
+      .where('date', '>=', Timestamp.fromDate(dateStart))
+      .where('date', '<=', Timestamp.fromDate(dateEnd))
       .orderBy('date', 'desc')
       .orderBy('createdAt', 'desc')
       .limit(1)
@@ -122,8 +122,8 @@ export class FirestoreExchangeRateRepository extends BaseFirestoreRepository<Exc
       .where('companyId', '==', companyId)
       .where('fromCurrency', '==', fromCurrency.toUpperCase())
       .where('toCurrency', '==', toCurrency.toUpperCase())
-      .where('date', '>=', admin.firestore.Timestamp.fromDate(dateStart))
-      .where('date', '<=', admin.firestore.Timestamp.fromDate(dateEnd))
+      .where('date', '>=', Timestamp.fromDate(dateStart))
+      .where('date', '<=', Timestamp.fromDate(dateEnd))
       .orderBy('date', 'desc')
       .orderBy('createdAt', 'desc')
       .get();
@@ -133,14 +133,20 @@ export class FirestoreExchangeRateRepository extends BaseFirestoreRepository<Exc
 
   async getRecentRates(
     companyId: string,
-    fromCurrency: string,
-    toCurrency: string,
+    fromCurrency?: string,
+    toCurrency?: string,
     limit: number = 10
   ): Promise<ExchangeRate[]> {
-    const snap = await this.db.collection(this.collectionName)
-      .where('companyId', '==', companyId)
-      .where('fromCurrency', '==', fromCurrency.toUpperCase())
-      .where('toCurrency', '==', toCurrency.toUpperCase())
+    let query = this.db.collection(this.collectionName).where('companyId', '==', companyId);
+    
+    if (fromCurrency) {
+      query = query.where('fromCurrency', '==', fromCurrency.toUpperCase());
+    }
+    if (toCurrency) {
+      query = query.where('toCurrency', '==', toCurrency.toUpperCase());
+    }
+
+    const snap = await query
       .orderBy('createdAt', 'desc')
       .limit(limit)
       .get();

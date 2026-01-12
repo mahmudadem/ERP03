@@ -1,30 +1,7 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreCompanyRepository = void 0;
-const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
 const Company_1 = require("../../../domain/core/entities/Company");
 class FirestoreCompanyRepository {
     constructor(dbInstance) {
@@ -41,11 +18,11 @@ class FirestoreCompanyRepository {
             taxId: company.taxId,
             address: company.address || null,
             baseCurrency: company.baseCurrency,
-            fiscalYearStart: admin.firestore.Timestamp.fromDate(fiscalStart),
-            fiscalYearEnd: admin.firestore.Timestamp.fromDate(fiscalEnd),
+            fiscalYearStart: firestore_1.Timestamp.fromDate(fiscalStart),
+            fiscalYearEnd: firestore_1.Timestamp.fromDate(fiscalEnd),
             modules: company.modules,
-            createdAt: admin.firestore.Timestamp.fromDate(company.createdAt),
-            updatedAt: admin.firestore.Timestamp.fromDate(company.updatedAt),
+            createdAt: firestore_1.Timestamp.fromDate(company.createdAt),
+            updatedAt: firestore_1.Timestamp.fromDate(company.updatedAt),
         });
     }
     async findById(id) {
@@ -87,12 +64,12 @@ class FirestoreCompanyRepository {
     }
     async enableModule(companyId, moduleName) {
         await this.db.collection(this.collectionName).doc(companyId).update({
-            modules: admin.firestore.FieldValue.arrayUnion(moduleName)
+            modules: firestore_1.FieldValue.arrayUnion(moduleName)
         });
     }
     async disableModule(companyId, moduleName) {
         await this.db.collection(this.collectionName).doc(companyId).update({
-            modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+            modules: firestore_1.FieldValue.arrayRemove(moduleName)
         });
     }
     async update(companyId, updates) {

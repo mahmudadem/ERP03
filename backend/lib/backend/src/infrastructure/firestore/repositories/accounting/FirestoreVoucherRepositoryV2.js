@@ -23,6 +23,11 @@ class FirestoreVoucherRepositoryV2 {
         const collection = this.getCollection(voucher.companyId);
         const docRef = collection.doc(voucher.id);
         const data = voucher.toJSON();
+        // Maintain a search index for all currencies used in this voucher (header + lines)
+        const currencies = new Set();
+        currencies.add(voucher.currency.toUpperCase());
+        voucher.lines.forEach(line => currencies.add(line.currency.toUpperCase()));
+        data._allCurrencies = Array.from(currencies);
         await docRef.set(data, { merge: true });
         return voucher;
     }
@@ -121,6 +126,23 @@ class FirestoreVoucherRepositoryV2 {
             return null;
         }
         return VoucherEntity_1.VoucherEntity.fromJSON(snapshot.docs[0].data());
+    }
+    async countByCurrency(companyId, currencyCode) {
+        const collection = this.getCollection(companyId);
+        const upperCode = currencyCode.toUpperCase();
+        // Check header currency OR line-level currencies (via _allCurrencies index)
+        const query = collection.where('_allCurrencies', 'array-contains', upperCode);
+        try {
+            const snapshot = await query.count().get();
+            return snapshot.data().count;
+        }
+        catch (err) {
+            console.warn('Firestore count aggregation failed for vouchers by currency, falling back to header-only check', err);
+            // Fallback: Check header currency at least
+            const fallbackQuery = collection.where('currency', '==', upperCode).limit(1);
+            const fallbackSnap = await fallbackQuery.get();
+            return fallbackSnap.empty ? 0 : 1;
+        }
     }
 }
 exports.FirestoreVoucherRepositoryV2 = FirestoreVoucherRepositoryV2;

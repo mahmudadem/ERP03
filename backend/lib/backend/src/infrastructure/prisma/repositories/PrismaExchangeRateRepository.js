@@ -97,12 +97,13 @@ class PrismaExchangeRateRepository {
         });
     }
     async getRecentRates(companyId, fromCurrency, toCurrency, limit = 10) {
+        const where = { companyId };
+        if (fromCurrency)
+            where.fromCurrency = fromCurrency.toUpperCase();
+        if (toCurrency)
+            where.toCurrency = toCurrency.toUpperCase();
         const records = await this.prisma.exchangeRate.findMany({
-            where: {
-                companyId,
-                fromCurrency: fromCurrency.toUpperCase(),
-                toCurrency: toCurrency.toUpperCase(),
-            },
+            where,
             orderBy: { createdAt: 'desc' },
             take: limit,
         });

@@ -113,16 +113,16 @@ export class PrismaExchangeRateRepository implements IExchangeRateRepository {
 
   async getRecentRates(
     companyId: string,
-    fromCurrency: string,
-    toCurrency: string,
+    fromCurrency?: string,
+    toCurrency?: string,
     limit: number = 10
   ): Promise<ExchangeRate[]> {
+    const where: any = { companyId };
+    if (fromCurrency) where.fromCurrency = fromCurrency.toUpperCase();
+    if (toCurrency) where.toCurrency = toCurrency.toUpperCase();
+
     const records = await this.prisma.exchangeRate.findMany({
-      where: {
-        companyId,
-        fromCurrency: fromCurrency.toUpperCase(),
-        toCurrency: toCurrency.toUpperCase(),
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
     });

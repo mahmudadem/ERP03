@@ -231,8 +231,24 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (fxLinesWithoutRate.length > 0) {
       const currencies = [...new Set(fxLinesWithoutRate.map((l: any) => l.currency || 'Unknown'))];
       errorHandler.showError(
-        `Cannot save: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing exchange rates. ` +
-        `Please enter the exchange rate for each FX line before saving.`
+        `Cannot save: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing parity rates. ` +
+        `Please enter the parity for each FX line before saving.`
+      );
+      return;
+    }
+    
+    // Balance Validation: For multi-currency, check equivalent totals in base currency
+    const equivDebit = lines.reduce((sum: number, r: any) => sum + ((parseFloat(r.debit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+    const equivCredit = lines.reduce((sum: number, r: any) => sum + ((parseFloat(r.credit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+    const balanced = Math.abs(equivDebit - equivCredit) < 0.01;
+    
+    if (!balanced) {
+      errorHandler.showError(
+        `Voucher is not balanced in base currency (${baseCurrency}). ` +
+        `Total Debit: ${equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
+        `Total Credit: ${equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Diff: ${(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Please ensure the voucher balances before saving.`
       );
       return;
     }
@@ -283,8 +299,25 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       const currencies = [...new Set(fxLinesWithoutRate.map((l: any) => l.currency || 'Unknown'))];
       setShowConfirmSubmitModal(false);
       errorHandler.showError(
-        `Cannot submit: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing exchange rates. ` +
-        `Please enter the exchange rate for each FX line before submitting.`
+        `Cannot submit: ${fxLinesWithoutRate.length} line(s) with foreign currency (${currencies.join(', ')}) are missing parity rates. ` +
+        `Please enter the parity for each FX line before submitting.`
+      );
+      return;
+    }
+    
+    // Balance Validation: For multi-currency, check equivalent totals in base currency
+    const equivDebit = lines.reduce((sum: number, r: any) => sum + ((parseFloat(r.debit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+    const equivCredit = lines.reduce((sum: number, r: any) => sum + ((parseFloat(r.credit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
+    const balanced = Math.abs(equivDebit - equivCredit) < 0.01;
+    
+    if (!balanced) {
+      setShowConfirmSubmitModal(false);
+      errorHandler.showError(
+        `Voucher is not balanced in base currency (${baseCurrency}). ` +
+        `Total Debit: ${equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
+        `Total Credit: ${equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Diff: ${(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Please ensure the voucher balances before submitting.`
       );
       return;
     }

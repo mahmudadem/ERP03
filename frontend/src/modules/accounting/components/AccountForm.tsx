@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Account, NewAccountInput, UpdateAccountInput } from '../../../api/accounting';
+import { CurrencySelector } from './shared/CurrencySelector';
 
 interface AccountFormProps {
     mode: 'create' | 'edit';
@@ -55,6 +56,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({
         }
     };
 
+    const readOnly = mode === 'edit' && initialValues?.isProtected;
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -66,7 +69,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={mode === 'edit' && initialValues?.isProtected}
+                    disabled={readOnly}
                 />
             </div>
 
@@ -90,7 +93,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={mode === 'edit' && initialValues?.isProtected}
+                    disabled={readOnly}
                 >
                     {ACCOUNT_TYPES.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -107,7 +110,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     value={formData.parentId}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={mode === 'edit' && initialValues?.isProtected}
+                    disabled={readOnly}
                 >
                     <option value="">None</option>
                     {accounts
@@ -122,21 +125,22 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Currency (Optional)</label>
-                <input
-                    type="text"
-                    name="currency"
+                <CurrencySelector
                     value={formData.currency}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., USD, EUR"
+                    onChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}
+                    className="w-full"
+                    disabled={readOnly}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                    If set, vouchers using this account will be locked to this currency.
+                </p>
             </div>
 
             <div className="flex gap-3 pt-4">
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Account' : 'Update Account'}
                 </button>
@@ -144,7 +148,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     type="button"
                     onClick={onCancel}
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition-colors"
                 >
                     Cancel
                 </button>

@@ -8,136 +8,26 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Plus, X, Check, Loader2, AlertCircle, Info } from 'lucide-react';
 import { accountingApi, CurrencyDTO, CompanyCurrencyDTO } from '../../../../api/accountingApi';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../../services/errorHandler';
-
-interface EnableCurrencyModalProps {
-  currency: CurrencyDTO;
-  baseCurrency: string;
-  onClose: () => void;
-  onEnabled: () => void;
-}
-
-const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({ 
-  currency, 
-  baseCurrency, 
-  onClose, 
-  onEnabled 
-}) => {
-  const [rate, setRate] = useState<string>('');
-  const [saving, setSaving] = useState(false);
-
-  const handleEnable = async () => {
-    if (!rate || parseFloat(rate) <= 0) {
-      errorHandler.showError('Please enter a valid exchange rate');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await accountingApi.enableCurrency(
-        currency.code,
-        parseFloat(rate),
-        new Date().toISOString().split('T')[0]
-      );
-      errorHandler.showSuccess(`${currency.code} enabled successfully!`);
-      onEnabled();
-      onClose();
-    } catch (error: any) {
-      errorHandler.showError(error.message || 'Failed to enable currency');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div 
-        className="bg-white dark:bg-[var(--color-bg-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Enable {currency.code}
-          </h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg">
-            <X size={20} className="text-gray-500" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg">
-            <div className="flex items-start gap-2">
-              <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
-              <p className="text-sm text-blue-800 dark:text-blue-300">
-                An initial exchange rate is required to enable this currency. 
-                This rate will be used as the default for new transactions.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)] mb-2">
-              Exchange Rate
-            </label>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">1 {currency.code} =</span>
-              <input
-                type="number"
-                step="0.0001"
-                min="0"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                placeholder="0.0000"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                autoFocus
-              />
-              <span className="text-sm text-gray-500">{baseCurrency}</span>
-            </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-[var(--color-text-muted)]">
-              {currency.decimalPlaces !== undefined && `${currency.code} uses ${currency.decimalPlaces} decimal places`}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-[var(--color-border)]">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)] hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleEnable}
-            disabled={saving || !rate}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2"
-          >
-            {saving ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Enabling...
-              </>
-            ) : (
-              <>
-                <Check size={16} />
-                Enable Currency
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { ExchangeRateMatrix, ExchangeRateMatrixRef } from './components/ExchangeRateMatrix';
+import { ExchangeRateHistory, ExchangeRateHistoryRef } from './components/ExchangeRateHistory';
+import { PricingEntryForm } from './components/PricingEntryForm';
+import { AvailableCurrenciesModal } from './components/AvailableCurrenciesModal';
+import { EnableCurrencyModal } from './components/EnableCurrencyModal';
 
 export const CompanyCurrencySettings: React.FC = () => {
   const [globalCurrencies, setGlobalCurrencies] = useState<CurrencyDTO[]>([]);
   const [companyCurrencies, setCompanyCurrencies] = useState<CompanyCurrencyDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [enableModalCurrency, setEnableModalCurrency] = useState<CurrencyDTO | null>(null);
+  const [isAvailableModalOpen, setIsAvailableModalOpen] = useState(false);
   const [disabling, setDisabling] = useState<string | null>(null);
+  const historyRef = React.useRef<ExchangeRateHistoryRef>(null);
+  const matrixRef = React.useRef<ExchangeRateMatrixRef>(null);
 
-  // TODO: Get from company settings
-  const baseCurrency = 'USD';
+  const { company } = useCompanyAccess();
+  const baseCurrency = company?.baseCurrency || 'USD';
 
   const loadData = async () => {
     setLoading(true);
@@ -181,8 +71,8 @@ export const CompanyCurrencySettings: React.FC = () => {
     companyCurrencies.filter(c => c.isEnabled).map(c => c.currencyCode)
   );
 
-  // Always include base currency
   const isEnabled = (code: string) => code === baseCurrency || enabledCodes.has(code);
+  const availableToEnable = globalCurrencies.filter(c => !isEnabled(c.code));
 
   if (loading) {
     return (
@@ -193,123 +83,114 @@ export const CompanyCurrencySettings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
-          Company Currencies
-        </h2>
-        <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-          Enable currencies for use in vouchers. Each currency requires an initial exchange rate.
-        </p>
+    <div className="w-full space-y-8 pb-12">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-[var(--color-border)] pb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+            Currency Settings
+          </h2>
+          <p className="text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
+            Manage your company's active currencies and exchange rates.
+          </p>
+        </div>
+        
+        <button
+          onClick={() => setIsAvailableModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95"
+        >
+          <Plus size={18} />
+          <span>Add New Currency</span>
+        </button>
       </div>
 
-      {/* Base Currency Info */}
-      <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl">
-        <div className="flex items-center gap-3">
-          <DollarSign className="text-emerald-600 dark:text-emerald-400" size={24} />
-          <div>
-            <p className="font-semibold text-emerald-800 dark:text-emerald-300">
-              Base Currency: {baseCurrency}
-            </p>
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              All transactions are converted to this currency for reporting
-            </p>
-          </div>
+      {/* Main Content Area: Two-Row Layout */}
+      <div className="space-y-8">
+        {/* Row 1: Three Columns - Responsive heights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 items-stretch">
+          
+          {/* Column 1: Active Currencies */}
+          <section className="flex flex-col">
+            <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-[var(--color-border)] flex-shrink-0">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                  Active Currencies
+                </h3>
+              </div>
+              
+              <div className="divide-y divide-gray-100 dark:divide-[var(--color-border)] flex-1">
+                {globalCurrencies.filter(c => isEnabled(c.code)).sort((a, b) => a.code === baseCurrency ? -1 : b.code === baseCurrency ? 1 : 0).map(currency => (
+                  <div key={currency.code} className={`flex items-center justify-between px-5 py-4 transition-colors group ${currency.code === baseCurrency ? 'bg-emerald-50/20 dark:bg-emerald-900/5' : 'hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 flex items-center justify-center rounded-full font-bold text-sm ${currency.code === baseCurrency ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
+                        {currency.symbol}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{currency.code}</p>
+                          {currency.code === baseCurrency && (
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-full">Base</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{currency.name}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <span className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{currency.decimalPlaces} Decimals</span>
+                      {currency.code !== baseCurrency && (
+                        <button
+                          onClick={() => handleDisable(currency.code)}
+                          disabled={disabling === currency.code}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"
+                          title="Disable Currency"
+                        >
+                          {disabling === currency.code ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <X size={16} strokeWidth={2.5} />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Column 2: Manual Rate Entry */}
+          <PricingEntryForm 
+            enabledCurrencies={Array.from(enabledCodes)} 
+            baseCurrency={baseCurrency} 
+            onSuccess={() => {
+              // Add a small delay to ensure backend has processed the save
+              setTimeout(() => {
+                historyRef.current?.refresh();
+                matrixRef.current?.refresh();
+              }, 500);
+            }} 
+          />
+
+          {/* Column 3: Exchange Rate Matrix */}
+          <ExchangeRateMatrix ref={matrixRef} />
         </div>
+
+        {/* Row 2: Recent Pricing Operations (spans all 3 columns) */}
+        <ExchangeRateHistory ref={historyRef} />
       </div>
 
-      {/* Enabled Currencies */}
-      <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)]">
-          <h3 className="font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Enabled Currencies ({enabledCodes.size + 1})
-          </h3>
-        </div>
-        <div className="divide-y divide-gray-100 dark:divide-[var(--color-border)]">
-          {/* Base currency first */}
-          {globalCurrencies.filter(c => c.code === baseCurrency).map(currency => (
-            <div key={currency.code} className="flex items-center justify-between px-4 py-3 bg-emerald-50/50 dark:bg-emerald-900/10">
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{currency.symbol}</span>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-[var(--color-text-primary)]">
-                    {currency.code}
-                    <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400 font-normal">(Base)</span>
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">{currency.name}</p>
-                </div>
-              </div>
-              <span className="text-xs text-gray-400">{currency.decimalPlaces} decimals</span>
-            </div>
-          ))}
-
-          {/* Enabled currencies */}
-          {globalCurrencies.filter(c => c.code !== baseCurrency && enabledCodes.has(c.code)).map(currency => (
-            <div key={currency.code} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]">
-              <div className="flex items-center gap-3">
-                <span className="text-lg">{currency.symbol}</span>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-[var(--color-text-primary)]">{currency.code}</p>
-                  <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">{currency.name}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">{currency.decimalPlaces} decimals</span>
-                <button
-                  onClick={() => handleDisable(currency.code)}
-                  disabled={disabling === currency.code}
-                  className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {disabling === currency.code ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    'Disable'
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {enabledCodes.size === 0 && (
-            <div className="px-4 py-6 text-center text-gray-500 dark:text-[var(--color-text-muted)]">
-              <p>No additional currencies enabled</p>
-              <p className="text-sm mt-1">Enable currencies from the list below</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Available Currencies */}
-      <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)]">
-          <h3 className="font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Available Currencies ({globalCurrencies.length - enabledCodes.size - 1})
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-4">
-          {globalCurrencies.filter(c => !isEnabled(c.code)).map(currency => (
-            <button
-              key={currency.code}
-              onClick={() => setEnableModalCurrency(currency)}
-              className="flex items-center gap-3 p-3 border border-gray-200 dark:border-[var(--color-border)] rounded-lg hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all text-left group"
-            >
-              <span className="text-lg">{currency.symbol}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-[var(--color-text-primary)] truncate">{currency.code}</p>
-                <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] truncate">{currency.name}</p>
-              </div>
-              <Plus size={18} className="text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
-            </button>
-          ))}
-
-          {globalCurrencies.filter(c => !isEnabled(c.code)).length === 0 && (
-            <div className="col-span-full text-center py-6 text-gray-500 dark:text-[var(--color-text-muted)]">
-              All available currencies are enabled
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Available Modal */}
+      {isAvailableModalOpen && (
+        <AvailableCurrenciesModal
+          currencies={availableToEnable}
+          onClose={() => setIsAvailableModalOpen(false)}
+          onSelect={(currency) => {
+            setIsAvailableModalOpen(false);
+            setEnableModalCurrency(currency);
+          }}
+        />
+      )}
 
       {/* Enable Modal */}
       {enableModalCurrency && (
@@ -317,7 +198,11 @@ export const CompanyCurrencySettings: React.FC = () => {
           currency={enableModalCurrency}
           baseCurrency={baseCurrency}
           onClose={() => setEnableModalCurrency(null)}
-          onEnabled={loadData}
+          onEnabled={() => {
+            loadData();
+            matrixRef.current?.refresh();
+            historyRef.current?.refresh();
+          }}
         />
       )}
     </div>

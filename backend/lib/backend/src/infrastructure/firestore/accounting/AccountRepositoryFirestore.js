@@ -77,6 +77,13 @@ class AccountRepositoryFirestore {
     async getAccounts(companyId) {
         return this.list(companyId);
     }
+    async countByCurrency(companyId, currencyCode) {
+        const snapshot = await this.getCollection(companyId)
+            .where('currency', '==', currencyCode.toUpperCase())
+            .count()
+            .get();
+        return snapshot.data().count;
+    }
 }
 exports.AccountRepositoryFirestore = AccountRepositoryFirestore;
 //# sourceMappingURL=AccountRepositoryFirestore.js.map

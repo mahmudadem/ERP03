@@ -244,7 +244,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto bg-white dark:bg-[var(--color-bg-secondary)]">
-          <div className="max-w-4xl p-8">
+          <div className="p-8">
             {/* Mobile Tab Dropdown */}
             <div className="md:hidden mb-6">
               <select
@@ -260,7 +260,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* General Settings Tab */}
             {activeTab === 'general' && (
-              <div className="space-y-8">
+              <div className="max-w-4xl mx-auto space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">General Settings</h2>
                   <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
@@ -383,7 +383,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* Policy Configuration Tab (Merged: Approval & Posting) */}
             {activeTab === 'policies' && (
-              <div className="space-y-8">
+              <div className="max-w-4xl mx-auto space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Approval & Posting</h2>
                   <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
@@ -828,7 +828,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* Cost Center Required Tab */}
             {activeTab === 'cost-center' && (
-              <div className="space-y-8">
+              <div className="max-w-4xl mx-auto space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Cost Center Required</h2>
                   <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
@@ -910,7 +910,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* Policy Error Mode Tab */}
             {activeTab === 'error-mode' && (
-              <div className="space-y-8">
+              <div className="max-w-4xl mx-auto space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Policy Error Mode</h2>
                   <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
@@ -974,7 +974,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* Fiscal Year Tab */}
             {activeTab === 'fiscal' && (
-              <div className="space-y-8">
+              <div className="max-w-4xl mx-auto space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Fiscal Year</h2>
                   <p className="text-gray-600">

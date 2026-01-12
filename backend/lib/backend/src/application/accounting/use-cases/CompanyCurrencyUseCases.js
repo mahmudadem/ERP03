@@ -73,11 +73,31 @@ exports.EnableCurrencyForCompanyUseCase = EnableCurrencyForCompanyUseCase;
  * Disable a currency for a company.
  */
 class DisableCurrencyForCompanyUseCase {
-    constructor(companyCurrencyRepo) {
+    constructor(companyCurrencyRepo, accountRepo, voucherRepo, baseCurrency // Company base currency
+    ) {
         this.companyCurrencyRepo = companyCurrencyRepo;
+        this.accountRepo = accountRepo;
+        this.voucherRepo = voucherRepo;
+        this.baseCurrency = baseCurrency;
     }
     async execute(companyId, currencyCode) {
-        await this.companyCurrencyRepo.disable(companyId, currencyCode);
+        const upperCode = currencyCode.toUpperCase();
+        // 1. Cannot disable base currency
+        if (upperCode === this.baseCurrency.toUpperCase()) {
+            throw new Error(`Cannot disable the company's base currency (${upperCode})`);
+        }
+        // 2. Check if used by any accounts
+        const accountCount = await this.accountRepo.countByCurrency(companyId, upperCode);
+        if (accountCount > 0) {
+            throw new Error(`Cannot disable currency ${upperCode}: it is currently linked to ${accountCount} account(s) in the Chart of Accounts.`);
+        }
+        // 3. Check if used by any vouchers (header or lines)
+        const voucherCount = await this.voucherRepo.countByCurrency(companyId, upperCode);
+        if (voucherCount > 0) {
+            throw new Error(`Cannot disable currency ${upperCode}: it is currently used in ${voucherCount} voucher(s).`);
+        }
+        // 4. If all checks pass, disable
+        await this.companyCurrencyRepo.disable(companyId, upperCode);
     }
 }
 exports.DisableCurrencyForCompanyUseCase = DisableCurrencyForCompanyUseCase;

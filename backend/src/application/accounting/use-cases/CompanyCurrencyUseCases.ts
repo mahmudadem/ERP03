@@ -1,6 +1,8 @@
 import { ICompanyCurrencyRepository, CompanyCurrencyRecord } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { ICurrencyRepository } from '../../../repository/interfaces/accounting/ICurrencyRepository';
 import { IExchangeRateRepository } from '../../../repository/interfaces/accounting/IExchangeRateRepository';
+import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
+import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { ExchangeRate } from '../../../domain/accounting/entities/ExchangeRate';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -94,9 +96,34 @@ export class EnableCurrencyForCompanyUseCase {
  * Disable a currency for a company.
  */
 export class DisableCurrencyForCompanyUseCase {
-  constructor(private companyCurrencyRepo: ICompanyCurrencyRepository) {}
+  constructor(
+    private companyCurrencyRepo: ICompanyCurrencyRepository,
+    private accountRepo: IAccountRepository,
+    private voucherRepo: IVoucherRepository,
+    private baseCurrency: string // Company base currency
+  ) {}
 
   async execute(companyId: string, currencyCode: string): Promise<void> {
-    await this.companyCurrencyRepo.disable(companyId, currencyCode);
+    const upperCode = currencyCode.toUpperCase();
+
+    // 1. Cannot disable base currency
+    if (upperCode === this.baseCurrency.toUpperCase()) {
+      throw new Error(`Cannot disable the company's base currency (${upperCode})`);
+    }
+
+    // 2. Check if used by any accounts
+    const accountCount = await this.accountRepo.countByCurrency(companyId, upperCode);
+    if (accountCount > 0) {
+      throw new Error(`Cannot disable currency ${upperCode}: it is currently linked to ${accountCount} account(s) in the Chart of Accounts.`);
+    }
+
+    // 3. Check if used by any vouchers (header or lines)
+    const voucherCount = await this.voucherRepo.countByCurrency(companyId, upperCode);
+    if (voucherCount > 0) {
+      throw new Error(`Cannot disable currency ${upperCode}: it is currently used in ${voucherCount} voucher(s).`);
+    }
+
+    // 4. If all checks pass, disable
+    await this.companyCurrencyRepo.disable(companyId, upperCode);
   }
 }

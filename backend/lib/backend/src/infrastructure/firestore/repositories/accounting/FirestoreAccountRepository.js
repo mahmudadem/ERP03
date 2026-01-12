@@ -102,6 +102,15 @@ class FirestoreAccountRepository extends BaseFirestoreRepository_1.BaseFirestore
             throw new InfrastructureError_1.InfrastructureError('Error getting account by code', error);
         }
     }
+    async countByCurrency(companyId, currencyCode) {
+        try {
+            const snapshot = await this.col(companyId).where('currency', '==', currencyCode.toUpperCase()).count().get();
+            return snapshot.data().count;
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Error counting accounts by currency', error);
+        }
+    }
 }
 exports.FirestoreAccountRepository = FirestoreAccountRepository;
 //# sourceMappingURL=FirestoreAccountRepository.js.map

@@ -12,10 +12,12 @@ const AccountingDesignerController_1 = require("../controllers/accounting/Accoun
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
 const CurrencyController_1 = require("../controllers/accounting/CurrencyController");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const companyContextMiddleware_1 = require("../middlewares/companyContextMiddleware");
 const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
 const router = (0, express_1.Router)();
-// authMiddleware should be applied at tenant router level, but keeping here for safety if mounted elsewhere
+// Apply auth and company context middlewares
 router.use(authMiddleware_1.authMiddleware);
+router.use(companyContextMiddleware_1.companyContextMiddleware);
 // Accounts
 router.get('/accounts', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), AccountController_1.AccountController.list);
 router.get('/accounts/valid', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), AccountController_1.AccountController.getValid);
@@ -66,6 +68,8 @@ router.get('/company/currencies', (0, permissionGuard_1.permissionGuard)('accoun
 router.post('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.enableCurrency);
 router.delete('/company/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.disableCurrency);
 // Exchange Rates
+router.get('/exchange-rates/history', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), CurrencyController_1.CurrencyController.listRateHistory);
+router.get('/exchange-rates/matrix', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.getLatestRatesMatrix);
 router.get('/exchange-rates/suggested', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.getSuggestedRate);
 router.post('/exchange-rates', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.saveRate);
 router.post('/exchange-rates/check-deviation', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.checkRateDeviation);

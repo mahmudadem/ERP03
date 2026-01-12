@@ -208,6 +208,20 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/exchange-rates/suggested?${params.toString()}`);
   },
 
+  /** Get exchange rate history */
+  getExchangeRateHistory: (fromCurrency?: string, toCurrency?: string, limit?: number): Promise<{ rates: any[] }> => {
+    const params = new URLSearchParams();
+    if (fromCurrency) params.append('fromCurrency', fromCurrency);
+    if (toCurrency) params.append('toCurrency', toCurrency);
+    if (limit) params.append('limit', limit.toString());
+    return client.get(`/tenant/accounting/exchange-rates/history?${params.toString()}`);
+  },
+
+  /** Get latest exchange rates matrix */
+  getLatestRatesMatrix: (): Promise<{ matrix: Record<string, Record<string, number>>; currencies: string[] }> => {
+    return client.get('/tenant/accounting/exchange-rates/matrix');
+  },
+
   /** Save a reference exchange rate */
   saveExchangeRate: (fromCurrency: string, toCurrency: string, rate: number, date?: string): Promise<{ success: boolean; exchangeRate: any }> => {
     return client.post('/tenant/accounting/exchange-rates', { fromCurrency, toCurrency, rate, date });

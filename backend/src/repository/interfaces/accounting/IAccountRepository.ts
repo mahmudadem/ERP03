@@ -27,4 +27,5 @@ export interface IAccountRepository {
   deactivate(companyId: string, accountId: string): Promise<void>;
   hasChildren(companyId: string, accountId: string): Promise<boolean>;
   getAccounts?(companyId: string): Promise<Account[]>; // alias for legacy use-cases
+  countByCurrency(companyId: string, currencyCode: string): Promise<number>;
 }
