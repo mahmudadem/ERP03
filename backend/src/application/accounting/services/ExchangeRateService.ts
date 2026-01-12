@@ -174,21 +174,26 @@ export class GetSuggestedRateUseCase {
       return { rate: mostRecent, source: 'MOST_RECENT' };
     }
 
-    // Try inverse rate (e.g., if USD→EUR not found, try EUR→USD and calculate 1/rate)
+    // Try inverse rate (e.g., if EUR→USD not found, try USD→EUR and calculate 1/rate)
     const inverseRate = await this.exchangeRateRepo.getMostRecentRate(
       companyId,
-      toCurrency,  // Swap: look for EUR→USD
+      toCurrency,  // Swap: look for USD→EUR
       fromCurrency
     );
 
     if (inverseRate && inverseRate.rate > 0) {
-      // Calculate inverse: if EUR→USD = 1.13, then USD→EUR = 1/1.13 = 0.885
-      const calculatedRate: ExchangeRate = {
-        ...inverseRate,
+      // Calculate inverse: if USD→EUR = 0.885, then EUR→USD = 1/0.885 = 1.13
+      const calculatedRate = new ExchangeRate({
+        id: inverseRate.id + '_inverse',
+        companyId: inverseRate.companyId,
         fromCurrency: fromCurrency,
         toCurrency: toCurrency,
         rate: 1 / inverseRate.rate,
-      };
+        date: inverseRate.date,
+        source: inverseRate.source,
+        createdAt: inverseRate.createdAt,
+        createdBy: inverseRate.createdBy
+      });
       return { rate: calculatedRate, source: 'INVERSE' };
     }
 
