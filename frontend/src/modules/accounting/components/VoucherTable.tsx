@@ -193,15 +193,9 @@ export const VoucherTable: React.FC<Props> = ({
     
     let newWidth = Math.max(50, startWidth + deltaX);
     
-    // Boundary check: Total width should not exceed container width
-    const containerWidth = tableContainerRef.current.clientWidth;
-    const otherColumnsWidth = Object.entries(columnWidths)
-      .filter(([key]) => key !== column)
-      .reduce((sum, [, width]) => sum + width, 0);
-      
-    if (newWidth + otherColumnsWidth > containerWidth) {
-      newWidth = containerWidth - otherColumnsWidth;
-    }
+
+    // Boundary check removed to allow scrolling behavior
+    // if (newWidth + otherColumnsWidth > containerWidth) { ... }
 
     if (newWidth < 50) newWidth = 50;
     
@@ -249,16 +243,12 @@ export const VoucherTable: React.FC<Props> = ({
     if (tableContainerRef.current) {
       const containerWidth = tableContainerRef.current.clientWidth;
       const totalWidth = Object.values(columnWidths).reduce((a, b) => a + b, 0);
+      /* 
+      // Skip normalization to respect saved widths even if they cause scroll
       if (totalWidth > containerWidth && containerWidth > 0) {
-        const ratio = containerWidth / totalWidth;
-        setColumnWidths(prev => {
-          const scaled = { ...prev };
-          Object.keys(scaled).forEach(key => {
-            scaled[key] = Math.max(50, Math.floor(scaled[key] * ratio));
-          });
-          return scaled;
-        });
+        ...
       }
+      */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -531,7 +521,7 @@ export const VoucherTable: React.FC<Props> = ({
 
 
       <div ref={tableContainerRef} className="overflow-x-auto relative max-w-full">
-        <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ width: '100%', maxWidth: '100%' }}>
+        <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ minWidth: '100%' }}>
           <thead className="bg-[var(--color-bg-secondary)] select-none">
             <tr className="divide-x divide-[var(--color-border)]/50">
               <th className="px-2 py-3 text-center" style={{ width: columnWidths.expand }}>
@@ -1002,7 +992,7 @@ export const VoucherTable: React.FC<Props> = ({
                                 variant={variant}
                                 className={clsx(
                                   "flex items-center gap-1 px-2 py-0.5 rounded-full font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
-                                  (isPosted && !isReversed) && "bg-emerald-600 text-white border-none",
+                                  (isPosted && !isReversed) && "bg-emerald-700 text-white border-none",
                                   isReversed && "bg-amber-500 text-white border-none",
                                   fontSize
                                 )}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { AmountInput } from './shared/AmountInput';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountSelectorSimple } from './AccountSelectorSimple';
 import { errorHandler } from '../../../services/errorHandler';
@@ -51,6 +52,9 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
     updated[index] = { ...updated[index], [field]: value };
     setSources(updated);
   };
+
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,12 +148,11 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
                     />
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={source.amount || ''}
-                      onChange={(e) => handleSourceChange(index, 'amount', Number(e.target.value))}
-                      required
+                    <AmountInput
+                        value={source.amount}
+                        onChange={(val) => handleSourceChange(index, 'amount', val)}
+                        placeholder=""
+                        className="w-full p-2 text-sm border-none outline-none font-mono"
                     />
                   </td>
                   <td>

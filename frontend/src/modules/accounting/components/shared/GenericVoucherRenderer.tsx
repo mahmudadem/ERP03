@@ -198,14 +198,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
   // --- Math & Auto-Balance Logic ---
   const evaluateMathExpression = (expression: string): number | null => {
+    // Normalize: replace comma with dot for international users
+    const normalized = expression.replace(/,/g, '.');
+    
     // Only allow safe characters: 0-9 . + - * / ( ) space
-    if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(expression)) return null;
+    if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(normalized)) {
+        console.warn('Math evaluation blocked due to invalid chars:', normalized);
+        return null; // Strict security check against injection
+    }
+    
     try {
       // Create a specific function context to prevent accessing global/window
       // eslint-disable-next-line no-new-func
-      const result = new Function('return ' + expression)();
+      const result = new Function('return ' + normalized)();
       return isFinite(result) ? result : null;
-    } catch {
+    } catch (err) {
+      console.warn('Math evaluation failed:', err);
       return null;
     }
   };
@@ -249,9 +257,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     onBlurRef.current?.();
   };
 
-  const handleAmountKeyDown = (e: React.KeyboardEvent, rowId: number, field: 'debit' | 'credit', idx: number, colIdx: number) => {
-    // Check for Ctrl+C (Auto Balance)
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+  const handleAmountKeyDown = (e: React.KeyboardEvent, rowId: number, field: 'debit' | 'credit' | 'parity' | 'equivalent', idx: number, colIdx: number) => {
+    // Check for Alt+B (Auto Balance)
+    if (e.altKey && e.key.toLowerCase() === 'b') {
       e.preventDefault();
       e.stopPropagation();
       
@@ -270,6 +278,58 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         otherCreditBase += c;
       });
       
+      // PARITY BALANCING: Adjust Rate to match Amount
+      if (field === 'parity') {
+         const currentRow = rows.find(r => r.id === rowId);
+         if (!currentRow) return;
+         
+         const currentAmount = (parseFloat(currentRow.debit as any) || 0) + (parseFloat(currentRow.credit as any) || 0);
+         if (currentAmount === 0) {
+             return; 
+         }
+         
+         const isDebit = (parseFloat(currentRow.debit as any) || 0) > 0;
+         
+         let requiredBase = 0;
+         if (isDebit) {
+            requiredBase = otherCreditBase - otherDebitBase;
+         } else {
+             requiredBase = otherDebitBase - otherCreditBase;
+         }
+         
+         if (requiredBase <= 0) return;
+         
+         const newParity = requiredBase / currentAmount;
+         const roundedParity = Number(newParity.toFixed(6));
+         
+         handleRowChange(rowId, 'parity', roundedParity);
+         setEditValue(roundedParity.toString());
+         return;
+      }
+
+      // EQUIVALENT BALANCING: Force Base Amount (Adjust Rate)
+      if (field === 'equivalent') {
+        const currentRow = rows.find(r => r.id === rowId);
+        if (!currentRow) return;
+
+         const isDebit = (parseFloat(currentRow.debit as any) || 0) > 0;
+         
+         let requiredBase = 0;
+         if (isDebit) {
+            requiredBase = otherCreditBase - otherDebitBase;
+         } else {
+             requiredBase = otherDebitBase - otherCreditBase;
+         }
+         
+         if (requiredBase <= 0) return;
+
+         // Set Equivalent directly. handleRowChange determines new Parity.
+         handleRowChange(rowId, 'equivalent', requiredBase);
+         setEditValue(requiredBase.toString());
+         return;
+      }
+
+      // AMOUNT BALANCING (Debit/Credit)
       let requiredBase = 0;
       if (field === 'credit') {
         // Use Credit to balance Debit excess
@@ -293,7 +353,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // Standard navigation
     handleCellKeyDown(e, idx, colIdx, (definition as any).tableColumns?.length || 8);
   };
-  
   // Column resize state (for Classic table)
   const storageKey = `columnWidths_${definition.id}`;
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -735,15 +794,34 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           }
 
           // Handle numeric fields safely without stripping partial decimals
-          if (['debit', 'credit', 'parity'].includes(field as string)) {
-            updated[field as 'debit' | 'credit' | 'parity'] = value as any;
+          if (['debit', 'credit', 'parity', 'equivalent'].includes(field as string)) {
+            updated[field as 'debit' | 'credit' | 'parity' | 'equivalent'] = value as any;
+          }
+          
+          // SPECIAL CASE: If Equivalent modified, reverse-calculate Parity
+          if (field === 'equivalent') {
+             const debit = parseFloat(updated.debit as any) || 0;
+             const credit = parseFloat(updated.credit as any) || 0;
+             const amount = debit || credit || 0;
+             const newEquiv = parseFloat(value as any) || 0;
+             
+             if (amount !== 0) {
+                 updated.parity = Number((newEquiv / amount).toFixed(6));
+             }
           }
 
           // MULTI-CURRENCY LOGIC: Re-calculate equivalent (Base Amount)
+          // Note: If we just set parity via equivalent, this will re-confirm the equivalent.
           const debit = parseFloat(updated.debit as any) || 0;
           const credit = parseFloat(updated.credit as any) || 0;
           const parity = parseFloat(updated.parity as any) || 1.0;
           const amount = debit || credit || 0;
+          
+          // Only Recalculate Equivalent if we didn't just set it manually (to avoid rounding jitter)
+          // OR: Always recalculate to ensure consistency?
+          // If we manually set equivalent to 100, and amount 300. Parity 0.333333.
+          // 300 * 0.333333 = 99.9999. Rounds to 100.
+          // It is safer to recalculate to truth.
           updated.equivalent = Math.round(amount * parity * 100) / 100;
           
           targetRow = updated;
@@ -1140,27 +1218,24 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             onBlur={() => onBlurRef.current?.()}
                                                         />
                                                      </div>
-                                                 ) : colId === 'debit' || colId === 'credit' ? (
+
+                                                 ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
                                                      <AmountInput
                                                          ref={(el) => registerCellRef(index, colIndex, el)}
-                                                         value={row[colId as 'debit' | 'credit'] || 0}
+                                                         value={(row[colId as keyof JournalRow] as number) || 0}
                                                          disabled={readOnly}
-                                                         onChange={(val) => handleRowChange(row.id, colId as 'debit' | 'credit', val)}
-                                                         onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                         onChange={(val) => handleRowChange(row.id, colId as keyof JournalRow, val)}
+                                                         onKeyDown={(e) => {
+                                                             if (colId === 'debit' || colId === 'credit' || colId === 'parity') {
+                                                                 handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit' | 'parity', index, colIndex);
+                                                             } else {
+                                                                 // Pass standard nav for equivalent (read-only usually) or others
+                                                                 handleCellKeyDown(e, index, colIndex, totalCols);
+                                                             }
+                                                         }}
                                                          onBlur={() => onBlurRef.current?.()}
+                                                         placeholder=""
                                                       />
-                                                 ) : (colId === 'currency' || col.type === 'currency' || col.type === 'currency-selector') ? (
-                                                     <div className="p-0.5">
-                                                        <CurrencySelector 
-                                                            ref={(el) => registerCellRef(index, colIndex, el)}
-                                                            value={(row as any)[colId] || ''}
-                                                            disabled={readOnly || !!getAccountByCode(row.account)?.currency}
-                                                            onChange={(val) => handleRowChange(row.id, colId as any, val)} 
-                                                            noBorder={true}
-                                                            onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
-                                                            onBlur={() => onBlurRef.current?.()}
-                                                        />
-                                                     </div>
                                                  ) : (
                                                      <input 
                                                        ref={(el) => registerCellRef(index, colIndex, el)}
@@ -1319,47 +1394,25 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  noBorder
                                              />
                                          ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
-                                             <input 
-                                                 ref={(el) => registerCellRef(index, colIdx, el)}
-                                                 type="text" 
-                                                 disabled={readOnly || colId === 'equivalent'}
-                                                 value={
-                                                   (editingCell?.rowId === row.id && editingCell?.field === colId) 
-                                                   ? editValue 
-                                                   : colId === 'equivalent' 
-                                                     ? (parseFloat(row[colId as keyof JournalRow] as any) || 0).toFixed(2) 
-                                                     : (row[colId as keyof JournalRow] ?? '')
-                                                 }
-                                                 onChange={(e) => {
-                                                   if (colId === 'debit' || colId === 'credit') {
-                                                     handleAmountChange(e.target.value);
-                                                   } else {
-                                                     handleRowChange(row.id, colId as any, e.target.value);
-                                                   }
-                                                 }}
-                                                 onFocus={() => {
-                                                   if (colId === 'debit' || colId === 'credit') {
-                                                     handleAmountFocus(row.id, colId, row[colId as 'debit' | 'credit'] as number);
-                                                   }
-                                                 }}
-                                                 onBlur={() => {
-                                                   if (colId === 'debit' || colId === 'credit') {
-                                                     handleAmountBlur(row.id, colId as 'debit' | 'credit');
-                                                   } else {
-                                                     onBlurRef.current?.();
-                                                   }
-                                                 }}
-                                                 onKeyDown={(e) => {
-                                                   if (colId === 'debit' || colId === 'credit') {
-                                                     handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIdx);
-                                                   } else {
-                                                     handleCellKeyDown(e, index, colIdx, columns.length);
-                                                   }
-                                                 }}
-                                                 readOnly={colId === 'equivalent'}
-                                                 title={colId === 'equivalent' ? "Equivalent (Read-only)" : "Math allowed (e.g. 10+5). Ctrl+C to balance."}
-                                                 className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${colId === 'equivalent' || readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
-                                             />
+                                            <AmountInput
+                                               ref={(el) => registerCellRef(index, colIdx, el)}
+                                               value={parseFloat(row[colId as keyof JournalRow] as any) || 0}
+                                               onChange={(val) => handleRowChange(row.id, colId as any, val)}
+                                               disabled={readOnly}
+                                               placeholder=""
+                                               onKeyDown={(e) => {
+                                                  // Pass to grid navigation
+                                                  handleCellKeyDown(e, index, colIdx, columns.length);
+                                                  
+                                                  // Special handlers if needed (e.g. specific to these fields)
+                                                  if (colId === 'debit' || colId === 'credit' || colId === 'parity' || colId === 'equivalent') {
+                                                    handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit' | 'parity' | 'equivalent', index, colIdx);
+                                                  }
+                                               }}
+                                               // Ensure onBlur from grid is called if needed (AmountInput handles its own blur for math, but we might need to clear styling state)
+                                               onBlur={() => onBlurRef.current?.()}
+                                               className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                            />
                                          ) : (
                                              <input 
                                                ref={(el) => registerCellRef(index, colIdx, el)}

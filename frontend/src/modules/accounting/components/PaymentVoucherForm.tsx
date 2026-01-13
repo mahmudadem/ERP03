@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { AmountInput } from './shared/AmountInput';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
@@ -52,6 +53,9 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
     updated[index] = { ...updated[index], [field]: value };
     setAllocations(updated);
   };
+
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,13 +160,11 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
                     <td className="py-3 px-2">
                        <div className="relative flex items-center">
                           <span className="absolute left-2 text-[var(--color-text-muted)] text-sm font-mono">$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={alloc.amount || ''}
-                            onChange={(e) => handleAllocationChange(index, 'amount', Number(e.target.value))}
-                            required
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none font-mono"
+                          <AmountInput // Replaced manual input
+                            value={alloc.amount}
+                            onChange={(val) => handleAllocationChange(index, 'amount', val)}
+                            placeholder=""
+                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none font-mono text-left"
                           />
                        </div>
                     </td>
