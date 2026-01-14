@@ -1,24 +1,120 @@
 /**
  * AccountingDTOs.ts
  * 
- * V2 Only - Uses VoucherEntity and VoucherLineEntity
+ * Data Transfer Objects for the Accounting API.
+ * Includes full Account DTO with new specification fields.
  */
+
 import { Account } from '../../domain/accounting/entities/Account';
 import { VoucherEntity } from '../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../../domain/accounting/entities/VoucherLineEntity';
 
+// ============================================================================
+// ACCOUNT DTOs
+// ============================================================================
+
 export interface AccountDTO {
+  // Identity
   id: string;
-  code: string;
+  systemCode: string;
+  userCode: string;
   name: string;
-  type: string;
-  currency: string;
-  active: boolean;
-  // Approval Policy V1 fields
+  description?: string | null;
+  
+  // Accounting semantics
+  accountRole: string;
+  classification: string;
+  balanceNature: string;
+  balanceEnforcement: string;
+  
+  // Hierarchy
+  parentId?: string | null;
+  
+  // Currency
+  currencyPolicy: string;
+  fixedCurrencyCode?: string | null;
+  allowedCurrencyCodes?: string[];
+  
+  // Lifecycle
+  status: string;
+  isProtected: boolean;
+  replacedByAccountId?: string | null;
+  
+  // Audit
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  
+  // Computed flags
+  canPost?: boolean;
+  hasChildren?: boolean;
+  isUsed?: boolean;
+  
+  // Legacy compat fields
+  code?: string;             // Alias for userCode
+  type?: string;             // Alias for classification
+  currency?: string;         // Alias for fixedCurrencyCode
+  active?: boolean;          // Alias for status === 'ACTIVE'
   requiresApproval?: boolean;
   requiresCustodyConfirmation?: boolean;
   custodianUserId?: string | null;
 }
+
+export interface CreateAccountRequest {
+  userCode: string;
+  name: string;
+  classification: string;
+  
+  // Optional
+  description?: string;
+  accountRole?: string;
+  balanceNature?: string;
+  balanceEnforcement?: string;
+  parentId?: string | null;
+  currencyPolicy?: string;
+  fixedCurrencyCode?: string;
+  allowedCurrencyCodes?: string[];
+  isProtected?: boolean;
+  
+  // Legacy compat
+  code?: string;
+  type?: string;
+  currency?: string;
+}
+
+export interface UpdateAccountRequest {
+  userCode?: string;
+  name?: string;
+  description?: string | null;
+  status?: string;
+  replacedByAccountId?: string | null;
+  
+  // Conditionally editable
+  accountRole?: string;
+  classification?: string;
+  balanceNature?: string;
+  balanceEnforcement?: string;
+  currencyPolicy?: string;
+  fixedCurrencyCode?: string | null;
+  allowedCurrencyCodes?: string[];
+  
+  // Hierarchy
+  parentId?: string | null;
+  
+  // System
+  isProtected?: boolean;
+  
+  // Legacy compat
+  code?: string;
+  type?: string;
+  isActive?: boolean;
+  currency?: string;
+}
+
+// ============================================================================
+// VOUCHER DTOs
+// ============================================================================
 
 export interface VoucherLineDTO {
   id: number;
@@ -52,7 +148,6 @@ export interface VoucherDTO {
   createdBy: string;
   createdAt: string;
   metadata?: Record<string, any>;
-  // Computed/legacy compatibility
   sourceModule?: string | null;
   formId?: string | null;
   prefix?: string | null;
@@ -60,7 +155,7 @@ export interface VoucherDTO {
 }
 
 export interface CreateVoucherRequest {
-  type: string; // VoucherType
+  type: string;
   date: string;
   description?: string;
   currency?: string;
@@ -99,19 +194,58 @@ export interface UpdateVoucherRequest {
   metadata?: Record<string, any>;
 }
 
+// ============================================================================
+// DTO MAPPERS
+// ============================================================================
+
 export class AccountingDTOMapper {
   static toAccountDTO(account: Account): AccountDTO {
     return {
+      // Identity
       id: account.id,
-      code: account.code,
+      systemCode: account.systemCode,
+      userCode: account.userCode,
       name: account.name,
-      type: account.type,
-      currency: account.currency,
-      active: account.active,
-      // Approval Policy V1 fields
+      description: account.description,
+      
+      // Accounting semantics
+      accountRole: account.accountRole,
+      classification: account.classification,
+      balanceNature: account.balanceNature,
+      balanceEnforcement: account.balanceEnforcement,
+      
+      // Hierarchy
+      parentId: account.parentId,
+      
+      // Currency
+      currencyPolicy: account.currencyPolicy,
+      fixedCurrencyCode: account.fixedCurrencyCode,
+      allowedCurrencyCodes: account.allowedCurrencyCodes,
+      
+      // Lifecycle
+      status: account.status,
+      isProtected: account.isProtected,
+      replacedByAccountId: account.replacedByAccountId,
+      
+      // Audit
+      createdAt: account.createdAt.toISOString(),
+      createdBy: account.createdBy,
+      updatedAt: account.updatedAt.toISOString(),
+      updatedBy: account.updatedBy,
+      
+      // Computed flags
+      canPost: account.canPost(),
+      hasChildren: account.hasChildren,
+      isUsed: account.isUsed,
+      
+      // Legacy compat
+      code: account.userCode,
+      type: account.classification,
+      currency: account.fixedCurrencyCode || '',
+      active: account.status === 'ACTIVE',
       requiresApproval: account.requiresApproval,
       requiresCustodyConfirmation: account.requiresCustodyConfirmation,
-      custodianUserId: account.custodianUserId,
+      custodianUserId: account.custodianUserId
     };
   }
 

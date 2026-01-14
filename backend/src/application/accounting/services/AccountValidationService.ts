@@ -82,7 +82,7 @@ export class AccountValidationService {
     // Check which accounts have children (to mark them as parent accounts)
     for (const account of allAccounts) {
       const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
-      account.setAsParent(hasChildren);
+      account.setHasChildren(hasChildren);
     }
 
     for (const account of allAccounts) {
@@ -137,7 +137,7 @@ export class AccountValidationService {
 
     // Check if has children
     const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
-    account.setAsParent(hasChildren);
+    account.setHasChildren(hasChildren);
 
     const ctx: AccountValidationContext = {
       companyId,

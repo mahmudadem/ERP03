@@ -134,25 +134,51 @@ model ExchangeRate {
   @@map("exchange_rates")
 }
 
-// Accounting Module
+// Accounting Module - Chart of Accounts
 model Account {
-  id         String   @id
-  companyId  String
-  code       String
-  name       String
-  type       String
-  currency   String
-  isProtected Boolean @default(false)
-  active     Boolean  @default(true)
-  parentId   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  companyId             String
+  
+  // Identity
+  systemCode            String   // Auto-generated, immutable (ACC-000001)
+  userCode              String   // User-editable, unique per company
+  name                  String
+  description           String?
+  
+  // Accounting semantics
+  accountRole           String   @default("POSTING") // HEADER | POSTING
+  classification        String   // ASSET | LIABILITY | EQUITY | REVENUE | EXPENSE
+  balanceNature         String   @default("DEBIT")   // DEBIT | CREDIT | BOTH
+  balanceEnforcement    String   @default("WARN_ABNORMAL") // ALLOW_ABNORMAL | WARN_ABNORMAL | BLOCK_ABNORMAL
+  
+  // Hierarchy
+  parentId              String?
+  
+  // Currency policy
+  currencyPolicy        String   @default("INHERIT") // INHERIT | FIXED | OPEN | RESTRICTED
+  fixedCurrencyCode     String?
+  allowedCurrencyCodes  String[] @default([])
+  
+  // Lifecycle
+  status                String   @default("ACTIVE") // ACTIVE | INACTIVE
+  isProtected           Boolean  @default(false)
+  replacedByAccountId   String?
+  
+  // Audit
+  createdAt             DateTime @default(now())
+  createdBy             String
+  updatedAt             DateTime @updatedAt
+  updatedBy             String
 
-  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  lines   VoucherLine[]
+  // Relations
+  company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines                 VoucherLine[]
 
-  @@unique([companyId, code])
-  @@index([companyId, type])
+  @@unique([companyId, systemCode])
+  @@unique([companyId, userCode])
+  @@index([companyId, classification])
+  @@index([companyId, status])
+  @@index([companyId, parentId])
   @@map("accounts")
 }
 

@@ -43,11 +43,13 @@ export class InitializeAccountingUseCase {
     const promises = templateAccounts.map((tpl: any) => {
       const input = {
         // No 'id' field - repository will use code as doc ID
-        code: tpl.code,
+        userCode: tpl.code,
         name: tpl.name,
-        type: tpl.type,
+        classification: tpl.type, // Will be normalized by repository
         parentId: tpl.parentId || null,  // parentId is parent's CODE
-        currency: config.baseCurrency
+        fixedCurrencyCode: config.baseCurrency,
+        currencyPolicy: 'FIXED' as const,
+        createdBy: 'SYSTEM'
       };
 
       return this.accountRepo.create(companyId, input);

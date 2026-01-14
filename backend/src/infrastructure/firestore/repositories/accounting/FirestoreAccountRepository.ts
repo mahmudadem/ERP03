@@ -1,52 +1,172 @@
 /**
- * FirestoreAccountRepository.ts
+ * FirestoreAccountRepository
  * 
- * Layer: Infrastructure
- * Purpose: Implementation of IAccountRepository for the Chart of Accounts.
+ * Firestore implementation of IAccountRepository.
+ * Implements: USED detection, system code generation, audit events.
  */
-import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
-import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../../repository/interfaces/accounting';
-import { Account, AccountType } from '../../../../domain/accounting/entities/Account';
-import { AccountMapper } from '../../mappers/AccountingMappers';
-import { InfrastructureError } from '../../../errors/InfrastructureError';
 
-export class FirestoreAccountRepository extends BaseFirestoreRepository<Account> implements IAccountRepository {
-  protected collectionName = 'accounts';
+import { IAccountRepository, NewAccountInput, UpdateAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
+import { 
+  Account, 
+  normalizeUserCode, 
+  normalizeClassification, 
+  getDefaultBalanceNature 
+} from '../../../../domain/accounting/entities/Account';
+import { InfrastructureError } from '../../../errors/InfrastructureError';
+import * as admin from 'firebase-admin';
+import { Firestore } from 'firebase-admin/firestore';
+
+export class FirestoreAccountRepository implements IAccountRepository {
+  protected db: Firestore;
+
+  constructor(db: Firestore) {
+    this.db = db;
+  }
 
   protected toDomain(data: any): Account {
-    return AccountMapper.toDomain(data);
+    return Account.fromJSON(data);
   }
 
   protected toPersistence(entity: Account): any {
-    return AccountMapper.toPersistence(entity);
+    return entity.toJSON();
   }
+
+  private collectionName = 'accounts';
 
   private col(companyId: string) {
     return this.db.collection('companies').doc(companyId).collection(this.collectionName);
   }
 
+  private voucherLinesCol(companyId: string) {
+    // VoucherLines are stored under vouchers in Firestore
+    // We need to query all voucher lines across all vouchers
+    return this.db.collectionGroup('lines');
+  }
+
+  private countersDoc(companyId: string) {
+    return this.db.collection('companies').doc(companyId).collection('counters').doc('accountSystemCode');
+  }
+
+  private auditEventsCol(companyId: string, accountId: string) {
+    return this.col(companyId).doc(accountId).collection('events');
+  }
+
+  // =========================================================================
+  // QUERY METHODS
+  // =========================================================================
+
+  async getById(companyId: string, accountId: string, transaction?: admin.firestore.Transaction): Promise<Account | null> {
+    try {
+      let doc;
+      if (transaction) {
+        doc = await transaction.get(this.col(companyId).doc(accountId));
+      } else {
+        doc = await this.col(companyId).doc(accountId).get();
+      }
+      if (!doc.exists) return null;
+      const account = this.toDomain({ ...doc.data(), id: doc.id });
+      
+      // Set runtime flags
+      const hasChildren = await this.hasChildren(companyId, accountId);
+      account.setHasChildren(hasChildren);
+      
+      return account;
+    } catch (error) {
+      throw new InfrastructureError('Error getting account by ID', error);
+    }
+  }
+
+  async getByUserCode(companyId: string, userCode: string): Promise<Account | null> {
+    try {
+      const normalized = normalizeUserCode(userCode);
+      const snap = await this.col(companyId).where('userCode', '==', normalized).limit(1).get();
+      if (snap.empty) {
+        // Fallback: check legacy 'code' field for migration
+        const legacySnap = await this.col(companyId).where('code', '==', userCode).limit(1).get();
+        if (legacySnap.empty) return null;
+        return this.toDomain({ ...legacySnap.docs[0].data(), id: legacySnap.docs[0].id });
+      }
+      return this.toDomain({ ...snap.docs[0].data(), id: snap.docs[0].id });
+    } catch (error) {
+      throw new InfrastructureError('Error getting account by user code', error);
+    }
+  }
+
+  async getByCode(companyId: string, code: string): Promise<Account | null> {
+    return this.getByUserCode(companyId, code);
+  }
+
+  async list(companyId: string): Promise<Account[]> {
+    try {
+      const snapshot = await this.col(companyId).get();
+      const accounts = snapshot.docs.map(doc => this.toDomain({ ...doc.data(), id: doc.id }));
+      
+      // Build parent lookup for hasChildren
+      const parentIds = new Set(accounts.map(a => a.parentId).filter(Boolean));
+      accounts.forEach(a => a.setHasChildren(parentIds.has(a.id)));
+      
+      return accounts;
+    } catch (error) {
+      throw new InfrastructureError('Error listing accounts', error);
+    }
+  }
+
+  async getAccounts(companyId: string): Promise<Account[]> {
+    return this.list(companyId);
+  }
+
+  // =========================================================================
+  // MUTATION METHODS
+  // =========================================================================
+
   async create(companyId: string, data: NewAccountInput): Promise<Account> {
     try {
-      // Use account CODE as the document ID (industry standard for accounting)
-      const accountId = data.code; // Code IS the document ID
-      // Generate UUID for system tracing/logging
-      const uuid = this.db.collection('tmp').doc().id;
+      // Generate UUID if not provided
+      const id = data.id || this.db.collection('tmp').doc().id;
       
-      const account = new Account(
+      // Generate system code
+      const systemCode = await this.generateNextSystemCode(companyId);
+      
+      // Normalize inputs
+      const userCode = normalizeUserCode(data.userCode || data.code || '');
+      const classification = normalizeClassification(data.classification || data.type || 'ASSET');
+      const balanceNature = data.balanceNature || getDefaultBalanceNature(classification);
+      
+      const now = new Date();
+      
+      const account = new Account({
+        id,
+        systemCode,
         companyId,
-        accountId,  // id = code
-        data.code,
-        data.name,
-        data.type as AccountType,
-        data.currency || '',
-        (data as any).isProtected ?? false,
-        (data as any).isActive ?? true,
-        uuid,       // System UUID for tracing
-        data.parentId || undefined,
-        new Date(),
-        new Date()
-      );
-      await this.col(companyId).doc(account.id).set(this.toPersistence({ ...account, companyId } as any));
+        userCode,
+        name: data.name,
+        description: data.description ?? null,
+        accountRole: data.accountRole || 'POSTING',
+        classification,
+        balanceNature,
+        balanceEnforcement: data.balanceEnforcement || 'WARN_ABNORMAL',
+        parentId: data.parentId ?? null,
+        currencyPolicy: data.currencyPolicy || 'INHERIT',
+        fixedCurrencyCode: data.fixedCurrencyCode || data.currency || null,
+        allowedCurrencyCodes: data.allowedCurrencyCodes || [],
+        status: 'ACTIVE',
+        isProtected: data.isProtected ?? false,
+        replacedByAccountId: null,
+        createdAt: now,
+        createdBy: data.createdBy,
+        updatedAt: now,
+        updatedBy: data.createdBy
+      });
+      
+      // Validate
+      const errors = account.validate();
+      if (errors.length > 0) {
+        throw new Error(`Account validation failed: ${errors.join('; ')}`);
+      }
+      
+      // Persist
+      await this.col(companyId).doc(id).set(this.toPersistence(account));
+      
       return account;
     } catch (error) {
       throw new InfrastructureError('Error creating account', error);
@@ -55,69 +175,207 @@ export class FirestoreAccountRepository extends BaseFirestoreRepository<Account>
 
   async update(companyId: string, accountId: string, data: UpdateAccountInput): Promise<Account> {
     try {
-      await this.col(companyId).doc(accountId).update(data as any);
-      const doc = await this.col(companyId).doc(accountId).get();
-      return this.toDomain(doc.data());
+      const docRef = this.col(companyId).doc(accountId);
+      const doc = await docRef.get();
+      
+      if (!doc.exists) {
+        throw new Error('Account not found');
+      }
+      
+      const existing = this.toDomain({ ...doc.data(), id: doc.id });
+      const now = new Date();
+      
+      // Build update object
+      const updateData: Record<string, any> = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: data.updatedBy
+      };
+      
+      // Simple mutable fields
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.userCode !== undefined) updateData.userCode = normalizeUserCode(data.userCode || data.code || '');
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.isActive !== undefined) updateData.status = data.isActive ? 'ACTIVE' : 'INACTIVE';
+      if (data.replacedByAccountId !== undefined) {
+        updateData.replacedByAccountId = data.replacedByAccountId;
+        // Auto-set inactive if replaced
+        if (data.replacedByAccountId) {
+          updateData.status = 'INACTIVE';
+        }
+      }
+      if (data.parentId !== undefined) updateData.parentId = data.parentId;
+      if (data.isProtected !== undefined) updateData.isProtected = data.isProtected;
+      
+      // Conditionally mutable fields (may be blocked by use case if USED)
+      if (data.accountRole !== undefined) updateData.accountRole = data.accountRole;
+      if (data.classification !== undefined) updateData.classification = normalizeClassification(data.classification || data.type || existing.classification);
+      if (data.balanceNature !== undefined) updateData.balanceNature = data.balanceNature;
+      if (data.balanceEnforcement !== undefined) updateData.balanceEnforcement = data.balanceEnforcement;
+      if (data.currencyPolicy !== undefined) updateData.currencyPolicy = data.currencyPolicy;
+      if (data.fixedCurrencyCode !== undefined) updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
+      if (data.allowedCurrencyCodes !== undefined) updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
+      
+      await docRef.update(updateData);
+      
+      // Fetch updated document
+      const updatedDoc = await docRef.get();
+      return this.toDomain({ ...updatedDoc.data(), id: updatedDoc.id });
     } catch (error) {
       throw new InfrastructureError('Error updating account', error);
     }
   }
 
+  async delete(companyId: string, accountId: string): Promise<void> {
+    try {
+      await this.col(companyId).doc(accountId).delete();
+    } catch (error) {
+      throw new InfrastructureError('Error deleting account', error);
+    }
+  }
+
   async deactivate(companyId: string, accountId: string): Promise<void> {
     try {
-      const children = await this.col(companyId).where('parentId', '==', accountId).get();
-      if (!children.empty) throw new Error('Cannot deactivate account with children');
-      await this.col(companyId).doc(accountId).update({ active: false });
+      await this.col(companyId).doc(accountId).update({ 
+        status: 'INACTIVE',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     } catch (error) {
       throw new InfrastructureError('Error deactivating account', error);
     }
   }
 
-  async getById(companyId: string, accountId: string, transaction?: any): Promise<Account | null> {
-    let doc;
-    if (transaction) {
-      doc = await transaction.get(this.col(companyId).doc(accountId));
-    } else {
-      doc = await this.col(companyId).doc(accountId).get();
-    }
-    if (!doc.exists) return null;
-    return this.toDomain(doc.data());
-  }
+  // =========================================================================
+  // VALIDATION/CHECK METHODS
+  // =========================================================================
 
-  async list(companyId: string): Promise<Account[]> {
+  async isUsed(companyId: string, accountId: string): Promise<boolean> {
     try {
-      const snapshot = await this.col(companyId).get();
-      return snapshot.docs.map(doc => this.toDomain(doc.data()));
+      // Check VoucherLines that reference this account
+      // VoucherLines are stored in Firestore under: companies/{companyId}/vouchers/{voucherId}/lines/{lineId}
+      // We use collectionGroup to query across all voucher's lines subcollections
+      
+      // First, try to query voucher_lines if using a flat structure
+      const vouchersCol = this.db.collection('companies').doc(companyId).collection('vouchers');
+      const vouchersSnap = await vouchersCol.limit(1).get();
+      
+      if (vouchersSnap.empty) {
+        return false; // No vouchers, so definitely unused
+      }
+      
+      // Check if any voucher line references this account
+      // We need to query each voucher's lines subcollection
+      const allVouchers = await vouchersCol.get();
+      
+      for (const voucherDoc of allVouchers.docs) {
+        const linesSnap = await voucherDoc.ref.collection('lines').where('accountId', '==', accountId).limit(1).get();
+        if (!linesSnap.empty) {
+          return true;
+        }
+      }
+      
+      return false;
     } catch (error) {
-      throw new InfrastructureError('Error fetching accounts', error);
+      console.error('Error checking if account is used:', error);
+      // On error, assume not used to allow operations to proceed
+      return false;
     }
-  }
-
-  async getAccounts(companyId: string): Promise<Account[]> {
-    return this.list(companyId);
   }
 
   async hasChildren(companyId: string, accountId: string): Promise<boolean> {
-    const snapshot = await this.col(companyId).where('parentId', '==', accountId).limit(1).get();
-    return !snapshot.empty;
+    const count = await this.countChildren(companyId, accountId);
+    return count > 0;
   }
 
-  async getByCode(companyId: string, code: string): Promise<Account | null> {
+  async countChildren(companyId: string, accountId: string): Promise<number> {
     try {
-      const snap = await this.col(companyId).where('code', '==', code).limit(1).get();
-      if (snap.empty) return null;
-      return this.toDomain(snap.docs[0].data());
+      const snapshot = await this.col(companyId).where('parentId', '==', accountId).count().get();
+      return snapshot.data().count;
     } catch (error) {
-      throw new InfrastructureError('Error getting account by code', error);
+      throw new InfrastructureError('Error counting account children', error);
+    }
+  }
+
+  async existsByUserCode(companyId: string, userCode: string, excludeAccountId?: string): Promise<boolean> {
+    try {
+      const normalized = normalizeUserCode(userCode);
+      const snap = await this.col(companyId).where('userCode', '==', normalized).get();
+      
+      if (snap.empty) return false;
+      
+      // If excluding an ID, check if any other account has this code
+      if (excludeAccountId) {
+        return snap.docs.some(doc => doc.id !== excludeAccountId);
+      }
+      
+      return true;
+    } catch (error) {
+      throw new InfrastructureError('Error checking user code existence', error);
+    }
+  }
+
+  async generateNextSystemCode(companyId: string): Promise<string> {
+    try {
+      const counterRef = this.countersDoc(companyId);
+      
+      // Use transaction to ensure atomic increment
+      const newCode = await this.db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        
+        let nextNumber = 1;
+        if (counterDoc.exists) {
+          nextNumber = (counterDoc.data()?.value || 0) + 1;
+        }
+        
+        transaction.set(counterRef, { value: nextNumber }, { merge: true });
+        
+        // Format: ACC-000001
+        return `ACC-${String(nextNumber).padStart(6, '0')}`;
+      });
+      
+      return newCode;
+    } catch (error) {
+      throw new InfrastructureError('Error generating system code', error);
     }
   }
 
   async countByCurrency(companyId: string, currencyCode: string): Promise<number> {
     try {
-      const snapshot = await this.col(companyId).where('currency', '==', currencyCode.toUpperCase()).count().get();
+      const snapshot = await this.col(companyId)
+        .where('fixedCurrencyCode', '==', currencyCode.toUpperCase())
+        .count()
+        .get();
       return snapshot.data().count;
     } catch (error) {
       throw new InfrastructureError('Error counting accounts by currency', error);
+    }
+  }
+
+  // =========================================================================
+  // AUDIT METHODS
+  // =========================================================================
+
+  async recordAuditEvent(
+    companyId: string,
+    accountId: string,
+    event: {
+      type: 'NAME_CHANGED' | 'USER_CODE_CHANGED' | 'STATUS_CHANGED' | 'REPLACED_BY_CHANGED' | 'CURRENCY_POLICY_CHANGED' | 'OTHER';
+      field: string;
+      oldValue: any;
+      newValue: any;
+      changedBy: string;
+      changedAt: Date;
+    }
+  ): Promise<void> {
+    try {
+      const eventId = this.db.collection('tmp').doc().id;
+      await this.auditEventsCol(companyId, accountId).doc(eventId).set({
+        ...event,
+        changedAt: admin.firestore.Timestamp.fromDate(event.changedAt)
+      });
+    } catch (error) {
+      // Audit failures should not block operations
+      console.error('Error recording audit event:', error);
     }
   }
 }
