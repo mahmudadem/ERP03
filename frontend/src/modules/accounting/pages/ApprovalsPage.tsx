@@ -16,10 +16,13 @@ import { Badge } from '../../../components/ui/Badge';
 import { errorHandler } from '../../../services/errorHandler';
 import { AccountsProvider } from '../../../context/AccountsContext';
 
+import { RejectionModal } from '../components/RejectionModal';
+
 const ApprovalsPage: React.FC = () => {
   const { voucherTypes } = useVoucherTypes();
   const { openWindow } = useWindowManager();
   const { handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher } = useVoucherActions();
+  const [rejectionTarget, setRejectionTarget] = React.useState<string | null>(null);
 
   // 1. Fetch Vouchers Pending Financial Approval
   const { 
@@ -58,6 +61,14 @@ const ApprovalsPage: React.FC = () => {
       }
     } catch (err) {
       errorHandler.showError(err);
+    }
+  };
+
+  const confirmRejection = async (reason: string) => {
+    if (rejectionTarget) {
+      await handleRejectVoucher('approvals-page', rejectionTarget, reason);
+      setRejectionTarget(null);
+      handleRefresh();
     }
   };
 
@@ -113,10 +124,7 @@ const ApprovalsPage: React.FC = () => {
                     await handleApproveVoucher('approvals-page', id);
                     handleRefresh();
                   }}
-                  onReject={async (id) => {
-                    await handleRejectVoucher('approvals-page', id);
-                    handleRefresh();
-                  }}
+                  onReject={(id) => setRejectionTarget(id)}
                 />
                 {pendingApprovals.length === 0 && !loadingApprovals && (
                    <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
@@ -149,12 +157,7 @@ const ApprovalsPage: React.FC = () => {
                     await handleConfirmVoucher('approvals-page', id);
                     handleRefresh();
                   }}
-                  onReject={async (id) => {
-                    // Custodians can also flag issues by rejecting? 
-                    // Usually rejection is a manager role, but we allow it if they see a discrepancy
-                    await handleRejectVoucher('approvals-page', id);
-                    handleRefresh();
-                  }}
+                  onReject={(id) => setRejectionTarget(id)}
                 />
                 {pendingCustody.length === 0 && !loadingCustody && (
                    <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
@@ -167,6 +170,12 @@ const ApprovalsPage: React.FC = () => {
 
           </div>
         </div>
+
+        <RejectionModal 
+          isOpen={!!rejectionTarget}
+          onClose={() => setRejectionTarget(null)}
+          onConfirm={confirmRejection}
+        />
       </div>
     </AccountsProvider>
   );

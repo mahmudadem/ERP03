@@ -153,22 +153,42 @@ class VoucherController {
      * Final approval by manager, satisfies the Financial Approval gate
      */
     static async verify(req, res, next) {
+        var _a;
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
-            // 1. Approve the voucher (Pending → Approved)
+            // 1. Approve the voucher (Pending → Approved OR stays PENDING if more gates exist)
             const useCase = new VoucherUseCases_1.ApproveVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker);
             await useCase.execute(companyId, userId, req.params.id);
-            // 2. AUTO-POST after approval (seamlessly transition to POSTED status)
-            const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
-            const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
-            await postUseCase.execute(companyId, userId, req.params.id);
-            // Refresh to get latest state for frontend
-            const voucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
+            // 2. Load updated state
+            let voucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
+            if (!voucher)
+                throw new Error('Voucher not found after approval');
+            // 3. AUTO-POST ONLY if fully approved
+            const { VoucherStatus } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/types/VoucherTypes')));
+            if (voucher.status === VoucherStatus.APPROVED) {
+                let autoPostEnabled = true;
+                try {
+                    const config = await bindRepositories_1.diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+                    autoPostEnabled = (_a = config.autoPostEnabled) !== null && _a !== void 0 ? _a : true;
+                }
+                catch (e) { }
+                if (autoPostEnabled) {
+                    const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
+                    const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
+                    await postUseCase.execute(companyId, userId, req.params.id);
+                    // Refresh to get posted version
+                    const postedVoucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
+                    if (postedVoucher)
+                        voucher = postedVoucher;
+                }
+            }
             res.json({
                 success: true,
-                data: voucher ? voucher.toJSON() : null,
-                message: 'Voucher approved and posted'
+                data: voucher.toJSON(),
+                message: voucher.status === VoucherStatus.APPROVED
+                    ? (voucher.isPosted ? 'Voucher approved and posted' : 'Voucher approved')
+                    : 'Financial approval recorded (awaiting custody confirmation)'
             });
         }
         catch (err) {

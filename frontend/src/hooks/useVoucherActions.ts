@@ -103,8 +103,8 @@ export const useVoucherActions = () => {
     window.dispatchEvent(new CustomEvent('vouchers-updated'));
   };
 
-  const handleRejectVoucher = async (windowId: string, id: string) => {
-    await accountingApi.rejectVoucher(id);
+  const handleRejectVoucher = async (windowId: string, id: string, reason?: string) => {
+    await accountingApi.rejectVoucher(id, reason);
     errorHandler.showSuccess('voucher_rejected');
     window.dispatchEvent(new CustomEvent('vouchers-updated'));
   };
