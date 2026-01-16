@@ -103,6 +103,14 @@ export class CreateAccountUseCase {
           400
         );
       }
+      
+      // Auto-convert parent to HEADER if it's currently POSTING
+      if (parent.accountRole === 'POSTING') {
+        await this.accountRepo.update(companyId, parent.id, {
+          accountRole: 'HEADER',
+          updatedBy: data.createdBy
+        });
+      }
     }
 
     // 7. Determine account role

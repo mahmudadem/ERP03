@@ -273,7 +273,8 @@ exports.UpdateVoucherUseCase = UpdateVoucherUseCase;
 /**
  * ApproveVoucherUseCase
  *
- * Sets status to APPROVED. No ledger impact.
+ * Satisfies the Financial Approval (FA) gate.
+ * If no other gates (like CC) are pending, transitions status to APPROVED.
  */
 class ApproveVoucherUseCase {
     constructor(voucherRepo, permissionChecker) {
@@ -281,15 +282,27 @@ class ApproveVoucherUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
+        var _a, _b, _c;
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
-        // V1 Flow: PENDING → APPROVED (via /verify endpoint)
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.approve');
         if (voucher.status !== VoucherTypes_1.VoucherStatus.PENDING) {
             throw new Error(`Cannot approve voucher with status: ${voucher.status}. Voucher must be in PENDING status.`);
         }
-        const approvedVoucher = voucher.approve(userId, new Date());
+        // 1. Check if FA is required and pending
+        const isFARequired = !!((_a = voucher.metadata) === null || _a === void 0 ? void 0 : _a.financialApprovalRequired);
+        const isFAPending = !!((_b = voucher.metadata) === null || _b === void 0 ? void 0 : _b.pendingFinancialApproval);
+        if (!isFAPending && isFARequired) {
+            // Already satisfied
+            return;
+        }
+        // 2. Determine if this satisfies ALL gates
+        // CC is satisfied if the list is empty
+        const pendingCC = ((_c = voucher.metadata) === null || _c === void 0 ? void 0 : _c.pendingCustodyConfirmations) || [];
+        const isFullySatisfied = pendingCC.length === 0;
+        // 3. Transition
+        const approvedVoucher = voucher.satisfyFinancialApproval(userId, new Date(), isFullySatisfied);
         await this.voucherRepo.save(approvedVoucher);
     }
 }
@@ -306,12 +319,13 @@ exports.ApproveVoucherUseCase = ApproveVoucherUseCase;
  * 3. Then atomic post + ledger record
  */
 class PostVoucherUseCase {
-    constructor(voucherRepo, ledgerRepo, permissionChecker, transactionManager, policyRegistry // AccountingPolicyRegistry - optional for backward compatibility
+    constructor(voucherRepo, ledgerRepo, permissionChecker, transactionManager, accountValidationService, policyRegistry // AccountingPolicyRegistry - optional for backward compatibility
     ) {
         this.voucherRepo = voucherRepo;
         this.ledgerRepo = ledgerRepo;
         this.permissionChecker = permissionChecker;
         this.transactionManager = transactionManager;
+        this.accountValidationService = accountValidationService;
         this.policyRegistry = policyRegistry;
         this.validationService = new VoucherValidationService_1.VoucherValidationService();
     }
@@ -341,6 +355,10 @@ class PostVoucherUseCase {
                 // 1. Core Invariants (Always enforced)
                 try {
                     this.validationService.validateCore(voucher, corrId);
+                    // 1.1 Account Validation (Application Layer Check)
+                    // Validate all accounts used in lines (existence, status, role, currency policy)
+                    const distinctAccountIds = [...new Set(voucher.lines.map(l => l.accountId))];
+                    await Promise.all(distinctAccountIds.map(accId => this.accountValidationService.validateAccountById(companyId, userId, accId, voucher.type)));
                 }
                 catch (error) {
                     // Log core rejection

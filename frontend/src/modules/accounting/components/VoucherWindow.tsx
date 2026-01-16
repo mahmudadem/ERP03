@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban } from 'lucide-react';
+import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -25,6 +25,7 @@ interface VoucherWindowProps {
   onSubmit: (id: string, data: any) => Promise<void>;
   onApprove?: (id: string) => Promise<void>;
   onReject?: (id: string) => Promise<void>;
+  onConfirm?: (id: string) => Promise<void>;
 }
 
 export const VoucherWindow: React.FC<VoucherWindowProps> = ({ 
@@ -32,7 +33,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   onSave,
   onSubmit,
   onApprove,
-  onReject
+  onReject,
+  onConfirm
 }) => {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow, updateWindowPosition, updateWindowSize, updateWindowData } = useWindowManager();
   const { settings, isLoading: settingsLoading, refresh: refreshSettings, updateSettings } = useCompanySettings();
@@ -923,11 +925,37 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   }
                 }}
                 className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !win.data?.metadata?.pendingFinancialApproval}
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                 Approve
               </button>
+
+              {/* Confirm Custody Button - Only shown if user is a pending custodian */}
+              {win.data?.metadata?.pendingCustodyConfirmations?.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (onConfirm && win.data?.id) {
+                      setIsSubmitting(true);
+                      try {
+                        await onConfirm(win.data.id);
+                        setIsDirty(false);
+                        setShowSuccessModal(true);
+                      } catch (error: any) {
+                        errorHandler.showError(error);
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check size={16} />}
+                  Confirm Custody
+                </button>
+              )}
+
               <button
                 onClick={async () => {
                   if (onReject && win.data?.id) {

@@ -105,7 +105,10 @@ export class AccountController {
       await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
 
       const useCase = new CreateAccountUseCase(diContainer.accountRepository);
-      const account = await useCase.execute(companyId, req.body);
+      const account = await useCase.execute(companyId, {
+        ...req.body,
+        createdBy: userId
+      });
 
       return res.json({ success: true, data: account });
     } catch (err) {
@@ -122,7 +125,10 @@ export class AccountController {
       await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
 
       const useCase = new UpdateAccountUseCase(diContainer.accountRepository);
-      const account = await useCase.execute(companyId, id, req.body);
+      const account = await useCase.execute(companyId, id, {
+        ...req.body,
+        updatedBy: userId
+      });
 
       return res.json({ success: true, data: account });
     } catch (err) {

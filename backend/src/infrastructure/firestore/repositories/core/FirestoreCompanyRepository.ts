@@ -5,6 +5,7 @@
  * Purpose: Implementation of ICompanyRepository using Firestore.
  */
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { ICompanyRepository } from '../../../../repository/interfaces/core/ICompanyRepository';
 import { Company } from '../../../../domain/core/entities/Company';
@@ -68,7 +69,7 @@ export class FirestoreCompanyRepository extends BaseFirestoreRepository<Company>
   async enableModule(companyId: string, moduleName: string): Promise<void> {
     try {
       await this.db.collection(this.collectionName).doc(companyId).update({
-        modules: admin.firestore.FieldValue.arrayUnion(moduleName)
+        modules: FieldValue.arrayUnion(moduleName)
       });
     } catch (error) {
       throw new InfrastructureError('Error enabling module', error);
@@ -107,7 +108,7 @@ export class FirestoreCompanyRepository extends BaseFirestoreRepository<Company>
   async disableModule(companyId: string, moduleName: string): Promise<void> {
     try {
       await this.db.collection(this.collectionName).doc(companyId).update({
-        modules: admin.firestore.FieldValue.arrayRemove(moduleName)
+        modules: FieldValue.arrayRemove(moduleName)
       });
     } catch (error) {
       throw new InfrastructureError('Error disabling module', error);

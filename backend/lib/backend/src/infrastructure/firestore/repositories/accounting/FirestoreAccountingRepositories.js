@@ -1,20 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreExchangeRateRepository = exports.FirestoreCostCenterRepository = void 0;
-const BaseFirestoreRepository_1 = require("../BaseFirestoreRepository");
 const CostCenter_1 = require("../../../../domain/accounting/entities/CostCenter");
 const ExchangeRate_1 = require("../../../../domain/accounting/entities/ExchangeRate");
 const firestore_1 = require("firebase-admin/firestore");
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {
-    static toDomain(d) { return new CostCenter_1.CostCenter(d.id, d.companyId, d.name, d.code, d.parentId); }
-    static toPersistence(e) { return Object.assign({}, e); }
+    static toDomain(id, d) {
+        return new CostCenter_1.CostCenter(id, d.companyId, d.name, d.code, d.parentId);
+    }
+    static toPersistence(e) {
+        return {
+            companyId: e.companyId,
+            name: e.name,
+            code: e.code,
+            parentId: e.parentId || null
+        };
+    }
 }
 class ExchangeRateMapper {
-    static toDomain(d) {
+    static toDomain(id, d) {
         var _a, _b, _c, _d;
         return new ExchangeRate_1.ExchangeRate({
-            id: d.id,
+            id: id,
             companyId: d.companyId || '',
             fromCurrency: d.fromCurrency,
             toCurrency: d.toCurrency,
@@ -27,7 +35,6 @@ class ExchangeRateMapper {
     }
     static toPersistence(e) {
         return {
-            id: e.id,
             companyId: e.companyId,
             fromCurrency: e.fromCurrency,
             toCurrency: e.toCurrency,
@@ -39,33 +46,47 @@ class ExchangeRateMapper {
         };
     }
 }
-class FirestoreCostCenterRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
-    constructor() {
-        super(...arguments);
+class FirestoreCostCenterRepository {
+    constructor(db) {
+        this.db = db;
         this.collectionName = 'cost_centers';
-        this.toDomain = CostCenterMapper.toDomain;
-        this.toPersistence = CostCenterMapper.toPersistence;
     }
-    async createCostCenter(costCenter) { return this.save(costCenter); }
+    getCollection(companyId) {
+        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+    }
+    async createCostCenter(costCenter) {
+        const col = this.getCollection(costCenter.companyId);
+        await col.doc(costCenter.id).set(CostCenterMapper.toPersistence(costCenter));
+    }
     async updateCostCenter(id, data) {
-        await this.db.collection(this.collectionName).doc(id).update(data);
+        if (!data.companyId)
+            throw new Error("companyId required for updateCostCenter");
+        const col = this.getCollection(data.companyId);
+        await col.doc(id).update(data);
     }
-    async getCostCenter(id) { return this.findById(id); }
+    async getCostCenter(companyId, id) {
+        const doc = await this.getCollection(companyId).doc(id).get();
+        if (!doc.exists)
+            return null;
+        return CostCenterMapper.toDomain(doc.id, doc.data());
+    }
     async getCompanyCostCenters(companyId) {
-        const snap = await this.db.collection(this.collectionName).where('companyId', '==', companyId).get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        const snap = await this.getCollection(companyId).get();
+        return snap.docs.map(d => CostCenterMapper.toDomain(d.id, d.data()));
     }
 }
 exports.FirestoreCostCenterRepository = FirestoreCostCenterRepository;
-class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
-    constructor() {
-        super(...arguments);
+class FirestoreExchangeRateRepository {
+    constructor(db) {
+        this.db = db;
         this.collectionName = 'exchange_rates';
-        this.toDomain = ExchangeRateMapper.toDomain;
-        this.toPersistence = ExchangeRateMapper.toPersistence;
+    }
+    getCollection(companyId) {
+        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
     }
     async save(rate) {
-        return super.save(rate);
+        const col = this.getCollection(rate.companyId);
+        await col.doc(rate.id).set(ExchangeRateMapper.toPersistence(rate));
     }
     /** @deprecated Use save() instead */
     async setRate(rate) {
@@ -73,23 +94,16 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
     }
     /** @deprecated Use getLatestRate() instead */
     async getRate(from, to, date) {
-        const snap = await this.db.collection(this.collectionName)
-            .where('fromCurrency', '==', from)
-            .where('toCurrency', '==', to)
-            .orderBy('createdAt', 'desc')
-            .limit(1)
-            .get();
-        if (snap.empty)
-            return null;
-        return this.toDomain(snap.docs[0].data());
+        // This deprecated method lacks companyId. In a multi-tenant system, this is a bug.
+        // Transitioning to scoped lookup.
+        throw new Error("getRate() without companyId is deprecated and unsupported. Use getLatestRate().");
     }
     async getLatestRate(companyId, fromCurrency, toCurrency, date) {
         const dateStart = new Date(date);
         dateStart.setHours(0, 0, 0, 0);
         const dateEnd = new Date(date);
         dateEnd.setHours(23, 59, 59, 999);
-        const snap = await this.db.collection(this.collectionName)
-            .where('companyId', '==', companyId)
+        const snap = await this.getCollection(companyId)
             .where('fromCurrency', '==', fromCurrency.toUpperCase())
             .where('toCurrency', '==', toCurrency.toUpperCase())
             .where('date', '>=', firestore_1.Timestamp.fromDate(dateStart))
@@ -100,15 +114,14 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
             .get();
         if (snap.empty)
             return null;
-        return this.toDomain(snap.docs[0].data());
+        return ExchangeRateMapper.toDomain(snap.docs[0].id, snap.docs[0].data());
     }
     async getRatesForDate(companyId, fromCurrency, toCurrency, date) {
         const dateStart = new Date(date);
         dateStart.setHours(0, 0, 0, 0);
         const dateEnd = new Date(date);
         dateEnd.setHours(23, 59, 59, 999);
-        const snap = await this.db.collection(this.collectionName)
-            .where('companyId', '==', companyId)
+        const snap = await this.getCollection(companyId)
             .where('fromCurrency', '==', fromCurrency.toUpperCase())
             .where('toCurrency', '==', toCurrency.toUpperCase())
             .where('date', '>=', firestore_1.Timestamp.fromDate(dateStart))
@@ -116,10 +129,10 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
             .orderBy('date', 'desc')
             .orderBy('createdAt', 'desc')
             .get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        return snap.docs.map(d => ExchangeRateMapper.toDomain(d.id, d.data()));
     }
     async getRecentRates(companyId, fromCurrency, toCurrency, limit = 10) {
-        let query = this.db.collection(this.collectionName).where('companyId', '==', companyId);
+        let query = this.getCollection(companyId);
         if (fromCurrency) {
             query = query.where('fromCurrency', '==', fromCurrency.toUpperCase());
         }
@@ -130,11 +143,10 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
             .orderBy('createdAt', 'desc')
             .limit(limit)
             .get();
-        return snap.docs.map(d => this.toDomain(d.data()));
+        return snap.docs.map(d => ExchangeRateMapper.toDomain(d.id, d.data()));
     }
     async getMostRecentRate(companyId, fromCurrency, toCurrency) {
-        const snap = await this.db.collection(this.collectionName)
-            .where('companyId', '==', companyId)
+        const snap = await this.getCollection(companyId)
             .where('fromCurrency', '==', fromCurrency.toUpperCase())
             .where('toCurrency', '==', toCurrency.toUpperCase())
             .orderBy('createdAt', 'desc')
@@ -142,7 +154,7 @@ class FirestoreExchangeRateRepository extends BaseFirestoreRepository_1.BaseFire
             .get();
         if (snap.empty)
             return null;
-        return this.toDomain(snap.docs[0].data());
+        return ExchangeRateMapper.toDomain(snap.docs[0].id, snap.docs[0].data());
     }
 }
 exports.FirestoreExchangeRateRepository = FirestoreExchangeRateRepository;

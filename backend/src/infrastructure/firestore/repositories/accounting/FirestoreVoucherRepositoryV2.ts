@@ -191,4 +191,33 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
       return fallbackSnap.empty ? 0 : 1;
     }
   }
+
+  async findPendingFinancialApprovals(companyId: string, limit: number = 100): Promise<VoucherEntity[]> {
+    const collection = this.getCollection(companyId);
+    // V1 Gate logic: PENDING status AND metadata.pendingFinancialApproval == true
+    const query = collection
+      .where('status', '==', VoucherStatus.PENDING)
+      .where('metadata.pendingFinancialApproval', '==', true)
+      .orderBy('date', 'desc')
+      .limit(limit);
+    
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+  }
+
+  async findPendingCustodyConfirmations(
+    companyId: string, 
+    custodianUserId: string, 
+    limit: number = 100
+  ): Promise<VoucherEntity[]> {
+    const collection = this.getCollection(companyId);
+    // CC Gate logic: PENDING status AND metadata.pendingCustodyConfirmations contains custodianUserId
+    const query = collection
+      .where('status', '==', VoucherStatus.PENDING)
+      .where('metadata.pendingCustodyConfirmations', 'array-contains', custodianUserId)
+      .limit(limit);
+    
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+  }
 }

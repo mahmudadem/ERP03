@@ -7,6 +7,7 @@ const CompaniesPage = lazy(() => import('../modules/core/pages/CompaniesPage'));
 
 // Accounting
 const AccountingHomePage = lazy(() => import('../modules/accounting/pages/AccountingHomePage'));
+const ApprovalsPage = lazy(() => import('../modules/accounting/pages/ApprovalsPage'));
 const AccountsListPage = lazy(() => import('../modules/accounting/pages/AccountsListPage'));
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
@@ -96,6 +97,7 @@ export const routesConfig: AppRoute[] = [
 
   // ACCOUNTING
   { path: '/accounting', label: 'Overview', component: AccountingHomePage, section: 'ACCOUNTING', requiredModule: 'accounting' },
+  { path: '/accounting/approvals', label: 'Approval Center', component: ApprovalsPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/accounts', label: 'Chart of Accounts', component: AccountsListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },

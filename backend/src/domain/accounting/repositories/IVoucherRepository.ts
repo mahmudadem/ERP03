@@ -130,4 +130,21 @@ export interface IVoucherRepository {
    * @param currencyCode Currency code to check
    */
   countByCurrency(companyId: string, currencyCode: string): Promise<number>;
+
+  /**
+   * Find vouchers in PENDING status requiring financial approval
+   * 
+   * @param companyId Company ID
+   * @param limit Maximum results
+   */
+  findPendingFinancialApprovals(companyId: string, limit?: number): Promise<VoucherEntity[]>;
+
+  /**
+   * Find vouchers in PENDING status requiring custody confirmation from specific user
+   * 
+   * @param companyId Company ID
+   * @param custodianUserId User ID of custodian
+   * @param limit Maximum results
+   */
+  findPendingCustodyConfirmations(companyId: string, custodianUserId: string, limit?: number): Promise<VoucherEntity[]>;
 }

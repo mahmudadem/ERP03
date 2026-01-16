@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherRepositoryV2 = void 0;
 const VoucherEntity_1 = require("../../../../domain/accounting/entities/VoucherEntity");
+const VoucherTypes_1 = require("../../../../domain/accounting/types/VoucherTypes");
 /**
  * Firestore Voucher Repository Implementation (ADR-005 Compliant)
  *
@@ -143,6 +144,27 @@ class FirestoreVoucherRepositoryV2 {
             const fallbackSnap = await fallbackQuery.get();
             return fallbackSnap.empty ? 0 : 1;
         }
+    }
+    async findPendingFinancialApprovals(companyId, limit = 100) {
+        const collection = this.getCollection(companyId);
+        // V1 Gate logic: PENDING status AND metadata.pendingFinancialApproval == true
+        const query = collection
+            .where('status', '==', VoucherTypes_1.VoucherStatus.PENDING)
+            .where('metadata.pendingFinancialApproval', '==', true)
+            .orderBy('date', 'desc')
+            .limit(limit);
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
+    }
+    async findPendingCustodyConfirmations(companyId, custodianUserId, limit = 100) {
+        const collection = this.getCollection(companyId);
+        // CC Gate logic: PENDING status AND metadata.pendingCustodyConfirmations contains custodianUserId
+        const query = collection
+            .where('status', '==', VoucherTypes_1.VoucherStatus.PENDING)
+            .where('metadata.pendingCustodyConfirmations', 'array-contains', custodianUserId)
+            .limit(limit);
+        const snapshot = await query.get();
+        return snapshot.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
     }
 }
 exports.FirestoreVoucherRepositoryV2 = FirestoreVoucherRepositoryV2;

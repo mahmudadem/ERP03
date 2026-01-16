@@ -8,15 +8,15 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AccountValidationService = void 0;
-const NoParentAccountRule_1 = require("../../../domain/accounting/rules/implementations/NoParentAccountRule");
-const ActiveAccountOnlyRule_1 = require("../../../domain/accounting/rules/implementations/ActiveAccountOnlyRule");
+const PostingAccountRule_1 = require("../../../domain/accounting/rules/implementations/PostingAccountRule");
+const CurrencyPolicyRule_1 = require("../../../domain/accounting/rules/implementations/CurrencyPolicyRule");
 class AccountValidationService {
     constructor(accountRepo) {
         this.accountRepo = accountRepo;
         this.rules = [];
-        // Register built-in rules
-        this.registerRule(new ActiveAccountOnlyRule_1.ActiveAccountOnlyRule());
-        this.registerRule(new NoParentAccountRule_1.NoParentAccountRule());
+        // Register V2 rules
+        this.registerRule(new PostingAccountRule_1.PostingAccountRule());
+        this.registerRule(new CurrencyPolicyRule_1.CurrencyPolicyRule());
     }
     /**
      * Register a new validation rule
@@ -61,7 +61,7 @@ class AccountValidationService {
         // Check which accounts have children (to mark them as parent accounts)
         for (const account of allAccounts) {
             const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
-            account.setAsParent(hasChildren);
+            account.setHasChildren(hasChildren);
         }
         for (const account of allAccounts) {
             const ctx = {
@@ -102,7 +102,7 @@ class AccountValidationService {
         }
         // Check if has children
         const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
-        account.setAsParent(hasChildren);
+        account.setHasChildren(hasChildren);
         const ctx = {
             companyId,
             userId,
@@ -113,6 +113,28 @@ class AccountValidationService {
         if (errors.length > 0) {
             const reasons = errors.map(e => e.reason).join('; ');
             throw new Error(`Account "${code}" is not valid: ${reasons}`);
+        }
+        return account;
+    }
+    /**
+     * Resolve account by ID and validate
+     */
+    async validateAccountById(companyId, userId, accountId, voucherType, extraContext) {
+        const account = await this.accountRepo.getById(companyId, accountId);
+        if (!account) {
+            throw new Error(`Account "${accountId}" not found`);
+        }
+        // Check if has children
+        const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
+        account.setHasChildren(hasChildren);
+        const ctx = Object.assign({ companyId,
+            userId,
+            account,
+            voucherType }, extraContext);
+        const errors = await this.validateAccount(ctx);
+        if (errors.length > 0) {
+            const reasons = errors.map(e => e.reason).join('; ');
+            throw new Error(`Account "${account.userCode}" invalid: ${reasons}`);
         }
         return account;
     }

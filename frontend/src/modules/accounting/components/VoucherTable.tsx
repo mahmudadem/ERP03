@@ -68,6 +68,9 @@ interface Props {
   onViewPrint?: (id: string) => void;
   onRefresh?: (id: string) => void;
   onCancel?: (id: string) => void;
+  onApprove?: (id: string) => void;
+  onReject?: (id: string) => void;
+  onConfirm?: (id: string) => void;
   dateRange?: { from: string; to: string };
   externalFilters?: {
     search?: string;
@@ -108,6 +111,9 @@ export const VoucherTable: React.FC<Props> = ({
   onDelete,
   onViewPrint,
   onCancel,
+  onApprove,
+  onReject,
+  onConfirm,
   dateRange,
   externalFilters = {}
 }) => {
@@ -985,6 +991,19 @@ export const VoucherTable: React.FC<Props> = ({
                               label = 'Posted';
                               variant = 'success';
                               Icon = CheckCircle;
+                            } else if (voucher.status.toLowerCase() === 'pending') {
+                              const needsFA = !!voucher.metadata?.pendingFinancialApproval;
+                              const numCC = voucher.metadata?.pendingCustodyConfirmations?.length || 0;
+                              
+                              if (needsFA) {
+                                label = 'Pending Approval';
+                              } else if (numCC > 0) {
+                                label = `Pending Custody (${numCC})`;
+                              } else {
+                                label = 'Pending Finalization';
+                              }
+                              variant = 'warning';
+                              Icon = RefreshCw;
                             }
 
                             return (
@@ -1065,6 +1084,35 @@ export const VoucherTable: React.FC<Props> = ({
                             >
                               <Ban size={16} />
                             </button>
+                          )}
+                          {voucher.status.toLowerCase() === 'pending' && !isNested && (
+                            <div className="flex items-center gap-1">
+                              {voucher.metadata?.pendingFinancialApproval && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); onApprove?.(voucher.id); }}
+                                  className="text-success-600 hover:bg-success-50 rounded p-1 transition-colors"
+                                  title="Approve / Verify"
+                                >
+                                  <CheckCircle size={16} />
+                                </button>
+                              )}
+                              {(voucher.metadata?.pendingCustodyConfirmations?.length || 0) > 0 && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); onConfirm?.(voucher.id); }}
+                                  className="text-purple-600 hover:bg-purple-50 rounded p-1 transition-colors"
+                                  title="Confirm Custody"
+                                >
+                                  <Check size={16} />
+                                </button>
+                              )}
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onReject?.(voucher.id); }}
+                                className="text-danger-600 hover:bg-danger-50 rounded p-1 transition-colors"
+                                title="Reject"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

@@ -1,19 +1,17 @@
 import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
-const serverTimestamp = () => {
-  const fv: any = (admin.firestore as any)?.FieldValue;
-  return fv?.serverTimestamp ? fv.serverTimestamp() : new Date();
-};
+// serverTimestamp and toTimestamp moved to usage points for clarity or kept as helpers
+const serverTimestamp = () => FieldValue.serverTimestamp();
 
 const toTimestamp = (val: any) => {
   if (!val) return serverTimestamp();
   const date = val instanceof Date ? val : new Date(val);
-  const tsCtor: any = (admin.firestore as any)?.Timestamp;
-  return tsCtor?.fromDate ? tsCtor.fromDate(date) : date;
+  return Timestamp.fromDate(date);
 };
 
 export class FirestoreLedgerRepository implements ILedgerRepository {

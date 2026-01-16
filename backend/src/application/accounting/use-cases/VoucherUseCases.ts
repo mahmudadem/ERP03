@@ -14,6 +14,7 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
+import { AccountValidationService } from '../services/AccountValidationService';
 
 /**
  * CreateVoucherUseCase
@@ -360,7 +361,8 @@ export class UpdateVoucherUseCase {
 /**
  * ApproveVoucherUseCase
  * 
- * Sets status to APPROVED. No ledger impact.
+ * Satisfies the Financial Approval (FA) gate. 
+ * If no other gates (like CC) are pending, transitions status to APPROVED.
  */
 export class ApproveVoucherUseCase {
   constructor(
@@ -372,14 +374,28 @@ export class ApproveVoucherUseCase {
     const voucher = await this.voucherRepo.findById(companyId, voucherId);
     if (!voucher) throw new Error('Voucher not found');
     
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.approve');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.approve');
     
-    // V1 Flow: PENDING → APPROVED (via /verify endpoint)
     if (voucher.status !== VoucherStatus.PENDING) {
       throw new Error(`Cannot approve voucher with status: ${voucher.status}. Voucher must be in PENDING status.`);
     }
-    
-    const approvedVoucher = voucher.approve(userId, new Date());
+
+    // 1. Check if FA is required and pending
+    const isFARequired = !!voucher.metadata?.financialApprovalRequired;
+    const isFAPending = !!voucher.metadata?.pendingFinancialApproval;
+
+    if (!isFAPending && isFARequired) {
+       // Already satisfied
+       return;
+    }
+
+    // 2. Determine if this satisfies ALL gates
+    // CC is satisfied if the list is empty
+    const pendingCC = voucher.metadata?.pendingCustodyConfirmations || [];
+    const isFullySatisfied = pendingCC.length === 0;
+
+    // 3. Transition
+    const approvedVoucher = voucher.satisfyFinancialApproval(userId, new Date(), isFullySatisfied);
     await this.voucherRepo.save(approvedVoucher);
   }
 }
@@ -403,6 +419,7 @@ export class PostVoucherUseCase {
     private ledgerRepo: ILedgerRepository,
     private permissionChecker: PermissionChecker,
     private transactionManager: ITransactionManager,
+    private accountValidationService: AccountValidationService,
     private policyRegistry?: any // AccountingPolicyRegistry - optional for backward compatibility
   ) {}
 
@@ -435,6 +452,18 @@ export class PostVoucherUseCase {
         // 1. Core Invariants (Always enforced)
         try {
           this.validationService.validateCore(voucher, corrId);
+          
+          // 1.1 Account Validation (Application Layer Check)
+          // Validate all accounts used in lines (existence, status, role, currency policy)
+          const distinctAccountIds = [...new Set(voucher.lines.map(l => l.accountId))];
+          await Promise.all(distinctAccountIds.map(accId => 
+             this.accountValidationService.validateAccountById(
+               companyId, 
+               userId, 
+               accId, 
+               voucher.type
+             )
+          ));
         } catch (error: any) {
           // Log core rejection
           logger.error('POST_REJECTED_CORE', {

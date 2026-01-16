@@ -84,6 +84,9 @@ class FirestoreCompanyCurrencyRepository {
         this.db = db;
         this.collectionName = 'company_currencies';
     }
+    getCollection(companyId) {
+        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+    }
     toRecord(doc) {
         var _a, _b, _c, _d, _e;
         const data = doc.data();
@@ -97,31 +100,28 @@ class FirestoreCompanyCurrencyRepository {
         };
     }
     async findEnabledByCompany(companyId) {
-        const snapshot = await this.db.collection(this.collectionName)
-            .where('companyId', '==', companyId)
+        const snapshot = await this.getCollection(companyId)
             .where('isEnabled', '==', true)
             .get();
         return snapshot.docs.map(doc => this.toRecord(doc));
     }
     async findAllByCompany(companyId) {
-        const snapshot = await this.db.collection(this.collectionName)
-            .where('companyId', '==', companyId)
-            .get();
+        const snapshot = await this.getCollection(companyId).get();
         return snapshot.docs.map(doc => this.toRecord(doc));
     }
     async isEnabled(companyId, currencyCode) {
         var _a, _b;
-        const docId = `${companyId}_${currencyCode.toUpperCase()}`;
-        const doc = await this.db.collection(this.collectionName).doc(docId).get();
+        const docId = currencyCode.toUpperCase();
+        const doc = await this.getCollection(companyId).doc(docId).get();
         if (!doc.exists)
             return false;
         return (_b = (_a = doc.data()) === null || _a === void 0 ? void 0 : _a.isEnabled) !== null && _b !== void 0 ? _b : false;
     }
     async enable(companyId, currencyCode) {
         const code = currencyCode.toUpperCase();
-        const docId = `${companyId}_${code}`;
+        const docId = code;
         const now = new Date();
-        await this.db.collection(this.collectionName).doc(docId).set({
+        await this.getCollection(companyId).doc(docId).set({
             companyId,
             currencyCode: code,
             isEnabled: true,
@@ -138,8 +138,8 @@ class FirestoreCompanyCurrencyRepository {
         };
     }
     async disable(companyId, currencyCode) {
-        const docId = `${companyId}_${currencyCode.toUpperCase()}`;
-        await this.db.collection(this.collectionName).doc(docId).update({
+        const docId = currencyCode.toUpperCase();
+        await this.getCollection(companyId).doc(docId).update({
             isEnabled: false,
             disabledAt: firestore_1.Timestamp.fromDate(new Date()),
         });

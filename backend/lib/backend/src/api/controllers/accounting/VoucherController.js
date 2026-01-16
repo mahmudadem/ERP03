@@ -28,6 +28,7 @@ const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories"
 const VoucherUseCases_1 = require("../../../application/accounting/use-cases/VoucherUseCases");
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
 const GetCurrentUserPermissionsForCompanyUseCase_1 = require("../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase");
+const AccountValidationService_1 = require("../../../application/accounting/services/AccountValidationService");
 const permissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
 class VoucherController {
     static async list(req, res, next) {
@@ -119,7 +120,7 @@ class VoucherController {
                 }
                 if (autoPostEnabled) {
                     const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
-                    const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.policyRegistry);
+                    const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
                     await postUseCase.execute(companyId, userId, req.params.id);
                     // Refresh voucher data after posting to get postedAt and updated metadata
                     const postedVoucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
@@ -160,7 +161,7 @@ class VoucherController {
             await useCase.execute(companyId, userId, req.params.id);
             // 2. AUTO-POST after approval (seamlessly transition to POSTED status)
             const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
-            const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.policyRegistry);
+            const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
             await postUseCase.execute(companyId, userId, req.params.id);
             // Refresh to get latest state for frontend
             const voucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
@@ -169,6 +170,80 @@ class VoucherController {
                 data: voucher ? voucher.toJSON() : null,
                 message: 'Voucher approved and posted'
             });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    /**
+     * Confirm custody of a voucher (Gate satisfaction)
+     * Triggered by designated custodians for specific accounts.
+     */
+    static async confirm(req, res, next) {
+        var _a;
+        try {
+            const companyId = req.user.companyId;
+            const userId = req.user.uid;
+            const { ConfirmCustodyUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/ConfirmCustodyUseCase')));
+            const { ApprovalPolicyService } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/policies/ApprovalPolicyService')));
+            const useCase = new ConfirmCustodyUseCase(bindRepositories_1.diContainer.voucherRepository, new ApprovalPolicyService());
+            let voucher = await useCase.execute(companyId, req.params.id, userId);
+            // If this confirmation satisfied ALL gates, it is now APPROVED.
+            // We should check for auto-post here as well for seamless UX.
+            const { VoucherStatus } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/types/VoucherTypes')));
+            if (voucher.status === VoucherStatus.APPROVED) {
+                let autoPostEnabled = true;
+                try {
+                    const config = await bindRepositories_1.diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+                    autoPostEnabled = (_a = config.autoPostEnabled) !== null && _a !== void 0 ? _a : true;
+                }
+                catch (e) { }
+                if (autoPostEnabled) {
+                    const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
+                    const postUseCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
+                    await postUseCase.execute(companyId, userId, req.params.id);
+                    const postedVoucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
+                    if (postedVoucher)
+                        voucher = postedVoucher;
+                    return res.json({
+                        success: true,
+                        data: voucher.toJSON(),
+                        message: 'Custody confirmed and voucher posted'
+                    });
+                }
+            }
+            res.json({
+                success: true,
+                data: voucher.toJSON(),
+                message: 'Custody confirmed'
+            });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    /**
+     * List vouchers pending financial approval for the company
+     */
+    static async getPendingApprovals(req, res, next) {
+        try {
+            const companyId = req.user.companyId;
+            const vouchers = await bindRepositories_1.diContainer.voucherRepository.findPendingFinancialApprovals(companyId);
+            res.json({ success: true, data: vouchers.map(v => v.toJSON()) });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    /**
+     * List vouchers pending custody confirmation for the current user
+     */
+    static async getPendingCustody(req, res, next) {
+        try {
+            const companyId = req.user.companyId;
+            const userId = req.user.uid;
+            const vouchers = await bindRepositories_1.diContainer.voucherRepository.findPendingCustodyConfirmations(companyId, userId);
+            res.json({ success: true, data: vouchers.map(v => v.toJSON()) });
         }
         catch (err) {
             next(err);
@@ -191,7 +266,7 @@ class VoucherController {
             }
             const { PostVoucherUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/VoucherUseCases')));
             const { PostingError } = await Promise.resolve().then(() => __importStar(require('../../../domain/shared/errors/AppError')));
-            const useCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.policyRegistry);
+            const useCase = new PostVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, new AccountValidationService_1.AccountValidationService(bindRepositories_1.diContainer.accountRepository), bindRepositories_1.diContainer.policyRegistry);
             await useCase.execute(companyId, userId, req.params.id);
             res.json({ success: true });
         }

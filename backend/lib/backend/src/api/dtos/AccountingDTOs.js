@@ -1,19 +1,56 @@
 "use strict";
+/**
+ * AccountingDTOs.ts
+ *
+ * Data Transfer Objects for the Accounting API.
+ * Includes full Account DTO with new specification fields.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AccountingDTOMapper = void 0;
+// ============================================================================
+// DTO MAPPERS
+// ============================================================================
 class AccountingDTOMapper {
     static toAccountDTO(account) {
         return {
+            // Identity
             id: account.id,
-            code: account.code,
+            systemCode: account.systemCode,
+            userCode: account.userCode,
             name: account.name,
-            type: account.type,
-            currency: account.currency,
-            active: account.active,
-            // Approval Policy V1 fields
+            description: account.description,
+            // Accounting semantics
+            accountRole: account.accountRole,
+            classification: account.classification,
+            balanceNature: account.balanceNature,
+            balanceEnforcement: account.balanceEnforcement,
+            // Hierarchy
+            parentId: account.parentId,
+            // Currency
+            currencyPolicy: account.currencyPolicy,
+            fixedCurrencyCode: account.fixedCurrencyCode,
+            allowedCurrencyCodes: account.allowedCurrencyCodes,
+            // Lifecycle
+            status: account.status,
+            isProtected: account.isProtected,
+            replacedByAccountId: account.replacedByAccountId,
+            // Audit
+            createdAt: account.createdAt.toISOString(),
+            createdBy: account.createdBy,
+            updatedAt: account.updatedAt.toISOString(),
+            updatedBy: account.updatedBy,
+            // Computed flags
+            canPost: account.canPost(),
+            hasChildren: account.hasChildren,
+            isUsed: account.isUsed,
+            // Legacy compat
+            code: account.userCode,
+            type: account.classification,
+            currency: account.fixedCurrencyCode || '',
+            active: account.status === 'ACTIVE',
             requiresApproval: account.requiresApproval,
             requiresCustodyConfirmation: account.requiresCustodyConfirmation,
-            custodianUserId: account.custodianUserId,
+            custodianUserId: account.custodianUserId
         };
     }
     static toVoucherDTO(voucher) {

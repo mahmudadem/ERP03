@@ -14,7 +14,7 @@ import {
 } from '../../../../domain/accounting/entities/Account';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 import * as admin from 'firebase-admin';
-import { Firestore } from 'firebase-admin/firestore';
+import { Firestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export class FirestoreAccountRepository implements IAccountRepository {
   protected db: Firestore;
@@ -155,7 +155,10 @@ export class FirestoreAccountRepository implements IAccountRepository {
         createdAt: now,
         createdBy: data.createdBy,
         updatedAt: now,
-        updatedBy: data.createdBy
+        updatedBy: data.createdBy,
+        requiresApproval: data.requiresApproval || false,
+        requiresCustodyConfirmation: data.requiresCustodyConfirmation || false,
+        custodianUserId: data.custodianUserId ?? null
       });
       
       // Validate
@@ -187,7 +190,7 @@ export class FirestoreAccountRepository implements IAccountRepository {
       
       // Build update object
       const updateData: Record<string, any> = {
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: data.updatedBy
       };
       
@@ -216,12 +219,18 @@ export class FirestoreAccountRepository implements IAccountRepository {
       if (data.fixedCurrencyCode !== undefined) updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
       if (data.allowedCurrencyCodes !== undefined) updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
       
+      // Approval Policy
+      if (data.requiresApproval !== undefined) updateData.requiresApproval = data.requiresApproval;
+      if (data.requiresCustodyConfirmation !== undefined) updateData.requiresCustodyConfirmation = data.requiresCustodyConfirmation;
+      if (data.custodianUserId !== undefined) updateData.custodianUserId = data.custodianUserId;
+      
       await docRef.update(updateData);
       
       // Fetch updated document
       const updatedDoc = await docRef.get();
       return this.toDomain({ ...updatedDoc.data(), id: updatedDoc.id });
     } catch (error) {
+      console.error('Original update error:', error);
       throw new InfrastructureError('Error updating account', error);
     }
   }
@@ -238,7 +247,7 @@ export class FirestoreAccountRepository implements IAccountRepository {
     try {
       await this.col(companyId).doc(accountId).update({ 
         status: 'INACTIVE',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
     } catch (error) {
       throw new InfrastructureError('Error deactivating account', error);
@@ -371,7 +380,7 @@ export class FirestoreAccountRepository implements IAccountRepository {
       const eventId = this.db.collection('tmp').doc().id;
       await this.auditEventsCol(companyId, accountId).doc(eventId).set({
         ...event,
-        changedAt: admin.firestore.Timestamp.fromDate(event.changedAt)
+        changedAt: Timestamp.fromDate(event.changedAt)
       });
     } catch (error) {
       // Audit failures should not block operations

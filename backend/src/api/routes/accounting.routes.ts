@@ -31,6 +31,8 @@ router.delete('/accounts/:id', permissionGuard('accounting.accounts.delete'), Ac
 
 // Vouchers
 router.get('/vouchers', permissionGuard('accounting.vouchers.view'), VoucherController.list);
+router.get('/vouchers/pending/approvals', permissionGuard('accounting.vouchers.approve'), VoucherController.getPendingApprovals);
+router.get('/vouchers/pending/custody', permissionGuard('accounting.vouchers.view'), VoucherController.getPendingCustody);
 router.get('/vouchers/:id', permissionGuard('accounting.vouchers.view'), VoucherController.get);
 router.post('/vouchers', 
   permissionGuard('accounting.vouchers.create'), 
@@ -39,6 +41,7 @@ router.post('/vouchers',
 router.put('/vouchers/:id', permissionGuard('accounting.vouchers.edit'), VoucherController.update);
 router.post('/vouchers/:id/approve', permissionGuard('accounting.vouchers.approve'), VoucherController.approve);
 router.post('/vouchers/:id/verify', permissionGuard('accounting.vouchers.approve'), VoucherController.verify);
+router.post('/vouchers/:id/confirm', permissionGuard('accounting.vouchers.view'), VoucherController.confirm); // V1: View perm + user check in controller
 router.post('/vouchers/:id/post', permissionGuard('accounting.vouchers.post'), VoucherController.post);
 router.post('/vouchers/:id/correct', permissionGuard('accounting.vouchers.correct'), VoucherController.correct);
 router.delete('/vouchers/:id', permissionGuard('accounting.vouchers.delete'), VoucherController.delete);

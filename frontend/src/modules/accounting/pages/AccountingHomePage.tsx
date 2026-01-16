@@ -1,37 +1,91 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { PendingApprovalsWidget } from '../components/PendingApprovalsWidget';
+import { Plus, FileText, BarChart2, Settings, ArrowRight } from 'lucide-react';
 
 const AccountingHomePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 space-y-8 bg-[var(--color-bg-secondary)] min-h-screen">
+       {/* Welcome Header */}
        <div className="flex justify-between items-center">
-         <h1 className="text-2xl font-bold text-gray-800">Accounting Overview</h1>
-         <Button onClick={() => navigate('/accounting/vouchers/new')}>+ New Voucher</Button>
+         <div>
+           <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">Accounting Overview</h1>
+           <p className="text-[var(--color-text-muted)] mt-1">Manage transactions, monitor approvals, and generate reports.</p>
+         </div>
+         <Button 
+           variant="primary" 
+           size="lg" 
+           className="shadow-lg shadow-primary-500/20 gap-2"
+           onClick={() => navigate('/accounting/vouchers/new')}
+         >
+           <Plus size={20} />
+           New Voucher
+         </Button>
        </div>
 
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer border-t-4 border-blue-500" onClick={() => navigate('/accounting/vouchers')}>
-            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Transactions</h3>
-            <p className="text-2xl font-bold text-gray-800">Vouchers</p>
-            <p className="text-sm text-gray-400 mt-2">Invoices, Bills, & Journals</p>
+       {/* Critical Actions Row */}
+       <div className="max-w-4xl">
+         <PendingApprovalsWidget />
+       </div>
+
+       {/* Module Hub Grid */}
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         
+         {/* Vouchers / Transactions */}
+         <Card 
+           className="p-6 group hover:shadow-xl hover:border-blue-200 transition-all cursor-pointer border-t-4 border-t-blue-500" 
+           onClick={() => navigate('/accounting/vouchers')}
+         >
+            <div className="bg-blue-50 text-blue-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+               <FileText size={20} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Journal</h3>
+            <p className="text-xl font-black text-gray-900">Voucher List</p>
+            <div className="flex items-center gap-1 text-sm text-blue-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+               Go to list <ArrowRight size={14} />
+            </div>
          </Card>
 
-         <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer border-t-4 border-purple-500" onClick={() => navigate('/accounting/reports/trial-balance')}>
-            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Reporting</h3>
-            <p className="text-2xl font-bold text-gray-800">Trial Balance</p>
-            <p className="text-sm text-gray-400 mt-2">View Financial Standing</p>
+         {/* Chart of Accounts */}
+         <Card 
+           className="p-6 group hover:shadow-xl hover:border-indigo-200 transition-all cursor-pointer border-t-4 border-t-indigo-500" 
+           onClick={() => navigate('/accounting/accounts')}
+         >
+            <div className="bg-indigo-50 text-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+               <Settings size={20} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Structure</h3>
+            <p className="text-xl font-black text-gray-900">Chart of Accounts</p>
+            <div className="flex items-center gap-1 text-sm text-indigo-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+               Manage structure <ArrowRight size={14} />
+            </div>
          </Card>
 
-         <Card className="p-6 border-dashed border-2 bg-gray-50 flex flex-col justify-center items-center text-center">
-            <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Configuration</h3>
-            <p className="text-lg font-bold text-gray-700">Chart of Accounts</p>
-            <Button variant="ghost" size="sm" className="mt-2 text-blue-600">Manage Accounts &rarr;</Button>
+         {/* Reports */}
+         <Card 
+           className="p-6 group hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer border-t-4 border-t-purple-500" 
+           onClick={() => navigate('/accounting/reports/trial-balance')}
+         >
+            <div className="bg-purple-50 text-purple-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+               <BarChart2 size={20} />
+            </div>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Analysis</h3>
+            <p className="text-xl font-black text-gray-900">Trial Balance</p>
+            <div className="flex items-center gap-1 text-sm text-purple-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+               View analytics <ArrowRight size={14} />
+            </div>
          </Card>
+
+         {/* More coming soon... */}
+         <div className="p-6 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center opacity-50">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">More modules</p>
+            <p className="text-sm font-medium text-gray-400 mt-1">Coming Soon</p>
+         </div>
+
        </div>
     </div>
   );

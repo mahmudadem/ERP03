@@ -109,8 +109,17 @@ export const COATreePreview: React.FC<COATreePreviewProps> = ({ accounts, classN
                 {node.account.name}
               </span>
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
-              {node.account.type}
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                {node.account.type?.toLowerCase()}
+              </span>
+              <span className={`text-[9px] px-1 rounded font-extrabold uppercase ${
+                hasChildren 
+                    ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
+                    : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+              }`}>
+                {hasChildren ? 'Header' : 'Posting'}
+              </span>
             </div>
           </div>
         </div>

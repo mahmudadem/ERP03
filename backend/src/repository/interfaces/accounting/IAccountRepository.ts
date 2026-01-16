@@ -32,6 +32,11 @@ export interface NewAccountInput {
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;               // Default: false
   
+  // Approval Policy
+  requiresApproval?: boolean;
+  requiresCustodyConfirmation?: boolean;
+  custodianUserId?: string | null;
+  
   // Legacy compat
   code?: string;  // Alias for userCode
   type?: string;  // Alias for classification
@@ -60,6 +65,12 @@ export interface UpdateAccountInput {
   
   // System
   isProtected?: boolean;
+  
+  // Approval Policy
+  requiresApproval?: boolean;
+  requiresCustodyConfirmation?: boolean;
+  custodianUserId?: string | null;
+
   updatedBy: string;
   
   // Legacy compat

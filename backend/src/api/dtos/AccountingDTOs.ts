@@ -77,6 +77,11 @@ export interface CreateAccountRequest {
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;
   
+  // Approval
+  requiresApproval?: boolean;
+  requiresCustodyConfirmation?: boolean;
+  custodianUserId?: string | null;
+  
   // Legacy compat
   code?: string;
   type?: string;
@@ -104,6 +109,11 @@ export interface UpdateAccountRequest {
   
   // System
   isProtected?: boolean;
+  
+  // Approval
+  requiresApproval?: boolean;
+  requiresCustodyConfirmation?: boolean;
+  custodianUserId?: string | null;
   
   // Legacy compat
   code?: string;

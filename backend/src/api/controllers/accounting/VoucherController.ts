@@ -10,6 +10,7 @@ import {
 } from '../../../application/accounting/use-cases/VoucherUseCases';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { AccountValidationService } from '../../../application/accounting/services/AccountValidationService';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -142,6 +143,7 @@ export class VoucherController {
             diContainer.ledgerRepository as any,
             permissionChecker,
             diContainer.transactionManager as any,
+            new AccountValidationService(diContainer.accountRepository as any),
             diContainer.policyRegistry as any
           );
           await postUseCase.execute(companyId, userId, req.params.id);
@@ -182,29 +184,137 @@ export class VoucherController {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
       
-      // 1. Approve the voucher (Pending → Approved)
+      // 1. Approve the voucher (Pending → Approved OR stays PENDING if more gates exist)
       const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository as any, permissionChecker);
       await useCase.execute(companyId, userId, req.params.id);
       
-      // 2. AUTO-POST after approval (seamlessly transition to POSTED status)
-      const { PostVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherUseCases');
-      const postUseCase = new PostVoucherUseCase(
-        diContainer.voucherRepository as any,
-        diContainer.ledgerRepository as any,
-        permissionChecker,
-        diContainer.transactionManager as any,
-        diContainer.policyRegistry as any
-      );
-      await postUseCase.execute(companyId, userId, req.params.id);
+      // 2. Load updated state
+      let voucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+      if (!voucher) throw new Error('Voucher not found after approval');
 
-      // Refresh to get latest state for frontend
-      const voucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+      // 3. AUTO-POST ONLY if fully approved
+      const { VoucherStatus } = await import('../../../domain/accounting/types/VoucherTypes');
+      if (voucher.status === VoucherStatus.APPROVED) {
+        let autoPostEnabled = true;
+        try {
+          const config = await diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+          autoPostEnabled = config.autoPostEnabled ?? true;
+        } catch (e) {}
+
+        if (autoPostEnabled) {
+          const { PostVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherUseCases');
+          const postUseCase = new PostVoucherUseCase(
+            diContainer.voucherRepository as any,
+            diContainer.ledgerRepository as any,
+            permissionChecker,
+            diContainer.transactionManager as any,
+            new AccountValidationService(diContainer.accountRepository as any),
+            diContainer.policyRegistry as any
+          );
+          await postUseCase.execute(companyId, userId, req.params.id);
+          
+          // Refresh to get posted version
+          const postedVoucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+          if (postedVoucher) voucher = postedVoucher;
+        }
+      }
 
       res.json({ 
         success: true, 
-        data: voucher ? voucher.toJSON() : null,
-        message: 'Voucher approved and posted' 
+        data: voucher.toJSON(),
+        message: voucher.status === VoucherStatus.APPROVED 
+          ? (voucher.isPosted ? 'Voucher approved and posted' : 'Voucher approved')
+          : 'Financial approval recorded (awaiting custody confirmation)' 
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Confirm custody of a voucher (Gate satisfaction)
+   * Triggered by designated custodians for specific accounts.
+   */
+  static async confirm(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      
+      const { ConfirmCustodyUseCase } = await import('../../../application/accounting/use-cases/ConfirmCustodyUseCase');
+      const { ApprovalPolicyService } = await import('../../../domain/accounting/policies/ApprovalPolicyService');
+      
+      const useCase = new ConfirmCustodyUseCase(
+        diContainer.voucherRepository as any,
+        new ApprovalPolicyService()
+      );
+      
+      let voucher = await useCase.execute(companyId, req.params.id, userId);
+
+      // If this confirmation satisfied ALL gates, it is now APPROVED.
+      // We should check for auto-post here as well for seamless UX.
+      const { VoucherStatus } = await import('../../../domain/accounting/types/VoucherTypes');
+      if (voucher.status === VoucherStatus.APPROVED) {
+        let autoPostEnabled = true;
+        try {
+          const config = await diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+          autoPostEnabled = config.autoPostEnabled ?? true;
+        } catch (e) {}
+
+        if (autoPostEnabled) {
+          const { PostVoucherUseCase } = await import('../../../application/accounting/use-cases/VoucherUseCases');
+          const postUseCase = new PostVoucherUseCase(
+            diContainer.voucherRepository as any,
+            diContainer.ledgerRepository as any,
+            permissionChecker,
+            diContainer.transactionManager as any,
+            new AccountValidationService(diContainer.accountRepository as any),
+            diContainer.policyRegistry as any
+          );
+          await postUseCase.execute(companyId, userId, req.params.id);
+          
+          const postedVoucher = await diContainer.voucherRepository.findById(companyId, req.params.id);
+          if (postedVoucher) voucher = postedVoucher;
+
+          return res.json({ 
+            success: true, 
+            data: voucher.toJSON(), 
+            message: 'Custody confirmed and voucher posted' 
+          });
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        data: voucher.toJSON(), 
+        message: 'Custody confirmed' 
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * List vouchers pending financial approval for the company
+   */
+  static async getPendingApprovals(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const vouchers = await diContainer.voucherRepository.findPendingFinancialApprovals(companyId);
+      res.json({ success: true, data: vouchers.map(v => v.toJSON()) });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * List vouchers pending custody confirmation for the current user
+   */
+  static async getPendingCustody(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const vouchers = await diContainer.voucherRepository.findPendingCustodyConfirmations(companyId, userId);
+      res.json({ success: true, data: vouchers.map(v => v.toJSON()) });
     } catch (err) {
       next(err);
     }
@@ -237,6 +347,7 @@ export class VoucherController {
         diContainer.ledgerRepository as any,
         permissionChecker,
         diContainer.transactionManager as any,
+        new AccountValidationService(diContainer.accountRepository as any),
         diContainer.policyRegistry as any
       );
 

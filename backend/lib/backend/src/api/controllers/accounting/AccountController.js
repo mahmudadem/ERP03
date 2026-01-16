@@ -84,7 +84,7 @@ class AccountController {
             const userId = req.user.uid;
             await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
             const useCase = new CreateAccountUseCase_1.CreateAccountUseCase(bindRepositories_1.diContainer.accountRepository);
-            const account = await useCase.execute(companyId, req.body);
+            const account = await useCase.execute(companyId, Object.assign(Object.assign({}, req.body), { createdBy: userId }));
             return res.json({ success: true, data: account });
         }
         catch (err) {
@@ -98,7 +98,7 @@ class AccountController {
             const { id } = req.params;
             await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
             const useCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(bindRepositories_1.diContainer.accountRepository);
-            const account = await useCase.execute(companyId, id, req.body);
+            const account = await useCase.execute(companyId, id, Object.assign(Object.assign({}, req.body), { updatedBy: userId }));
             return res.json({ success: true, data: account });
         }
         catch (err) {

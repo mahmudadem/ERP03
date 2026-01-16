@@ -1,4 +1,10 @@
 "use strict";
+/**
+ * AccountingMappers.ts
+ *
+ * Transforms Accounting Domain Entities to/from Firestore structure.
+ * Handles legacy field mapping (type->classification, code->userCode, etc.)
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -24,20 +30,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoucherMapper = exports.AccountMapper = void 0;
-/**
- * AccountingMappers.ts
- *
- * Purpose:
- * Transforms Accounting Domain Entities to/from Firestore structure.
- *
- * V2 ONLY - Legacy Voucher/VoucherLine classes have been removed.
- * VoucherEntity now uses built-in toJSON()/fromJSON() for persistence.
- */
 const admin = __importStar(require("firebase-admin"));
 const Account_1 = require("../../../domain/accounting/entities/Account");
 /**
  * Safely convert any date value to Firestore-compatible format.
- * Handles: Date objects, ISO strings, timestamps, or null/undefined.
  */
 const toFirestoreDate = (val) => {
     var _a;
@@ -91,27 +87,107 @@ const toFirestoreDate = (val) => {
     return val;
 };
 /**
+ * Convert Firestore timestamp to Date
+ */
+const fromFirestoreDate = (val) => {
+    if (!val)
+        return new Date();
+    if (val instanceof Date)
+        return val;
+    if (val.toDate && typeof val.toDate === 'function')
+        return val.toDate();
+    if (typeof val === 'string')
+        return new Date(val);
+    if (typeof val === 'number')
+        return new Date(val);
+    return new Date();
+};
+/**
  * Account Mapper
- * Used for converting Account entities to/from Firestore
+ * Handles bidirectional mapping between Account entity and Firestore
  */
 class AccountMapper {
+    /**
+     * Convert Firestore data to Account entity
+     * Handles legacy field names for backward compatibility
+     */
     static toDomain(data) {
-        var _a, _b, _c, _d;
-        return new Account_1.Account(data.companyId, data.id, data.code, data.name, data.type, data.currency, data.isProtected, data.active, data.parentId, ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.createdAt, ((_d = (_c = data.updatedAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || data.updatedAt);
+        var _a;
+        // Handle legacy field mapping
+        const classification = (0, Account_1.normalizeClassification)(data.classification || data.type || 'ASSET');
+        return Account_1.Account.fromJSON({
+            id: data.id,
+            systemCode: data.systemCode || data.code || data.id,
+            companyId: data.companyId,
+            userCode: data.userCode || data.code || data.id,
+            name: data.name,
+            description: data.description || null,
+            // Accounting semantics with defaults
+            accountRole: data.accountRole || (data.isParent || data.hasChildren ? 'HEADER' : 'POSTING'),
+            classification,
+            balanceNature: data.balanceNature || (0, Account_1.getDefaultBalanceNature)(classification),
+            balanceEnforcement: data.balanceEnforcement || 'WARN_ABNORMAL',
+            // Hierarchy
+            parentId: data.parentId || null,
+            // Currency
+            currencyPolicy: data.currencyPolicy || 'INHERIT',
+            fixedCurrencyCode: data.fixedCurrencyCode || data.currency || null,
+            allowedCurrencyCodes: data.allowedCurrencyCodes || [],
+            // Lifecycle
+            status: data.status || (data.active === false ? 'INACTIVE' : 'ACTIVE'),
+            isProtected: (_a = data.isProtected) !== null && _a !== void 0 ? _a : false,
+            replacedByAccountId: data.replacedByAccountId || null,
+            // Audit
+            createdAt: fromFirestoreDate(data.createdAt),
+            createdBy: data.createdBy || 'SYSTEM',
+            updatedAt: fromFirestoreDate(data.updatedAt),
+            updatedBy: data.updatedBy || 'SYSTEM',
+            // Legacy compat
+            requiresApproval: data.requiresApproval || false,
+            requiresCustodyConfirmation: data.requiresCustodyConfirmation || false,
+            custodianUserId: data.custodianUserId || null
+        });
     }
+    /**
+     * Convert Account entity to Firestore persistence format
+     */
     static toPersistence(entity) {
         return {
-            companyId: entity.companyId,
             id: entity.id,
-            code: entity.code,
+            systemCode: entity.systemCode,
+            companyId: entity.companyId,
+            userCode: entity.userCode,
             name: entity.name,
-            type: entity.type,
-            currency: entity.currency,
+            description: entity.description,
+            // Accounting semantics
+            accountRole: entity.accountRole,
+            classification: entity.classification,
+            balanceNature: entity.balanceNature,
+            balanceEnforcement: entity.balanceEnforcement,
+            // Hierarchy
+            parentId: entity.parentId,
+            // Currency
+            currencyPolicy: entity.currencyPolicy,
+            fixedCurrencyCode: entity.fixedCurrencyCode,
+            allowedCurrencyCodes: entity.allowedCurrencyCodes,
+            // Lifecycle
+            status: entity.status,
             isProtected: entity.isProtected,
-            active: entity.active,
-            parentId: entity.parentId || null,
+            replacedByAccountId: entity.replacedByAccountId,
+            // Audit
             createdAt: toFirestoreDate(entity.createdAt),
-            updatedAt: toFirestoreDate(entity.updatedAt)
+            createdBy: entity.createdBy,
+            updatedAt: toFirestoreDate(entity.updatedAt),
+            updatedBy: entity.updatedBy,
+            // Legacy compat (for any code still reading these)
+            code: entity.userCode,
+            type: entity.classification,
+            currency: entity.fixedCurrencyCode || '',
+            active: entity.status === 'ACTIVE',
+            // Approval policy
+            requiresApproval: entity.requiresApproval,
+            requiresCustodyConfirmation: entity.requiresCustodyConfirmation,
+            custodianUserId: entity.custodianUserId
         };
     }
 }
@@ -120,17 +196,12 @@ exports.AccountMapper = AccountMapper;
  * VoucherMapper - DEPRECATED
  *
  * VoucherEntity V2 now uses built-in toJSON() and fromJSON() methods.
- * The FirestoreVoucherRepositoryV2 uses these directly.
- *
- * This class is kept for backwards compatibility with any remaining
- * code that might reference it, but should not be used for new code.
  */
 class VoucherMapper {
     /**
      * @deprecated Use VoucherEntity.fromJSON() directly
      */
     static toDomain(data) {
-        // Import dynamically to avoid circular deps in case of removal
         const { VoucherEntity } = require('../../../domain/accounting/entities/VoucherEntity');
         return VoucherEntity.fromJSON(data);
     }
@@ -141,7 +212,6 @@ class VoucherMapper {
         if (typeof entity.toJSON === 'function') {
             return entity.toJSON();
         }
-        // Fallback for any edge cases
         return entity;
     }
 }

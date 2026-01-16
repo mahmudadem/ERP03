@@ -53,6 +53,12 @@ class PrismaVoucherRepository {
     async countByCurrency(companyId, currencyCode) {
         throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
     }
+    async findPendingFinancialApprovals(companyId, limit) {
+        throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+    }
+    async findPendingCustodyConfirmations(companyId, custodianUserId, limit) {
+        throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+    }
 }
 exports.PrismaVoucherRepository = PrismaVoucherRepository;
 //# sourceMappingURL=PrismaVoucherRepository.js.map

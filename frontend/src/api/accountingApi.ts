@@ -25,13 +25,42 @@ export interface TrialBalanceLine {
 }
 
 export interface AccountDTO {
+  // Identity
   id: string;
-  code: string;
+  systemCode: string;
+  userCode: string;
   name: string;
-  type: string;
-  category?: string;
+  description?: string | null;
+  
+  // Accounting semantics
+  accountRole: string;
+  classification: string;
+  balanceNature: string;
+  balanceEnforcement: string;
+  
+  // Hierarchy
+  parentId?: string | null;
+  
+  // Currency
+  currencyPolicy: string;
+  fixedCurrencyCode?: string | null;
+  allowedCurrencyCodes?: string[];
+  
+  // Lifecycle
+  status: string;
+  isProtected: boolean;
+  replacedByAccountId?: string | null;
+  
+  // Computed flags
+  canPost?: boolean;
+  hasChildren?: boolean;
+  isUsed?: boolean;
+  
+  // Legacy compat fields
+  code?: string;
+  type?: string;
   currency?: string;
-  balance?: number;
+  active?: boolean;
   isActive?: boolean;
 }
 
@@ -144,6 +173,10 @@ export const accountingApi = {
     return client.post(`/tenant/accounting/vouchers/${id}/verify`);
   },
 
+  confirmVoucherCustody: (id: string): Promise<VoucherDetailDTO> => {
+    return client.post(`/tenant/accounting/vouchers/${id}/confirm`);
+  },
+
   lockVoucher: (id: string): Promise<VoucherDetailDTO> => {
     return client.post(`/tenant/accounting/vouchers/${id}/lock`);
   },
@@ -154,6 +187,14 @@ export const accountingApi = {
 
   cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
     return client.post(`/tenant/accounting/vouchers/${id}/cancel`);
+  },
+
+  getPendingApprovals: (): Promise<VoucherDetailDTO[]> => {
+    return client.get('/tenant/accounting/vouchers/pending/approvals');
+  },
+
+  getPendingCustody: (): Promise<VoucherDetailDTO[]> => {
+    return client.get('/tenant/accounting/vouchers/pending/custody');
   },
 
   // --- CORRECTIONS ---

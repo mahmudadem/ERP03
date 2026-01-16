@@ -1,21 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { accountingApi, AccountDTO } from '../api/accountingApi';
 
-// Account type matching backend
+// Account type matching backend (ADR-005 compliant)
 export interface Account {
   id: string;
   code: string;
   name: string;
-  type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE' | string;
+  type: string;             // Alias for classification
+  classification: string;
+  accountRole: 'HEADER' | 'POSTING' | string;
+  status: 'ACTIVE' | 'INACTIVE' | string;
   currency?: string;
+  currencyPolicy?: string;
+  fixedCurrencyCode?: string | null;
   isActive?: boolean;
   parentId?: string | null;
-  isParent?: boolean;
+  hasChildren?: boolean;
+  canPost?: boolean;
 }
 
 interface AccountsContextValue {
   accounts: Account[];
-  validAccounts: Account[];  // Leaf accounts only (for voucher entry)
+  validAccounts: Account[];  // Accounts eligible for voucher entry
   isLoading: boolean;
   error: Error | null;
   refreshAccounts: () => void;
@@ -49,22 +55,35 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     setError(null);
 
     try {
-      // Use existing accountingApi which has correct base URL
+      // Use existing accountingApi
       const data = await accountingApi.getAccounts();
       
       const accountList: Account[] = data.map((acc: AccountDTO) => ({
         id: acc.id,
-        code: acc.code,
+        code: acc.userCode || acc.code || '',
         name: acc.name,
-        type: acc.type as Account['type'],
-        currency: acc.currency,
-        isActive: acc.isActive !== false
+        type: acc.classification || acc.type || '',
+        classification: acc.classification || acc.type || '',
+        accountRole: (acc.accountRole as any) || 'POSTING',
+        status: (acc.status as any) || 'ACTIVE',
+        currency: acc.fixedCurrencyCode || acc.currency,
+        currencyPolicy: acc.currencyPolicy,
+        fixedCurrencyCode: acc.fixedCurrencyCode,
+        isActive: acc.status === 'ACTIVE' || acc.active !== false || acc.isActive !== false,
+        parentId: acc.parentId,
+        hasChildren: acc.hasChildren,
+        canPost: acc.canPost
       }));
       
       setAccounts(accountList);
       
-      // Filter valid accounts client-side (all active accounts for now)
-      const valid = accountList.filter((acc: Account) => acc.isActive !== false);
+      // Filter valid accounts for Voucher Entry:
+      // Must be POSTING role, ACTIVE status, and have NO children
+      const valid = accountList.filter((acc: Account) => 
+        acc.accountRole === 'POSTING' && 
+        acc.status === 'ACTIVE' &&
+        !acc.hasChildren
+      );
       setValidAccounts(valid);
       
       setLastFetch(Date.now());

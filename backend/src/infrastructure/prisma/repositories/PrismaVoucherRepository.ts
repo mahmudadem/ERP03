@@ -65,4 +65,12 @@ export class PrismaVoucherRepository implements IVoucherRepository {
   async countByCurrency(companyId: string, currencyCode: string): Promise<number> {
     throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
   }
+
+  async findPendingFinancialApprovals(companyId: string, limit?: number): Promise<VoucherEntity[]> {
+    throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+  }
+
+  async findPendingCustodyConfirmations(companyId: string, custodianUserId: string, limit?: number): Promise<VoucherEntity[]> {
+    throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
+  }
 }

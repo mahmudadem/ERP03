@@ -366,6 +366,10 @@ export class VoucherEntity {
   /**
    * Create approved version (immutable update)
    */
+  /**
+   * Create approved version (immutable update)
+   * V1: Fast-track approval (legacy/simple mode)
+   */
   approve(approvedBy: string, approvedAt: Date): VoucherEntity {
     if (!this.canApprove) {
       throw new Error(`Cannot approve voucher in status: ${this.status}`);
@@ -401,6 +405,98 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       this.updatedAt
+    );
+  }
+
+  /**
+   * Satisfy the Financial Approval gate (immutable update).
+   * 
+   * @param approverId User ID of the approver
+   * @param approvedAt Date of approval
+   * @param isFullySatisfied If true, transitions status to APPROVED
+   */
+  satisfyFinancialApproval(approverId: string, approvedAt: Date, isFullySatisfied: boolean): VoucherEntity {
+    if (this.status !== VoucherStatus.PENDING) {
+      throw new Error('Voucher must be in PENDING status for financial approval gate.');
+    }
+
+    const newMetadata = {
+      ...this.metadata,
+      pendingFinancialApproval: false,
+      financialApproval: {
+        by: approverId,
+        at: approvedAt.toISOString()
+      }
+    };
+
+    return new VoucherEntity(
+      this.id, this.companyId, this.voucherNo, this.type, this.date,
+      this.description, this.currency, this.baseCurrency, this.exchangeRate,
+      this.lines, this.totalDebit, this.totalCredit,
+      isFullySatisfied ? VoucherStatus.APPROVED : VoucherStatus.PENDING,
+      newMetadata,
+      this.createdBy, this.createdAt,
+      isFullySatisfied ? approverId : undefined,
+      isFullySatisfied ? approvedAt : undefined,
+      undefined, undefined, undefined,
+      this.lockedBy, this.lockedAt,
+      this.postedBy, this.postedAt,
+      this.postingLockPolicy,
+      this.reversalOfVoucherId,
+      this.reference,
+      new Date()
+    );
+  }
+
+  /**
+   * Confirm custody for one or more accounts (immutable update).
+   * 
+   * @param custodianUserId User ID of the custodian
+   * @param confirmedAt Date of confirmation
+   * @param isFullySatisfied If true, transitions status to APPROVED
+   */
+  confirmCustody(custodianUserId: string, confirmedAt: Date, isFullySatisfied: boolean): VoucherEntity {
+    if (this.status !== VoucherStatus.PENDING) {
+      throw new Error('Voucher must be in PENDING status for custody confirmation gate.');
+    }
+
+    const currentPending = this.metadata?.pendingCustodyConfirmations || [];
+    const newPending = currentPending.filter((id: string) => id !== custodianUserId);
+    
+      const confirmations = [
+      ...(this.metadata?.custodyConfirmations || []),
+      {
+        by: custodianUserId,
+        at: confirmedAt.toISOString()
+      }
+    ];
+
+    const newMetadata = {
+      ...this.metadata,
+      pendingCustodyConfirmations: newPending,
+      custodyConfirmations: confirmations
+    };
+
+    return new VoucherEntity(
+      this.id, this.companyId, this.voucherNo, this.type, this.date,
+      this.description, this.currency, this.baseCurrency, this.exchangeRate,
+      this.lines, this.totalDebit, this.totalCredit,
+      isFullySatisfied ? VoucherStatus.APPROVED : VoucherStatus.PENDING,
+      newMetadata,
+      this.createdBy, this.createdAt,
+      // Note: If transition to APPROVED happens via CC, we still record the final confirmation
+      // and potentially the last confirming person as approver if we want, 
+      // but usually the "approver" is the Finance Manager. 
+      // V1: If CC satisfies the last gate, the previous FA details are already in approval fields.
+      this.approvedBy,
+      this.approvedAt,
+      undefined, undefined, undefined,
+      this.lockedBy, this.lockedAt,
+      this.postedBy, this.postedAt,
+      this.postingLockPolicy,
+      this.reversalOfVoucherId,
+      this.reference,
+      new Date()
     );
   }
 

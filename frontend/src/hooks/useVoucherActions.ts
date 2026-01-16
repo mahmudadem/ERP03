@@ -109,10 +109,17 @@ export const useVoucherActions = () => {
     window.dispatchEvent(new CustomEvent('vouchers-updated'));
   };
 
+  const handleConfirmVoucher = async (windowId: string, id: string) => {
+    await accountingApi.confirmVoucherCustody(id);
+    errorHandler.showSuccess('custody_confirmed');
+    window.dispatchEvent(new CustomEvent('vouchers-updated'));
+  };
+
   return {
     handleSaveVoucher,
     handleSubmitVoucher,
     handleApproveVoucher,
-    handleRejectVoucher
+    handleRejectVoucher,
+    handleConfirmVoucher
   };
 };

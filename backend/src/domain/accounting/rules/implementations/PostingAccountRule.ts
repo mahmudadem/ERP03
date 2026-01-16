@@ -41,6 +41,15 @@ export class PostingAccountRule implements IAccountValidationRule {
       };
     }
 
+    // 4. Check hierarchy (Posting accounts shouldn't have children)
+    if (account.hasChildren) {
+      return {
+        valid: false,
+        reason: `Account "${account.userCode} - ${account.name}" has sub-accounts and cannot be used for posting. Please select a child account.`,
+        ruleName: this.name
+      };
+    }
+
     return { valid: true };
   }
 }

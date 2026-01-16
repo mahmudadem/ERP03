@@ -4,6 +4,7 @@ import { ISystemMetadataRepository } from '../../../infrastructure/repositories/
 
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { randomUUID } from 'crypto';
 
 interface InitializeAccountingRequest {
   companyId: string;
@@ -38,26 +39,92 @@ export class InitializeAccountingUseCase {
 
     const templateAccounts = selectedTemplate.accounts;
     
-    // 2. Create Accounts - Use CODE as ID (industry standard)
-    // Parent references use account codes directly
-    const promises = templateAccounts.map((tpl: any) => {
+    // We must generate UUIDs first to correctly map parentIds, as templates use codes for hierarchy
+    // First, fetch existing accounts to support re-runs (idempotency)
+    const existingAccounts = await this.accountRepo.list(companyId);
+    const existingCodeMap = new Map<string, string>();
+    // Normalize code function for consistent lookup
+    const cleanCode = (c: any) => String(c || '').trim().toUpperCase();
+    
+    existingAccounts.forEach(acc => existingCodeMap.set(cleanCode(acc.userCode), acc.id));
+
+    const codeToIdMap = new Map<string, string>();
+    
+    // Map usage:
+    // If account exists in DB, use its ID.
+    // If not, generate new UUID.
+    const preparedAccounts = templateAccounts.map((tpl: any) => {
+      const code = cleanCode(tpl.code);
+      let id = existingCodeMap.get(code);
+      let isNew = false;
+      
+      if (!id) {
+        id = randomUUID();
+        isNew = true;
+      }
+      
+      codeToIdMap.set(code, id);
+      
+      return {
+        ...tpl,
+        code, // Store normalized code
+        id,
+        isNew
+      };
+    });
+
+    // 3. Create Accounts Sequentially
+    let createdCount = 0;
+    for (const tpl of preparedAccounts) {
+      if (!tpl.isNew) {
+        // Skip existing accounts to avoid duplicates
+        // Note: We don't update existing accounts to avoid overwriting user changes
+        continue; 
+      }
+
+      // Resolve parentId: from Code to UUID
+      let parentId = null;
+      const tplParentCode = tpl.parentCode || tpl.parentId;
+      if (tplParentCode) {
+        const pCode = cleanCode(tplParentCode);
+        if (codeToIdMap.has(pCode)) {
+          parentId = codeToIdMap.get(pCode);
+        }
+      }
+      
+      // Determine Role based on children presence in template
+      // If an account is a parent in the template, force it to HEADER
+      // Use normalized checks
+      const code = tpl.code; // Already normalized
+      const isParentInTemplate = templateAccounts.some((other: any) => cleanCode(other.parentCode || other.parentId) === code);
+      const forcedRole = isParentInTemplate ? 'HEADER' : (tpl.role || 'POSTING');
+
       const input = {
-        // No 'id' field - repository will use code as doc ID
+        id: tpl.id, 
         userCode: tpl.code,
         name: tpl.name,
-        classification: tpl.type, // Will be normalized by repository
-        parentId: tpl.parentId || null,  // parentId is parent's CODE
+        classification: tpl.type, 
+        accountRole: forcedRole,
+        parentId: parentId, // Use resolved UUID
         fixedCurrencyCode: config.baseCurrency,
         currencyPolicy: 'FIXED' as const,
         createdBy: 'SYSTEM'
       };
 
-      return this.accountRepo.create(companyId, input);
-    });
+      try {
+        await this.accountRepo.create(companyId, input);
+        createdCount++;
+      } catch (err: any) {
+        // If system code clash or other error, log but continue? 
+        // Better to fail fast or ensuring consistency.
+        // For duplicates (if validation checks), we might catch here.
+        // But we checked isNew, so mostly safe.
+        // If system code unique check fails, that's real error.
+        throw err;
+      }
+    }
     
-    await Promise.all(promises);
-    
-    console.log(`[InitializeAccountingUseCase] Created ${promises.length} accounts.`);
+    console.log(`[InitializeAccountingUseCase] Created ${createdCount} accounts sequentially (Skipped ${existingAccounts.length} existing).`);
 
     // 3. Copy Default Voucher Types to Company
     try {

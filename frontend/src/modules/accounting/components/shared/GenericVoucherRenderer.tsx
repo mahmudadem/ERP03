@@ -771,18 +771,33 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           
           // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
           if (field === 'account') {
-            const acc = value as Account | null | string;
+            const accVal = value as Account | null | string;
             // Default to voucher currency if account doesn't have a specific one
-            const defaultCurrency = formData.currency || 'USD';
+            const defaultCurrency = formData.currency || company?.baseCurrency || 'USD';
             
-            if (acc && typeof acc === 'object') {
-              updated.account = acc.code;
-              updated.currency = acc.currency || defaultCurrency;
+            let selectedAccount: Account | undefined;
+            if (accVal && typeof accVal === 'object') {
+              selectedAccount = accVal;
+              updated.account = selectedAccount.code;
+            } else if (accVal) {
+              updated.account = accVal as string;
+              selectedAccount = getAccountByCode(updated.account);
+            }
+
+            if (selectedAccount) {
+              // Rule 1.3: Currency Policy Enforcement
+              if (selectedAccount.currencyPolicy === 'FIXED' && selectedAccount.fixedCurrencyCode) {
+                // LOCK to fixed currency
+                updated.currency = selectedAccount.fixedCurrencyCode;
+                console.log(`[POLICY] Account ${selectedAccount.code} has FIXED currency policy. Setting line to ${selectedAccount.fixedCurrencyCode}.`);
+              } else if (selectedAccount.currency) {
+                // Default suggestion from account (Legacy compat)
+                updated.currency = selectedAccount.currency;
+              } else {
+                updated.currency = defaultCurrency;
+              }
             } else {
-              updated.account = acc as string;
-              // If it's just a code, resolve currency from context
-              const resolvedAcc = getAccountByCode(updated.account);
-              updated.currency = resolvedAcc?.currency || defaultCurrency;
+              updated.currency = defaultCurrency;
             }
           }
 
@@ -1384,15 +1399,25 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  onBlur={() => onBlurRef.current?.()}
                                              />
                                          ) : colId === 'currency' ? (
-                                             <CurrencySelector
-                                                 ref={(el) => registerCellRef(index, colIdx, el)}
-                                                 value={row.currency}
-                                                 disabled={readOnly || !!getAccountByCode(row.account)?.currency}
-                                                 onChange={(val) => handleRowChange(row.id, 'currency', val)}
-                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
-                                                 onBlur={() => onBlurRef.current?.()}
-                                                 noBorder
-                                             />
+                                             <div className="relative group/curr">
+                                               <CurrencySelector
+                                                   ref={(el) => registerCellRef(index, colIdx, el)}
+                                                   value={row.currency}
+                                                   disabled={readOnly || (() => {
+                                                     const acc = getAccountByCode(row.account);
+                                                     return acc?.currencyPolicy === 'FIXED';
+                                                   })()}
+                                                   onChange={(val) => handleRowChange(row.id, 'currency', val)}
+                                                   onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                   onBlur={() => onBlurRef.current?.()}
+                                                   noBorder
+                                               />
+                                               {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
+                                                 <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
+                                                   <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>
+                                                 </div>
+                                               )}
+                                             </div>
                                          ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
                                             <AmountInput
                                                ref={(el) => registerCellRef(index, colIdx, el)}

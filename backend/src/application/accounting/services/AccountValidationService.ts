@@ -13,16 +13,16 @@ import {
   AccountValidationContext, 
   ValidationResult 
 } from '../../../domain/accounting/rules/IAccountValidationRule';
-import { NoParentAccountRule } from '../../../domain/accounting/rules/implementations/NoParentAccountRule';
-import { ActiveAccountOnlyRule } from '../../../domain/accounting/rules/implementations/ActiveAccountOnlyRule';
+import { PostingAccountRule } from '../../../domain/accounting/rules/implementations/PostingAccountRule';
+import { CurrencyPolicyRule } from '../../../domain/accounting/rules/implementations/CurrencyPolicyRule';
 
 export class AccountValidationService {
   private rules: IAccountValidationRule[] = [];
 
   constructor(private accountRepo: IAccountRepository) {
-    // Register built-in rules
-    this.registerRule(new ActiveAccountOnlyRule());
-    this.registerRule(new NoParentAccountRule());
+    // Register V2 rules
+    this.registerRule(new PostingAccountRule());
+    this.registerRule(new CurrencyPolicyRule());
   }
 
   /**
@@ -151,6 +151,44 @@ export class AccountValidationService {
     if (errors.length > 0) {
       const reasons = errors.map(e => e.reason).join('; ');
       throw new Error(`Account "${code}" is not valid: ${reasons}`);
+    }
+
+    return account;
+  }
+
+  /**
+   * Resolve account by ID and validate
+   */
+  async validateAccountById(
+    companyId: string,
+    userId: string,
+    accountId: string,
+    voucherType?: string,
+    extraContext?: Partial<AccountValidationContext>
+  ): Promise<Account> {
+    const account = await this.accountRepo.getById(companyId, accountId);
+    
+    if (!account) {
+      throw new Error(`Account "${accountId}" not found`);
+    }
+
+    // Check if has children
+    const hasChildren = await this.accountRepo.hasChildren(companyId, account.id);
+    account.setHasChildren(hasChildren);
+
+    const ctx: AccountValidationContext = {
+      companyId,
+      userId,
+      account,
+      voucherType,
+      ...extraContext
+    };
+
+    const errors = await this.validateAccount(ctx);
+    
+    if (errors.length > 0) {
+      const reasons = errors.map(e => e.reason).join('; ');
+      throw new Error(`Account "${account.userCode}" invalid: ${reasons}`);
     }
 
     return account;

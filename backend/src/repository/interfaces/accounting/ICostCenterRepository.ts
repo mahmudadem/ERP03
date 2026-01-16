@@ -7,6 +7,6 @@ import { CostCenter } from '../../../domain/accounting/entities/CostCenter';
 export interface ICostCenterRepository {
   createCostCenter(costCenter: CostCenter): Promise<void>;
   updateCostCenter(id: string, data: Partial<CostCenter>): Promise<void>;
-  getCostCenter(id: string): Promise<CostCenter | null>;
+  getCostCenter(companyId: string, id: string): Promise<CostCenter | null>;
   getCompanyCostCenters(companyId: string): Promise<CostCenter[]>;
 }

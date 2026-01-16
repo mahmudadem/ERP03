@@ -321,6 +321,33 @@ const VouchersListPage: React.FC = () => {
                   console.error('Cancel failed:', e);
                 }
               }}
+              onApprove={async (id) => {
+                try {
+                   await accountingApi.approveVoucher(id);
+                   invalidateVouchers();
+                   errorHandler.showSuccess('Voucher approved successfully');
+                } catch (e: any) {
+                   console.error('Approval failed:', e);
+                }
+              }}
+              onReject={async (id) => {
+                try {
+                   await accountingApi.rejectVoucher(id);
+                   invalidateVouchers();
+                   errorHandler.showSuccess('Voucher rejected');
+                } catch (e: any) {
+                   console.error('Rejection failed:', e);
+                }
+              }}
+              onConfirm={async (id) => {
+                try {
+                   await accountingApi.confirmVoucherCustody(id);
+                   invalidateVouchers();
+                   errorHandler.showSuccess('Custody confirmed');
+                } catch (e: any) {
+                   console.error('Confirmation failed:', e);
+                }
+              }}
               onRefresh={() => invalidateVouchers()}
               externalFilters={clientFilters}
               dateRange={dateRange}

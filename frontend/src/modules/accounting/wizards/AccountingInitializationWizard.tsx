@@ -355,7 +355,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 </div>
 
                 {/* Template List - Scrollable */}
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2 min-h-0">
                 {isLoadingData ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
@@ -407,7 +407,7 @@ export const AccountingInitializationWizard: React.FC = () => {
               </div>
 
               {/* Preview Panel */}
-              <div className="lg:sticky lg:top-4 h-fit">
+              <div className="h-full min-h-0">
                 {selectedTemplate && selectedTemplate.accounts ? (
                   <COATreePreview accounts={selectedTemplate.accounts} />
                 ) : (
@@ -781,13 +781,12 @@ export const AccountingInitializationWizard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          {/* Compact Progress Dots - Inside Card */}
-          <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600">
-            <div className="flex items-center justify-between gap-2">
+      <div className="w-full max-w-5xl h-[750px] flex flex-col bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        {/* Compact Progress Dots - Inside Card */}
+        <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
               {steps.map((_, index) => {
                 const isCompleted = index < currentStep;
                 const isCurrent = index === currentStep;
@@ -831,10 +830,10 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
           </div>
 
-          {/* Step Content */}
-          <div className="p-8">
-            {currentStepData.content}
-          </div>
+        {/* Step Content */}
+        <div className="flex-1 overflow-y-auto p-8 min-h-0">
+          {currentStepData.content}
+        </div>
 
           {/* Error */}
           {error && (
@@ -845,9 +844,9 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-            <button
+        {/* Navigation */}
+        <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
+          <button
               onClick={handleBack}
               disabled={currentStep === 0}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -883,7 +882,6 @@ export const AccountingInitializationWizard: React.FC = () => {
                 )}
               </button>
             )}
-          </div>
         </div>
       </div>
     </div>
