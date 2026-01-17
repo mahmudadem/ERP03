@@ -13,20 +13,28 @@ class InviteCompanyUserUseCase {
         this.companyUserRepository = companyUserRepository;
     }
     async execute(input) {
+        // Normalize email
+        if (input.email) {
+            input.email = input.email.trim().toLowerCase();
+        }
+        console.log(`[Invite] Processing invite for ${input.email} in company ${input.companyId}`);
         // Validate input
         this.validateInput(input);
         // Check if user already exists
         let user = await this.userRepository.findByEmail(input.email);
         let userId;
         if (user) {
+            console.log(`[Invite] Found existing user: ${user.id} (${user.email})`);
             // User exists, check if they're already a member of this company
             const existingMembership = await this.companyUserRepository.getByUserAndCompany(user.id, input.companyId);
             if (existingMembership) {
+                console.warn(`[Invite] User already member of company`);
                 throw ApiError_1.ApiError.badRequest('User is already a member of this company');
             }
             userId = user.id;
         }
         else {
+            console.log(`[Invite] User NOT found. Creating new placeholder user.`);
             // User doesn't exist, create a pending user record
             const newUserId = this.generateUserId();
             const fullName = [input.firstName, input.lastName].filter(Boolean).join(' ') || input.email;
@@ -34,6 +42,7 @@ class InviteCompanyUserUseCase {
             await this.userRepository.createUser(user);
             userId = newUserId;
         }
+        console.log(`[Invite] Creating membership for userId: ${userId}`);
         // Create company user membership with pending status
         const companyUser = {
             userId,
@@ -43,6 +52,7 @@ class InviteCompanyUserUseCase {
             createdAt: new Date()
         };
         await this.companyUserRepository.create(companyUser);
+        console.log(`[Invite] Membership created successfully.`);
         // Generate invitation details
         const invitationId = this.generateInvitationId();
         const invitedAt = new Date();

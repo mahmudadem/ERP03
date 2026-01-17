@@ -7,12 +7,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Star, Loader2 } from 'lucide-react';
+import { Check, ArrowRight, Star, Loader2, LogOut } from 'lucide-react';
 import { onboardingApi, Plan } from '../api/onboardingApi';
 import { cn } from '../../../lib/utils';
+import { useAuth } from '../../../context/AuthContext';
 
 const PlanSelectionPage: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,6 +34,15 @@ const PlanSelectionPage: React.FC = () => {
       console.error('Failed to load plans:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (e) {
+      navigate('/auth');
     }
   };
 
@@ -69,7 +80,17 @@ const PlanSelectionPage: React.FC = () => {
   const recommendedPlanId = plans.find(p => p.price > 0 && p.price < 100)?.id;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 font-sans relative">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors bg-white/50 hover:bg-white px-3 py-2 rounded-lg"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-base font-semibold text-primary-500 tracking-wide uppercase">Pricing</h2>

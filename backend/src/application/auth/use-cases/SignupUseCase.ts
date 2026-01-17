@@ -28,6 +28,9 @@ export class SignupUseCase {
   constructor(private userRepository: IUserRepository) {}
 
   async execute(input: SignupInput): Promise<SignupResult> {
+    // Normalize email
+    input.email = input.email.trim().toLowerCase();
+
     // Validate input
     this.validateInput(input);
 

@@ -18,6 +18,8 @@ class SignupUseCase {
         this.userRepository = userRepository;
     }
     async execute(input) {
+        // Normalize email
+        input.email = input.email.trim().toLowerCase();
         // Validate input
         this.validateInput(input);
         const fullName = `${input.firstName} ${input.lastName}`.trim();

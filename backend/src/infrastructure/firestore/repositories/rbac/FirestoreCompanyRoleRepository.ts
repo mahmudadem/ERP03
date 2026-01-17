@@ -12,13 +12,13 @@ export class FirestoreCompanyRoleRepository implements ICompanyRoleRepository {
 
   async getAll(companyId: string): Promise<CompanyRole[]> {
     const snapshot = await this.getCollection(companyId).get();
-    return snapshot.docs.map(doc => doc.data() as CompanyRole);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CompanyRole));
   }
 
   async getById(companyId: string, roleId: string): Promise<CompanyRole | null> {
     const doc = await this.getCollection(companyId).doc(roleId).get();
     if (!doc.exists) return null;
-    return doc.data() as CompanyRole;
+    return { id: doc.id, ...doc.data() } as CompanyRole;
   }
 
   async create(role: CompanyRole): Promise<void> {

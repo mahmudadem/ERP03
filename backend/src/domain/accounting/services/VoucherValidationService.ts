@@ -84,6 +84,20 @@ export class VoucherValidationService {
           correlationId
         );
       }
+
+      // 4.1 Exchange Rate Sanity Check (The "Bomb" Defuser)
+      // If currency is different from base currency, exchange rate should not be exactly 1.0
+      // unless clearly intended. This catches cases where the rate was defaulted to 1.
+      if (line.currency !== line.baseCurrency && line.exchangeRate === 1) {
+        throw createPostingError(
+          'SUSPICIOUS_EXCHANGE_RATE',
+          `Line ${line.id}: Exchange rate between ${line.currency} and ${line.baseCurrency} cannot be exactly 1.0. Please provide a valid rate.`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].exchangeRate`],
+          undefined,
+          correlationId
+        );
+      }
     }
     
     // 5. Currency consistency (skip for journal entries which support multi-currency lines)

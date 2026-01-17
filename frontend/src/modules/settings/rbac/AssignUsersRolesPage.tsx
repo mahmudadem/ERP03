@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { rbacApi, CompanyUser, CompanyRole } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { Trash2 } from 'lucide-react';
 
 export default function AssignUsersRolesPage() {
   const { companyId } = useCompanyAccess();
@@ -27,6 +28,18 @@ export default function AssignUsersRolesPage() {
       errorHandler.showError(error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleDeleteUser = async (userId: string) => {
+    if (!companyId) return;
+    if (!window.confirm('Are you sure you want to remove this user from the company?')) return;
+    try {
+      await rbacApi.deleteCompanyUser(companyId, userId);
+      await loadData();
+      errorHandler.showSuccess('User removed successfully');
+    } catch (error: any) {
+      errorHandler.showError(error);
     }
   };
 
@@ -71,19 +84,30 @@ export default function AssignUsersRolesPage() {
                     {user.isOwner ? 'Yes' : 'No'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <select
-                      value={user.roleId}
-                      onChange={(e) => handleRoleChange(user.userId, e.target.value)}
-                      className="border border-gray-300 rounded px-2 py-1"
-                      disabled={user.isOwner}
-                    >
-                      <option value="">-- Select Role --</option>
-                      {roles.map(role => (
-                        <option key={role.id} value={role.id}>
-                          {role.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={user.roleId}
+                        onChange={(e) => handleRoleChange(user.userId, e.target.value)}
+                        className="border border-gray-300 rounded px-2 py-1"
+                        disabled={user.isOwner}
+                      >
+                        <option value="">-- Select Role --</option>
+                        {roles.map(role => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                      {!user.isOwner && (
+                        <button
+                          onClick={() => handleDeleteUser(user.userId)}
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
+                          title="Remove User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

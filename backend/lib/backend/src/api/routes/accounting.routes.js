@@ -54,7 +54,7 @@ router.post('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('a
 router.put('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.saveVoucherTypeLayout);
 // Policy Configuration
-router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), SettingsController_1.SettingsController.getSettings);
+router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), SettingsController_1.SettingsController.getSettings);
 router.put('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), SettingsController_1.SettingsController.updateSettings);
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.list);

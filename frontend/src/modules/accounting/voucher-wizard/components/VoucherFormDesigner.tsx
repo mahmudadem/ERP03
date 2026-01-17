@@ -61,6 +61,17 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
     setViewMode('designer');
   };
 
+  const handleExportSingle = (form: VoucherFormConfig) => {
+    // Export as single-element array for consistency dealing with import logic
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify([form], null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `voucher_form_${form.id}.json`);
+    document.body.appendChild(downloadAnchorNode); 
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   const isProtected = (form: VoucherFormConfig) => {
     return form.isSystemDefault || form.isLocked || (form as any).isSystemGenerated || (form as any).isDefault;
   };
@@ -159,6 +170,69 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
     setViewMode('designer');
   };
 
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allForms, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "voucher_forms_export.json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const inputElement = e.target;
+    if (inputElement.files && inputElement.files.length > 0) {
+       fileReader.readAsText(inputElement.files[0], "UTF-8");
+       fileReader.onload = (e) => {
+          try {
+            const importedForms = JSON.parse(e.target?.result as string);
+            if (Array.isArray(importedForms)) {
+               let importCount = 0;
+               
+               importedForms.forEach(form => {
+                  // Check for collision
+                  const exists = allForms.find(f => f.id === form.id);
+                  
+                  // If exists, generate a copy ID. If not, preserve original ID to facilitate migrations.
+                  const newId = exists 
+                    ? `${form.id}_COPY_${Math.floor(Math.random() * 1000)}` 
+                    : form.id;
+                    
+                  const newForm = { ...form, id: newId };
+                  
+                  // 1. Update Local State (UI)
+                  addForm(newForm);
+                  
+                  // 2. Persist to Database
+                  if (onVoucherSaved) {
+                    onVoucherSaved(newForm, false); // isEdit = false
+                  }
+                  
+                  importCount++;
+               });
+               
+               if (importCount > 0) {
+                 errorHandler.showSuccess(`Successfully imported ${importCount} form(s).`);
+               } else {
+                 errorHandler.showInfo('No forms found in file.');
+               }
+            } else {
+               throw new Error("Invalid file format: Expected an array of forms");
+            }
+          } catch (error: any) {
+             errorHandler.showError({
+                message: "Failed to import forms: " + error.message,
+                severity: "ERROR"
+             } as any);
+          }
+          // Reset input
+          if(inputElement) inputElement.value = '';
+       };
+    }
+  };
+
   const handleSave = (config: VoucherFormConfig) => {
     // If cloning, treat as CREATE not UPDATE
     const isEdit = !!editingForm && !isCloning;
@@ -234,14 +308,26 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                 </div>
             </div>
          </div>
-         <RequirePermission permission="accounting.designer.create">
+         <div className="flex items-center gap-2">
            <button 
-             onClick={handleCreateNew}
-             className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow transition-colors"
+             onClick={handleExport}
+             className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-slate-600 bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors text-sm"
            >
-             <Plus size={18} /> Create New Form
+             Export All
            </button>
-         </RequirePermission>
+           <label className="flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-slate-600 bg-white border border-gray-200 hover:bg-gray-50 shadow-sm transition-colors text-sm cursor-pointer">
+             Import
+             <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+           </label>
+           <RequirePermission permission="accounting.designer.create">
+             <button 
+               onClick={handleCreateNew}
+               className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow transition-colors"
+             >
+               <Plus size={18} /> Create New Form
+             </button>
+           </RequirePermission>
+         </div>
       </div>
 
       {/* Content */}
@@ -307,6 +393,7 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                           onClone={handleClone}
                           onDelete={handleDelete}
                           onToggleEnabled={handleToggleEnabled}
+                          onExport={handleExportSingle}
                         />
                       ))}
                     </div>
@@ -343,6 +430,7 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                           onClone={handleClone}
                           onDelete={handleDelete}
                           onToggleEnabled={handleToggleEnabled}
+                          onExport={handleExportSingle}
                         />
                       ))}
                     </div>

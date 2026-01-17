@@ -4,26 +4,28 @@ exports.FirestorePermissionRepository = void 0;
 class FirestorePermissionRepository {
     constructor(db) {
         this.db = db;
-        this.collection = 'permissions';
+    }
+    getCollection() {
+        return this.db.collection('system_metadata').doc('permissions').collection('items');
     }
     async getAll() {
-        const snapshot = await this.db.collection(this.collection).get();
-        return snapshot.docs.map(doc => doc.data());
+        const snapshot = await this.getCollection().get();
+        return snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
     }
     async getById(id) {
-        const doc = await this.db.collection(this.collection).doc(id).get();
+        const doc = await this.getCollection().doc(id).get();
         if (!doc.exists)
             return null;
-        return doc.data();
+        return Object.assign({ id: doc.id }, doc.data());
     }
     async create(permission) {
-        await this.db.collection(this.collection).doc(permission.id).set(permission);
+        await this.getCollection().doc(permission.id).set(permission);
     }
     async update(id, permission) {
-        await this.db.collection(this.collection).doc(id).update(permission);
+        await this.getCollection().doc(id).update(permission);
     }
     async delete(id) {
-        await this.db.collection(this.collection).doc(id).delete();
+        await this.getCollection().doc(id).delete();
     }
 }
 exports.FirestorePermissionRepository = FirestorePermissionRepository;

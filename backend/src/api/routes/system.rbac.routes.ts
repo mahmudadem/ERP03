@@ -21,5 +21,6 @@ router.delete('/companies/:companyId/roles/:roleId', RbacController.deleteCompan
 // Company Users (RBAC)
 router.get('/companies/:companyId/users', RbacController.listCompanyUsers);
 router.post('/companies/:companyId/users/:uid/assign-role', RbacController.assignRoleToUser);
+router.delete('/companies/:companyId/users/:userId', RbacController.removeUserFromCompany);
 
 export default router;

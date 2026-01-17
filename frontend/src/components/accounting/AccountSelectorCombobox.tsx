@@ -4,16 +4,11 @@ import { accountingApi } from '../../api/accountingApi';
 import { Combobox } from '@headlessui/react';
 import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 
-interface Account {
-  id: string;
-  code: string;
-  name: string;
-  type: string;
-}
+import { AccountDTO } from '../../api/accountingApi';
 
 interface AccountSelectorProps {
   value: string; // Account ID
-  onChange: (accountId: string, account?: Account) => void;
+  onChange: (accountId: string, account?: AccountDTO) => void;
   className?: string;
   placeholder?: string;
   noBorder?: boolean; // For use in table cells
@@ -54,8 +49,14 @@ export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({
   }
 
   return (
-    <Combobox value={selectedAccount || null} onChange={(account: Account | null) => {
-      if (account) onChange(account.id, account);
+    <Combobox value={selectedAccount || null} onChange={(account: AccountDTO | null) => {
+      // Allow clearing selection or handle null
+      if (account) {
+        onChange(account.id, account);
+      } else {
+        // Optional: handle clearing if supported by parent
+        // onChange('', undefined); 
+      }
     }}>
       <div className={`relative ${noBorder ? '' : 'mt-1'} ${className}`}>
         <div 
@@ -64,7 +65,7 @@ export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({
         >
           <Combobox.Input
             className={`w-full border-none ${noBorder ? 'py-1 pl-2 pr-8' : 'py-2 pl-3 pr-10'} text-sm leading-5 text-gray-900 focus:ring-0 bg-transparent`}
-            displayValue={(account: Account) => account ? `${account.code} - ${account.name}` : ''}
+            displayValue={(account: AccountDTO) => account ? `${account.code} - ${account.name}` : ''}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={placeholder}
           />

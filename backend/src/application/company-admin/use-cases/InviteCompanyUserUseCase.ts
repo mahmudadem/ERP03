@@ -33,6 +33,12 @@ export class InviteCompanyUserUseCase {
   ) {}
 
   async execute(input: InviteCompanyUserInput): Promise<InvitationResult> {
+    // Normalize email
+    if (input.email) {
+       input.email = input.email.trim().toLowerCase();
+    }
+    console.log(`[Invite] Processing invite for ${input.email} in company ${input.companyId}`);
+    
     // Validate input
     this.validateInput(input);
 
@@ -41,6 +47,7 @@ export class InviteCompanyUserUseCase {
     let userId: string;
 
     if (user) {
+      console.log(`[Invite] Found existing user: ${user.id} (${user.email})`);
       // User exists, check if they're already a member of this company
       const existingMembership = await this.companyUserRepository.getByUserAndCompany(
         user.id,
@@ -48,11 +55,13 @@ export class InviteCompanyUserUseCase {
       );
 
       if (existingMembership) {
+        console.warn(`[Invite] User already member of company`);
         throw ApiError.badRequest('User is already a member of this company');
       }
 
       userId = user.id;
     } else {
+      console.log(`[Invite] User NOT found. Creating new placeholder user.`);
       // User doesn't exist, create a pending user record
       const newUserId = this.generateUserId();
       const fullName = [input.firstName, input.lastName].filter(Boolean).join(' ') || input.email;
@@ -69,6 +78,8 @@ export class InviteCompanyUserUseCase {
       userId = newUserId;
     }
 
+    console.log(`[Invite] Creating membership for userId: ${userId}`);
+
     // Create company user membership with pending status
     const companyUser: CompanyUser = {
       userId,
@@ -79,6 +90,7 @@ export class InviteCompanyUserUseCase {
     };
 
     await this.companyUserRepository.create(companyUser);
+    console.log(`[Invite] Membership created successfully.`);
 
     // Generate invitation details
     const invitationId = this.generateInvitationId();

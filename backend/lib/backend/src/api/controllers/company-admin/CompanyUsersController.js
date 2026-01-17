@@ -6,6 +6,7 @@ const InviteCompanyUserUseCase_1 = require("../../../application/company-admin/u
 const UpdateCompanyUserRoleUseCase_1 = require("../../../application/company-admin/use-cases/UpdateCompanyUserRoleUseCase");
 const DisableCompanyUserUseCase_1 = require("../../../application/company-admin/use-cases/DisableCompanyUserUseCase");
 const EnableCompanyUserUseCase_1 = require("../../../application/company-admin/use-cases/EnableCompanyUserUseCase");
+const DeleteCompanyUserUseCase_1 = require("../../../application/company-admin/use-cases/DeleteCompanyUserUseCase");
 const ApiError_1 = require("../../errors/ApiError");
 /**
  * CompanyUsersController
@@ -201,6 +202,29 @@ class CompanyUsersController {
                 success: true,
                 data: result
             });
+        }
+        catch (error) {
+            return next(error);
+        }
+    }
+    /**
+     * DELETE /company-admin/users/:userId
+     * Remove user from company
+     */
+    static async deleteUser(req, res, next) {
+        try {
+            const tenantContext = req.tenantContext;
+            if (!tenantContext || !tenantContext.companyId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Company context not found'
+                });
+            }
+            const companyId = tenantContext.companyId;
+            const { userId } = req.params;
+            const useCase = new DeleteCompanyUserUseCase_1.DeleteCompanyUserUseCase(bindRepositories_1.diContainer.rbacCompanyUserRepository);
+            await useCase.execute({ companyId, userId });
+            return res.status(200).json({ success: true });
         }
         catch (error) {
             return next(error);

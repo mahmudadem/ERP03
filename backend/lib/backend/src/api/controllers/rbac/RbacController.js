@@ -5,6 +5,7 @@ const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories"
 const CreateCompanyRoleUseCase_1 = require("../../../application/rbac/use-cases/CreateCompanyRoleUseCase");
 const UpdateCompanyRoleUseCase_1 = require("../../../application/rbac/use-cases/UpdateCompanyRoleUseCase");
 const DeleteCompanyRoleUseCase_1 = require("../../../application/rbac/use-cases/DeleteCompanyRoleUseCase");
+const DeleteCompanyUserUseCase_1 = require("../../../application/company-admin/use-cases/DeleteCompanyUserUseCase");
 const AssignRoleToCompanyUserUseCase_1 = require("../../../application/rbac/use-cases/AssignRoleToCompanyUserUseCase");
 const ListCompanyRolesUseCase_1 = require("../../../application/rbac/use-cases/ListCompanyRolesUseCase");
 const ListCompanyUsersWithRolesUseCase_1 = require("../../../application/rbac/use-cases/ListCompanyUsersWithRolesUseCase");
@@ -121,6 +122,17 @@ class RbacController {
                 actorId
             });
             res.json({ success: true, message: 'Role assigned' });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async removeUserFromCompany(req, res, next) {
+        try {
+            const { companyId, userId } = req.params;
+            const useCase = new DeleteCompanyUserUseCase_1.DeleteCompanyUserUseCase(bindRepositories_1.diContainer.rbacCompanyUserRepository);
+            await useCase.execute({ companyId, userId });
+            res.json({ success: true, message: 'User removed' });
         }
         catch (error) {
             next(error);

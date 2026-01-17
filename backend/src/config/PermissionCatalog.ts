@@ -20,12 +20,34 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
     {
         moduleId: 'accounting',
         permissions: [
+            // General
             { id: 'accounting.view', label: 'View Accounting Dashboard' },
+            
+            // Charts of Accounts
             { id: 'accounting.accounts.view', label: 'View Chart of Accounts' },
             { id: 'accounting.accounts.manage', label: 'Manage Chart of Accounts' },
+            
+            // Vouchers (General)
             { id: 'accounting.vouchers.view', label: 'View Vouchers' },
             { id: 'accounting.vouchers.create', label: 'Create Vouchers' },
-            { id: 'accounting.vouchers.approve', label: 'Approve Vouchers' },
+            { id: 'accounting.vouchers.edit', label: 'Edit Draft Vouchers' },
+            { id: 'accounting.vouchers.delete', label: 'Delete Draft Vouchers' },
+            { id: 'accounting.vouchers.post', label: 'Post Vouchers' }, // Force post permission
+            
+            // Approval Workflow
+            { id: 'accounting.approve.finance', label: 'Financial Approval' },
+            
+            // Custody Workflow
+            { id: 'accounting.custodian.view', label: 'View Custody Requests' },
+            { id: 'accounting.custodian.verify', label: 'Confirm Custody' },
+
+            // Design & Configuration
+            { id: 'accounting.designer.view', label: 'View Voucher Designs' },
+            { id: 'accounting.designer.create', label: 'Create Voucher Designs' },
+            { id: 'accounting.designer.modify', label: 'Modify Voucher Designs' },
+            { id: 'accounting.designer.delete', label: 'Delete Voucher Designs' },
+            
+            // Reporting
             { id: 'accounting.reports.view', label: 'View Financial Reports' },
         ]
     },

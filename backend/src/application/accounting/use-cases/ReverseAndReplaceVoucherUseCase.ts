@@ -55,7 +55,7 @@ export class ReverseAndReplaceVoucherUseCase {
     replacePayload?: ReplacementPayload,
     options: CorrectionOptions = {}
   ): Promise<CorrectionResult> {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.correct');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.correct');
 
     return this.transactionManager.runTransaction(async (transaction) => {
       // Step 1: Load and validate original voucher

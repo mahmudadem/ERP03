@@ -183,6 +183,11 @@ export const enableUser = async (
   };
 };
 
+export const deleteUser = async (userId: string): Promise<{ success: boolean }> => {
+  const response = await client.delete(`/tenant/company-admin/users/${userId}`);
+  return response as unknown as { success: boolean };
+};
+
 // ============================================================================
 // ROLES API
 // ============================================================================

@@ -28,6 +28,7 @@ router.post('/users/invite', CompanyUsersController_1.CompanyUsersController.inv
 router.post('/users/:userId/update-role', CompanyUsersController_1.CompanyUsersController.updateUserRole);
 router.post('/users/:userId/disable', CompanyUsersController_1.CompanyUsersController.disableUser);
 router.post('/users/:userId/enable', CompanyUsersController_1.CompanyUsersController.enableUser);
+router.delete('/users/:userId', CompanyUsersController_1.CompanyUsersController.deleteUser);
 // ============================================================================
 // ROLE ROUTES
 // ============================================================================

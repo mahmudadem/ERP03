@@ -10,13 +10,13 @@ class FirestoreCompanyRoleRepository {
     }
     async getAll(companyId) {
         const snapshot = await this.getCollection(companyId).get();
-        return snapshot.docs.map(doc => doc.data());
+        return snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
     }
     async getById(companyId, roleId) {
         const doc = await this.getCollection(companyId).doc(roleId).get();
         if (!doc.exists)
             return null;
-        return doc.data();
+        return Object.assign({ id: doc.id }, doc.data());
     }
     async create(role) {
         await this.getCollection(role.companyId).doc(role.id).set(role);

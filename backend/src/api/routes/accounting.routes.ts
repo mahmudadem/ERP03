@@ -39,7 +39,7 @@ router.post('/vouchers',
   VoucherController.create
 );
 router.put('/vouchers/:id', permissionGuard('accounting.vouchers.edit'), VoucherController.update);
-router.post('/vouchers/:id/approve', permissionGuard('accounting.vouchers.approve'), VoucherController.approve);
+router.post('/vouchers/:id/approve', permissionGuard('accounting.vouchers.edit'), VoucherController.approve);
 router.post('/vouchers/:id/verify', permissionGuard('accounting.vouchers.approve'), VoucherController.verify);
 router.post('/vouchers/:id/confirm', permissionGuard('accounting.vouchers.view'), VoucherController.confirm); // V1: View perm + user check in controller
 router.post('/vouchers/:id/post', permissionGuard('accounting.vouchers.post'), VoucherController.post);
@@ -63,7 +63,7 @@ router.put('/designer/voucher-types/:code', permissionGuard('accounting.designer
 router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
 
 // Policy Configuration
-router.get('/policy-config', permissionGuard('accounting.settings.read'), SettingsController.getSettings);
+router.get('/policy-config', permissionGuard('accounting.vouchers.view'), SettingsController.getSettings);
 router.put('/policy-config', permissionGuard('accounting.settings.write'), SettingsController.updateSettings);
 
 // VoucherForms (UI layouts)

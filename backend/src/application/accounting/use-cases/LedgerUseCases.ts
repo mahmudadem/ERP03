@@ -15,7 +15,7 @@ export class DeleteVoucherLedgerUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, voucherId: string) {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.cancel');
     await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
   }
 }
@@ -27,7 +27,7 @@ export class GetTrialBalanceUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, asOfDate: string): Promise<TrialBalanceRow[]> {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'report.trialBalance');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.trialBalance.view');
     return this.ledgerRepo.getTrialBalance(companyId, asOfDate);
   }
 }
@@ -39,7 +39,7 @@ export class GetGeneralLedgerUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, filters: GLFilters) {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'report.generalLedger');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
     return this.ledgerRepo.getGeneralLedger(companyId, filters);
   }
 }
@@ -51,7 +51,7 @@ export class GetJournalUseCase {
   ) {}
 
   async execute(companyId: string, userId: string, filters: GLFilters) {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'report.journal');
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
     return this.ledgerRepo.getGeneralLedger(companyId, filters);
   }
 }

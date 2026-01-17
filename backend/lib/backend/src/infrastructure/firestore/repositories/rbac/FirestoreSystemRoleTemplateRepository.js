@@ -4,26 +4,28 @@ exports.FirestoreSystemRoleTemplateRepository = void 0;
 class FirestoreSystemRoleTemplateRepository {
     constructor(db) {
         this.db = db;
-        this.collection = 'system_role_templates';
+    }
+    getCollection() {
+        return this.db.collection('system_metadata').doc('role_templates').collection('items');
     }
     async getAll() {
-        const snapshot = await this.db.collection(this.collection).get();
-        return snapshot.docs.map(doc => doc.data());
+        const snapshot = await this.getCollection().get();
+        return snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
     }
     async getById(id) {
-        const doc = await this.db.collection(this.collection).doc(id).get();
+        const doc = await this.getCollection().doc(id).get();
         if (!doc.exists)
             return null;
-        return doc.data();
+        return Object.assign({ id: doc.id }, doc.data());
     }
     async create(template) {
-        await this.db.collection(this.collection).doc(template.id).set(template);
+        await this.getCollection().doc(template.id).set(template);
     }
     async update(id, template) {
-        await this.db.collection(this.collection).doc(id).update(template);
+        await this.getCollection().doc(id).update(template);
     }
     async delete(id) {
-        await this.db.collection(this.collection).doc(id).delete();
+        await this.getCollection().doc(id).delete();
     }
 }
 exports.FirestoreSystemRoleTemplateRepository = FirestoreSystemRoleTemplateRepository;

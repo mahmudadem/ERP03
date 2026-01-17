@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { VoucherFormConfig } from '../types';
 import { useFormUsageCheck } from '../../../../hooks/useFormUsageCheck';
-import { Plus, Edit3, Trash2, Power, PowerOff } from 'lucide-react';
+import { Plus, Edit3, Trash2, MoreVertical, Download, FileJson } from 'lucide-react';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
 
 interface FormCardProps {
@@ -11,6 +11,7 @@ interface FormCardProps {
   onClone: (form: VoucherFormConfig) => void;
   onDelete: (formId: string) => void;
   onToggleEnabled: (formId: string, enabled: boolean) => void;
+  onExport: (form: VoucherFormConfig) => void;
 }
 
 export const FormCard: React.FC<FormCardProps> = ({
@@ -19,13 +20,26 @@ export const FormCard: React.FC<FormCardProps> = ({
   onEdit,
   onClone,
   onDelete,
-  onToggleEnabled
+  onToggleEnabled,
+  onExport
 }) => {
   const { isInUse, voucherCount, isChecking } = useFormUsageCheck(form.id);
   const isEnabled = form.enabled !== false; // Default to enabled
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group ${
+    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-visible group relative ${
       !isEnabled ? 'opacity-60' : ''
     }`}>
       <div className="p-6">
@@ -134,9 +148,52 @@ export const FormCard: React.FC<FormCardProps> = ({
         </div>
       </div>
       
-      <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+      <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 relative">
         <span>{isProtected ? 'System Template' : 'User Created'}</span>
-        {isChecking && <span className="text-blue-600">Checking usage...</span>}
+        
+        <div className="flex items-center gap-2">
+           {isChecking && <span className="text-blue-600 mr-2">Checking...</span>}
+           
+           <div className="relative" ref={menuRef}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                className="p-1.5 hover:bg-gray-200 rounded text-gray-500 transition-colors"
+                title="More options"
+              >
+                <MoreVertical size={16} />
+              </button>
+              
+              {showMenu && (
+                <div className="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden text-slate-700 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                   <div className="py-1">
+                      <button 
+                        onClick={() => {
+                          onExport(form);
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2"
+                      >
+                         <Download size={14} />
+                         Export JSON
+                      </button>
+                      <button 
+                        onClick={() => {
+                           /* Placeholder for future actions like "Print Spec" */ 
+                           setShowMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-gray-400 cursor-not-allowed flex items-center gap-2"
+                      >
+                         <FileJson size={14} />
+                         View Schema
+                      </button>
+                   </div>
+                </div>
+              )}
+           </div>
+        </div>
       </div>
     </div>
   );

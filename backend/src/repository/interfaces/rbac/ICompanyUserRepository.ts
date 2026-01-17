@@ -11,4 +11,5 @@ export interface ICompanyUserRepository {
   removeRole(userId: string, companyId: string): Promise<void>;
   create(companyUser: CompanyUser): Promise<void>;
   update(userId: string, companyId: string, updates: Partial<CompanyUser>): Promise<void>;
+  delete(companyId: string, userId: string): Promise<void>;
 }

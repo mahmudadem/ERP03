@@ -30,6 +30,7 @@ router.post('/users/invite', CompanyUsersController.inviteUser);
 router.post('/users/:userId/update-role', CompanyUsersController.updateUserRole);
 router.post('/users/:userId/disable', CompanyUsersController.disableUser);
 router.post('/users/:userId/enable', CompanyUsersController.enableUser);
+router.delete('/users/:userId', CompanyUsersController.deleteUser);
 
 // ============================================================================
 // ROLE ROUTES

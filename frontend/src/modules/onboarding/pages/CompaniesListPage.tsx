@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Building2, ExternalLink, MoreVertical, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Building2, ExternalLink, MoreVertical, Loader2, RefreshCw, LogOut } from 'lucide-react';
 import { useCompanies } from '../../company-selector/hooks/useCompanies';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
@@ -16,10 +16,19 @@ import { errorHandler } from '../../../services/errorHandler';
 
 const CompaniesListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { companies, loading, error, refresh } = useCompanies();
   const { switchCompany } = useCompanyAccess();
   const { setUiMode } = useUserPreferences();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (error) {
+       navigate('/auth');
+    }
+  };
 
   const handleEnter = async (companyId: string) => {
     try {
@@ -58,14 +67,24 @@ const CompaniesListPage: React.FC = () => {
           <div className="flex items-center gap-4">
              <button 
                onClick={refresh}
-               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+               className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors hidden sm:block"
                title="Refresh"
              >
                <RefreshCw className="h-5 w-5" />
              </button>
+             
              <div className="h-8 w-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-medium">
                {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
              </div>
+
+             <button 
+               onClick={handleLogout}
+               className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors ml-2"
+               title="Sign Out"
+             >
+               <LogOut className="h-4 w-4" />
+               <span className="hidden sm:inline">Sign Out</span>
+             </button>
           </div>
         </div>
       </header>

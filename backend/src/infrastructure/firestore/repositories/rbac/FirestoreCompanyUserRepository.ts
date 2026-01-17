@@ -33,12 +33,26 @@ export class FirestoreCompanyUserRepository implements ICompanyUserRepository {
   }
 
   async getMembershipsByUser(userId: string): Promise<Array<CompanyUser & { companyId: string }>> {
-    const snapshot = await this.db.collectionGroup('users').where('userId', '==', userId).get();
-    return snapshot.docs.map((doc) => {
-      const data = doc.data() as CompanyUser;
-      const companyId = doc.ref.parent.parent?.id || '';
-      return { ...data, companyId };
-    });
+    console.log(`[RBAC Repo] getMembershipsByUser: Querying collectionGroup('users') for userId=${userId}`);
+    try {
+      const snapshot = await this.db.collectionGroup('users').where('userId', '==', userId).get();
+      console.log(`[RBAC Repo] Found ${snapshot.size} memberships for user ${userId}.`);
+      
+      return snapshot.docs.map((doc) => {
+        const data = doc.data() as CompanyUser;
+        const companyId = doc.ref.parent.parent?.id || '';
+        // console.log(`[RBAC Repo] Found membership in company: ${companyId} (Role: ${data.roleId})`);
+        return { ...data, companyId };
+      });
+    } catch (err: any) {
+      console.error(`[RBAC Repo] Error querying collectionGroup('users'):`, err);
+      // Fallback or rethrow?
+      // Check if error is 'Requires an index'
+      if (err.message && err.message.includes('requires an index')) {
+         console.error(`[RBAC Repo] MISSING INDEX on collectionGroup 'users' for field 'userId'. Please create it in Firebase Console.`);
+      }
+      return [];
+    }
   }
 
   async assignRole(companyUser: CompanyUser): Promise<void> {
@@ -55,5 +69,9 @@ export class FirestoreCompanyUserRepository implements ICompanyUserRepository {
 
   async removeRole(userId: string, companyId: string): Promise<void> {
     await this.getCollection(companyId).doc(userId).update({ roleId: admin.firestore.FieldValue.delete() });
+  }
+
+  async delete(companyId: string, userId: string): Promise<void> {
+    await this.getCollection(companyId).doc(userId).delete();
   }
 }

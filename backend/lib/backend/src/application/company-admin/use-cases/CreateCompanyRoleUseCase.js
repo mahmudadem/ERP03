@@ -28,11 +28,14 @@ class CreateCompanyRoleUseCase {
         await this.companyRoleRepository.create(role);
         // Return DTO
         return {
-            roleId: role.id,
+            id: role.id,
+            companyId: role.companyId,
             name: role.name,
             description: role.description,
             permissions: role.permissions,
-            createdAt: role.createdAt
+            isSystem: role.isSystem,
+            createdAt: role.createdAt,
+            updatedAt: role.updatedAt
         };
     }
 }

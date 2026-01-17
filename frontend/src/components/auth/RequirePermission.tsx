@@ -17,7 +17,7 @@ export function RequirePermission({ permission, children, fallback = null }: Req
   // 3. User has specific permission
   const hasPermission = isSuperAdmin || 
                        permissions.includes('*') || 
-                       permissions.includes(permission);
+                       permissions.some(p => p === permission || permission.startsWith(p + '.'));
   
   if (hasPermission) {
     return <>{children}</>;

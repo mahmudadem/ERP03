@@ -27,7 +27,9 @@ export interface CompanyRole {
   permissions: string[];
   sourceTemplateId?: string;
   isDefaultForNewUsers?: boolean;
+  isSystem?: boolean;
 }
+
 
 export interface CompanyUser {
   userId: string;
@@ -39,39 +41,44 @@ export interface CompanyUser {
 
 export const rbacApi = {
   getPermissions: (): Promise<Permission[]> => {
-    return client.get('/rbac/permissions');
+    return client.get('/tenant/rbac/permissions');
   },
 
   getSystemRoleTemplates: (): Promise<SystemRoleTemplate[]> => {
-    return client.get('/rbac/system-role-templates');
+    return client.get('/tenant/rbac/system-role-templates');
   },
 
   getCurrentUserPermissions: (companyId: string): Promise<string[]> => {
-    return client.get(`/rbac/current-user-permissions?companyId=${companyId}`);
+    return client.get(`/tenant/rbac/current-user-permissions?companyId=${companyId}`);
   },
 
   listCompanyRoles: (companyId: string): Promise<CompanyRole[]> => {
-    return client.get(`/rbac/companies/${companyId}/roles`);
+    return client.get(`/tenant/rbac/companies/${companyId}/roles`);
   },
 
   createCompanyRole: (companyId: string, role: Partial<CompanyRole>): Promise<CompanyRole> => {
-    return client.post(`/rbac/companies/${companyId}/roles`, role);
+    return client.post(`/tenant/rbac/companies/${companyId}/roles`, role);
   },
 
   updateCompanyRole: (companyId: string, roleId: string, updates: Partial<CompanyRole>): Promise<void> => {
-    return client.patch(`/rbac/companies/${companyId}/roles/${roleId}`, updates);
+    return client.patch(`/tenant/rbac/companies/${companyId}/roles/${roleId}`, updates);
   },
 
   deleteCompanyRole: (companyId: string, roleId: string): Promise<void> => {
-    return client.delete(`/rbac/companies/${companyId}/roles/${roleId}`);
+    return client.delete(`/tenant/rbac/companies/${companyId}/roles/${roleId}`);
   },
 
   listCompanyUsers: (companyId: string): Promise<CompanyUser[]> => {
-    return client.get(`/rbac/companies/${companyId}/users`);
+    return client.get(`/tenant/rbac/companies/${companyId}/users`);
   },
 
   assignRoleToUser: (companyId: string, userId: string, roleId: string): Promise<void> => {
-    return client.post(`/rbac/companies/${companyId}/users/${userId}/assign-role`, { roleId });
+    return client.post(`/tenant/rbac/companies/${companyId}/users/${userId}/assign-role`, { roleId });
+  },
+
+  deleteCompanyUser: (companyId: string, userId: string): Promise<void> => {
+    return client.delete(`/tenant/rbac/companies/${companyId}/users/${userId}`);
   }
 };
+
 

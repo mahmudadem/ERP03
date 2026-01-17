@@ -23,7 +23,7 @@ export class AccountController {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'coa.view');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.view');
 
       const useCase = new ListAccountsUseCase(diContainer.accountRepository);
       const accounts = await useCase.execute(companyId);
@@ -44,7 +44,7 @@ export class AccountController {
       const userId = (req as any).user.uid;
       const voucherType = req.query.voucherType as string | undefined;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
 
       const validationService = new AccountValidationService(diContainer.accountRepository);
       const validAccounts = await validationService.getValidAccounts(companyId, userId, voucherType);
@@ -65,7 +65,7 @@ export class AccountController {
       const { code } = req.params;
       const voucherType = req.query.voucherType as string | undefined;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
 
       const validationService = new AccountValidationService(diContainer.accountRepository);
       const account = await validationService.resolveAndValidate(companyId, userId, code, voucherType);
@@ -82,7 +82,7 @@ export class AccountController {
       const userId = (req as any).user.uid;
       const { id } = req.params;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'coa.view');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.view');
 
       const useCase = new GetAccountUseCase(diContainer.accountRepository);
       const account = await useCase.execute(companyId, id);
@@ -102,7 +102,7 @@ export class AccountController {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
 
       const useCase = new CreateAccountUseCase(diContainer.accountRepository);
       const account = await useCase.execute(companyId, {
@@ -122,7 +122,7 @@ export class AccountController {
       const userId = (req as any).user.uid;
       const { id } = req.params;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
 
       const useCase = new UpdateAccountUseCase(diContainer.accountRepository);
       const account = await useCase.execute(companyId, id, {
@@ -142,7 +142,7 @@ export class AccountController {
       const userId = (req as any).user.uid;
       const { id } = req.params;
 
-      await permissionChecker.assertOrThrow(userId, companyId, 'coa.edit');
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
 
       const useCase = new DeactivateAccountUseCase(diContainer.accountRepository);
       await useCase.execute(companyId, id);

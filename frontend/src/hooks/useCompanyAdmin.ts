@@ -119,6 +119,17 @@ export const useCompanyUsers = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: companyAdminApi.deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
+      toast.success('User removed successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to remove user');
+    },
+  });
+
   return {
     users: query.data || [],
     isLoading: query.isLoading,
@@ -133,6 +144,8 @@ export const useCompanyUsers = () => {
     isDisabling: disableMutation.isPending,
     enableUser: enableMutation.mutate,
     isEnabling: enableMutation.isPending,
+    deleteUser: deleteMutation.mutate,
+    isDeleting: deleteMutation.isPending,
   };
 };
 

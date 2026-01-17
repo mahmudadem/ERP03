@@ -18,11 +18,14 @@ export class ListCompanyRolesUseCase {
 
         // Return DTO
         return roles.map(r => ({
-            roleId: r.id,
+            id: r.id,
+            companyId: r.companyId,
             name: r.name,
             description: r.description || '',
             isSystem: !!r.isSystem,
-            permissions: r.permissions || []
+            permissions: r.permissions || [],
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
         }));
     }
 }

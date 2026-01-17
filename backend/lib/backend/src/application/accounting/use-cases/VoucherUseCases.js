@@ -54,7 +54,7 @@ class CreateVoucherUseCase {
         this.policyRegistry = policyRegistry;
     }
     async execute(companyId, userId, payload) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.create');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
         return this.transactionManager.runTransaction(async (transaction) => {
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
             // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
@@ -121,7 +121,7 @@ class CreateVoucherUseCase {
                 const ledgerRepo = this.ledgerRepo;
                 const registry = this.policyRegistry;
                 // Security: Ensure user has post permission (since we bypassed PostVoucherUseCase)
-                await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.post');
+                await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.post');
                 // 1. Approve the voucher
                 const approvedVoucher = voucher.approve(userId, new Date());
                 // 2. Determine lock policy based on current config
@@ -167,7 +167,7 @@ class UpdateVoucherUseCase {
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.update');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.edit');
         // Check approval settings to determine allowed status transitions
         let approvalRequired = true; // Default to requiring approval
         if (this.policyConfigProvider) {
@@ -286,7 +286,7 @@ class ApproveVoucherUseCase {
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.approve');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.approve.finance');
         if (voucher.status !== VoucherTypes_1.VoucherStatus.PENDING) {
             throw new Error(`Cannot approve voucher with status: ${voucher.status}. Voucher must be in PENDING status.`);
         }
@@ -336,7 +336,7 @@ class PostVoucherUseCase {
         const { PostingError } = await Promise.resolve().then(() => __importStar(require('../../../domain/shared/errors/AppError')));
         // Generate correlationId if not provided
         const corrId = correlationId || uuidv4();
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.post');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.post');
         return this.transactionManager.runTransaction(async (transaction) => {
             var _a;
             const voucher = await this.voucherRepo.findById(companyId, voucherId);
@@ -467,7 +467,7 @@ class CancelVoucherUseCase {
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.delete');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.delete');
         // V3: Governance Guard for Deleting Posted Vouchers
         let isStrictMode = true; // Default to strict
         let allowEditDeletePosted = false;
@@ -562,7 +562,7 @@ class GetVoucherUseCase {
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
         return voucher;
     }
 }
@@ -573,7 +573,7 @@ class ListVouchersUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, limit) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.view');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
         return this.voucherRepo.findByCompany(companyId, limit);
     }
 }

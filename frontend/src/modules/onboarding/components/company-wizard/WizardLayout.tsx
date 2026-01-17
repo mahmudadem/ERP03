@@ -1,7 +1,10 @@
 
 import React from 'react';
 import { WizardStep } from './types';
-import { Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../context/AuthContext';
+import { Button } from '../../../../components/ui/Button';
+import { LogOut, Check } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 
 interface WizardLayoutProps {
@@ -24,6 +27,8 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
   title,
   subtitle
 }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const isComplete = currentStep === WizardStep.Success;
 
   return (
@@ -36,6 +41,20 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                 <h2 className="text-xl md:text-2xl font-bold text-[var(--color-text-primary)]">{title}</h2>
                 {/* Hide subtitle on very small screens to save space */}
                 <p className="text-sm md:text-base text-[var(--color-text-secondary)] mt-1 hidden xs:block">{subtitle}</p>
+            </div>
+            
+            <div className="flex-shrink-0">
+               <Button 
+                 variant="ghost" 
+                 size="sm" 
+                 onClick={async () => {
+                    try { await logout(); navigate('/auth'); } catch (e) { navigate('/auth'); }
+                 }} 
+                 className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+               >
+                 <LogOut className="h-4 w-4 mr-2" />
+                 Sign Out
+               </Button>
             </div>
         </div>
         
