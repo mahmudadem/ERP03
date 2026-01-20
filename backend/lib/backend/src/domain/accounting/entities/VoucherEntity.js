@@ -90,10 +90,11 @@ class VoucherEntity {
         }
         // Invariant: All lines must use the SAME baseCurrency (company base currency)
         // NOTE: FX currencies (line.currency) may differ - mixed FX is allowed
-        const invalidBaseLines = lines.filter(line => line.baseCurrency !== baseCurrency);
+        const normalizedBase = baseCurrency.toUpperCase();
+        const invalidBaseLines = lines.filter(line => line.baseCurrency.toUpperCase() !== normalizedBase);
         if (invalidBaseLines.length > 0) {
-            throw new Error(`All lines must use the same base currency (${baseCurrency}). ` +
-                `Found lines with: ${[...new Set(invalidBaseLines.map(l => l.baseCurrency))].join(', ')}`);
+            throw new Error(`All lines must use the same base currency (${normalizedBase}). ` +
+                `Found lines with: ${[...new Set(invalidBaseLines.map(l => l.baseCurrency.toUpperCase()))].join(', ')}`);
         }
     }
     // ========== Convenience getters for metadata fields ==========

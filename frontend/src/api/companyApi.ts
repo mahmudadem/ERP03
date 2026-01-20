@@ -5,9 +5,11 @@ export type UIMode = 'classic' | 'windows';
 export interface CompanySettings {
   companyId: string;
   strictApprovalMode: boolean;
+  baseCurrency: string; // The company's reporting currency (e.g., USD)
   uiMode?: UIMode;
   timezone?: string; // e.g., 'UTC', 'Europe/Istanbul'
   dateFormat?: string; // e.g., 'YYYY-MM-DD', 'DD/MM/YYYY'
+
 }
 
 export const companyApi = {

@@ -14,7 +14,7 @@ class DeleteVoucherLedgerUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, voucherId) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.cancel');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.cancel');
         await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
     }
 }
@@ -25,7 +25,7 @@ class GetTrialBalanceUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, asOfDate) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'report.trialBalance');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.trialBalance.view');
         return this.ledgerRepo.getTrialBalance(companyId, asOfDate);
     }
 }
@@ -36,7 +36,7 @@ class GetGeneralLedgerUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, filters) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'report.generalLedger');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
         return this.ledgerRepo.getGeneralLedger(companyId, filters);
     }
 }
@@ -47,7 +47,7 @@ class GetJournalUseCase {
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, filters) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'report.journal');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
         return this.ledgerRepo.getGeneralLedger(companyId, filters);
     }
 }

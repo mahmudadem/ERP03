@@ -138,6 +138,9 @@ class SettingsController {
                     requiredFor: req.body.costCenterPolicy.requiredFor || {}
                 };
             }
+            if (req.body.paymentMethods !== undefined) {
+                updateData.paymentMethods = req.body.paymentMethods;
+            }
             // Update Firestore
             console.log('[SettingsController] Saving to path:', `companies/${companyId}/settings/accounting`);
             console.log('[SettingsController] Update data:', JSON.stringify(updateData, null, 2));
@@ -191,6 +194,16 @@ class SettingsController {
                     code: 'INVALID_TYPE',
                     message: 'costCenterPolicy.requiredFor.accountTypes must be an array',
                     fieldHints: ['costCenterPolicy.requiredFor.accountTypes']
+                });
+            }
+        }
+        // Validate paymentMethods is array
+        if (body.paymentMethods !== undefined) {
+            if (!Array.isArray(body.paymentMethods)) {
+                errors.push({
+                    code: 'INVALID_TYPE',
+                    message: 'paymentMethods must be an array',
+                    fieldHints: ['paymentMethods']
                 });
             }
         }

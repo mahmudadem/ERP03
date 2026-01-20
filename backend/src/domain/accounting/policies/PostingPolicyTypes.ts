@@ -160,4 +160,18 @@ export interface AccountingPolicyConfig {
    * - AGGREGATE: Collect all policy violations before failing
    */
   policyErrorMode?: 'FAIL_FAST' | 'AGGREGATE';
+
+  /**
+   * Defined payment methods for the company (V1)
+   */
+  paymentMethods?: PaymentMethodDefinition[];
+}
+
+/**
+ * Payment Method Definition
+ */
+export interface PaymentMethodDefinition {
+  id: string;
+  name: string;
+  isEnabled: boolean;
 }

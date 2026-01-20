@@ -746,18 +746,19 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             // Fallback to rendererRef for initial load only if liveLines is empty
             const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
             
-            // For balanced state, we MUST use equivalent (Base Amount)
             const safeParse = (val: any) => {
               const num = parseFloat(val);
               return isNaN(num) ? 0 : num;
             };
 
             const getLineAmounts = (row: any) => {
+              const headerExchangeRate = parseFloat(win.data?.exchangeRate) || 1.0;
+              
               // Handle V2 Format (from onChange / liveLines)
               if (row.side) {
                 const amount = safeParse(row.amount);
                 const parity = safeParse(row.exchangeRate || row.parity || 1);
-                const baseAmount = amount * parity;
+                const baseAmount = amount * parity * headerExchangeRate; // Correctly multiply by header rate
                 
                 return {
                   debit: row.side === 'Debit' ? baseAmount : 0,
@@ -768,32 +769,32 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               // Handle V1 Format (from rendererRef / internal state)
               const parity = safeParse(row.parity || 1);
               return {
-                debit: safeParse(row.debit) * parity,
-                credit: safeParse(row.credit) * parity
+                debit: safeParse(row.debit) * parity * headerExchangeRate,
+                credit: safeParse(row.credit) * parity * headerExchangeRate
               };
             };
 
-            const totalDebit = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).debit, 0);
-            const totalCredit = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).credit, 0);
+            const totalDebitCalc = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).debit, 0);
+            const totalCreditCalc = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).credit, 0);
             
-            const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
-            const hasValues = totalDebit > 0 || totalCredit > 0;
+            const isBalanced = Math.abs(totalDebitCalc - totalCreditCalc) < 0.01;
+            const hasValues = totalDebitCalc > 0 || totalCreditCalc > 0;
             
             // Gray when both are 0, green when balanced with values, red when unbalanced
             const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
             const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
             
-            const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+            const baseCurrencyLabels = (win.voucherType as any)?.defaultCurrency || 'USD';
             
             return (
               <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({baseCurrency})</span>
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({baseCurrencyLabels})</span>
                   <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }).format(totalDebit)}
+                    }).format(totalDebitCalc)}
                   </span>
                 </div>
                 
@@ -801,12 +802,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
                 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({baseCurrency})</span>
+                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({baseCurrencyLabels})</span>
                   <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
                     {new Intl.NumberFormat('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
-                    }).format(totalCredit)}
+                    }).format(totalCreditCalc)}
                   </span>
                 </div>
               </div>

@@ -44,7 +44,7 @@ export class CreateVoucherUseCase {
       const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
       // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
       // Ledger entries MUST be in base currency only (accounting rule)
-      const baseCurrency = settings?.baseCurrency || 'USD';
+      const baseCurrency = (settings?.baseCurrency || 'USD').toUpperCase();
       const autoNumbering = settings?.autoNumbering !== false;
 
       const voucherId = payload.id || randomUUID();
@@ -67,7 +67,7 @@ export class CreateVoucherUseCase {
           }
         }
         
-        lines = await strategy.generateLines(strategyInput, companyId);
+        lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
       } else {
         // Map incoming lines to V2 VoucherLineEntity
         // Strictly V2 format (side, amount, baseAmount)
@@ -114,6 +114,19 @@ export class CreateVoucherUseCase {
         ...(payload.prefix && { prefix: payload.prefix }),
       };
 
+      // Check if Approval is OFF -> Auto-Post
+      let approvalRequired = true;
+      if (this.policyConfigProvider) {
+        try {
+          const config = await this.policyConfigProvider.getConfig(companyId);
+          approvalRequired = config.approvalRequired;
+        } catch (e) {}
+      }
+
+      // V3: Inject creationMode for audit transparency and badge logic
+      // This ensures that even before posting, the intended governance mode is clear.
+      const creationMode = approvalRequired ? 'STRICT' : 'FLEXIBLE';
+      
       const voucher = new VoucherEntity(
         voucherId,
         companyId,
@@ -128,25 +141,16 @@ export class CreateVoucherUseCase {
         totalDebit,
         totalCredit,
         VoucherStatus.DRAFT,
-        voucherMetadata,
+        { ...voucherMetadata, creationMode }, // Inject creationMode here
         userId,
         new Date()
       );
 
-      await this.voucherRepo.save(voucher);
-
-      // Check if Approval is OFF -> Auto-Post
-      let approvalRequired = true;
-      if (this.policyConfigProvider) {
-        try {
-          const config = await this.policyConfigProvider.getConfig(companyId);
-        approvalRequired = config.approvalRequired;
-        } catch (e) {}
-      }
-
       // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
       // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
       this.validationService.validateCore(voucher);
+
+      await this.voucherRepo.save(voucher);
 
       if (!approvalRequired && this.ledgerRepo) {
         // Flexible Mode (Mode A): Auto-approve, then post inline
@@ -271,7 +275,7 @@ export class UpdateVoucherUseCase {
 
     // Simplified update logic: create new entity with merged data
     // CRITICAL: baseCurrency must remain the company's base currency, never from payload
-    const baseCurrency = voucher.baseCurrency; // Use existing voucher's base currency (company's base)
+    const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
     const lines = payload.lines ? payload.lines.map((l: any, idx: number) => new VoucherLineEntity(
       idx + 1,
       l.accountId || voucher.lines[idx]?.accountId,

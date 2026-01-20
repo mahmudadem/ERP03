@@ -11,12 +11,11 @@ import { VoucherLineEntity, roundMoney } from '../../entities/VoucherLineEntity'
  * Accepts both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx).
  */
 export class JournalEntryStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+  async generateLines(header: any, companyId: string, baseCurrency: string): Promise<VoucherLineEntity[]> {
     if (!header.lines || !Array.isArray(header.lines) || header.lines.length === 0) {
       throw new Error('Journal entry must have at least one line');
     }
 
-    const baseCurrency = header.baseCurrency || 'USD';
     const headerRate = Number(header.exchangeRate) || 1;
     const lines: VoucherLineEntity[] = [];
     let totalDebitBase = 0;
@@ -36,11 +35,11 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
       const amount = Math.abs(Number(inputLine.amount) || 0);
       let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
       
-      // Calculate baseAmount if not provided
-      if (baseAmount === 0 && amount > 0) {
-        const rate = Number(inputLine.exchangeRate) || headerRate;
-        baseAmount = roundMoney(amount * rate);
-      }
+      const lineParity = Number(inputLine.exchangeRate) || 1; // UI sends parity relative to header
+      const absoluteRate = roundMoney(headerRate * lineParity);
+      
+      // Calculate baseAmount
+      baseAmount = roundMoney(amount * absoluteRate);
 
       // Validate we have valid amounts
       if (amount <= 0) {
@@ -51,8 +50,9 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
         throw new Error(`Line ${idx + 1}: Base amount must be positive`);
       }
 
-      const lineCurrency = inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency;
-      const lineRate = Number(inputLine.exchangeRate) || headerRate;
+      const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
+      const lineRate = absoluteRate;
+
 
       const line = new VoucherLineEntity(
         idx + 1,

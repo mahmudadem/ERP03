@@ -10,7 +10,7 @@ import {
     AccountStatus
 } from '../../../api/accounting';
 import { CurrencySelector } from './shared/CurrencySelector';
-import { useCompanyUsers } from '../../../hooks/useCompanyAdmin';
+import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { Shield, UserCheck, Lock } from 'lucide-react';
 
 interface AccountFormProps {
@@ -84,6 +84,9 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     const [currencyPolicy, setCurrencyPolicy] = useState<CurrencyPolicy>(initialValues?.currencyPolicy || 'INHERIT');
     const [fixedCurrencyCode, setFixedCurrencyCode] = useState(initialValues?.fixedCurrencyCode || initialValues?.currency || '');
 
+    const { profile: companyProfile } = useCompanyProfile();
+    const baseCurrency = companyProfile?.currency || 'USD';
+
     const [requiresApproval, setRequiresApproval] = useState(initialValues?.requiresApproval || false);
     const [requiresCustodyConfirmation, setRequiresCustodyConfirmation] = useState(initialValues?.requiresCustodyConfirmation || false);
     const [custodianUserId, setCustodianUserId] = useState(initialValues?.custodianUserId || '');
@@ -91,6 +94,30 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     const { users: companyUsers, isLoading: isLoadingUsers } = useCompanyUsers();
     
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Get parent details for governance validation
+    const parentAccount = accounts.find(a => a.id === parentId);
+    const isParentForeign = parentAccount?.currencyPolicy === 'FIXED' && parentAccount?.fixedCurrencyCode !== baseCurrency;
+
+    // Professional Governance: Cascade/Enforce policies
+    useEffect(() => {
+        // Rule 1: Root accounts representing Level 0/1 MUST remain in base currency context
+        if (!parentId) {
+            // Force Root to FIXED:Base to ensure maximum clarity (INHERIT is also safe but FIXED is explicit)
+            if (currencyPolicy !== 'FIXED' || fixedCurrencyCode !== baseCurrency) {
+                 setCurrencyPolicy('FIXED');
+                 setFixedCurrencyCode(baseCurrency);
+            }
+        }
+
+        // Rule 2: Children under a foreign parent context MUST share the parent's currency
+        if (parentId && isParentForeign) {
+            if (currencyPolicy !== 'FIXED' || fixedCurrencyCode !== (parentAccount?.fixedCurrencyCode ?? baseCurrency)) {
+                setCurrencyPolicy('FIXED');
+                setFixedCurrencyCode(parentAccount?.fixedCurrencyCode || baseCurrency);
+            }
+        }
+    }, [parentId, isParentForeign, currencyPolicy, fixedCurrencyCode, baseCurrency, parentAccount]);
 
     // Auto-set Balance Nature default when Classification changes
     useEffect(() => {
@@ -259,27 +286,40 @@ export const AccountForm: React.FC<AccountFormProps> = ({
             <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
                  <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Policy & Hierarchy</h3>
                  
-                 <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Currency Policy</label>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+                        Currency Policy
+                        {(!parentId || isParentForeign) && <Lock size={12} className="text-amber-500" />}
+                    </label>
                     <div className="grid grid-cols-2 gap-4">
                         <select
                             value={currencyPolicy}
                             onChange={(e) => setCurrencyPolicy(e.target.value as CurrencyPolicy)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                            disabled={isUsed}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                            disabled={isUsed || (!parentId) || isParentForeign}
                         >
                             {CURRENCY_POLICIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                         
-                        {currencyPolicy === 'FIXED' && (
-                            <CurrencySelector
-                                value={fixedCurrencyCode}
-                                onChange={setFixedCurrencyCode}
-                                placeholder="Select Currency..."
-                                disabled={isUsed}
-                            />
+                        {(currencyPolicy === 'FIXED' || isParentForeign) && (
+                            <div className="relative">
+                                <CurrencySelector
+                                    value={fixedCurrencyCode}
+                                    onChange={setFixedCurrencyCode}
+                                    placeholder="Select Currency..."
+                                    disabled={isUsed || (!parentId) || isParentForeign}
+                                />
+                                {(!parentId) && currencyPolicy === 'FIXED' && (
+                                    <p className="text-[10px] text-amber-600 mt-1 font-medium">Root accounts are locked to {baseCurrency}.</p>
+                                )}
+                            </div>
                         )}
                     </div>
+                    {isParentForeign && (
+                        <p className="text-[10px] text-amber-600 mt-1 font-medium italic">
+                            Account is inside a foreign context ({parentAccount?.fixedCurrencyCode}). Parent's currency must be used.
+                        </p>
+                    )}
                  </div>
 
                  <div>

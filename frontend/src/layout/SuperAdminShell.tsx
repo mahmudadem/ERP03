@@ -15,6 +15,7 @@ import {
   X,
   ChevronRight
 } from 'lucide-react';
+import { PageTitleManager } from '../components/common/PageTitleManager';
 
 interface NavItem {
   path: string;
@@ -48,6 +49,7 @@ export const SuperAdminShell: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <PageTitleManager />
       {/* Sidebar */}
       <aside
         className={`

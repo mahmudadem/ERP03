@@ -49,29 +49,19 @@ function moneyEquals(a, b) {
 }
 exports.moneyEquals = moneyEquals;
 class VoucherLineEntity {
-    constructor(id, accountId, side, 
-    // Base currency (for accounting/reporting - matches company base)
-    baseAmount, baseCurrency, 
-    // Transaction currency (FX - may differ per line)
-    amount, currency, 
-    // FX metadata (rate at transaction time)
-    exchangeRate, 
-    // Optional fields
-    notes, costCenterId, 
-    // Metadata (Generic extra fields)
-    metadata = {}) {
-        // ========== INVARIANT VALIDATIONS ==========
+    constructor(id, accountId, side, baseAmount, baseCurrency, amount, currency, exchangeRate, notes, costCenterId, metadata = {}) {
         this.id = id;
         this.accountId = accountId;
         this.side = side;
         this.baseAmount = baseAmount;
-        this.baseCurrency = baseCurrency;
+        this.baseCurrency = baseCurrency.toUpperCase();
         this.amount = amount;
-        this.currency = currency;
+        this.currency = currency.toUpperCase();
         this.exchangeRate = exchangeRate;
         this.notes = notes;
         this.costCenterId = costCenterId;
         this.metadata = metadata;
+        // ========== INVARIANT VALIDATIONS ==========
         // Invariant: side must be Debit or Credit
         if (side !== 'Debit' && side !== 'Credit') {
             throw new Error(`Invalid side: ${side}. Must be 'Debit' or 'Credit'`);

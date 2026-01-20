@@ -68,7 +68,8 @@ const VoucherEditorPage: React.FC = () => {
     try {
       // For dynamic templates, we pass the formData directly to the backend.
       // The backend Strategy will handle line generation.
-      // We ensure core fields are present.
+    const baseCurrency = companySettings?.baseCurrency || 'USD';
+
 
       const payload = {
         ...formData, // Spread all dynamic fields (header fields, etc.)
@@ -77,6 +78,11 @@ const VoucherEditorPage: React.FC = () => {
         formId: formId, // Store which form layout was used
         date: formData.header?.date || formData.date || new Date().toISOString(),
         currency: formData.header?.currency || formData.currency || 'USD',
+        // Inject creationMode for audit transparency
+        metadata: {
+          ...formData.metadata,
+          creationMode: companySettings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+        },
         // If the template uses a lines table, include it. If not, it might be undefined.
         lines: formData.lines 
       };

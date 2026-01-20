@@ -21,13 +21,13 @@ import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
  * }
  */
 export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+  async generateLines(header: any, companyId: string, baseCurrency: string): Promise<VoucherLineEntity[]> {
     const lines: VoucherLineEntity[] = [];
     
     const depositToAccountId = header.depositToAccountId;
     const currency = header.currency || 'USD';
-    const baseCurrency = header.baseCurrency || 'USD';
     const exchangeRate = Number(header.exchangeRate) || 1;
+
     const sources = header.lines || [];
     
     if (!depositToAccountId) {
@@ -47,6 +47,7 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
     }
     
     const totalBase = totalFx * exchangeRate;
+    const debitCurrency = currency.toUpperCase();
     
     const debitLine = new VoucherLineEntity(
       1,
@@ -55,7 +56,7 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
       totalBase,         // baseAmount
       baseCurrency,      // baseCurrency
       totalFx,           // amount
-      currency,          // currency
+      debitCurrency,     // currency
       exchangeRate,
       header.description || 'Receipt deposited',
       undefined,
@@ -73,6 +74,8 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
             throw new Error(`Line ${i + 1}: Source must have receiveFromAccountId`);
         }
         
+        const creditCurrency = currency.toUpperCase();
+        
         const creditLine = new VoucherLineEntity(
             lines.length + 1,
             source.receiveFromAccountId,
@@ -80,8 +83,9 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
             amountBase,        // baseAmount
             baseCurrency,      // baseCurrency
             amountFx,          // amount
-            currency,          // currency
+            creditCurrency,    // currency
             exchangeRate,
+
             source.notes || source.description || 'Receipt source',
             source.costCenterId,
             source.metadata || {}

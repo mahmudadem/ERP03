@@ -40,7 +40,7 @@ class ReverseAndReplaceVoucherUseCase {
         this.policyConfigProvider = policyConfigProvider;
     }
     async execute(companyId, userId, originalVoucherId, correctionMode, replacePayload, options = {}) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'voucher.correct');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.correct');
         return this.transactionManager.runTransaction(async (transaction) => {
             // Step 1: Load and validate original voucher
             const originalVoucher = await this.voucherRepo.findById(companyId, originalVoucherId);

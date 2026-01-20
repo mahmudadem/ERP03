@@ -111,12 +111,12 @@ class OpeningBalanceHandler {
             // Create debit line if balance > 0 (Asset accounts)
             if (inputLine.debit > 0) {
                 const baseAmount = inputLine.debit * exchangeRate;
-                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Debit', inputLine.debit, currency, baseAmount, baseCurrency, exchangeRate, inputLine.notes));
+                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Debit', baseAmount, baseCurrency, inputLine.debit, currency, exchangeRate, inputLine.notes));
             }
             // Create credit line if balance > 0 (Liability/Equity accounts)
             if (inputLine.credit > 0) {
                 const baseAmount = inputLine.credit * exchangeRate;
-                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Credit', inputLine.credit, currency, baseAmount, baseCurrency, exchangeRate, inputLine.notes));
+                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Credit', baseAmount, baseCurrency, inputLine.credit, currency, exchangeRate, inputLine.notes));
             }
         }
         return voucherLines;

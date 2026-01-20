@@ -9,8 +9,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateAccountUseCase = void 0;
 const Account_1 = require("../../../../domain/accounting/models/Account");
 class UpdateAccountUseCase {
-    constructor(accountRepo) {
+    constructor(accountRepo, companyRepo) {
         this.accountRepo = accountRepo;
+        this.companyRepo = companyRepo;
     }
     async execute(companyId, accountId, data) {
         // 1. Load existing account
@@ -72,8 +73,14 @@ class UpdateAccountUseCase {
                 throw this.createError(balanceError, 400);
             }
         }
-        // 7. Validate parent classification match
+        // 7. Validate classification and context (Professional Governance)
+        const company = await this.companyRepo.findById(companyId);
+        if (!company)
+            throw this.createError('Company not found', 404);
+        const baseCurrency = company.baseCurrency || 'USD';
         const newParentId = data.parentId !== undefined ? data.parentId : existing.parentId;
+        const effectiveCurrencyPolicy = (data.currencyPolicy || existing.currencyPolicy);
+        const effectiveFixedCurrency = data.fixedCurrencyCode !== undefined ? data.fixedCurrencyCode : existing.fixedCurrencyCode;
         if (newParentId) {
             const parent = await this.accountRepo.getById(companyId, newParentId);
             if (!parent) {
@@ -83,8 +90,18 @@ class UpdateAccountUseCase {
             if (parent.classification !== effectiveClassification) {
                 throw this.createError(`Child classification (${effectiveClassification}) must match parent classification (${parent.classification})`, 400);
             }
+            // Professional Governance: Waterfall rule
+            // If the parent is in a foreign currency, child cannot revert to Base
+            if (parent.currencyPolicy === 'FIXED' && parent.fixedCurrencyCode !== baseCurrency) {
+                if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== parent.fixedCurrencyCode) {
+                    throw this.createError(`Professional Governance Violation: Account belongs to a ${parent.fixedCurrencyCode} parent. ` +
+                        `Children inside a foreign context must share the parent's currency (${parent.fixedCurrencyCode}).`, 400);
+                }
+                if (effectiveCurrencyPolicy === 'OPEN') {
+                    throw this.createError(`Professional Governance Violation: Cannot have OPEN currency policy under a foreign FIXED parent (${parent.fixedCurrencyCode}).`, 400);
+                }
+            }
             // Currency policy tree coherence
-            const effectiveCurrencyPolicy = data.currencyPolicy || existing.currencyPolicy;
             if (parent.currencyPolicy === 'FIXED' && effectiveCurrencyPolicy === 'OPEN') {
                 throw this.createError('Child account cannot have OPEN currency policy when parent is FIXED', 400);
             }
@@ -94,6 +111,15 @@ class UpdateAccountUseCase {
                     accountRole: 'HEADER',
                     updatedBy: data.updatedBy
                 });
+            }
+        }
+        else {
+            // Root Level Governance Lock
+            if (effectiveCurrencyPolicy === 'OPEN') {
+                throw this.createError('Root Governance Lock: Root accounts (Assets, Liabilities, etc.) cannot have an OPEN currency policy.', 400);
+            }
+            if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== baseCurrency) {
+                throw this.createError(`Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${baseCurrency}).`, 400);
             }
         }
         // 8. Validate accountRole vs children

@@ -52,30 +52,46 @@ export function moneyEquals(a: number, b: number): boolean {
 }
 
 export class VoucherLineEntity {
+  public readonly id: number;
+  public readonly accountId: string;
+  public readonly side: TransactionSide;
+  public readonly baseAmount: number;
+  public readonly baseCurrency: string;
+  public readonly amount: number;
+  public readonly currency: string;
+  public readonly exchangeRate: number;
+  public readonly notes?: string;
+  public readonly costCenterId?: string;
+  public readonly metadata: Record<string, any>;
+
   constructor(
-    public readonly id: number,
-    public readonly accountId: string,
-    public readonly side: TransactionSide,
-    
-    // Base currency (for accounting/reporting - matches company base)
-    public readonly baseAmount: number,
-    public readonly baseCurrency: string,
-    
-    // Transaction currency (FX - may differ per line)
-    public readonly amount: number,
-    public readonly currency: string,
-    
-    // FX metadata (rate at transaction time)
-    public readonly exchangeRate: number,
-    
-    // Optional fields
-    public readonly notes?: string,
-    public readonly costCenterId?: string,
-    
-    // Metadata (Generic extra fields)
-    public readonly metadata: Record<string, any> = {}
+    id: number,
+    accountId: string,
+    side: TransactionSide,
+    baseAmount: number,
+    baseCurrency: string,
+    amount: number,
+    currency: string,
+    exchangeRate: number,
+    notes?: string,
+    costCenterId?: string,
+    metadata: Record<string, any> = {}
   ) {
+    this.id = id;
+    this.accountId = accountId;
+    this.side = side;
+    this.baseAmount = baseAmount;
+    this.baseCurrency = baseCurrency.toUpperCase();
+    this.amount = amount;
+    this.currency = currency.toUpperCase();
+    this.exchangeRate = exchangeRate;
+    this.notes = notes;
+    this.costCenterId = costCenterId;
+    this.metadata = metadata;
+
     // ========== INVARIANT VALIDATIONS ==========
+
+
     
     // Invariant: side must be Debit or Credit
     if (side !== 'Debit' && side !== 'Credit') {

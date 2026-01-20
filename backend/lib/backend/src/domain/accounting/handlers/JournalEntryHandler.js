@@ -108,12 +108,12 @@ class JournalEntryHandler {
             // Create debit line if amount > 0
             if (inputLine.debit > 0) {
                 const baseAmount = inputLine.debit * exchangeRate;
-                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Debit', inputLine.debit, currency, baseAmount, baseCurrency, exchangeRate, inputLine.notes, inputLine.costCenterId));
+                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Debit', baseAmount, baseCurrency, inputLine.debit, currency, exchangeRate, inputLine.notes, inputLine.costCenterId));
             }
             // Create credit line if amount > 0
             if (inputLine.credit > 0) {
                 const baseAmount = inputLine.credit * exchangeRate;
-                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Credit', inputLine.credit, currency, baseAmount, baseCurrency, exchangeRate, inputLine.notes, inputLine.costCenterId));
+                voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(lineId++, inputLine.accountId, 'Credit', baseAmount, baseCurrency, inputLine.credit, currency, exchangeRate, inputLine.notes, inputLine.costCenterId));
             }
         }
         // Return all generated lines

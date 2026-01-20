@@ -21,13 +21,13 @@ import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
  * }
  */
 export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+  async generateLines(header: any, companyId: string, baseCurrency: string): Promise<VoucherLineEntity[]> {
     const lines: VoucherLineEntity[] = [];
     
     const payFromAccountId = header.payFromAccountId;
     const currency = header.currency || 'USD';
-    const baseCurrency = header.baseCurrency || 'USD';
     const exchangeRate = Number(header.exchangeRate) || 1;
+
     const allocations = header.lines || [];
     
     if (!payFromAccountId) {
@@ -51,6 +51,8 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
             throw new Error(`Line ${i + 1}: Allocation must have payToAccountId`);
         }
         
+        const lineCurrency = currency.toUpperCase();
+
         const debitLine = new VoucherLineEntity(
             i + 1,
             allocation.payToAccountId,
@@ -58,8 +60,10 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
             amountBase,        // baseAmount
             baseCurrency,      // baseCurrency
             amountFx,          // amount
-            currency,          // currency
+            lineCurrency,      // currency
             exchangeRate,
+
+
             allocation.notes || allocation.description || 'Payment allocation',
             allocation.costCenterId,
             allocation.metadata || {}
@@ -69,6 +73,7 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
     
     // 2. Generate single CREDIT line for source account
     const totalBase = totalFx * exchangeRate;
+    const creditCurrency = currency.toUpperCase();
     
     const creditLine = new VoucherLineEntity(
         lines.length + 1,
@@ -77,8 +82,10 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
         totalBase,         // baseAmount
         baseCurrency,      // baseCurrency
         totalFx,           // amount
-        currency,          // currency
+        creditCurrency,    // currency
         exchangeRate,
+
+
         header.description || 'Payment from account',
         undefined,
         {}

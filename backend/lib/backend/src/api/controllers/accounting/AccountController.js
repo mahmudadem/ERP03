@@ -83,7 +83,7 @@ class AccountController {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
             await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
-            const useCase = new CreateAccountUseCase_1.CreateAccountUseCase(bindRepositories_1.diContainer.accountRepository);
+            const useCase = new CreateAccountUseCase_1.CreateAccountUseCase(bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository);
             const account = await useCase.execute(companyId, Object.assign(Object.assign({}, req.body), { createdBy: userId }));
             return res.json({ success: true, data: account });
         }
@@ -97,7 +97,7 @@ class AccountController {
             const userId = req.user.uid;
             const { id } = req.params;
             await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
-            const useCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(bindRepositories_1.diContainer.accountRepository);
+            const useCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository);
             const account = await useCase.execute(companyId, id, Object.assign(Object.assign({}, req.body), { updatedBy: userId }));
             return res.json({ success: true, data: account });
         }

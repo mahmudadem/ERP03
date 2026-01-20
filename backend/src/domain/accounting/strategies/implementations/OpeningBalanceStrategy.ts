@@ -9,7 +9,7 @@ import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
  * Validates that total debit balances equal total credit balances.
  */
 export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
-  async generateLines(header: any, companyId: string): Promise<VoucherLineEntity[]> {
+  async generateLines(header: any, companyId: string, baseCurrency: string): Promise<VoucherLineEntity[]> {
     // Expected header: { balances: Array<{accountId, debitBalance, creditBalance, currency, exchangeRate}> }
     
     if (!header.balances || !Array.isArray(header.balances) || header.balances.length === 0) {
@@ -19,6 +19,9 @@ export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
     const lines: VoucherLineEntity[] = [];
     let totalDebitBase = 0;
     let totalCreditBase = 0;
+    const headerRate = Number(header.exchangeRate) || 1;
+    const headerCurrency = header.currency || baseCurrency;
+
 
     header.balances.forEach((balance: any, idx: number) => {
       if (!balance.accountId) {
@@ -27,9 +30,11 @@ export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
 
       const debitFx = Number(balance.debitBalance) || 0;
       const creditFx = Number(balance.creditBalance) || 0;
-      const exchangeRate = Number(balance.exchangeRate) || 1;
-      const currency = balance.currency || 'USD';
-      const baseCurrency = header.baseCurrency || 'USD';
+      const lineParity = Number(balance.exchangeRate) || 1;
+      const exchangeRate = headerRate * lineParity;
+      const currency = (balance.currency || headerCurrency).toUpperCase();
+
+
 
       if (debitFx > 0 && creditFx > 0) {
         throw new Error(`Line ${idx + 1}: Account cannot have both debit and credit balance`);

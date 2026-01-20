@@ -88,7 +88,12 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
         enabled: false,
         requiredFor: {}
       },
-      policyErrorMode: 'FAIL_FAST'
+      policyErrorMode: 'FAIL_FAST',
+      paymentMethods: [
+        { id: 'bank_transfer', name: 'Bank Transfer', isEnabled: true },
+        { id: 'cash', name: 'Cash', isEnabled: true },
+        { id: 'check', name: 'Check', isEnabled: true }
+      ]
     };
   }
 }

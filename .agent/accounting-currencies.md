@@ -35,3 +35,21 @@ When a voucher line uses a currency different from the voucher currency, the sys
 *   **Currency Policy**: Accounts can have `FIXED` policies that force a specific currency on a line.
 *   **Rate Required**: A voucher cannot be posted if it contains multi-currency lines without valid exchange rates.
 *   **Deviation Detection**: (Planned) System warns if a manually entered rate deviates significantly from the most recent historical rate.
+## 7. Professional Financial Integrity (Audit Rules)
+
+### 7.1 Account Hierarchy Governance (COA Guards)
+To prevent "Triangular Translation Risk" and maintain reporting integrity, the system enforces strict hierarchy rules:
+
+1.  **Root Currency Lock**: 
+    - **Rule**: All Level 0 and Level 1 (Header/Root) accounts MUST be fixed to the **Company Base Currency**.
+    - **Logic**: Prevents top-level financial statements (Balance Sheet/P&L) from fluctuating due to exchange rate drifts.
+    - **Enforcement**: Backend rejects `OPEN` or Non-Base `FIXED` policies for accounts without parents.
+
+2.  **The Waterfall Rule (Contextual Homogeneity)**:
+    - **Rule**: A child account cannot be "More Base" than its parent. 
+    - **Logic**: If a parent is a "France Branch" in EUR, a child cannot be USD. This avoids invisible conversion layers that hide audit trails.
+    - **Enforcement**: If a Parent is `FIXED` to a foreign currency, all children MUST inherit or be fixed to that same currency.
+
+### 7.2 Core Validation Bombs
+- **No 1.0 Default FX**: The system explicitly rejects any transaction where the exchange rate is exactly 1.0 between two different currencies. This prevents accidental "unconverted" entries from "poisoning" the ledger.
+- **Consolidation Principle**: All reporting is based on the `baseAmount`, which is calculated at the moment of entry. This ensure dual-book synchronicity (local and functional reporting).

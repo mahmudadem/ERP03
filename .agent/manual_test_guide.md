@@ -1,113 +1,180 @@
-# ERP03 Accounting Approval & Governance - Manual Test Guide
+# Manual Test Guide: Multi-Currency Voucher Logic
 
-This document is a comprehensive "Master Script" for manually verifying the end-to-end functionality of the ERP03 Accounting Approval System. It covers Design Migration, User Setup, and Dual-Gate Workflow verification.
-
----
-
-## 📋 Phase 1: Environment Setup & Design Migration
-
-**Objective:** Verify that work can be transferred to a clean environment to ensure strict test validity.
-
-### 1.1 Create Clean Company
-1.  Log in as **Super Admin**.
-2.  Navigate to **Company Management**.
-3.  Create a new company: `Test Corp (Approvals)`.
-4.  Switch to this new company context.
-
-### 1.2 Import Voucher Design
-1.  Navigate to **Accounting > Configuration > Voucher Designer**.
-2.  Verify the list is empty (or contains only defaults).
-3.  Click the **Import** button (header).
-4.  Select your exported JSON file (`voucher_form_....json`).
-5.  **Verify:** The form appears in the "Custom Forms" section.
-6.  **Verify:** Click "Edit" (pencil icon) to ensure the layout/fields match your original design.
-
-### 1.3 User Setup
-**CRITICAL:** Since email invitation workflow is not enabled, you must **Register** these users first (Sign Up from the login page) so they have valid accounts, **THEN** invite them to the company using their registered email.
-
-Create/Register these three users:
-*   **User A (Manager)**: `manager@test.com` (or similar). Assign Role: `Finance Manager`.
-*   **User B (Custodian)**: `cashier@test.com`. Assign Role: `Cashier` (or `Cashier / Custodian`).
-*   **User C (Accountant)**: `accountant@test.com`. Role: `Bookkeeper` (or basic Member).
+## Prerequisites
+1. Start the backend: `npm run dev --prefix backend`
+2. Start the frontend: `npm run dev --prefix frontend`
+3. Ensure you have at least two currencies enabled (e.g., USD as base, EUR as foreign)
+4. Set EUR exchange rate to **1.1** (meaning 1 EUR = 1.1 USD)
 
 ---
 
-## 📋 Phase 2: Configuration & Gates
+## Test Case 1: Pure Foreign Currency Voucher (EUR → EUR)
 
-**Objective:** Verify that the system correctly enforces the 4 Operating Modes (A-D).
+### Steps
+1. Navigate to **Vouchers** → **New Voucher** (Journal Entry type)
+2. Set **Header Currency**: `EUR`
+3. Set **Header Exchange Rate**: `1.1`
+4. Add **Line 1**: 
+   - Account: Any expense account
+   - Currency: `EUR`
+   - Debit: `100`
+5. Add **Line 2**:
+   - Account: Any bank account
+   - Currency: `EUR`
+   - Credit: `100`
 
-### 2.1 Configure "Mode D" (Dual-Gate)
-1.  Navigate to **Accounting > Settings > Policies**.
-2.  Set **Financial Approval**: `Enabled` (Apply: `ALL`).
-3.  Set **Custody Confirmation**: `Enabled`.
-4.  **Save**.
+### Expected Results
+| Field | Expected Value |
+|-------|----------------|
+| Line 1 Parity | **1.0** (auto-calculated, 1 EUR = 1 EUR) |
+| Line 1 Equivalent | **100.00** (displayed in voucher currency) |
+| Line 2 Parity | **1.0** |
+| Line 2 Equivalent | **100.00** |
+| Footer Total Debit (USD) | **110.00** (100 × 1.0 × 1.1) |
+| Footer Total Credit (USD) | **110.00** |
+| Footer Status | **Balanced** (green) |
 
-### 2.2 Configure COA (Custody)
-1.  Navigate to **Chart of Accounts**.
-2.  Select a Cash/Bank account (e.g., `1101-01 Main Cashier`).
-3.  Edit Account $\rightarrow$ **Security/Governance**.
-4.  Check **Requires Custody Confirmation**.
-5.  Assign **User B (Custodian)** as the custodian.
-
----
-
-## 📋 Phase 3: Execution Cases
-
-### 🧪 Case 1: The "Happy Path" (Dual-Gate)
-**Scenario:** A legitimate cash expense that passes all checks.
-
-1.  **Submit (User C)**:
-    *   Create a Payment Voucher using your **Imported Design**.
-    *   Debit: `General Expense`. Credit: `1101-01 Main Cashier`.
-    *   **Action:** Submit for Approval.
-    *   **Verify:** Toast says "Submitted". Status is `PENDING (Approval)`.
-2.  **Approve (User A)**:
-    *   Go to **Approvals Center**.
-    *   Find the voucher in **Financial Approvals** tab.
-    *   **Action:** Click **Approve**.
-    *   **Verify:** Status changes to `PENDING (Custody)`. It does **NOT** post yet.
-3.  **Confirm (User B)**:
-    *   Go to **Approvals Center** (or Dashboard Widget).
-    *   Find the voucher in **Custody Pending** tab.
-    *   **Action:** Click **Confirm**.
-    *   **Verify:** Status changes to `APPROVED`.
-    *   **Verify:** System auto-posts (if auto-post is enabled), status becomes `POSTED`.
-
-### 🧪 Case 2: Rejection Flow
-**Scenario:** Manager rejects a voucher due to missing info.
-
-1.  **Submit (User C)**: Create and submit a similar voucher.
-2.  **Reject (User A)**:
-    *   Go to **Financial Approvals**.
-    *   **Action:** Click **Reject**.
-    *   **Verify:** **Rejection Modal** appears.
-    *   **Action:** Click "Reject" without reason (Should fail/block).
-    *   **Action:** Enter reason: "Missing receipt attachment". Click **Reject**.
-    *   **Verify:** Voucher status becomes `DRAFT` or `REJECTED`.
-    *   **Verify:** History/Audit log shows the rejection reason.
-
-### 🧪 Case 3: Mixed Custodians (Complex)
-**Scenario:** Verification of precise routing.
-
-1.  **Setup**: Configure a second cash account (`1101-02 Petty Cash`) with a **different custodian**.
-2.  **Submit**: Create a voucher involving **BOTH** cash accounts.
-3.  **Verify**:
-    *   After Financial Approval, the voucher should appear in **BOTH** custodians' queues.
-    *   The voucher should **NOT** post until **BOTH** confirm.
-    *   One confirming should not prematurely release the voucher.
+### Verification
+- Save the voucher
+- Open browser DevTools → Network tab
+- Inspect the POST request payload
+- Confirm `lines[0].exchangeRate` = **1** (not 1.1!)
+- Confirm `lines[0].baseAmount` is **NOT** in the payload (backend calculates it)
 
 ---
 
-## 📋 Phase 4: Mode Regression (Quick Check)
+## Test Case 2: Mixed Currency Voucher (EUR Header, USD Line)
 
-### 4.1 Mode A (Simple)
-1.  **Settings**: Disable FA and CC in Policy Settings.
-2.  **Submit**: User C submits a voucher.
-3.  **Verify**: Instant transition to `APPROVED/POSTED`. No gates.
+### Steps
+1. Create a new Journal Entry voucher
+2. Set **Header Currency**: `EUR`
+3. Set **Header Exchange Rate**: `1.1`
+4. Add **Line 1**:
+   - Account: Any expense account
+   - Currency: `EUR`
+   - Debit: `100`
+5. Add **Line 2**:
+   - Account: Any bank account (USD account if available)
+   - Currency: `USD`
+   - Credit: `110`
 
-### 4.2 Mode C (Finance Only)
-1.  **Settings**: Enable FA, Disable CC.
-2.  **Submit**: User C submits.
-3.  **Verify**: Status `PENDING (Approval)`.
-4.  **Action**: Manager Approves.
-5.  **Verify**: Instant transition to `APPROVED/POSTED`. No custody step.
+### Expected Results
+| Field | Expected Value |
+|-------|----------------|
+| Line 1 Parity | **1.0** |
+| Line 1 Equivalent | **100.00** EUR |
+| Line 2 Parity | **~0.909** (auto-calculated: 1/1.1) |
+| Line 2 Equivalent | **100.00** EUR (110 × 0.909) |
+| Footer Total Debit (USD) | **110.00** |
+| Footer Total Credit (USD) | **110.00** |
+| Footer Status | **Balanced** |
+
+### Backend Calculation Verification
+- Line 1: 100 × 1.0 × 1.1 = **110 USD** ✓
+- Line 2: 110 × 0.909 × 1.1 ≈ **110 USD** ✓
+
+---
+
+## Test Case 3: Parity Override
+
+### Steps
+1. Create a new Journal Entry voucher in EUR @ 1.1
+2. Add Line 1: EUR, Debit 100, Parity auto-fills as 1.0
+3. **Manually change Line 1 Parity to 1.05** (user override)
+4. Observe the Equivalent and Footer update
+
+### Expected Results
+| Field | Expected Value |
+|-------|----------------|
+| Line 1 Parity | **1.05** (overridden) |
+| Line 1 Equivalent | **105.00** EUR (100 × 1.05) |
+| Footer Total Debit (USD) | **115.50** (100 × 1.05 × 1.1) |
+
+---
+
+## Test Case 4: USD Voucher (Base Currency Document)
+
+### Steps
+1. Create a new Journal Entry voucher
+2. Set **Header Currency**: `USD`
+3. Set **Header Exchange Rate**: `1.0` (or leave default)
+4. Add Line 1: USD, Debit 100
+5. Add Line 2: USD, Credit 100
+
+### Expected Results
+| Field | Expected Value |
+|-------|----------------|
+| Line 1 Parity | **1.0** |
+| Line 2 Parity | **1.0** |
+| Footer Total Debit (USD) | **100.00** |
+| Footer Total Credit (USD) | **100.00** |
+
+---
+
+## Test Case 5: Third Currency Line (TRY in EUR Voucher)
+
+### Prerequisites
+- Enable TRY currency
+- Set TRY/USD rate (e.g., 0.03 meaning 1 TRY = 0.03 USD)
+
+### Steps
+1. Create Journal Entry voucher: EUR @ 1.1
+2. Add Line 1: TRY, Debit 1000
+3. Observe auto-calculated Parity
+
+### Expected Results
+| Field | Expected Value |
+|-------|----------------|
+| Line 1 Parity | ~0.027 (TRY→EUR rate, fetched from API) |
+| Line 1 Equivalent | ~27 EUR |
+| Footer Total Debit (USD) | ~30 USD (1000 × 0.027 × 1.1) |
+
+---
+
+## Validation Error Tests
+
+### Test 6A: Zero Header Rate (Should Block)
+1. Create voucher with EUR currency
+2. Try to set Exchange Rate to `0`
+3. **Expected**: UI should prevent saving or show error
+
+### Test 6B: Empty Parity (Should Default to 1)
+1. Create voucher
+2. Clear the Parity field on a line
+3. **Expected**: Should default to 1.0 or block saving
+
+---
+
+## Database Verification
+
+After saving a voucher, query Firestore/Database to verify:
+
+```javascript
+// Check saved voucher line
+const line = voucher.lines[0];
+console.log({
+  amount: line.amount,        // Should match UI input
+  currency: line.currency,    // Should be uppercase
+  exchangeRate: line.exchangeRate,  // Absolute rate (parity × headerRate)
+  baseAmount: line.baseAmount,      // Calculated: amount × exchangeRate
+  baseCurrency: line.baseCurrency   // Should be 'USD'
+});
+```
+
+### Example: EUR Line in EUR Voucher @ 1.1
+- `amount`: 100
+- `currency`: EUR
+- `exchangeRate`: **1.1** (1.0 × 1.1)
+- `baseAmount`: **110** (100 × 1.1)
+- `baseCurrency`: USD
+
+---
+
+## Summary Checklist
+
+- [ ] EUR/EUR line has parity 1.0
+- [ ] USD line in EUR voucher has parity ~0.909
+- [ ] Footer shows USD totals
+- [ ] Balanced status turns green when debits = credits (in USD)
+- [ ] Network payload does NOT include calculated baseAmount
+- [ ] Saved voucher has correct baseAmount in database

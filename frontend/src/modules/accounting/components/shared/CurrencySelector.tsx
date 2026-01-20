@@ -101,32 +101,52 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return; // Guard: Do not allow changes when disabled
     setInputValue(e.target.value.toUpperCase());
   };
 
   const handleInputBlur = () => {
+    console.log('[CurrencySelector] BLUR triggered. inputValue:', inputValue, 'value prop:', value, 'disabled:', disabled);
+    
+    // Always call external blur handler first
+    if (externalBlur) {
+      externalBlur();
+    }
+    
+    // If disabled, do not process any changes
+    if (disabled) {
+      console.log('[CurrencySelector] BLUR skipped - disabled');
+      return;
+    }
+    
     if (!inputValue.trim()) {
+      console.log('[CurrencySelector] BLUR: Empty input, clearing');
       if (value) onChange('');
     } else if (value && inputValue === value) {
+      console.log('[CurrencySelector] BLUR: No change (inputValue matches value)');
       // No change
     } else {
       const exactMatch = findExactMatch(inputValue);
+      console.log('[CurrencySelector] BLUR: Looking for match for:', inputValue, 'Found:', exactMatch?.code);
       
       if (exactMatch) {
         onChange(exactMatch.code);
         setInputValue(exactMatch.code);
       } else {
-        setHighlightedIndex(0);
-        setShowModal(true);
+        // CRITICAL FIX: Revert to previous valid value
+        console.warn(`[CurrencySelector] REVERTING invalid "${inputValue}" → "${value || ''}"`);
+        setInputValue(value || '');
       }
-    }
-
-    if (externalBlur) {
-      externalBlur();
     }
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // If disabled, only allow navigation but block all input
+    if (disabled) {
+      if (externalKeyDown) externalKeyDown(e);
+      return;
+    }
+    
     if (e.altKey && e.key === 'ArrowDown') {
       e.preventDefault();
       setModalSearch(inputValue.trim());
@@ -143,7 +163,10 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           setInputValue(exactMatch.code);
           if (externalKeyDown) externalKeyDown(e);
         } else {
-            e.preventDefault(); 
+            e.preventDefault();
+            // Revert to previous valid value
+            console.warn(`[CurrencySelector] Invalid currency on Enter: "${inputValue}"`);
+            setInputValue(value || '');
             setModalSearch(inputValue.trim());
             setHighlightedIndex(0);
             setShowModal(true);

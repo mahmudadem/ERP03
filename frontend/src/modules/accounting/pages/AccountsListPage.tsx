@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { accountingApi, Account, AccountClassification, AccountRole } from '../../../api/accounting';
+import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPolicy } from '../../../api/accounting';
 import { AccountForm } from '../components/AccountForm';
 import { errorHandler } from '../../../services/errorHandler';
-import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus } from 'lucide-react';
+import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
+import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe } from 'lucide-react';
 
 export default function AccountsListPage() {
     const queryClient = useQueryClient();
@@ -42,6 +43,9 @@ export default function AccountsListPage() {
         queryKey: ['accounts'],
         queryFn: accountingApi.getAccounts,
     });
+
+    const { profile: companyProfile } = useCompanyProfile();
+    const baseCurrency = companyProfile?.currency || 'USD';
 
     const createMutation = useMutation({
         mutationFn: accountingApi.createAccount,
@@ -195,6 +199,40 @@ export default function AccountsListPage() {
     const getRoleBadge = (role: AccountRole | string) => {
         if (role === 'HEADER') return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"><Folder className="w-3 h-3 mr-1"/> Header</span>;
         return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-800"><FileText className="w-3 h-3 mr-1"/> Posting</span>;
+    };
+
+    const getEffectiveCurrency = (account: any): { code: string; isInherited: boolean; type: CurrencyPolicy } => {
+        if (account.currencyPolicy === 'FIXED') {
+            return { 
+                code: account.fixedCurrencyCode || account.currency || baseCurrency, 
+                isInherited: false,
+                type: 'FIXED'
+            };
+        }
+        if (account.currencyPolicy === 'OPEN') {
+            return { code: 'ANY', isInherited: false, type: 'OPEN' };
+        }
+
+        // INHERIT Logic: Traverse upwards
+        let currentParentId = account.parentId;
+        while (currentParentId) {
+            const parent = accounts.find(a => a.id === currentParentId);
+            if (!parent) break;
+            if (parent.currencyPolicy === 'FIXED') {
+                return { 
+                    code: parent.fixedCurrencyCode || parent.currency || baseCurrency, 
+                    isInherited: true,
+                    type: 'FIXED'
+                };
+            }
+            if (parent.currencyPolicy === 'OPEN') {
+                return { code: 'ANY', isInherited: true, type: 'OPEN' };
+            }
+            currentParentId = parent.parentId;
+        }
+
+        // Default for root or deep inherit
+        return { code: baseCurrency, isInherited: true, type: 'FIXED' };
     };
 
     if (isLoading) {
@@ -385,11 +423,27 @@ export default function AccountsListPage() {
                                             }`}>
                                                 {account.accountRole || (hasChildren ? 'HEADER' : 'POSTING')}
                                             </span>
-                                            {account.currencyPolicy === 'FIXED' && (
-                                                <span className="text-[10px] bg-blue-50 text-blue-600 font-extrabold px-1.5 py-0.5 rounded uppercase border border-blue-100">
-                                                    {account.fixedCurrencyCode || account.currency}
-                                                </span>
-                                            )}
+                                            {(() => {
+                                                const effective = getEffectiveCurrency(account);
+                                                if (effective.type === 'OPEN') {
+                                                    return (
+                                                        <span className="text-[10px] bg-purple-50 text-purple-600 font-extrabold px-1.5 py-0.5 rounded uppercase border border-purple-100 flex items-center gap-1">
+                                                            <Globe className="w-2.5 h-2.5" /> ANY
+                                                        </span>
+                                                    );
+                                                }
+                                                return (
+                                                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase border flex items-center gap-1 ${
+                                                        effective.isInherited 
+                                                            ? 'bg-transparent text-blue-400 border-blue-200 border-dashed' 
+                                                            : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                    }`} title={account.level === 0 ? 'Root Level Currency Lock (Immutable)' : effective.isInherited ? 'Inherited Policy' : 'Fixed Policy'}>
+                                                        {account.level === 0 && <Lock size={10} className="text-blue-500 opacity-80" />}
+                                                        {effective.code}
+                                                        {effective.isInherited && account.level !== 0 && <span className="text-[8px] opacity-70">↓</span>}
+                                                    </span>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>

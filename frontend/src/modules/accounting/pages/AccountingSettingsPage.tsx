@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
@@ -34,6 +34,13 @@ interface PolicyConfig {
   policyErrorMode: 'FAIL_FAST' | 'AGGREGATE';
   updatedAt?: string;
   updatedBy?: string;
+  paymentMethods?: PaymentMethodDefinition[];
+}
+
+interface PaymentMethodDefinition {
+  id: string;
+  name: string;
+  isEnabled: boolean;
 }
 
 export const AccountingSettingsPage: React.FC = () => {
@@ -55,7 +62,8 @@ export const AccountingSettingsPage: React.FC = () => {
       enabled: false,
       requiredFor: {}
     },
-    policyErrorMode: 'FAIL_FAST'
+    policyErrorMode: 'FAIL_FAST',
+    paymentMethods: []
   });
   const [originalConfig, setOriginalConfig] = useState<PolicyConfig | null>(null);
   const [localCoreSettings, setLocalCoreSettings] = useState({
@@ -73,6 +81,7 @@ export const AccountingSettingsPage: React.FC = () => {
     { id: 'general', label: 'General Settings', icon: Globe },
     { id: 'currencies', label: 'Currencies', icon: Coins },
     { id: 'policies', label: 'Approval & Posting', icon: Shield },
+    { id: 'payment-methods', label: 'Payment Methods', icon: CreditCard },
     { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
     { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
     { id: 'fiscal', label: 'Fiscal Year', icon: Building2 },
@@ -112,11 +121,10 @@ export const AccountingSettingsPage: React.FC = () => {
       
       if (data) {
         console.log('[AccountingSettings] Setting config:', data);
-        const loadedConfig = { ...data };
-        // Fallback for legacy data
-        if ((loadedConfig as any).allowEditDeletePosted === undefined) {
-
-        }
+        const loadedConfig = { 
+          ...(data as any),
+          paymentMethods: (data as any).paymentMethods || []
+        };
         setConfig(loadedConfig as any);
         setOriginalConfig(loadedConfig as any);
       }
@@ -821,6 +829,115 @@ export const AccountingSettingsPage: React.FC = () => {
                 {/* Hard Policy - Minimal */}
                 <div className="px-3 py-2 bg-gray-800 rounded-lg text-xs text-gray-300">
                   <strong className="text-white">Hard Policy:</strong> Posting occurs ONLY after ALL enabled gates are satisfied.
+                </div>
+              </div>
+            )}
+
+
+            {/* Payment Methods Tab */}
+            {activeTab === 'payment-methods' && (
+              <div className="max-w-4xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Payment Methods</h2>
+                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
+                    Define and manage payment methods used across vouchers
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
+                  <div className="p-6 border-b border-gray-200 dark:border-[var(--color-border)] bg-gray-50/50 dark:bg-[var(--color-bg-tertiary)] flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Configured Methods</h3>
+                      <p className="text-xs text-gray-500 mt-1">Status of payment options in voucher forms</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const newId = `method_${Date.now()}`;
+                        const updated = [...(config.paymentMethods || []), { id: newId, name: 'New Payment Method', isEnabled: true }];
+                        setConfig({ ...config, paymentMethods: updated });
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                    >
+                      <Plus size={14} />
+                      Add Method
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-gray-100 dark:divide-[var(--color-border)]">
+                    {(!config.paymentMethods || config.paymentMethods.length === 0) ? (
+                      <div className="p-12 text-center text-gray-500 text-sm italic">
+                        No payment methods defined. Click 'Add Method' to get started.
+                      </div>
+                    ) : (
+                      config.paymentMethods.map((pm, index) => (
+                        <div key={pm.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)] transition-colors group">
+                          <div className="flex items-center gap-4 flex-1 mr-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pm.isEnabled ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-gray-100 dark:bg-[var(--color-bg-secondary)]'}`}>
+                              <CreditCard size={18} className={pm.isEnabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'} />
+                            </div>
+                            <div className="flex-1">
+                              <input 
+                                type="text"
+                                className={`w-full bg-transparent border-none focus:ring-0 font-bold p-0 ${pm.isEnabled ? 'text-gray-900 dark:text-[var(--color-text-primary)]' : 'text-gray-400'}`}
+                                value={pm.name}
+                                onChange={(e) => {
+                                  const updated = [...(config.paymentMethods || [])];
+                                  updated[index] = { ...pm, name: e.target.value };
+                                  setConfig({ ...config, paymentMethods: updated });
+                                }}
+                              />
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{pm.id}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${pm.isEnabled ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                {pm.isEnabled ? 'Enabled' : 'Disabled'}
+                              </span>
+                              <label className="relative inline-flex items-center cursor-pointer scale-90">
+                                <input
+                                  type="checkbox"
+                                  className="sr-only peer"
+                                  checked={pm.isEnabled}
+                                  onChange={(e) => {
+                                    const updated = [...(config.paymentMethods || [])];
+                                    updated[index] = { ...pm, isEnabled: e.target.checked };
+                                    setConfig({ ...config, paymentMethods: updated });
+                                  }}
+                                />
+                                <div className={`w-10 h-5 rounded-full transition-colors ${pm.isEnabled ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                  <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${pm.isEnabled ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                </div>
+                              </label>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const updated = (config.paymentMethods || []).filter(item => item.id !== pm.id);
+                                setConfig({ ...config, paymentMethods: updated });
+                              }}
+                              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-800/30 flex items-center justify-center shrink-0">
+                    <Layout size={16} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Form Integration</h4>
+                    <p className="text-xs text-blue-800 dark:text-blue-400 mt-1 leading-relaxed">
+                      Payment methods defined here will automatically populate the dropdowns in the Voucher Editor. 
+                      Disabled methods will be hidden from the selector but preserved in existing records.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

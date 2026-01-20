@@ -105,7 +105,30 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
   }, [fetchAccounts]);
 
   const getAccountByCode = useCallback((code: string): Account | undefined => {
-    return accounts.find(a => a.code === code) || validAccounts.find(a => a.code === code);
+    if (!code) return undefined;
+    
+    // Strategy 1: Exact code match
+    let result = accounts.find(a => a.code === code) || validAccounts.find(a => a.code === code);
+    
+    // Strategy 2: Try ID match (in case code is actually an ID)
+    if (!result) {
+      result = accounts.find(a => a.id === code) || validAccounts.find(a => a.id === code);
+    }
+    
+    // Strategy 3: Case-insensitive code match
+    if (!result) {
+      const lowerCode = code.toLowerCase();
+      result = accounts.find(a => a.code.toLowerCase() === lowerCode) || 
+               validAccounts.find(a => a.code.toLowerCase() === lowerCode);
+    }
+    
+    // Debug: Log when lookup fails
+    if (!result && code) {
+      console.warn(`[AccountsContext] getAccountByCode("${code}") FAILED. Available codes:`, 
+        accounts.slice(0, 5).map(a => a.code));
+    }
+    
+    return result;
   }, [accounts, validAccounts]);
 
   const getAccountById = useCallback((id: string): Account | undefined => {

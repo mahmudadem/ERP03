@@ -12,11 +12,10 @@ const VoucherLineEntity_1 = require("../../entities/VoucherLineEntity");
  * Accepts both V2 format (side, amount, baseAmount) and legacy format (debitFx, creditFx).
  */
 class JournalEntryStrategy {
-    async generateLines(header, companyId) {
+    async generateLines(header, companyId, baseCurrency) {
         if (!header.lines || !Array.isArray(header.lines) || header.lines.length === 0) {
             throw new Error('Journal entry must have at least one line');
         }
-        const baseCurrency = header.baseCurrency || 'USD';
         const headerRate = Number(header.exchangeRate) || 1;
         const lines = [];
         let totalDebitBase = 0;
@@ -32,11 +31,10 @@ class JournalEntryStrategy {
             const side = inputLine.side;
             const amount = Math.abs(Number(inputLine.amount) || 0);
             let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
-            // Calculate baseAmount if not provided
-            if (baseAmount === 0 && amount > 0) {
-                const rate = Number(inputLine.exchangeRate) || headerRate;
-                baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * rate);
-            }
+            const lineParity = Number(inputLine.exchangeRate) || 1; // UI sends parity relative to header
+            const absoluteRate = (0, VoucherLineEntity_1.roundMoney)(headerRate * lineParity);
+            // Calculate baseAmount
+            baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * absoluteRate);
             // Validate we have valid amounts
             if (amount <= 0) {
                 throw new Error(`Line ${idx + 1}: Amount must be positive`);
@@ -44,8 +42,8 @@ class JournalEntryStrategy {
             if (baseAmount <= 0) {
                 throw new Error(`Line ${idx + 1}: Base amount must be positive`);
             }
-            const lineCurrency = inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency;
-            const lineRate = Number(inputLine.exchangeRate) || headerRate;
+            const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
+            const lineRate = absoluteRate;
             const line = new VoucherLineEntity_1.VoucherLineEntity(idx + 1, inputLine.accountId, side, baseAmount, // baseAmount
             baseCurrency, // baseCurrency
             amount, // amount

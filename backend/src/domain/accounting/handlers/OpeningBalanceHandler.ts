@@ -163,10 +163,10 @@ export class OpeningBalanceHandler {
             lineId++,
             inputLine.accountId,
             'Debit',
-            inputLine.debit,
-            currency,
             baseAmount,
             baseCurrency,
+            inputLine.debit,
+            currency,
             exchangeRate,
             inputLine.notes
           )
@@ -182,10 +182,10 @@ export class OpeningBalanceHandler {
             lineId++,
             inputLine.accountId,
             'Credit',
-            inputLine.credit,
-            currency,
             baseAmount,
             baseCurrency,
+            inputLine.credit,
+            currency,
             exchangeRate,
             inputLine.notes
           )

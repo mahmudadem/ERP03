@@ -14,6 +14,9 @@ import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday }
 import { DatePicker } from './DatePicker';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
+import { useCompanyCurrencies } from '../../hooks/useCompanyCurrencies';
+import { CurrencyDropdown } from './CurrencyDropdown';
+import { PaymentMethodDropdown } from './PaymentMethodDropdown';
 
 interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
@@ -51,6 +54,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const { settings } = useCompanySettings();
   const { getAccountByCode } = useAccounts();
   const { company } = useCompanyAccess();
+  const { data: companyCurrencies = [] } = useCompanyCurrencies();
 
   // Language support with fallback (works without LanguageProvider)
   const t = (key: string) => key; // Simple fallback - just return key
@@ -95,8 +99,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Recalculate parities when voucher currency or exchange rate changes
   useEffect(() => {
     const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
-    const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
-    const baseCurrency = company?.baseCurrency || 'USD';
+    const voucherCurrency = (formData.currency || company?.baseCurrency || 'USD').toUpperCase();
+    const baseCurrency = (company?.baseCurrency || 'USD').toUpperCase();
     
     console.log('[PARITY RECALC] Voucher currency or rate changed:', { voucherCurrency, voucherRate });
     
@@ -110,7 +114,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       rows.forEach(row => {
         const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
         // Only fetch if line currency DIFFERS from voucher currency
-        if (lineCurrency !== voucherCurrency.toUpperCase()) {
+        if (lineCurrency !== voucherCurrency) {
            currenciesToFetch.add(lineCurrency);
         }
       });
@@ -124,16 +128,18 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (uniqueCurrencies.length > 0) {
         await Promise.all(uniqueCurrencies.map(async (currency) => {
           try {
-            // Optimization: If voucher is Foreign and Line is Base (USD), use inverse of voucher rate
-            // This avoids an API call if we already have the rate in the header
-            if (currency === baseCurrency.toUpperCase() && voucherCurrency.toUpperCase() !== baseCurrency.toUpperCase() && voucherRate !== 1.0) {
+            // Optimization: Fetch rate RELATIVE TO VOUCHER CURRENCY
+            // If EUR voucher and USD line, we need USD->EUR rate
+            console.log('[PARITY RECALC] Fetching API rate for:', currency, 'relative to', voucherCurrency);
+            
+            // If line is base (USD) and voucher is foreign (EUR), we use inverse of header rate
+            if (currency === baseCurrency && voucherCurrency !== baseCurrency && voucherRate !== 1.0) {
               const inverse = 1 / voucherRate;
               console.log('[PARITY RECALC] Using inverse calc for', currency, ':', inverse);
               ratesMap.set(currency, inverse);
               return;
             }
 
-            console.log('[PARITY RECALC] Fetching API rate for:', currency);
             const result = await accountingApi.getSuggestedRate(
               currency,
               voucherCurrency,
@@ -153,14 +159,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // 3. Update all lines with correct rates
       const updatedRows = rows.map(row => {
         const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
-        const vCurrency = voucherCurrency.toUpperCase();
+        const vCurrency = voucherCurrency;
         const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
         
         // Case 1: Line Currency MATCHES Voucher Currency -> Force Parity 1.0
         if (lineCurrency === vCurrency) {
-           if (row.parity !== 1.0) {
-             console.log('[PARITY RECALC] Resetting line (matches voucher) to 1.0. ID:', row.id);
-             return { ...row, parity: 1.0, equivalent: amount };
+           const targetEquivalent = Math.round(amount * 1.0 * 100) / 100; // Relative to Header
+           if (row.parity !== 1.0 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
+             console.log('[PARITY RECALC] Syncing line (matches voucher). ID:', row.id);
+             return { ...row, parity: 1.0, equivalent: targetEquivalent };
            }
            return row;
         }
@@ -168,13 +175,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         // Case 2: Line Currency DIFFERENT -> Apply fetched/calculated rate
         if (ratesMap.has(lineCurrency)) {
             const rate = ratesMap.get(lineCurrency)!;
-            // Only update if rate differs significantly
-            if (Math.abs((row.parity || 0) - rate) > 0.000001) {
+            const targetEquivalent = Math.round(amount * rate * 100) / 100; // Relative to Header
+            
+            // Update if rate or equivalent differs
+            if (Math.abs((row.parity || 0) - rate) > 0.000001 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
                 console.log('[PARITY RECALC] Updating line', row.id, 'curr:', lineCurrency, 'to rate:', rate);
                 return {
                     ...row,
                     parity: rate,
-                    equivalent: Math.round(amount * rate * 100) / 100
+                    equivalent: targetEquivalent
                 };
             }
         }
@@ -194,7 +203,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     };
     
     recalculateAllParities();
-  }, [formData.exchangeRate, formData.currency]);
+  }, [formData.exchangeRate, formData.currency, rows.map(r => r.debit).join(','), rows.map(r => r.credit).join(','), rows.map(r => r.currency).join(',')]);
 
   // --- Math & Auto-Balance Logic ---
   const evaluateMathExpression = (expression: string): number | null => {
@@ -596,7 +605,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // User input field defaults
     const inputDefaults = {
       date: today,
-      currency: 'USD',
+      currency: company?.baseCurrency || 'USD',
       exchangeRate: 1,
       paymentMethod: 'Bank Transfer',
       reference: '',
@@ -705,6 +714,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }
       
       // Map rows to backend VoucherLine format
+      // IMPORTANT: Frontend sends RAW values only. Backend calculates all derived values.
       const backendLines = rows
         .filter(row => row.account && (row.debit > 0 || row.credit > 0))
         .map(row => {
@@ -715,10 +725,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             accountId: row.account,
             description: row.notes || '',
             side: isDebit ? 'Debit' : 'Credit',
+            // RAW user input:
             amount: Math.abs(Number(amt) || 0),
-            baseAmount: Math.round((Math.abs(Number(amt) || 0) * (row.parity || 1)) * 100) / 100,
-            lineCurrency: row.currency || 'USD',
+            lineCurrency: (row.currency || formData.currency || 'USD').toUpperCase(),
+            // Parity is the Line→Doc rate shown in the UI (1.0 for same currency, inverse for base, etc.)
+            // Backend will multiply by headerRate to get the absolute rate
             exchangeRate: row.parity || 1
+            // NOTE: baseAmount is NOT sent - backend calculates it as: amount * exchangeRate * headerRate
           };
         });
       
@@ -740,7 +753,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       setRows(INITIAL_ROWS);
       setFormData({
         date: today,
-        currency: 'USD',
+        currency: company?.baseCurrency || 'USD',
         exchangeRate: 1,
         status: 'Draft',
         voucherNumber: 'Auto-generated'
@@ -1251,8 +1264,28 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                          onBlur={() => onBlurRef.current?.()}
                                                          placeholder=""
                                                       />
+                                                 ) : colId === 'currency' ? (
+                                                     <div className="p-0.5 relative group/curr">
+                                                       <CurrencySelector
+                                                           ref={(el) => registerCellRef(index, colIndex, el)}
+                                                           value={row.currency}
+                                                           disabled={readOnly || (() => {
+                                                             const acc = getAccountByCode(row.account);
+                                                             return acc?.currencyPolicy === 'FIXED';
+                                                           })()}
+                                                           onChange={(val) => handleRowChange(row.id, 'currency', val)}
+                                                           onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                           onBlur={() => onBlurRef.current?.()}
+                                                           noBorder
+                                                       />
+                                                       {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
+                                                         <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
+                                                           <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>
+                                                         </div>
+                                                       )}
+                                                     </div>
                                                  ) : (
-                                                     <input 
+                                                     <input
                                                        ref={(el) => registerCellRef(index, colIndex, el)}
                                                        type="text" 
                                                        value={(row as any)[colId] || ''}
@@ -1571,31 +1604,19 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                         return val;
                     })()}
                 </div>
-            ) : fieldId === 'currency' || fieldId === 'paymentMethod' ? (
-                 <div className="relative">
-                     <select 
-                       value={formData[fieldId] || ''}
-                       disabled={readOnly}
-                       onChange={(e) => handleInputChange(fieldId, e.target.value)}
-                       onBlur={() => onBlurRef.current?.()}
-                       className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-6 transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
-                     >
-                        {fieldId === 'currency' ? (
-                          <>
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                            <option value="TRY">TRY</option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Check">Check</option>
-                          </>
-                        )}
-                    </select>
-                     <ChevronDown className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-[var(--color-text-muted)] pointer-events-none`} size={14} />
-                 </div>
+            ) : fieldId === 'currency' ? (
+                 <CurrencyDropdown 
+                   value={formData[fieldId] || ''}
+                   readOnly={readOnly}
+                   onChange={(val) => handleInputChange(fieldId, val)}
+                 />
+            ) : fieldId === 'paymentMethod' ? (
+                 <PaymentMethodDropdown 
+                   value={formData[fieldId] || ''}
+                   readOnly={readOnly}
+                   onChange={(val) => handleInputChange(fieldId, val)}
+                   onBlur={() => onBlurRef.current?.()}
+                 />
             ) : fieldId === 'date' ? (
                  <div className="relative">
             <DatePicker 

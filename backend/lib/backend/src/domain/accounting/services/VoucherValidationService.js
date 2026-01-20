@@ -38,6 +38,12 @@ class VoucherValidationService {
             if (line.amount <= 0 || line.baseAmount <= 0) {
                 throw (0, AppError_1.createPostingError)('INVALID_AMOUNT', `Line ${line.id}: Amounts must be positive. Got: ${line.amount}`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].amount`], undefined, correlationId);
             }
+            // 4.1 Exchange Rate Sanity Check (The "Bomb" Defuser)
+            // If currency is different from base currency, exchange rate should not be exactly 1.0
+            // unless clearly intended. This catches cases where the rate was defaulted to 1.
+            if (line.currency !== line.baseCurrency && line.exchangeRate === 1) {
+                throw (0, AppError_1.createPostingError)('SUSPICIOUS_EXCHANGE_RATE', `Line ${line.id}: Exchange rate between ${line.currency} and ${line.baseCurrency} cannot be exactly 1.0. Please provide a valid rate.`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].exchangeRate`], undefined, correlationId);
+            }
         }
         // 5. Currency consistency (skip for journal entries which support multi-currency lines)
         // Journal entries allow different transaction currencies per line, but base currency must balance

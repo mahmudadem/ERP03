@@ -22,11 +22,10 @@ const VoucherLineEntity_1 = require("../../entities/VoucherLineEntity");
  * }
  */
 class PaymentVoucherStrategy {
-    async generateLines(header, companyId) {
+    async generateLines(header, companyId, baseCurrency) {
         const lines = [];
         const payFromAccountId = header.payFromAccountId;
         const currency = header.currency || 'USD';
-        const baseCurrency = header.baseCurrency || 'USD';
         const exchangeRate = Number(header.exchangeRate) || 1;
         const allocations = header.lines || [];
         if (!payFromAccountId) {
@@ -45,19 +44,21 @@ class PaymentVoucherStrategy {
             if (!allocation.payToAccountId) {
                 throw new Error(`Line ${i + 1}: Allocation must have payToAccountId`);
             }
+            const lineCurrency = currency.toUpperCase();
             const debitLine = new VoucherLineEntity_1.VoucherLineEntity(i + 1, allocation.payToAccountId, 'Debit', amountBase, // baseAmount
             baseCurrency, // baseCurrency
             amountFx, // amount
-            currency, // currency
+            lineCurrency, // currency
             exchangeRate, allocation.notes || allocation.description || 'Payment allocation', allocation.costCenterId, allocation.metadata || {});
             lines.push(debitLine);
         }
         // 2. Generate single CREDIT line for source account
         const totalBase = totalFx * exchangeRate;
+        const creditCurrency = currency.toUpperCase();
         const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, payFromAccountId, 'Credit', totalBase, // baseAmount
         baseCurrency, // baseCurrency
         totalFx, // amount
-        currency, // currency
+        creditCurrency, // currency
         exchangeRate, header.description || 'Payment from account', undefined, {});
         lines.push(creditLine);
         return lines;

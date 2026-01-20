@@ -8,6 +8,7 @@ import { AccountsProvider } from '../context/AccountsContext';
 import { useVoucherActions } from '../hooks/useVoucherActions';
 import { clsx } from 'clsx';
 import React from 'react'; // Added React import for React.useEffect
+import { PageTitleManager } from '../components/common/PageTitleManager';
 
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
@@ -25,6 +26,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
+      <PageTitleManager />
       {/* Sidebar */}
       <Sidebar 
         isOpen={isSidebarOpen} 

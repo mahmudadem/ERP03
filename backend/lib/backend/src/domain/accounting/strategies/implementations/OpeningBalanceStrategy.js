@@ -10,7 +10,7 @@ const VoucherLineEntity_1 = require("../../entities/VoucherLineEntity");
  * Validates that total debit balances equal total credit balances.
  */
 class OpeningBalanceStrategy {
-    async generateLines(header, companyId) {
+    async generateLines(header, companyId, baseCurrency) {
         // Expected header: { balances: Array<{accountId, debitBalance, creditBalance, currency, exchangeRate}> }
         if (!header.balances || !Array.isArray(header.balances) || header.balances.length === 0) {
             throw new Error('Opening balances required');
@@ -18,15 +18,17 @@ class OpeningBalanceStrategy {
         const lines = [];
         let totalDebitBase = 0;
         let totalCreditBase = 0;
+        const headerRate = Number(header.exchangeRate) || 1;
+        const headerCurrency = header.currency || baseCurrency;
         header.balances.forEach((balance, idx) => {
             if (!balance.accountId) {
                 throw new Error(`Line ${idx + 1}: Account ID required`);
             }
             const debitFx = Number(balance.debitBalance) || 0;
             const creditFx = Number(balance.creditBalance) || 0;
-            const exchangeRate = Number(balance.exchangeRate) || 1;
-            const currency = balance.currency || 'USD';
-            const baseCurrency = header.baseCurrency || 'USD';
+            const lineParity = Number(balance.exchangeRate) || 1;
+            const exchangeRate = headerRate * lineParity;
+            const currency = (balance.currency || headerCurrency).toUpperCase();
             if (debitFx > 0 && creditFx > 0) {
                 throw new Error(`Line ${idx + 1}: Account cannot have both debit and credit balance`);
             }

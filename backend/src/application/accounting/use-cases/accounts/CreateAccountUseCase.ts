@@ -6,6 +6,7 @@
  */
 
 import { IAccountRepository, NewAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
+import { ICompanyRepository } from '../../../../repository/interfaces/core/ICompanyRepository';
 import { 
   Account, 
   normalizeUserCode,
@@ -42,7 +43,10 @@ export interface CreateAccountCommand {
 }
 
 export class CreateAccountUseCase {
-  constructor(private accountRepo: IAccountRepository) {}
+  constructor(
+    private accountRepo: IAccountRepository,
+    private companyRepo: ICompanyRepository
+  ) {}
 
   async execute(companyId: string, data: CreateAccountCommand): Promise<Account> {
     // 1. Normalize and validate userCode
@@ -84,7 +88,12 @@ export class CreateAccountUseCase {
       throw this.createError(currencyError, 400);
     }
 
-    // 6. Validate parent classification match (if parentId provided)
+    // 6. Professional Governance: Fetch company base currency
+    const company = await this.companyRepo.findById(companyId);
+    if (!company) throw this.createError('Company not found', 404);
+    const baseCurrency = company.baseCurrency || 'USD';
+
+    // 6.1 Validate Hierarchy Currency Constraints
     if (data.parentId) {
       const parent = await this.accountRepo.getById(companyId, data.parentId);
       if (!parent) {
@@ -96,6 +105,29 @@ export class CreateAccountUseCase {
           400
         );
       }
+
+      // Root Currency Lock Inheritance Check (Waterfall rule)
+      const effectiveCurrencyPolicy = (data.currencyPolicy as any) || 'INHERIT';
+      const effectiveFixedCurrency = data.fixedCurrencyCode || data.currency || null;
+
+      // Governance rule: If the parent is in a foreign currency (e.g., EUR), 
+      // the child MUST also be EUR (cannot revert to USD Base).
+      if (parent.currencyPolicy === 'FIXED' && parent.fixedCurrencyCode !== baseCurrency) {
+        if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== parent.fixedCurrencyCode) {
+          throw this.createError(
+            `Professional Governance Violation: Account belongs to a ${parent.fixedCurrencyCode} parent. ` +
+            `Children inside a foreign context must share the parent's currency (${parent.fixedCurrencyCode}).`,
+            400
+          );
+        }
+        if (effectiveCurrencyPolicy === 'OPEN') {
+           throw this.createError(
+            `Professional Governance Violation: Cannot have OPEN currency policy under a foreign FIXED parent (${parent.fixedCurrencyCode}).`,
+            400
+          );
+        }
+      }
+
       // Currency policy tree coherence: if parent is FIXED, child cannot be OPEN
       if (parent.currencyPolicy === 'FIXED' && currencyPolicy === 'OPEN') {
         throw this.createError(
@@ -110,6 +142,26 @@ export class CreateAccountUseCase {
           accountRole: 'HEADER',
           updatedBy: data.createdBy
         });
+      }
+    } else {
+      // Root Level Policy Validation (Level 0)
+      // Root accounts represent the primary ledger and MUST represent the Base Currency context.
+      const effectiveCurrencyPolicy = (data.currencyPolicy as any) || 'INHERIT';
+      const effectiveFixedCurrency = data.fixedCurrencyCode || data.currency || null;
+
+      if (effectiveCurrencyPolicy === 'OPEN') {
+         throw this.createError(
+          'Root Governance Lock: Root accounts (Assets, Liabilities, etc.) cannot have an OPEN currency policy. They must remain in the company base currency context.',
+          400
+        );
+      }
+
+      if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== baseCurrency) {
+        throw this.createError(
+          `Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${baseCurrency}). ` +
+          `Use children to record foreign currency transactions.`,
+          400
+        );
       }
     }
 

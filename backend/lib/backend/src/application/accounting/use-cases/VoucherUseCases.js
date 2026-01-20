@@ -52,6 +52,7 @@ class CreateVoucherUseCase {
         this.policyConfigProvider = policyConfigProvider;
         this.ledgerRepo = ledgerRepo;
         this.policyRegistry = policyRegistry;
+        this.validationService = new VoucherValidationService_1.VoucherValidationService();
     }
     async execute(companyId, userId, payload) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
@@ -59,7 +60,7 @@ class CreateVoucherUseCase {
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
             // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
             // Ledger entries MUST be in base currency only (accounting rule)
-            const baseCurrency = (settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || 'USD';
+            const baseCurrency = ((settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || 'USD').toUpperCase();
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
             const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
@@ -78,7 +79,7 @@ class CreateVoucherUseCase {
                         strategyInput = payload;
                     }
                 }
-                lines = await strategy.generateLines(strategyInput, companyId);
+                lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
             }
             else {
                 // Map incoming lines to V2 VoucherLineEntity
@@ -104,8 +105,6 @@ class CreateVoucherUseCase {
             const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
             // Build metadata including source tracking fields
             const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign({}, payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
-            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, voucherMetadata, userId, new Date());
-            await this.voucherRepo.save(voucher);
             // Check if Approval is OFF -> Auto-Post
             let approvalRequired = true;
             if (this.policyConfigProvider) {
@@ -115,6 +114,15 @@ class CreateVoucherUseCase {
                 }
                 catch (e) { }
             }
+            // V3: Inject creationMode for audit transparency and badge logic
+            // This ensures that even before posting, the intended governance mode is clear.
+            const creationMode = approvalRequired ? 'STRICT' : 'FLEXIBLE';
+            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, Object.assign(Object.assign({}, voucherMetadata), { creationMode }), // Inject creationMode here
+            userId, new Date());
+            // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
+            // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
+            this.validationService.validateCore(voucher);
+            await this.voucherRepo.save(voucher);
             if (!approvalRequired && this.ledgerRepo) {
                 // Flexible Mode (Mode A): Auto-approve, then post inline
                 // Capturing ledgerRepo to satisfy TypeScript strict null checks across async calls
@@ -129,8 +137,16 @@ class CreateVoucherUseCase {
                 if (registry) {
                     try {
                         const config = await registry.getConfig(companyId);
-                        if (config.allowEditPostedVouchersEnabled) {
+                        // Align with PostVoucherUseCase: Check for strict gates (FA/CC)
+                        const isStrictNow = config.financialApprovalEnabled || config.custodyConfirmationEnabled;
+                        if (isStrictNow) {
+                            lockPolicy = VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
+                        }
+                        else if (config.allowEditPostedVouchersEnabled) {
                             lockPolicy = VoucherTypes_1.PostingLockPolicy.FLEXIBLE_EDITABLE;
+                        }
+                        else {
+                            lockPolicy = VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED;
                         }
                     }
                     catch (e) { }
@@ -215,7 +231,7 @@ class UpdateVoucherUseCase {
         const wasPosted = voucher.isPosted;
         // Simplified update logic: create new entity with merged data
         // CRITICAL: baseCurrency must remain the company's base currency, never from payload
-        const baseCurrency = voucher.baseCurrency; // Use existing voucher's base currency (company's base)
+        const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
         const lines = payload.lines ? payload.lines.map((l, idx) => {
             var _a, _b, _c, _d, _e, _f, _g, _h, _j;
             return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId || ((_a = voucher.lines[idx]) === null || _a === void 0 ? void 0 : _a.accountId), l.side || ((_b = voucher.lines[idx]) === null || _b === void 0 ? void 0 : _b.side), l.baseAmount || ((_c = voucher.lines[idx]) === null || _c === void 0 ? void 0 : _c.baseAmount), baseCurrency, l.amount || ((_d = voucher.lines[idx]) === null || _d === void 0 ? void 0 : _d.amount), l.currency || ((_e = voucher.lines[idx]) === null || _e === void 0 ? void 0 : _e.currency), l.exchangeRate || ((_f = voucher.lines[idx]) === null || _f === void 0 ? void 0 : _f.exchangeRate), l.notes || ((_g = voucher.lines[idx]) === null || _g === void 0 ? void 0 : _g.notes), l.costCenterId || ((_h = voucher.lines[idx]) === null || _h === void 0 ? void 0 : _h.costCenterId), Object.assign(Object.assign({}, (_j = voucher.lines[idx]) === null || _j === void 0 ? void 0 : _j.metadata), l.metadata));
@@ -286,7 +302,7 @@ class ApproveVoucherUseCase {
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new Error('Voucher not found');
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.approve.finance');
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.approve');
         if (voucher.status !== VoucherTypes_1.VoucherStatus.PENDING) {
             throw new Error(`Cannot approve voucher with status: ${voucher.status}. Voucher must be in PENDING status.`);
         }
