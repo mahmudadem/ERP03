@@ -100,11 +100,15 @@ export class VoucherValidationService {
       }
     }
     
-    // 5. Currency consistency (skip for journal entries which support multi-currency lines)
+    // 5. Currency consistency (skip for journal entries and reversals which support multi-currency lines)
     // Journal entries allow different transaction currencies per line, but base currency must balance
-    const isJournalEntry = voucher.type.toLowerCase() === 'journal_entry' || voucher.type.toLowerCase() === 'journalentry';
+    // Reversals MUST mirror the original voucher structure, so they must support whatever the original supported.
+    const isMultiCurrencySupported = 
+      voucher.type.toLowerCase() === 'journal_entry' || 
+      voucher.type.toLowerCase() === 'journalentry' ||
+      voucher.type.toLowerCase() === 'reversal';
     
-    if (!isJournalEntry) {
+    if (!isMultiCurrencySupported) {
       // For other voucher types, enforce same currency as header
       const invalidLines = voucher.lines.filter(
         line => line.currency !== voucher.currency || line.baseCurrency !== voucher.baseCurrency

@@ -16,6 +16,9 @@ export interface VoucherListItem {
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'cancelled';
   totalDebit: number;
   totalCredit: number;
+  totalDebitVoucher: number;
+  totalCreditVoucher: number;
+  voucherAmount: number;
   reference?: string;
   voucherNo?: string;
   createdBy?: string;

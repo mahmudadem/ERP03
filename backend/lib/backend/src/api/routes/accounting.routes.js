@@ -8,6 +8,7 @@ const AccountController_1 = require("../controllers/accounting/AccountController
 const VoucherController_1 = require("../controllers/accounting/VoucherController");
 const VoucherFormController_1 = require("../controllers/accounting/VoucherFormController");
 const ReportingController_1 = require("../controllers/accounting/ReportingController");
+const AccountingReportsController_1 = require("../controllers/accounting/AccountingReportsController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
 const CurrencyController_1 = require("../controllers/accounting/CurrencyController");
@@ -44,8 +45,8 @@ router.post('/vouchers/:id/reject', (0, permissionGuard_1.permissionGuard)('acco
 router.post('/vouchers/:id/cancel', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.cancel'), VoucherController_1.VoucherController.cancel);
 // Reports
 router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accounting.reports.profitAndLoss.view'), ReportingController_1.ReportingController.profitAndLoss);
-router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), ReportingController_1.ReportingController.trialBalance);
-router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), ReportingController_1.ReportingController.generalLedger);
+router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), AccountingReportsController_1.AccountingReportsController.getTrialBalance);
+router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getGeneralLedger);
 router.get('/reports/journal', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), ReportingController_1.ReportingController.journal);
 // Designer (Module-specific)
 router.get('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypes);

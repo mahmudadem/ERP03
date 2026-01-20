@@ -23,6 +23,10 @@ import { LedgerEntry } from '../models/LedgerEntry';
  * REJECTED
  */
 export class VoucherEntity {
+  public readonly totalDebitVoucher: number;
+  public readonly totalCreditVoucher: number;
+  public readonly voucherAmount: number;
+
   constructor(
     public readonly id: string,
     public readonly companyId: string,
@@ -64,10 +68,16 @@ export class VoucherEntity {
     public readonly postingLockPolicy?: PostingLockPolicy,
     public readonly reversalOfVoucherId?: string | null,
     
-    // Additional fields migrated from legacy
     public readonly reference?: string | null,     // External reference (invoice #, check #, etc.)
     public readonly updatedAt?: Date | null        // Last modification timestamp
   ) {
+    // Calculated totals in voucher currency (sum of line.amount)
+    this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
+    // Better: just use debit side as the document amount
+    this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.side === 'Debit' ? (line.amount || 0) : 0), 0);
+    this.totalCreditVoucher = lines.reduce((sum, line) => sum + (line.side === 'Credit' ? (line.amount || 0) : 0), 0);
+    this.voucherAmount = Math.max(this.totalDebitVoucher, this.totalCreditVoucher);
+    
     // Invariant: Must have at least 2 lines (debit and credit)
     if (lines.length < 2) {
       throw new Error('Voucher must have at least 2 lines');
@@ -84,7 +94,7 @@ export class VoucherEntity {
       );
     }
     
-    // Invariant: Totals must match line totals
+    // Invariant: Totals must match line totals (base currency)
     if (!moneyEquals(totalDebit, calculatedDebit)) {
       throw new Error('Total debit does not match sum of debit lines');
     }
@@ -92,7 +102,7 @@ export class VoucherEntity {
     if (!moneyEquals(totalCredit, calculatedCredit)) {
       throw new Error('Total credit does not match sum of credit lines');
     }
-    
+
     // Invariant: All lines must use the SAME baseCurrency (company base currency)
     // NOTE: FX currencies (line.currency) may differ - mixed FX is allowed
     const normalizedBase = baseCurrency.toUpperCase();
@@ -887,6 +897,9 @@ export class VoucherEntity {
       lines: this.lines.map(line => line.toJSON()),
       totalDebit: this.totalDebit,
       totalCredit: this.totalCredit,
+      totalDebitVoucher: this.totalDebitVoucher,
+      totalCreditVoucher: this.totalCreditVoucher,
+      voucherAmount: this.voucherAmount,
       totalDebitBase: this.totalDebitBase,
       totalCreditBase: this.totalCreditBase,
       status: this.status,

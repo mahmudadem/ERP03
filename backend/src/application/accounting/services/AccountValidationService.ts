@@ -166,8 +166,13 @@ export class AccountValidationService {
     voucherType?: string,
     extraContext?: Partial<AccountValidationContext>
   ): Promise<Account> {
-    const account = await this.accountRepo.getById(companyId, accountId);
+    let account = await this.accountRepo.getById(companyId, accountId);
     
+    // Fallback: Check if the provided accountId is actually an account code (common in legacy/migration data)
+    if (!account) {
+      account = await this.accountRepo.getByCode(companyId, accountId);
+    }
+
     if (!account) {
       throw new Error(`Account "${accountId}" not found`);
     }

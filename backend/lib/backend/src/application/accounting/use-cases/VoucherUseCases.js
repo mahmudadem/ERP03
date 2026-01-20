@@ -33,6 +33,7 @@ const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
 const AppError_1 = require("../../../errors/AppError");
 const ErrorCodes_1 = require("../../../errors/ErrorCodes");
+const AccountValidationService_1 = require("../services/AccountValidationService");
 /**
  * CreateVoucherUseCase
  *
@@ -84,22 +85,28 @@ class CreateVoucherUseCase {
             else {
                 // Map incoming lines to V2 VoucherLineEntity
                 // Strictly V2 format (side, amount, baseAmount)
-                lines = (payload.lines || []).map((l, idx) => {
+                const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
+                lines = await Promise.all((payload.lines || []).map(async (l, idx) => {
                     if (!l.side || l.amount === undefined) {
                         throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VAL_REQUIRED_FIELD, `Line ${idx + 1}: Missing required V2 fields: side, amount`);
                     }
-                    const fxAmount = Math.abs(Number(l.amount) || 0);
-                    const baseAmt = Math.abs(Number(l.baseAmount) || fxAmount); // Fallback to FX if base missing
-                    const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
-                    const lineBaseCurrency = l.baseCurrency || baseCurrency;
-                    const rate = Number(l.exchangeRate) || Number(payload.exchangeRate) || 1;
-                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId, l.side, baseAmt, // baseAmount
+                    // Resolve Code to UUID for persistence
+                    const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId);
+                    const amount = Math.abs(Number(l.amount) || 0);
+                    const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
+                    const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
+                    const exchangeRate = Number(l.exchangeRate || l.parity || payload.exchangeRate || 1);
+                    // CRITICAL FIX: baseAmount MUST ALWAYS be calculated as amount * exchangeRate
+                    // Never trust incoming baseAmount - it could be stale or inconsistent
+                    const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * exchangeRate);
+                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, // Use persistent ID
+                    l.side, baseAmount, // baseAmount (Calculated)
                     lineBaseCurrency, // baseCurrency  
-                    fxAmount, // amount
-                    lineCurrency, // currency
-                    rate, // exchangeRate
+                    amount, // amount (FX)
+                    lineCurrency, // currency (FX)
+                    exchangeRate, // exchangeRate
                     l.notes || l.description, l.costCenterId, l.metadata || {});
-                });
+                }));
             }
             const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
             const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
@@ -230,12 +237,27 @@ class UpdateVoucherUseCase {
         // Track if voucher was posted before update (for ledger resync)
         const wasPosted = voucher.isPosted;
         // Simplified update logic: create new entity with merged data
+        const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
         // CRITICAL: baseCurrency must remain the company's base currency, never from payload
         const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-        const lines = payload.lines ? payload.lines.map((l, idx) => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
-            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, l.accountId || ((_a = voucher.lines[idx]) === null || _a === void 0 ? void 0 : _a.accountId), l.side || ((_b = voucher.lines[idx]) === null || _b === void 0 ? void 0 : _b.side), l.baseAmount || ((_c = voucher.lines[idx]) === null || _c === void 0 ? void 0 : _c.baseAmount), baseCurrency, l.amount || ((_d = voucher.lines[idx]) === null || _d === void 0 ? void 0 : _d.amount), l.currency || ((_e = voucher.lines[idx]) === null || _e === void 0 ? void 0 : _e.currency), l.exchangeRate || ((_f = voucher.lines[idx]) === null || _f === void 0 ? void 0 : _f.exchangeRate), l.notes || ((_g = voucher.lines[idx]) === null || _g === void 0 ? void 0 : _g.notes), l.costCenterId || ((_h = voucher.lines[idx]) === null || _h === void 0 ? void 0 : _h.costCenterId), Object.assign(Object.assign({}, (_j = voucher.lines[idx]) === null || _j === void 0 ? void 0 : _j.metadata), l.metadata));
-        }) : voucher.lines;
+        const rawLines = payload.lines || voucher.lines;
+        const lines = await Promise.all(rawLines.map(async (l, idx) => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+            const originalLine = voucher.lines[idx];
+            // 1. Resolve Account ID (UUID)
+            const inputAccountId = (_a = l.accountId) !== null && _a !== void 0 ? _a : originalLine === null || originalLine === void 0 ? void 0 : originalLine.accountId;
+            const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
+            // 2. Resolve side and amounts (Handle 0 and field variations correctly)
+            const side = (_b = l.side) !== null && _b !== void 0 ? _b : originalLine === null || originalLine === void 0 ? void 0 : originalLine.side;
+            const currency = ((_e = (_d = (_c = l.currency) !== null && _c !== void 0 ? _c : l.lineCurrency) !== null && _d !== void 0 ? _d : originalLine === null || originalLine === void 0 ? void 0 : originalLine.currency) !== null && _e !== void 0 ? _e : baseCurrency).toUpperCase();
+            const exchangeRate = Number((_h = (_g = (_f = l.exchangeRate) !== null && _f !== void 0 ? _f : l.parity) !== null && _g !== void 0 ? _g : originalLine === null || originalLine === void 0 ? void 0 : originalLine.exchangeRate) !== null && _h !== void 0 ? _h : 1);
+            const amount = Number((_k = (_j = l.amount) !== null && _j !== void 0 ? _j : originalLine === null || originalLine === void 0 ? void 0 : originalLine.amount) !== null && _k !== void 0 ? _k : 0);
+            // 3. ALWAYS RECALCULATE baseAmount from amount and exchangeRate.
+            // The frontend sends amount/lineCurrency/exchangeRate as source of truth.
+            // ANY incoming baseAmount (from payload or original data) might be stale if amounts/rates changed.
+            const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * exchangeRate);
+            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, side, baseAmount, baseCurrency, amount, currency, exchangeRate, (_l = l.notes) !== null && _l !== void 0 ? _l : originalLine === null || originalLine === void 0 ? void 0 : originalLine.notes, (_m = l.costCenterId) !== null && _m !== void 0 ? _m : originalLine === null || originalLine === void 0 ? void 0 : originalLine.costCenterId, Object.assign(Object.assign({}, originalLine === null || originalLine === void 0 ? void 0 : originalLine.metadata), l.metadata));
+        }));
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
         let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_c = payload.description) !== null && _c !== void 0 ? _c : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
@@ -371,10 +393,25 @@ class PostVoucherUseCase {
                 // 1. Core Invariants (Always enforced)
                 try {
                     this.validationService.validateCore(voucher, corrId);
-                    // 1.1 Account Validation (Application Layer Check)
-                    // Validate all accounts used in lines (existence, status, role, currency policy)
-                    const distinctAccountIds = [...new Set(voucher.lines.map(l => l.accountId))];
-                    await Promise.all(distinctAccountIds.map(accId => this.accountValidationService.validateAccountById(companyId, userId, accId, voucher.type)));
+                    // Validate and Resolve all accounts used in lines (existence, status, role, currency policy)
+                    const distinctAccountRawIds = [...new Set(voucher.lines.map(l => l.accountId))];
+                    const resolvedAccountsMap = new Map();
+                    await Promise.all(distinctAccountRawIds.map(async (accId) => {
+                        const account = await this.accountValidationService.validateAccountById(companyId, userId, accId, voucher.type);
+                        resolvedAccountsMap.set(accId, account.id);
+                    }));
+                    // NORMALIZATION: If any accountId in the voucher lines is a code, we must re-create the voucher
+                    // with actual IDs before posting to the ledger.
+                    const needsNormalization = voucher.lines.some(l => resolvedAccountsMap.get(l.accountId) !== l.accountId);
+                    if (needsNormalization) {
+                        const normalizedLines = voucher.lines.map(l => new VoucherLineEntity_1.VoucherLineEntity(l.id, resolvedAccountsMap.get(l.accountId), l.side, l.baseAmount, l.baseCurrency, l.amount, l.currency, l.exchangeRate, l.notes, l.costCenterId, l.metadata));
+                        // Re-instantiate voucher with normalized lines
+                        // We can't mutate VoucherEntity (immutable), but we can create a projected copy for posting
+                        // However, voucher.post() returns a new entity, so we can just use the normalized lines there.
+                        voucher.lines = normalizedLines; // TEMPORARY mutation for posting logic if needed, 
+                        // but cleaner is to pass it to post. 
+                        // Looking at VoucherEntity.post, it uses this.lines.
+                    }
                 }
                 catch (error) {
                     // Log core rejection

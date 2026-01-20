@@ -825,8 +825,9 @@ export const VoucherTable: React.FC<Props> = ({
                   ? (getAccountById(creditLines[0].accountId)?.name || creditLines[0].accountId)
                   : (creditLines.length > 1 ? 'Multiple Accounts' : '-');
 
-                const isBalanced = Math.abs(voucher.totalDebit - voucher.totalCredit) < 0.01;
-                const displayAmount = isBalanced ? voucher.totalDebit : `D: ${voucher.totalDebit} / C: ${voucher.totalCredit}`;
+                // Display amount in original voucher currency
+                const displayFullAmount = voucher.voucherAmount !== undefined ? voucher.voucherAmount : voucher.totalDebit;
+                const displayAmount = displayFullAmount;
 
                 return (
                   <tr 
@@ -1011,8 +1012,8 @@ export const VoucherTable: React.FC<Props> = ({
                                 variant={variant}
                                 className={clsx(
                                   "flex items-center gap-1 px-2 py-0.5 rounded-full font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
-                                  (isPosted && !isReversed) && "bg-emerald-700 text-white border-none",
-                                  isReversed && "bg-amber-500 text-white border-none",
+                                  (isPosted && !isReversed) && "!bg-emerald-600 !text-white border-none shadow-sm",
+                                  isReversed && "!bg-amber-500 !text-white border-none shadow-sm",
                                   fontSize
                                 )}
                                 title={voucher.postedAt ? `Posted on ${formatCompanyDate(voucher.postedAt, settings)}` : label}

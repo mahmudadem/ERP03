@@ -63,6 +63,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<'REVERSE_ONLY' | 'REVERSE_AND_REPLACE'>('REVERSE_ONLY');
+  const isInitialLoadRef = useRef(true); // Track initial load to prevent false dirty state
   const [policyConfig, setPolicyConfig] = useState<AccountingPolicyConfig | null>(null);
   const [policyLoading, setPolicyLoading] = useState(true);
 
@@ -147,6 +148,53 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       }
     };
     fetchPolicy();
+  }, []);
+
+  // Sync liveLines with win.data?.lines when it changes (e.g., after async fetch)
+  useEffect(() => {
+    if (win.data?.lines && win.data.lines.length > 0) {
+      // Normalize lines to ensure debit/credit fields exist
+      const normalized = win.data.lines.map((l: any) => {
+        const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
+        const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
+        return { ...l, debit, credit };
+      });
+      setLiveLines(normalized);
+    }
+  }, [win.data?.lines]);
+
+  // Sync liveLines from rendererRef after initial render to ensure totals display correctly
+  // ONLY if liveLines is still empty (renderer hasn't been populated by win.data.lines yet)
+  useEffect(() => {
+    const syncFromRenderer = () => {
+      // Only sync if we don't already have liveLines from win.data.lines
+      if (liveLines.length > 0) {
+        return;
+      }
+      
+      const rendererRows = rendererRef.current?.getRows();
+      if (rendererRows && rendererRows.length > 0) {
+        // Check if rows have actual data (not just empty placeholders)
+        const hasData = rendererRows.some((r: any) => 
+          (parseFloat(r.debit) || 0) > 0 || (parseFloat(r.credit) || 0) > 0 || r.accountId
+        );
+        if (hasData) {
+          setLiveLines(rendererRows);
+        }
+      }
+    };
+    
+    // Initial sync after a short delay to allow renderer to initialize
+    const timer = setTimeout(syncFromRenderer, 100);
+    return () => clearTimeout(timer);
+  }, [win.data?.id, liveLines.length]); // Re-run when voucher ID changes
+
+  // Mark initial load as complete after a short delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 500); // Allow 500ms for initial data transformation
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -726,9 +774,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           initialData={win.data}
           readOnly={isVoucherReadOnly}
           onChange={(newData: any) => {
-            setIsDirty(true);
-            if (newData?.lines) {
-              setLiveLines(newData.lines);
+            // Never set dirty for read-only vouchers - they cannot be edited
+            if (!isInitialLoadRef.current && !isVoucherReadOnly) {
+              setIsDirty(true);
+            }
+            if (newData?.lines && Array.isArray(newData.lines)) {
+              // Only update liveLines if the new lines have actual data
+              // This prevents INITIAL_ROWS (50 empty placeholders) from overwriting real data
+              const hasRealData = newData.lines.some((l: any) => 
+                (parseFloat(l.debit) || 0) > 0 || 
+                (parseFloat(l.credit) || 0) > 0 || 
+                l.accountId
+              );
+              if (hasRealData) {
+                setLiveLines(newData.lines);
+              }
             }
           }}
           onBlur={() => {
@@ -742,40 +802,31 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         {/* Totals Display */}
         <div className="flex items-center gap-4">
           {(() => {
-            // Get current rows directly from live state update
-            // Fallback to rendererRef for initial load only if liveLines is empty
+            // Simple: get rows from liveLines or renderer
             const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
             
-            const safeParse = (val: any) => {
-              const num = parseFloat(val);
-              return isNaN(num) ? 0 : num;
-            };
-
-            const getLineAmounts = (row: any) => {
-              const headerExchangeRate = parseFloat(win.data?.exchangeRate) || 1.0;
+            // Simple sum: just add up debit and credit columns
+            let totalDebitCalc = 0;
+            let totalCreditCalc = 0;
+            
+            for (const row of rows) {
+              // Read debit/credit directly (these are the table values)
+              let debit = parseFloat(row.debit) || 0;
+              let credit = parseFloat(row.credit) || 0;
               
-              // Handle V2 Format (from onChange / liveLines)
-              if (row.side) {
-                const amount = safeParse(row.amount);
-                const parity = safeParse(row.exchangeRate || row.parity || 1);
-                const baseAmount = amount * parity * headerExchangeRate; // Correctly multiply by header rate
-                
-                return {
-                  debit: row.side === 'Debit' ? baseAmount : 0,
-                  credit: row.side === 'Credit' ? baseAmount : 0
-                };
+              // Fallback: if debit/credit are both 0, try side/amount format
+              if (debit === 0 && credit === 0 && row.side && row.amount) {
+                const amt = parseFloat(row.amount) || 0;
+                if (row.side === 'Debit' || row.side === 'debit') debit = amt;
+                else if (row.side === 'Credit' || row.side === 'credit') credit = amt;
               }
               
-              // Handle V1 Format (from rendererRef / internal state)
-              const parity = safeParse(row.parity || 1);
-              return {
-                debit: safeParse(row.debit) * parity * headerExchangeRate,
-                credit: safeParse(row.credit) * parity * headerExchangeRate
-              };
-            };
-
-            const totalDebitCalc = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).debit, 0);
-            const totalCreditCalc = rows.reduce((sum: number, row: any) => sum + getLineAmounts(row).credit, 0);
+              // Apply parity for base currency equivalent
+              // Backend sends 'exchangeRate', UI uses 'parity'
+              const parity = parseFloat(row.parity) || parseFloat(row.exchangeRate) || 1;
+              totalDebitCalc += debit * parity;
+              totalCreditCalc += credit * parity;
+            }
             
             const isBalanced = Math.abs(totalDebitCalc - totalCreditCalc) < 0.01;
             const hasValues = totalDebitCalc > 0 || totalCreditCalc > 0;
@@ -976,6 +1027,34 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 disabled={isSubmitting}
               >
                 Reject
+              </button>
+            </div>
+          )}
+
+          {/* Post Button for APPROVED vouchers that are not yet posted */}
+          {win.data?.status?.toLowerCase() === 'approved' && !win.data?.postedAt && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (win.data?.id) {
+                    setIsSubmitting(true);
+                    try {
+                      await accountingApi.postVoucher(win.data.id);
+                      setIsDirty(false);
+                      setShowSuccessModal(true);
+                      await refreshVoucher();
+                    } catch (error: any) {
+                      errorHandler.showError(error);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Post to Ledger
               </button>
             </div>
           )}

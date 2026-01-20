@@ -77,12 +77,12 @@ class VoucherLineEntity {
         if (!currency || currency.trim() === '') {
             throw new Error('VoucherLine currency is required');
         }
-        // Invariant: baseAmount must be positive
-        if (baseAmount <= 0) {
+        // Invariant: baseAmount must be valid and positive
+        if (isNaN(baseAmount) || baseAmount <= 0) {
             throw new Error(`VoucherLine baseAmount must be positive, got: ${baseAmount}`);
         }
-        // Invariant: amount must be positive
-        if (amount <= 0) {
+        // Invariant: amount must be valid and positive
+        if (isNaN(amount) || amount <= 0) {
             throw new Error(`VoucherLine amount must be positive, got: ${amount}`);
         }
         // ========== FX-SPECIFIC INVARIANTS ==========

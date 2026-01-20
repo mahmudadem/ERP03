@@ -35,6 +35,7 @@ export interface WindowState {
 
 export interface JournalRow {
   id: number;
+  accountId?: string;
   account: string;
   notes: string;
   debit: number;

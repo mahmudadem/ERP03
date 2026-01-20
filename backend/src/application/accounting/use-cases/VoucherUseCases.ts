@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
-import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { IAccountRepository, ILedgerRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
@@ -71,7 +71,9 @@ export class CreateVoucherUseCase {
       } else {
         // Map incoming lines to V2 VoucherLineEntity
         // Strictly V2 format (side, amount, baseAmount)
-        lines = (payload.lines || []).map((l: any, idx: number) => {
+        const accountValidationService = new AccountValidationService(this.accountRepo);
+        
+        lines = await Promise.all((payload.lines || []).map(async (l: any, idx: number) => {
           if (!l.side || l.amount === undefined) {
             throw new BusinessError(
               ErrorCode.VAL_REQUIRED_FIELD,
@@ -79,27 +81,32 @@ export class CreateVoucherUseCase {
             );
           }
 
-          const fxAmount = Math.abs(Number(l.amount) || 0);
-          const baseAmt = Math.abs(Number(l.baseAmount) || fxAmount); // Fallback to FX if base missing
+          // Resolve Code to UUID for persistence
+          const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId);
+
+          const amount = Math.abs(Number(l.amount) || 0);
+          const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
+          const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
+          const exchangeRate = Number(l.exchangeRate || l.parity || payload.exchangeRate || 1);
           
-          const lineCurrency = l.currency || l.lineCurrency || payload.currency || baseCurrency;
-          const lineBaseCurrency = l.baseCurrency || baseCurrency;
-          const rate = Number(l.exchangeRate) || Number(payload.exchangeRate) || 1;
+          // CRITICAL FIX: baseAmount MUST ALWAYS be calculated as amount * exchangeRate
+          // Never trust incoming baseAmount - it could be stale or inconsistent
+          const baseAmount = roundMoney(amount * exchangeRate);
           
           return new VoucherLineEntity(
             idx + 1,
-            l.accountId!,
+            account.id,        // Use persistent ID
             l.side,
-            baseAmt,           // baseAmount
+            baseAmount,        // baseAmount (Calculated)
             lineBaseCurrency,  // baseCurrency  
-            fxAmount,          // amount
-            lineCurrency,      // currency
-            rate,              // exchangeRate
+            amount,            // amount (FX)
+            lineCurrency,      // currency (FX)
+            exchangeRate,      // exchangeRate
             l.notes || l.description,
             l.costCenterId,
             l.metadata || {}
           );
-        });
+        }));
       }
 
 
@@ -274,21 +281,44 @@ export class UpdateVoucherUseCase {
     const wasPosted = voucher.isPosted;
 
     // Simplified update logic: create new entity with merged data
+    const accountValidationService = new AccountValidationService(this.accountRepo);
+    
     // CRITICAL: baseCurrency must remain the company's base currency, never from payload
     const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-    const lines = payload.lines ? payload.lines.map((l: any, idx: number) => new VoucherLineEntity(
-      idx + 1,
-      l.accountId || voucher.lines[idx]?.accountId,
-      l.side || voucher.lines[idx]?.side,
-      l.baseAmount || voucher.lines[idx]?.baseAmount,
-      baseCurrency,
-      l.amount || voucher.lines[idx]?.amount,
-      l.currency || voucher.lines[idx]?.currency,
-      l.exchangeRate || voucher.lines[idx]?.exchangeRate,
-      l.notes || voucher.lines[idx]?.notes,
-      l.costCenterId || voucher.lines[idx]?.costCenterId,
-      { ...voucher.lines[idx]?.metadata, ...l.metadata }
-    )) : voucher.lines;
+    const rawLines = payload.lines || voucher.lines;
+    
+    const lines = await Promise.all(rawLines.map(async (l: any, idx: number) => {
+      const originalLine = voucher.lines[idx];
+      
+      // 1. Resolve Account ID (UUID)
+      const inputAccountId = l.accountId ?? originalLine?.accountId;
+      const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
+      
+      // 2. Resolve side and amounts (Handle 0 and field variations correctly)
+      const side = l.side ?? originalLine?.side;
+      const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
+      const exchangeRate = Number(l.exchangeRate ?? l.parity ?? originalLine?.exchangeRate ?? 1);
+      const amount = Number(l.amount ?? originalLine?.amount ?? 0);
+      
+      // 3. ALWAYS RECALCULATE baseAmount from amount and exchangeRate.
+      // The frontend sends amount/lineCurrency/exchangeRate as source of truth.
+      // ANY incoming baseAmount (from payload or original data) might be stale if amounts/rates changed.
+      const baseAmount = roundMoney(amount * exchangeRate);
+
+      return new VoucherLineEntity(
+        idx + 1,
+        account.id, 
+        side,
+        baseAmount,
+        baseCurrency,
+        amount,
+        currency,
+        exchangeRate,
+        l.notes ?? originalLine?.notes,
+        l.costCenterId ?? originalLine?.costCenterId,
+        { ...originalLine?.metadata, ...l.metadata }
+      );
+    }));
 
     const totalDebit = lines.reduce((s: number, l: any) => s + l.debitAmount, 0);
     const totalCredit = lines.reduce((s: number, l: any) => s + l.creditAmount, 0);
@@ -471,17 +501,46 @@ export class PostVoucherUseCase {
         try {
           this.validationService.validateCore(voucher, corrId);
           
-          // 1.1 Account Validation (Application Layer Check)
-          // Validate all accounts used in lines (existence, status, role, currency policy)
-          const distinctAccountIds = [...new Set(voucher.lines.map(l => l.accountId))];
-          await Promise.all(distinctAccountIds.map(accId => 
-             this.accountValidationService.validateAccountById(
+          // Validate and Resolve all accounts used in lines (existence, status, role, currency policy)
+          const distinctAccountRawIds = [...new Set(voucher.lines.map(l => l.accountId))];
+          const resolvedAccountsMap = new Map<string, string>();
+          
+          await Promise.all(distinctAccountRawIds.map(async (accId) => {
+             const account = await this.accountValidationService.validateAccountById(
                companyId, 
                userId, 
                accId, 
                voucher.type
-             )
-          ));
+             );
+             resolvedAccountsMap.set(accId, account.id);
+          }));
+
+          // NORMALIZATION: If any accountId in the voucher lines is a code, we must re-create the voucher
+          // with actual IDs before posting to the ledger.
+          const needsNormalization = voucher.lines.some(l => resolvedAccountsMap.get(l.accountId) !== l.accountId);
+          
+          if (needsNormalization) {
+            const normalizedLines = voucher.lines.map(l => new VoucherLineEntity(
+              l.id,
+              resolvedAccountsMap.get(l.accountId)!,
+              l.side,
+              l.baseAmount,
+              l.baseCurrency,
+              l.amount,
+              l.currency,
+              l.exchangeRate,
+              l.notes,
+              l.costCenterId,
+              l.metadata
+            ));
+            
+            // Re-instantiate voucher with normalized lines
+            // We can't mutate VoucherEntity (immutable), but we can create a projected copy for posting
+            // However, voucher.post() returns a new entity, so we can just use the normalized lines there.
+             (voucher as any).lines = normalizedLines; // TEMPORARY mutation for posting logic if needed, 
+             // but cleaner is to pass it to post. 
+             // Looking at VoucherEntity.post, it uses this.lines.
+          }
         } catch (error: any) {
           // Log core rejection
           logger.error('POST_REJECTED_CORE', {

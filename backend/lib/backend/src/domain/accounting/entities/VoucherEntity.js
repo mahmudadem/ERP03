@@ -36,9 +36,7 @@ class VoucherEntity {
     // Metadata (Generic extra fields - includes formId, prefix, sourceModule)
     metadata = {}, 
     // Audit trail
-    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt, postingLockPolicy, reversalOfVoucherId, 
-    // Additional fields migrated from legacy
-    reference, // External reference (invoice #, check #, etc.)
+    createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt, postingLockPolicy, reversalOfVoucherId, reference, // External reference (invoice #, check #, etc.)
     updatedAt // Last modification timestamp
     ) {
         this.id = id;
@@ -70,6 +68,12 @@ class VoucherEntity {
         this.reversalOfVoucherId = reversalOfVoucherId;
         this.reference = reference;
         this.updatedAt = updatedAt;
+        // Calculated totals in voucher currency (sum of line.amount)
+        this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
+        // Better: just use debit side as the document amount
+        this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.side === 'Debit' ? (line.amount || 0) : 0), 0);
+        this.totalCreditVoucher = lines.reduce((sum, line) => sum + (line.side === 'Credit' ? (line.amount || 0) : 0), 0);
+        this.voucherAmount = Math.max(this.totalDebitVoucher, this.totalCreditVoucher);
         // Invariant: Must have at least 2 lines (debit and credit)
         if (lines.length < 2) {
             throw new Error('Voucher must have at least 2 lines');
@@ -81,7 +85,7 @@ class VoucherEntity {
         if (!(0, VoucherLineEntity_1.moneyEquals)(calculatedDebit, calculatedCredit)) {
             throw new Error(`Voucher not balanced in base currency: Debit=${calculatedDebit}, Credit=${calculatedCredit}`);
         }
-        // Invariant: Totals must match line totals
+        // Invariant: Totals must match line totals (base currency)
         if (!(0, VoucherLineEntity_1.moneyEquals)(totalDebit, calculatedDebit)) {
             throw new Error('Total debit does not match sum of debit lines');
         }
@@ -508,6 +512,9 @@ class VoucherEntity {
             lines: this.lines.map(line => line.toJSON()),
             totalDebit: this.totalDebit,
             totalCredit: this.totalCredit,
+            totalDebitVoucher: this.totalDebitVoucher,
+            totalCreditVoucher: this.totalCreditVoucher,
+            voucherAmount: this.voucherAmount,
             totalDebitBase: this.totalDebitBase,
             totalCreditBase: this.totalCreditBase,
             status: this.status,

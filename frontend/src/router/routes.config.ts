@@ -12,6 +12,7 @@ const AccountsListPage = lazy(() => import('../modules/accounting/pages/Accounts
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
+const GeneralLedgerPage = lazy(() => import('../modules/accounting/pages/GeneralLedgerPage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
 
 // Initialization Wizards
@@ -102,6 +103,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/general-ledger', label: 'General Ledger', component: GeneralLedgerPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },

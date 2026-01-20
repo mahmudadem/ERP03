@@ -24,6 +24,40 @@ export interface TrialBalanceLine {
   netBalance: number;
 }
 
+export interface GeneralLedgerEntry {
+  id: string;
+  date: string;
+  voucherId: string;
+  voucherNo?: string;
+  accountId: string;
+  accountCode?: string;
+  accountName?: string;
+  description?: string;
+  debit: number;
+  credit: number;
+  currency: string;
+  amount: number;
+  baseCurrency: string;
+  baseAmount: number;
+  exchangeRate: number;
+  runningBalance?: number;
+  
+  // Audit Metadata
+  createdAt?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdByEmail?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedByEmail?: string;
+  postedAt?: string;
+  postedBy?: string;
+  postedByName?: string;
+  postedByEmail?: string;
+}
+
+
 export interface AccountDTO {
   // Identity
   id: string;
@@ -185,6 +219,10 @@ export const accountingApi = {
     return client.post(`/tenant/accounting/vouchers/${id}/reject`, { reason });
   },
 
+  postVoucher: (id: string): Promise<{ success: boolean }> => {
+    return client.post(`/tenant/accounting/vouchers/${id}/post`);
+  },
+
   cancelVoucher: (id: string): Promise<VoucherDetailDTO> => {
     return client.post(`/tenant/accounting/vouchers/${id}/cancel`);
   },
@@ -212,6 +250,15 @@ export const accountingApi = {
     params.append('from', fromDate);
     params.append('to', toDate);
     return client.get(`/tenant/accounting/reports/profit-loss?${params.toString()}`);
+  },
+
+  getGeneralLedger: (accountId?: string, from?: string, to?: string): Promise<GeneralLedgerEntry[]> => {
+    const params = new URLSearchParams();
+    if (accountId) params.append('accountId', accountId);
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const queryString = params.toString();
+    return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
   },
 
   getPolicyConfig: (): Promise<AccountingPolicyConfig> => {

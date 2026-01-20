@@ -7,6 +7,7 @@ import { AccountController } from '../controllers/accounting/AccountController';
 import { VoucherController } from '../controllers/accounting/VoucherController';
 import { VoucherFormController } from '../controllers/accounting/VoucherFormController';
 import { ReportingController } from '../controllers/accounting/ReportingController';
+import { AccountingReportsController } from '../controllers/accounting/AccountingReportsController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { SettingsController } from '../controllers/accounting/SettingsController';
 import { CurrencyController } from '../controllers/accounting/CurrencyController';
@@ -51,8 +52,8 @@ router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'
 
 // Reports
 router.get('/reports/profit-loss', permissionGuard('accounting.reports.profitAndLoss.view'), ReportingController.profitAndLoss);
-router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBalance.view'), ReportingController.trialBalance);
-router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.generalLedger);
+router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBalance.view'), AccountingReportsController.getTrialBalance);
+router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getGeneralLedger);
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 
 // Designer (Module-specific)

@@ -45,10 +45,13 @@ class VoucherValidationService {
                 throw (0, AppError_1.createPostingError)('SUSPICIOUS_EXCHANGE_RATE', `Line ${line.id}: Exchange rate between ${line.currency} and ${line.baseCurrency} cannot be exactly 1.0. Please provide a valid rate.`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].exchangeRate`], undefined, correlationId);
             }
         }
-        // 5. Currency consistency (skip for journal entries which support multi-currency lines)
+        // 5. Currency consistency (skip for journal entries and reversals which support multi-currency lines)
         // Journal entries allow different transaction currencies per line, but base currency must balance
-        const isJournalEntry = voucher.type.toLowerCase() === 'journal_entry' || voucher.type.toLowerCase() === 'journalentry';
-        if (!isJournalEntry) {
+        // Reversals MUST mirror the original voucher structure, so they must support whatever the original supported.
+        const isMultiCurrencySupported = voucher.type.toLowerCase() === 'journal_entry' ||
+            voucher.type.toLowerCase() === 'journalentry' ||
+            voucher.type.toLowerCase() === 'reversal';
+        if (!isMultiCurrencySupported) {
             // For other voucher types, enforce same currency as header
             const invalidLines = voucher.lines.filter(line => line.currency !== voucher.currency || line.baseCurrency !== voucher.baseCurrency);
             if (invalidLines.length > 0) {

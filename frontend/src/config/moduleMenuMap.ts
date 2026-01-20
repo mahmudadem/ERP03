@@ -20,8 +20,15 @@ export const moduleMenuMap: Record<
       { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
       { label: 'Forms Designer', path: '/accounting/forms-designer', permission: 'accounting.designer.view', icon: 'Layout' },
-      { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
-      { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
+      { 
+        label: 'Reports', 
+        icon: 'BarChart3',
+        children: [
+          { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
+          { label: 'General Ledger', path: '/accounting/reports/general-ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
+          { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
+        ]
+      },
       { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings.view', icon: 'Settings' }
     ]
   },

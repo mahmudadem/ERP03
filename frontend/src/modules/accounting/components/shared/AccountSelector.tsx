@@ -32,7 +32,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   onKeyDown: externalKeyDown,
   onBlur: externalBlur
 }, ref) => {
-  const { validAccounts, isLoading, getAccountByCode } = useAccounts();
+  const { validAccounts, isLoading, getAccountByCode, getAccountById } = useAccounts();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -46,7 +46,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   // Sync input value with external value
   useEffect(() => {
     if (value) {
-      const account = getAccountByCode(value);
+      const account = getAccountByCode(value) || getAccountById(value);
       setInputValue(account ? `${account.code} - ${account.name}` : value);
     } else {
       setInputValue('');
@@ -323,8 +323,12 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                           ${account.code === value ? 'border-l-2 border-primary-500 bg-primary-50/50 dark:bg-primary-900/30' : ''}`}
                       >
                         <div className="flex flex-col">
-                          <span className="font-bold text-[var(--color-text-primary)]">{account.code}</span>
-                          <span className="text-xs text-[var(--color-text-secondary)] truncate">{account.name}</span>
+                          <span className="font-bold text-[var(--color-text-primary)]">
+                            {account.code || (account.name ? 'No Code' : `ID: ${account.id.slice(0, 8)}`)}
+                          </span>
+                          <span className="text-xs text-[var(--color-text-secondary)] truncate">
+                            {account.name || 'Unnamed Account'}
+                          </span>
                         </div>
                         {account.code === value && (
                            <div className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />

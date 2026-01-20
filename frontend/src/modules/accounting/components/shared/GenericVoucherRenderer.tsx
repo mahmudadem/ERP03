@@ -29,6 +29,7 @@ interface GenericVoucherRendererProps {
 
 const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
   id: i + 1,
+  accountId: '',
   account: '',
   notes: '',
   debit: 0,
@@ -52,7 +53,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }
 
   const { settings } = useCompanySettings();
-  const { getAccountByCode } = useAccounts();
+  const { getAccountByCode, getAccountById } = useAccounts();
   const { company } = useCompanyAccess();
   const { data: companyCurrencies = [] } = useCompanyCurrencies();
 
@@ -88,7 +89,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
              if (!initialData.lines) return prev;
              // If we have no rows or different voucher ID, take it.
              if (initialData.id !== formData.id) {
-                 return initialData.lines.map((l: any, i: number) => ({...l, id: l.id || i + 1, _rowId: i + 1}));
+                 return initialData.lines.map((l: any, i: number) => {
+                     const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
+                     const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
+                     return { ...l, debit, credit, id: l.id || i + 1, _rowId: i + 1 };
+                 });
              }
              return prev;
          });
@@ -97,16 +102,21 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }, [initialData?.id]); // Only re-sync if the ID changes largely.
   
   // Recalculate parities when voucher currency or exchange rate changes
+  // SKIP for read-only vouchers - they should display as-is from the database
   useEffect(() => {
+    // Don't recalculate for read-only vouchers
+    if (readOnly) {
+      return;
+    }
+    
     const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
     const voucherCurrency = (formData.currency || company?.baseCurrency || 'USD').toUpperCase();
     const baseCurrency = (company?.baseCurrency || 'USD').toUpperCase();
     
-    console.log('[PARITY RECALC] Voucher currency or rate changed:', { voucherCurrency, voucherRate });
+
     
     // Fetch rates for all foreign currency lines (Optimized to batch requests)
     const recalculateAllParities = async () => {
-      console.log('[PARITY RECALC] Starting recalculation. Voucher:', voucherCurrency, 'Rate:', voucherRate);
       
       // 1. Identify unique currencies that need updating
       const currenciesToFetch = new Set<string>();
@@ -120,7 +130,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       });
       
       const uniqueCurrencies = Array.from(currenciesToFetch);
-      console.log('[PARITY RECALC] Unique currencies to fetch:', uniqueCurrencies);
       
       // 2. Fetch rates for unique currencies (if any)
       const ratesMap = new Map<string, number>();
@@ -130,12 +139,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           try {
             // Optimization: Fetch rate RELATIVE TO VOUCHER CURRENCY
             // If EUR voucher and USD line, we need USD->EUR rate
-            console.log('[PARITY RECALC] Fetching API rate for:', currency, 'relative to', voucherCurrency);
+
             
             // If line is base (USD) and voucher is foreign (EUR), we use inverse of header rate
             if (currency === baseCurrency && voucherCurrency !== baseCurrency && voucherRate !== 1.0) {
               const inverse = 1 / voucherRate;
-              console.log('[PARITY RECALC] Using inverse calc for', currency, ':', inverse);
               ratesMap.set(currency, inverse);
               return;
             }
@@ -147,7 +155,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             );
             
             if (result.rate) {
-              console.log('[PARITY RECALC] API rate for', currency, ':', result.rate);
               ratesMap.set(currency, result.rate);
             }
           } catch (error) {
@@ -166,7 +173,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         if (lineCurrency === vCurrency) {
            const targetEquivalent = Math.round(amount * 1.0 * 100) / 100; // Relative to Header
            if (row.parity !== 1.0 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
-             console.log('[PARITY RECALC] Syncing line (matches voucher). ID:', row.id);
              return { ...row, parity: 1.0, equivalent: targetEquivalent };
            }
            return row;
@@ -179,7 +185,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             
             // Update if rate or equivalent differs
             if (Math.abs((row.parity || 0) - rate) > 0.000001 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
-                console.log('[PARITY RECALC] Updating line', row.id, 'curr:', lineCurrency, 'to rate:', rate);
                 return {
                     ...row,
                     parity: rate,
@@ -194,16 +199,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // 4. Update state if changed
       const hasChanges = updatedRows.some((row, i) => row.parity !== rows[i]?.parity);
       if (hasChanges) {
-        console.log('[PARITY RECALC] Applying changes to rows.');
         setRows(updatedRows);
         onChangeRef.current?.({ ...formData, lines: updatedRows });
-      } else {
-        console.log('[PARITY RECALC] No changes needed.');
       }
     };
     
     recalculateAllParities();
-  }, [formData.exchangeRate, formData.currency, rows.map(r => r.debit).join(','), rows.map(r => r.credit).join(','), rows.map(r => r.currency).join(',')]);
+  }, [readOnly, formData.exchangeRate, formData.currency, rows.map(r => r.debit).join(','), rows.map(r => r.credit).join(','), rows.map(r => r.currency).join(',')]);
 
   // --- Math & Auto-Balance Logic ---
   const evaluateMathExpression = (expression: string): number | null => {
@@ -645,9 +647,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const loadedRows = initialData.lines.map((line: any, index: number) => {
         // Strict V2 format: use side to determine debit/credit
         const amt = Math.abs(Number(line.amount) || 0);
+        const acc = line.accountId ? getAccountById(line.accountId) : null;
         return {
           id: index + 1,
-          account: line.accountId || line.account || '',
+          accountId: line.accountId || '',
+          account: acc ? acc.code : (line.accountId || line.account || ''),
           notes: line.notes || line.description || '',
           debit: line.side === 'Debit' ? amt : 0,
           credit: line.side === 'Credit' ? amt : 0,
@@ -722,7 +726,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           const amt = isDebit ? row.debit : row.credit;
           
           return {
-            accountId: row.account,
+            accountId: row.accountId || row.account,
             description: row.notes || '',
             side: isDebit ? 'Debit' : 'Credit',
             // RAW user input:
@@ -791,10 +795,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             let selectedAccount: Account | undefined;
             if (accVal && typeof accVal === 'object') {
               selectedAccount = accVal;
+              updated.accountId = selectedAccount.id;
               updated.account = selectedAccount.code;
             } else if (accVal) {
               updated.account = accVal as string;
               selectedAccount = getAccountByCode(updated.account);
+              if (selectedAccount) {
+                 updated.accountId = selectedAccount.id;
+              }
             }
 
             if (selectedAccount) {
@@ -817,8 +825,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           // Mutual exclusion: debit and credit cannot both have values
           if (field === 'debit' && value > 0) {
             updated.credit = 0;
+            (updated as any).side = 'Debit';
+            (updated as any).amount = value;
           } else if (field === 'credit' && value > 0) {
             updated.debit = 0;
+            (updated as any).side = 'Credit';
+            (updated as any).amount = value;
           }
 
           // Handle numeric fields safely without stripping partial decimals

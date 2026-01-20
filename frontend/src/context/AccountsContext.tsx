@@ -61,8 +61,8 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
       const accountList: Account[] = data.map((acc: AccountDTO) => ({
         id: acc.id,
         code: acc.userCode || acc.code || '',
-        name: acc.name,
-        type: acc.classification || acc.type || '',
+        name: acc.name || 'Unnamed Account',
+        type: acc.classification || acc.type || 'Account',
         classification: acc.classification || acc.type || '',
         accountRole: (acc.accountRole as any) || 'POSTING',
         status: (acc.status as any) || 'ACTIVE',
@@ -132,7 +132,17 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
   }, [accounts, validAccounts]);
 
   const getAccountById = useCallback((id: string): Account | undefined => {
-    return accounts.find(a => a.id === id) || validAccounts.find(a => a.id === id);
+    if (!id) return undefined;
+    
+    const result = accounts.find(a => a.id === id || a.code === id) || 
+                  validAccounts.find(a => a.id === id || a.code === id);
+                  
+    if (!result && id) {
+      console.warn(`[AccountsContext] getAccountById("${id}") FAILED. Available IDs:`, 
+        accounts.slice(0, 5).map(a => a.id));
+    }
+    
+    return result;
   }, [accounts, validAccounts]);
 
   const value: AccountsContextValue = {

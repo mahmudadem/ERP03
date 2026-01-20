@@ -25,38 +25,38 @@ export const AppShell: React.FC = () => {
   }, [sidebarPinned]);
 
   return (
-    <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
-      <PageTitleManager />
-      {/* Sidebar */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onNavigate={() => {
-          if (!sidebarPinned && window.innerWidth < 1024) {
-            setIsSidebarOpen(false);
-          }
-        }}
-      />
+    <AccountsProvider>
+      <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
+        <PageTitleManager />
+        {/* Sidebar */}
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+          onNavigate={() => {
+            if (!sidebarPinned && window.innerWidth < 1024) {
+              setIsSidebarOpen(false);
+            }
+          }}
+        />
 
-      {/* Main Content Area */}
-      <div 
-        className={clsx(
-          "flex-1 flex flex-col h-screen transition-all duration-300",
-          isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        )}
-      >
-        <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+        {/* Main Content Area */}
+        <div 
+          className={clsx(
+            "flex-1 flex flex-col h-screen transition-all duration-300",
+            isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+          )}
+        >
+          <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-        <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)]">
-          <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+          <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)]">
+            <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll">
+              <Outlet />
+            </div>
+          </main>
+        </div>
 
-      {/* Global Windows Desktop for MDI Mode */}
-      {isWindowsMode && (
-        <AccountsProvider>
+        {/* Global Windows Desktop for MDI Mode */}
+        {isWindowsMode && (
           <WindowsDesktop 
             onSaveVoucher={handleSaveVoucher} 
             onSubmitVoucher={handleSubmitVoucher}
@@ -64,8 +64,8 @@ export const AppShell: React.FC = () => {
             onRejectVoucher={handleRejectVoucher}
             onConfirmVoucher={handleConfirmVoucher}
           />
-        </AccountsProvider>
-      )}
-    </div>
+        )}
+      </div>
+    </AccountsProvider>
   );
 };

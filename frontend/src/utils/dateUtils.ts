@@ -7,18 +7,22 @@ import { CompanySettings } from '../api/companyApi';
  * @param settings The company settings containing timezone and dateFormat
  * @returns Formatted date string
  */
+export const normalizeDate = (date: any): Date | null => {
+  if (!date) return null;
+  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : 
+            (date && typeof date.toDate === 'function') ? date.toDate() :
+            (date && typeof date.seconds === 'number') ? new Date(date.seconds * 1000) : 
+            (date && typeof date._seconds === 'number') ? new Date(date._seconds * 1000) : date;
+  
+  return (d instanceof Date && !isNaN(d.getTime())) ? d : null; 
+};
+
 export const formatCompanyDate = (
   date: string | number | Date | null | undefined,
   settings: CompanySettings | null
 ): string => {
-  if (!date) return '-';
-
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : 
-            (date && typeof (date as any).toDate === 'function') ? (date as any).toDate() :
-            (date && typeof (date as any).seconds === 'number') ? new Date((date as any).seconds * 1000) : 
-            (date && typeof (date as any)._seconds === 'number') ? new Date((date as any)._seconds * 1000) : date;
-  
-  if (isNaN(d.getTime())) return '-';
+  const d = normalizeDate(date);
+  if (!d) return '-';
 
   const timezone = settings?.timezone || 'UTC';
   const format = settings?.dateFormat || 'YYYY-MM-DD';
@@ -60,9 +64,8 @@ export const formatCompanyDate = (
  * This should always be YYYY-MM-DD even if display format is different.
  */
 export const formatForInput = (date: string | number | Date | null | undefined): string => {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
+  const d = normalizeDate(date);
+  if (!d) return '';
   
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -97,9 +100,8 @@ export const formatCompanyTime = (
   date: string | number | Date | null | undefined,
   settings: CompanySettings | null
 ): string => {
-  if (!date) return '-';
-  const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '-';
+  const d = normalizeDate(date);
+  if (!d) return '-';
 
   const timezone = settings?.timezone || 'UTC';
 
@@ -109,6 +111,22 @@ export const formatCompanyTime = (
     minute: '2-digit',
     hour12: true
   }).format(d);
+};
+
+/**
+ * Formats a date and time according to company settings.
+ */
+export const formatCompanyDateTime = (
+  date: string | number | Date | null | undefined,
+  settings: CompanySettings | null
+): string => {
+  const d = normalizeDate(date);
+  if (!d) return '-';
+  
+  const dateStr = formatCompanyDate(d, settings);
+  const timeStr = formatCompanyTime(d, settings);
+  
+  return `${dateStr} ${timeStr}`;
 };
 /**
  * Parses a localized date string back to YYYY-MM-DD based on company settings.
