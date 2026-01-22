@@ -42,6 +42,7 @@ export class UpdateCompanyProfileUseCase {
     // Prepare safe update object (only allowed fields)
     const safeUpdates: Partial<Company> = {};
 
+    console.log('[UpdateCompanyProfileUseCase] Received updates:', JSON.stringify(input.updates).slice(0, 100) + '...');
     if (input.updates.name !== undefined) {
       safeUpdates.name = input.updates.name;
     }
@@ -63,6 +64,7 @@ export class UpdateCompanyProfileUseCase {
     }
 
     if (input.updates.logoUrl !== undefined) {
+      console.log('[UpdateCompanyProfileUseCase] Logo URL detected in updates, len:', input.updates.logoUrl?.length);
       safeUpdates.logoUrl = input.updates.logoUrl;
     }
 

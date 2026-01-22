@@ -766,7 +766,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       )}
 
       {/* Voucher Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-hidden custom-scroll transition-colors">
+      <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-auto custom-scroll transition-colors">
         <GenericVoucherRenderer
           ref={rendererRef}
           definition={win.voucherType as any}

@@ -22,6 +22,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                 ownerId: company.ownerId,
                 taxId: company.taxId,
                 address: company.address || null,
+                country: company.country || null,
+                logoUrl: company.logoUrl || null,
+                subscriptionPlan: company.subscriptionPlan || null,
+                contactInfo: company.contactInfo || null,
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
@@ -32,6 +36,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             update: {
                 name: company.name,
                 address: company.address || null,
+                country: company.country || null,
+                logoUrl: company.logoUrl || null,
+                subscriptionPlan: company.subscriptionPlan || null,
+                contactInfo: company.contactInfo || null,
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
@@ -61,7 +69,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             (data as any).features || [],
             data.taxId,
             (data as any).subscriptionPlan || undefined,
-            data.address || undefined
+            data.address || undefined,
+            (data as any).country || undefined,
+            (data as any).logoUrl || undefined,
+            (data as any).contactInfo || undefined
         );
     }
 
@@ -85,7 +96,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             (data as any).features || [],
             data.taxId,
             (data as any).subscriptionPlan || undefined,
-            data.address || undefined
+            data.address || undefined,
+            (data as any).country || undefined,
+            (data as any).logoUrl || undefined,
+            (data as any).contactInfo || undefined
         );
     }
 
@@ -112,7 +126,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             (data as any).features || [],
             data.taxId,
             (data as any).subscriptionPlan || undefined,
-            data.address || undefined
+            data.address || undefined,
+            (data as any).country || undefined,
+            (data as any).logoUrl || undefined,
+            (data as any).contactInfo || undefined
         );
     }
 
@@ -142,7 +159,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                     (data as any).features || [],
                     data.taxId,
                     (data as any).subscriptionPlan || undefined,
-                    data.address || undefined
+                    data.address || undefined,
+                    (data as any).country || undefined,
+                    (data as any).logoUrl || undefined,
+                    (data as any).contactInfo || undefined
                 )
         );
     }
@@ -186,7 +206,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             (updated as any).features || [],
             updated.taxId,
             (updated as any).subscriptionPlan || undefined,
-            updated.address || undefined
+            updated.address || undefined,
+            (updated as any).country || undefined,
+            (updated as any).logoUrl || undefined,
+            (updated as any).contactInfo || undefined
         );
     }
 
@@ -215,7 +238,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             (updated as any).features || [],
             updated.taxId,
             (updated as any).subscriptionPlan || undefined,
-            updated.address || undefined
+            updated.address || undefined,
+            (updated as any).country || undefined,
+            (updated as any).logoUrl || undefined,
+            (updated as any).contactInfo || undefined
         );
     }
 
@@ -243,7 +269,10 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                     (data as any).features || [],
                     data.taxId,
                     (data as any).subscriptionPlan || undefined,
-                    data.address || undefined
+                    data.address || undefined,
+                    (data as any).country || undefined,
+                    (data as any).logoUrl || undefined,
+                    (data as any).contactInfo || undefined
                 )
         );
     }

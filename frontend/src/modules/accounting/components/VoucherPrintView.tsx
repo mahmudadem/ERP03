@@ -9,6 +9,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { cn } from '../../../lib/utils';
 
 interface Props {
   voucher: VoucherDetailDTO;
@@ -151,6 +152,18 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                        {formatCompanyDate(new Date(), settings)} {formatCompanyTime(new Date(), settings)}
                      </span>
                    </div>
+                   <div className="flex items-center gap-2">
+                     <span className="font-bold text-slate-900 w-24 text-sm">Currency:</span>
+                     <span className={cn("text-sm", !company?.baseCurrency && "text-slate-400 italic")}>
+                       {company?.baseCurrency || 'None Specified'}
+                     </span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <span className="font-bold text-slate-900 w-24 text-sm">Fiscal Year:</span>
+                     <span className={cn("text-sm", !company?.fiscalYearStart && "text-slate-400 italic")}>
+                       {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'Unset'}
+                     </span>
+                   </div>
 
                    {/* 2. Dynamic Definition Fields (from the Designer) */}
                    {voucherType?.headerFields?.filter((f: any) => !['date', 'currency', 'exchangeRate'].includes(f.id)).map((field: any) => {
@@ -185,11 +198,13 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                 </div>
                 
                 {/* Logo Area */}
-                <div className="w-16 h-16 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-3xl mb-1">
+                <div className="w-16 h-16 bg-white border border-slate-200 rounded-lg flex items-center justify-center shadow-sm mb-1 overflow-hidden p-1">
                   {company?.logoUrl ? (
-                    <img src={company.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                    <img src={company.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
                   ) : (
-                    company?.name?.substring(0, 1) || 'C'
+                    <div className="w-full h-full bg-slate-900 text-white flex items-center justify-center font-bold text-3xl rounded-md">
+                      {company?.name?.substring(0, 1) || 'C'}
+                    </div>
                   )}
                 </div>
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">

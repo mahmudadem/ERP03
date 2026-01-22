@@ -160,7 +160,7 @@ export class OnboardingController {
         return next(ApiError.unauthorized('Authentication required'));
       }
 
-      const { companyName, description, country, email, bundleId } = req.body;
+      const { companyName, description, country, email, bundleId, logoData, currency, language, timezone, dateFormat } = req.body;
 
       // We need a resolver instance
       const resolver = new CompanyRolePermissionResolver(
@@ -175,7 +175,8 @@ export class OnboardingController {
         diContainer.companyRoleRepository,
         resolver,
         diContainer.bundleRegistryRepository,
-        diContainer.companyModuleRepository
+        diContainer.companyModuleRepository,
+        diContainer.companySettingsRepository
       );
 
       const result = await useCase.execute({
@@ -184,7 +185,12 @@ export class OnboardingController {
         description,
         country,
         email,
-        bundleId
+        bundleId,
+        logoData,
+        currency, 
+        language, 
+        timezone, 
+        dateFormat
       });
 
       res.json({

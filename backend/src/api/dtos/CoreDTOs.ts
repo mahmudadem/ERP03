@@ -15,6 +15,7 @@ export interface CompanyDTO {
   fiscalYearStart: number;
   fiscalYearEnd: number;
   subscriptionPlan?: string;
+  logoUrl?: string;
   modules: string[];
   features: string[];
 }
@@ -37,6 +38,7 @@ export class CoreDTOMapper {
       fiscalYearStart: typeof company.fiscalYearStart === 'number' ? company.fiscalYearStart : 1,
       fiscalYearEnd: typeof company.fiscalYearEnd === 'number' ? company.fiscalYearEnd : 12,
       subscriptionPlan: company.subscriptionPlan,
+      logoUrl: company.logoUrl,
       modules: company.modules,
       features: company.features,
     };

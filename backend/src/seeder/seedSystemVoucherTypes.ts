@@ -199,14 +199,14 @@ const templates = [
     code: "FX",
     module: "ACCOUNTING",
     headerFields: [
-      { id: "buyAccountId", label: "Buy Account", type: "ACCOUNT_SELECT", required: true },
-      { id: "sellAccountId", label: "Sell Account", type: "ACCOUNT_SELECT", required: true },
-      { id: "buyAmount", label: "Buy Amount", type: "NUMBER", required: true },
-      { id: "sellAmount", label: "Sell Amount", type: "NUMBER", required: true },
-      { id: "buyCurrency", label: "Buy Currency", type: "CURRENCY_SELECT", required: true },
-      { id: "sellCurrency", label: "Sell Currency", type: "CURRENCY_SELECT", required: true },
-      { id: "exchangeRate", label: "Exchange Rate", type: "NUMBER", required: true },
-      { id: "description", label: "Description", type: "TEXT" }
+      { id: "buyAccountId", label: "Buy Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
+      { id: "sellAccountId", label: "Sell Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
+      { id: "buyAmount", label: "Buy Amount", type: "NUMBER", required: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: "sellAmount", label: "Sell Amount", type: "NUMBER", required: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: "buyCurrency", label: "Buy Currency", type: "CURRENCY_SELECT", required: true, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: "sellCurrency", label: "Sell Currency", type: "CURRENCY_SELECT", required: true, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: "exchangeRate", label: "Exchange Rate", type: "NUMBER", required: true, isPosting: true, postingRole: PostingRole.EXCHANGE_RATE },
+      { id: "description", label: "Description", type: "TEXT", isPosting: false, postingRole: null }
     ],
     tableColumns: [],
     layout: {
@@ -221,11 +221,11 @@ const templates = [
     code: "TRANSFER",
     module: "ACCOUNTING",
     headerFields: [
-      { id: "fromAccountId", label: "From Account", type: "ACCOUNT_SELECT", required: true },
-      { id: "toAccountId", label: "To Account", type: "ACCOUNT_SELECT", required: true },
-      { id: "amount", label: "Amount", type: "NUMBER", required: true },
-      { id: "currency", label: "Currency", type: "CURRENCY_SELECT", required: true },
-      { id: "description", label: "Description", type: "TEXT" }
+      { id: "fromAccountId", label: "From Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
+      { id: "toAccountId", label: "To Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
+      { id: "amount", label: "Amount", type: "NUMBER", required: true, isPosting: true, postingRole: PostingRole.AMOUNT },
+      { id: "currency", label: "Currency", type: "CURRENCY_SELECT", required: true, isPosting: true, postingRole: PostingRole.CURRENCY },
+      { id: "description", label: "Description", type: "TEXT", isPosting: false, postingRole: null }
     ],
     tableColumns: [],
     layout: {
@@ -318,25 +318,29 @@ export const seedSystemVoucherTypes = async (repo: IVoucherTypeDefinitionReposit
   
   for (const t of templates) {
     if (!existingCodes.has(t.code)) {
-      const id = randomUUID();
-      const def = new VoucherTypeDefinition(
-        id,
-        SYSTEM_COMPANY_ID,
-        t.name,
-        t.code,
-        t.module,
-        t.headerFields as any[],
-        t.tableColumns as any[],
-        t.layout,
-        2,                          // schemaVersion
-        undefined,                  // requiredPostingRoles
-        t.workflow                  // workflow
-      );
-      
-      await repo.createVoucherType(def);
-      console.log(`Created template: ${t.name}`);
+      try {
+        const id = randomUUID();
+        const def = new VoucherTypeDefinition(
+          id,
+          SYSTEM_COMPANY_ID,
+          t.name,
+          t.code,
+          t.module,
+          t.headerFields as any[],
+          t.tableColumns as any[],
+          t.layout,
+          2,                          // schemaVersion
+          undefined,                  // requiredPostingRoles
+          t.workflow                  // workflow
+        );
+        
+        await repo.createVoucherType(def);
+        console.log(`  ✅ Created template: ${t.name} (${t.code})`);
+      } catch (err: any) {
+        console.error(`  ❌ Failed to create template ${t.name}:`, err.message);
+      }
     } else {
-      console.log(`Template ${t.name} already exists.`);
+      console.log(`  ℹ️ Template ${t.name} (${t.code}) already exists.`);
     }
   }
   

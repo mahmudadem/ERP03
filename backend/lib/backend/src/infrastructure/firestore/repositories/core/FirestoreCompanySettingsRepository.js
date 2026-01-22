@@ -11,7 +11,7 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
     }
     toDomain(data) {
         var _a;
-        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true, data.uiMode, data.timezone, data.dateFormat);
+        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true, data.uiMode, data.timezone, data.dateFormat, data.language || 'en');
     }
     toPersistence(entity) {
         return {
@@ -19,7 +19,8 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
             strictApprovalMode: entity.strictApprovalMode,
             uiMode: entity.uiMode,
             timezone: entity.timezone,
-            dateFormat: entity.dateFormat
+            dateFormat: entity.dateFormat,
+            language: entity.language
         };
     }
     async getSettings(companyId) {

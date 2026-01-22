@@ -24,6 +24,7 @@ class UserCompaniesController {
                     model: (_a = c.modules) === null || _a === void 0 ? void 0 : _a[0],
                     roleId: m.roleId || 'MEMBER',
                     isOwner: !!m.isOwner,
+                    logoUrl: c.logoUrl,
                     createdAt: c.createdAt,
                     updatedAt: c.updatedAt,
                 });
@@ -39,6 +40,7 @@ class UserCompaniesController {
                     model: (_b = c.modules) === null || _b === void 0 ? void 0 : _b[0],
                     roleId: 'OWNER',
                     isOwner: true,
+                    logoUrl: c.logoUrl,
                     createdAt: c.createdAt,
                     updatedAt: c.updatedAt,
                 });
@@ -95,7 +97,14 @@ class UserCompaniesController {
                 success: true,
                 data: {
                     activeCompanyId,
-                    company,
+                    company: company ? {
+                        id: company.id,
+                        name: company.name,
+                        baseCurrency: company.baseCurrency,
+                        fiscalYearStart: company.fiscalYearStart,
+                        logoUrl: company.logoUrl,
+                        modules: company.modules,
+                    } : null,
                     roleId: (membership === null || membership === void 0 ? void 0 : membership.roleId) || null,
                     isOwner: (membership === null || membership === void 0 ? void 0 : membership.isOwner) || false,
                 },

@@ -34,7 +34,10 @@ export class CreateCompanyUseCase {
       [], // features
       dto.taxId,
       undefined,
-      dto.address
+      dto.address,
+      undefined, // country
+      undefined, // logoUrl
+      undefined // contactInfo
     );
 
     if (!newCompany.isValid()) {

@@ -1405,8 +1405,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     // Default Web Style
     return (
-        <div className="border border-[var(--color-border)] rounded-lg overflow-x-auto shadow-sm min-h-[200px] bg-[var(--color-bg-primary)] transition-colors">
-            <table className="w-full text-sm min-w-[600px]">
+        <div className="border border-[var(--color-border)] rounded-lg shadow-sm min-h-[200px] bg-[var(--color-bg-primary)] transition-colors w-full overflow-hidden">
+            <div className="overflow-x-auto w-full" style={{ maxWidth: '100%', display: 'block' }}>
+            <table className="w-full text-sm min-w-[600px] table-fixed">
                 <thead className="bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] font-medium">
                      <tr>
                          <th className="p-2 text-start w-10 text-xs">#</th>
@@ -1556,6 +1557,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     </tr>
                 </tfoot>
             </table>
+            </div>
               {!readOnly && (
                <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
                    + {t('addLine')}

@@ -146,17 +146,22 @@ class OnboardingController {
             if (!userId) {
                 return next(ApiError_1.ApiError.unauthorized('Authentication required'));
             }
-            const { companyName, description, country, email, bundleId } = req.body;
+            const { companyName, description, country, email, bundleId, logoData, currency, language, timezone, dateFormat } = req.body;
             // We need a resolver instance
             const resolver = new CompanyRolePermissionResolver_1.CompanyRolePermissionResolver(bindRepositories_1.diContainer.modulePermissionsDefinitionRepository, bindRepositories_1.diContainer.companyRoleRepository);
-            const useCase = new CreateCompanyUseCase_1.CreateCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const useCase = new CreateCompanyUseCase_1.CreateCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.companySettingsRepository);
             const result = await useCase.execute({
                 userId,
                 companyName,
                 description,
                 country,
                 email,
-                bundleId
+                bundleId,
+                logoData,
+                currency,
+                language,
+                timezone,
+                dateFormat
             });
             res.json({
                 success: true,

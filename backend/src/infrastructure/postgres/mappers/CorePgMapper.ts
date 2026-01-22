@@ -23,8 +23,13 @@ export class CompanyPgMapper {
       new Date(row.fiscal_year_start),
       new Date(row.fiscal_year_end),
       [], // row.modules
+      [], // row.features
       row.tax_id,
-      row.address
+      row.subscriptionPlan,
+      row.address,
+      row.country,
+      row.logoUrl,
+      row.contactInfo
     );
   }
 

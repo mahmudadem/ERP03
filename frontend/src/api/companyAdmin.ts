@@ -17,6 +17,7 @@ export interface CompanyProfile {
   fiscalYearEnd: string;
   taxId?: string;
   address?: string;
+  logoUrl?: string;
   subscriptionPlan: string;
   modules: string[];
   features: string[];

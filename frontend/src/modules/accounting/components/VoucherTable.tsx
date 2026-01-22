@@ -523,10 +523,10 @@ export const VoucherTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300">
+    <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300 w-full overflow-hidden">
 
 
-      <div ref={tableContainerRef} className="overflow-x-auto relative max-w-full">
+      <div ref={tableContainerRef} className="overflow-x-auto w-full relative" style={{ maxWidth: '100%', display: 'block' }}>
         <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ minWidth: '100%' }}>
           <thead className="bg-[var(--color-bg-secondary)] select-none">
             <tr className="divide-x divide-[var(--color-border)]/50">
@@ -904,7 +904,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('type') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)]", fontSize)}>
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)}>
                         <span className={clsx(
                           "inline-flex items-center px-1.5 py-0.5 rounded font-medium",
                           isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]",
@@ -1036,7 +1036,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('ref') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-muted)] truncate", fontSize)} title={voucher.reference || ''}>
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-muted)] truncate block max-w-[150px]", fontSize)} title={voucher.reference || ''}>
                         {voucher.reference || '-'}
                       </td>
                     )}

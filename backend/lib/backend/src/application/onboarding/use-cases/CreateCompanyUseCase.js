@@ -13,7 +13,7 @@ const ApiError_1 = require("../../../api/errors/ApiError");
 class CreateCompanyUseCase {
     constructor(companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, 
     // private voucherTypeRepo: IVoucherTypeDefinitionRepository, // TODO: Re-enable when implementing voucher template copy
-    bundleRepo, companyModuleRepo) {
+    bundleRepo, companyModuleRepo, companySettingsRepo) {
         this.companyRepo = companyRepo;
         this.userRepo = userRepo;
         this.rbacCompanyUserRepo = rbacCompanyUserRepo;
@@ -21,6 +21,7 @@ class CreateCompanyUseCase {
         this.rolePermissionResolver = rolePermissionResolver;
         this.bundleRepo = bundleRepo;
         this.companyModuleRepo = companyModuleRepo;
+        this.companySettingsRepo = companySettingsRepo;
     }
     generateId(prefix) {
         return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -41,14 +42,14 @@ class CreateCompanyUseCase {
         // Default fiscal year: Jan 1 to Dec 31
         const fiscalYearStart = new Date(now.getFullYear(), 0, 1);
         const fiscalYearEnd = new Date(now.getFullYear(), 11, 31);
-        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, 'USD', // Default currency
+        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, input.currency || 'USD', // Use input currency or default
         fiscalYearStart, fiscalYearEnd, Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
         [], // features
         '', // Tax ID optional
         bundle.name, // Subscription Plan / Bundle Name
         undefined, // Address
-        input.country, undefined, // Logo URL
-        { email: input.email } // Contact Info
+        input.country, input.logoData, // Logo URL (storing direct B64 for now)
+        { email: input.email } // Contact Info - Fixed object literal
         );
         // Track what we've created for rollback purposes
         let companyCreated = false;
@@ -61,6 +62,13 @@ class CreateCompanyUseCase {
             await this.companyRepo.save(company);
             companyCreated = true;
             console.log('[CreateCompanyUseCase] Company saved successfully');
+            // Initialize company settings with defaults from wizard
+            await this.companySettingsRepo.updateSettings(company.id, {
+                timezone: input.timezone || 'UTC',
+                dateFormat: input.dateFormat || 'MM/DD/YYYY',
+                language: input.language || 'en',
+                uiMode: 'windows'
+            });
             // Initialize Roles (OWNER, ADMIN, MEMBER)
             const finalModules = Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin']));
             const rolesToCreate = [

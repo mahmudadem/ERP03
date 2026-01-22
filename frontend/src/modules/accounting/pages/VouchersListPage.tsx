@@ -301,57 +301,59 @@ const VouchersListPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex-1 p-6 min-w-0">
-          <div className="bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300">
-            <VoucherTable 
-              vouchers={vouchers} 
-              voucherTypes={voucherTypes}
-              isLoading={vouchersLoading || typesLoading}
-              error={error ? error.message : null}
-              onViewPrint={handleViewPrint}
-              onRowClick={handleRowClick}
-              onEdit={(voucher) => handleRowClick(voucher.id)}
-              onDelete={(id) => setDeleteVoucherId(id)}
-              onCancel={async (id) => {
-                try {
-                  await accountingApi.cancelVoucher(id);
-                  invalidateVouchers();
-                  errorHandler.showSuccess('Voucher cancelled successfully');
-                } catch (e: any) {
-                  console.error('Cancel failed:', e);
-                }
-              }}
-              onApprove={async (id) => {
-                try {
-                   await accountingApi.approveVoucher(id);
-                   invalidateVouchers();
-                   errorHandler.showSuccess('Voucher approved successfully');
-                } catch (e: any) {
-                   console.error('Approval failed:', e);
-                }
-              }}
-              onReject={async (id) => {
-                try {
-                   await accountingApi.rejectVoucher(id);
-                   invalidateVouchers();
-                   errorHandler.showSuccess('Voucher rejected');
-                } catch (e: any) {
-                   console.error('Rejection failed:', e);
-                }
-              }}
-              onConfirm={async (id) => {
-                try {
-                   await accountingApi.confirmVoucherCustody(id);
-                   invalidateVouchers();
-                   errorHandler.showSuccess('Custody confirmed');
-                } catch (e: any) {
-                   console.error('Confirmation failed:', e);
-                }
-              }}
-              onRefresh={() => invalidateVouchers()}
-              externalFilters={clientFilters}
-              dateRange={dateRange}
-            />
+        <div className="flex-1 p-6 min-w-0 overflow-hidden">
+          <div className="grid grid-cols-1 bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300">
+            <div className="min-w-0 overflow-x-auto">
+              <VoucherTable 
+                vouchers={vouchers} 
+                voucherTypes={voucherTypes}
+                isLoading={vouchersLoading || typesLoading}
+                error={error ? error.message : null}
+                onViewPrint={handleViewPrint}
+                onRowClick={handleRowClick}
+                onEdit={(voucher) => handleRowClick(voucher.id)}
+                onDelete={(id) => setDeleteVoucherId(id)}
+                onCancel={async (id) => {
+                  try {
+                    await accountingApi.cancelVoucher(id);
+                    invalidateVouchers();
+                    errorHandler.showSuccess('Voucher cancelled successfully');
+                  } catch (e: any) {
+                    console.error('Cancel failed:', e);
+                  }
+                }}
+                onApprove={async (id) => {
+                  try {
+                     await accountingApi.approveVoucher(id);
+                     invalidateVouchers();
+                     errorHandler.showSuccess('Voucher approved successfully');
+                  } catch (e: any) {
+                     console.error('Approval failed:', e);
+                  }
+                }}
+                onReject={async (id) => {
+                  try {
+                     await accountingApi.rejectVoucher(id);
+                     invalidateVouchers();
+                     errorHandler.showSuccess('Voucher rejected');
+                  } catch (e: any) {
+                     console.error('Rejection failed:', e);
+                  }
+                }}
+                onConfirm={async (id) => {
+                  try {
+                     await accountingApi.confirmVoucherCustody(id);
+                     invalidateVouchers();
+                     errorHandler.showSuccess('Custody confirmed');
+                  } catch (e: any) {
+                     console.error('Confirmation failed:', e);
+                  }
+                }}
+                onRefresh={() => invalidateVouchers()}
+                externalFilters={clientFilters}
+                dateRange={dateRange}
+              />
+            </div>
           </div>
         </div>
 

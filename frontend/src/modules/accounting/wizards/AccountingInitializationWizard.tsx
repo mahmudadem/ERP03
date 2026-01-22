@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { COATreePreview } from '../components/COATreePreview';
 import { loadSystemVoucherTypes, SystemVoucherType } from '../services/voucherTypesService';
+import { getCountryDefaults } from '../utils/countryDefaults';
 
 interface AccountingSetupData {
   fiscalYearStart: string; // MM-DD format
@@ -55,7 +56,7 @@ interface CoaTemplate {
  * Multi-step wizard to configure accounting module
  */
 export const AccountingInitializationWizard: React.FC = () => {
-  const { companyId } = useCompanyAccess();
+  const { companyId, company } = useCompanyAccess();
   const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -80,6 +81,7 @@ export const AccountingInitializationWizard: React.FC = () => {
 
   // Search functionality for COA templates
   const [templateSearch, setTemplateSearch] = useState('');
+  const [currencySearch, setCurrencySearch] = useState('');
 
   // Check if module is already initialized - prevent re-running wizard
   useEffect(() => {
@@ -126,8 +128,16 @@ export const AccountingInitializationWizard: React.FC = () => {
         const recommended = voucherTypesData
           .filter(vt => vt.isRecommended)
           .map(vt => vt.id);
+        
+        // Use smart defaults from company country
+        const countryDefaults = company?.country ? getCountryDefaults(company.country) : { currency: 'USD', fiscalYearStart: '01-01', fiscalYearEnd: '12-31' };
+        console.log('[AccountingWizard] Applied defaults for', company?.country, countryDefaults);
+
         setSetupData(prev => ({
           ...prev,
+          fiscalYearStart: countryDefaults.fiscalYearStart,
+          fiscalYearEnd: countryDefaults.fiscalYearEnd,
+          baseCurrency: countryDefaults.currency,
           selectedVoucherTypes: recommended.length > 0 ? recommended : voucherTypesData.map(vt => vt.id),
         }));
       } catch (err) {
@@ -139,7 +149,7 @@ export const AccountingInitializationWizard: React.FC = () => {
     };
 
     fetchMetadata();
-  }, []);
+  }, [company?.country]); // Re-run if company country loads late
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -280,32 +290,64 @@ export const AccountingInitializationWizard: React.FC = () => {
             This will be your primary currency for all transactions
           </p>
           
-          <div className="max-w-2xl mx-auto">
+          
+          <div className="max-w-4xl mx-auto space-y-4">
+            {/* Search Bar */}
+            <div className="relative max-w-md mx-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search currencies..."
+                value={currencySearch}
+                onChange={(e) => setCurrencySearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
             {isLoadingData ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                 <span className="ml-3 text-gray-600">Loading currencies...</span>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {currencies.map((currency) => (
-                  <button
-                    key={currency.code}
-                    onClick={() => setSetupData({ ...setupData, baseCurrency: currency.code })}
-                    className={`p-4 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
-                      setupData.baseCurrency === currency.code
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-2xl">{currency.symbol}</span>
-                    <span className="font-bold text-gray-900">{currency.code}</span>
-                  </div>
-                  <p className="text-sm text-gray-600">{currency.name}</p>
-                </button>
-              ))}
-            </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 p-1">
+                {(() => {
+                  const companyCurrency = company?.country ? getCountryDefaults(company.country).currency : 'USD';
+                  
+                  return currencies
+                    .filter(c => 
+                      c.code.toLowerCase().includes(currencySearch.toLowerCase()) || 
+                      c.name.toLowerCase().includes(currencySearch.toLowerCase())
+                    )
+                    .sort((a, b) => {
+                      if (a.code === companyCurrency) return -1;
+                      if (b.code === companyCurrency) return 1;
+                      if (a.code === setupData.baseCurrency) return -1;
+                      if (b.code === setupData.baseCurrency) return 1;
+                      return a.code.localeCompare(b.code);
+                    })
+                    .map((currency) => (
+                      <button
+                        key={currency.code}
+                        onClick={() => setSetupData({ ...setupData, baseCurrency: currency.code })}
+                        className={`p-3 rounded-lg border-2 transition-all text-left hover:border-primary-500 flex flex-col items-center justify-center gap-1 ${
+                          setupData.baseCurrency === currency.code
+                            ? 'border-primary-500 bg-primary-50 shadow-sm'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-bold">{currency.symbol}</span>
+                          <span className="font-bold text-gray-900">{currency.code}</span>
+                        </div>
+                        <p className="text-xs text-center text-gray-600 truncate w-full">{currency.name}</p>
+                        {currency.code === companyCurrency && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 rounded-full mt-1">Recommended</span>
+                        )}
+                      </button>
+                    ));
+                })()}
+              </div>
             )}
           </div>
         </div>

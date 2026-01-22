@@ -36,12 +36,19 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
       // Step 1: Creating company
       setProgressSteps(prev => prev.map((step, i) => i === 0 ? { ...step, status: 'loading' } : step));
       
+      const logoData = data.logoPreviewUrl || undefined;
+
       const result = await onboardingApi.createCompany({
         companyName: data.companyName,
         description: data.description || '',
         country: data.country || 'United States',
         email: data.email || '',
-        bundleId: data.selectedBundleId
+        bundleId: data.selectedBundleId,
+        logoData,
+        currency: data.currency,
+        language: data.language,
+        timezone: data.timezone,
+        dateFormat: data.dateFormat
       });
 
       // Step 1 done

@@ -4,8 +4,12 @@ export interface UserCompany {
   id: string;
   name: string;
   model: string;
-  role: string;
+  roleId: string;
+  role?: string;
+  isOwner?: boolean;
+  logoUrl?: string;
   createdAt?: string;
+  updatedAt?: string;
   lastAccessedAt?: string;
 }
 

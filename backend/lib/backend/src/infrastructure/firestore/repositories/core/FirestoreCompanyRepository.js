@@ -69,6 +69,7 @@ class FirestoreCompanyRepository extends BaseFirestoreRepository_1.BaseFirestore
         }
     }
     async update(companyId, updates) {
+        var _a;
         try {
             // Convert updates to persistence format if needed
             const updateData = {};
@@ -88,6 +89,14 @@ class FirestoreCompanyRepository extends BaseFirestoreRepository_1.BaseFirestore
                 updateData.subscriptionPlan = updates.subscriptionPlan;
             if (updates.modules !== undefined)
                 updateData.modules = updates.modules;
+            if (updates.country !== undefined)
+                updateData.country = updates.country;
+            if (updates.logoUrl !== undefined) {
+                console.log('[FirestoreCompanyRepository] Setting logoUrl in updateData, len:', (_a = updates.logoUrl) === null || _a === void 0 ? void 0 : _a.length);
+                updateData.logoUrl = updates.logoUrl;
+            }
+            if (updates.contactInfo !== undefined)
+                updateData.contactInfo = updates.contactInfo;
             if (updates.features !== undefined)
                 updateData.features = updates.features;
             updateData.updatedAt = new Date();

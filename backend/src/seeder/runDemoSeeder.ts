@@ -36,7 +36,8 @@ async function run() {
                 companyUserRepository: diContainer.rbacCompanyUserRepository,
                 userRepository: diContainer.userRepository,
                 voucherTypeDefinitionRepository: diContainer.voucherTypeDefinitionRepository,
-                companyModuleRepository: diContainer.companyModuleRepository
+                companyModuleRepository: diContainer.companyModuleRepository,
+                companySettingsRepository: diContainer.companySettingsRepository
             });
             console.log('seedDemoCompany completed successfully');
         } catch (err) {

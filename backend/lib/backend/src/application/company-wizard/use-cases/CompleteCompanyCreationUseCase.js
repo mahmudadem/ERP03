@@ -4,7 +4,7 @@ exports.CompleteCompanyCreationUseCase = void 0;
 const Company_1 = require("../../../domain/core/entities/Company");
 const crypto_1 = require("crypto");
 class CompleteCompanyCreationUseCase {
-    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo) {
+    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo, companySettingsRepo) {
         this.sessionRepo = sessionRepo;
         this.templateRepo = templateRepo;
         this.companyRepo = companyRepo;
@@ -13,6 +13,7 @@ class CompleteCompanyCreationUseCase {
         this.rbacCompanyRoleRepo = rbacCompanyRoleRepo;
         this.rolePermissionResolver = rolePermissionResolver;
         this.voucherTypeRepo = voucherTypeRepo;
+        this.companySettingsRepo = companySettingsRepo;
     }
     filter(steps, model) {
         return steps
@@ -61,6 +62,13 @@ class CompleteCompanyCreationUseCase {
         const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, [session.model], [], session.data.taxId || '', undefined, session.data.address || undefined);
         try {
             await this.companyRepo.save(company);
+            // Initialize settings
+            await this.companySettingsRepo.updateSettings(company.id, {
+                timezone: session.data.timezone || 'UTC',
+                dateFormat: session.data.dateFormat || 'MM/DD/YYYY',
+                language: session.data.language || 'en',
+                uiMode: 'windows'
+            });
         }
         catch (err) {
             throw new Error(`Failed to create company: ${(err === null || err === void 0 ? void 0 : err.message) || err}`);

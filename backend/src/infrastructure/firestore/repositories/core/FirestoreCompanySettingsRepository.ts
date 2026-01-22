@@ -13,7 +13,8 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
       data.strictApprovalMode ?? true,
       data.uiMode,
       data.timezone,
-      data.dateFormat
+      data.dateFormat,
+      data.language || 'en'
     );
   }
 
@@ -23,7 +24,8 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
       strictApprovalMode: entity.strictApprovalMode,
       uiMode: entity.uiMode,
       timezone: entity.timezone,
-      dateFormat: entity.dateFormat
+      dateFormat: entity.dateFormat,
+      language: entity.language
     };
   }
 

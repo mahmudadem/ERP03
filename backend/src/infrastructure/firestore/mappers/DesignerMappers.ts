@@ -55,15 +55,15 @@ export class VoucherTypeDefinitionMapper {
       code: entity.code,
       module: entity.module,
       headerFields: (entity.headerFields || []).map(f => ({ ...f })),
-      tableColumns: entity.tableColumns,
-      layout: entity.layout,
-      schemaVersion: entity.schemaVersion,
-      workflow: entity.workflow,
-      uiModeOverrides: entity.uiModeOverrides,
-      isMultiLine: entity.isMultiLine,
-      rules: entity.rules,
-      actions: entity.actions,
-      defaultCurrency: entity.defaultCurrency
+      tableColumns: entity.tableColumns || [],
+      layout: entity.layout || {},
+      schemaVersion: entity.schemaVersion || 2,
+      workflow: entity.workflow || null,
+      uiModeOverrides: entity.uiModeOverrides || null,
+      isMultiLine: entity.isMultiLine ?? true,
+      rules: entity.rules || [],
+      actions: entity.actions || [],
+      defaultCurrency: entity.defaultCurrency || 'USD'
     };
   }
 }

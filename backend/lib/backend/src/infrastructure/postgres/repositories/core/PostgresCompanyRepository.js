@@ -29,7 +29,7 @@ class PostgresCompanyRepository {
     }
     async update(companyId, updates) {
         // TODO: Implement UPDATE; for now return a placeholder
-        return new Company_1.Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart || new Date(), updates.fiscalYearEnd || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address);
+        return new Company_1.Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart || new Date(), updates.fiscalYearEnd || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address, updates.country, updates.logoUrl, updates.contactInfo);
     }
     async disableModule(companyId, moduleName) {
         // TODO: Implement

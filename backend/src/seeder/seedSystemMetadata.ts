@@ -21,6 +21,12 @@ const CURRENCIES = [
   { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', locale: 'ar-JO', decimalPlaces: 3 },
   { code: 'QAR', name: 'Qatari Riyal', symbol: 'ر.ق', locale: 'ar-QA', decimalPlaces: 2 },
   { code: 'KRW', name: 'South Korean Won', symbol: '₩', locale: 'ko-KR', decimalPlaces: 0 },
+  { code: 'SYP', name: 'Syrian Pound', symbol: 'ل.س', locale: 'ar-SY', decimalPlaces: 2 },
+  { code: 'LBP', name: 'Lebanese Pound', symbol: 'ل.ل', locale: 'ar-LB', decimalPlaces: 2 },
+  { code: 'IQD', name: 'Iraqi Dinar', symbol: 'ع.د', locale: 'ar-IQ', decimalPlaces: 3 },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'د.ب', locale: 'ar-BH', decimalPlaces: 3 },
+  { code: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.', locale: 'ar-OM', decimalPlaces: 3 },
+  { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', locale: 'ar-JO', decimalPlaces: 3 },
 ];
 
 import { StandardCOA, SimplifiedCOA } from '../application/accounting/templates/COATemplates';

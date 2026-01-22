@@ -24,6 +24,7 @@ export class UserCompaniesController {
           model: c.modules?.[0],
           roleId: m.roleId || 'MEMBER',
           isOwner: !!m.isOwner,
+          logoUrl: c.logoUrl,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         });
@@ -39,6 +40,7 @@ export class UserCompaniesController {
           model: c.modules?.[0],
           roleId: 'OWNER',
           isOwner: true,
+          logoUrl: c.logoUrl,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         });
@@ -98,7 +100,14 @@ export class UserCompaniesController {
         success: true,
         data: {
           activeCompanyId,
-          company,
+          company: company ? {
+            id: company.id,
+            name: company.name,
+            baseCurrency: company.baseCurrency,
+            fiscalYearStart: company.fiscalYearStart,
+            logoUrl: company.logoUrl,
+            modules: company.modules,
+          } : null,
           roleId: membership?.roleId || null,
           isOwner: membership?.isOwner || false,
         },

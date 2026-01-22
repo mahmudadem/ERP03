@@ -14,9 +14,9 @@ const errorHandler_1 = require("../../errors/errorHandler");
 const impersonationMiddleware_1 = require("../middlewares/impersonationMiddleware");
 const app = (0, express_1.default)();
 // Global Middlewares
-// Fix: cast to any to resolve NextHandleFunction vs RequestHandler type mismatch errors
+// Increase limit for Base64 logo uploads
 app.use((0, cors_1.default)({ origin: true }));
-app.use(express_1.default.json());
+app.use(express_1.default.json({ limit: '5mb' }));
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware_1.impersonationMiddleware);
 // Company Context is now handled by TenantRouter for specific routes

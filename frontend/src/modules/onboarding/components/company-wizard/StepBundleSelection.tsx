@@ -41,7 +41,8 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
     return result.sort((a, b) => {
       if (a.id === 'empty-company') return -1;
       if (b.id === 'empty-company') return 1;
-      return 0;
+      // Sort by number of modules ascending (simplest to most complex)
+      return a.modules.length - b.modules.length;
     });
   }, [searchQuery, bundles]);
 
@@ -52,7 +53,7 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 flex-shrink-0">
         <div>
            <h3 className="text-lg md:text-xl font-bold text-slate-800">Select a Bundle</h3>
-           <p className="text-sm md:text-base text-slate-500">Choose a starting template.</p>
+           <p className="text-sm md:text-base text-slate-500">Choose a starting template. You can always add or disable modules later to customize your workspace.</p>
         </div>
         <div className="relative w-full sm:w-64">
            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />

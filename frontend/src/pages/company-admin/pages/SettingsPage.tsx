@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CompanyAdminLayout } from '../layout/CompanyAdminLayout';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
@@ -7,6 +7,9 @@ import { Input } from '../../../components/ui/Input';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { Camera, Upload, Trash2, Loader2, Building2 } from 'lucide-react';
+import { processImage } from '../../../lib/image-utils';
+import { cn } from '../../../lib/utils';
 
 const t = (key: string) => key;
 
@@ -29,6 +32,8 @@ export const SettingsPage: React.FC = () => {
   const { profile, isLoading, updateProfile, isUpdating } = useCompanyProfile();
   const { settings, updateSettings } = useCompanySettings();
   const { theme, toggleTheme } = useUserPreferences();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -37,8 +42,10 @@ export const SettingsPage: React.FC = () => {
     fiscalYearEnd: 12,
     taxId: '',
     address: '',
+    logoUrl: '',
     timezone: 'UTC',
-    dateFormat: 'YYYY-MM-DD'
+    dateFormat: 'YYYY-MM-DD',
+    language: 'en'
   });
 
   useEffect(() => {
@@ -52,10 +59,12 @@ export const SettingsPage: React.FC = () => {
           fiscalYearEnd: Number((profile as any).fiscalYearEnd) || 12,
           taxId: profile.taxId || '',
           address: profile.address || '',
+          logoUrl: profile.logoUrl || '',
         } : {}),
         ...(settings ? {
           timezone: settings.timezone || 'UTC',
           dateFormat: settings.dateFormat || 'YYYY-MM-DD',
+          language: (settings as any).language || 'en',
         } : {})
       }));
     }
@@ -70,13 +79,34 @@ export const SettingsPage: React.FC = () => {
       baseCurrency: formData.baseCurrency,
       fiscalYearStart: Number(formData.fiscalYearStart),
       fiscalYearEnd: Number(formData.fiscalYearEnd),
+      logoUrl: formData.logoUrl,
     } as any);
 
     // Update Company Settings
     await updateSettings({
       timezone: formData.timezone,
-      dateFormat: formData.dateFormat
-    });
+      dateFormat: formData.dateFormat,
+      language: formData.language
+    } as any);
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      try {
+        setIsProcessingLogo(true);
+        const processedDataUrl = await processImage(file, 512, 0.85);
+        setFormData(prev => ({ ...prev, logoUrl: processedDataUrl }));
+      } catch (err) {
+        console.error("Failed to process logo", err);
+      } finally {
+        setIsProcessingLogo(false);
+      }
+    }
+  };
+
+  const removeLogo = () => {
+    setFormData(prev => ({ ...prev, logoUrl: '' }));
   };
 
   const handleReset = () => {
@@ -88,8 +118,10 @@ export const SettingsPage: React.FC = () => {
         fiscalYearEnd: Number((profile as any)?.fiscalYearEnd) || 12,
         taxId: profile?.taxId || '',
         address: profile?.address || '',
+        logoUrl: profile?.logoUrl || '',
         timezone: settings?.timezone || 'UTC',
         dateFormat: settings?.dateFormat || 'YYYY-MM-DD',
+        language: (settings as any)?.language || 'en',
       });
     }
   };
@@ -114,6 +146,83 @@ export const SettingsPage: React.FC = () => {
       <div className="max-w-4xl">
         <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Company Logo Section */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Company Logo</h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <div className="relative h-24 w-24 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group">
+                  {formData.logoUrl ? (
+                    <>
+                      <img src={formData.logoUrl} alt="Company logo" className="max-h-full max-w-full object-contain" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-1.5 bg-white rounded-full text-gray-700 hover:text-blue-600 shadow-sm"
+                        >
+                          <Upload className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={removeLogo}
+                          className="p-1.5 bg-white rounded-full text-gray-700 hover:text-red-500 shadow-sm"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center">
+                      <Camera className="w-8 h-8 text-gray-300 mx-auto" />
+                      <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">No Logo</p>
+                    </div>
+                  )}
+                  {isProcessingLogo && (
+                    <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                      <p className="text-[10px] text-blue-600 mt-1 font-bold animate-pulse">Wait...</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm text-gray-600">
+                    This logo will appear on your dashboard, vouchers, and reports.
+                    For best results, use a square image with a transparent background.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingLogo}
+                    >
+                      {formData.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                    </Button>
+                    {formData.logoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50"
+                        onClick={removeLogo}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Company Information Section */}
             <div>
               <h3 className="text-lg font-semibold mb-4 pb-2 border-b">Company Information</h3>
@@ -176,6 +285,18 @@ export const SettingsPage: React.FC = () => {
                     <option value="EUR">EUR - Euro</option>
                     <option value="GBP">GBP - British Pound</option>
                     <option value="TRY">TRY - Turkish Lira</option>
+                    <option value="SAR">SAR - Saudi Riyal</option>
+                    <option value="AED">AED - UAE Dirham</option>
+                    <option value="EGP">EGP - Egyptian Pound</option>
+                    <option value="QAR">QAR - Qatari Rial</option>
+                    <option value="KWD">KWD - Kuwaiti Dinar</option>
+                    <option value="BHD">BHD - Bahraini Dinar</option>
+                    <option value="OMR">OMR - Omani Rial</option>
+                    <option value="JOD">JOD - Jordanian Dinar</option>
+                    <option value="LBP">LBP - Lebanese Pound</option>
+                    <option value="IQD">IQD - Iraqi Dinar</option>
+                    <option value="SYP">SYP - Syrian Pound</option>
+                    <option value="YER">YER - Yemeni Rial</option>
                     <option value="JPY">JPY - Japanese Yen</option>
                   </select>
                 </div>
@@ -254,7 +375,29 @@ export const SettingsPage: React.FC = () => {
                     <option value="America/New_York">New York (GMT-5/4)</option>
                     <option value="Asia/Dubai">Dubai (GMT+4)</option>
                     <option value="Asia/Riyadh">Riyadh (GMT+3)</option>
-                    {/* Simplified for now, can add more later */}
+                    <option value="Africa/Cairo">Cairo (GMT+2)</option>
+                    <option value="Asia/Qatar">Qatar (GMT+3)</option>
+                    <option value="Asia/Kuwait">Kuwait (GMT+3)</option>
+                    <option value="Asia/Bahrain">Bahrain (GMT+3)</option>
+                    <option value="Asia/Muscat">Muscat (GMT+4)</option>
+                    <option value="Asia/Amman">Amman (GMT+3)</option>
+                    <option value="Asia/Beirut">Beirut (GMT+2)</option>
+                    <option value="Asia/Baghdad">Baghdad (GMT+3)</option>
+                    <option value="Asia/Aden">Aden (GMT+3)</option>
+                    <option value="Asia/Damascus">Damascus (GMT+3)</option>
+                    <option value="Asia/Hebron">Hebron (GMT+2)</option>
+                    <option value="Asia/Tokyo">Tokyo (GMT+9)</option>
+                    <option value="Asia/Shanghai">Shanghai (GMT+8)</option>
+                    <option value="Asia/Singapore">Singapore (GMT+8)</option>
+                    <option value="Asia/Seoul">Seoul (GMT+9)</option>
+                    <option value="Australia/Sydney">Sydney (GMT+11)</option>
+                    <option value="Europe/Berlin">Berlin (GMT+1)</option>
+                    <option value="Europe/Paris">Paris (GMT+1)</option>
+                    <option value="Europe/Madrid">Madrid (GMT+1)</option>
+                    <option value="Europe/Rome">Rome (GMT+1)</option>
+                    <option value="Europe/Moscow">Moscow (GMT+3)</option>
+                    <option value="America/Toronto">Toronto (GMT-5)</option>
+                    <option value="America/Sao_Paulo">Sao Paulo (GMT-3)</option>
                   </select>
                 </div>
 
@@ -271,6 +414,22 @@ export const SettingsPage: React.FC = () => {
                     <option value="YYYY-MM-DD">YYYY-MM-DD (e.g. 2025-12-31)</option>
                     <option value="DD/MM/YYYY">DD/MM/YYYY (e.g. 31/12/2025)</option>
                     <option value="MM/DD/YYYY">MM/DD/YYYY (e.g. 12/31/2025)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    System Language *
+                  </label>
+                  <select
+                    value={formData.language}
+                    onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="en">English (US)</option>
+                    <option value="ar">Arabic (العربية)</option>
+                    <option value="tr">Turkish (Türkçe)</option>
                   </select>
                 </div>
               </div>

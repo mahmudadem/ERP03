@@ -8,7 +8,8 @@ class CompanySettingsDTOMapper {
             strictApprovalMode: settings.strictApprovalMode,
             uiMode: settings.uiMode,
             timezone: settings.timezone,
-            dateFormat: settings.dateFormat
+            dateFormat: settings.dateFormat,
+            language: settings.language
         };
     }
 }

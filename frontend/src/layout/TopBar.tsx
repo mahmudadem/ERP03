@@ -34,9 +34,24 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           </svg>
         </button>
         
-        <div className="flex flex-col">
-          <span className="font-bold text-[var(--color-text-primary)] leading-tight">{company?.name || 'No Company'}</span>
-          <span className="text-xs text-[var(--color-text-secondary)]">{company?.baseCurrency || 'USD'} • FY 2024</span>
+        <div className="flex items-center gap-3">
+          {/* Company Logo in Header */}
+          <div className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+            {company?.logoUrl && company.logoUrl.trim() !== '' ? (
+              <img src={company.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <div className="h-full w-full bg-primary-600 text-white flex items-center justify-center font-bold text-lg">
+                {company?.name?.charAt(0) || '?'}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col">
+            <span className="font-bold text-[var(--color-text-primary)] leading-tight">{company?.name || 'No Company'}</span>
+            <span className="text-[10px] md:text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-tight">
+              {company?.baseCurrency || 'Currency: None'} • {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'FY: Unset'}
+            </span>
+          </div>
         </div>
       </div>
 

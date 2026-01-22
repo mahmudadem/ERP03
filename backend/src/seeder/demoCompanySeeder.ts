@@ -5,6 +5,7 @@ import { ICompanyUserRepository } from '../repository/interfaces/rbac/ICompanyUs
 import { IUserRepository } from '../repository/interfaces/core/IUserRepository';
 import { IVoucherTypeDefinitionRepository } from '../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { ICompanyModuleRepository } from '../repository/interfaces/company/ICompanyModuleRepository';
+import { ICompanySettingsRepository } from '../repository/interfaces/core/ICompanySettingsRepository';
 import { Company } from '../domain/core/entities/Company';
 import { User } from '../domain/core/entities/User';
 import { CompanyRole } from '../domain/rbac/CompanyRole';
@@ -16,6 +17,7 @@ export interface SeedDependencies {
     userRepository: IUserRepository;
     voucherTypeDefinitionRepository: IVoucherTypeDefinitionRepository;
     companyModuleRepository: ICompanyModuleRepository;
+    companySettingsRepository: ICompanySettingsRepository;
 }
 
 export interface SeedResult {
@@ -62,11 +64,24 @@ export async function seedDemoCompany(deps: SeedDependencies): Promise<SeedResul
         [], // features - will be set by bundle/updates
         'TR123456789',
         'starter', // subscriptionPlan
-        'Istanbul, Turkey'
+        'Istanbul, Turkey',
+        'Turkey', // country
+        undefined, // logoUrl
+        undefined // contactInfo
     );
 
     await companyRepository.save(company);
     console.log(`✅ Company created: ${companyId}\n`);
+
+    // Initialize Company Settings
+    console.log('⚙️ Step 1.1: Initializing Company Settings...');
+    await deps.companySettingsRepository.updateSettings(companyId, {
+        timezone: 'Europe/Istanbul',
+        dateFormat: 'DD/MM/YYYY',
+        language: 'tr',
+        uiMode: 'windows'
+    });
+    console.log('✅ Company settings initialized\n');
 
     // Step 2: Create Roles (Owner + 2 managers)
     console.log('👥 Step 2: Creating Demo Roles...');

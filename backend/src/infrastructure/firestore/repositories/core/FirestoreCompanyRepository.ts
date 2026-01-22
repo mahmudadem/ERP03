@@ -88,6 +88,12 @@ export class FirestoreCompanyRepository extends BaseFirestoreRepository<Company>
       if (updates.address !== undefined) updateData.address = updates.address;
       if (updates.subscriptionPlan !== undefined) updateData.subscriptionPlan = updates.subscriptionPlan;
       if (updates.modules !== undefined) updateData.modules = updates.modules;
+      if (updates.country !== undefined) updateData.country = updates.country;
+      if (updates.logoUrl !== undefined) {
+        console.log('[FirestoreCompanyRepository] Setting logoUrl in updateData, len:', updates.logoUrl?.length);
+        updateData.logoUrl = updates.logoUrl;
+      }
+      if (updates.contactInfo !== undefined) updateData.contactInfo = updates.contactInfo;
       if ((updates as any).features !== undefined) updateData.features = (updates as any).features;
       
       updateData.updatedAt = new Date();

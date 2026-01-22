@@ -11,6 +11,7 @@ export interface CompanyData {
   fiscalYearStart?: string;
   logoUrl?: string;
   modules?: string[];
+  country?: string;
 }
 
 export interface CompanyAccessContextValue {
@@ -155,6 +156,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
           fiscalYearStart: data.company.fiscalYearStart,
           logoUrl: data.company.logoUrl,
           modules: data.company.modules,
+          country: (data.company as any).country,
         });
       } else {
         setCompany(null);

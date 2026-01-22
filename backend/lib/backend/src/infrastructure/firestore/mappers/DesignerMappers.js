@@ -26,6 +26,7 @@ class VoucherTypeDefinitionMapper {
         return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.schemaVersion || 1, data.requiredPostingRoles || [], data.workflow || null, data.uiModeOverrides || null, (_a = data.isMultiLine) !== null && _a !== void 0 ? _a : true, data.rules || [], data.actions || [], data.defaultCurrency || 'USD');
     }
     static toPersistence(entity) {
+        var _a;
         return {
             id: entity.id,
             companyId: entity.companyId,
@@ -33,15 +34,15 @@ class VoucherTypeDefinitionMapper {
             code: entity.code,
             module: entity.module,
             headerFields: (entity.headerFields || []).map(f => (Object.assign({}, f))),
-            tableColumns: entity.tableColumns,
-            layout: entity.layout,
-            schemaVersion: entity.schemaVersion,
-            workflow: entity.workflow,
-            uiModeOverrides: entity.uiModeOverrides,
-            isMultiLine: entity.isMultiLine,
-            rules: entity.rules,
-            actions: entity.actions,
-            defaultCurrency: entity.defaultCurrency
+            tableColumns: entity.tableColumns || [],
+            layout: entity.layout || {},
+            schemaVersion: entity.schemaVersion || 2,
+            workflow: entity.workflow || null,
+            uiModeOverrides: entity.uiModeOverrides || null,
+            isMultiLine: (_a = entity.isMultiLine) !== null && _a !== void 0 ? _a : true,
+            rules: entity.rules || [],
+            actions: entity.actions || [],
+            defaultCurrency: entity.defaultCurrency || 'USD'
         };
     }
 }

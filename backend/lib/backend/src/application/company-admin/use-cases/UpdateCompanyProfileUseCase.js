@@ -11,6 +11,7 @@ class UpdateCompanyProfileUseCase {
         this.companyRepository = companyRepository;
     }
     async execute(input) {
+        var _a;
         // Validate input
         this.validateInput(input);
         // Load company
@@ -20,6 +21,7 @@ class UpdateCompanyProfileUseCase {
         }
         // Prepare safe update object (only allowed fields)
         const safeUpdates = {};
+        console.log('[UpdateCompanyProfileUseCase] Received updates:', JSON.stringify(input.updates).slice(0, 100) + '...');
         if (input.updates.name !== undefined) {
             safeUpdates.name = input.updates.name;
         }
@@ -36,6 +38,7 @@ class UpdateCompanyProfileUseCase {
             safeUpdates.fiscalYearEnd = input.updates.fiscalYearEnd;
         }
         if (input.updates.logoUrl !== undefined) {
+            console.log('[UpdateCompanyProfileUseCase] Logo URL detected in updates, len:', (_a = input.updates.logoUrl) === null || _a === void 0 ? void 0 : _a.length);
             safeUpdates.logoUrl = input.updates.logoUrl;
         }
         if (input.updates.contactInfo !== undefined) {

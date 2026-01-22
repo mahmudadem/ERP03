@@ -11,7 +11,11 @@ export interface CompanyFormData {
   companyName: string;
   description: string;
   country: string;
-  email: string; // Added email field
+  email: string;
+  timezone?: string;
+  currency?: string;
+  language?: string;
+  dateFormat?: string;
   logo: File | null;
   logoPreviewUrl: string | null;
   selectedBundleId: string | null;

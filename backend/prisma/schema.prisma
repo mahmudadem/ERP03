@@ -17,6 +17,10 @@ model Company {
   ownerId         String
   taxId           String   @unique
   address         String?
+  country         String?
+  logoUrl         String?
+  subscriptionPlan String?
+  contactInfo     Json?
   baseCurrency    String
   fiscalYearStart DateTime
   fiscalYearEnd   DateTime

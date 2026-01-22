@@ -22,6 +22,10 @@ class PrismaCompanyRepository {
                 ownerId: company.ownerId,
                 taxId: company.taxId,
                 address: company.address || null,
+                country: company.country || null,
+                logoUrl: company.logoUrl || null,
+                subscriptionPlan: company.subscriptionPlan || null,
+                contactInfo: company.contactInfo || null,
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
@@ -32,6 +36,10 @@ class PrismaCompanyRepository {
             update: {
                 name: company.name,
                 address: company.address || null,
+                country: company.country || null,
+                logoUrl: company.logoUrl || null,
+                subscriptionPlan: company.subscriptionPlan || null,
+                contactInfo: company.contactInfo || null,
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
@@ -46,7 +54,7 @@ class PrismaCompanyRepository {
         });
         if (!data)
             return null;
-        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined);
+        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined, data.country || undefined, data.logoUrl || undefined, data.contactInfo || undefined);
     }
     async findByTaxId(taxId) {
         const data = await this.prisma.company.findUnique({
@@ -54,7 +62,7 @@ class PrismaCompanyRepository {
         });
         if (!data)
             return null;
-        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined);
+        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined, data.country || undefined, data.logoUrl || undefined, data.contactInfo || undefined);
     }
     async findByNameAndOwner(name, ownerId) {
         const data = await this.prisma.company.findFirst({
@@ -65,7 +73,7 @@ class PrismaCompanyRepository {
         });
         if (!data)
             return null;
-        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined);
+        return new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined, data.country || undefined, data.logoUrl || undefined, data.contactInfo || undefined);
     }
     async getUserCompanies(userId) {
         const companies = await this.prisma.company.findMany({
@@ -77,7 +85,7 @@ class PrismaCompanyRepository {
                 },
             },
         });
-        return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined));
+        return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined, data.country || undefined, data.logoUrl || undefined, data.contactInfo || undefined));
     }
     async enableModule(companyId, moduleName) {
         const company = await this.prisma.company.findUnique({
@@ -101,7 +109,7 @@ class PrismaCompanyRepository {
             where: { id: companyId },
             data: data,
         });
-        return new Company_1.Company(updated.id, updated.name, updated.ownerId, updated.createdAt, updated.updatedAt, updated.baseCurrency, updated.fiscalYearStart, updated.fiscalYearEnd, updated.modules, updated.features || [], updated.taxId, updated.subscriptionPlan || undefined, updated.address || undefined);
+        return new Company_1.Company(updated.id, updated.name, updated.ownerId, updated.createdAt, updated.updatedAt, updated.baseCurrency, updated.fiscalYearStart, updated.fiscalYearEnd, updated.modules, updated.features || [], updated.taxId, updated.subscriptionPlan || undefined, updated.address || undefined, updated.country || undefined, updated.logoUrl || undefined, updated.contactInfo || undefined);
     }
     async disableModule(companyId, moduleName) {
         const company = await this.prisma.company.findUnique({ where: { id: companyId } });
@@ -115,7 +123,7 @@ class PrismaCompanyRepository {
             where: { id: companyId },
             data: { subscriptionPlan: bundleId },
         });
-        return new Company_1.Company(updated.id, updated.name, updated.ownerId, updated.createdAt, updated.updatedAt, updated.baseCurrency, updated.fiscalYearStart, updated.fiscalYearEnd, updated.modules, updated.features || [], updated.taxId, updated.subscriptionPlan || undefined, updated.address || undefined);
+        return new Company_1.Company(updated.id, updated.name, updated.ownerId, updated.createdAt, updated.updatedAt, updated.baseCurrency, updated.fiscalYearStart, updated.fiscalYearEnd, updated.modules, updated.features || [], updated.taxId, updated.subscriptionPlan || undefined, updated.address || undefined, updated.country || undefined, updated.logoUrl || undefined, updated.contactInfo || undefined);
     }
     async updateFeatures(companyId, features) {
         await this.prisma.company.update({
@@ -125,7 +133,7 @@ class PrismaCompanyRepository {
     }
     async listAll() {
         const companies = await this.prisma.company.findMany();
-        return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined));
+        return companies.map((data) => new Company_1.Company(data.id, data.name, data.ownerId, data.createdAt, data.updatedAt, data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.modules, data.features || [], data.taxId, data.subscriptionPlan || undefined, data.address || undefined, data.country || undefined, data.logoUrl || undefined, data.contactInfo || undefined));
     }
     async delete(companyId) {
         await this.prisma.company.delete({

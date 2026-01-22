@@ -32,7 +32,7 @@ const SelectModelForm: React.FC = () => {
       <Card className="p-6 space-y-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Create Company</h1>
-          <p className="text-sm text-gray-500">Select the business model to start the guided setup.</p>
+          <p className="text-sm text-gray-500">Select a business model to start. You can always add or disable modules later to fit your needs.</p>
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">

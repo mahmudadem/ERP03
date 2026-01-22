@@ -107,5 +107,10 @@ export interface CreateCompanyRequest {
   country: string;
   email: string; // Admin email
   bundleId: string;
+  logoData?: string; // Base64 encoded logo
+  currency?: string;
+  language?: string;
+  timezone?: string;
+  dateFormat?: string;
 }
 

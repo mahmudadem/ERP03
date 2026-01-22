@@ -41,7 +41,7 @@ export class PostgresCompanyRepository implements ICompanyRepository {
 
   async update(companyId: string, updates: Partial<Company>): Promise<Company> {
     // TODO: Implement UPDATE; for now return a placeholder
-    return new Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart as any || new Date(), updates.fiscalYearEnd as any || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address);
+    return new Company(companyId, updates.name || '', '', new Date(), new Date(), updates.baseCurrency || 'USD', updates.fiscalYearStart as any || new Date(), updates.fiscalYearEnd as any || new Date(), updates.modules || [], updates.features || [], updates.taxId || '', updates.subscriptionPlan, updates.address, updates.country, updates.logoUrl, updates.contactInfo);
   }
 
   async disableModule(companyId: string, moduleName: string): Promise<void> {

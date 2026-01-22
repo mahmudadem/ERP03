@@ -141,7 +141,8 @@ export class CompanyWizardController {
                 diContainer.rbacCompanyUserRepository,
                 diContainer.companyRoleRepository,
                 resolver,
-                diContainer.voucherTypeDefinitionRepository
+                diContainer.voucherTypeDefinitionRepository,
+                diContainer.companySettingsRepository
             );
             const result = await useCase.execute({ sessionId, userId });
             res.json({ success: true, data: result });

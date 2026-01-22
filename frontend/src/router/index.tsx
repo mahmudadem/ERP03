@@ -63,7 +63,9 @@ const routes = [
     path: '/company-selector',
     element: (
       <RequireAuth>
-        <CompaniesListPage />
+        <Suspense fallback={<PageLoader />}>
+          <CompanySelectorPageLazy />
+        </Suspense>
       </RequireAuth>
     ),
   },

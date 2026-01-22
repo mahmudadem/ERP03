@@ -8,6 +8,7 @@ import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../r
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 import { randomUUID } from 'crypto';
 
 interface Input {
@@ -24,7 +25,8 @@ export class CompleteCompanyCreationUseCase {
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
     private rolePermissionResolver: CompanyRolePermissionResolver,
-    private voucherTypeRepo: IVoucherTypeDefinitionRepository
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private companySettingsRepo: ICompanySettingsRepository
   ) { }
 
   private filter(steps: CompanyWizardStep[], model: string) {
@@ -94,6 +96,14 @@ export class CompleteCompanyCreationUseCase {
 
     try {
       await this.companyRepo.save(company);
+      
+      // Initialize settings
+      await this.companySettingsRepo.updateSettings(company.id, {
+        timezone: session.data.timezone || 'UTC',
+        dateFormat: session.data.dateFormat || 'MM/DD/YYYY',
+        language: session.data.language || 'en',
+        uiMode: 'windows'
+      });
     } catch (err: any) {
       throw new Error(`Failed to create company: ${err?.message || err}`);
     }

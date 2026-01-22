@@ -44,12 +44,16 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchAccounts = useCallback(async (force = false) => {
-    // Check cache
-    if (!force && Date.now() - lastFetch < CACHE_DURATION && accounts.length > 0) {
+    // Check cache: only skip if not forced AND (cache is valid OR already fetching/fetched successfully)
+    if (!force && hasFetched && Date.now() - lastFetch < CACHE_DURATION && accounts.length > 0) {
       return;
     }
+
+    // Prevent concurrent fetches if not forced
+    if (isLoading && !force && hasFetched) return;
 
     setIsLoading(true);
     setError(null);
@@ -87,18 +91,21 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
       setValidAccounts(valid);
       
       setLastFetch(Date.now());
+      setHasFetched(true);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
       console.error('Failed to fetch accounts:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [lastFetch, accounts.length]);
+  }, [lastFetch, accounts.length, hasFetched, isLoading]);
 
-  // Initial fetch
+  // Initial fetch - Only run once on mount or when fetchAccounts changes safely
   useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+    if (!hasFetched) {
+      fetchAccounts();
+    }
+  }, [fetchAccounts, hasFetched]);
 
   const refreshAccounts = useCallback(() => {
     fetchAccounts(true);

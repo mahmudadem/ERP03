@@ -11,6 +11,7 @@ import {
 } from '../../../api/accounting';
 import { CurrencySelector } from './shared/CurrencySelector';
 import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdmin';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { Shield, UserCheck, Lock } from 'lucide-react';
 
 interface AccountFormProps {
@@ -84,8 +85,10 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     const [currencyPolicy, setCurrencyPolicy] = useState<CurrencyPolicy>(initialValues?.currencyPolicy || 'INHERIT');
     const [fixedCurrencyCode, setFixedCurrencyCode] = useState(initialValues?.fixedCurrencyCode || initialValues?.currency || '');
 
-    const { profile: companyProfile } = useCompanyProfile();
-    const baseCurrency = companyProfile?.currency || 'USD';
+    // Fetch base currency from accounting module config
+    const { getModuleStatus } = useCompanyModules();
+    const accountingModule = getModuleStatus('accounting');
+    const baseCurrency = (accountingModule?.config as any)?.baseCurrency || 'USD';
 
     const [requiresApproval, setRequiresApproval] = useState(initialValues?.requiresApproval || false);
     const [requiresCustodyConfirmation, setRequiresCustodyConfirmation] = useState(initialValues?.requiresCustodyConfirmation || false);

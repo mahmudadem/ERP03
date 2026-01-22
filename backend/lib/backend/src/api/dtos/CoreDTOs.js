@@ -12,6 +12,7 @@ class CoreDTOMapper {
             fiscalYearStart: typeof company.fiscalYearStart === 'number' ? company.fiscalYearStart : 1,
             fiscalYearEnd: typeof company.fiscalYearEnd === 'number' ? company.fiscalYearEnd : 12,
             subscriptionPlan: company.subscriptionPlan,
+            logoUrl: company.logoUrl,
             modules: company.modules,
             features: company.features,
         };

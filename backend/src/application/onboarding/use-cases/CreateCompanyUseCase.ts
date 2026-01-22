@@ -16,6 +16,8 @@ import { IBundleRegistryRepository } from '../../../repository/interfaces/super-
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { CompanyModuleEntity } from '../../../domain/company/entities/CompanyModule';
 import { ApiError } from '../../../api/errors/ApiError';
+import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
+import { CompanySettings } from '../../../domain/core/entities/CompanySettings';
 
 interface Input {
   userId: string;
@@ -24,6 +26,11 @@ interface Input {
   country: string;
   email: string;
   bundleId: string;
+  logoData?: string;
+  timezone?: string;
+  currency?: string;
+  language?: string;
+  dateFormat?: string;
 }
 
 export class CreateCompanyUseCase {
@@ -35,7 +42,8 @@ export class CreateCompanyUseCase {
     private rolePermissionResolver: CompanyRolePermissionResolver,
     // private voucherTypeRepo: IVoucherTypeDefinitionRepository, // TODO: Re-enable when implementing voucher template copy
     private bundleRepo: IBundleRegistryRepository,
-    private companyModuleRepo: ICompanyModuleRepository
+    private companyModuleRepo: ICompanyModuleRepository,
+    private companySettingsRepo: ICompanySettingsRepository
   ) { }
 
   private generateId(prefix: string) {
@@ -66,7 +74,7 @@ export class CreateCompanyUseCase {
       input.userId,
       now,
       now,
-      'USD', // Default currency
+      input.currency || 'USD', // Use input currency or default
       fiscalYearStart,
       fiscalYearEnd,
       Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
@@ -75,8 +83,8 @@ export class CreateCompanyUseCase {
       bundle.name, // Subscription Plan / Bundle Name
       undefined, // Address
       input.country,
-      undefined, // Logo URL
-      { email: input.email } // Contact Info
+      input.logoData, // Logo URL (storing direct B64 for now)
+      { email: input.email } // Contact Info - Fixed object literal
     );
 
     // Track what we've created for rollback purposes
@@ -91,6 +99,14 @@ export class CreateCompanyUseCase {
       await this.companyRepo.save(company);
       companyCreated = true;
       console.log('[CreateCompanyUseCase] Company saved successfully');
+
+      // Initialize company settings with defaults from wizard
+      await this.companySettingsRepo.updateSettings(company.id, {
+        timezone: input.timezone || 'UTC',
+        dateFormat: input.dateFormat || 'MM/DD/YYYY',
+        language: input.language || 'en',
+        uiMode: 'windows'
+      });
 
       // Initialize Roles (OWNER, ADMIN, MEMBER)
       const finalModules = Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin']));

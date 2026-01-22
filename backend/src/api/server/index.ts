@@ -11,12 +11,9 @@ import { impersonationMiddleware } from '../middlewares/impersonationMiddleware'
 const app = express();
 
 // Global Middlewares
-// Fix: cast to any to resolve NextHandleFunction vs RequestHandler type mismatch errors
+// Increase limit for Base64 logo uploads
 app.use(cors({ origin: true }) as any);
-app.use(express.json() as any);
-
-
-
+app.use(express.json({ limit: '5mb' }) as any);
 
 // Apply Impersonation Middleware first (checks X-Impersonation-Token header)
 app.use(impersonationMiddleware as any);
