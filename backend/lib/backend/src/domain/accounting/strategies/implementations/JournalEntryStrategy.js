@@ -16,7 +16,11 @@ class JournalEntryStrategy {
         if (!header.lines || !Array.isArray(header.lines) || header.lines.length === 0) {
             throw new Error('Journal entry must have at least one line');
         }
-        const headerRate = Number(header.exchangeRate) || 1;
+        // FIX: If header currency equals base currency, ignore header exchange rate (must be 1.0)
+        const headerCurrency = (header.currency || baseCurrency).toUpperCase();
+        const isHeaderInBaseCurrency = headerCurrency === baseCurrency.toUpperCase();
+        // Use 1.0 if header is in base currency, otherwise use provided rate
+        const headerRate = isHeaderInBaseCurrency ? 1.0 : (Number(header.exchangeRate) || 1);
         const lines = [];
         let totalDebitBase = 0;
         let totalCreditBase = 0;
@@ -30,25 +34,42 @@ class JournalEntryStrategy {
             }
             const side = inputLine.side;
             const amount = Math.abs(Number(inputLine.amount) || 0);
-            let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
+            // Determine line currency (default to header currency if not specified)
+            const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
+            // Line parity is relative to header currency
             const lineParity = Number(inputLine.exchangeRate) || 1; // UI sends parity relative to header
-            const absoluteRate = (0, VoucherLineEntity_1.roundMoney)(headerRate * lineParity);
+            // Calculate absolute conversion rate to base currency
+            let absoluteRate;
+            if (lineCurrency === baseCurrency) {
+                // Line is already in base currency, no conversion needed
+                absoluteRate = 1.0;
+            }
+            else if (lineCurrency === headerCurrency) {
+                // Line currency matches header, use header rate
+                absoluteRate = headerRate;
+            }
+            else {
+                // Line currency differs from both header and base
+                // This requires: line -> header -> base conversion
+                absoluteRate = (0, VoucherLineEntity_1.roundMoney)(headerRate * lineParity);
+            }
             // Calculate baseAmount
-            baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * absoluteRate);
+            const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * absoluteRate);
             // Validate we have valid amounts
             if (amount <= 0) {
-                throw new Error(`Line ${idx + 1}: Amount must be positive`);
+                throw new Error(`Line ${idx + 1}: Amount must be positive (got ${amount} ${lineCurrency})`);
             }
             if (baseAmount <= 0) {
-                throw new Error(`Line ${idx + 1}: Base amount must be positive`);
+                throw new Error(`Line ${idx + 1}: Base amount must be positive. ` +
+                    `Amount: ${amount} ${lineCurrency}, Rate: ${absoluteRate}, Base: ${baseAmount} ${baseCurrency}. ` +
+                    `Check exchange rates for ${lineCurrency}->${baseCurrency} conversion.`);
             }
-            const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
-            const lineRate = absoluteRate;
             const line = new VoucherLineEntity_1.VoucherLineEntity(idx + 1, inputLine.accountId, side, baseAmount, // baseAmount
             baseCurrency, // baseCurrency
             amount, // amount
             lineCurrency, // currency
-            lineRate, inputLine.notes || inputLine.description || undefined, inputLine.costCenterId, inputLine.metadata || {});
+            absoluteRate, // rate used for conversion
+            inputLine.notes || inputLine.description || undefined, inputLine.costCenterId, inputLine.metadata || {});
             totalDebitBase += line.debitAmount;
             totalCreditBase += line.creditAmount;
             lines.push(line);

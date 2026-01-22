@@ -189,40 +189,48 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
           try {
             const importedForms = JSON.parse(e.target?.result as string);
             if (Array.isArray(importedForms)) {
-               let importCount = 0;
-               
-               importedForms.forEach(form => {
-                  // Check for collision
+               // Check if single or multiple forms
+               if (importedForms.length === 0) {
+                  errorHandler.showInfo('No forms found in file.');
+               } else if (importedForms.length === 1) {
+                  // Single form: Open in designer for review/edit
+                  const form = importedForms[0];
+                  
+                  // Check for ID collision
                   const exists = allForms.find(f => f.id === form.id);
                   
-                  // If exists, generate a copy ID. If not, preserve original ID to facilitate migrations.
+                  // If exists, generate a copy ID
                   const newId = exists 
-                    ? `${form.id}_COPY_${Math.floor(Math.random() * 1000)}` 
+                    ? `${form.id}_IMPORT_${Math.floor(Math.random() * 1000)}` 
                     : form.id;
                     
-                  const newForm = { ...form, id: newId };
+                  const importedForm = { 
+                    ...form, 
+                    id: newId,
+                    name: exists ? `${form.name} (Imported)` : form.name 
+                  };
                   
-                  // 1. Update Local State (UI)
-                  addForm(newForm);
+                  // Populate designer with imported data
+                  setEditingForm(importedForm);
+                  setIsCloning(false); // This is an import, not a clone
+                  setViewMode('designer');
                   
-                  // 2. Persist to Database
-                  if (onVoucherSaved) {
-                    onVoucherSaved(newForm, false); // isEdit = false
-                  }
-                  
-                  importCount++;
-               });
-               
-               if (importCount > 0) {
-                 errorHandler.showSuccess(`Successfully imported ${importCount} form(s).`);
+                  errorHandler.showInfo('Form loaded in designer. Review and save when ready.');
                } else {
-                 errorHandler.showInfo('No forms found in file.');
+                  // Multiple forms: Show warning that bulk import is not supported
+                  errorHandler.showError({
+                    code: 'IMPORT_ERROR',
+                    message: `Import file contains ${importedForms.length} forms. Only single-form imports are supported.`,
+                    severity: 'WARNING'
+                  } as any);
+                  errorHandler.showInfo('Please import one form at a time, or export individual forms for import.');
                }
             } else {
                throw new Error("Invalid file format: Expected an array of forms");
             }
           } catch (error: any) {
              errorHandler.showError({
+                code: 'IMPORT_ERROR',
                 message: "Failed to import forms: " + error.message,
                 severity: "ERROR"
              } as any);

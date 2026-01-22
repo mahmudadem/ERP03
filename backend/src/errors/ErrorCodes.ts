@@ -46,6 +46,7 @@ export enum ErrorCode {
   ACC_PERIOD_CLOSED = 'ACC_004',
   ACC_INVALID_ACCOUNT_TYPE = 'ACC_005',
   LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER = 'ACC_006',
+  CRITICAL_CONFIG_MISSING = 'ACC_007',  // Critical configuration missing (e.g. baseCurrency)
   
   // ========== INFRASTRUCTURE ==========
   INFRA_DATABASE_ERROR = 'INFRA_001',

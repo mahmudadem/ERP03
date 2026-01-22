@@ -16,7 +16,23 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
       throw new Error('Journal entry must have at least one line');
     }
 
-    const headerRate = Number(header.exchangeRate) || 1;
+    // FIX: If header currency equals base currency, ignore header exchange rate (must be 1.0)
+    const headerCurrency = (header.currency || baseCurrency).toUpperCase();
+    const isHeaderInBaseCurrency = headerCurrency === baseCurrency.toUpperCase();
+    
+    // Use 1.0 if header is in base currency, otherwise use provided rate
+    const headerRate = isHeaderInBaseCurrency ? 1.0 : (Number(header.exchangeRate) || 1);
+    
+    // Debug logging
+    console.log('[JournalEntryStrategy] Processing voucher:', {
+      headerCurrency,
+      baseCurrency,
+      isHeaderInBaseCurrency,
+      providedExchangeRate: header.exchangeRate,
+      effectiveHeaderRate: headerRate,
+      lineCount: header.lines.length
+    });
+    
     const lines: VoucherLineEntity[] = [];
     let totalDebitBase = 0;
     let totalCreditBase = 0;
@@ -33,26 +49,54 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
 
       const side = inputLine.side;
       const amount = Math.abs(Number(inputLine.amount) || 0);
-      let baseAmount = Math.abs(Number(inputLine.baseAmount) || 0);
       
+      // Determine line currency (default to header currency if not specified)
+      const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
+      
+      // Line parity is relative to header currency
       const lineParity = Number(inputLine.exchangeRate) || 1; // UI sends parity relative to header
-      const absoluteRate = roundMoney(headerRate * lineParity);
+      
+      // Calculate absolute conversion rate to base currency
+      let absoluteRate: number;
+      
+      if (lineCurrency === baseCurrency) {
+        // Line is already in base currency, no conversion needed
+        absoluteRate = 1.0;
+      } else if (lineCurrency === headerCurrency) {
+        // Line currency matches header, use header rate
+        absoluteRate = headerRate;
+      } else {
+        // Line currency differs from both header and base
+        // This requires: line -> header -> base conversion
+        absoluteRate = roundMoney(headerRate * lineParity);
+      }
       
       // Calculate baseAmount
-      baseAmount = roundMoney(amount * absoluteRate);
+      const baseAmount = roundMoney(amount * absoluteRate);
+
+      // Debug logging for each line
+      console.log(`[JournalEntryStrategy] Line ${idx + 1}:`, {
+        side,
+        amount,
+        lineCurrency,
+        lineParity,
+        absoluteRate,
+        baseAmount,
+        baseCurrency
+      });
 
       // Validate we have valid amounts
       if (amount <= 0) {
-        throw new Error(`Line ${idx + 1}: Amount must be positive`);
+        throw new Error(`Line ${idx + 1}: Amount must be positive (got ${amount} ${lineCurrency})`);
       }
       
       if (baseAmount <= 0) {
-        throw new Error(`Line ${idx + 1}: Base amount must be positive`);
+        throw new Error(
+          `Line ${idx + 1}: Base amount must be positive. ` +
+          `Amount: ${amount} ${lineCurrency}, Rate: ${absoluteRate}, Base: ${baseAmount} ${baseCurrency}. ` +
+          `Check exchange rates for ${lineCurrency}->${baseCurrency} conversion.`
+        );
       }
-
-      const lineCurrency = (inputLine.currency || inputLine.lineCurrency || header.currency || baseCurrency).toUpperCase();
-      const lineRate = absoluteRate;
-
 
       const line = new VoucherLineEntity(
         idx + 1,
@@ -62,7 +106,7 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
         baseCurrency,            // baseCurrency
         amount,                  // amount
         lineCurrency,            // currency
-        lineRate,
+        absoluteRate,            // rate used for conversion
         inputLine.notes || inputLine.description || undefined,
         inputLine.costCenterId,
         inputLine.metadata || {}
@@ -72,6 +116,13 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
       totalCreditBase += line.creditAmount;
 
       lines.push(line);
+    });
+
+    // Debug final totals
+    console.log('[JournalEntryStrategy] Final totals:', {
+      totalDebitBase,
+      totalCreditBase,
+      difference: totalDebitBase - totalCreditBase
     });
 
     // Validation: debits must equal credits

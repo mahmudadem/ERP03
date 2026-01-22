@@ -6,12 +6,26 @@ export class FirestoreCompanyModuleSettingsRepository implements ICompanyModuleS
   constructor(private db: admin.firestore.Firestore) {}
 
   private collection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection('moduleSettings');
+    // NEW PATTERN: companies/{id}/Settings/{module}
+    return this.db.collection('companies').doc(companyId).collection('Settings');
+  }
+
+  private oldCollection(companyId: string) {
+    // OLD PATTERN (deprecated): companies/{id}/settings/{module}
+    return this.db.collection('companies').doc(companyId).collection('settings');
   }
 
   async getSettings(companyId: string, moduleId: string): Promise<CompanyModuleSettings | null> {
     try {
-      const doc = await this.collection(companyId).doc(moduleId).get();
+      // Try new structure first
+      let doc = await this.collection(companyId).doc(moduleId).get();
+      
+      if (!doc.exists) {
+        // Fallback to old structure for backward compatibility
+        console.warn(`[Settings] Module "${moduleId}" not found in new Settings/ path, falling back to old settings/ path`);
+        doc = await this.oldCollection(companyId).doc(moduleId).get();
+      }
+      
       if (!doc.exists) return null;
       return doc.data() || null;
     } catch (error) {

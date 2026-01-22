@@ -15,6 +15,8 @@ export interface CustomComponentProps {
   field?: any;
   context?: any;
   currency?: string;
+  baseCurrency?: string;  // For CurrencyExchangeWidget
+  voucherDate?: string;   // For CurrencyExchangeWidget
 }
 
 export const CustomComponentRegistry: Record<string, React.ComponentType<CustomComponentProps>> = {

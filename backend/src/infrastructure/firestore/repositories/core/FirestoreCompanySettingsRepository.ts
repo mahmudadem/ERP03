@@ -5,7 +5,16 @@ import { CompanySettings } from '../../../../domain/core/entities/CompanySetting
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
 export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<CompanySettings> implements ICompanySettingsRepository {
-  protected collectionName = 'company_settings';
+  // NEW PATTERN: companies/{id}/Settings/company
+  protected collectionName = 'company_settings'; // Keep for backward compat only
+
+  private getNewSettingsRef(companyId: string) {
+    return this.db.collection('companies').doc(companyId).collection('Settings').doc('company');
+  }
+
+  private getOldSettingsRef(companyId: string) {
+    return this.db.collection('company_settings').doc(companyId);
+  }
 
   protected toDomain(data: any): CompanySettings {
     return new CompanySettings(
@@ -31,7 +40,15 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
 
   async getSettings(companyId: string): Promise<CompanySettings> {
     try {
-      const doc = await this.db.collection(this.collectionName).doc(companyId).get();
+      // Try new structure first
+      let doc = await this.getNewSettingsRef(companyId).get();
+      
+      if (!doc.exists) {
+        // Fallback to old structure
+        console.warn(`[CompanySettings] Settings not found in Settings/company, falling back to company_settings collection`);
+        doc = await this.getOldSettingsRef(companyId).get();
+      }
+      
       if (!doc.exists) {
         return CompanySettings.default(companyId);
       }
@@ -50,7 +67,14 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
 
       if (Object.keys(updateData).length === 0) return;
 
-      await this.db.collection(this.collectionName).doc(companyId).set(updateData, { merge: true });
+      // Save to NEW location: companies/{id}/Settings/company
+      await this.getNewSettingsRef(companyId).set(updateData, { merge: true });
+      
+      // DUAL-WRITE during migration: also save to old location for backward compatibility
+      // TODO: Remove this after migration is complete
+      await this.getOldSettingsRef(companyId).set(updateData, { merge: true });
+      
+      console.log(`[CompanySettings] Saved to Settings/company (and old location for compat)`);
     } catch (error) {
       throw new InfrastructureError('Failed to update company settings', error);
     }

@@ -1,6 +1,7 @@
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ISystemMetadataRepository } from '../../../infrastructure/repositories/FirestoreSystemMetadataRepository';
+import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
 
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -21,7 +22,8 @@ export class InitializeAccountingUseCase {
   constructor(
     private companyModuleRepo: ICompanyModuleRepository,
     private accountRepo: IAccountRepository,
-    private systemMetadataRepo: ISystemMetadataRepository
+    private systemMetadataRepo: ISystemMetadataRepository,
+    private settingsRepo: ICompanyModuleSettingsRepository
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
@@ -138,7 +140,23 @@ export class InitializeAccountingUseCase {
       // Don't fail initialization if voucher copy fails
     }
 
-    // 4. Mark Module as Initialized
+    // 4. Save Accounting Settings to Settings/accounting
+    // CRITICAL: This is where baseCurrency MUST be saved
+    await this.settingsRepo.saveSettings(companyId, 'accounting', {
+      baseCurrency: config.baseCurrency,
+      fiscalYearStart: config.fiscalYearStart,
+      fiscalYearEnd: config.fiscalYearEnd,
+      coaTemplate: config.coaTemplate,
+      approvalRequired: false,  // Default: No approval required (flexible mode)
+      autoPostEnabled: true,    // Default: Auto-post enabled
+      allowEditDeletePosted: true,  // Default: Allow edit/delete posted vouchers
+      updatedAt: new Date(),
+      updatedBy: 'system'
+    }, 'system');
+    
+    console.log(`[InitializeAccountingUseCase] Saved accounting settings with baseCurrency: ${config.baseCurrency}`);
+    
+    // 5. Mark Module as Initialized
     await this.companyModuleRepo.update(companyId, 'accounting', {
       initialized: true,
       initializationStatus: 'complete',

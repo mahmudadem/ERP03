@@ -1078,6 +1078,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           <CurrencyComp
             currency={formData.currency || 'USD'}
             value={formData.exchangeRate}
+            baseCurrency={company?.baseCurrency || 'USD'}
+            voucherDate={formData.date}
             disabled={readOnly}
             onChange={(rate: number) => {
               handleInputChange('exchangeRate', rate);

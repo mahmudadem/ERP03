@@ -68,7 +68,8 @@ export class CompanyModulesController {
         const useCase = new InitializeAccountingUseCase(
           this.companyModuleRepo,
           diContainer.accountRepository,
-          diContainer.systemMetadataRepository
+          diContainer.systemMetadataRepository,
+          diContainer.companyModuleSettingsRepository
         );
 
         console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));

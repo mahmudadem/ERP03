@@ -42,9 +42,24 @@ export class CreateVoucherUseCase {
     
     return this.transactionManager.runTransaction(async (transaction) => {
       const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
+      
       // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
       // Ledger entries MUST be in base currency only (accounting rule)
-      const baseCurrency = (settings?.baseCurrency || 'USD').toUpperCase();
+      const baseCurrency = settings?.baseCurrency?.toUpperCase();
+      
+      if (!baseCurrency) {
+        throw new BusinessError(
+          ErrorCode.CRITICAL_CONFIG_MISSING,
+          'Company base currency is not configured. Please complete accounting module setup through the accounting wizard.',
+          { 
+            companyId, 
+            module: 'accounting', 
+            missingField: 'baseCurrency',
+            hint: 'Run the accounting initialization wizard to set up base currency'
+          }
+        );
+      }
+      
       const autoNumbering = settings?.autoNumbering !== false;
 
       const voucherId = payload.id || randomUUID();
