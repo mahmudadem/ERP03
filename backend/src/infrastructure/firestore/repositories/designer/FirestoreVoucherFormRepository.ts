@@ -17,7 +17,13 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
   private getCollection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection('voucherForms');
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
+    return this.db
+      .collection('companies')
+      .doc(companyId)
+      .collection('accounting')
+      .doc('Settings')
+      .collection('voucherForms');
   }
 
   private toDomain(data: any): VoucherFormDefinition {
@@ -80,9 +86,8 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async create(form: VoucherFormDefinition): Promise<VoucherFormDefinition> {
     try {
-      const ref = this.getCollection(form.companyId).doc(form.id);
       const data = this.toPersistence(form);
-      await ref.set(data);
+      await this.getCollection(form.companyId).doc(form.id).set(data);
       return form;
     } catch (error) {
       throw new InfrastructureError('Error creating voucher form', error);
@@ -117,6 +122,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         .where('isDefault', '==', true)
         .limit(1)
         .get();
+      
       if (snapshot.empty) return null;
       return this.toDomain(snapshot.docs[0].data());
     } catch (error) {
@@ -141,14 +147,12 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       delete cleanUpdates.companyId;
       cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
       
-      // Remove undefined values
       Object.keys(cleanUpdates).forEach(key => {
         if (cleanUpdates[key] === undefined) {
           delete cleanUpdates[key];
         }
       });
       
-      // Use set with merge to create if doesn't exist, update if it does
       await ref.set(cleanUpdates, { merge: true });
     } catch (error) {
       throw new InfrastructureError('Error updating voucher form', error);

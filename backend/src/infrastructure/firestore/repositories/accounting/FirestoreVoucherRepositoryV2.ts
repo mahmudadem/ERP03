@@ -15,16 +15,16 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
   constructor(private readonly db: Firestore) {}
 
   private getCollection(companyId: string) {
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> vouchers (coll)
     return this.db
       .collection('companies')
       .doc(companyId)
+      .collection('accounting')
+      .doc('Data')
       .collection(this.COLLECTION_NAME);
   }
 
   async save(voucher: VoucherEntity): Promise<VoucherEntity> {
-    const collection = this.getCollection(voucher.companyId);
-    const docRef = collection.doc(voucher.id);
-    
     const data = voucher.toJSON();
     
     // Maintain a search index for all currencies used in this voucher (header + lines)
@@ -33,24 +33,21 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     voucher.lines.forEach(line => currencies.add(line.currency.toUpperCase()));
     data._allCurrencies = Array.from(currencies);
 
-    await docRef.set(data, { merge: true });
+    // Save to modular location only
+    await this.getCollection(voucher.companyId).doc(voucher.id).set(data, { merge: true });
     
     return voucher;
   }
 
   async findById(companyId: string, voucherId: string): Promise<VoucherEntity | null> {
-    const collection = this.getCollection(companyId);
-    const docRef = collection.doc(voucherId);
-    const snapshot = await docRef.get();
+    const snapshot = await this.getCollection(companyId).doc(voucherId).get();
     
     if (!snapshot.exists) {
       return null;
     }
     
     const data = snapshot.data();
-    if (!data) {
-      return null;
-    }
+    if (!data) return null;
     
     return VoucherEntity.fromJSON(data);
   }
@@ -60,13 +57,12 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     type: VoucherType,
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('type', '==', type)
       .orderBy('date', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
@@ -75,13 +71,12 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     status: VoucherStatus,
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('status', '==', status)
       .orderBy('date', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
@@ -91,14 +86,13 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     endDate: string,
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('date', '>=', startDate)
       .where('date', '<=', endDate)
       .orderBy('date', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
@@ -106,20 +100,18 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     companyId: string,
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .orderBy('date', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
   async delete(companyId: string, voucherId: string): Promise<boolean> {
-    const collection = this.getCollection(companyId);
-    const docRef = collection.doc(voucherId);
-    
+    const docRef = this.getCollection(companyId).doc(voucherId);
     const snapshot = await docRef.get();
+
     if (!snapshot.exists) {
       return false;
     }
@@ -129,79 +121,50 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
   }
 
   async existsByNumber(companyId: string, voucherNo: string): Promise<boolean> {
-    const collection = this.getCollection(companyId);
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('voucherNo', '==', voucherNo)
-      .limit(1);
+      .limit(1)
+      .get();
     
-    const snapshot = await query.get();
     return !snapshot.empty;
   }
 
   async countByFormId(companyId: string, formId: string): Promise<number> {
-    const collection = this.getCollection(companyId);
-    
-    // Check both potential locations for formId:
-    // 1. In metadata (metadata.formId) - New Standard
-    // 2. Or if we decide to promote it to top-level property later
-    
-    // Using metadata.formId as established in the design
-    const query = collection.where('metadata.formId', '==', formId);
-    
     try {
-      // Use efficient server-side count
-      const snapshot = await query.count().get();
-      return snapshot.data().count;
+      const snapshot = await this.getCollection(companyId).where('metadata.formId', '==', formId).count().get();
+      return snapshot.data().count || 0;
     } catch (err) {
-      console.warn('Firestore count aggregation failed, falling back to empty check', err);
-      // Fallback for emulators or versions that might not support count (though unlikely in admin sdk)
-      const fallbackQuery = query.select().limit(1); // Select only ID
-      const fallbackSnap = await fallbackQuery.get();
-      return fallbackSnap.empty ? 0 : 1; // Return at least 1 if found
+      console.warn('Firestore count aggregation failed', err);
+      return 0;
     }
   }
 
   async findByReversalOfVoucherId(companyId: string, originalVoucherId: string): Promise<VoucherEntity | null> {
-    const collection = this.getCollection(companyId);
-    const query = collection.where('reversalOfVoucherId', '==', originalVoucherId).limit(1);
+    const snapshot = await this.getCollection(companyId).where('reversalOfVoucherId', '==', originalVoucherId).limit(1).get();
     
-    const snapshot = await query.get();
-    if (snapshot.empty) {
-      return null;
-    }
-    
+    if (snapshot.empty) return null;
     return VoucherEntity.fromJSON(snapshot.docs[0].data());
   }
 
   async countByCurrency(companyId: string, currencyCode: string): Promise<number> {
-    const collection = this.getCollection(companyId);
     const upperCode = currencyCode.toUpperCase();
-
-    // Check header currency OR line-level currencies (via _allCurrencies index)
-    const query = collection.where('_allCurrencies', 'array-contains', upperCode);
-    
     try {
-      const snapshot = await query.count().get();
-      return snapshot.data().count;
+      const snapshot = await this.getCollection(companyId).where('_allCurrencies', 'array-contains', upperCode).count().get();
+      return snapshot.data().count || 0;
     } catch (err) {
-      console.warn('Firestore count aggregation failed for vouchers by currency, falling back to header-only check', err);
-      // Fallback: Check header currency at least
-      const fallbackQuery = collection.where('currency', '==', upperCode).limit(1);
-      const fallbackSnap = await fallbackQuery.get();
-      return fallbackSnap.empty ? 0 : 1;
+      console.warn('Firestore count aggregation failed', err);
+      return 0;
     }
   }
 
   async findPendingFinancialApprovals(companyId: string, limit: number = 100): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    // V1 Gate logic: PENDING status AND metadata.pendingFinancialApproval == true
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('status', '==', VoucherStatus.PENDING)
       .where('metadata.pendingFinancialApproval', '==', true)
       .orderBy('date', 'desc')
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 
@@ -210,14 +173,12 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     custodianUserId: string, 
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const collection = this.getCollection(companyId);
-    // CC Gate logic: PENDING status AND metadata.pendingCustodyConfirmations contains custodianUserId
-    const query = collection
+    const snapshot = await this.getCollection(companyId)
       .where('status', '==', VoucherStatus.PENDING)
       .where('metadata.pendingCustodyConfirmations', 'array-contains', custodianUserId)
-      .limit(limit);
+      .limit(limit)
+      .get();
     
-    const snapshot = await query.get();
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
 }

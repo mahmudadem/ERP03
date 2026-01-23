@@ -33,7 +33,13 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
    * Get company-specific voucher types collection
    */
   private getCollection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection('voucher_types');
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucher_types (coll)
+    return this.db
+      .collection('companies')
+      .doc(companyId)
+      .collection('accounting')
+      .doc('Settings')
+      .collection('voucher_types');
   }
 
   /**
@@ -46,7 +52,6 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async createVoucherType(def: VoucherTypeDefinition): Promise<void> {
-    // STEP 3 ENFORCEMENT: Validate before persisting
     VoucherTypeDefinitionValidator.validate(def);
     
     const data = this.toPersistence(def);
@@ -55,6 +60,7 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
     if (def.companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
       await this.getSystemCollection().doc(def.id).set(data);
     } else {
+      // Save to modular location only
       await this.getCollection(def.companyId).doc(def.id).set(data);
     }
   }

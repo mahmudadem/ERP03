@@ -4,3 +4,5 @@
 3: لما منغير عملة حساب وعندو اولاد لازم نعطي تحذير انو في اولاد بغير عملة ولازم تتغير عملاتهم
  وكمان اذا الاب او الاولاد الهم حركات مالية لازم نعرف شو نعمل بهيك حالة 
  ممكن اذا الو اولاد ما نسمح ؟؟
+
+ before retesting the totals currency is hard coded to USD it must follow voucher currency which comes from header, if header select currency does not exist we must depened on first line or maybe base currency of the company ??

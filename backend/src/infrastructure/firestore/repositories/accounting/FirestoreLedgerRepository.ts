@@ -18,7 +18,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
   private col(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection('ledger');
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> ledger (coll)
+    return this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('ledger');
   }
 
   async recordForVoucher(voucher: VoucherEntity, transaction?: admin.firestore.Transaction): Promise<void> {
@@ -26,10 +27,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const batch = !transaction ? this.db.batch() : null;
       
       voucher.lines.forEach((line) => {
-        // Line ID is guaranteed unique within voucher by entity logic
         const id = `${voucher.id}_${line.id}`;
-        
-        // Canonical Posting Model: record debit and credit in base currency
         const debit = line.debitAmount;
         const credit = line.creditAmount;
         
@@ -52,7 +50,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           notes: line.notes || null,
           costCenterId: line.costCenterId || null,
           metadata: line.metadata || {},
-          isPosted: true, // Audit marker for verified posting
+          isPosted: true,
           createdAt: serverTimestamp(),
         };
 
@@ -73,13 +71,6 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
   async deleteForVoucher(companyId: string, voucherId: string, transaction?: admin.firestore.Transaction): Promise<void> {
     try {
-      // Note: In a transaction, we must READ before WRITE.
-      // But for delete, we might need to query first. 
-      // Queries in transactions are tricky. We need to run the query using the transaction?
-      // Firestore transactions don't support "query and delete" easily without reading.
-      // But wait, `transaction.get(query)` is supported in some SDKs.
-      // In Node.js admin SDK, `transaction.get(query)` works.
-      
       let snap: admin.firestore.QuerySnapshot;
       if (transaction) {
         snap = await transaction.get(this.col(companyId).where('voucherId', '==', voucherId));
@@ -90,11 +81,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const batch = !transaction ? this.db.batch() : null;
       
       snap.docs.forEach((doc) => {
-        if (transaction) {
-          transaction.delete(doc.ref);
-        } else {
-          batch!.delete(doc.ref);
-        }
+        if (transaction) transaction.delete(doc.ref);
+        else batch!.delete(doc.ref);
       });
 
       if (batch) {
@@ -113,6 +101,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
         .where('date', '<=', toDate)
         .orderBy('date', 'asc')
         .get();
+
       return snap.docs.map((d) => d.data() as LedgerEntry);
     } catch (error) {
       throw new InfrastructureError('Failed to get account ledger', error);
@@ -125,6 +114,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const snap = await this.col(companyId)
         .where('date', '<=', end)
         .get();
+
       const map: Record<string, TrialBalanceRow> = {};
       snap.docs.forEach((d) => {
         const entry = d.data() as any;
@@ -152,22 +142,24 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
   async getGeneralLedger(companyId: string, filters: GLFilters): Promise<LedgerEntry[]> {
     try {
-      let ref: FirebaseFirestore.Query = this.col(companyId);
-      if (filters.accountId) ref = ref.where('accountId', '==', filters.accountId);
-      
-      // V2 Audit Rule: If filtering by voucherId for core financial logic (like reversals),
-      // we MUST only read posted-only data to avoid reading uncommitted or draft rows.
-      if (filters.voucherId) {
-        ref = ref.where('voucherId', '==', filters.voucherId);
-        ref = ref.where('isPosted', '==', true);
-      }
-      
-      if (filters.fromDate) ref = ref.where('date', '>=', filters.fromDate);
-      if (filters.toDate) ref = ref.where('date', '<=', filters.toDate);
-      const snap = await ref.orderBy('date', 'asc').get();
+      const snap = await this.executeQuery(this.col(companyId), filters);
       return snap.docs.map((d) => d.data() as LedgerEntry);
     } catch (error) {
       throw new InfrastructureError('Failed to get general ledger', error);
     }
+  }
+
+  private async executeQuery(collection: admin.firestore.CollectionReference, filters: GLFilters) {
+    let ref: admin.firestore.Query = collection;
+    if (filters.accountId) ref = ref.where('accountId', '==', filters.accountId);
+    
+    if (filters.voucherId) {
+      ref = ref.where('voucherId', '==', filters.voucherId);
+      ref = ref.where('isPosted', '==', true);
+    }
+    
+    if (filters.fromDate) ref = ref.where('date', '>=', filters.fromDate);
+    if (filters.toDate) ref = ref.where('date', '<=', filters.toDate);
+    return ref.orderBy('date', 'asc').get();
   }
 }
