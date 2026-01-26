@@ -7,6 +7,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { 
   IVoucherFormRepository, 
   VoucherFormDefinition 
@@ -17,20 +18,22 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
   private getCollection(companyId: string) {
-    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucher_types (coll)
+    // UNIFIED: Pointing to the same collection as VoucherTypeDefinitionRepository
     return this.db
       .collection('companies')
       .doc(companyId)
       .collection('accounting')
       .doc('Settings')
-      .collection('voucherForms');
+      .collection('voucher_types');
   }
 
   private toDomain(data: any): VoucherFormDefinition {
     return {
       id: data.id,
       companyId: data.companyId,
-      typeId: data.typeId,
+      // fallback: use ID if typeId missing (V2 migration compatibility)
+      typeId: data.typeId || data.id,
       name: data.name,
       code: data.code,
       description: data.description || null,
@@ -78,8 +81,8 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       tableStyle: form.tableStyle || 'web',
       defaultCurrency: form.defaultCurrency || null,
       baseType: form.baseType || null,
-      createdAt: form.createdAt || admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: form.createdAt || FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
       createdBy: form.createdBy || null
     };
   }
@@ -96,7 +99,8 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async getById(companyId: string, formId: string): Promise<VoucherFormDefinition | null> {
     try {
-      const doc = await this.getCollection(companyId).doc(formId).get();
+      let doc = await this.getCollection(companyId).doc(formId).get();
+      
       if (!doc.exists) return null;
       return this.toDomain(doc.data());
     } catch (error) {
@@ -145,7 +149,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       const cleanUpdates: any = { ...updates };
       delete cleanUpdates.id;
       delete cleanUpdates.companyId;
-      cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+      cleanUpdates.updatedAt = FieldValue.serverTimestamp();
       
       Object.keys(cleanUpdates).forEach(key => {
         if (cleanUpdates[key] === undefined) {
