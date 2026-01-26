@@ -9,12 +9,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateAccountUseCase = void 0;
 const Account_1 = require("../../../../domain/accounting/models/Account");
 class CreateAccountUseCase {
-    constructor(accountRepo, companyRepo) {
+    constructor(accountRepo, companyRepo, companyCurrencyRepo) {
         this.accountRepo = accountRepo;
         this.companyRepo = companyRepo;
+        this.companyCurrencyRepo = companyCurrencyRepo;
     }
     async execute(companyId, data) {
-        var _a;
+        var _a, _b, _c, _d;
         // 1. Normalize and validate userCode
         const userCode = (0, Account_1.normalizeUserCode)(data.userCode || data.code || '');
         const codeError = (0, Account_1.validateUserCodeFormat)(userCode);
@@ -46,11 +47,13 @@ class CreateAccountUseCase {
         if (currencyError) {
             throw this.createError(currencyError, 400);
         }
-        // 6. Professional Governance: Fetch company base currency
+        // 6. Professional Governance: Resolve accurate base currency
+        const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
         const company = await this.companyRepo.findById(companyId);
         if (!company)
             throw this.createError('Company not found', 404);
-        const baseCurrency = company.baseCurrency || 'USD';
+        const effectiveBaseCurrency = (baseCurrency || company.baseCurrency || 'USD').toUpperCase();
+        console.log(`[CreateAccountUseCase] Effective baseCurrency: "${effectiveBaseCurrency}" (Resolved: "${baseCurrency}", Profile: "${company.baseCurrency}")`);
         // 6.1 Validate Hierarchy Currency Constraints
         if (data.parentId) {
             const parent = await this.accountRepo.getById(companyId, data.parentId);
@@ -62,11 +65,11 @@ class CreateAccountUseCase {
             }
             // Root Currency Lock Inheritance Check (Waterfall rule)
             const effectiveCurrencyPolicy = data.currencyPolicy || 'INHERIT';
-            const effectiveFixedCurrency = data.fixedCurrencyCode || data.currency || null;
+            const effectiveFixedCurrency = (_a = (data.fixedCurrencyCode || data.currency || null)) === null || _a === void 0 ? void 0 : _a.toUpperCase();
             // Governance rule: If the parent is in a foreign currency (e.g., EUR), 
             // the child MUST also be EUR (cannot revert to USD Base).
-            if (parent.currencyPolicy === 'FIXED' && parent.fixedCurrencyCode !== baseCurrency) {
-                if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== parent.fixedCurrencyCode) {
+            if (parent.currencyPolicy === 'FIXED' && ((_b = parent.fixedCurrencyCode) === null || _b === void 0 ? void 0 : _b.toUpperCase()) !== effectiveBaseCurrency) {
+                if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== ((_c = parent.fixedCurrencyCode) === null || _c === void 0 ? void 0 : _c.toUpperCase())) {
                     throw this.createError(`Professional Governance Violation: Account belongs to a ${parent.fixedCurrencyCode} parent. ` +
                         `Children inside a foreign context must share the parent's currency (${parent.fixedCurrencyCode}).`, 400);
                 }
@@ -94,9 +97,9 @@ class CreateAccountUseCase {
             if (effectiveCurrencyPolicy === 'OPEN') {
                 throw this.createError('Root Governance Lock: Root accounts (Assets, Liabilities, etc.) cannot have an OPEN currency policy. They must remain in the company base currency context.', 400);
             }
-            if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== baseCurrency) {
-                throw this.createError(`Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${baseCurrency}). ` +
-                    `Use children to record foreign currency transactions.`, 400);
+            if (effectiveCurrencyPolicy === 'FIXED' && (effectiveFixedCurrency === null || effectiveFixedCurrency === void 0 ? void 0 : effectiveFixedCurrency.toUpperCase()) !== effectiveBaseCurrency.toUpperCase()) {
+                throw this.createError(`Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${effectiveBaseCurrency}). ` +
+                    `Detected: ${effectiveFixedCurrency}.`, 400);
             }
         }
         // 7. Determine account role
@@ -117,7 +120,7 @@ class CreateAccountUseCase {
             currencyPolicy,
             fixedCurrencyCode: data.fixedCurrencyCode || data.currency,
             allowedCurrencyCodes: data.allowedCurrencyCodes || [],
-            isProtected: (_a = data.isProtected) !== null && _a !== void 0 ? _a : false
+            isProtected: (_d = data.isProtected) !== null && _d !== void 0 ? _d : false
         };
         // 9. Create account (repository handles systemCode generation)
         const account = await this.accountRepo.create(companyId, input);

@@ -262,9 +262,9 @@ export class GetGeneralLedgerUseCase {
         description: entry.notes || voucher?.description || '',
         debit: dr,
         credit: cr,
-        currency: entry.currency || 'USD',
+        currency: entry.currency || '',
         amount: entry.amount || 0,
-        baseCurrency: entry.baseCurrency || 'USD',
+        baseCurrency: entry.baseCurrency || '',
         baseAmount: entry.baseAmount || 0,
         exchangeRate: entry.exchangeRate || 1,
         runningBalance: filters.accountId ? runningBalance : undefined, // Only show for single account

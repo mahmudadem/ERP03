@@ -38,6 +38,8 @@ const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/r
 const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/FirestoreCompanyAdminRepository");
 const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
 const FirestoreCompanyModuleRepository_1 = require("../firestore/repositories/company/FirestoreCompanyModuleRepository");
+const SettingsResolver_1 = require("../../application/common/services/SettingsResolver");
+const ModuleActivationService_1 = require("../../application/system/services/ModuleActivationService");
 const FirestoreBusinessDomainRepository_1 = require("../firestore/repositories/super-admin/FirestoreBusinessDomainRepository");
 const FirestorePermissionRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestorePermissionRegistryRepository");
 const FirestoreModuleRegistryRepository_1 = require("../firestore/repositories/super-admin/FirestoreModuleRegistryRepository");
@@ -55,6 +57,9 @@ const FirebaseTokenVerifier_1 = require("../auth/FirebaseTokenVerifier");
 const getDb = () => firebaseAdmin_1.default.firestore();
 // Database type configuration
 const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
+// Shared Services
+const settingsResolver = new SettingsResolver_1.SettingsResolver(getDb());
+const moduleActivationService = new ModuleActivationService_1.ModuleActivationService(new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb()));
 exports.diContainer = {
     // CORE
     get companyRepository() {
@@ -64,8 +69,9 @@ exports.diContainer = {
     },
     get userRepository() { return new FirestoreUserRepository_1.FirestoreUserRepository(getDb()); },
     get companyUserRepository() { return new FirestoreCompanyUserRepository_1.FirestoreCompanyUserRepository(getDb()); },
-    get companySettingsRepository() { return new FirestoreCompanySettingsRepository_1.FirestoreCompanySettingsRepository(getDb()); },
+    get companySettingsRepository() { return new FirestoreCompanySettingsRepository_1.FirestoreCompanySettingsRepository(settingsResolver); },
     get companyModuleRepository() { return new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb()); },
+    get moduleActivationService() { return moduleActivationService; },
     // SYSTEM
     get moduleRepository() { return new FirestoreSystemRepositories_1.FirestoreModuleRepository(getDb()); },
     get roleRepository() { return new FirestoreSystemRepositories_1.FirestoreRoleRepository(getDb()); },
@@ -79,11 +85,11 @@ exports.diContainer = {
         // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
         return new FirestoreVoucherRepositoryV2_1.FirestoreVoucherRepositoryV2(getDb());
     },
-    get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(getDb()); },
-    get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(getDb()); },
+    get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(settingsResolver); },
+    get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(settingsResolver); },
     get ledgerRepository() { return new FirestoreLedgerRepository_1.FirestoreLedgerRepository(getDb()); },
-    get accountingCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreAccountingCurrencyRepository(getDb()); },
-    get companyCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreCompanyCurrencyRepository(getDb()); },
+    get accountingCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreAccountingCurrencyRepository(settingsResolver); },
+    get companyCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreCompanyCurrencyRepository(settingsResolver); },
     // INVENTORY
     get itemRepository() { return new FirestoreInventoryRepositories_1.FirestoreItemRepository(getDb()); },
     get warehouseRepository() { return new FirestoreInventoryRepositories_1.FirestoreWarehouseRepository(getDb()); },
@@ -112,7 +118,7 @@ exports.diContainer = {
     get companyWizardTemplateRepository() { return new FirestoreCompanyWizardTemplateRepository_1.FirestoreCompanyWizardTemplateRepository(getDb()); },
     get companyCreationSessionRepository() { return new FirestoreCompanyCreationSessionRepository_1.FirestoreCompanyCreationSessionRepository(getDb()); },
     get chartOfAccountsTemplateRepository() { return new FirestoreChartOfAccountsTemplateRepository_1.FirestoreChartOfAccountsTemplateRepository(getDb()); },
-    get currencyRepository() { return new FirestoreCurrencyRepository_1.FirestoreCurrencyRepository(getDb()); },
+    get currencyRepository() { return new FirestoreCurrencyRepository_1.FirestoreCurrencyRepository(settingsResolver); },
     get inventoryTemplateRepository() { return new FirestoreInventoryTemplateRepository_1.FirestoreInventoryTemplateRepository(getDb()); },
     // MODULE SETTINGS
     get moduleSettingsDefinitionRepository() { return new FirestoreModuleSettingsDefinitionRepository_1.FirestoreModuleSettingsDefinitionRepository(getDb()); },
@@ -141,7 +147,7 @@ exports.diContainer = {
         const { FirestoreUserAccessScopeProvider } = require('../accounting/access/FirestoreUserAccessScopeProvider');
         const { FirestoreAccountLookupService } = require('../accounting/services/FirestoreAccountLookupService');
         const db = getDb();
-        const configProvider = new FirestoreAccountingPolicyConfigProvider(db);
+        const configProvider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
         const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
         const accountLookup = new FirestoreAccountLookupService(db);
         return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
@@ -149,7 +155,7 @@ exports.diContainer = {
     // ACCOUNTING POLICY CONFIG (for use cases that need approval settings)
     get accountingPolicyConfigProvider() {
         const { FirestoreAccountingPolicyConfigProvider } = require('../accounting/config/FirestoreAccountingPolicyConfigProvider');
-        return new FirestoreAccountingPolicyConfigProvider(getDb());
+        return new FirestoreAccountingPolicyConfigProvider(settingsResolver);
     },
     // AUTH
     get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); },

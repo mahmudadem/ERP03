@@ -16,15 +16,14 @@ class FirestoreLedgerRepository {
         this.db = db;
     }
     col(companyId) {
-        return this.db.collection('companies').doc(companyId).collection('ledger');
+        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> ledger (coll)
+        return this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('ledger');
     }
     async recordForVoucher(voucher, transaction) {
         try {
             const batch = !transaction ? this.db.batch() : null;
             voucher.lines.forEach((line) => {
-                // Line ID is guaranteed unique within voucher by entity logic
                 const id = `${voucher.id}_${line.id}`;
-                // Canonical Posting Model: record debit and credit in base currency
                 const debit = line.debitAmount;
                 const credit = line.creditAmount;
                 const docRef = this.col(voucher.companyId).doc(id);
@@ -66,12 +65,6 @@ class FirestoreLedgerRepository {
     }
     async deleteForVoucher(companyId, voucherId, transaction) {
         try {
-            // Note: In a transaction, we must READ before WRITE.
-            // But for delete, we might need to query first. 
-            // Queries in transactions are tricky. We need to run the query using the transaction?
-            // Firestore transactions don't support "query and delete" easily without reading.
-            // But wait, `transaction.get(query)` is supported in some SDKs.
-            // In Node.js admin SDK, `transaction.get(query)` works.
             let snap;
             if (transaction) {
                 snap = await transaction.get(this.col(companyId).where('voucherId', '==', voucherId));
@@ -81,12 +74,10 @@ class FirestoreLedgerRepository {
             }
             const batch = !transaction ? this.db.batch() : null;
             snap.docs.forEach((doc) => {
-                if (transaction) {
+                if (transaction)
                     transaction.delete(doc.ref);
-                }
-                else {
+                else
                     batch.delete(doc.ref);
-                }
             });
             if (batch) {
                 await batch.commit();
@@ -140,25 +131,26 @@ class FirestoreLedgerRepository {
     }
     async getGeneralLedger(companyId, filters) {
         try {
-            let ref = this.col(companyId);
-            if (filters.accountId)
-                ref = ref.where('accountId', '==', filters.accountId);
-            // V2 Audit Rule: If filtering by voucherId for core financial logic (like reversals),
-            // we MUST only read posted-only data to avoid reading uncommitted or draft rows.
-            if (filters.voucherId) {
-                ref = ref.where('voucherId', '==', filters.voucherId);
-                ref = ref.where('isPosted', '==', true);
-            }
-            if (filters.fromDate)
-                ref = ref.where('date', '>=', filters.fromDate);
-            if (filters.toDate)
-                ref = ref.where('date', '<=', filters.toDate);
-            const snap = await ref.orderBy('date', 'asc').get();
+            const snap = await this.executeQuery(this.col(companyId), filters);
             return snap.docs.map((d) => d.data());
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to get general ledger', error);
         }
+    }
+    async executeQuery(collection, filters) {
+        let ref = collection;
+        if (filters.accountId)
+            ref = ref.where('accountId', '==', filters.accountId);
+        if (filters.voucherId) {
+            ref = ref.where('voucherId', '==', filters.voucherId);
+            ref = ref.where('isPosted', '==', true);
+        }
+        if (filters.fromDate)
+            ref = ref.where('date', '>=', filters.fromDate);
+        if (filters.toDate)
+            ref = ref.where('date', '<=', filters.toDate);
+        return ref.orderBy('date', 'asc').get();
     }
 }
 exports.FirestoreLedgerRepository = FirestoreLedgerRepository;

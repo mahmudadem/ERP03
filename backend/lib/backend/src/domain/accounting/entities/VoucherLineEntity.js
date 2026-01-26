@@ -182,14 +182,13 @@ class VoucherLineEntity {
             baseAmount = Math.abs(data.debitBase || 0) || Math.abs(data.creditBase || 0) || amount;
         }
         if (!baseCurrency) {
-            // Logic: In V1, we didn't store baseCurrency per line. 
-            // We'll use the voucher's base currency if provided, otherwise default to USD.
-            baseCurrency = fallbackBaseCurrency || 'USD';
+            // Logic: In V2, baseCurrency is required. 
+            baseCurrency = fallbackBaseCurrency;
         }
         // Default amount to 0.01 if it's somehow 0 in old data (to avoid invariant crash)
         const safeAmount = Math.max(0.01, amount);
         const safeBaseAmount = Math.max(0.01, baseAmount);
-        return new VoucherLineEntity(data.id || 1, data.accountId || 'legacy-account', side, safeBaseAmount, baseCurrency, safeAmount, currency || 'USD', data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
+        return new VoucherLineEntity(data.id || 1, data.accountId || 'legacy-account', side, safeBaseAmount, baseCurrency, safeAmount, currency, data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
     }
     /**
      * Create a new line with updated notes (immutable update)

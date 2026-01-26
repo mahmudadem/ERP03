@@ -142,7 +142,10 @@ export class CompanyWizardController {
                 diContainer.companyRoleRepository,
                 resolver,
                 diContainer.voucherTypeDefinitionRepository,
-                diContainer.companySettingsRepository
+                diContainer.companySettingsRepository,
+                diContainer.systemMetadataRepository,
+                diContainer.currencyRepository,
+                diContainer.moduleActivationService
             );
             const result = await useCase.execute({ sessionId, userId });
             res.json({ success: true, data: result });

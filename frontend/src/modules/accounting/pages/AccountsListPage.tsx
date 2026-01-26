@@ -45,7 +45,7 @@ export default function AccountsListPage() {
     });
 
     const { profile: companyProfile } = useCompanyProfile();
-    const baseCurrency = companyProfile?.currency || 'USD';
+    const baseCurrency = companyProfile?.currency || '';
 
     const createMutation = useMutation({
         mutationFn: accountingApi.createAccount,

@@ -932,7 +932,7 @@ export class VoucherEntity {
    */
   static fromJSON(data: any): VoucherEntity {
     // Legacy support: ensure baseCurrency exists (default to USD if missing)
-    const baseCurrency = data.baseCurrency || 'USD';
+    const baseCurrency = data.baseCurrency;
     
     // Naming normalization (handles legacy V1 vs modern V2)
     const id = data.id || data.voucherId;

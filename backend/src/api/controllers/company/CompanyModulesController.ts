@@ -69,7 +69,10 @@ export class CompanyModulesController {
           this.companyModuleRepo,
           diContainer.accountRepository,
           diContainer.systemMetadataRepository,
-          diContainer.companyModuleSettingsRepository
+          diContainer.companyModuleSettingsRepository,
+          diContainer.companySettingsRepository,
+          diContainer.currencyRepository,
+          diContainer.companyRepository
         );
 
         console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));

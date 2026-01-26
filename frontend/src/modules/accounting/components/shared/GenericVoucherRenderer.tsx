@@ -110,8 +110,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
     
     const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
-    const voucherCurrency = (formData.currency || company?.baseCurrency || 'USD').toUpperCase();
-    const baseCurrency = (company?.baseCurrency || 'USD').toUpperCase();
+    const voucherCurrency = (formData.currency || company?.baseCurrency || '').toUpperCase();
+    const baseCurrency = (company?.baseCurrency || '').toUpperCase();
     
 
     
@@ -432,7 +432,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const rowIndex = rows.findIndex(r => r.id === rowId);
     const newRow: JournalRow = {
       id: Date.now(), // Unique ID
-      account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+      account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: ''
     };
     setRows((prev: JournalRow[]) => {
       const next = [
@@ -607,7 +607,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // User input field defaults
     const inputDefaults = {
       date: today,
-      currency: company?.baseCurrency || 'USD',
+      currency: company?.baseCurrency || '',
       exchangeRate: 1,
       paymentMethod: 'Bank Transfer',
       reference: '',
@@ -655,7 +655,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           notes: line.notes || line.description || '',
           debit: line.side === 'Debit' ? amt : 0,
           credit: line.side === 'Credit' ? amt : 0,
-          currency: line.currency || line.lineCurrency || 'USD',
+          currency: line.currency || line.lineCurrency || '',
           parity: line.exchangeRate || line.parity || 1.0,
           equivalent: line.baseAmount || line.equivalent || 0,
           category: line.costCenterId || line.category || ''
@@ -731,7 +731,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             side: isDebit ? 'Debit' : 'Credit',
             // RAW user input:
             amount: Math.abs(Number(amt) || 0),
-            lineCurrency: (row.currency || formData.currency || 'USD').toUpperCase(),
+            lineCurrency: (row.currency || formData.currency || '').toUpperCase(),
             // Parity is the Line→Doc rate shown in the UI (1.0 for same currency, inverse for base, etc.)
             // Backend will multiply by headerRate to get the absolute rate
             exchangeRate: row.parity || 1
@@ -757,7 +757,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       setRows(INITIAL_ROWS);
       setFormData({
         date: today,
-        currency: company?.baseCurrency || 'USD',
+        currency: company?.baseCurrency || '',
         exchangeRate: 1,
         status: 'Draft',
         voucherNumber: 'Auto-generated'
@@ -790,7 +790,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           if (field === 'account') {
             const accVal = value as Account | null | string;
             // Default to voucher currency if account doesn't have a specific one
-            const defaultCurrency = formData.currency || company?.baseCurrency || 'USD';
+            const defaultCurrency = formData.currency || company?.baseCurrency || '';
             
             let selectedAccount: Account | undefined;
             if (accVal && typeof accVal === 'object') {
@@ -875,9 +875,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     // 2. CALCULATE PARITY using voucher's exchange rate
     if ((field === 'currency' || field === 'account') && targetRow) {
-      const lineCurrency = targetRow.currency || 'USD';
-      const voucherCurrency = formData.currency || company?.baseCurrency || 'USD';
-      const baseCurrency = company?.baseCurrency || 'USD';
+      const lineCurrency = targetRow.currency || '';
+      const voucherCurrency = formData.currency || company?.baseCurrency || '';
+      const baseCurrency = company?.baseCurrency || '';
       
       console.log('[PARITY CALC] Full formData:', JSON.stringify(formData, null, 2));
       console.log('[PARITY CALC]', {

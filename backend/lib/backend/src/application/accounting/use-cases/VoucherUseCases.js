@@ -58,10 +58,19 @@ class CreateVoucherUseCase {
     async execute(companyId, userId, payload) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
         return this.transactionManager.runTransaction(async (transaction) => {
+            var _a;
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
             // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
             // Ledger entries MUST be in base currency only (accounting rule)
-            const baseCurrency = ((settings === null || settings === void 0 ? void 0 : settings.baseCurrency) || 'USD').toUpperCase();
+            const baseCurrency = (_a = settings === null || settings === void 0 ? void 0 : settings.baseCurrency) === null || _a === void 0 ? void 0 : _a.toUpperCase();
+            if (!baseCurrency) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.CRITICAL_CONFIG_MISSING, 'Company base currency is not configured. Please complete accounting module setup through the accounting wizard.', {
+                    companyId,
+                    module: 'accounting',
+                    missingField: 'baseCurrency',
+                    hint: 'Run the accounting initialization wizard to set up base currency'
+                });
+            }
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
             const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';

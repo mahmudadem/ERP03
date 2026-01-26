@@ -87,8 +87,11 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
     // Fetch base currency from accounting module config
     const { getModuleStatus } = useCompanyModules();
+    const { company } = useCompanyProfile();
     const accountingModule = getModuleStatus('accounting');
-    const baseCurrency = (accountingModule?.config as any)?.baseCurrency || 'USD';
+    
+    // Prefer company profile currency > accounting config > SYP fallback
+    const baseCurrency = company?.baseCurrency || (accountingModule?.config as any)?.baseCurrency || 'SYP';
 
     const [requiresApproval, setRequiresApproval] = useState(initialValues?.requiresApproval || false);
     const [requiresCustodyConfirmation, setRequiresCustodyConfirmation] = useState(initialValues?.requiresCustodyConfirmation || false);

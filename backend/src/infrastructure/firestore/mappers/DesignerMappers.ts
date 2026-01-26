@@ -44,7 +44,7 @@ export class VoucherTypeDefinitionMapper {
       data.isMultiLine ?? true,
       data.rules || [],
       data.actions || [],
-      data.defaultCurrency || 'USD'
+      data.defaultCurrency || ''
     );
   }
   static toPersistence(entity: VoucherTypeDefinition): any {
@@ -63,7 +63,7 @@ export class VoucherTypeDefinitionMapper {
       isMultiLine: entity.isMultiLine ?? true,
       rules: entity.rules || [],
       actions: entity.actions || [],
-      defaultCurrency: entity.defaultCurrency || 'USD'
+      defaultCurrency: entity.defaultCurrency || ''
     };
   }
 }

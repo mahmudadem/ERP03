@@ -8,7 +8,7 @@ import { ICompanyService } from '../use-cases/SavePaymentVoucherUseCase';
  */
 export class SimpleCompanyService implements ICompanyService {
   // Default base currency (for testing/demo)
-  private readonly DEFAULT_BASE_CURRENCY = 'USD';
+  private readonly DEFAULT_BASE_CURRENCY = '';
 
   // In-memory storage (for testing)
   private companyCurrencies: Map<string, string> = new Map();

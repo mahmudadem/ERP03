@@ -33,7 +33,7 @@ const VoucherEditorPage: React.FC = () => {
       setInitialValues({
         header: {
            date: getCompanyToday(companySettings),
-           currency: 'USD'
+           currency: companySettings?.baseCurrency || ''
         },
         lines: [
           { accountId: '', description: '', debit: 0, credit: 0 },
@@ -53,7 +53,7 @@ const VoucherEditorPage: React.FC = () => {
         header: {
           ...voucher,
           date: voucher.date,
-          currency: voucher.currency || 'USD',
+          currency: voucher.currency || companySettings?.baseCurrency || '',
         },
         lines: voucher.lines || []
       });
@@ -68,7 +68,7 @@ const VoucherEditorPage: React.FC = () => {
     try {
       // For dynamic templates, we pass the formData directly to the backend.
       // The backend Strategy will handle line generation.
-    const baseCurrency = companySettings?.baseCurrency || 'USD';
+    const baseCurrency = companySettings?.baseCurrency || '';
 
 
       const payload = {
@@ -77,7 +77,7 @@ const VoucherEditorPage: React.FC = () => {
         type: (definition as any).baseType || definition?.code || 'INV',
         formId: formId, // Store which form layout was used
         date: formData.header?.date || formData.date || new Date().toISOString(),
-        currency: formData.header?.currency || formData.currency || 'USD',
+        currency: formData.header?.currency || formData.currency || companySettings?.baseCurrency || '',
         // Inject creationMode for audit transparency
         metadata: {
           ...formData.metadata,

@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
+import { SettingsResolver } from '../../../application/common/services/SettingsResolver';
+import { diContainer } from '../../../infrastructure/di/bindRepositories';
 
 /**
  * SettingsController
@@ -28,17 +30,18 @@ export class SettingsController {
       const { FirestoreAccountingPolicyConfigProvider } = await import('../../../infrastructure/accounting/config/FirestoreAccountingPolicyConfigProvider');
       
       const db = admin.firestore();
-      const provider = new FirestoreAccountingPolicyConfigProvider(db);
+      const settingsResolver = new SettingsResolver(db);
+      const provider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
       
       const config = await provider.getConfig(companyId);
 
-      // Get metadata (updatedAt, updatedBy) if available
-      const settingsDoc = await db
-        .collection('companies')
-        .doc(companyId)
-        .collection('settings')
-        .doc('accounting')
-        .get();
+      // 1. Resolve Base Currency from Shared Currencies (Tier 2)
+      const currencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
+      const baseCurrency = currencies.find(c => c.isBase)?.currencyCode;
+
+      // 2. Get metadata (updatedAt, updatedBy) if available
+      const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+      const settingsDoc = await settingsRef.get();
 
       const metadata = settingsDoc.exists ? {
         updatedAt: settingsDoc.data()?.updatedAt,
@@ -49,6 +52,7 @@ export class SettingsController {
         success: true,
         data: {
           ...config,
+          baseCurrency, // Inject from Global Tier
           ...metadata
         }
       });
@@ -98,9 +102,11 @@ export class SettingsController {
       }
 
       const db = admin.firestore();
+      const settingsResolver = new SettingsResolver(db);
 
       // Build update payload
       const updateData: any = {
+        // ... (preserving payload building logic)
         // Approval Policy V1 toggles
         financialApprovalEnabled: req.body.financialApprovalEnabled ?? false,
         faApplyMode: req.body.faApplyMode || 'ALL',  // Default to ALL
@@ -139,17 +145,17 @@ export class SettingsController {
       }
 
       // Update Firestore
-      console.log('[SettingsController] Saving to path:', `companies/${companyId}/settings/accounting`);
-      console.log('[SettingsController] Update data:', JSON.stringify(updateData, null, 2));
+      const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+      console.log('[SettingsController] Saving to path:', settingsRef.path);
       
-      await db
-        .collection('companies')
-        .doc(companyId)
-        .collection('settings')
-        .doc('accounting')
-        .set(updateData, { merge: true });
+      // CLEANUP: Explicitly remove baseCurrency if it's trapped in this tier
+      // We use FieldValue.delete() to ensure it's gone from the document
+      await settingsRef.update({
+        ...updateData,
+        baseCurrency: admin.firestore.FieldValue.delete()
+      });
       
-      console.log('[SettingsController] Save successful');
+      console.log('[SettingsController] Save and cleanup successful');
 
       res.json({
         success: true,

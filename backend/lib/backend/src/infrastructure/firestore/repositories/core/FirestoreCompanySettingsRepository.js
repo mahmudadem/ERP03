@@ -1,17 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreCompanySettingsRepository = void 0;
-const BaseFirestoreRepository_1 = require("../BaseFirestoreRepository");
 const CompanySettings_1 = require("../../../../domain/core/entities/CompanySettings");
 const InfrastructureError_1 = require("../../../errors/InfrastructureError");
-class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
-    constructor() {
-        super(...arguments);
-        this.collectionName = 'company_settings';
+class FirestoreCompanySettingsRepository {
+    constructor(settingsResolver) {
+        this.settingsResolver = settingsResolver;
+    }
+    getSettingsRef(companyId) {
+        return this.settingsResolver.getCompanySettingsRef(companyId);
     }
     toDomain(data) {
         var _a;
-        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true, data.uiMode, data.timezone, data.dateFormat, data.language || 'en');
+        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : true, data.uiMode, data.timezone, data.dateFormat, data.language || 'en', data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd);
     }
     toPersistence(entity) {
         return {
@@ -20,13 +21,17 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
             uiMode: entity.uiMode,
             timezone: entity.timezone,
             dateFormat: entity.dateFormat,
-            language: entity.language
+            language: entity.language,
+            baseCurrency: entity.baseCurrency,
+            fiscalYearStart: entity.fiscalYearStart,
+            fiscalYearEnd: entity.fiscalYearEnd
         };
     }
     async getSettings(companyId) {
         try {
-            const doc = await this.db.collection(this.collectionName).doc(companyId).get();
+            const doc = await this.getSettingsRef(companyId).get();
             if (!doc.exists) {
+                // Return default settings without a hardcoded currency if possible, or handle it in the domain
                 return CompanySettings_1.CompanySettings.default(companyId);
             }
             return this.toDomain(doc.data());
@@ -44,7 +49,8 @@ class FirestoreCompanySettingsRepository extends BaseFirestoreRepository_1.BaseF
             }, {});
             if (Object.keys(updateData).length === 0)
                 return;
-            await this.db.collection(this.collectionName).doc(companyId).set(updateData, { merge: true });
+            // Save strictly to modular location
+            await this.getSettingsRef(companyId).set(updateData, { merge: true });
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to update company settings', error);

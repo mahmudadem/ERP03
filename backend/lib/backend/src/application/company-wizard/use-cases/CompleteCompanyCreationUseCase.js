@@ -4,7 +4,7 @@ exports.CompleteCompanyCreationUseCase = void 0;
 const Company_1 = require("../../../domain/core/entities/Company");
 const crypto_1 = require("crypto");
 class CompleteCompanyCreationUseCase {
-    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo, companySettingsRepo) {
+    constructor(sessionRepo, templateRepo, companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo, companySettingsRepo, systemMetadataRepo, currencyRepo, moduleActivationService) {
         this.sessionRepo = sessionRepo;
         this.templateRepo = templateRepo;
         this.companyRepo = companyRepo;
@@ -14,6 +14,9 @@ class CompleteCompanyCreationUseCase {
         this.rolePermissionResolver = rolePermissionResolver;
         this.voucherTypeRepo = voucherTypeRepo;
         this.companySettingsRepo = companySettingsRepo;
+        this.systemMetadataRepo = systemMetadataRepo;
+        this.currencyRepo = currencyRepo;
+        this.moduleActivationService = moduleActivationService;
     }
     filter(steps, model) {
         return steps
@@ -54,7 +57,7 @@ class CompleteCompanyCreationUseCase {
         const steps = this.filter(template.steps, session.model);
         this.validateAllRequired(steps, session.data);
         // Normalize common aliases to what creation expects
-        const baseCurrency = session.data.currency || session.data.baseCurrency || 'USD';
+        const baseCurrency = session.data.currency || session.data.baseCurrency;
         const now = new Date();
         const fiscalYearStart = this.safeDate(session.data.fiscalYearStart);
         const fiscalYearEnd = new Date(fiscalYearStart);
@@ -62,13 +65,26 @@ class CompleteCompanyCreationUseCase {
         const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, [session.model], [], session.data.taxId || '', undefined, session.data.address || undefined);
         try {
             await this.companyRepo.save(company);
-            // Initialize settings
+            // Initialize settings (Global Tier 1)
             await this.companySettingsRepo.updateSettings(company.id, {
                 timezone: session.data.timezone || 'UTC',
                 dateFormat: session.data.dateFormat || 'MM/DD/YYYY',
                 language: session.data.language || 'en',
+                baseCurrency: baseCurrency || '',
                 uiMode: 'windows'
             });
+            // SEED SHARED SETTINGS: Currencies (Shared Tier 2)
+            try {
+                const globalCurrencies = await this.systemMetadataRepo.getMetadata('currencies');
+                if (globalCurrencies && Array.isArray(globalCurrencies)) {
+                    // Seed all available currencies (but don't enable any yet)
+                    await this.currencyRepo.seedCurrencies(company.id, globalCurrencies);
+                    console.log(`[CompleteCompanyCreationUseCase] Seeded global currencies to company ${company.id}`);
+                }
+            }
+            catch (seedErr) {
+                console.error('Failed to seed company currencies', seedErr);
+            }
         }
         catch (err) {
             throw new Error(`Failed to create company: ${(err === null || err === void 0 ? void 0 : err.message) || err}`);
@@ -80,8 +96,17 @@ class CompleteCompanyCreationUseCase {
             isOwner: true,
             createdAt: now
         });
-        // Update default roles with module bundles if provided
+        // 4. Activate Modules with Dependency Tracing
         const modules = session.data.modules || [];
+        for (const moduleCode of modules) {
+            try {
+                await this.moduleActivationService.activateModule(company.id, moduleCode, session.userId);
+            }
+            catch (modErr) {
+                console.error(`Failed to activate module ${moduleCode}`, modErr);
+            }
+        }
+        // 5. Update Role Module Bundles
         if (modules.length > 0) {
             const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
             const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');

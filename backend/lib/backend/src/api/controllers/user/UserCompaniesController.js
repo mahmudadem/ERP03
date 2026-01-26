@@ -4,7 +4,7 @@ exports.UserCompaniesController = void 0;
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 class UserCompaniesController {
     static async listUserCompanies(req, res, next) {
-        var _a, _b;
+        var _a;
         try {
             const userId = req.user.uid;
             // Fetch memberships across all companies (owner or member)
@@ -17,10 +17,19 @@ class UserCompaniesController {
                 const c = await bindRepositories_1.diContainer.companyRepository.findById(m.companyId);
                 if (!c)
                     continue;
+                // Resolve Base Currency from Shared Currencies (Tier 2)
+                let baseCurrency = c.baseCurrency;
+                try {
+                    const currencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(c.id);
+                    const baseRec = currencies.find(curr => curr.isBase);
+                    if (baseRec)
+                        baseCurrency = baseRec.currencyCode;
+                }
+                catch (e) { }
                 resultsMap.set(c.id, {
                     id: c.id,
                     name: c.name,
-                    baseCurrency: c.baseCurrency,
+                    baseCurrency: baseCurrency,
                     model: (_a = c.modules) === null || _a === void 0 ? void 0 : _a[0],
                     roleId: m.roleId || 'MEMBER',
                     isOwner: !!m.isOwner,
@@ -33,11 +42,19 @@ class UserCompaniesController {
             for (const c of ownedCompanies) {
                 if (resultsMap.has(c.id))
                     continue;
+                // Resolve Base Currency from Shared Currencies (Tier 2)
+                let baseCurrency = c.baseCurrency;
+                try {
+                    const currencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(c.id);
+                    const baseRec = currencies.find(curr => curr.isBase);
+                    if (baseRec)
+                        baseCurrency = baseRec.currencyCode;
+                }
+                catch (e) { }
                 resultsMap.set(c.id, {
                     id: c.id,
                     name: c.name,
-                    baseCurrency: c.baseCurrency,
-                    model: (_b = c.modules) === null || _b === void 0 ? void 0 : _b[0],
+                    baseCurrency: baseCurrency,
                     roleId: 'OWNER',
                     isOwner: true,
                     logoUrl: c.logoUrl,
@@ -93,6 +110,17 @@ class UserCompaniesController {
             }
             const company = await bindRepositories_1.diContainer.companyRepository.findById(activeCompanyId);
             const membership = await bindRepositories_1.diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, activeCompanyId);
+            // Resolve Base Currency from Shared Currencies (Tier 2)
+            let baseCurrency = company === null || company === void 0 ? void 0 : company.baseCurrency; // Fallback
+            try {
+                const currencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(activeCompanyId);
+                const baseRec = currencies.find(c => c.isBase);
+                if (baseRec)
+                    baseCurrency = baseRec.currencyCode;
+            }
+            catch (e) {
+                console.warn('Failed to fetch base currency from collection:', e);
+            }
             return res.json({
                 success: true,
                 data: {
@@ -100,7 +128,7 @@ class UserCompaniesController {
                     company: company ? {
                         id: company.id,
                         name: company.name,
-                        baseCurrency: company.baseCurrency,
+                        baseCurrency: baseCurrency,
                         fiscalYearStart: company.fiscalYearStart,
                         logoUrl: company.logoUrl,
                         modules: company.modules,

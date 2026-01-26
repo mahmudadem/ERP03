@@ -22,15 +22,16 @@ class FirestoreAccountRepository {
         return entity.toJSON();
     }
     col(companyId) {
-        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> accounts (coll)
+        return this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection(this.collectionName);
     }
     voucherLinesCol(companyId) {
         // VoucherLines are stored under vouchers in Firestore
-        // We need to query all voucher lines across all vouchers
         return this.db.collectionGroup('lines');
     }
     countersDoc(companyId) {
-        return this.db.collection('companies').doc(companyId).collection('counters').doc('accountSystemCode');
+        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> counters (coll) -> accountSystemCode (doc)
+        return this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('counters').doc('accountSystemCode');
     }
     auditEventsCol(companyId, accountId) {
         return this.col(companyId).doc(accountId).collection('events');
@@ -50,7 +51,6 @@ class FirestoreAccountRepository {
             if (!doc.exists)
                 return null;
             const account = this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id }));
-            // Set runtime flags
             const hasChildren = await this.hasChildren(companyId, accountId);
             account.setHasChildren(hasChildren);
             return account;
@@ -64,7 +64,6 @@ class FirestoreAccountRepository {
             const normalized = (0, Account_1.normalizeUserCode)(userCode);
             const snap = await this.col(companyId).where('userCode', '==', normalized).limit(1).get();
             if (snap.empty) {
-                // Fallback: check legacy 'code' field for migration
                 const legacySnap = await this.col(companyId).where('code', '==', userCode).limit(1).get();
                 if (legacySnap.empty)
                     return null;
@@ -83,7 +82,6 @@ class FirestoreAccountRepository {
         try {
             const snapshot = await this.col(companyId).get();
             const accounts = snapshot.docs.map(doc => this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
-            // Build parent lookup for hasChildren
             const parentIds = new Set(accounts.map(a => a.parentId).filter(Boolean));
             accounts.forEach(a => a.setHasChildren(parentIds.has(a.id)));
             return accounts;
@@ -101,11 +99,8 @@ class FirestoreAccountRepository {
     async create(companyId, data) {
         var _a, _b, _c, _d;
         try {
-            // Generate UUID if not provided
             const id = data.id || this.db.collection('tmp').doc().id;
-            // Generate system code
             const systemCode = await this.generateNextSystemCode(companyId);
-            // Normalize inputs
             const userCode = (0, Account_1.normalizeUserCode)(data.userCode || data.code || '');
             const classification = (0, Account_1.normalizeClassification)(data.classification || data.type || 'ASSET');
             const balanceNature = data.balanceNature || (0, Account_1.getDefaultBalanceNature)(classification);
@@ -136,12 +131,10 @@ class FirestoreAccountRepository {
                 requiresCustodyConfirmation: data.requiresCustodyConfirmation || false,
                 custodianUserId: (_d = data.custodianUserId) !== null && _d !== void 0 ? _d : null
             });
-            // Validate
             const errors = account.validate();
             if (errors.length > 0) {
                 throw new Error(`Account validation failed: ${errors.join('; ')}`);
             }
-            // Persist
             await this.col(companyId).doc(id).set(this.toPersistence(account));
             return account;
         }
@@ -158,12 +151,10 @@ class FirestoreAccountRepository {
             }
             const existing = this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id }));
             const now = new Date();
-            // Build update object
             const updateData = {
                 updatedAt: firestore_1.FieldValue.serverTimestamp(),
                 updatedBy: data.updatedBy
             };
-            // Simple mutable fields
             if (data.name !== undefined)
                 updateData.name = data.name;
             if (data.description !== undefined)
@@ -176,7 +167,6 @@ class FirestoreAccountRepository {
                 updateData.status = data.isActive ? 'ACTIVE' : 'INACTIVE';
             if (data.replacedByAccountId !== undefined) {
                 updateData.replacedByAccountId = data.replacedByAccountId;
-                // Auto-set inactive if replaced
                 if (data.replacedByAccountId) {
                     updateData.status = 'INACTIVE';
                 }
@@ -185,7 +175,6 @@ class FirestoreAccountRepository {
                 updateData.parentId = data.parentId;
             if (data.isProtected !== undefined)
                 updateData.isProtected = data.isProtected;
-            // Conditionally mutable fields (may be blocked by use case if USED)
             if (data.accountRole !== undefined)
                 updateData.accountRole = data.accountRole;
             if (data.classification !== undefined)
@@ -200,7 +189,6 @@ class FirestoreAccountRepository {
                 updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
             if (data.allowedCurrencyCodes !== undefined)
                 updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
-            // Approval Policy
             if (data.requiresApproval !== undefined)
                 updateData.requiresApproval = data.requiresApproval;
             if (data.requiresCustodyConfirmation !== undefined)
@@ -208,12 +196,10 @@ class FirestoreAccountRepository {
             if (data.custodianUserId !== undefined)
                 updateData.custodianUserId = data.custodianUserId;
             await docRef.update(updateData);
-            // Fetch updated document
             const updatedDoc = await docRef.get();
             return this.toDomain(Object.assign(Object.assign({}, updatedDoc.data()), { id: updatedDoc.id }));
         }
         catch (error) {
-            console.error('Original update error:', error);
             throw new InfrastructureError_1.InfrastructureError('Error updating account', error);
         }
     }
@@ -241,17 +227,11 @@ class FirestoreAccountRepository {
     // =========================================================================
     async isUsed(companyId, accountId) {
         try {
-            // Check VoucherLines that reference this account
-            // VoucherLines are stored in Firestore under: companies/{companyId}/vouchers/{voucherId}/lines/{lineId}
-            // We use collectionGroup to query across all voucher's lines subcollections
-            // First, try to query voucher_lines if using a flat structure
-            const vouchersCol = this.db.collection('companies').doc(companyId).collection('vouchers');
+            const vouchersCol = this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('vouchers');
             const vouchersSnap = await vouchersCol.limit(1).get();
             if (vouchersSnap.empty) {
-                return false; // No vouchers, so definitely unused
+                return false;
             }
-            // Check if any voucher line references this account
-            // We need to query each voucher's lines subcollection
             const allVouchers = await vouchersCol.get();
             for (const voucherDoc of allVouchers.docs) {
                 const linesSnap = await voucherDoc.ref.collection('lines').where('accountId', '==', accountId).limit(1).get();
@@ -263,7 +243,6 @@ class FirestoreAccountRepository {
         }
         catch (error) {
             console.error('Error checking if account is used:', error);
-            // On error, assume not used to allow operations to proceed
             return false;
         }
     }
@@ -286,7 +265,6 @@ class FirestoreAccountRepository {
             const snap = await this.col(companyId).where('userCode', '==', normalized).get();
             if (snap.empty)
                 return false;
-            // If excluding an ID, check if any other account has this code
             if (excludeAccountId) {
                 return snap.docs.some(doc => doc.id !== excludeAccountId);
             }
@@ -299,7 +277,6 @@ class FirestoreAccountRepository {
     async generateNextSystemCode(companyId) {
         try {
             const counterRef = this.countersDoc(companyId);
-            // Use transaction to ensure atomic increment
             const newCode = await this.db.runTransaction(async (transaction) => {
                 var _a;
                 const counterDoc = await transaction.get(counterRef);
@@ -308,7 +285,6 @@ class FirestoreAccountRepository {
                     nextNumber = (((_a = counterDoc.data()) === null || _a === void 0 ? void 0 : _a.value) || 0) + 1;
                 }
                 transaction.set(counterRef, { value: nextNumber }, { merge: true });
-                // Format: ACC-000001
                 return `ACC-${String(nextNumber).padStart(6, '0')}`;
             });
             return newCode;

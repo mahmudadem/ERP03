@@ -7,6 +7,7 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { getCompanyToday } from '../../../utils/dateUtils';
 import { AccountSelector } from './shared/AccountSelector';
 import { Account } from '../../../context/AccountsContext';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 
 interface PaymentAllocation {
   payToAccountId: string;
@@ -26,6 +27,8 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
   onCancel
 }) => {
   const { settings } = useCompanySettings();
+  const { company } = useCompanyAccess();
+  const baseCurrency = company?.baseCurrency || '';
   const [payFromAccountId, setPayFromAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [allocations, setAllocations] = useState<PaymentAllocation[]>([
@@ -68,7 +71,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
         type: 'payment',
         date: localDate,
         payFromAccountId,
-        currency: 'USD',
+        currency: baseCurrency,
         exchangeRate: 1,
         totalAmount,
         description,
@@ -158,13 +161,13 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
                       />
                     </td>
                     <td className="py-3 px-2">
-                       <div className="relative flex items-center">
-                          <span className="absolute left-2 text-[var(--color-text-muted)] text-sm font-mono">$</span>
+                        <div className="relative flex items-center">
+                          <span className="absolute left-2 text-[var(--color-text-muted)] text-[10px] font-bold uppercase">{baseCurrency}</span>
                           <AmountInput // Replaced manual input
                             value={alloc.amount}
                             onChange={(val) => handleAllocationChange(index, 'amount', val)}
                             placeholder=""
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none font-mono text-left"
+                            className="w-full pl-10 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none font-mono text-left"
                           />
                        </div>
                     </td>
@@ -209,7 +212,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
               <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase block mb-1">Total Payment</span>
               <span className="text-2xl font-mono font-bold text-primary-600 dark:text-primary-400">
                 {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(totalAmount)}
-                <span className="text-sm ml-1 opacity-60">USD</span>
+                <span className="text-sm ml-1 opacity-60">{baseCurrency}</span>
               </span>
             </div>
           </div>

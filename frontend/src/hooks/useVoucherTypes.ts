@@ -50,7 +50,7 @@ export function useVoucherTypes() {
                   actions: (form as any).actions || [],
                   isMultiLine: (form as any).isMultiLine ?? true,
                   tableStyle: (form as any).tableStyle || 'web',
-                  defaultCurrency: (form as any).defaultCurrency || 'USD',
+                  defaultCurrency: (form as any).defaultCurrency || '',
                   // Keep typeId reference for backend operations
                   _typeId: form.typeId,
                   baseType: (form as any).baseType || form.typeId || form.code, // Base voucher type for backend

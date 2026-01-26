@@ -3,6 +3,7 @@ import { CostCenter } from '../../../../domain/accounting/entities/CostCenter';
 import { ExchangeRate } from '../../../../domain/accounting/entities/ExchangeRate';
 import * as admin from 'firebase-admin';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
+import { SettingsResolver } from '../../../../application/common/services/SettingsResolver';
 
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {
@@ -49,10 +50,10 @@ class ExchangeRateMapper {
 export class FirestoreCostCenterRepository implements ICostCenterRepository {
   private readonly collectionName = 'cost_centers';
 
-  constructor(private db: Firestore) {}
+  constructor(private readonly settingsResolver: SettingsResolver) {}
 
   private getCollection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+    return this.settingsResolver.getCostCentersCollection(companyId);
   }
 
   async createCostCenter(costCenter: CostCenter): Promise<void> { 
@@ -81,10 +82,10 @@ export class FirestoreCostCenterRepository implements ICostCenterRepository {
 export class FirestoreExchangeRateRepository implements IExchangeRateRepository {
   private readonly collectionName = 'exchange_rates';
 
-  constructor(private db: Firestore) {}
+  constructor(private readonly settingsResolver: SettingsResolver) {}
 
   private getCollection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+    return this.settingsResolver.getExchangeRatesCollection(companyId);
   }
 
   async save(rate: ExchangeRate): Promise<void> { 

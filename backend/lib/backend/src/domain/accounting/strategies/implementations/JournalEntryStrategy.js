@@ -21,6 +21,15 @@ class JournalEntryStrategy {
         const isHeaderInBaseCurrency = headerCurrency === baseCurrency.toUpperCase();
         // Use 1.0 if header is in base currency, otherwise use provided rate
         const headerRate = isHeaderInBaseCurrency ? 1.0 : (Number(header.exchangeRate) || 1);
+        // Debug logging
+        console.log('[JournalEntryStrategy] Processing voucher:', {
+            headerCurrency,
+            baseCurrency,
+            isHeaderInBaseCurrency,
+            providedExchangeRate: header.exchangeRate,
+            effectiveHeaderRate: headerRate,
+            lineCount: header.lines.length
+        });
         const lines = [];
         let totalDebitBase = 0;
         let totalCreditBase = 0;
@@ -55,6 +64,16 @@ class JournalEntryStrategy {
             }
             // Calculate baseAmount
             const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * absoluteRate);
+            // Debug logging for each line
+            console.log(`[JournalEntryStrategy] Line ${idx + 1}:`, {
+                side,
+                amount,
+                lineCurrency,
+                lineParity,
+                absoluteRate,
+                baseAmount,
+                baseCurrency
+            });
             // Validate we have valid amounts
             if (amount <= 0) {
                 throw new Error(`Line ${idx + 1}: Amount must be positive (got ${amount} ${lineCurrency})`);
@@ -73,6 +92,12 @@ class JournalEntryStrategy {
             totalDebitBase += line.debitAmount;
             totalCreditBase += line.creditAmount;
             lines.push(line);
+        });
+        // Debug final totals
+        console.log('[JournalEntryStrategy] Final totals:', {
+            totalDebitBase,
+            totalCreditBase,
+            difference: totalDebitBase - totalCreditBase
         });
         // Validation: debits must equal credits
         const tolerance = 0.01;

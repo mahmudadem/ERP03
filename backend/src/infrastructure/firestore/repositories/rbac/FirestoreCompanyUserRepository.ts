@@ -1,5 +1,6 @@
 
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { ICompanyUserRepository } from '../../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { CompanyUser } from '../../../../domain/rbac/CompanyUser';
 
@@ -68,7 +69,7 @@ export class FirestoreCompanyUserRepository implements ICompanyUserRepository {
   }
 
   async removeRole(userId: string, companyId: string): Promise<void> {
-    await this.getCollection(companyId).doc(userId).update({ roleId: admin.firestore.FieldValue.delete() });
+    await this.getCollection(companyId).doc(userId).update({ roleId: FieldValue.delete() });
   }
 
   async delete(companyId: string, userId: string): Promise<void> {

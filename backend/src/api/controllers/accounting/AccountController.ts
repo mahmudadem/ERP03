@@ -104,7 +104,11 @@ export class AccountController {
 
       await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
 
-      const useCase = new CreateAccountUseCase(diContainer.accountRepository, diContainer.companyRepository);
+      const useCase = new CreateAccountUseCase(
+        diContainer.accountRepository, 
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
       const account = await useCase.execute(companyId, {
         ...req.body,
         createdBy: userId
@@ -124,7 +128,11 @@ export class AccountController {
 
       await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
 
-      const useCase = new UpdateAccountUseCase(diContainer.accountRepository, diContainer.companyRepository);
+      const useCase = new UpdateAccountUseCase(
+        diContainer.accountRepository, 
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
       const account = await useCase.execute(companyId, id, {
         ...req.body,
         updatedBy: userId

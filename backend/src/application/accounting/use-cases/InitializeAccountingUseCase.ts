@@ -2,6 +2,9 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ISystemMetadataRepository } from '../../../infrastructure/repositories/FirestoreSystemMetadataRepository';
 import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
+import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
+import { ICurrencyRepository } from '../../../repository/interfaces/company-wizard/ICurrencyRepository';
+import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -23,7 +26,10 @@ export class InitializeAccountingUseCase {
     private companyModuleRepo: ICompanyModuleRepository,
     private accountRepo: IAccountRepository,
     private systemMetadataRepo: ISystemMetadataRepository,
-    private settingsRepo: ICompanyModuleSettingsRepository
+    private settingsRepo: ICompanyModuleSettingsRepository,
+    private companySettingsRepo: ICompanySettingsRepository,
+    private currencyRepo: ICurrencyRepository,
+    private companyRepo: ICompanyRepository
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
@@ -140,31 +146,76 @@ export class InitializeAccountingUseCase {
       // Don't fail initialization if voucher copy fails
     }
 
-    // 4. Save Accounting Settings to Settings/accounting
-    // CRITICAL: This is where baseCurrency MUST be saved
-    await this.settingsRepo.saveSettings(companyId, 'accounting', {
-      baseCurrency: config.baseCurrency,
+    // 4. Sync Definitive Settings to Global Tier (Tier 1)
+    // The user has chosen these definitive settings during Accounting Init.
+    await this.companySettingsRepo.updateSettings(companyId, {
       fiscalYearStart: config.fiscalYearStart,
-      fiscalYearEnd: config.fiscalYearEnd,
-      coaTemplate: config.coaTemplate,
-      approvalRequired: false,  // Default: No approval required (flexible mode)
-      autoPostEnabled: true,    // Default: Auto-post enabled
-      allowEditDeletePosted: true,  // Default: Allow edit/delete posted vouchers
+      fiscalYearEnd: config.fiscalYearEnd
+    });
+
+    // Mirror fiscal periods to main company document
+    await this.companyRepo.update(companyId, {
+      fiscalYearStart: config.fiscalYearStart ? new Date(config.fiscalYearStart) : undefined,
+      fiscalYearEnd: config.fiscalYearEnd ? new Date(config.fiscalYearEnd) : undefined,
+    });
+
+    console.log(`[InitializeAccountingUseCase] Promoted base currency ${config.baseCurrency} and fiscal periods to Global Tier`);
+
+    // 5. Promote Base Currency to Shared Tier (Tier 2) - Minimal Seeding
+    // We only seed the Base Currency to keep the shared list clean.
+    // The frontend can still fetch the full list from system_metadata for "Add Currency".
+    try {
+      // Create a minimal Currency object for the base currency
+      // We don't need to fetch the full list anymore
+      const baseCurrencyObj = {
+        code: config.baseCurrency,
+        name: config.baseCurrency, // Fallback name, will be enriched if needed or we can fetch just this one
+        symbol: config.baseCurrency, // Fallback symbol
+        decimalPlaces: 2,
+        isActive: true
+      };
+      
+      // We use a specific method or just pass this single item as an array
+      // The repository expects a list, so we pass a single-item list.
+      // Ideally, we should fetch the real metadata for this ONE currency to have correct symbol/name.
+      const globalCurr = await this.systemMetadataRepo.getMetadata('currencies');
+      const baseMetadata = Array.isArray(globalCurr) 
+        ? globalCurr.find((c: any) => c.code === config.baseCurrency)
+        : baseCurrencyObj;
+
+      await this.currencyRepo.seedCurrencies(companyId, [baseMetadata || baseCurrencyObj], config.baseCurrency);
+      console.log(`[InitializeAccountingUseCase] Seeded ONLY base currency ${config.baseCurrency} in Shared Tier`);
+    } catch (err) {
+      console.warn(`[InitializeAccountingUseCase] Failed to promote currency to Shared Tier:`, err);
+    }
+
+    // 6. Save Accounting Policies to Settings/accounting (Module Tier 3)
+    await this.settingsRepo.saveSettings(companyId, 'accounting', {
+      coaTemplate: config.coaTemplate, // Reference only
+      approvalRequired: false,
+      autoPostEnabled: true,
+      allowEditDeletePosted: true,
       updatedAt: new Date(),
       updatedBy: 'system'
     }, 'system');
     
-    console.log(`[InitializeAccountingUseCase] Saved accounting settings with baseCurrency: ${config.baseCurrency}`);
-    
-    // 5. Mark Module as Initialized
+    // 7. Mark Module as Initialized
+    // CLEANUP: We remove redundant global fields from the module's activation config
+    // to prevent the "mess" in companies/{id}/modules/accounting document.
+    const cleanConfig = {
+      coaTemplate: config.coaTemplate,
+      selectedVoucherTypes: config.selectedVoucherTypes
+      // EXCLUDED: baseCurrency, fiscalYearStart, fiscalYearEnd as they are in Global Tier
+    };
+
     await this.companyModuleRepo.update(companyId, 'accounting', {
       initialized: true,
       initializationStatus: 'complete',
-      config,
+      config: cleanConfig,
       updatedAt: new Date()
     });
     
-    console.log(`[InitializeAccountingUseCase] Module marked as initialized.`);
+    console.log(`[InitializeAccountingUseCase] Module marked as initialized with clean config.`);
   }
 
   /**
@@ -208,11 +259,13 @@ export class InitializeAccountingUseCase {
       
       const voucherType = doc.data();
       
-      // Create a copy for this company
+      // Create a copy for this company in modular path: accounting/Settings/voucher_types
       const companyVoucherRef = db
         .collection('companies')
         .doc(companyId)
-        .collection('voucherTypes')
+        .collection('accounting')
+        .doc('Settings')
+        .collection('voucher_types')
         .doc(doc.id);
       
       // Add company-specific metadata
@@ -258,6 +311,8 @@ export class InitializeAccountingUseCase {
       const formRef = db
         .collection('companies')
         .doc(companyId)
+        .collection('accounting')
+        .doc('Settings')
         .collection('voucherForms')
         .doc(formId);
 

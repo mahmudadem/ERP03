@@ -10,7 +10,7 @@ exports.SimpleCompanyService = void 0;
 class SimpleCompanyService {
     constructor() {
         // Default base currency (for testing/demo)
-        this.DEFAULT_BASE_CURRENCY = 'USD';
+        this.DEFAULT_BASE_CURRENCY = '';
         // In-memory storage (for testing)
         this.companyCurrencies = new Map();
     }

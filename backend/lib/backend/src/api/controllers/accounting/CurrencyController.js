@@ -17,8 +17,9 @@ class CurrencyController {
      */
     static async listCurrencies(req, res) {
         try {
+            const companyId = req.companyId;
             const useCase = new CurrencyUseCases_1.ListCurrenciesUseCase(bindRepositories_1.diContainer.accountingCurrencyRepository);
-            const currencies = await useCase.execute();
+            const currencies = await useCase.execute(); // No companyId passed for global list
             res.json({ currencies: currencies.map(c => c.toJSON()) });
         }
         catch (error) {
@@ -77,8 +78,10 @@ class CurrencyController {
             if (!companyId) {
                 return res.status(400).json({ error: 'Company ID required' });
             }
-            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
-            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
+            const baseCurrency = await bindRepositories_1.diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
+            if (!baseCurrency) {
+                return res.status(400).json({ error: 'Base currency not configured for company' });
+            }
             const { currencyCode, initialRate, initialRateDate } = req.body;
             if (!currencyCode) {
                 return res.status(400).json({ error: 'currencyCode is required' });
@@ -113,8 +116,10 @@ class CurrencyController {
             if (!companyId) {
                 return res.status(400).json({ error: 'Company ID required' });
             }
-            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
-            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
+            const baseCurrency = await bindRepositories_1.diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
+            if (!baseCurrency) {
+                return res.status(400).json({ error: 'Base currency not configured for company' });
+            }
             const useCase = new CompanyCurrencyUseCases_1.DisableCurrencyForCompanyUseCase(bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherRepository, baseCurrency);
             await useCase.execute(companyId, code);
             res.json({ success: true });
@@ -158,8 +163,10 @@ class CurrencyController {
             // 1. Get enabled codes
             const companyCurrencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
             const enabledCodes = companyCurrencies.filter(c => c.isEnabled).map(c => c.currencyCode);
-            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
-            const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
+            const baseCurrency = await bindRepositories_1.diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
+            if (!baseCurrency) {
+                return res.status(400).json({ error: 'Base currency not configured' });
+            }
             const allCodes = Array.from(new Set([baseCurrency, ...enabledCodes]));
             // 2. Fetch recent rates (limit 200 to cover many pairs)
             const allRecent = await bindRepositories_1.diContainer.exchangeRateRepository.getRecentRates(companyId, undefined, undefined, 200);

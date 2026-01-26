@@ -152,7 +152,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
         setCompany({
           id: activeId,
           name: data.company.name || 'Unknown Company',
-          baseCurrency: data.company.baseCurrency || 'USD',
+          baseCurrency: data.company.baseCurrency,
           fiscalYearStart: data.company.fiscalYearStart,
           logoUrl: data.company.logoUrl,
           modules: data.company.modules,

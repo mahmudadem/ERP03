@@ -7,17 +7,17 @@ export interface ICurrencyRepository {
   /**
    * Get all currencies (active and inactive)
    */
-  findAll(): Promise<Currency[]>;
+  findAll(companyId?: string): Promise<Currency[]>;
 
   /**
    * Get all active currencies
    */
-  findActive(): Promise<Currency[]>;
+  findActive(companyId?: string): Promise<Currency[]>;
 
   /**
    * Get a currency by its code
    */
-  findByCode(code: string): Promise<Currency | null>;
+  findByCode(code: string, companyId?: string): Promise<Currency | null>;
 
   /**
    * Create or update a currency

@@ -112,7 +112,7 @@ class CompanyWizardController {
         try {
             const { sessionId } = req.body;
             const userId = req.user.uid;
-            const useCase = new CompleteCompanyCreationUseCase_1.CompleteCompanyCreationUseCase(bindRepositories_1.diContainer.companyCreationSessionRepository, bindRepositories_1.diContainer.companyWizardTemplateRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.companySettingsRepository);
+            const useCase = new CompleteCompanyCreationUseCase_1.CompleteCompanyCreationUseCase(bindRepositories_1.diContainer.companyCreationSessionRepository, bindRepositories_1.diContainer.companyWizardTemplateRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.systemMetadataRepository, bindRepositories_1.diContainer.currencyRepository, bindRepositories_1.diContainer.moduleActivationService);
             const result = await useCase.execute({ sessionId, userId });
             res.json({ success: true, data: result });
         }

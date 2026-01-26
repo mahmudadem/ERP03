@@ -17,10 +17,19 @@ export class UserCompaniesController {
       for (const m of memberships) {
         const c = await diContainer.companyRepository.findById(m.companyId);
         if (!c) continue;
+
+        // Resolve Base Currency from Shared Currencies (Tier 2)
+        let baseCurrency = c.baseCurrency; 
+        try {
+          const currencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(c.id);
+          const baseRec = currencies.find(curr => curr.isBase);
+          if (baseRec) baseCurrency = baseRec.currencyCode;
+        } catch (e) {}
+
         resultsMap.set(c.id, {
           id: c.id,
           name: c.name,
-          baseCurrency: c.baseCurrency,
+          baseCurrency: baseCurrency,
           model: c.modules?.[0],
           roleId: m.roleId || 'MEMBER',
           isOwner: !!m.isOwner,
@@ -33,11 +42,19 @@ export class UserCompaniesController {
       // From ownership (if not already included)
       for (const c of ownedCompanies) {
         if (resultsMap.has(c.id)) continue;
+
+        // Resolve Base Currency from Shared Currencies (Tier 2)
+        let baseCurrency = c.baseCurrency; 
+        try {
+          const currencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(c.id);
+          const baseRec = currencies.find(curr => curr.isBase);
+          if (baseRec) baseCurrency = baseRec.currencyCode;
+        } catch (e) {}
+
         resultsMap.set(c.id, {
           id: c.id,
           name: c.name,
-          baseCurrency: c.baseCurrency,
-          model: c.modules?.[0],
+          baseCurrency: baseCurrency,
           roleId: 'OWNER',
           isOwner: true,
           logoUrl: c.logoUrl,
@@ -96,6 +113,17 @@ export class UserCompaniesController {
       }
       const company = await diContainer.companyRepository.findById(activeCompanyId);
       const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(userId, activeCompanyId);
+      
+      // Resolve Base Currency from Shared Currencies (Tier 2)
+      let baseCurrency = company?.baseCurrency; // Fallback
+      try {
+        const currencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(activeCompanyId);
+        const baseRec = currencies.find(c => c.isBase);
+        if (baseRec) baseCurrency = baseRec.currencyCode;
+      } catch (e) {
+        console.warn('Failed to fetch base currency from collection:', e);
+      }
+
       return res.json({
         success: true,
         data: {
@@ -103,7 +131,7 @@ export class UserCompaniesController {
           company: company ? {
             id: company.id,
             name: company.name,
-            baseCurrency: company.baseCurrency,
+            baseCurrency: baseCurrency, 
             fiscalYearStart: company.fiscalYearStart,
             logoUrl: company.logoUrl,
             modules: company.modules,

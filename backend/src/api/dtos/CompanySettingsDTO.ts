@@ -8,6 +8,9 @@ export interface CompanySettingsDTO {
   timezone?: string;
   dateFormat?: string;
   language?: string;
+  baseCurrency?: string;
+  fiscalYearStart?: string;
+  fiscalYearEnd?: string;
 }
 
 export class CompanySettingsDTOMapper {
@@ -18,7 +21,10 @@ export class CompanySettingsDTOMapper {
       uiMode: settings.uiMode,
       timezone: settings.timezone,
       dateFormat: settings.dateFormat,
-      language: settings.language
+      language: settings.language,
+      baseCurrency: settings.baseCurrency,
+      fiscalYearStart: settings.fiscalYearStart,
+      fiscalYearEnd: settings.fiscalYearEnd
     };
   }
 }

@@ -74,7 +74,7 @@ export const AccountingInitializationWizard: React.FC = () => {
   const [setupData, setSetupData] = useState<AccountingSetupData>({
     fiscalYearStart: '01-01', // Jan 1
     fiscalYearEnd: '12-31', // Dec 31
-    baseCurrency: 'USD',
+    baseCurrency: '',
     coaTemplate: 'standard',
     selectedVoucherTypes: [], // Start with none selected
   });
@@ -130,7 +130,7 @@ export const AccountingInitializationWizard: React.FC = () => {
           .map(vt => vt.id);
         
         // Use smart defaults from company country
-        const countryDefaults = company?.country ? getCountryDefaults(company.country) : { currency: 'USD', fiscalYearStart: '01-01', fiscalYearEnd: '12-31' };
+        const countryDefaults = company?.country ? getCountryDefaults(company.country) : { currency: '', fiscalYearStart: '01-01', fiscalYearEnd: '12-31' };
         console.log('[AccountingWizard] Applied defaults for', company?.country, countryDefaults);
 
         setSetupData(prev => ({
@@ -312,7 +312,7 @@ export const AccountingInitializationWizard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 p-1">
                 {(() => {
-                  const companyCurrency = company?.country ? getCountryDefaults(company.country).currency : 'USD';
+                  const companyCurrency = company?.country ? getCountryDefaults(company.country).currency : '';
                   
                   return currencies
                     .filter(c => 

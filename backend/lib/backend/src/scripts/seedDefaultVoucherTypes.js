@@ -33,6 +33,7 @@ process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '12
 process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
 const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
 // Initialize Firebase Admin for standalone execution
 if (!admin.apps.length) {
     admin.initializeApp({
@@ -333,7 +334,7 @@ async function seedDefaultVoucherTypes() {
                 .doc('voucher_types')
                 .collection('items')
                 .doc(voucherType.id);
-            const dataToSave = Object.assign(Object.assign({}, voucherType), { createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+            const dataToSave = Object.assign(Object.assign({}, voucherType), { createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() });
             batch.set(docRef, dataToSave);
             console.log(`  ✅ Prepared: ${voucherType.name} (${voucherType.prefix})`);
         }

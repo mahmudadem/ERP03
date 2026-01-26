@@ -28,10 +28,14 @@ const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-admin/firestore");
 const crypto_1 = require("crypto");
 class InitializeAccountingUseCase {
-    constructor(companyModuleRepo, accountRepo, systemMetadataRepo) {
+    constructor(companyModuleRepo, accountRepo, systemMetadataRepo, settingsRepo, companySettingsRepo, currencyRepo, companyRepo) {
         this.companyModuleRepo = companyModuleRepo;
         this.accountRepo = accountRepo;
         this.systemMetadataRepo = systemMetadataRepo;
+        this.settingsRepo = settingsRepo;
+        this.companySettingsRepo = companySettingsRepo;
+        this.currencyRepo = currencyRepo;
+        this.companyRepo = companyRepo;
     }
     async execute(request) {
         const { companyId, config } = request;
@@ -125,14 +129,68 @@ class InitializeAccountingUseCase {
             console.warn(`[InitializeAccountingUseCase] Failed to copy voucher types:`, error);
             // Don't fail initialization if voucher copy fails
         }
-        // 4. Mark Module as Initialized
+        // 4. Sync Definitive Settings to Global Tier (Tier 1)
+        // The user has chosen these definitive settings during Accounting Init.
+        await this.companySettingsRepo.updateSettings(companyId, {
+            fiscalYearStart: config.fiscalYearStart,
+            fiscalYearEnd: config.fiscalYearEnd
+        });
+        // Mirror fiscal periods to main company document
+        await this.companyRepo.update(companyId, {
+            fiscalYearStart: config.fiscalYearStart ? new Date(config.fiscalYearStart) : undefined,
+            fiscalYearEnd: config.fiscalYearEnd ? new Date(config.fiscalYearEnd) : undefined,
+        });
+        console.log(`[InitializeAccountingUseCase] Promoted base currency ${config.baseCurrency} and fiscal periods to Global Tier`);
+        // 5. Promote Base Currency to Shared Tier (Tier 2) - Minimal Seeding
+        // We only seed the Base Currency to keep the shared list clean.
+        // The frontend can still fetch the full list from system_metadata for "Add Currency".
+        try {
+            // Create a minimal Currency object for the base currency
+            // We don't need to fetch the full list anymore
+            const baseCurrencyObj = {
+                code: config.baseCurrency,
+                name: config.baseCurrency,
+                symbol: config.baseCurrency,
+                decimalPlaces: 2,
+                isActive: true
+            };
+            // We use a specific method or just pass this single item as an array
+            // The repository expects a list, so we pass a single-item list.
+            // Ideally, we should fetch the real metadata for this ONE currency to have correct symbol/name.
+            const globalCurr = await this.systemMetadataRepo.getMetadata('currencies');
+            const baseMetadata = Array.isArray(globalCurr)
+                ? globalCurr.find((c) => c.code === config.baseCurrency)
+                : baseCurrencyObj;
+            await this.currencyRepo.seedCurrencies(companyId, [baseMetadata || baseCurrencyObj], config.baseCurrency);
+            console.log(`[InitializeAccountingUseCase] Seeded ONLY base currency ${config.baseCurrency} in Shared Tier`);
+        }
+        catch (err) {
+            console.warn(`[InitializeAccountingUseCase] Failed to promote currency to Shared Tier:`, err);
+        }
+        // 6. Save Accounting Policies to Settings/accounting (Module Tier 3)
+        await this.settingsRepo.saveSettings(companyId, 'accounting', {
+            coaTemplate: config.coaTemplate,
+            approvalRequired: false,
+            autoPostEnabled: true,
+            allowEditDeletePosted: true,
+            updatedAt: new Date(),
+            updatedBy: 'system'
+        }, 'system');
+        // 7. Mark Module as Initialized
+        // CLEANUP: We remove redundant global fields from the module's activation config
+        // to prevent the "mess" in companies/{id}/modules/accounting document.
+        const cleanConfig = {
+            coaTemplate: config.coaTemplate,
+            selectedVoucherTypes: config.selectedVoucherTypes
+            // EXCLUDED: baseCurrency, fiscalYearStart, fiscalYearEnd as they are in Global Tier
+        };
         await this.companyModuleRepo.update(companyId, 'accounting', {
             initialized: true,
             initializationStatus: 'complete',
-            config,
+            config: cleanConfig,
             updatedAt: new Date()
         });
-        console.log(`[InitializeAccountingUseCase] Module marked as initialized.`);
+        console.log(`[InitializeAccountingUseCase] Module marked as initialized with clean config.`);
     }
     /**
      * Copy default voucher types from system_metadata to company
@@ -164,11 +222,13 @@ class InitializeAccountingUseCase {
                 return; // Skip this one
             }
             const voucherType = doc.data();
-            // Create a copy for this company
+            // Create a copy for this company in modular path: accounting/Settings/voucher_types
             const companyVoucherRef = db
                 .collection('companies')
                 .doc(companyId)
-                .collection('voucherTypes')
+                .collection('accounting')
+                .doc('Settings')
+                .collection('voucher_types')
                 .doc(doc.id);
             // Add company-specific metadata
             const companyVoucher = Object.assign(Object.assign({}, voucherType), { companyId, isSystemDefault: true, isLocked: true, enabled: true, inUse: false, createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() });
@@ -196,6 +256,8 @@ class InitializeAccountingUseCase {
             const formRef = db
                 .collection('companies')
                 .doc(companyId)
+                .collection('accounting')
+                .doc('Settings')
                 .collection('voucherForms')
                 .doc(formId);
             // Extract UI layout from the type definition

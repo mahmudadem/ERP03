@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { ICompanyModuleSettingsRepository, CompanyModuleSettings } from '../../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
 
@@ -26,7 +27,7 @@ export class FirestoreCompanyModuleSettingsRepository implements ICompanyModuleS
     try {
       const data = {
         ...settings,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userId,
       };
 
@@ -59,14 +60,14 @@ export class FirestoreCompanyModuleSettingsRepository implements ICompanyModuleS
     const { companyId, moduleId, ...rest } = settings;
     if (!companyId || !moduleId) throw new InfrastructureError('Invalid settings payload');
     
-    const data = { ...rest, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    const data = { ...rest, updatedAt: FieldValue.serverTimestamp() };
     
     // Write to modular location only
     await this.modularDoc(companyId, moduleId).set(data, { merge: true });
   }
 
   async update(companyId: string, moduleId: string, settings: any): Promise<void> {
-    const data = { ...settings, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    const data = { ...settings, updatedAt: FieldValue.serverTimestamp() };
     
     // Write to modular location only
     await this.modularDoc(companyId, moduleId).set(data, { merge: true });

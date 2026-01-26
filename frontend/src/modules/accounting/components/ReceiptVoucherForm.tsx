@@ -5,6 +5,7 @@ import { AccountSelectorSimple } from './AccountSelectorSimple';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { getCompanyToday, formatCompanyDate } from '../../../utils/dateUtils';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 
 interface ReceiptSource {
   receiveFromAccountId: string;
@@ -24,6 +25,8 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
   onCancel
 }) => {
   const { settings } = useCompanySettings();
+  const { company } = useCompanyAccess();
+  const baseCurrency = company?.baseCurrency || '';
   const [depositToAccountId, setDepositToAccountId] = useState('');
   const [description, setDescription] = useState('');
   const [sources, setSources] = useState<ReceiptSource[]>([
@@ -69,7 +72,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
         type: 'receipt',
         date: localDate,
         depositToAccountId,
-        currency: 'USD',
+        currency: baseCurrency,
         exchangeRate: 1,
         totalAmount,
         description,
@@ -78,7 +81,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: $${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: ${baseCurrency} ${totalAmount.toFixed(2)}`);
       
       if (onSuccess) {
         onSuccess();
@@ -186,7 +189,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
         <div className="form-section summary-section">
           <h3>Summary</h3>
           <div className="summary-row">
-            <span>Total Amount (USD):</span>
+            <span>Total Amount ({baseCurrency}):</span>
             <strong>{totalAmount.toFixed(2)}</strong>
           </div>
         </div>

@@ -17,8 +17,9 @@ export class CurrencyController {
    */
   static async listCurrencies(req: Request, res: Response) {
     try {
+      const companyId = (req as any).companyId;
       const useCase = new ListCurrenciesUseCase(diContainer.accountingCurrencyRepository);
-      const currencies = await useCase.execute();
+      const currencies = await useCase.execute(); // No companyId passed for global list
       res.json({ currencies: currencies.map(c => c.toJSON()) });
     } catch (error: any) {
       console.error('Error listing currencies:', error);
@@ -80,8 +81,10 @@ export class CurrencyController {
         return res.status(400).json({ error: 'Company ID required' });
       }
 
-      const company = await diContainer.companyRepository.findById(companyId);
-      const baseCurrency = company?.baseCurrency || 'USD';
+      const baseCurrency = await diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
+      if (!baseCurrency) {
+        return res.status(400).json({ error: 'Base currency not configured for company' });
+      }
 
       const { currencyCode, initialRate, initialRateDate } = req.body;
 
@@ -128,8 +131,10 @@ export class CurrencyController {
         return res.status(400).json({ error: 'Company ID required' });
       }
 
-      const company = await diContainer.companyRepository.findById(companyId);
-      const baseCurrency = company?.baseCurrency || 'USD';
+      const baseCurrency = await diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
+      if (!baseCurrency) {
+        return res.status(400).json({ error: 'Base currency not configured for company' });
+      }
 
       const useCase = new DisableCurrencyForCompanyUseCase(
         diContainer.companyCurrencyRepository,
@@ -187,9 +192,12 @@ export class CurrencyController {
       // 1. Get enabled codes
       const companyCurrencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
       const enabledCodes = companyCurrencies.filter(c => c.isEnabled).map(c => c.currencyCode);
-      const company = await diContainer.companyRepository.findById(companyId);
-      const baseCurrency = company?.baseCurrency || 'USD';
+      const baseCurrency = await diContainer.companyCurrencyRepository.getBaseCurrency(companyId);
       
+      if (!baseCurrency) {
+        return res.status(400).json({ error: 'Base currency not configured' });
+      }
+
       const allCodes = Array.from(new Set([baseCurrency, ...enabledCodes]));
 
       // 2. Fetch recent rates (limit 200 to cover many pairs)

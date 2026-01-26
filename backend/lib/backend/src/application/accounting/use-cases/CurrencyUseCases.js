@@ -2,14 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetCurrencyDecimalPlacesUseCase = exports.GetCurrencyUseCase = exports.ListCurrenciesUseCase = void 0;
 /**
- * Get all active currencies available in the system.
+ * Get all active currencies available for the current company.
  */
 class ListCurrenciesUseCase {
     constructor(currencyRepo) {
         this.currencyRepo = currencyRepo;
     }
-    async execute() {
-        return this.currencyRepo.findActive();
+    async execute(companyId) {
+        // We use the same interface but now scoped by companyId if the repo supports it.
+        // However, ICurrencyRepository (accounting) doesn't have companyId in findActive.
+        // I should probably update that interface too.
+        return this.currencyRepo.findActive(companyId);
     }
 }
 exports.ListCurrenciesUseCase = ListCurrenciesUseCase;

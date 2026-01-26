@@ -32,7 +32,8 @@ export class FirestoreCompanyRepository implements ICompanyRepository {
   async findById(id: string): Promise<Company | null> {
     const doc = await this.db.collection(this.collectionName).doc(id).get();
     if (!doc.exists) return null;
-    const data = doc.data();
+    const data = doc.data() || {};
+    
     return this.mapToEntity(data);
   }
 
@@ -107,7 +108,7 @@ export class FirestoreCompanyRepository implements ICompanyRepository {
       data.ownerId || 'legacy_owner',
       data.createdAt.toDate(),
       data.updatedAt.toDate(),
-      data.baseCurrency || 'USD',
+      data.baseCurrency, // Removed hardcoded fallback to allow correct DB value
       data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1),
       data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31),
       data.modules || ['CORE'],

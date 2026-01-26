@@ -23,7 +23,7 @@ exports.FormDefinitionMapper = FormDefinitionMapper;
 class VoucherTypeDefinitionMapper {
     static toDomain(data) {
         var _a;
-        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.schemaVersion || 1, data.requiredPostingRoles || [], data.workflow || null, data.uiModeOverrides || null, (_a = data.isMultiLine) !== null && _a !== void 0 ? _a : true, data.rules || [], data.actions || [], data.defaultCurrency || 'USD');
+        return new VoucherTypeDefinition_1.VoucherTypeDefinition(data.id, data.companyId || '', data.name, data.code || 'UNKNOWN', data.module, data.headerFields || [], data.tableColumns || [], data.layout || {}, data.schemaVersion || 1, data.requiredPostingRoles || [], data.workflow || null, data.uiModeOverrides || null, (_a = data.isMultiLine) !== null && _a !== void 0 ? _a : true, data.rules || [], data.actions || [], data.defaultCurrency || '');
     }
     static toPersistence(entity) {
         var _a;
@@ -42,7 +42,7 @@ class VoucherTypeDefinitionMapper {
             isMultiLine: (_a = entity.isMultiLine) !== null && _a !== void 0 ? _a : true,
             rules: entity.rules || [],
             actions: entity.actions || [],
-            defaultCurrency: entity.defaultCurrency || 'USD'
+            defaultCurrency: entity.defaultCurrency || ''
         };
     }
 }

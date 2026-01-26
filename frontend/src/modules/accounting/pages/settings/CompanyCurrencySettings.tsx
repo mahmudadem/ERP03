@@ -27,7 +27,8 @@ export const CompanyCurrencySettings: React.FC = () => {
   const matrixRef = React.useRef<ExchangeRateMatrixRef>(null);
 
   const { company } = useCompanyAccess();
-  const baseCurrency = company?.baseCurrency || 'USD';
+  const profileBaseCurrency = company?.baseCurrency || '';
+  const baseCurrency = companyCurrencies.find(c => c.isBase)?.currencyCode || profileBaseCurrency;
 
   const loadData = async () => {
     setLoading(true);

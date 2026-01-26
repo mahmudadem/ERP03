@@ -47,12 +47,12 @@ class ExchangeRateMapper {
     }
 }
 class FirestoreCostCenterRepository {
-    constructor(db) {
-        this.db = db;
+    constructor(settingsResolver) {
+        this.settingsResolver = settingsResolver;
         this.collectionName = 'cost_centers';
     }
     getCollection(companyId) {
-        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+        return this.settingsResolver.getCostCentersCollection(companyId);
     }
     async createCostCenter(costCenter) {
         const col = this.getCollection(costCenter.companyId);
@@ -77,12 +77,12 @@ class FirestoreCostCenterRepository {
 }
 exports.FirestoreCostCenterRepository = FirestoreCostCenterRepository;
 class FirestoreExchangeRateRepository {
-    constructor(db) {
-        this.db = db;
+    constructor(settingsResolver) {
+        this.settingsResolver = settingsResolver;
         this.collectionName = 'exchange_rates';
     }
     getCollection(companyId) {
-        return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+        return this.settingsResolver.getExchangeRatesCollection(companyId);
     }
     async save(rate) {
         const col = this.getCollection(rate.companyId);

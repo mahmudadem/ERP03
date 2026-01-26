@@ -46,6 +46,7 @@ var ErrorCode;
     ErrorCode["ACC_PERIOD_CLOSED"] = "ACC_004";
     ErrorCode["ACC_INVALID_ACCOUNT_TYPE"] = "ACC_005";
     ErrorCode["LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER"] = "ACC_006";
+    ErrorCode["CRITICAL_CONFIG_MISSING"] = "ACC_007";
     // ========== INFRASTRUCTURE ==========
     ErrorCode["INFRA_DATABASE_ERROR"] = "INFRA_001";
     ErrorCode["INFRA_NETWORK_ERROR"] = "INFRA_002";

@@ -6,39 +6,24 @@
  *
  * Storage: companies/{companyId}/voucherForms/{formId}
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherFormRepository = void 0;
-const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
 const InfrastructureError_1 = require("../../../errors/InfrastructureError");
 class FirestoreVoucherFormRepository {
     constructor(db) {
         this.db = db;
     }
     getCollection(companyId) {
-        return this.db.collection('companies').doc(companyId).collection('voucherForms');
+        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
+        const col = this.db
+            .collection('companies')
+            .doc(companyId)
+            .collection('accounting')
+            .doc('Settings')
+            .collection('voucherForms');
+        console.log(`[DEBUG_PATH] VoucherFormRepository accessing: ${col.path}`);
+        return col;
     }
     toDomain(data) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
@@ -93,16 +78,15 @@ class FirestoreVoucherFormRepository {
             tableStyle: form.tableStyle || 'web',
             defaultCurrency: form.defaultCurrency || null,
             baseType: form.baseType || null,
-            createdAt: form.createdAt || admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: form.createdAt || firestore_1.FieldValue.serverTimestamp(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
             createdBy: form.createdBy || null
         };
     }
     async create(form) {
         try {
-            const ref = this.getCollection(form.companyId).doc(form.id);
             const data = this.toPersistence(form);
-            await ref.set(data);
+            await this.getCollection(form.companyId).doc(form.id).set(data);
             return form;
         }
         catch (error) {
@@ -111,7 +95,7 @@ class FirestoreVoucherFormRepository {
     }
     async getById(companyId, formId) {
         try {
-            const doc = await this.getCollection(companyId).doc(formId).get();
+            let doc = await this.getCollection(companyId).doc(formId).get();
             if (!doc.exists)
                 return null;
             return this.toDomain(doc.data());
@@ -161,14 +145,12 @@ class FirestoreVoucherFormRepository {
             const cleanUpdates = Object.assign({}, updates);
             delete cleanUpdates.id;
             delete cleanUpdates.companyId;
-            cleanUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
-            // Remove undefined values
+            cleanUpdates.updatedAt = firestore_1.FieldValue.serverTimestamp();
             Object.keys(cleanUpdates).forEach(key => {
                 if (cleanUpdates[key] === undefined) {
                     delete cleanUpdates[key];
                 }
             });
-            // Use set with merge to create if doesn't exist, update if it does
             await ref.set(cleanUpdates, { merge: true });
         }
         catch (error) {

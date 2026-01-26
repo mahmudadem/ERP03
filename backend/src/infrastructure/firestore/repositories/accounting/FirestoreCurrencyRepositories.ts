@@ -5,7 +5,8 @@
  * Manages CompanyCurrency for enable/disable per company.
  */
 
-import { Firestore, Timestamp, DocumentSnapshot } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
+import { Firestore, Timestamp, DocumentSnapshot, FieldValue } from 'firebase-admin/firestore';
 import { Currency } from '../../../../domain/accounting/entities/Currency';
 import { ICurrencyRepository } from '../../../../repository/interfaces/accounting/ICurrencyRepository';
 import { 
@@ -18,10 +19,16 @@ import {
  * Reads global currencies from system_metadata/currencies/items collection.
  */
 export class FirestoreAccountingCurrencyRepository implements ICurrencyRepository {
-  // Reads from the system_metadata pattern used by seedSystemMetadata.ts
-  private readonly collectionPath = 'system_metadata/currencies/items';
+  private readonly globalCollectionPath = 'system_metadata/currencies/items';
 
-  constructor(private db: Firestore) {}
+  constructor(private settingsResolver: SettingsResolver) {}
+  
+  private getCollection(companyId?: string) {
+    if (companyId) {
+      return this.settingsResolver.getCurrenciesCollection(companyId);
+    }
+    return this.settingsResolver.db.collection(this.globalCollectionPath);
+  }
   
   private toDomain(data: any): Currency {
     return new Currency({
@@ -33,27 +40,27 @@ export class FirestoreAccountingCurrencyRepository implements ICurrencyRepositor
     });
   }
 
-  async findAll(): Promise<Currency[]> {
-    const snapshot = await this.db.collection(this.collectionPath).get();
+  async findAll(companyId?: string): Promise<Currency[]> {
+    const snapshot = await this.getCollection(companyId).get();
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }
 
-  async findActive(): Promise<Currency[]> {
-    // system_metadata currencies are all active by default
-    const snapshot = await this.db.collection(this.collectionPath).orderBy('code').get();
+  async findActive(companyId?: string): Promise<Currency[]> {
+    const snapshot = await this.getCollection(companyId).orderBy('code').get();
     return snapshot.docs
       .map(doc => this.toDomain(doc.data()))
       .filter(c => c.isActive);
   }
 
-  async findByCode(code: string): Promise<Currency | null> {
-    const doc = await this.db.collection(this.collectionPath).doc(code.toUpperCase()).get();
+  async findByCode(code: string, companyId?: string): Promise<Currency | null> {
+    const doc = await this.getCollection(companyId).doc(code.toUpperCase()).get();
     if (!doc.exists) return null;
     return this.toDomain(doc.data());
   }
 
   async save(currency: Currency): Promise<void> {
-    await this.db.collection(this.collectionPath)
+    // Always save to global if no companyId (though saving is rare via this repo)
+    await this.settingsResolver.db.collection(this.globalCollectionPath)
       .doc(currency.code)
       .set({
         code: currency.code,
@@ -66,9 +73,9 @@ export class FirestoreAccountingCurrencyRepository implements ICurrencyRepositor
   }
 
   async seedCurrencies(currencies: Currency[]): Promise<void> {
-    const batch = this.db.batch();
+    const batch = this.settingsResolver.db.batch();
     for (const currency of currencies) {
-      const ref = this.db.collection(this.collectionPath).doc(currency.code);
+      const ref = this.settingsResolver.db.collection(this.globalCollectionPath).doc(currency.code);
       batch.set(ref, {
         code: currency.code,
         name: currency.name,
@@ -82,40 +89,72 @@ export class FirestoreAccountingCurrencyRepository implements ICurrencyRepositor
   }
 }
 
+import { SettingsResolver } from '../../../../application/common/services/SettingsResolver';
+
 /**
  * Firestore implementation of ICompanyCurrencyRepository.
  * Manages enabled currencies per company (no rate fields).
  */
 export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepository {
-  private readonly collectionName = 'company_currencies';
-
-  constructor(private db: Firestore) {}
+  constructor(private settingsResolver: SettingsResolver) {}
 
   private getCollection(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection(this.collectionName);
+    return this.settingsResolver.getCurrenciesCollection(companyId);
   }
 
   private toRecord(doc: DocumentSnapshot): CompanyCurrencyRecord {
     const data = doc.data()!;
+    const code = data.currencyCode || data.code || doc.id;
     return {
       id: doc.id,
       companyId: data.companyId,
-      currencyCode: data.currencyCode,
+      currencyCode: code,
       isEnabled: data.isEnabled ?? true,
-      enabledAt: data.enabledAt?.toDate?.() || new Date(),
-      disabledAt: data.disabledAt?.toDate?.() || null,
+      isBase: data.isBase ?? false,
+      enabledAt: data.enabledAt instanceof Timestamp ? data.enabledAt.toDate() : new Date(),
+      disabledAt: data.disabledAt instanceof Timestamp ? data.disabledAt.toDate() : null,
     };
   }
 
   async findEnabledByCompany(companyId: string): Promise<CompanyCurrencyRecord[]> {
-    const snapshot = await this.getCollection(companyId)
-      .where('isEnabled', '==', true)
-      .get();
+    const coll = this.getCollection(companyId);
+    let snapshot = await coll.where('isEnabled', '==', true).get();
+    
+    if (snapshot.empty) {
+      // Trigger self-healing if empty
+      const base = await this.getBaseCurrency(companyId);
+      if (base) {
+        // Re-fetch now that it's repaired
+        snapshot = await coll.where('isEnabled', '==', true).get();
+      }
+    }
+    
     return snapshot.docs.map(doc => this.toRecord(doc));
   }
 
   async findAllByCompany(companyId: string): Promise<CompanyCurrencyRecord[]> {
-    const snapshot = await this.getCollection(companyId).get();
+    const coll = this.getCollection(companyId);
+    let snapshot = await coll.get();
+    
+    // Migration Fallback (identical logic)
+    if (snapshot.empty) {
+      const legacyPaths = ['company_currencies', 'currencies'];
+      let legacyDocs: admin.firestore.QueryDocumentSnapshot[] = [];
+      
+      for (const path of legacyPaths) {
+        const legacyColl = this.settingsResolver.db.collection('companies').doc(companyId).collection(path);
+        const legacySnap = await legacyColl.get();
+        if (!legacySnap.empty) {
+          legacyDocs = legacySnap.docs;
+          break;
+        }
+      }
+      
+      if (legacyDocs.length > 0) {
+        return legacyDocs.map(doc => this.toRecord(doc));
+      }
+    }
+
     return snapshot.docs.map(doc => this.toRecord(doc));
   }
 
@@ -134,7 +173,9 @@ export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepos
     await this.getCollection(companyId).doc(docId).set({
       companyId,
       currencyCode: code,
+      code: code, // Consistency fallback
       isEnabled: true,
+      isBase: false, // Default to false when just enabling
       enabledAt: Timestamp.fromDate(now),
       disabledAt: null,
     }, { merge: true });
@@ -144,9 +185,38 @@ export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepos
       companyId,
       currencyCode: code,
       isEnabled: true,
+      isBase: false,
       enabledAt: now,
       disabledAt: null,
     };
+  }
+
+  async setBaseCurrency(companyId: string, currencyCode: string): Promise<void> {
+    const code = currencyCode.toUpperCase();
+    const coll = this.getCollection(companyId);
+    
+    // Use a transaction or batch to ensure only one is base
+    const db = this.settingsResolver.db;
+    const batch = db.batch();
+    
+    // 1. Unset existing base
+    const currentBase = await coll.where('isBase', '==', true).get();
+    currentBase.docs.forEach(doc => {
+      batch.update(doc.ref, { isBase: false });
+    });
+    
+    // 2. Set new base (and enable it if not already)
+    const newBaseRef = coll.doc(code);
+    batch.set(newBaseRef, {
+      companyId,
+      currencyCode: code,
+      code: code, // Consistency fallback
+      isEnabled: true,
+      isBase: true,
+      enabledAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    await batch.commit();
   }
 
   async disable(companyId: string, currencyCode: string): Promise<void> {
@@ -155,5 +225,38 @@ export class FirestoreCompanyCurrencyRepository implements ICompanyCurrencyRepos
       isEnabled: false,
       disabledAt: Timestamp.fromDate(new Date()),
     });
+  }
+
+  async getBaseCurrency(companyId: string): Promise<string | null> {
+    const coll = this.getCollection(companyId);
+    const snapshot = await coll.where('isBase', '==', true).get();
+    
+    if (!snapshot.empty) {
+      const data = snapshot.docs[0].data();
+      return data.currencyCode || data.code || snapshot.docs[0].id;
+    }
+
+    // FALLBACK & REPAIR: Check company profile
+    console.log(`[FirestoreCompanyCurrencyRepository] No currency marked as isBase for ${companyId}. Checking company profile...`);
+    const companyDoc = await this.settingsResolver.db.collection('companies').doc(companyId).get();
+    const profileBase = companyDoc.data()?.baseCurrency;
+
+    if (profileBase) {
+      console.log(`[FirestoreCompanyCurrencyRepository] Found base ${profileBase} in profile. Attempting repair...`);
+      // Repair: mark this currency as base if it exists, or create it
+      const currRef = coll.doc(profileBase);
+      await currRef.set({
+        companyId,
+        currencyCode: profileBase,
+        code: profileBase,
+        isEnabled: true,
+        isBase: true,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      
+      return profileBase;
+    }
+    
+    return null;
   }
 }

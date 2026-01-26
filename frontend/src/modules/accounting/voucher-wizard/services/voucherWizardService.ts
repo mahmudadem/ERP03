@@ -46,7 +46,7 @@ export async function loadDefaultTemplates(): Promise<VoucherFormConfig[]> {
  */
 export async function loadCompanyForms(companyId: string): Promise<VoucherFormConfig[]> {
   try {
-    const formsRef = collection(db, `companies/${companyId}/voucherForms`);
+    const formsRef = collection(db, `companies/${companyId}/accounting/Settings/voucherForms`);
     const snapshot = await getDocs(formsRef);
     
     const forms: VoucherFormConfig[] = [];
@@ -269,13 +269,13 @@ export async function saveVoucherForm(
       allowFutureDates: canonical.allowFutureDates ?? true,
       mandatoryAttachments: canonical.mandatoryAttachments || false,
       isMultiLine: config.isMultiLine ?? true,
-      defaultCurrency: config.defaultCurrency || 'USD',
+      defaultCurrency: config.defaultCurrency || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy: userId
     };
     
-    const formRef = doc(db, `companies/${companyId}/voucherForms`, config.id);
+    const formRef = doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, config.id);
     await setDoc(formRef, removeUndefined(formData), { merge: true });
     
     return { success: true };
@@ -298,7 +298,7 @@ export async function cloneVoucherForm(
     if (isSystemDefault) {
       sourceDoc = await getDoc(doc(db, 'systemVoucherTemplates', sourceFormId));
     } else {
-      sourceDoc = await getDoc(doc(db, `companies/${companyId}/voucherForms`, sourceFormId));
+      sourceDoc = await getDoc(doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, sourceFormId));
     }
     
     if (!sourceDoc.exists()) {
@@ -331,7 +331,7 @@ export async function toggleFormEnabled(
   enabled: boolean
 ): Promise<boolean> {
   try {
-    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    const formRef = doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, formId);
     await updateDoc(formRef, { enabled });
     return true;
   } catch (error) {
@@ -348,7 +348,7 @@ export async function checkFormDeletable(
   formId: string
 ): Promise<{ canDelete: boolean; reason?: string }> {
   try {
-    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    const formRef = doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, formId);
     const formDoc = await getDoc(formRef);
     
     if (!formDoc.exists()) {
@@ -402,7 +402,7 @@ export async function deleteVoucherForm(companyId: string, formId: string): Prom
  */
 export async function getVoucherFormById(companyId: string, formId: string): Promise<VoucherFormConfig | null> {
   try {
-    const formRef = doc(db, `companies/${companyId}/voucherForms`, formId);
+    const formRef = doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, formId);
     const snap = await getDoc(formRef);
     
     if (snap.exists()) {

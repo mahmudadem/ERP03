@@ -1,6 +1,6 @@
 export const getCountryDefaults = (country: string) => {
   const defaults = {
-    currency: 'USD',
+    currency: '', // No default currency
     fiscalYearStart: '01-01',
     fiscalYearEnd: '12-31',
     language: 'en', // Default language

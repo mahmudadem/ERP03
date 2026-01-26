@@ -19,9 +19,9 @@ interface CurrencyExchangeWidgetProps {
 }
 
 export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
-  currency = 'USD',
+  currency = '',
   value,
-  baseCurrency = 'USD',
+  baseCurrency = '',
   voucherDate,
   onChange,
   disabled = false

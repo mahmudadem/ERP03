@@ -52,6 +52,7 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async createVoucherType(def: VoucherTypeDefinition): Promise<void> {
+    // ... (keep existing implementation)
     VoucherTypeDefinitionValidator.validate(def);
     
     const data = this.toPersistence(def);
@@ -84,7 +85,7 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async getVoucherType(companyId: string, id: string): Promise<VoucherTypeDefinition | null> {
-    const doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+    let doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
       ? await this.getSystemCollection().doc(id).get()
       : await this.getCollection(companyId).doc(id).get();
     
@@ -109,16 +110,27 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async getVoucherTypesForModule(companyId: string, module: string): Promise<VoucherTypeDefinition[]> {
-    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
-      ? await this.getSystemCollection().where('module', '==', module).get()
-      : await this.getCollection(companyId).where('module', '==', module).get();
+    // For System, we must filter because they are all in one list
+    if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+        const snap = await this.getSystemCollection().where('module', '==', module).get();
+        return snap.docs.map(d => this.toDomain(d.data())).filter(def => {
+             try { VoucherTypeDefinitionValidator.validate(def); return true; } catch (e) { return false; }
+        });
+    }
+
+    // For Company, the collection companies/{id}/accounting/... is IMPLICITLY accounting.
+    // We skip the .where('module') check because migrated data might miss the 'module' field.
+    const snap = await this.getCollection(companyId).get();
     
     const definitions = snap.docs.map(d => this.toDomain(d.data()));
     
-    // STEP 3 ENFORCEMENT: Filter out invalid definitions
+    // STEP 3 ENFORCEMENT: Filter out invalid definitions AND (optimally) filter by module if present,
+    // but if module is missing, we assume it belongs (since it's in the accounting folder).
     return definitions.filter(def => {
       try {
         VoucherTypeDefinitionValidator.validate(def);
+        // Loose check: If def.module exists, it must match. If missing, assume match.
+        if (def.module && def.module !== module) return false;
         return true;
       } catch (error: any) {
         console.error(`[VOUCHER_DEF_LOAD_ERROR] Excluded invalid definition from list`, {

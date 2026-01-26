@@ -266,7 +266,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
     
     const formData = rendererRef.current.getData();
-    const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || '';
     
     // FX Rate Validation: Block save if any FX line is missing exchange rate
     const lines = formData.lines || [];
@@ -333,7 +333,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!rendererRef.current) return;
     
     const formData = rendererRef.current.getData();
-    const baseCurrency = (win.voucherType as any)?.defaultCurrency || 'USD';
+    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || '';
     
     // FX Rate Validation: Block submit if any FX line is missing exchange rate
     const lines = formData.lines || [];
@@ -835,11 +835,10 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
             const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
             
-            // Use actual voucher currency from data, fallback to first line currency, then voucher type default, then USD
             const voucherCurrency = win.data?.currency || 
                                    rows.find(r => r.currency)?.currency || 
                                    (win.voucherType as any)?.defaultCurrency || 
-                                   'USD';
+                                   settings?.baseCurrency || '';
             
             return (
               <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>

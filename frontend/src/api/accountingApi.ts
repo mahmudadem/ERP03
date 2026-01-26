@@ -335,6 +335,7 @@ export interface CompanyCurrencyDTO {
   companyId: string;
   currencyCode: string;
   isEnabled: boolean;
+  isBase: boolean;
   enabledAt: string;
   disabledAt?: string | null;
 }

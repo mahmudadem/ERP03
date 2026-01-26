@@ -7,6 +7,7 @@
 
 import { IAccountRepository, UpdateAccountInput } from '../../../../repository/interfaces/accounting/IAccountRepository';
 import { ICompanyRepository } from '../../../../repository/interfaces/core/ICompanyRepository';
+import { ICompanyCurrencyRepository } from '../../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { 
   Account, 
   normalizeUserCode,
@@ -48,7 +49,8 @@ export interface UpdateAccountCommand {
 export class UpdateAccountUseCase {
   constructor(
     private accountRepo: IAccountRepository,
-    private companyRepo: ICompanyRepository
+    private companyRepo: ICompanyRepository,
+    private companyCurrencyRepo: ICompanyCurrencyRepository
   ) {}
 
   async execute(companyId: string, accountId: string, data: UpdateAccountCommand): Promise<Account> {
@@ -126,13 +128,21 @@ export class UpdateAccountUseCase {
     }
 
     // 7. Validate classification and context (Professional Governance)
+    // 6. Professional Governance: Resolve accurate base currency
+    const baseCurrency = await this.companyCurrencyRepo.getBaseCurrency(companyId);
+    
     const company = await this.companyRepo.findById(companyId);
     if (!company) throw this.createError('Company not found', 404);
-    const baseCurrency = company.baseCurrency || 'USD';
+    
+    const effectiveBaseCurrency = (baseCurrency || company.baseCurrency || 'USD').toUpperCase();
+    console.log(`[UpdateAccountUseCase] Effective baseCurrency: "${effectiveBaseCurrency}" (Resolved: "${baseCurrency}", Profile: "${company.baseCurrency}")`);
 
     const newParentId = data.parentId !== undefined ? data.parentId : existing.parentId;
     const effectiveCurrencyPolicy = (data.currencyPolicy || existing.currencyPolicy) as any;
-    const effectiveFixedCurrency = data.fixedCurrencyCode !== undefined ? data.fixedCurrencyCode : existing.fixedCurrencyCode;
+    const rawFixedCurrency = data.fixedCurrencyCode !== undefined ? data.fixedCurrencyCode : existing.fixedCurrencyCode;
+    const effectiveFixedCurrency = rawFixedCurrency?.toUpperCase() || null;
+
+    console.log(`[UpdateAccountUseCase] Account: ${existing.name}, ParentID: ${newParentId}, Policy: ${effectiveCurrencyPolicy}, Fixed: ${effectiveFixedCurrency}`);
 
     if (newParentId) {
       const parent = await this.accountRepo.getById(companyId, newParentId);
@@ -150,10 +160,11 @@ export class UpdateAccountUseCase {
         );
       }
       
-      // Professional Governance: Waterfall rule
-      // If the parent is in a foreign currency, child cannot revert to Base
-      if (parent.currencyPolicy === 'FIXED' && parent.fixedCurrencyCode !== baseCurrency) {
-        if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== parent.fixedCurrencyCode) {
+      // Root Currency Lock Inheritance Check (Waterfall rule)
+      // Governance rule: If the parent is in a foreign currency (e.g., EUR), 
+      // the child MUST also be EUR (cannot revert to USD Base).
+      if (parent.currencyPolicy === 'FIXED' && parent.fixedCurrencyCode?.toUpperCase() !== effectiveBaseCurrency) {
+        if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== parent.fixedCurrencyCode?.toUpperCase()) {
            throw this.createError(
             `Professional Governance Violation: Account belongs to a ${parent.fixedCurrencyCode} parent. ` +
             `Children inside a foreign context must share the parent's currency (${parent.fixedCurrencyCode}).`,
@@ -192,9 +203,10 @@ export class UpdateAccountUseCase {
         );
       }
       
-      if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency !== baseCurrency) {
+      if (effectiveCurrencyPolicy === 'FIXED' && effectiveFixedCurrency?.toUpperCase() !== effectiveBaseCurrency.toUpperCase()) {
         throw this.createError(
-          `Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${baseCurrency}).`,
+          `Root Governance Lock: Level 0 accounts (Assets, Liabilities, etc.) must remain in the company base currency (${effectiveBaseCurrency}). ` +
+          `Detected: ${effectiveFixedCurrency}.`,
           400
         );
       }

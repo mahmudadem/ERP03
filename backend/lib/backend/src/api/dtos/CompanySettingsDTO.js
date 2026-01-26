@@ -9,7 +9,10 @@ class CompanySettingsDTOMapper {
             uiMode: settings.uiMode,
             timezone: settings.timezone,
             dateFormat: settings.dateFormat,
-            language: settings.language
+            language: settings.language,
+            baseCurrency: settings.baseCurrency,
+            fiscalYearStart: settings.fiscalYearStart,
+            fiscalYearEnd: settings.fiscalYearEnd
         };
     }
 }

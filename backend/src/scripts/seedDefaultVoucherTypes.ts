@@ -10,6 +10,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOS
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
 
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin for standalone execution
 if (!admin.apps.length) {
@@ -323,8 +324,8 @@ async function seedDefaultVoucherTypes() {
       
       const dataToSave = {
         ...voucherType,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
       
       batch.set(docRef, dataToSave);

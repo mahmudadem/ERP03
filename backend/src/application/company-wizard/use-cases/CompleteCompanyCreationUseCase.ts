@@ -9,6 +9,9 @@ import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICom
 import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
+import { ISystemMetadataRepository } from '../../../infrastructure/repositories/FirestoreSystemMetadataRepository';
+import { ICurrencyRepository } from '../../../repository/interfaces/company-wizard/ICurrencyRepository';
+import { ModuleActivationService } from '../../system/services/ModuleActivationService';
 import { randomUUID } from 'crypto';
 
 interface Input {
@@ -26,7 +29,10 @@ export class CompleteCompanyCreationUseCase {
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
     private rolePermissionResolver: CompanyRolePermissionResolver,
     private voucherTypeRepo: IVoucherTypeDefinitionRepository,
-    private companySettingsRepo: ICompanySettingsRepository
+    private companySettingsRepo: ICompanySettingsRepository,
+    private systemMetadataRepo: ISystemMetadataRepository,
+    private currencyRepo: ICurrencyRepository,
+    private moduleActivationService: ModuleActivationService
   ) { }
 
   private filter(steps: CompanyWizardStep[], model: string) {
@@ -71,7 +77,7 @@ export class CompleteCompanyCreationUseCase {
     const steps = this.filter(template.steps, session.model);
     this.validateAllRequired(steps, session.data);
     // Normalize common aliases to what creation expects
-    const baseCurrency = session.data.currency || session.data.baseCurrency || 'USD';
+    const baseCurrency = session.data.currency || session.data.baseCurrency;
 
     const now = new Date();
     const fiscalYearStart = this.safeDate(session.data.fiscalYearStart);
@@ -97,13 +103,26 @@ export class CompleteCompanyCreationUseCase {
     try {
       await this.companyRepo.save(company);
       
-      // Initialize settings
+      // Initialize settings (Global Tier 1)
       await this.companySettingsRepo.updateSettings(company.id, {
         timezone: session.data.timezone || 'UTC',
         dateFormat: session.data.dateFormat || 'MM/DD/YYYY',
         language: session.data.language || 'en',
+        baseCurrency: baseCurrency || '',
         uiMode: 'windows'
       });
+
+      // SEED SHARED SETTINGS: Currencies (Shared Tier 2)
+      try {
+        const globalCurrencies = await this.systemMetadataRepo.getMetadata('currencies');
+        if (globalCurrencies && Array.isArray(globalCurrencies)) {
+          // Seed all available currencies (but don't enable any yet)
+          await this.currencyRepo.seedCurrencies(company.id, globalCurrencies);
+          console.log(`[CompleteCompanyCreationUseCase] Seeded global currencies to company ${company.id}`);
+        }
+      } catch (seedErr) {
+        console.error('Failed to seed company currencies', seedErr);
+      }
     } catch (err: any) {
       throw new Error(`Failed to create company: ${err?.message || err}`);
     }
@@ -114,8 +133,17 @@ export class CompleteCompanyCreationUseCase {
       isOwner: true,
       createdAt: now
     });
-    // Update default roles with module bundles if provided
+    // 4. Activate Modules with Dependency Tracing
     const modules: string[] = (session.data.modules as any) || [];
+    for (const moduleCode of modules) {
+      try {
+        await this.moduleActivationService.activateModule(company.id, moduleCode, session.userId);
+      } catch (modErr) {
+        console.error(`Failed to activate module ${moduleCode}`, modErr);
+      }
+    }
+
+    // 5. Update Role Module Bundles
     if (modules.length > 0) {
       const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
       const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');

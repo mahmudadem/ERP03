@@ -42,7 +42,7 @@ class CreateCompanyUseCase {
         // Default fiscal year: Jan 1 to Dec 31
         const fiscalYearStart = new Date(now.getFullYear(), 0, 1);
         const fiscalYearEnd = new Date(now.getFullYear(), 11, 31);
-        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, input.currency || 'USD', // Use input currency or default
+        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, input.currency || '', // Use input currency or empty
         fiscalYearStart, fiscalYearEnd, Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
         [], // features
         '', // Tax ID optional
@@ -67,6 +67,7 @@ class CreateCompanyUseCase {
                 timezone: input.timezone || 'UTC',
                 dateFormat: input.dateFormat || 'MM/DD/YYYY',
                 language: input.language || 'en',
+                baseCurrency: input.currency || '',
                 uiMode: 'windows'
             });
             // Initialize Roles (OWNER, ADMIN, MEMBER)

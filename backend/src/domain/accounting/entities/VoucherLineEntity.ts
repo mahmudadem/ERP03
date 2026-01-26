@@ -243,9 +243,8 @@ export class VoucherLineEntity {
     }
 
     if (!baseCurrency) {
-      // Logic: In V1, we didn't store baseCurrency per line. 
-      // We'll use the voucher's base currency if provided, otherwise default to USD.
-      baseCurrency = fallbackBaseCurrency || 'USD'; 
+      // Logic: In V2, baseCurrency is required. 
+      baseCurrency = fallbackBaseCurrency; 
     }
 
     // Default amount to 0.01 if it's somehow 0 in old data (to avoid invariant crash)
@@ -257,9 +256,9 @@ export class VoucherLineEntity {
       data.accountId || 'legacy-account',
       side as TransactionSide,
       safeBaseAmount,
-      baseCurrency,
+      baseCurrency!,
       safeAmount,
-      currency || 'USD',
+      currency,
       data.exchangeRate || 1,
       data.notes || data.description,
       data.costCenterId,

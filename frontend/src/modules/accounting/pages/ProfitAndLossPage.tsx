@@ -4,6 +4,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate, getCompanyToday } from '../../../utils/dateUtils';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { DatePicker } from '../components/shared/DatePicker';
 
 interface ProfitAndLossData {
@@ -17,6 +18,8 @@ interface ProfitAndLossData {
 
 const ProfitAndLossPage: React.FC = () => {
   const { settings } = useCompanySettings();
+  const { company } = useCompanyAccess();
+  const baseCurrency = company?.baseCurrency || 'USD';
   const [data, setData] = useState<ProfitAndLossData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,11 +60,15 @@ const ProfitAndLossPage: React.FC = () => {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: baseCurrency || 'USD',
+        minimumFractionDigits: 2
+      }).format(amount);
+    } catch (e) {
+      return `${baseCurrency} ${amount.toFixed(2)}`;
+    }
   };
 
   const formatDate = (dateStr: string) => {

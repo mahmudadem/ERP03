@@ -1,15 +1,13 @@
-
-import { BaseFirestoreRepository } from '../BaseFirestoreRepository';
 import { ICompanySettingsRepository } from '../../../../repository/interfaces/core/ICompanySettingsRepository';
 import { CompanySettings } from '../../../../domain/core/entities/CompanySettings';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
+import { SettingsResolver } from '../../../../application/common/services/SettingsResolver';
 
-export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<CompanySettings> implements ICompanySettingsRepository {
-  // MODULAR PATTERN: companies/{id}/Settings/company
-  protected collectionName = 'company_settings'; // Legacy name, unused now
+export class FirestoreCompanySettingsRepository implements ICompanySettingsRepository {
+  constructor(private settingsResolver: SettingsResolver) {}
 
   private getSettingsRef(companyId: string) {
-    return this.db.collection('companies').doc(companyId).collection('Settings').doc('company');
+    return this.settingsResolver.getCompanySettingsRef(companyId);
   }
 
   protected toDomain(data: any): CompanySettings {
@@ -19,7 +17,10 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
       data.uiMode,
       data.timezone,
       data.dateFormat,
-      data.language || 'en'
+      data.language || 'en',
+      data.baseCurrency,
+      data.fiscalYearStart,
+      data.fiscalYearEnd
     );
   }
 
@@ -30,7 +31,10 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
       uiMode: entity.uiMode,
       timezone: entity.timezone,
       dateFormat: entity.dateFormat,
-      language: entity.language
+      language: entity.language,
+      baseCurrency: entity.baseCurrency,
+      fiscalYearStart: entity.fiscalYearStart,
+      fiscalYearEnd: entity.fiscalYearEnd
     };
   }
 
@@ -39,6 +43,7 @@ export class FirestoreCompanySettingsRepository extends BaseFirestoreRepository<
       const doc = await this.getSettingsRef(companyId).get();
       
       if (!doc.exists) {
+        // Return default settings without a hardcoded currency if possible, or handle it in the domain
         return CompanySettings.default(companyId);
       }
       return this.toDomain(doc.data());

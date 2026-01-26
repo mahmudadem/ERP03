@@ -27,7 +27,7 @@ export class CreateCompanyUseCase {
       'temp_owner_id', // Placeholder for MVP as ownerId is not yet in DTO
       now,
       now,
-      'USD', // Default Base Currency
+      '', // No Default Base Currency
       new Date(currentYear, 0, 1), // Default Fiscal Year Start (Jan 1)
       new Date(currentYear, 11, 31), // Default Fiscal Year End (Dec 31)
       ['CORE'], // Default Modules

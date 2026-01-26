@@ -25,6 +25,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SettingsController = void 0;
 const admin = __importStar(require("firebase-admin"));
+const SettingsResolver_1 = require("../../../application/common/services/SettingsResolver");
+const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 /**
  * SettingsController
  *
@@ -42,7 +44,7 @@ class SettingsController {
      * Returns current accounting policy configuration
      */
     static async getSettings(req, res, next) {
-        var _a, _b;
+        var _a, _b, _c;
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
@@ -50,22 +52,22 @@ class SettingsController {
             // await permissionChecker.assertOrThrow(userId, companyId, 'accounting.settings.read');
             const { FirestoreAccountingPolicyConfigProvider } = await Promise.resolve().then(() => __importStar(require('../../../infrastructure/accounting/config/FirestoreAccountingPolicyConfigProvider')));
             const db = admin.firestore();
-            const provider = new FirestoreAccountingPolicyConfigProvider(db);
+            const settingsResolver = new SettingsResolver_1.SettingsResolver(db);
+            const provider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
             const config = await provider.getConfig(companyId);
-            // Get metadata (updatedAt, updatedBy) if available
-            const settingsDoc = await db
-                .collection('companies')
-                .doc(companyId)
-                .collection('settings')
-                .doc('accounting')
-                .get();
+            // 1. Resolve Base Currency from Shared Currencies (Tier 2)
+            const currencies = await bindRepositories_1.diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
+            const baseCurrency = (_a = currencies.find(c => c.isBase)) === null || _a === void 0 ? void 0 : _a.currencyCode;
+            // 2. Get metadata (updatedAt, updatedBy) if available
+            const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+            const settingsDoc = await settingsRef.get();
             const metadata = settingsDoc.exists ? {
-                updatedAt: (_a = settingsDoc.data()) === null || _a === void 0 ? void 0 : _a.updatedAt,
-                updatedBy: (_b = settingsDoc.data()) === null || _b === void 0 ? void 0 : _b.updatedBy
+                updatedAt: (_b = settingsDoc.data()) === null || _b === void 0 ? void 0 : _b.updatedAt,
+                updatedBy: (_c = settingsDoc.data()) === null || _c === void 0 ? void 0 : _c.updatedBy
             } : {};
             res.json({
                 success: true,
-                data: Object.assign(Object.assign({}, config), metadata)
+                data: Object.assign(Object.assign(Object.assign({}, config), { baseCurrency }), metadata)
             });
         }
         catch (err) {
@@ -110,8 +112,10 @@ class SettingsController {
                 });
             }
             const db = admin.firestore();
+            const settingsResolver = new SettingsResolver_1.SettingsResolver(db);
             // Build update payload
             const updateData = {
+                // ... (preserving payload building logic)
                 // Approval Policy V1 toggles
                 financialApprovalEnabled: (_a = req.body.financialApprovalEnabled) !== null && _a !== void 0 ? _a : false,
                 faApplyMode: req.body.faApplyMode || 'ALL',
@@ -142,15 +146,12 @@ class SettingsController {
                 updateData.paymentMethods = req.body.paymentMethods;
             }
             // Update Firestore
-            console.log('[SettingsController] Saving to path:', `companies/${companyId}/settings/accounting`);
-            console.log('[SettingsController] Update data:', JSON.stringify(updateData, null, 2));
-            await db
-                .collection('companies')
-                .doc(companyId)
-                .collection('settings')
-                .doc('accounting')
-                .set(updateData, { merge: true });
-            console.log('[SettingsController] Save successful');
+            const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+            console.log('[SettingsController] Saving to path:', settingsRef.path);
+            // CLEANUP: Explicitly remove baseCurrency if it's trapped in this tier
+            // We use FieldValue.delete() to ensure it's gone from the document
+            await settingsRef.update(Object.assign(Object.assign({}, updateData), { baseCurrency: admin.firestore.FieldValue.delete() }));
+            console.log('[SettingsController] Save and cleanup successful');
             res.json({
                 success: true,
                 message: 'Settings updated successfully'

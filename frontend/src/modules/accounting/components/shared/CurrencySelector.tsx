@@ -50,7 +50,8 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
   const { company } = useCompanyAccess();
-  const baseCurrencyCode = company?.baseCurrency || 'USD';
+  const baseCurrencyFromList = currencies.find(c => c.isBase)?.code;
+  const baseCurrencyCode = baseCurrencyFromList || company?.baseCurrency || '';
 
   // Sync input value with external value
   useEffect(() => {

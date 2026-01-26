@@ -31,7 +31,13 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
      * Get company-specific voucher types collection
      */
     getCollection(companyId) {
-        return this.db.collection('companies').doc(companyId).collection('voucher_types');
+        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucher_types (coll)
+        return this.db
+            .collection('companies')
+            .doc(companyId)
+            .collection('accounting')
+            .doc('Settings')
+            .collection('voucher_types');
     }
     /**
      * Get top-level system voucher types collection
@@ -42,7 +48,7 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
             .collection('items');
     }
     async createVoucherType(def) {
-        // STEP 3 ENFORCEMENT: Validate before persisting
+        // ... (keep existing implementation)
         VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
         const data = this.toPersistence(def);
         // System templates go to top-level collection, company templates go to subcollection
@@ -50,6 +56,7 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
             await this.getSystemCollection().doc(def.id).set(data);
         }
         else {
+            // Save to modular location only
             await this.getCollection(def.companyId).doc(def.id).set(data);
         }
     }
@@ -72,7 +79,7 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
         }
     }
     async getVoucherType(companyId, id) {
-        const doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
+        let doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
             ? await this.getSystemCollection().doc(id).get()
             : await this.getCollection(companyId).doc(id).get();
         if (!doc.exists)
@@ -95,14 +102,31 @@ class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepository_1
         }
     }
     async getVoucherTypesForModule(companyId, module) {
-        const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
-            ? await this.getSystemCollection().where('module', '==', module).get()
-            : await this.getCollection(companyId).where('module', '==', module).get();
+        // For System, we must filter because they are all in one list
+        if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+            const snap = await this.getSystemCollection().where('module', '==', module).get();
+            return snap.docs.map(d => this.toDomain(d.data())).filter(def => {
+                try {
+                    VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
+                    return true;
+                }
+                catch (e) {
+                    return false;
+                }
+            });
+        }
+        // For Company, the collection companies/{id}/accounting/... is IMPLICITLY accounting.
+        // We skip the .where('module') check because migrated data might miss the 'module' field.
+        const snap = await this.getCollection(companyId).get();
         const definitions = snap.docs.map(d => this.toDomain(d.data()));
-        // STEP 3 ENFORCEMENT: Filter out invalid definitions
+        // STEP 3 ENFORCEMENT: Filter out invalid definitions AND (optimally) filter by module if present,
+        // but if module is missing, we assume it belongs (since it's in the accounting folder).
         return definitions.filter(def => {
             try {
                 VoucherTypeDefinitionValidator_1.VoucherTypeDefinitionValidator.validate(def);
+                // Loose check: If def.module exists, it must match. If missing, assume match.
+                if (def.module && def.module !== module)
+                    return false;
                 return true;
             }
             catch (error) {

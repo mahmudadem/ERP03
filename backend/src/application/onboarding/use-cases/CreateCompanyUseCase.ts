@@ -74,7 +74,7 @@ export class CreateCompanyUseCase {
       input.userId,
       now,
       now,
-      input.currency || 'USD', // Use input currency or default
+      input.currency || '', // Use input currency or empty
       fiscalYearStart,
       fiscalYearEnd,
       Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
@@ -105,6 +105,7 @@ export class CreateCompanyUseCase {
         timezone: input.timezone || 'UTC',
         dateFormat: input.dateFormat || 'MM/DD/YYYY',
         language: input.language || 'en',
+        baseCurrency: input.currency || '',
         uiMode: 'windows'
       });
 

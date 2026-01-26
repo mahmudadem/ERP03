@@ -3,6 +3,7 @@ process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '12
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
 
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -23,6 +24,7 @@ const DEFAULT_VOUCHER_TYPES = [
     id: 'journal_entry',
     code: 'JOURNAL_ENTRY',
     name: 'Journal Entry',
+    module: 'ACCOUNTING', // Added module field
     schemaVersion: 2,
     prefix: 'JE-',
     nextNumber: 1000,
@@ -58,6 +60,7 @@ const DEFAULT_VOUCHER_TYPES = [
     id: 'payment_voucher',
     code: 'PAYMENT_VOUCHER',
     name: 'Payment Voucher',
+    module: 'ACCOUNTING',
     schemaVersion: 2,
     prefix: 'PV-',
     nextNumber: 1000,
@@ -88,6 +91,7 @@ const DEFAULT_VOUCHER_TYPES = [
     id: 'receipt_voucher',
     code: 'RECEIPT_VOUCHER',
     name: 'Receipt Voucher',
+    module: 'ACCOUNTING',
     schemaVersion: 2,
     prefix: 'RV-',
     nextNumber: 1000,
@@ -118,6 +122,7 @@ const DEFAULT_VOUCHER_TYPES = [
     id: 'sales_invoice',
     code: 'SALES_INVOICE',
     name: 'Sales Invoice',
+    module: 'ACCOUNTING',
     schemaVersion: 2,
     prefix: 'SINV-',
     nextNumber: 1000,
@@ -146,6 +151,7 @@ const DEFAULT_VOUCHER_TYPES = [
     id: 'purchase_invoice',
     code: 'PURCHASE_INVOICE',
     name: 'Purchase Invoice',
+    module: 'ACCOUNTING',
     schemaVersion: 2,
     prefix: 'PINV-',
     nextNumber: 1000,
@@ -182,13 +188,15 @@ async function seedCompanyVoucherTypes() {
       const docRef = db
         .collection('companies')
         .doc(COMPANY_ID)
-        .collection('voucherTypes')
+        .collection('accounting')
+        .doc('Settings')
+        .collection('voucher_types')
         .doc(voucherType.id);
       
       const dataToSave = {
         ...voucherType,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
       
       batch.set(docRef, dataToSave);
@@ -196,7 +204,7 @@ async function seedCompanyVoucherTypes() {
     }
     
     await batch.commit();
-    console.log(`✅ Success! Seeded voucher types to companies/${COMPANY_ID}/voucherTypes`);
+    console.log(`✅ Success! Seeded voucher types to companies/${COMPANY_ID}/accounting/Settings/voucher_types`);
   } catch (error) {
     console.error('❌ Error seeding voucher types:', error);
     process.exit(1);

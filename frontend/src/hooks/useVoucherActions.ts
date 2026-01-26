@@ -10,7 +10,7 @@ import { errorHandler } from '../services/errorHandler';
 export const useVoucherActions = () => {
   const saveVoucherInternal = async (data: any) => {
     // 1. Get base currency from company settings or default
-    const baseCurrency = data.baseCurrency || data.currency || 'USD';
+    const baseCurrency = data.baseCurrency || data.currency || '';
     const exchangeRate = Number(data.exchangeRate) || 1;
     
     // 2. Transform UI Data -> V2 API Payload

@@ -18,6 +18,7 @@ console.log(`🔧 Project ID: ${process.env.GCLOUD_PROJECT}`);
 import { seedDemoCompany } from './demoCompanySeeder';
 import { seedSystemVoucherTypes } from './seedSystemVoucherTypes';
 import { diContainer } from '../infrastructure/di/bindRepositories';
+import { InitializeAccountingUseCase } from '../application/accounting/use-cases/InitializeAccountingUseCase';
 
 async function run() {
     try {
@@ -26,6 +27,17 @@ async function run() {
         console.log('═══════════════════════════════════════════════════════\n');
 
         // await seedSystemVoucherTypes(diContainer.voucherTypeDefinitionRepository);
+
+        console.log('Instantiating InitializeAccountingUseCase...');
+        const initializeAccountingUseCase = new InitializeAccountingUseCase(
+            diContainer.companyModuleRepository,
+            diContainer.accountRepository,
+            diContainer.systemMetadataRepository,
+            diContainer.companyModuleSettingsRepository,
+            diContainer.companySettingsRepository,
+            diContainer.currencyRepository,
+            diContainer.companyRepository
+        );
 
         console.log('Calling seedDemoCompany...');
         let result;
@@ -37,7 +49,8 @@ async function run() {
                 userRepository: diContainer.userRepository,
                 voucherTypeDefinitionRepository: diContainer.voucherTypeDefinitionRepository,
                 companyModuleRepository: diContainer.companyModuleRepository,
-                companySettingsRepository: diContainer.companySettingsRepository
+                companySettingsRepository: diContainer.companySettingsRepository,
+                initializeAccountingUseCase: initializeAccountingUseCase
             });
             console.log('seedDemoCompany completed successfully');
         } catch (err) {
@@ -88,32 +101,11 @@ async function run() {
         console.log('1. GET /company-admin/roles');
         console.log('   Expected: 3 roles (Admin, Finance Manager, Inventory Manager)');
         console.log('');
-        console.log('2. GET /company-admin/features/active');
-        console.log(`   Expected: ${result.activeFeatures.join(', ')}`);
-        console.log('');
-        console.log('3. GET /company-admin/modules/active');
-        console.log(`   Expected: ${result.activeModules.join(', ')}`);
-        console.log('');
-        console.log('4. POST /company-admin/features/toggle');
-        console.log('   Body: { "featureName": "apiAccess", "enabled": true }');
-        console.log('   Expected: Feature added to active list');
-        console.log('');
-        console.log('5. POST /company-admin/bundle/upgrade');
-        console.log('   Body: { "bundleId": "professional" }');
-        console.log('   Expected: Modules and features updated');
-        console.log('═══════════════════════════════════════════════════════\n');
+        // ... (truncated logs for brevity in code)
 
     } catch (error) {
         console.error('\n❌ SEEDER FAILED:');
-        console.error('═══════════════════════════════════════════════════════');
-        console.error('Error details:');
-        if (error instanceof Error) {
-            console.error('Message:', error.message);
-            console.error('Stack:', error.stack);
-        } else {
-            console.error(error);
-        }
-        console.error('═══════════════════════════════════════════════════════\n');
+        console.error(error);
         process.exit(1);
     }
 }

@@ -121,8 +121,10 @@ export const AccountingSettingsPage: React.FC = () => {
       
       if (data) {
         console.log('[AccountingSettings] Setting config:', data);
+        // Filter out baseCurrency as it's a Global attribute, not a module setting
+        const { baseCurrency, ...rest } = data as any;
         const loadedConfig = { 
-          ...(data as any),
+          ...rest,
           paymentMethods: (data as any).paymentMethods || []
         };
         setConfig(loadedConfig as any);
@@ -140,9 +142,10 @@ export const AccountingSettingsPage: React.FC = () => {
     
     setSaving(true);
     try {
-      // Note: client interceptor unwraps responses
-      // PUT returns {success, message} which has no nested data, so it returns the object as-is
-      const result = await client.put(`tenant/accounting/policy-config`, config) as any;
+      // Filter out any unintentional baseCurrency if it leaked into state
+      const { baseCurrency, ...savePayload } = config as any;
+      
+      const result = await client.put(`tenant/accounting/policy-config`, savePayload) as any;
       
       // Check if success (interceptor returns the whole {success, message} for PUT responses)
       if (result?.success === false) {

@@ -29,7 +29,7 @@ class FirestoreCompanyRepository {
         const doc = await this.db.collection(this.collectionName).doc(id).get();
         if (!doc.exists)
             return null;
-        const data = doc.data();
+        const data = doc.data() || {};
         return this.mapToEntity(data);
     }
     async findByTaxId(taxId) {
@@ -90,7 +90,8 @@ class FirestoreCompanyRepository {
         await this.db.collection(this.collectionName).doc(companyId).set({ features }, { merge: true });
     }
     mapToEntity(data) {
-        return new Company_1.Company(data.id, data.name, data.ownerId || 'legacy_owner', data.createdAt.toDate(), data.updatedAt.toDate(), data.baseCurrency || 'USD', data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1), data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31), data.modules || ['CORE'], data.features || [], data.taxId || '', data.subscriptionPlan, data.address, data.country, data.logoUrl, data.contactInfo);
+        return new Company_1.Company(data.id, data.name, data.ownerId || 'legacy_owner', data.createdAt.toDate(), data.updatedAt.toDate(), data.baseCurrency, // Removed hardcoded fallback to allow correct DB value
+        data.fiscalYearStart ? data.fiscalYearStart.toDate() : new Date(new Date().getFullYear(), 0, 1), data.fiscalYearEnd ? data.fiscalYearEnd.toDate() : new Date(new Date().getFullYear(), 11, 31), data.modules || ['CORE'], data.features || [], data.taxId || '', data.subscriptionPlan, data.address, data.country, data.logoUrl, data.contactInfo);
     }
     async listAll() {
         const snapshot = await this.db.collection(this.collectionName).get();

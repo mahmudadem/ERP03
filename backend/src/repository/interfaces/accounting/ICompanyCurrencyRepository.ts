@@ -6,6 +6,7 @@ export interface CompanyCurrencyRecord {
   companyId: string;
   currencyCode: string;
   isEnabled: boolean;
+  isBase?: boolean;
   enabledAt: Date;
   disabledAt?: Date | null;
 }
@@ -40,4 +41,14 @@ export interface ICompanyCurrencyRepository {
    * Disable a currency for a company (soft delete - sets isEnabled=false)
    */
   disable(companyId: string, currencyCode: string): Promise<void>;
+
+  /**
+   * Set a currency as the base currency for the company
+   */
+  setBaseCurrency(companyId: string, currencyCode: string): Promise<void>;
+
+  /**
+   * Get the base currency code for a company
+   */
+  getBaseCurrency(companyId: string): Promise<string | null>;
 }

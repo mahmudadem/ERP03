@@ -9,6 +9,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOS
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
 
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -56,8 +57,8 @@ async function copyVouchersToCompany(companyId: string) {
         enabled: true,  // Make sure it's enabled!
         isSystemDefault: false, // Company can edit this
         inUse: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       };
       
       batch.set(companyVoucherRef, companyVoucher, { merge: true });

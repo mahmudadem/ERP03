@@ -1,6 +1,6 @@
-import * as admin from 'firebase-admin';
 import { IAccountingPolicyConfigProvider } from './IAccountingPolicyConfigProvider';
 import { AccountingPolicyConfig } from '../../../domain/accounting/policies/PostingPolicyTypes';
+import { SettingsResolver } from '../../../application/common/services/SettingsResolver';
 
 /**
  * FirestoreAccountingPolicyConfigProvider
@@ -17,18 +17,13 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
   private readonly SETTINGS_DOC = 'settings';
   private readonly ACCOUNTING_FIELD = 'accounting';
 
-  constructor(private readonly db: admin.firestore.Firestore) {}
+  constructor(private readonly settingsResolver: SettingsResolver) {}
 
   async getConfig(companyId: string): Promise<AccountingPolicyConfig> {
     try {
-      const path = `${this.COLLECTION_PATH}/${companyId}/${this.SETTINGS_DOC}/${this.ACCOUNTING_FIELD}`;
+      const settingsRef = this.settingsResolver.getAccountingSettingsRef(companyId);
+      const path = settingsRef.path;
       console.log('[PolicyConfigProvider] Reading from path:', path);
-      
-      const settingsRef = this.db
-        .collection(this.COLLECTION_PATH)
-        .doc(companyId)
-        .collection(this.SETTINGS_DOC)
-        .doc(this.ACCOUNTING_FIELD);
 
       const snapshot = await settingsRef.get();
 

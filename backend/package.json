@@ -5,7 +5,7 @@
   "main": "lib/backend/src/index.js",
   "scripts": {
     "build": "tsc",
-    "serve": "firebase emulators:start --import=../emulator-data --export-on-exit --only functions",
+    "serve": "firebase emulators:start --import=../emulator-data --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",

@@ -12,21 +12,17 @@ exports.FirestoreAccountingPolicyConfigProvider = void 0;
  * ensuring the system works even for new companies.
  */
 class FirestoreAccountingPolicyConfigProvider {
-    constructor(db) {
-        this.db = db;
+    constructor(settingsResolver) {
+        this.settingsResolver = settingsResolver;
         this.COLLECTION_PATH = 'companies';
         this.SETTINGS_DOC = 'settings';
         this.ACCOUNTING_FIELD = 'accounting';
     }
     async getConfig(companyId) {
         try {
-            const path = `${this.COLLECTION_PATH}/${companyId}/${this.SETTINGS_DOC}/${this.ACCOUNTING_FIELD}`;
+            const settingsRef = this.settingsResolver.getAccountingSettingsRef(companyId);
+            const path = settingsRef.path;
             console.log('[PolicyConfigProvider] Reading from path:', path);
-            const settingsRef = this.db
-                .collection(this.COLLECTION_PATH)
-                .doc(companyId)
-                .collection(this.SETTINGS_DOC)
-                .doc(this.ACCOUNTING_FIELD);
             const snapshot = await settingsRef.get();
             console.log('[PolicyConfigProvider] Document exists:', snapshot.exists);
             if (!snapshot.exists) {

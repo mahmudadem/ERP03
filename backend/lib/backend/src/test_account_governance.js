@@ -10,6 +10,8 @@ const FirestoreAccountRepository_1 = require("./infrastructure/firestore/reposit
 const FirestoreCompanyRepository_1 = require("./infrastructure/firestore/repositories/core/FirestoreCompanyRepository");
 const UpdateAccountUseCase_1 = require("./application/accounting/use-cases/accounts/UpdateAccountUseCase");
 const CreateAccountUseCase_1 = require("./application/accounting/use-cases/accounts/CreateAccountUseCase");
+const FirestoreCurrencyRepositories_1 = require("./infrastructure/firestore/repositories/accounting/FirestoreCurrencyRepositories");
+const SettingsResolver_1 = require("./application/common/services/SettingsResolver");
 /**
  * Account Governance Regression Test
  *
@@ -23,8 +25,10 @@ async function runTest() {
     const db = firebaseAdmin_1.default.firestore();
     const accountRepo = new FirestoreAccountRepository_1.FirestoreAccountRepository(db);
     const companyRepo = new FirestoreCompanyRepository_1.FirestoreCompanyRepository(db);
-    const updateUseCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(accountRepo, companyRepo);
-    const createUseCase = new CreateAccountUseCase_1.CreateAccountUseCase(accountRepo, companyRepo);
+    const settingsResolver = new SettingsResolver_1.SettingsResolver(db);
+    const companyCurrencyRepo = new FirestoreCurrencyRepositories_1.FirestoreCompanyCurrencyRepository(settingsResolver);
+    const updateUseCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(accountRepo, companyRepo, companyCurrencyRepo);
+    const createUseCase = new CreateAccountUseCase_1.CreateAccountUseCase(accountRepo, companyRepo, companyCurrencyRepo);
     const companyId = 'cmp_mjjb0kl9_9pken1';
     const userId = 'system-tester';
     // Find any Root account (Level 0)

@@ -6,6 +6,8 @@ import { FirestoreAccountRepository } from './infrastructure/firestore/repositor
 import { FirestoreCompanyRepository } from './infrastructure/firestore/repositories/core/FirestoreCompanyRepository';
 import { UpdateAccountUseCase } from './application/accounting/use-cases/accounts/UpdateAccountUseCase';
 import { CreateAccountUseCase } from './application/accounting/use-cases/accounts/CreateAccountUseCase';
+import { FirestoreCompanyCurrencyRepository } from './infrastructure/firestore/repositories/accounting/FirestoreCurrencyRepositories';
+import { SettingsResolver } from './application/common/services/SettingsResolver';
 
 /**
  * Account Governance Regression Test
@@ -22,9 +24,11 @@ async function runTest() {
   const db = admin.firestore();
   const accountRepo = new FirestoreAccountRepository(db);
   const companyRepo = new FirestoreCompanyRepository(db);
+  const settingsResolver = new SettingsResolver(db);
+  const companyCurrencyRepo = new FirestoreCompanyCurrencyRepository(settingsResolver);
   
-  const updateUseCase = new UpdateAccountUseCase(accountRepo, companyRepo);
-  const createUseCase = new CreateAccountUseCase(accountRepo, companyRepo);
+  const updateUseCase = new UpdateAccountUseCase(accountRepo, companyRepo, companyCurrencyRepo);
+  const createUseCase = new CreateAccountUseCase(accountRepo, companyRepo, companyCurrencyRepo);
 
   const companyId = 'cmp_mjjb0kl9_9pken1'; 
   const userId = 'system-tester';

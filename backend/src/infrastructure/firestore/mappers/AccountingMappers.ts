@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { 
   Account, 
   normalizeClassification, 
@@ -17,10 +18,10 @@ import {
  */
 const toFirestoreDate = (val?: any): any => {
   if (val === null || val === undefined) {
-    return admin.firestore.FieldValue.serverTimestamp();
+    return FieldValue.serverTimestamp();
   }
   
-  const TimestampClass = admin.firestore?.Timestamp;
+  const TimestampClass = Timestamp;
   
   if (TimestampClass && val instanceof TimestampClass) {
     return val;
