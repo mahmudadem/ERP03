@@ -96,7 +96,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
                   <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
                     <span className="text-gray-400">Policy:</span>
                     <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
                     </span>
                   </div>
                 </div>
@@ -177,7 +177,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
                 : settings?.strictApprovalMode === true
                   // Strict Mode: 'Save as Draft' is Secondary action
                   ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  // Simple Mode: 'Save & Post' is Primary action
+                  // Flexible Mode: 'Save & Post' is Primary action
                   : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-md shadow-emerald-500/20'
             }`}
             disabled={isSaving || settingsLoading || readOnly}

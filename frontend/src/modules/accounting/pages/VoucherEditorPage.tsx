@@ -225,7 +225,7 @@ const VoucherEditorPage: React.FC = () => {
       return ['posted', 'approved', 'locked'].includes(status);
     }
     
-    // In SIMPLE mode (default), only locked is read-only
+    // In FLEXIBLE mode (default), only locked is read-only
     return status === 'locked';
   }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
 
@@ -260,7 +260,7 @@ const VoucherEditorPage: React.FC = () => {
                 <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
                   <span className="text-gray-400">Policy:</span>
                   <span className={companySettings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                    {companySettings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                    {companySettings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
                   </span>
                 </div>
               </div>

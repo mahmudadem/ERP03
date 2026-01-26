@@ -37,7 +37,7 @@ const ApprovalSettingsPage: React.FC = () => {
               When enabled, vouchers start as <strong>Draft</strong> and must be explicitly 
               <strong> Sent for Approval</strong> and then <strong>Approved</strong> before they can be locked.
               <br/><br/>
-              When disabled (Simple Mode), creating a voucher automatically sets it to <strong>Approved</strong>.
+              When disabled (Flexible Mode), creating a voucher automatically sets it to <strong>Approved</strong>.
             </p>
           </div>
           

@@ -570,7 +570,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
                     <span className="text-gray-400">Policy:</span>
                     <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
                     </span>
                     <span className="text-gray-400">CID:</span>
                     <span className="font-mono opacity-70">{settings?.companyId?.slice(0, 8)}...</span>
@@ -915,13 +915,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             return (
               <button
                 onClick={handleSave}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border",
                   settingsLoading 
                     ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
                     : forceStrictMode
                       ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
-                }`}
+                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
+                  // HIDE "Save as Draft" if not draft (and not pending which has its own label)
+                  forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
+                )}
                 disabled={isSaving || settingsLoading}
               >
                 {isSaving || settingsLoading ? (

@@ -12,6 +12,7 @@ import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/Gene
 import { UIMode } from '../../../api/companyApi';
 import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { clsx } from 'clsx';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       return ['posted', 'approved', 'locked'].includes(status);
     }
     
-    // In SIMPLE mode (default), only locked is read-only
+    // In FLEXIBLE mode (default), only locked is read-only
     return status === 'locked';
   }, [initialData?.status, settings?.strictApprovalMode]);
 
@@ -157,7 +158,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
                       <span className="text-gray-400">Policy:</span>
                       <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                        {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Simple (Auto-Post)'}
+                        {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
                       </span>
                     </div>
                   </div>
@@ -242,15 +243,18 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               
               <button
                 onClick={() => handleSaveVoucher()}
-                className={`flex items-center gap-2 px-6 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border ${
+                className={clsx(
+                  "flex items-center gap-2 px-6 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border",
                   settingsLoading 
                     ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
                     : settings?.strictApprovalMode === true
                       // Strict Mode: 'Save as Draft' is Secondary action
                       ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                      // Simple Mode: 'Save & Post' is Primary action
-                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm'
-                }`}
+                      // Flexible Mode: 'Save & Post' is Primary action
+                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
+                  // HIDE if not draft (and not pending which has its own label)
+                  settings?.strictApprovalMode === true && initialData?.status && initialData.status.toLowerCase() !== 'draft' && initialData.status.toLowerCase() !== 'pending' && 'hidden'
+                )}
                 disabled={isSaving || settingsLoading}
               >
                 {isSaving || settingsLoading ? (

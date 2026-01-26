@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useCompanySettings } from '../hooks/useCompanySettings';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { Menu, Transition } from '@headlessui/react';
@@ -13,6 +14,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { company } = useCompanyAccess();
+  const { settings, isLoading: settingsLoading } = useCompanySettings();
   const { uiMode, setUiMode, theme, toggleTheme } = useUserPreferences();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -48,9 +50,21 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
 
           <div className="flex flex-col">
             <span className="font-bold text-[var(--color-text-primary)] leading-tight">{company?.name || 'No Company'}</span>
-            <span className="text-[10px] md:text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-tight">
-              {company?.baseCurrency || 'Currency: None'} • {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'FY: Unset'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] md:text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-tight">
+                {company?.baseCurrency || 'Currency: None'} • {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'FY: Unset'}
+              </span>
+              {!settingsLoading && settings && (
+                <span className={clsx(
+                  "px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border shadow-sm transition-all",
+                  settings.strictApprovalMode 
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800" 
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+                )}>
+                  {settings.strictApprovalMode ? '🔒 Strict' : '⚡ Flexible'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
