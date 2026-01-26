@@ -18,22 +18,20 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
   private getCollection(companyId: string) {
-    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucher_types (coll)
-    // UNIFIED: Pointing to the same collection as VoucherTypeDefinitionRepository
+    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
     return this.db
       .collection('companies')
       .doc(companyId)
       .collection('accounting')
       .doc('Settings')
-      .collection('voucher_types');
+      .collection('voucherForms');
   }
 
   private toDomain(data: any): VoucherFormDefinition {
     return {
       id: data.id,
       companyId: data.companyId,
-      // fallback: use ID if typeId missing (V2 migration compatibility)
-      typeId: data.typeId || data.id,
+      typeId: data.typeId,
       name: data.name,
       code: data.code,
       description: data.description || null,
