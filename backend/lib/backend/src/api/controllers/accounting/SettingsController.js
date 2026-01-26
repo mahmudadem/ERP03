@@ -25,6 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SettingsController = void 0;
 const admin = __importStar(require("firebase-admin"));
+const firestore_1 = require("firebase-admin/firestore");
 const SettingsResolver_1 = require("../../../application/common/services/SettingsResolver");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 /**
@@ -150,7 +151,7 @@ class SettingsController {
             console.log('[SettingsController] Saving to path:', settingsRef.path);
             // CLEANUP: Explicitly remove baseCurrency if it's trapped in this tier
             // We use FieldValue.delete() to ensure it's gone from the document
-            await settingsRef.update(Object.assign(Object.assign({}, updateData), { baseCurrency: admin.firestore.FieldValue.delete() }));
+            await settingsRef.update(Object.assign(Object.assign({}, updateData), { baseCurrency: firestore_1.FieldValue.delete() }));
             console.log('[SettingsController] Save and cleanup successful');
             res.json({
                 success: true,

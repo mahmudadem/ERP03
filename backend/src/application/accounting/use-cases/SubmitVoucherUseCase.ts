@@ -50,6 +50,12 @@ export class SubmitVoucherUseCase {
     }
 
     // Step 2: Validate can submit (only DRAFT or REJECTED status)
+    // IDEMPOTENCY FIX: If voucher is already APPROVED, assume it was auto-processed (Flexible Mode)
+    // and return it immediately instead of throwing error.
+    if (voucher.status === VoucherStatus.APPROVED) {
+      return voucher;
+    }
+
     if (voucher.status !== VoucherStatus.DRAFT && voucher.status !== VoucherStatus.REJECTED) {
       throw new Error(
         `Cannot submit voucher in status "${voucher.status}". ` +

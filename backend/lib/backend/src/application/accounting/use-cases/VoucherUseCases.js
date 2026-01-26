@@ -34,15 +34,10 @@ const VoucherValidationService_1 = require("../../../domain/accounting/services/
 const AppError_1 = require("../../../errors/AppError");
 const ErrorCodes_1 = require("../../../errors/ErrorCodes");
 const AccountValidationService_1 = require("../services/AccountValidationService");
-/**
- * CreateVoucherUseCase
- *
- * Saves a voucher in DRAFT status.
- * NEVER persists ledger lines.
- */
 class CreateVoucherUseCase {
     constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post
-    policyRegistry // Needed for auto-post
+    policyRegistry, // Needed for auto-post
+    currencyRepo // NEW: Optional for backward compat in constructor, but required logic
     ) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
@@ -53,16 +48,26 @@ class CreateVoucherUseCase {
         this.policyConfigProvider = policyConfigProvider;
         this.ledgerRepo = ledgerRepo;
         this.policyRegistry = policyRegistry;
+        this.currencyRepo = currencyRepo;
         this.validationService = new VoucherValidationService_1.VoucherValidationService();
     }
     async execute(companyId, userId, payload) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
         return this.transactionManager.runTransaction(async (transaction) => {
-            var _a;
+            // Fetch settings for general config (autoNumbering, etc)
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
-            // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
-            // Ledger entries MUST be in base currency only (accounting rule)
-            const baseCurrency = (_a = settings === null || settings === void 0 ? void 0 : settings.baseCurrency) === null || _a === void 0 ? void 0 : _a.toUpperCase();
+            // Resolve Base Currency Strategy:
+            // 1. Try Shared Currency Registry (Source of Truth) via currencyRepo
+            // 2. Fallback to Module Settings (Legacy/Backup)
+            let baseCurrency = null;
+            if (this.currencyRepo) {
+                baseCurrency = await this.currencyRepo.getBaseCurrency(companyId);
+            }
+            if (!baseCurrency) {
+                // Fallback to legacy settings
+                baseCurrency = settings === null || settings === void 0 ? void 0 : settings.baseCurrency;
+            }
+            baseCurrency = baseCurrency === null || baseCurrency === void 0 ? void 0 : baseCurrency.toUpperCase(); // Ensure uppercase
             if (!baseCurrency) {
                 throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.CRITICAL_CONFIG_MISSING, 'Company base currency is not configured. Please complete accounting module setup through the accounting wizard.', {
                     companyId,
@@ -389,6 +394,15 @@ class PostVoucherUseCase {
             const voucher = await this.voucherRepo.findById(companyId, voucherId);
             if (!voucher)
                 throw new Error('Voucher not found');
+            // IDEMPOTENCY FIX: If already posted, return safely.
+            // This allows controllers to blindly request "Post this approved voucher" without error.
+            if (voucher.isPosted) {
+                logger.info('POST_SKIPPED_ALREADY_POSTED', {
+                    voucherId: voucher.id,
+                    correlationId: corrId
+                });
+                return;
+            }
             // Log posting attempt
             logger.info('POST_ATTEMPT', {
                 voucherId: voucher.id,

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { SettingsResolver } from '../../../application/common/services/SettingsResolver';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 
@@ -152,7 +153,7 @@ export class SettingsController {
       // We use FieldValue.delete() to ensure it's gone from the document
       await settingsRef.update({
         ...updateData,
-        baseCurrency: admin.firestore.FieldValue.delete()
+        baseCurrency: FieldValue.delete()
       });
       
       console.log('[SettingsController] Save and cleanup successful');

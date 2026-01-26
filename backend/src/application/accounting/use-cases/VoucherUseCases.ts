@@ -14,14 +14,9 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
+import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { AccountValidationService } from '../services/AccountValidationService';
 
-/**
- * CreateVoucherUseCase
- * 
- * Saves a voucher in DRAFT status. 
- * NEVER persists ledger lines.
- */
 export class CreateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
@@ -32,7 +27,8 @@ export class CreateVoucherUseCase {
     private voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private policyConfigProvider?: IAccountingPolicyConfigProvider,
     private ledgerRepo?: ILedgerRepository, // Needed for auto-post
-    private policyRegistry?: any // Needed for auto-post
+    private policyRegistry?: any, // Needed for auto-post
+    private currencyRepo?: ICompanyCurrencyRepository // NEW: Optional for backward compat in constructor, but required logic
   ) {}
   
   private validationService = new VoucherValidationService();
@@ -41,11 +37,25 @@ export class CreateVoucherUseCase {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
     
     return this.transactionManager.runTransaction(async (transaction) => {
+      // Fetch settings for general config (autoNumbering, etc)
       const settings: any = await this.settingsRepo.getSettings(companyId, 'accounting');
+
+      // Resolve Base Currency Strategy:
+      // 1. Try Shared Currency Registry (Source of Truth) via currencyRepo
+      // 2. Fallback to Module Settings (Legacy/Backup)
       
-      // CRITICAL: baseCurrency must ALWAYS be the company's base currency, never from payload
-      // Ledger entries MUST be in base currency only (accounting rule)
-      const baseCurrency = settings?.baseCurrency?.toUpperCase();
+      let baseCurrency: string | null = null;
+      
+      if (this.currencyRepo) {
+          baseCurrency = await this.currencyRepo.getBaseCurrency(companyId);
+      }
+      
+      if (!baseCurrency) {
+          // Fallback to legacy settings
+          baseCurrency = settings?.baseCurrency;
+      }
+
+      baseCurrency = baseCurrency?.toUpperCase(); // Ensure uppercase
       
       if (!baseCurrency) {
         throw new BusinessError(
@@ -61,6 +71,8 @@ export class CreateVoucherUseCase {
       }
       
       const autoNumbering = settings?.autoNumbering !== false;
+      
+
 
       const voucherId = payload.id || randomUUID();
       const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
@@ -500,6 +512,16 @@ export class PostVoucherUseCase {
     return this.transactionManager.runTransaction(async (transaction) => {
       const voucher = await this.voucherRepo.findById(companyId, voucherId);
       if (!voucher) throw new Error('Voucher not found');
+
+      // IDEMPOTENCY FIX: If already posted, return safely.
+      // This allows controllers to blindly request "Post this approved voucher" without error.
+      if (voucher.isPosted) {
+        logger.info('POST_SKIPPED_ALREADY_POSTED', {
+            voucherId: voucher.id,
+            correlationId: corrId
+        });
+        return;
+      }
 
       // Log posting attempt
       logger.info('POST_ATTEMPT', {

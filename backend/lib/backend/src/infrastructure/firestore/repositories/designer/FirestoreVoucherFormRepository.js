@@ -16,14 +16,12 @@ class FirestoreVoucherFormRepository {
     }
     getCollection(companyId) {
         // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
-        const col = this.db
+        return this.db
             .collection('companies')
             .doc(companyId)
             .collection('accounting')
             .doc('Settings')
             .collection('voucherForms');
-        console.log(`[DEBUG_PATH] VoucherFormRepository accessing: ${col.path}`);
-        return col;
     }
     toDomain(data) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j;
