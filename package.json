@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit"
+    "emulators": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "db:export": "firebase emulators:export ./emulator-data"
   },
   "dependencies": {
     "firebase-admin": "^13.6.0",

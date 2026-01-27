@@ -62,6 +62,16 @@ class SettingsResolver {
     getModuleSubCollectionRef(companyId, moduleId, collectionName) {
         return this.getModuleSettingsRef(companyId, moduleId).collection(collectionName);
     }
+    getModuleDataRef(companyId, moduleId) {
+        return this.db
+            .collection('companies')
+            .doc(companyId)
+            .collection(moduleId)
+            .doc('Data');
+    }
+    getModuleDataCollection(companyId, moduleId, collectionName) {
+        return this.getModuleDataRef(companyId, moduleId).collection(collectionName);
+    }
     /**
      * RESOLUTION LOGIC (The Abstraction)
      * This is where the "Evolutionary" logic lives.
@@ -75,10 +85,17 @@ class SettingsResolver {
     }
     /**
      * Resolves the correct path for Exchange Rates.
-     * Path: companies/{id}/shared/Data/exchange_rates
+     * Path: companies/{id}/accounting/Data/exchange_rates
      */
     getExchangeRatesCollection(companyId) {
-        return this.getSharedDataCollection(companyId, 'exchange_rates');
+        return this.getModuleDataCollection(companyId, 'accounting', 'exchange_rates');
+    }
+    /**
+     * Resolves the correct path for Vouchers.
+     * Path: companies/{id}/accounting/Data/vouchers
+     */
+    getVouchersCollection(companyId) {
+        return this.getModuleDataCollection(companyId, 'accounting', 'vouchers');
     }
     /**
      * Resolves the correct path for Accounting Module Settings.

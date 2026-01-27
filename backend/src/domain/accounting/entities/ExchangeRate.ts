@@ -53,7 +53,7 @@ export class ExchangeRate {
    * Date as ISO date string (YYYY-MM-DD)
    */
   get dateString(): string {
-    return this.date.toISOString().split('T')[0];
+    return `${this.date.getFullYear()}-${String(this.date.getMonth() + 1).padStart(2, '0')}-${String(this.date.getDate()).padStart(2, '0')}`;
   }
 
   /**

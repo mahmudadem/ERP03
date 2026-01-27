@@ -10,9 +10,9 @@ class GetProfitAndLossUseCase {
         var _a;
         // Check permission
         await this.permissionChecker.assertOrThrow(input.userId, input.companyId, 'accounting.reports.profitAndLoss.view');
-        // Fetch vouchers in the date range (V2 interface uses ISO date strings)
-        const fromDateStr = input.fromDate.toISOString().split('T')[0];
-        const toDateStr = input.toDate.toISOString().split('T')[0];
+        // Fetch vouchers in the date range (V2 interface uses ISO date strings with local safety)
+        const fromDateStr = `${input.fromDate.getFullYear()}-${String(input.fromDate.getMonth() + 1).padStart(2, '0')}-${String(input.fromDate.getDate()).padStart(2, '0')}`;
+        const toDateStr = `${input.toDate.getFullYear()}-${String(input.toDate.getMonth() + 1).padStart(2, '0')}-${String(input.toDate.getDate()).padStart(2, '0')}`;
         const vouchers = await this.voucherRepository.findByDateRange(input.companyId, fromDateStr, toDateStr);
         console.log(`📊 Fetched ${vouchers.length} vouchers from repository`);
         // V1: Filter only vouchers with financial effect (isPosted = true means postedAt exists)

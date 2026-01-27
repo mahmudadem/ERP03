@@ -18,7 +18,11 @@ export interface VoucherFilters {
 
 // Default: 2000-01-01 (per user request) to today
 export const getDefaultDateRange = (fiscalYearStart?: string): DateRange => {
-  const to = new Date();
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const toStr = `${year}-${month}-${day}`;
   
   // Use fiscal year start if provided, otherwise default to 2000-01-01
   let fromStr = '2000-01-01';
@@ -35,7 +39,7 @@ export const getDefaultDateRange = (fiscalYearStart?: string): DateRange => {
   
   return {
     from: fromStr,
-    to: to.toISOString().split('T')[0],
+    to: toStr,
   };
 };
 

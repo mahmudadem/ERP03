@@ -23,8 +23,8 @@ import { TransactionSide } from '../types/VoucherTypes';
 
 // ========== MONEY CONSTANTS ==========
 
-/** Epsilon for money comparisons (1 cent tolerance) */
-export const MONEY_EPS = 0.01;
+/** Epsilon for money comparisons (tolerance for rounding artifacts) */
+export const MONEY_EPS = 0.0001;
 
 /** Default decimal places for money rounding */
 export const MONEY_DECIMALS = 2;

@@ -61,6 +61,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [showConfirmSubmitModal, setShowConfirmSubmitModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
+  const [liveCurrency, setLiveCurrency] = useState<string>(win.data?.currency || '');
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<'REVERSE_ONLY' | 'REVERSE_AND_REPLACE'>('REVERSE_ONLY');
   const isInitialLoadRef = useRef(true); // Track initial load to prevent false dirty state
@@ -778,17 +779,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             if (!isInitialLoadRef.current && !isVoucherReadOnly) {
               setIsDirty(true);
             }
-            if (newData?.lines && Array.isArray(newData.lines)) {
-              // Only update liveLines if the new lines have actual data
-              // This prevents INITIAL_ROWS (50 empty placeholders) from overwriting real data
-              const hasRealData = newData.lines.some((l: any) => 
-                (parseFloat(l.debit) || 0) > 0 || 
-                (parseFloat(l.credit) || 0) > 0 || 
-                l.accountId
-              );
-              if (hasRealData) {
-                setLiveLines(newData.lines);
-              }
+            if (newData) {
+               if (newData.currency) {
+                 setLiveCurrency(newData.currency);
+               }
+               if (newData.lines && Array.isArray(newData.lines)) {
+                  // Only update liveLines if the new lines have actual data
+                  const hasRealData = newData.lines.some((l: any) => 
+                    (parseFloat(l.debit) || 0) > 0 || 
+                    (parseFloat(l.credit) || 0) > 0 || 
+                    l.accountId
+                  );
+                  if (hasRealData) {
+                    setLiveLines(newData.lines);
+                  }
+               }
             }
           }}
           onBlur={() => {
@@ -811,59 +816,71 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             
             for (const row of rows) {
               // Read debit/credit directly (these are the table values)
-              let debit = parseFloat(row.debit) || 0;
-              let credit = parseFloat(row.credit) || 0;
+              let debit = Number(row.debit) || 0;
+              let credit = Number(row.credit) || 0;
               
               // Fallback: if debit/credit are both 0, try side/amount format
               if (debit === 0 && credit === 0 && row.side && row.amount) {
-                const amt = parseFloat(row.amount) || 0;
+                const amt = Number(row.amount) || 0;
                 if (row.side === 'Debit' || row.side === 'debit') debit = amt;
                 else if (row.side === 'Credit' || row.side === 'credit') credit = amt;
               }
               
               // Apply parity for base currency equivalent
               // Backend sends 'exchangeRate', UI uses 'parity'
-              const parity = parseFloat(row.parity) || parseFloat(row.exchangeRate) || 1;
+              const parity = Number(row.parity) || Number(row.exchangeRate) || 1;
               totalDebitCalc += debit * parity;
               totalCreditCalc += credit * parity;
             }
             
-            const isBalanced = Math.abs(totalDebitCalc - totalCreditCalc) < 0.01;
+            const isBalanced = Math.abs(totalDebitCalc - totalCreditCalc) < 0.001;
             const hasValues = totalDebitCalc > 0 || totalCreditCalc > 0;
             
             // Gray when both are 0, green when balanced with values, red when unbalanced
             const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
             const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
             
-            const voucherCurrency = win.data?.currency || 
+            const liveData = rendererRef.current?.getData();
+            const voucherCurrency = liveCurrency || 
+                                   liveData?.currency || 
+                                   win.data?.currency || 
                                    rows.find(r => r.currency)?.currency || 
                                    (win.voucherType as any)?.defaultCurrency || 
                                    settings?.baseCurrency || '';
             
             return (
-              <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({voucherCurrency})</span>
-                  <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                    {new Intl.NumberFormat('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }).format(totalDebitCalc)}
-                  </span>
+              <div className="flex flex-col gap-2">
+                <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({voucherCurrency})</span>
+                    <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
+                      {new Intl.NumberFormat('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(totalDebitCalc)}
+                    </span>
+                  </div>
+                  
+                  {/* Vertical Divider (Pipeline) */}
+                  <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
+                  
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({voucherCurrency})</span>
+                    <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
+                      {new Intl.NumberFormat('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(totalCreditCalc)}
+                    </span>
+                  </div>
                 </div>
-                
-                {/* Vertical Divider (Pipeline) */}
-                <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
-                
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({voucherCurrency})</span>
-                  <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                    {new Intl.NumberFormat('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    }).format(totalCreditCalc)}
-                  </span>
-                </div>
+
+                {!isBalanced && hasValues && (
+                  <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-tight animate-pulse">
+                    <AlertTriangle size={12} strokeWidth={3} />
+                    Voucher Unbalanced: {Math.abs(totalDebitCalc - totalCreditCalc).toFixed(2)} {voucherCurrency} difference
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -912,11 +929,22 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             }
 
             // FOR EDITABLE VOUCHERS: Show standard Save/Post logic
+            const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
+            let td = 0; let tc = 0;
+            for (const r of currentRows) {
+              const p = Number(r.parity) || Number(r.exchangeRate) || 1;
+              td += (Number(r.debit) || 0) * p;
+              tc += (Number(r.credit) || 0) * p;
+            }
+            const isBalanced = Math.abs(td - tc) < 0.001;
+            const hasLines = currentRows.filter(r => r.accountId && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+            const canSave = isBalanced && hasLines;
+
             return (
               <button
                 onClick={handleSave}
                 className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border",
+                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed border",
                   settingsLoading 
                     ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
                     : forceStrictMode
@@ -925,7 +953,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   // HIDE "Save as Draft" if not draft (and not pending which has its own label)
                   forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
                 )}
-                disabled={isSaving || settingsLoading}
+                disabled={isSaving || settingsLoading || !canSave}
+                title={!isBalanced ? "Voucher must be balanced to save" : !hasLines ? "Voucher must have at least 2 lines" : ""}
               >
                 {isSaving || settingsLoading ? (
                   <>
@@ -950,20 +979,32 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           })()}
           
           {/* Submit button shown when strict mode is true OR it's a reversal */}
-          {!settingsLoading && forceStrictMode && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
-            <button
-            onClick={handleSubmit}
-            className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            {isSubmitting ? 'Submitting...' : 'Submit Approval'}
-          </button>
-          )}
+          {(() => {
+            const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
+            let td = 0; let tc = 0;
+            for (const r of currentRows) {
+              const p = Number(r.parity) || Number(r.exchangeRate) || 1;
+              td += (Number(r.debit) || 0) * p;
+              tc += (Number(r.credit) || 0) * p;
+            }
+            const isBalanced = Math.abs(td - tc) < 0.001;
+            
+            return !settingsLoading && forceStrictMode && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
+              <button
+                onClick={handleSubmit}
+                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                disabled={isSubmitting || !isBalanced}
+                title={!isBalanced ? "Voucher must be balanced to submit" : ""}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {isSubmitting ? 'Submitting...' : 'Submit Approval'}
+              </button>
+            );
+          })()}
 
           {win.data?.status?.toLowerCase() === 'pending' && (
             <div className="flex items-center gap-2">

@@ -130,7 +130,7 @@ export const diContainer = {
   get voucherRepository(): IVoucherRepository {
     // V2 Repository is the only implementation (legacy removed)
     // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
-    return new FirestoreVoucherRepositoryV2(getDb());
+    return new FirestoreVoucherRepositoryV2(getDb(), settingsResolver);
   },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(settingsResolver); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(settingsResolver); },

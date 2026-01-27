@@ -13,7 +13,10 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
   const [from, setFrom] = useState('');
   const [to, setTo] = useState(baseCurrency);
   const [rate, setRate] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }); // Default to today
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [deviation, setDeviation] = useState<{ percentage: number; warnings: any[] } | null>(null);
@@ -131,7 +134,10 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
       await accountingApi.saveExchangeRate(fromCurr, toCurr, rateValue, dateValue);
       errorHandler.showSuccess(`Rate updated: 1 ${fromCurr} = ${rateValue} ${toCurr}`);
       setRate('');
-      setDate(new Date().toISOString().split('T')[0]); // Reset to today
+      setDate(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      }); // Reset to today
       setDeviation(null);
       onSuccess();
     } catch (err: any) {

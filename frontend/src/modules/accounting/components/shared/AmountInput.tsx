@@ -80,11 +80,11 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(({
     // Default to 0 if invalid
     if (isNaN(finalValue)) finalValue = 0;
     
-    // Round to 2 decimals
-    finalValue = Math.round(finalValue * 100) / 100;
+    // Round to 6 decimals for higher precision in FX calculations
+    finalValue = Math.round(finalValue * 1000000) / 1000000;
 
     onChange(finalValue);
-    // Update display to show formatted value or empty if 0
+    // Update display to show original input or formatted value, but don't force 2 decimals anymore
     setDisplayValue(finalValue === 0 ? '' : finalValue.toString());
     
     // Trigger external blur

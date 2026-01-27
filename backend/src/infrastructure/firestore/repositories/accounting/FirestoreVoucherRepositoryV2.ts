@@ -2,26 +2,21 @@ import { Firestore } from 'firebase-admin/firestore';
 import { IVoucherRepository } from '../../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
 import { VoucherType, VoucherStatus } from '../../../../domain/accounting/types/VoucherTypes';
+import { SettingsResolver } from '../../../../application/common/services/SettingsResolver';
 
 /**
  * Firestore Voucher Repository Implementation (ADR-005 Compliant)
  * 
  * Simple, explicit persistence layer.
- * Storage: companies/{companyId}/vouchers/{voucherId}
+ * Storage: companies/{companyId}/accounting/Data/vouchers (Via SettingsResolver)
  */
 export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
-  private readonly COLLECTION_NAME = 'vouchers';
+  // private readonly COLLECTION_NAME = 'vouchers'; // Delegated to SettingsResolver
 
-  constructor(private readonly db: Firestore) {}
+  constructor(private readonly db: Firestore, private readonly settingsResolver: SettingsResolver) {}
 
   private getCollection(companyId: string) {
-    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> vouchers (coll)
-    return this.db
-      .collection('companies')
-      .doc(companyId)
-      .collection('accounting')
-      .doc('Data')
-      .collection(this.COLLECTION_NAME);
+    return this.settingsResolver.getVouchersCollection(companyId);
   }
 
   async save(voucher: VoucherEntity): Promise<VoucherEntity> {

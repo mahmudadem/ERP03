@@ -17,7 +17,7 @@ class CompanySettings {
     }
     // Factory method for default settings
     static default(companyId) {
-        return new CompanySettings(companyId, true, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31');
+        return new CompanySettings(companyId, false, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31');
     }
 }
 exports.CompanySettings = CompanySettings;

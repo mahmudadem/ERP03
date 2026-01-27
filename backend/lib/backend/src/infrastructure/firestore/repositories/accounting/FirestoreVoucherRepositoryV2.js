@@ -7,21 +7,16 @@ const VoucherTypes_1 = require("../../../../domain/accounting/types/VoucherTypes
  * Firestore Voucher Repository Implementation (ADR-005 Compliant)
  *
  * Simple, explicit persistence layer.
- * Storage: companies/{companyId}/vouchers/{voucherId}
+ * Storage: companies/{companyId}/accounting/Data/vouchers (Via SettingsResolver)
  */
 class FirestoreVoucherRepositoryV2 {
-    constructor(db) {
+    // private readonly COLLECTION_NAME = 'vouchers'; // Delegated to SettingsResolver
+    constructor(db, settingsResolver) {
         this.db = db;
-        this.COLLECTION_NAME = 'vouchers';
+        this.settingsResolver = settingsResolver;
     }
     getCollection(companyId) {
-        // MODULAR PATTERN: companies/{id}/accounting (coll) -> Data (doc) -> vouchers (coll)
-        return this.db
-            .collection('companies')
-            .doc(companyId)
-            .collection('accounting')
-            .doc('Data')
-            .collection(this.COLLECTION_NAME);
+        return this.settingsResolver.getVouchersCollection(companyId);
     }
     async save(voucher) {
         const data = voucher.toJSON();

@@ -102,110 +102,61 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }, [initialData?.id]); // Only re-sync if the ID changes largely.
   
   // Recalculate parities when voucher currency or exchange rate changes
-  // SKIP for read-only vouchers - they should display as-is from the database
+  // IMPORTANT: This sync is ONLY for header-level changes. 
+  // Individual line parity changes (including Alt+B) are handled in handleRowChange.
   useEffect(() => {
-    // Don't recalculate for read-only vouchers
-    if (readOnly) {
+    // 1. Skip for read-only vouchers or if this is the first render of an EXISTING voucher
+    // We trust the saved database values on initial load.
+    if (readOnly || (isFirstRender.current && formData.id)) {
+      isFirstRender.current = false;
       return;
     }
     
+    // We only want to trigger this if the HEADER currency or rate changed.
+    // If individual lines changed, handleRowChange already updated them.
     const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
     const voucherCurrency = (formData.currency || company?.baseCurrency || '').toUpperCase();
     const baseCurrency = (company?.baseCurrency || '').toUpperCase();
     
+    const syncParitiesWithHeader = async () => {
+      // 1. Identify which lines need a rate fetch
+      const updatedRows = [...rows];
+      let hasChanges = false;
 
-    
-    // Fetch rates for all foreign currency lines (Optimized to batch requests)
-    const recalculateAllParities = async () => {
-      
-      // 1. Identify unique currencies that need updating
-      const currenciesToFetch = new Set<string>();
-      
-      rows.forEach(row => {
+      for (let i = 0; i < updatedRows.length; i++) {
+        const row = updatedRows[i];
+        if (!row.account) continue;
+
         const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
-        // Only fetch if line currency DIFFERS from voucher currency
-        if (lineCurrency !== voucherCurrency) {
-           currenciesToFetch.add(lineCurrency);
+        
+        // Logical rule: If line currency matches VOUCHER currency, parity is ALWAYS 1.0
+        if (lineCurrency === voucherCurrency && row.parity !== 1.0) {
+          updatedRows[i] = { ...row, parity: 1.0, equivalent: (parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0) };
+          hasChanges = true;
+          continue;
         }
-      });
-      
-      const uniqueCurrencies = Array.from(currenciesToFetch);
-      
-      // 2. Fetch rates for unique currencies (if any)
-      const ratesMap = new Map<string, number>();
-      
-      if (uniqueCurrencies.length > 0) {
-        await Promise.all(uniqueCurrencies.map(async (currency) => {
-          try {
-            // Optimization: Fetch rate RELATIVE TO VOUCHER CURRENCY
-            // If EUR voucher and USD line, we need USD->EUR rate
 
-            
-            // If line is base (USD) and voucher is foreign (EUR), we use inverse of header rate
-            if (currency === baseCurrency && voucherCurrency !== baseCurrency && voucherRate !== 1.0) {
-              const inverse = 1 / voucherRate;
-              ratesMap.set(currency, inverse);
-              return;
-            }
-
-            const result = await accountingApi.getSuggestedRate(
-              currency,
-              voucherCurrency,
-              formData.date || getCompanyToday(settings)
-            );
-            
-            if (result.rate) {
-              ratesMap.set(currency, result.rate);
-            }
-          } catch (error) {
-            console.error(`[PARITY RECALC] Failed to fetch rate for ${currency}:`, error);
+        // If line is base currency (USD) and voucher is different (EUR), parity is inverse of header rate
+        if (lineCurrency === baseCurrency && voucherCurrency !== baseCurrency && voucherRate !== 1.0) {
+          const inverse = 1 / voucherRate;
+          if (Math.abs(row.parity - inverse) > 0.000001) {
+            const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
+            updatedRows[i] = { ...row, parity: inverse, equivalent: Math.round(amount * inverse * 100) / 100 };
+            hasChanges = true;
           }
-        }));
+        }
       }
 
-      // 3. Update all lines with correct rates
-      const updatedRows = rows.map(row => {
-        const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
-        const vCurrency = voucherCurrency;
-        const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
-        
-        // Case 1: Line Currency MATCHES Voucher Currency -> Force Parity 1.0
-        if (lineCurrency === vCurrency) {
-           const targetEquivalent = Math.round(amount * 1.0 * 100) / 100; // Relative to Header
-           if (row.parity !== 1.0 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
-             return { ...row, parity: 1.0, equivalent: targetEquivalent };
-           }
-           return row;
-        }
-        
-        // Case 2: Line Currency DIFFERENT -> Apply fetched/calculated rate
-        if (ratesMap.has(lineCurrency)) {
-            const rate = ratesMap.get(lineCurrency)!;
-            const targetEquivalent = Math.round(amount * rate * 100) / 100; // Relative to Header
-            
-            // Update if rate or equivalent differs
-            if (Math.abs((row.parity || 0) - rate) > 0.000001 || Math.abs((row.equivalent || 0) - targetEquivalent) > 0.01) {
-                return {
-                    ...row,
-                    parity: rate,
-                    equivalent: targetEquivalent
-                };
-            }
-        }
-        
-        return row;
-      });
-
-      // 4. Update state if changed
-      const hasChanges = updatedRows.some((row, i) => row.parity !== rows[i]?.parity);
       if (hasChanges) {
         setRows(updatedRows);
         onChangeRef.current?.({ ...formData, lines: updatedRows });
       }
     };
     
-    recalculateAllParities();
-  }, [readOnly, formData.exchangeRate, formData.currency, rows.map(r => r.debit).join(','), rows.map(r => r.credit).join(','), rows.map(r => r.currency).join(',')]);
+    syncParitiesWithHeader();
+    isFirstRender.current = false;
+  }, [readOnly, formData.exchangeRate, formData.currency]); // STRIPPED: No more rows-based dependencies! 
+
 
   // --- Math & Auto-Balance Logic ---
   const evaluateMathExpression = (expression: string): number | null => {
@@ -282,11 +233,16 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       rows.forEach(r => {
         if (r.id === rowId) return; // Skip current
-        const p = parseFloat(r.parity as any) || 1.0;
-        const d = (parseFloat(r.debit as any) || 0) * p;
-        const c = (parseFloat(r.credit as any) || 0) * p;
-        otherDebitBase += d;
-        otherCreditBase += c;
+        
+        // Use equivalent as the truth for current balance state
+        const isDebit = (parseFloat(r.debit as any) || 0) > 0;
+        const equiv = parseFloat(r.equivalent as any) || 0;
+        
+        if (isDebit) {
+          otherDebitBase += equiv;
+        } else {
+          otherCreditBase += equiv;
+        }
       });
       
       // PARITY BALANCING: Adjust Rate to match Amount
@@ -353,7 +309,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // Convert back to line currency
       const currentParity = rows.find(r => r.id === rowId)?.parity || 1.0;
       const finalAmount = requiredBase / currentParity;
-      const rounded = Math.round(finalAmount * 100) / 100;
+      const rounded = Math.round(finalAmount * 1000000) / 1000000;
       
       // Update immediately
       handleRowChange(rowId, field, rounded);
@@ -851,17 +807,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           }
 
           // MULTI-CURRENCY LOGIC: Re-calculate equivalent (Base Amount)
-          // Note: If we just set parity via equivalent, this will re-confirm the equivalent.
           const debit = parseFloat(updated.debit as any) || 0;
           const credit = parseFloat(updated.credit as any) || 0;
           const parity = parseFloat(updated.parity as any) || 1.0;
           const amount = debit || credit || 0;
           
-          // Only Recalculate Equivalent if we didn't just set it manually (to avoid rounding jitter)
-          // OR: Always recalculate to ensure consistency?
-          // If we manually set equivalent to 100, and amount 300. Parity 0.333333.
-          // 300 * 0.333333 = 99.9999. Rounds to 100.
-          // It is safer to recalculate to truth.
+          // ALWAYS Recalculate Equivalent to ensure it matches Amount * Parity
+          // Rounding to 2 decimal places is standard for currency values in accounting.
           updated.equivalent = Math.round(amount * parity * 100) / 100;
           
           targetRow = updated;
@@ -873,51 +825,47 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       return next;
     });
 
-    // 2. CALCULATE PARITY using voucher's exchange rate
-    if ((field === 'currency' || field === 'account') && targetRow) {
+    // 2. PARITY SYNC: (Calculates parity when currencies change)
+    // Only trigger if currency actually changes AND it's not the initial load of an existing voucher
+    if (((field as string) === 'currency' || (field as string) === 'account' || (field as string) === 'exchangeRate') && targetRow) {
+      const isNewVoucher = !initialData?.id;
+      const rowId = id;
+      
       const lineCurrency = targetRow.currency || '';
       const voucherCurrency = formData.currency || company?.baseCurrency || '';
       const baseCurrency = company?.baseCurrency || '';
       
-      console.log('[PARITY CALC] Full formData:', JSON.stringify(formData, null, 2));
-      console.log('[PARITY CALC]', {
-        field,
-        lineCurrency,
-        voucherCurrency,
-        baseCurrency,
-        voucherRate: formData.exchangeRate
-      });
-      
+      // If we are loading an existing voucher, don't auto-fetch/overwrite saved parities 
+      // unless the user just changed the currency.
+      if (!isNewVoucher && field !== 'currency' && field !== 'account') {
+        return;
+      }
+
       if (lineCurrency.toUpperCase() === voucherCurrency.toUpperCase()) {
         // Same as voucher currency → parity = 1
-        if (targetRow.parity !== 1.0) {
-          setRows((prev: JournalRow[]) => {
-            const next = prev.map(r => {
-              if (r.id === id) {
-                const debit = parseFloat(r.debit as any) || 0;
-                const credit = parseFloat(r.credit as any) || 0;
-                console.log('[PARITY CALC] Same as voucher currency, parity = 1');
-                return { ...r, parity: 1.0, equivalent: debit || credit || 0 };
-              }
-              return r;
-            });
-            onChangeRef.current?.({ ...formData, lines: next });
-            return next;
+        setRows((prev: JournalRow[]) => {
+          const next = prev.map(r => {
+            if (r.id === rowId) {
+              const debit = Number(r.debit) || 0;
+              const credit = Number(r.credit) || 0;
+              return { ...r, parity: 1.0, equivalent: debit || credit || 0 };
+            }
+            return r;
           });
-        }
+          onChangeRef.current?.({ ...formData, lines: next });
+          return next;
+        });
       } else if (lineCurrency.toUpperCase() === baseCurrency.toUpperCase()) {
-        // Line is in base currency (USD), voucher is in foreign currency (EUR)
-        // Use inverse of voucher rate: if EUR→USD = 1.13, then USD→EUR = 1/1.13 = 0.885
-        const voucherRate = parseFloat(formData.exchangeRate as any) || 1.0;
-        const parity = voucherRate !== 1.0 ? (1 / voucherRate) : 1.0;
+        // Line is in base currency, voucher is in foreign currency
+        const voucherRate = Number(formData.exchangeRate) || 1.0;
+        const parity = voucherRate !== 0 ? (1 / voucherRate) : 1.0;
         
         setRows((prev: JournalRow[]) => {
           const next = prev.map(r => {
-            if (r.id === id) {
-              const debit = parseFloat(r.debit as any) || 0;
-              const credit = parseFloat(r.credit as any) || 0;
+            if (r.id === rowId) {
+              const debit = Number(r.debit) || 0;
+              const credit = Number(r.credit) || 0;
               const amount = debit || credit || 0;
-              console.log('[PARITY CALC] Base currency line, using inverse of voucher rate:', parity);
               return { 
                 ...r, 
                 parity, 
@@ -930,27 +878,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           return next;
         });
       } else {
-        // Line is in different foreign currency (e.g., TRY in EUR voucher)
-        // Need to fetch TRY→EUR rate from database
+        // Line is in different foreign currency
         try {
-          console.log('[PARITY CALC] Fetching rate from database:', lineCurrency, '→', voucherCurrency);
           const result = await accountingApi.getSuggestedRate(
             lineCurrency, 
             voucherCurrency,
             formData.date || getCompanyToday(settings)
           );
           
-          console.log('[PARITY CALC] Database result:', result);
-          
           if (result.rate) {
             setRows((prev: JournalRow[]) => {
               const next = prev.map(r => {
-                if (r.id === id) {
+                if (r.id === rowId) {
                   const parity = result.rate || 1.0;
-                  const debit = parseFloat(r.debit as any) || 0;
-                  const credit = parseFloat(r.credit as any) || 0;
+                  const debit = Number(r.debit) || 0;
+                  const credit = Number(r.credit) || 0;
                   const amount = debit || credit || 0;
-                  console.log('[PARITY CALC] Setting parity from database:', parity);
                   return { 
                     ...r, 
                     parity, 
@@ -964,7 +907,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             });
           }
         } catch (error) {
-          console.error('[PARITY CALC] Failed to fetch rate:', error);
+          console.error('[PARITY SYNC] Failed to fetch rate:', error);
         }
       }
     }
@@ -1072,9 +1015,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // 0. Special Components (Currency Exchange Widget via Registry)
     if (fieldId === 'currencyExchange' || fieldId === 'exchangeRate') {
       const CurrencyComp = CustomComponentRegistry.currencyExchange;
+      // Fix label if it comes through as the raw ID
+      const displayLabel = (finalLabel === 'CURRENCYEXCHANGE' || finalLabel === 'currencyExchange') 
+                          ? 'Exchange Rate' 
+                          : finalLabel;
+                          
       return (
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{displayLabel}</label>
           <CurrencyComp
             currency={formData.currency || 'USD'}
             value={formData.exchangeRate}
@@ -1528,6 +1476,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                 return (
                                     <td key={`total-${col.id}`} className="p-2 text-end font-mono text-xs font-bold text-[var(--color-text-primary)]">
                                         {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        <span className="text-[10px] text-[var(--color-text-muted)] ml-1 font-normal">
+                                          {formData.currency || company?.baseCurrency || ''}
+                                        </span>
                                     </td>
                                 );
                             }
@@ -1537,13 +1488,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                 const equivDebit = rows.reduce((sum, r) => sum + ((parseFloat(r.debit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
                                 const equivCredit = rows.reduce((sum, r) => sum + ((parseFloat(r.credit as any) || 0) * (parseFloat(r.parity as any) || 1)), 0);
                                 const balanced = Math.abs(equivDebit - equivCredit) < 0.01;
+                                const baseCode = company?.baseCurrency || '';
                                 
                                 return (
                                     <td key={`total-${col.id}`} className="p-2 text-end">
                                       <div className="flex flex-col items-end">
                                         <div className="flex gap-2 text-[10px] text-[var(--color-text-muted)] font-bold uppercase">
-                                          <span>D: {equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                          <span>C: {equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                          <span>D: {equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
+                                          <span>C: {equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
                                         </div>
                                         <div className={`text-xs font-mono font-bold ${balanced ? 'text-success-600' : 'text-danger-600'}`}>
                                           Diff: {(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}

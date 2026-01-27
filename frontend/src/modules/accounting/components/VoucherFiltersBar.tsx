@@ -63,7 +63,11 @@ export const VoucherFiltersBar: React.FC<Props> = ({
     
     // Reset date range to the system default (2000-01-01)
     // We import the logic directly to avoid another round-trip
-    const to = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const to = `${year}-${month}-${day}`;
     const defaultRange = { from: '2000-01-01', to };
     setLocalDateRange(defaultRange);
     

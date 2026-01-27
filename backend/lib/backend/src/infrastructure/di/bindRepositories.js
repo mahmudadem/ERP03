@@ -83,7 +83,7 @@ exports.diContainer = {
     get voucherRepository() {
         // V2 Repository is the only implementation (legacy removed)
         // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
-        return new FirestoreVoucherRepositoryV2_1.FirestoreVoucherRepositoryV2(getDb());
+        return new FirestoreVoucherRepositoryV2_1.FirestoreVoucherRepositoryV2(getDb(), settingsResolver);
     },
     get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(settingsResolver); },
     get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(settingsResolver); },

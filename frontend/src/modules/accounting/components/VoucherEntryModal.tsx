@@ -200,34 +200,58 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)] transition-colors duration-300">
             
             {/* Totals Display */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-4">
+                {(() => {
+                  const rows = rendererRef.current?.getRows() || [];
+                  const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.equivalent) || 0) * ((parseFloat(row.debit) || 0) > 0 ? 1 : 0), 0);
+                  const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.equivalent) || 0) * ((parseFloat(row.credit) || 0) > 0 ? 1 : 0), 0);
+                  
+                  // Use stricter tolerance for UI (0.001) to ensure exact matches
+                  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
+                  const hasValues = totalDebit > 0 || totalCredit > 0;
+                  
+                  const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
+                  const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
+                  
+                  return (
+                    <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Debit ({voucherType.defaultCurrency || ''})</span>
+                        <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
+                          {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalDebit)}
+                        </span>
+                      </div>
+                      <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({voucherType.defaultCurrency || ''})</span>
+                        <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
+                          {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalCredit)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {/* Unbalanced Warning */}
               {(() => {
                 const rows = rendererRef.current?.getRows() || [];
-                const totalDebit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) || 0), 0);
-                const totalCredit = rows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0);
-                const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+                const totalDebit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.debit) || 0) > 0 ? 1 : 0), 0);
+                const totalCredit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.credit) || 0) > 0 ? 1 : 0), 0);
+                const diff = Math.abs(totalDebit - totalCredit);
+                const isBalanced = diff < 0.001;
                 const hasValues = totalDebit > 0 || totalCredit > 0;
                 
-                const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
-                const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
-                
-                return (
-                  <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Debit ({voucherType.defaultCurrency || ''})</span>
-                      <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                        {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalDebit)}
-                      </span>
+                if (hasValues && !isBalanced) {
+                  return (
+                    <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-tight animate-pulse">
+                      <X size={12} strokeWidth={3} />
+                      Voucher Unbalanced: {diff.toFixed(2)} {voucherType.defaultCurrency || ''} difference in document currency
                     </div>
-                    <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({voucherType.defaultCurrency || ''})</span>
-                      <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                        {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalCredit)}
-                      </span>
-                    </div>
-                  </div>
-                );
+                  );
+                }
+                return null;
               })()}
             </div>
 
@@ -241,63 +265,83 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 Cancel
               </button>
               
-              <button
-                onClick={() => handleSaveVoucher()}
-                className={clsx(
-                  "flex items-center gap-2 px-6 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 border",
-                  settingsLoading 
-                    ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
-                    : settings?.strictApprovalMode === true
-                      // Strict Mode: 'Save as Draft' is Secondary action
-                      ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                      // Flexible Mode: 'Save & Post' is Primary action
-                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
-                  // HIDE if not draft (and not pending which has its own label)
-                  settings?.strictApprovalMode === true && initialData?.status && initialData.status.toLowerCase() !== 'draft' && initialData.status.toLowerCase() !== 'pending' && 'hidden'
-                )}
-                disabled={isSaving || settingsLoading}
-              >
-                {isSaving || settingsLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
-                  </>
-                ) : (
-                  <>
-                    {(() => {
-                      if (settings?.strictApprovalMode !== true) return <CheckCircle className="w-4 h-4" />;
-                      const status = initialData?.status?.toLowerCase();
-                      if (status === 'pending' || status === 'approved' || status === 'posted') return <Save className="w-4 h-4" />;
-                      return <Save className="w-4 h-4" />;
-                    })()}
-                    {(() => {
-                      if (settings?.strictApprovalMode !== true) return 'Save & Post';
-                      const status = initialData?.status?.toLowerCase();
-                      if (status === 'pending') return 'Update Pending Voucher';
-                      if (status === 'approved' || status === 'posted') return 'Save Changes';
-                      return 'Save as Draft';
-                    })()}
-                  </>
-                )}
-              </button>
+              {(() => {
+                const rows = rendererRef.current?.getRows() || [];
+                const totalDebit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.debit) || 0) > 0 ? 1 : 0), 0);
+                const totalCredit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.credit) || 0) > 0 ? 1 : 0), 0);
+                const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
+                const hasLines = rows.filter(r => r.account && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+                const canSave = isBalanced && hasLines;
+
+                return (
+                  <button
+                    onClick={() => handleSaveVoucher()}
+                    className={clsx(
+                      "flex items-center gap-2 px-6 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed border",
+                      settingsLoading 
+                        ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
+                        : settings?.strictApprovalMode === true
+                          // Strict Mode: 'Save as Draft' is Secondary action
+                          ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                          // Flexible Mode: 'Save & Post' is Primary action
+                          : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
+                      // HIDE if not draft (and not pending which has its own label)
+                      settings?.strictApprovalMode === true && initialData?.status && initialData.status.toLowerCase() !== 'draft' && initialData.status.toLowerCase() !== 'pending' && 'hidden'
+                    )}
+                    disabled={isSaving || settingsLoading || !canSave}
+                    title={!isBalanced ? "Voucher must be balanced to save" : !hasLines ? "Voucher must have at least 2 lines" : ""}
+                  >
+                    {isSaving || settingsLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
+                      </>
+                    ) : (
+                      <>
+                        {(() => {
+                          if (settings?.strictApprovalMode !== true) return <CheckCircle className="w-4 h-4" />;
+                          const status = initialData?.status?.toLowerCase();
+                          if (status === 'pending' || status === 'approved' || status === 'posted') return <Save className="w-4 h-4" />;
+                          return <Save className="w-4 h-4" />;
+                        })()}
+                        {(() => {
+                          if (settings?.strictApprovalMode !== true) return 'Save & Post';
+                          const status = initialData?.status?.toLowerCase();
+                          if (status === 'pending') return 'Update Pending Voucher';
+                          if (status === 'approved' || status === 'posted') return 'Save Changes';
+                          return 'Save as Draft';
+                        })()}
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
 
               {/* Submit button only shown when strict mode is explicitly true */}
-              {!settingsLoading && settings?.strictApprovalMode === true && (!initialData?.status || initialData?.status?.toLowerCase() === 'draft' || initialData?.status?.toLowerCase() === 'rejected') && (
-                <button
-                  onClick={() => handleSaveVoucher('submitted')} 
-                  className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Submit Approval
-                    </>
-                  )}
-                </button>
-              )}
+              {(() => {
+                const rows = rendererRef.current?.getRows() || [];
+                const totalDebit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.debit) || 0) > 0 ? 1 : 0), 0);
+                const totalCredit = rows.reduce((sum: number, row: any) => sum + (Number(row.equivalent) || 0) * ((Number(row.credit) || 0) > 0 ? 1 : 0), 0);
+                const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
+
+                return !settingsLoading && settings?.strictApprovalMode === true && (!initialData?.status || initialData?.status?.toLowerCase() === 'draft' || initialData?.status?.toLowerCase() === 'rejected') && (
+                  <button
+                    onClick={() => handleSaveVoucher('submitted')} 
+                    className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                    disabled={isSubmitting || !isBalanced}
+                    title={!isBalanced ? "Voucher must be balanced to submit" : ""}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Submit Approval
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

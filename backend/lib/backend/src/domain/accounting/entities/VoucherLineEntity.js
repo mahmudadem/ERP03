@@ -22,8 +22,8 @@ exports.VoucherLineEntity = exports.moneyEquals = exports.roundMoney = exports.M
  * - Constructor validates that baseAmount matches roundMoney(amount * exchangeRate) within MONEY_EPS
  */
 // ========== MONEY CONSTANTS ==========
-/** Epsilon for money comparisons (1 cent tolerance) */
-exports.MONEY_EPS = 0.01;
+/** Epsilon for money comparisons (tolerance for rounding artifacts) */
+exports.MONEY_EPS = 0.0001;
 /** Default decimal places for money rounding */
 exports.MONEY_DECIMALS = 2;
 /**

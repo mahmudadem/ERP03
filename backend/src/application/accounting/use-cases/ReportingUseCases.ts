@@ -234,12 +234,13 @@ export class GetGeneralLedgerUseCase {
       const voucher = voucherMap.get(entry.voucherId);
       
       const dateStr = (() => {
-        const d = entry.date;
+        const d = entry.date as any;
         if (!d) return '';
-        if (d instanceof Date) return d.toISOString().split('T')[0];
+        if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         if (typeof d === 'string') return d.includes('T') ? d.split('T')[0] : d;
         if (typeof d === 'object' && 'seconds' in d) {
-          return new Date((d as any).seconds * 1000).toISOString().split('T')[0];
+          const date = new Date(d.seconds * 1000);
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
         return String(d);
       })();

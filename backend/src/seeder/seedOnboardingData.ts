@@ -297,8 +297,10 @@ async function seedCompanyRoles() {
   }
 }
 
-async function main() {
-  console.log('\n🌱 Seeding Onboarding Data...\n');
+
+// Export the main function to be used by other seeders
+export async function seedOnboardingData() {
+  console.log('🌱 Seeding Onboarding Data (Plans, Bundles, Permissions)...');
   try {
     await seedPlans();
     await seedBundles();
@@ -307,11 +309,24 @@ async function main() {
     await seedPermissions();
     await seedRoleTemplates();
     await seedCompanyRoles();
-    console.log('\n🎉 Seeding complete!\n');
+    console.log('✅ Onboarding Data Seeding complete!');
   } catch (error) {
-    console.error('❌ Error during seeding:', error);
-    process.exit(1);
+    console.error('❌ Error during onboarding seeding:', error);
+    throw error;
   }
 }
 
-main();
+// Allow standalone execution if this file is run directly
+if (require.main === module) {
+  // Force Emulator usage for standalone run
+  process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+  process.env.GCLOUD_PROJECT = 'erp-03';
+  
+  seedOnboardingData().then(() => {
+    console.log('\n🎉 Standalone Seeding complete!\n');
+    process.exit(0);
+  }).catch(() => {
+      process.exit(1);
+  });
+}
+

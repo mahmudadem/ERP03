@@ -150,7 +150,8 @@ export class InitializeAccountingUseCase {
     // The user has chosen these definitive settings during Accounting Init.
     await this.companySettingsRepo.updateSettings(companyId, {
       fiscalYearStart: config.fiscalYearStart,
-      fiscalYearEnd: config.fiscalYearEnd
+      fiscalYearEnd: config.fiscalYearEnd,
+      strictApprovalMode: false // Explicitly set to Flexible
     });
 
     // Mirror fiscal periods to main company document

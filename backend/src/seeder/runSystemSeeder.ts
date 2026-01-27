@@ -7,6 +7,7 @@ process.env.GCLOUD_PROJECT = 'erp-03';
 import { diContainer } from '../infrastructure/di/bindRepositories';
 import { seedSystemVoucherTypes } from './seedSystemVoucherTypes';
 import { seedSystemMetadata } from './seedSystemMetadata';
+import { seedOnboardingData } from './seedOnboardingData';
 
 async function runSystemSeeder() {
     console.log('Running System Seeder...');
@@ -20,6 +21,11 @@ async function runSystemSeeder() {
         console.log('--- Step 2: Seeding Metadata (Currencies, COA) ---');
         await seedSystemMetadata(diContainer.systemMetadataRepository);
         console.log('✅ Metadata Step Finished.\n');
+
+        // Step 3: Onboarding Data
+        console.log('--- Step 3: Seeding Onboarding Data (Plans, Bundles, Permissions) ---');
+        await seedOnboardingData();
+        console.log('✅ Onboarding Data Step Finished.\n');
         
         console.log('🚀 ALL SYSTEM SEEDING COMPLETE.');
     } catch (error: any) {

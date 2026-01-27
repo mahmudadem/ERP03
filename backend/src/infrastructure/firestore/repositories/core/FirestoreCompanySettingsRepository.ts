@@ -13,7 +13,7 @@ export class FirestoreCompanySettingsRepository implements ICompanySettingsRepos
   protected toDomain(data: any): CompanySettings {
     return new CompanySettings(
       data.companyId,
-      data.strictApprovalMode ?? true,
+      data.strictApprovalMode ?? false,
       data.uiMode,
       data.timezone,
       data.dateFormat,

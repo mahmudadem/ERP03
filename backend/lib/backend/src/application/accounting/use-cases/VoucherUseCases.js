@@ -138,7 +138,10 @@ class CreateVoucherUseCase {
             // V3: Inject creationMode for audit transparency and badge logic
             // This ensures that even before posting, the intended governance mode is clear.
             const creationMode = approvalRequired ? 'STRICT' : 'FLEXIBLE';
-            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || new Date().toISOString().split('T')[0], payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, Object.assign(Object.assign({}, voucherMetadata), { creationMode }), // Inject creationMode here
+            const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, voucherType, payload.date || (() => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            })(), payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, Object.assign(Object.assign({}, voucherMetadata), { creationMode }), // Inject creationMode here
             userId, new Date());
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation

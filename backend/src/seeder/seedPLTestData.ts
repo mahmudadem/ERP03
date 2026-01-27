@@ -370,9 +370,11 @@ async function seedPLTestData() {
   console.log('💾 Creating test vouchers...\n');
 
   for (const voucher of testVouchers) {
-    // Seed into company subcollection
+    // Seed into modular company subcollection
     await db.collection('companies')
       .doc(companyId)
+      .collection('accounting')
+      .doc('Data')
       .collection('vouchers')
       .doc(voucher.id)
       .set(voucher);

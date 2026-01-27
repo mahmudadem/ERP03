@@ -294,7 +294,10 @@ const GeneralLedgerPage: React.FC = () => {
       {/* Print Header */}
       <div className="hidden print:block mb-8">
         <h1 className="text-2xl font-bold text-gray-900">General Ledger Report</h1>
-        <p className="text-sm text-gray-600">Generated on {formatCompanyDate(new Date(), settings)}</p>
+        <p className="text-sm text-gray-600">Generated on {(() => {
+          const now = new Date();
+          return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        })()}</p>
         {selectedAccount && (
           <p className="text-sm text-gray-600 mt-1">Account: {selectedAccount.code} - {selectedAccount.name}</p>
         )}
@@ -364,9 +367,10 @@ const GeneralLedgerPage: React.FC = () => {
                           const d = entry.date as any;
                           if (!d) return '-';
                           if (typeof d === 'string') return d.split('T')[0];
-                          if (d instanceof Date) return d.toISOString().split('T')[0];
+                          if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                           if (typeof d === 'object' && 'seconds' in d) {
-                            return new Date(d.seconds * 1000).toISOString().split('T')[0];
+                            const date = new Date(d.seconds * 1000);
+                            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                           }
                           return String(d);
                         })()}
