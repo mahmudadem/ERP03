@@ -123,28 +123,66 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const updatedRows = [...rows];
       let hasChanges = false;
 
+      // We need to collect all async tasks to run them properly
+      const patchTasks: Promise<void>[] = [];
+
       for (let i = 0; i < updatedRows.length; i++) {
         const row = updatedRows[i];
         if (!row.account) continue;
 
         const lineCurrency = (row.currency || voucherCurrency).toUpperCase();
         
-        // Logical rule: If line currency matches VOUCHER currency, parity is ALWAYS 1.0
-        if (lineCurrency === voucherCurrency && row.parity !== 1.0) {
-          updatedRows[i] = { ...row, parity: 1.0, equivalent: (parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0) };
-          hasChanges = true;
+        // Case 1: If line currency matches VOUCHER currency, parity is ALWAYS 1.0
+        if (lineCurrency === voucherCurrency) {
+          if (row.parity !== 1.0) {
+            const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
+            updatedRows[i] = { ...row, parity: 1.0, equivalent: amount };
+            hasChanges = true;
+          }
           continue;
         }
 
-        // If line is base currency (USD) and voucher is different (EUR), parity is inverse of header rate
-        if (lineCurrency === baseCurrency && voucherCurrency !== baseCurrency && voucherRate !== 1.0) {
-          const inverse = 1 / voucherRate;
+        // Case 2: If line is base currency (e.g. SYP) and voucher is foreign (e.g. USD)
+        // Parity is the inverse of the header rate (1 / rate)
+        if (lineCurrency === baseCurrency && voucherCurrency !== baseCurrency) {
+          const inverse = voucherRate !== 0 ? (1 / voucherRate) : 1.0;
           if (Math.abs(row.parity - inverse) > 0.000001) {
             const amount = parseFloat(row.debit as any) || parseFloat(row.credit as any) || 0;
             updatedRows[i] = { ...row, parity: inverse, equivalent: Math.round(amount * inverse * 100) / 100 };
             hasChanges = true;
           }
+          continue;
         }
+
+        // Case 3: Foreign-to-Foreign parity (e.g. Line is TRY, Voucher is USD)
+        // We need to fetch the suggested rate for TRY -> USD
+        const task = (async (index: number, r: JournalRow) => {
+          try {
+             const result = await accountingApi.getSuggestedRate(
+               lineCurrency, 
+               voucherCurrency,
+               formData.date || getCompanyToday(settings)
+             );
+             if (result.rate !== null && Math.abs(r.parity - result.rate) > 0.000001) {
+                const amount = parseFloat(r.debit as any) || parseFloat(r.credit as any) || 0;
+                updatedRows[index] = { 
+                  ...r, 
+                  parity: result.rate, 
+                  equivalent: Math.round(amount * result.rate * 100) / 100 
+                };
+                hasChanges = true;
+             }
+          } catch (err) {
+            console.error('[PARITY SYNC] Foreign-to-Foreign fetch failed:', err);
+          }
+        })(i, row);
+        
+        patchTasks.push(task);
+      }
+
+      // Wait for all foreign fetch tasks to complete
+      if (patchTasks.length > 0) {
+        await Promise.all(patchTasks);
       }
 
       if (hasChanges) {
