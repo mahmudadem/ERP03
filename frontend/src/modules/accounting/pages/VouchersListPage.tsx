@@ -19,6 +19,9 @@ import { AccountsProvider } from '../../../context/AccountsContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { VoucherEntryModal } from '../components/VoucherEntryModal';
 import { VoucherPrintView } from '../components/VoucherPrintView';
+import { RateDeviationDialog } from '../components/shared/RateDeviationDialog';
+import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
+
 
 const VouchersListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +29,7 @@ const VouchersListPage: React.FC = () => {
   const typeFromUrl = searchParams.get('type')?.trim();
   
   
-  const { companyId } = useCompanyAccess();
+  const { companyId, company } = useCompanyAccess();
   
   // Use new caching hook
   const {
@@ -61,6 +64,11 @@ const VouchersListPage: React.FC = () => {
 
   // Delete Modal State
   const [deleteVoucherId, setDeleteVoucherId] = React.useState<string | null>(null);
+
+  // Rate Deviation Warning State
+  const [rateDeviationResult, setRateDeviationResult] = React.useState<RateDeviationResult | null>(null);
+  const [pendingSaveData, setPendingSaveData] = React.useState<any>(null);
+  const [isCheckingRates, setIsCheckingRates] = React.useState(false);
 
   // Update logic to sync URL/Type with client-side filters
   React.useEffect(() => {
@@ -236,6 +244,44 @@ const VouchersListPage: React.FC = () => {
   };
 
   const handleSaveWeb = async (data: any) => {
+    // First check for rate deviations
+    const baseCurrency = company?.baseCurrency || 'SYP';
+    const voucherCurrency = data.currency || baseCurrency;
+    const headerRate = parseFloat(data.exchangeRate) || 1;
+    const voucherDate = data.date || new Date().toISOString().split('T')[0];
+    
+    // Only check for multi-currency vouchers
+    if (voucherCurrency !== baseCurrency || data.lines?.some((l: any) => l.currency && l.currency !== voucherCurrency)) {
+      setIsCheckingRates(true);
+      try {
+        const deviationResult = await checkVoucherRateDeviations(
+          data.lines || [],
+          voucherCurrency,
+          headerRate,
+          baseCurrency,
+          voucherDate
+        );
+
+        if (deviationResult.hasDeviations) {
+          // Store the data and show the dialog
+          setPendingSaveData(data);
+          setRateDeviationResult(deviationResult);
+          setIsCheckingRates(false);
+          return; // Don't save yet, wait for user confirmation
+        }
+      } catch (error) {
+        console.error('Rate deviation check failed:', error);
+        // Continue with save even if check fails
+      } finally {
+        setIsCheckingRates(false);
+      }
+    }
+
+    // Proceed with normal save
+    await performSave(data);
+  };
+
+  const performSave = async (data: any) => {
     try {
       if (editingVoucher) {
         // Edit Mode
@@ -250,8 +296,50 @@ const VouchersListPage: React.FC = () => {
       setIsModalOpen(false);
     } catch (error: any) {
       console.error('Save failed:', error);
-      throw error; // Let logic inside modal handle/display specific error if needed, but we throw to stop modal closing if not caught
+      throw error;
     }
+  };
+
+  const handleRateDeviationSync = async () => {
+    if (rateDeviationResult && pendingSaveData) {
+      const voucherDate = (pendingSaveData as any).date || new Date().toISOString().split('T')[0];
+      const baseCurrency = company?.baseCurrency || 'SYP';
+      
+      try {
+        // Bulk sync all deviated rates to the system history for the voucher date
+        await Promise.all(
+          rateDeviationResult.warnings.map(warning => 
+            accountingApi.saveExchangeRate(warning.lineCurrency, baseCurrency, warning.effectiveRate, voucherDate)
+          )
+        );
+        
+        errorHandler.showSuccess(`Synced ${rateDeviationResult.warnings.length} rate(s) to system for ${voucherDate}`);
+        
+        // Proceed with voucher save
+        await performSave(pendingSaveData);
+      } catch (error) {
+        console.error('Failed to sync rates:', error);
+        errorHandler.showError('Successfully saved voucher with your rates, but some system rate updates failed.');
+        // Fallback: Still save the voucher even if sync fails
+        await performSave(pendingSaveData);
+      } finally {
+        setPendingSaveData(null);
+        setRateDeviationResult(null);
+      }
+    }
+  };
+
+  const handleRateDeviationConfirm = async () => {
+    if (pendingSaveData) {
+      await performSave(pendingSaveData);
+      setPendingSaveData(null);
+      setRateDeviationResult(null);
+    }
+  };
+
+  const handleRateDeviationCancel = () => {
+    setPendingSaveData(null);
+    setRateDeviationResult(null);
   };
 
   return (
@@ -423,6 +511,19 @@ const VouchersListPage: React.FC = () => {
                 </div>
              </div>
           </div>
+        )}
+
+        {/* Rate Deviation Warning Dialog */}
+        {rateDeviationResult && (
+          <RateDeviationDialog
+            isOpen={!!rateDeviationResult}
+            result={rateDeviationResult}
+            baseCurrency={company?.baseCurrency || 'SYP'}
+            voucherDate={(pendingSaveData as any)?.date || new Date().toISOString().split('T')[0]}
+            onConfirm={handleRateDeviationConfirm}
+            onConfirmWithSync={handleRateDeviationSync}
+            onCancel={handleRateDeviationCancel}
+          />
         )}
 
       </div>

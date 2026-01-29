@@ -1247,23 +1247,57 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                         />
                                                      </div>
 
-                                                 ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
+                                                 ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' ? (
                                                      <AmountInput
                                                          ref={(el) => registerCellRef(index, colIndex, el)}
                                                          value={(row[colId as keyof JournalRow] as number) || 0}
                                                          disabled={readOnly}
                                                          onChange={(val) => handleRowChange(row.id, colId as keyof JournalRow, val)}
                                                          onKeyDown={(e) => {
-                                                             if (colId === 'debit' || colId === 'credit' || colId === 'parity') {
-                                                                 handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit' | 'parity', index, colIndex);
+                                                             if (colId === 'debit' || colId === 'credit') {
+                                                                 handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIndex);
                                                              } else {
-                                                                 // Pass standard nav for equivalent (read-only usually) or others
                                                                  handleCellKeyDown(e, index, colIndex, totalCols);
                                                              }
                                                          }}
                                                          onBlur={() => onBlurRef.current?.()}
                                                          placeholder=""
                                                       />
+                                                 ) : colId === 'parity' ? (
+                                                     <div className="relative group/parity">
+                                                       <AmountInput
+                                                         ref={(el) => registerCellRef(index, colIndex, el)}
+                                                         value={(row.parity as number) || 1}
+                                                         disabled={readOnly}
+                                                         onChange={(val) => handleRowChange(row.id, 'parity', val)}
+                                                         onKeyDown={(e) => handleAmountKeyDown(e, row.id, 'parity', index, colIndex)}
+                                                         onBlur={() => onBlurRef.current?.()}
+                                                         placeholder=""
+                                                       />
+                                                       {/* Rate Deviation Warning */}
+                                                       {false && (rateDeviations[row.id]?.showWarning) && (
+                                                         <div className="absolute left-0 top-full z-50 mt-1 p-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md shadow-lg min-w-[200px] text-xs">
+                                                           <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium mb-1">
+                                                             <span>⚠️ Rate differs by {rateDeviations[row.id]?.deviation}%</span>
+                                                           </div>
+                                                           <div className="text-amber-600 dark:text-amber-400 mb-2">
+                                                             <div>Your rate: {row.parity}</div>
+                                                             <div>System rate: {rateDeviations[row.id]?.systemRate}</div>
+                                                           </div>
+                                                           <button
+                                                             onClick={() => handleSaveRateToSystem(row.id)}
+                                                             disabled={savingRate === row.id}
+                                                             className="w-full px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded transition-colors disabled:opacity-50"
+                                                           >
+                                                             {savingRate === row.id ? 'Saving...' : 'Add rate to system'}
+                                                           </button>
+                                                         </div>
+                                                       )}
+                                                       {/* Warning indicator dot */}
+                                                       {false && (rateDeviations[row.id]?.showWarning) && (
+                                                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full animate-pulse" title={`Rate differs by ${rateDeviations[row.id]?.deviation}%`} />
+                                                       )}
+                                                     </div>
                                                  ) : colId === 'currency' ? (
                                                      <div className="p-0.5 relative group/curr">
                                                        <CurrencySelector
@@ -1452,7 +1486,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  </div>
                                                )}
                                              </div>
-                                         ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' || colId === 'parity' ? (
+                                         ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' ? (
                                             <AmountInput
                                                ref={(el) => registerCellRef(index, colIdx, el)}
                                                value={parseFloat(row[colId as keyof JournalRow] as any) || 0}
@@ -1460,18 +1494,28 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                disabled={readOnly}
                                                placeholder=""
                                                onKeyDown={(e) => {
-                                                  // Pass to grid navigation
                                                   handleCellKeyDown(e, index, colIdx, columns.length);
-                                                  
-                                                  // Special handlers if needed (e.g. specific to these fields)
-                                                  if (colId === 'debit' || colId === 'credit' || colId === 'parity' || colId === 'equivalent') {
-                                                    handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit' | 'parity' | 'equivalent', index, colIdx);
+                                                  if (colId === 'debit' || colId === 'credit') {
+                                                    handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIdx);
                                                   }
                                                }}
-                                               // Ensure onBlur from grid is called if needed (AmountInput handles its own blur for math, but we might need to clear styling state)
                                                onBlur={() => onBlurRef.current?.()}
                                                className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                                             />
+                                         ) : colId === 'parity' ? (
+                                              <AmountInput
+                                                ref={(el) => registerCellRef(index, colIdx, el)}
+                                                value={parseFloat(row.parity as any) || 1}
+                                                onChange={(val) => handleRowChange(row.id, 'parity', val)}
+                                                disabled={readOnly}
+                                                placeholder=""
+                                                onKeyDown={(e) => {
+                                                   handleCellKeyDown(e, index, colIdx, columns.length);
+                                                   handleAmountKeyDown(e, row.id, 'parity', index, colIdx);
+                                                }}
+                                                onBlur={() => onBlurRef.current?.()}
+                                                className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                              />
                                          ) : (
                                              <input 
                                                ref={(el) => registerCellRef(index, colIdx, el)}

@@ -15,6 +15,8 @@ import { errorHandler } from '../../../services/errorHandler';
 import { clsx } from 'clsx';
 import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
 import { VoucherCorrectionModal } from './VoucherCorrectionModal';
+import { RateDeviationDialog } from './shared/RateDeviationDialog';
+import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
@@ -67,6 +69,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const isInitialLoadRef = useRef(true); // Track initial load to prevent false dirty state
   const [policyConfig, setPolicyConfig] = useState<AccountingPolicyConfig | null>(null);
   const [policyLoading, setPolicyLoading] = useState(true);
+  
+  // Rate Deviation Warning State
+  const [rateDeviationResult, setRateDeviationResult] = useState<RateDeviationResult | null>(null);
+  const [pendingSaveData, setPendingSaveData] = useState<any>(null);
+  const [isCheckingRates, setIsCheckingRates] = useState(false);
 
   const isReversal = React.useMemo(() => {
     return !!win.data?.reversalOfVoucherId || win.data?.type?.toLowerCase() === 'reversal';
@@ -267,7 +274,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
     
     const formData = rendererRef.current.getData();
-    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || '';
+    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || 'SYP';
+    const voucherCurrency = formData.currency || baseCurrency;
+    const headerRate = parseFloat(formData.exchangeRate) || 1;
     
     // FX Rate Validation: Block save if any FX line is missing exchange rate
     const lines = formData.lines || [];
@@ -304,6 +313,40 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       return;
     }
     
+    // RATE DEVIATION CHECK: Compare effective rate vs system rate before save
+    const hasForeignLines = voucherCurrency !== baseCurrency || lines.some((l: any) => l.currency && l.currency.toUpperCase() !== voucherCurrency.toUpperCase());
+    if (hasForeignLines) {
+      setIsCheckingRates(true);
+      try {
+        const voucherDate = formData.date || new Date().toISOString().split('T')[0];
+        const deviationResult = await checkVoucherRateDeviations(
+          lines,
+          voucherCurrency,
+          headerRate,
+          baseCurrency,
+          voucherDate
+        );
+
+        if (deviationResult.hasDeviations) {
+          // Store data and show dialog
+          setPendingSaveData(formData);
+          setRateDeviationResult(deviationResult);
+          setIsCheckingRates(false);
+          return; // Wait for user confirmation
+        }
+      } catch (error) {
+        console.error('Rate deviation check failed:', error);
+        // Continue with save if check fails
+      } finally {
+        setIsCheckingRates(false);
+      }
+    }
+
+    // Proceed with normal save
+    await performSave(formData);
+  };
+
+  const performSave = async (formData: any) => {
     setIsSaving(true);
     try {
       // Inject creation mode for audit transparency
@@ -322,6 +365,48 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleRateDeviationSync = async () => {
+    if (rateDeviationResult && pendingSaveData) {
+      const voucherDate = (pendingSaveData as any).date || new Date().toISOString().split('T')[0];
+      const baseCurrency = settings?.baseCurrency || 'SYP';
+      
+      try {
+        // Bulk sync all deviated rates to the system history for the voucher date
+        await Promise.all(
+          rateDeviationResult.warnings.map(warning => 
+            accountingApi.saveExchangeRate(warning.lineCurrency, baseCurrency, warning.effectiveRate, voucherDate)
+          )
+        );
+        
+        errorHandler.showSuccess(`Synced ${rateDeviationResult.warnings.length} rate(s) to system for ${voucherDate}`);
+        
+        // Proceed with voucher save
+        await performSave(pendingSaveData);
+      } catch (error) {
+        console.error('Failed to sync rates:', error);
+        errorHandler.showError('Successfully saved voucher with your rates, but some system rate updates failed.');
+        // Fallback: Still save the voucher even if sync fails
+        await performSave(pendingSaveData);
+      } finally {
+        setPendingSaveData(null);
+        setRateDeviationResult(null);
+      }
+    }
+  };
+
+  const handleRateDeviationConfirm = async () => {
+    if (pendingSaveData) {
+      await performSave(pendingSaveData);
+      setPendingSaveData(null);
+      setRateDeviationResult(null);
+    }
+  };
+
+  const handleRateDeviationCancel = () => {
+    setPendingSaveData(null);
+    setRateDeviationResult(null);
   };
 
   // Handle submit for approval - Stage 1 (Confirmation)
@@ -1237,6 +1322,19 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         setShowCorrectionModal(false);
       }}
     />
+
+    {/* Rate Deviation Warning Dialog */}
+    {rateDeviationResult && (
+      <RateDeviationDialog
+        isOpen={!!rateDeviationResult}
+        result={rateDeviationResult}
+        baseCurrency={settings?.baseCurrency || 'SYP'}
+        voucherDate={(pendingSaveData as any)?.date || new Date().toISOString().split('T')[0]}
+        onConfirm={handleRateDeviationConfirm}
+        onConfirmWithSync={handleRateDeviationSync}
+        onCancel={handleRateDeviationCancel}
+      />
+    )}
     </>
   );
 };

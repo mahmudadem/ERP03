@@ -114,21 +114,29 @@ export class CreateVoucherUseCase {
           const amount = Math.abs(Number(l.amount) || 0);
           const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
           const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
-          const exchangeRate = Number(l.exchangeRate || l.parity || payload.exchangeRate || 1);
           
-          // CRITICAL FIX: baseAmount MUST ALWAYS be calculated as amount * exchangeRate
-          // Never trust incoming baseAmount - it could be stale or inconsistent
-          const baseAmount = roundMoney(amount * exchangeRate);
+          // MULTI-CURRENCY FIX: Use triangulation formula
+          // parity = rate from Line Currency → Voucher Currency (entered by user)
+          // headerRate = rate from Voucher Currency → Base Currency (from header)
+          // baseAmount = amount × parity × headerRate
+          const parity = Number(l.parity || l.exchangeRate || 1);
+          const headerRate = Number(payload.exchangeRate || 1);
+          
+          // The effective exchange rate for storage (Line → Base)
+          const effectiveExchangeRate = roundMoney(parity * headerRate);
+          
+          // CRITICAL: baseAmount calculated using triangulation
+          const baseAmount = roundMoney(amount * parity * headerRate);
           
           return new VoucherLineEntity(
             idx + 1,
             account.id,        // Use persistent ID
             l.side,
-            baseAmount,        // baseAmount (Calculated)
+            baseAmount,        // baseAmount (Calculated via triangulation)
             lineBaseCurrency,  // baseCurrency  
             amount,            // amount (FX)
             lineCurrency,      // currency (FX)
-            exchangeRate,      // exchangeRate
+            effectiveExchangeRate,  // exchangeRate (Line → Base, for storage)
             l.notes || l.description,
             l.costCenterId,
             l.metadata || {}
@@ -327,13 +335,19 @@ export class UpdateVoucherUseCase {
       // 2. Resolve side and amounts (Handle 0 and field variations correctly)
       const side = l.side ?? originalLine?.side;
       const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
-      const exchangeRate = Number(l.exchangeRate ?? l.parity ?? originalLine?.exchangeRate ?? 1);
       const amount = Number(l.amount ?? originalLine?.amount ?? 0);
       
-      // 3. ALWAYS RECALCULATE baseAmount from amount and exchangeRate.
-      // The frontend sends amount/lineCurrency/exchangeRate as source of truth.
-      // ANY incoming baseAmount (from payload or original data) might be stale if amounts/rates changed.
-      const baseAmount = roundMoney(amount * exchangeRate);
+      // 3. MULTI-CURRENCY FIX: Use triangulation formula
+      // parity = rate from Line Currency → Voucher Currency
+      // headerRate = rate from Voucher Currency → Base Currency  
+      const parity = Number(l.parity ?? l.exchangeRate ?? originalLine?.exchangeRate ?? 1);
+      const headerRate = Number(payload.exchangeRate ?? voucher.exchangeRate ?? 1);
+      
+      // The effective exchange rate for storage (Line → Base)
+      const effectiveExchangeRate = roundMoney(parity * headerRate);
+      
+      // CRITICAL: baseAmount calculated using triangulation
+      const baseAmount = roundMoney(amount * parity * headerRate);
 
       return new VoucherLineEntity(
         idx + 1,
@@ -343,7 +357,7 @@ export class UpdateVoucherUseCase {
         baseCurrency,
         amount,
         currency,
-        exchangeRate,
+        effectiveExchangeRate,
         l.notes ?? originalLine?.notes,
         l.costCenterId ?? originalLine?.costCenterId,
         { ...originalLine?.metadata, ...l.metadata }
