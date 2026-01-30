@@ -47,7 +47,10 @@ class PrismaExchangeRateRepository {
                     lte: dateEnd,
                 },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+                { date: 'desc' },
+                { createdAt: 'desc' },
+            ],
         });
         if (!record)
             return null;
@@ -130,7 +133,44 @@ class PrismaExchangeRateRepository {
                 fromCurrency: fromCurrency.toUpperCase(),
                 toCurrency: toCurrency.toUpperCase(),
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+                { date: 'desc' },
+                { createdAt: 'desc' },
+            ],
+        });
+        if (!record)
+            return null;
+        return new ExchangeRate_1.ExchangeRate({
+            id: record.id,
+            companyId: record.companyId,
+            fromCurrency: record.fromCurrency,
+            toCurrency: record.toCurrency,
+            rate: record.rate,
+            date: record.date,
+            source: record.source,
+            createdAt: record.createdAt,
+            createdBy: (_a = record.createdBy) !== null && _a !== void 0 ? _a : undefined,
+        });
+    }
+    async getMostRecentRateBeforeDate(companyId, fromCurrency, toCurrency, date) {
+        var _a;
+        // We want the most recent rate where record.date <= date
+        // Normalize date ceiling to end of day to be safe, though record.date is usually start of day
+        const dateCeiling = new Date(date);
+        dateCeiling.setHours(23, 59, 59, 999);
+        const record = await this.prisma.exchangeRate.findFirst({
+            where: {
+                companyId,
+                fromCurrency: fromCurrency.toUpperCase(),
+                toCurrency: toCurrency.toUpperCase(),
+                date: {
+                    lte: dateCeiling,
+                },
+            },
+            orderBy: [
+                { date: 'desc' },
+                { createdAt: 'desc' },
+            ],
         });
         if (!record)
             return null;

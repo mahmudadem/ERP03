@@ -52,7 +52,10 @@ export class PrismaExchangeRateRepository implements IExchangeRateRepository {
           lte: dateEnd,
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { date: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
 
     if (!record) return null;
@@ -154,7 +157,51 @@ export class PrismaExchangeRateRepository implements IExchangeRateRepository {
         fromCurrency: fromCurrency.toUpperCase(),
         toCurrency: toCurrency.toUpperCase(),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { date: 'desc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    if (!record) return null;
+
+    return new ExchangeRate({
+      id: record.id,
+      companyId: record.companyId,
+      fromCurrency: record.fromCurrency,
+      toCurrency: record.toCurrency,
+      rate: record.rate,
+      date: record.date,
+      source: record.source as 'MANUAL' | 'REFERENCE',
+      createdAt: record.createdAt,
+      createdBy: record.createdBy ?? undefined,
+    });
+  }
+
+  async getMostRecentRateBeforeDate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    date: Date
+  ): Promise<ExchangeRate | null> {
+    // We want the most recent rate where record.date <= date
+    // Normalize date ceiling to end of day to be safe, though record.date is usually start of day
+    const dateCeiling = new Date(date);
+    dateCeiling.setHours(23, 59, 59, 999);
+
+    const record = await this.prisma.exchangeRate.findFirst({
+      where: {
+        companyId,
+        fromCurrency: fromCurrency.toUpperCase(),
+        toCurrency: toCurrency.toUpperCase(),
+        date: {
+          lte: dateCeiling,
+        },
+      },
+      orderBy: [
+        { date: 'desc' },
+        { createdAt: 'desc' },
+      ],
     });
 
     if (!record) return null;

@@ -35,12 +35,14 @@ class PaymentVoucherStrategy {
             throw new Error('Payment requires at least one allocation line');
         }
         let totalFx = 0;
+        let totalBaseCalculated = 0;
         // 1. Generate DEBIT lines for each allocation
         for (let i = 0; i < allocations.length; i++) {
             const allocation = allocations[i];
             const amountFx = Number(allocation.amount) || 0;
-            const amountBase = amountFx * exchangeRate;
-            totalFx += amountFx;
+            const amountBase = (0, VoucherLineEntity_1.roundMoney)(amountFx * exchangeRate);
+            totalFx = (0, VoucherLineEntity_1.roundMoney)(totalFx + amountFx);
+            totalBaseCalculated = (0, VoucherLineEntity_1.roundMoney)(totalBaseCalculated + amountBase);
             if (!allocation.payToAccountId) {
                 throw new Error(`Line ${i + 1}: Allocation must have payToAccountId`);
             }
@@ -53,9 +55,10 @@ class PaymentVoucherStrategy {
             lines.push(debitLine);
         }
         // 2. Generate single CREDIT line for source account
-        const totalBase = totalFx * exchangeRate;
+        // We use totalBaseCalculated (sum of rounded lines) instead of totalFx * exchangeRate
+        // to ensure the voucher balances perfectly in base currency.
         const creditCurrency = currency.toUpperCase();
-        const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, payFromAccountId, 'Credit', totalBase, // baseAmount
+        const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, payFromAccountId, 'Credit', totalBaseCalculated, // baseAmount (SUM OF DEBITS)
         baseCurrency, // baseCurrency
         totalFx, // amount
         creditCurrency, // currency

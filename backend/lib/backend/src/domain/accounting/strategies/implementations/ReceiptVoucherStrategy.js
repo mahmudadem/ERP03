@@ -35,35 +35,36 @@ class ReceiptVoucherStrategy {
             throw new Error('Receipt requires at least one source line');
         }
         let totalFx = 0;
-        // 1. Generate single DEBIT line for destination account
-        for (const source of sources) {
+        let totalBaseCalculated = 0;
+        const tempLines = [];
+        // 1. Generate CREDIT lines for each source first
+        for (let i = 0; i < sources.length; i++) {
+            const source = sources[i];
             const amountFx = Number(source.amount) || 0;
-            totalFx += amountFx;
+            const amountBase = (0, VoucherLineEntity_1.roundMoney)(amountFx * exchangeRate);
+            totalFx = (0, VoucherLineEntity_1.roundMoney)(totalFx + amountFx);
+            totalBaseCalculated = (0, VoucherLineEntity_1.roundMoney)(totalBaseCalculated + amountBase);
+            if (!source.receiveFromAccountId) {
+                throw new Error(`Line ${i + 1}: Source must have receiveFromAccountId`);
+            }
+            const creditCurrency = currency.toUpperCase();
+            const creditLine = new VoucherLineEntity_1.VoucherLineEntity(i + 2, // Leave index 1 for the debit line
+            source.receiveFromAccountId, 'Credit', amountBase, // baseAmount
+            baseCurrency, // baseCurrency
+            amountFx, // amount
+            creditCurrency, // currency
+            exchangeRate, source.notes || source.description || 'Receipt source', source.costCenterId, source.metadata || {});
+            tempLines.push(creditLine);
         }
-        const totalBase = totalFx * exchangeRate;
+        // 2. Generate single DEBIT line for destination account using SUM OF CREDITS
         const debitCurrency = currency.toUpperCase();
-        const debitLine = new VoucherLineEntity_1.VoucherLineEntity(1, depositToAccountId, 'Debit', totalBase, // baseAmount
+        const debitLine = new VoucherLineEntity_1.VoucherLineEntity(1, depositToAccountId, 'Debit', totalBaseCalculated, // baseAmount (SUM OF CREDITS)
         baseCurrency, // baseCurrency
         totalFx, // amount
         debitCurrency, // currency
         exchangeRate, header.description || 'Receipt deposited', undefined, {});
         lines.push(debitLine);
-        // 2. Generate CREDIT lines for each source
-        for (let i = 0; i < sources.length; i++) {
-            const source = sources[i];
-            const amountFx = Number(source.amount) || 0;
-            const amountBase = amountFx * exchangeRate;
-            if (!source.receiveFromAccountId) {
-                throw new Error(`Line ${i + 1}: Source must have receiveFromAccountId`);
-            }
-            const creditCurrency = currency.toUpperCase();
-            const creditLine = new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, source.receiveFromAccountId, 'Credit', amountBase, // baseAmount
-            baseCurrency, // baseCurrency
-            amountFx, // amount
-            creditCurrency, // currency
-            exchangeRate, source.notes || source.description || 'Receipt source', source.costCenterId, source.metadata || {});
-            lines.push(creditLine);
-        }
+        lines.push(...tempLines);
         return lines;
     }
 }

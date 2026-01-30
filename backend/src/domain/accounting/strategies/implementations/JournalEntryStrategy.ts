@@ -36,6 +36,8 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
     const lines: VoucherLineEntity[] = [];
     let totalDebitBase = 0;
     let totalCreditBase = 0;
+    let totalDebitHeader = 0;
+    let totalCreditHeader = 0;
 
     header.lines.forEach((inputLine: any, idx: number) => {
       if (!inputLine.accountId) {
@@ -73,6 +75,9 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
       
       // Calculate baseAmount
       const baseAmount = roundMoney(amount * absoluteRate);
+
+      // Tracking Header Totals is now handled in a dedicated loop 
+      // during Penny Balancing to ensure all currency types are covered.
 
       // Debug logging for each line
       console.log(`[JournalEntryStrategy] Line ${idx + 1}:`, {
@@ -118,18 +123,93 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
       lines.push(line);
     });
 
-    // Debug final totals
-    console.log('[JournalEntryStrategy] Final totals:', {
-      totalDebitBase,
-      totalCreditBase,
-      difference: totalDebitBase - totalCreditBase
+    // Track Header Totals (Convert EVERY line to header currency using parity)
+    // We reset these to zero to avoid any double-counting from the previous loop.
+    totalDebitHeader = 0;
+    totalCreditHeader = 0;
+    
+    header.lines.forEach((inputLine: any) => {
+        const amount = Math.abs(Number(inputLine.amount) || 0);
+        const lineParity = Number(inputLine.exchangeRate) || 1;
+        const amountInHeader = roundMoney(amount * lineParity);
+        
+        if (inputLine.side === 'Debit') totalDebitHeader = roundMoney(totalDebitHeader + amountInHeader);
+        else totalCreditHeader = roundMoney(totalCreditHeader + amountInHeader);
     });
 
-    // Validation: debits must equal credits
-    const tolerance = 0.01;
-    if (Math.abs(totalDebitBase - totalCreditBase) > tolerance) {
+    const baseTolerance = 0.01;
+    const headerTolerance = 0.01;
+    const pennyThreshold = 5.0; // Max 5.0 units of base currency for auto-balancing
+
+    const baseDiff = roundMoney(totalDebitBase - totalCreditBase);
+    const headerDiff = roundMoney(totalDebitHeader - totalCreditHeader);
+
+    console.log('[JournalEntryStrategy] Balance check:', {
+      totalDebitBase,
+      totalCreditBase,
+      baseDiff,
+      totalDebitHeader,
+      totalCreditHeader,
+      headerDiff
+    });
+
+    if (Math.abs(headerDiff) <= headerTolerance && Math.abs(baseDiff) > baseTolerance) {
+      if (Math.abs(baseDiff) <= pennyThreshold) {
+        console.log(`[JournalEntryStrategy] Penny Balancing: Adjusting residual ${baseDiff} ${baseCurrency}`);
+        
+        // Adjust the last line to close the gap
+        const lastIndex = lines.length - 1;
+        const lastLine = lines[lastIndex];
+        
+        // New base amount for the last line
+        let newBaseAmount = lastLine.baseAmount;
+        if (lastLine.side === 'Debit') {
+          newBaseAmount = roundMoney(lastLine.baseAmount - baseDiff);
+        } else {
+          newBaseAmount = roundMoney(lastLine.baseAmount + baseDiff);
+        }
+
+        // Safety check: Ensure new base amount is still positive
+        if (newBaseAmount > 0) {
+          // Recalculate effective rate for this line
+          const newAbsoluteRate = newBaseAmount / lastLine.amount;
+
+          // Replace the last line with adjusted values
+          lines[lastIndex] = new VoucherLineEntity(
+            lastLine.id,
+            lastLine.accountId,
+            lastLine.side,
+            newBaseAmount,
+            baseCurrency,
+            lastLine.amount,
+            lastLine.currency,
+            newAbsoluteRate,
+            lastLine.notes,
+            lastLine.costCenterId,
+            lastLine.metadata
+          );
+
+          // Update final totals
+          if (lastLine.side === 'Debit') {
+            totalDebitBase = roundMoney(totalDebitBase - baseDiff);
+          } else {
+            totalCreditBase = roundMoney(totalCreditBase + baseDiff);
+          }
+
+          console.log('[JournalEntryStrategy] Adjusted last line:', {
+            originalBase: lastLine.baseAmount,
+            newBase: newBaseAmount,
+            newRate: newAbsoluteRate
+          });
+        }
+      }
+    }
+
+    // Validation: Final debits must equal credits
+    if (Math.abs(totalDebitBase - totalCreditBase) > baseTolerance) {
       throw new Error(
-        `Debits must equal credits. Total debits: ${totalDebitBase.toFixed(2)}, Total credits: ${totalCreditBase.toFixed(2)}`
+        `Debits must equal credits in base currency (${baseCurrency}). ` +
+        `Total debits: ${totalDebitBase.toFixed(2)}, Total credits: ${totalCreditBase.toFixed(2)}`
       );
     }
 

@@ -78,6 +78,23 @@ export interface IExchangeRateRepository {
     toCurrency: string
   ): Promise<ExchangeRate | null>;
 
+  /**
+   * Get the most recent rate for a currency pair that is on or before the target date.
+   * Implements the "Last-Known-Rate" strategy.
+   * 
+   * @param companyId - Company ID
+   * @param fromCurrency - Source currency code
+   * @param toCurrency - Target currency code
+   * @param date - The date ceiling (exclusive or inclusive depending on business logic, here inclusive)
+   * @returns The most recent rate record where record.date <= date
+   */
+  getMostRecentRateBeforeDate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    date: Date
+  ): Promise<ExchangeRate | null>;
+
   // Legacy compatibility - deprecated
   /** @deprecated Use save() instead */
   setRate(rate: ExchangeRate): Promise<void>;

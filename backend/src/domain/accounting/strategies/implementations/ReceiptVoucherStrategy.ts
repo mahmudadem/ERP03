@@ -1,5 +1,5 @@
 import { IVoucherPostingStrategy } from '../IVoucherPostingStrategy';
-import { VoucherLineEntity } from '../../entities/VoucherLineEntity';
+import { VoucherLineEntity, roundMoney } from '../../entities/VoucherLineEntity';
 
 /**
  * ReceiptVoucherStrategy
@@ -39,36 +39,17 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
     }
     
     let totalFx = 0;
-    
-    // 1. Generate single DEBIT line for destination account
-    for (const source of sources) {
-      const amountFx = Number(source.amount) || 0;
-      totalFx += amountFx;
-    }
-    
-    const totalBase = totalFx * exchangeRate;
-    const debitCurrency = currency.toUpperCase();
-    
-    const debitLine = new VoucherLineEntity(
-      1,
-      depositToAccountId,
-      'Debit',
-      totalBase,         // baseAmount
-      baseCurrency,      // baseCurrency
-      totalFx,           // amount
-      debitCurrency,     // currency
-      exchangeRate,
-      header.description || 'Receipt deposited',
-      undefined,
-      {}
-    );
-    lines.push(debitLine);
-    
-    // 2. Generate CREDIT lines for each source
+    let totalBaseCalculated = 0;
+    const tempLines: VoucherLineEntity[] = [];
+
+    // 1. Generate CREDIT lines for each source first
     for (let i = 0; i < sources.length; i++) {
         const source = sources[i];
         const amountFx = Number(source.amount) || 0;
-        const amountBase = amountFx * exchangeRate;
+        const amountBase = roundMoney(amountFx * exchangeRate);
+        
+        totalFx = roundMoney(totalFx + amountFx);
+        totalBaseCalculated = roundMoney(totalBaseCalculated + amountBase);
         
         if (!source.receiveFromAccountId) {
             throw new Error(`Line ${i + 1}: Source must have receiveFromAccountId`);
@@ -77,7 +58,7 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
         const creditCurrency = currency.toUpperCase();
         
         const creditLine = new VoucherLineEntity(
-            lines.length + 1,
+            i + 2, // Leave index 1 for the debit line
             source.receiveFromAccountId,
             'Credit',
             amountBase,        // baseAmount
@@ -85,13 +66,32 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
             amountFx,          // amount
             creditCurrency,    // currency
             exchangeRate,
-
             source.notes || source.description || 'Receipt source',
             source.costCenterId,
             source.metadata || {}
         );
-        lines.push(creditLine);
+        tempLines.push(creditLine);
     }
+    
+    // 2. Generate single DEBIT line for destination account using SUM OF CREDITS
+    const debitCurrency = currency.toUpperCase();
+    
+    const debitLine = new VoucherLineEntity(
+      1,
+      depositToAccountId,
+      'Debit',
+      totalBaseCalculated, // baseAmount (SUM OF CREDITS)
+      baseCurrency,      // baseCurrency
+      totalFx,           // amount
+      debitCurrency,     // currency
+      exchangeRate,
+      header.description || 'Receipt deposited',
+      undefined,
+      {}
+    );
+    
+    lines.push(debitLine);
+    lines.push(...tempLines);
     
     return lines;
   }

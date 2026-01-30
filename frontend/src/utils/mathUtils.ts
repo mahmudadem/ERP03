@@ -32,3 +32,11 @@ export const evaluateMathExpression = (expression: string): number | null => {
   
   return null;
 };
+
+/**
+ * Rounds a number to a specific number of decimal places.
+ */
+export function roundMoney(value: number, decimals: number = 2): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}

@@ -184,6 +184,29 @@ export class FirestoreExchangeRateRepository implements IExchangeRateRepository 
     const snap = await this.getCollection(companyId)
       .where('fromCurrency', '==', fromCurrency.toUpperCase())
       .where('toCurrency', '==', toCurrency.toUpperCase())
+      .orderBy('date', 'desc')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    return ExchangeRateMapper.toDomain(snap.docs[0].id, snap.docs[0].data());
+  }
+
+  async getMostRecentRateBeforeDate(
+    companyId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    date: Date
+  ): Promise<ExchangeRate | null> {
+    const dateCeiling = new Date(date);
+    dateCeiling.setHours(23, 59, 59, 999);
+
+    const snap = await this.getCollection(companyId)
+      .where('fromCurrency', '==', fromCurrency.toUpperCase())
+      .where('toCurrency', '==', toCurrency.toUpperCase())
+      .where('date', '<=', Timestamp.fromDate(dateCeiling))
+      .orderBy('date', 'desc')
       .orderBy('createdAt', 'desc')
       .limit(1)
       .get();

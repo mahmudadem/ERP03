@@ -115,14 +115,14 @@ class GetSuggestedRateUseCase {
         if (exactRate) {
             return { rate: exactRate, source: 'EXACT_DATE' };
         }
-        // Fall back to most recent rate (from any date)
-        const mostRecent = await this.exchangeRateRepo.getMostRecentRate(companyId, fromCurrency, toCurrency);
+        // Fall back to most recent rate (on or before voucher date)
+        const mostRecent = await this.exchangeRateRepo.getMostRecentRateBeforeDate(companyId, fromCurrency, toCurrency, date);
         if (mostRecent) {
             return { rate: mostRecent, source: 'MOST_RECENT' };
         }
-        // Try inverse rate (e.g., if EUR→USD not found, try USD→EUR and calculate 1/rate)
-        const inverseRate = await this.exchangeRateRepo.getMostRecentRate(companyId, toCurrency, // Swap: look for USD→EUR
-        fromCurrency);
+        // Try inverse rate (e.g., if EUR→USD not found, try USD→EUR on or before date)
+        const inverseRate = await this.exchangeRateRepo.getMostRecentRateBeforeDate(companyId, toCurrency, // Swap: look for USD→EUR
+        fromCurrency, date);
         if (inverseRate && inverseRate.rate > 0) {
             // Calculate inverse: if USD→EUR = 0.885, then EUR→USD = 1/0.885 = 1.13
             const calculatedRate = new ExchangeRate_1.ExchangeRate({
