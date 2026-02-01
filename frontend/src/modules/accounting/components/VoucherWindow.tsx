@@ -61,6 +61,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [, forceUpdate] = useState(0); // Force re-render for totals
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [isPendingNew, setIsPendingNew] = useState(false);
   const [showConfirmSubmitModal, setShowConfirmSubmitModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [liveLines, setLiveLines] = useState<any[]>(win.data?.lines || []);
@@ -152,7 +153,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
   const handleConfirmClose = () => {
     setShowUnsavedModal(false);
-    closeWindow(win.id);
+    if (isPendingNew) {
+      performNew();
+      setIsPendingNew(false);
+    } else {
+      closeWindow(win.id);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -542,14 +548,31 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   };
 
   const handleNew = () => {
+    if (isDirty) {
+      setIsPendingNew(true);
+      setShowUnsavedModal(true);
+    } else {
+      performNew();
+    }
+  };
+
+  const performNew = () => {
     if (rendererRef.current) {
       rendererRef.current.resetData();
+      
+      // Reset local window states
+      setIsDirty(false);
+      setLiveLines([]);
+      setLiveCurrency(settings?.baseCurrency || '');
+      
       // Update window context data to reflect new state
       updateWindowData(win.id, {
         ...win.data,
         id: undefined,
+        voucherNo: undefined,
         status: 'Draft',
-        lines: []
+        lines: [],
+        date: getCompanyToday(settings)
       });
     }
   };
@@ -979,15 +1002,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
-          {!isVoucherReadOnly && (
-            <button
-              className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
-              onClick={handleNew}
-              title="Create a new voucher in this window"
-            >
-              New
-            </button>
-          )}
+          <button
+            className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
+            onClick={handleNew}
+            title="Create a new voucher in this window"
+          >
+            New
+          </button>
 
           {(() => {
             // UNIFIED LOADING STATE: Prevent button flicker while policies are fetching
@@ -1218,7 +1239,10 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     
     <UnsavedChangesModal 
       isOpen={showUnsavedModal}
-      onCancel={() => setShowUnsavedModal(false)}
+      onCancel={() => {
+        setShowUnsavedModal(false);
+        setIsPendingNew(false);
+      }}
       onConfirm={handleConfirmClose}
     />
 

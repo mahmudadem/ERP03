@@ -146,10 +146,14 @@ class FirestoreLedgerRepository {
             ref = ref.where('voucherId', '==', filters.voucherId);
             ref = ref.where('isPosted', '==', true);
         }
-        if (filters.fromDate)
-            ref = ref.where('date', '>=', filters.fromDate);
-        if (filters.toDate)
-            ref = ref.where('date', '<=', filters.toDate);
+        if (filters.fromDate) {
+            ref = ref.where('date', '>=', toTimestamp(filters.fromDate));
+        }
+        if (filters.toDate) {
+            const end = new Date(filters.toDate);
+            end.setHours(23, 59, 59, 999);
+            ref = ref.where('date', '<=', firestore_1.Timestamp.fromDate(end));
+        }
         return ref.orderBy('date', 'asc').get();
     }
 }

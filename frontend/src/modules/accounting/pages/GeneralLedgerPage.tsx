@@ -30,6 +30,7 @@ const GeneralLedgerPage: React.FC = () => {
     try {
       const response = await accountingApi.getGeneralLedger(
         selectedAccountId || undefined,
+        fromDate || undefined,
         toDate || undefined
       );
       // Response might be wrapped in { success, data } or just be the array

@@ -40,6 +40,8 @@ const VouchersListPage: React.FC = () => {
     setDateRange,
     filters: clientFilters,
     setFilters: setClientFilters,
+    pagination,
+    setPage,
     invalidateVouchers,
   } = useVouchersWithCache(companyId);
 
@@ -389,12 +391,14 @@ const VouchersListPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex-1 p-6 min-w-0 overflow-hidden">
-          <div className="grid grid-cols-1 bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300">
-            <div className="min-w-0 overflow-x-auto">
+        <div className="flex-1 flex flex-col p-6 overflow-hidden">
+          <div className="flex flex-col bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300 flex-1">
+            <div className="flex-1 overflow-auto">
               <VoucherTable 
                 vouchers={vouchers} 
                 voucherTypes={voucherTypes}
+                pagination={pagination}
+                onPageChange={(newPage) => setPage(newPage)}
                 isLoading={vouchersLoading || typesLoading}
                 error={error ? error.message : null}
                 onViewPrint={handleViewPrint}

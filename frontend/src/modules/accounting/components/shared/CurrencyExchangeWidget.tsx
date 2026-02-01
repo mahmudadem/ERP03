@@ -197,7 +197,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
     <>
       <div 
         className={`
-          flex items-center h-[34px] w-full border rounded overflow-hidden transition-all bg-[var(--color-bg-primary)]
+          flex items-center h-[32px] w-full border rounded overflow-hidden transition-all bg-[var(--color-bg-primary)]
           ${warnings.length > 0 ? 'border-amber-400 ring-1 ring-amber-100' : 
             hasOverride ? 'border-primary-400 ring-1 ring-primary-50 dark:border-primary-600' : 
             'border-[var(--color-border)] hover:border-gray-400'}

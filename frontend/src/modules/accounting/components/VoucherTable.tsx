@@ -523,12 +523,12 @@ export const VoucherTable: React.FC<Props> = ({
   }
 
   return (
-    <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300 w-full overflow-hidden">
+    <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300 h-full">
 
 
-      <div ref={tableContainerRef} className="overflow-x-auto w-full relative" style={{ maxWidth: '100%', display: 'block' }}>
-        <table className="w-full divide-y divide-[var(--color-border)] table-fixed" style={{ minWidth: '100%' }}>
-          <thead className="bg-[var(--color-bg-secondary)] select-none">
+      <div ref={tableContainerRef} className="flex-1 overflow-auto">
+        <table className="w-full divide-y divide-[var(--color-border)]">
+          <thead className="bg-[var(--color-bg-secondary)] select-none sticky top-0 z-10">
             <tr className="divide-x divide-[var(--color-border)]/50">
               <th className="px-2 py-3 text-center" style={{ width: columnWidths.expand }}>
                 <div className="relative inline-block text-left" ref={settingsRef}>
@@ -1128,9 +1128,9 @@ export const VoucherTable: React.FC<Props> = ({
 
       {/* Pagination Footer - Only show if pagination is provided */}
       {pagination && onPageChange && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-          <div className="text-sm text-gray-500">
-            Showing page <span className="font-medium">{pageInfo.page}</span> of <span className="font-medium">{pageInfo.totalPages || 1}</span> ({pageInfo.totalItems} items)
+        <div className="flex-none px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-between">
+          <div className="text-sm text-[var(--color-text-secondary)]">
+            Showing page <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.page}</span> of <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.totalPages || 1}</span> ({pageInfo.totalItems} items)
           </div>
           <div className="flex gap-2">
             <Button 

@@ -66,6 +66,10 @@ export const useVouchersWithCache = (companyId: string) => {
   }, [company?.fiscalYearStart]);
 
   const [filters, setFilters] = useState<VoucherFilters>({});
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50); // Default 50 items per page
 
   const {
     data: vouchersResponse,
@@ -177,13 +181,25 @@ export const useVouchersWithCache = (companyId: string) => {
     return allVouchers.filter(v => resultIds.has(v.id));
   }, [allVouchers, filters, dateRange]);
 
+  // Calculate pagination
+  const totalItems = filteredVouchers.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedVouchers = filteredVouchers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters or date range change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, dateRange]);
+
   // Invalidate cache when vouchers are created/updated/deleted
   const invalidateVouchers = () => {
     queryClient.invalidateQueries({ queryKey: ['vouchers', companyId] });
   };
 
   return {
-    vouchers: filteredVouchers,
+    vouchers: paginatedVouchers,
     allVouchers, // Raw unfiltered data
     isLoading,
     error,
@@ -191,6 +207,13 @@ export const useVouchersWithCache = (companyId: string) => {
     setDateRange,
     filters,
     setFilters,
+    pagination: {
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+    },
+    setPage,
     refetch,
     invalidateVouchers,
   };

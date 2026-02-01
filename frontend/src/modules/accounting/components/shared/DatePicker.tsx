@@ -81,7 +81,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', d
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={settings?.dateFormat || 'YYYY-MM-DD'}
-        className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
+        className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
           disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : 'bg-[var(--color-bg-primary)]'
         }`}
       />
@@ -89,7 +89,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', d
         type="button"
         onClick={handleIconClick}
         disabled={disabled}
-        className={`absolute right-2 top-2 text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <Calendar size={14} />
       </button>

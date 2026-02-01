@@ -1147,7 +1147,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           <div className="space-y-0.5">
              <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
              <div 
-                 className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm min-h-[30px] flex items-center transition-colors"
+                 className="w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] text-xs shadow-sm flex items-center transition-colors"
                  style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                  title={rawValue}
              >
@@ -1698,7 +1698,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                     disabled={readOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                    className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                 />
             )}
         </div>

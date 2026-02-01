@@ -24,7 +24,7 @@ export const CurrencyDropdown: React.FC<CurrencyDropdownProps> = ({
         value={value || ''}
         disabled={disabled || readOnly || isLoading}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-8 transition-colors ${readOnly || disabled ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+        className={`w-full h-[32px] px-2 pr-8 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none transition-colors ${readOnly || disabled ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
       >
         {!isLoading && currencies.length === 0 && <option value="">No currencies</option>}
         {currencies.map(c => (
