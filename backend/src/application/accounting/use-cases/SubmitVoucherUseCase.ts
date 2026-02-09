@@ -3,6 +3,7 @@ import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity
 import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { ApprovalPolicyService, ApprovalGateResult, AccountApprovalMetadata } from '../../../domain/accounting/policies/ApprovalPolicyService';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
+import { NotificationService } from '../../system/services/NotificationService';
 
 /**
  * Submit Voucher for Approval Use Case
@@ -17,6 +18,7 @@ import { IAccountingPolicyConfigProvider } from '../../../infrastructure/account
  * 1. Evaluate gates based on touched accounts
  * 2. Capture custodian snapshot (frozen at submit)
  * 3. Transition to PENDING or APPROVED
+ * 4. Dispatch notifications to approvers/custodians
  * 
  * HARD POLICY: Gate requirements are frozen at submit time.
  */
@@ -25,7 +27,9 @@ export class SubmitVoucherUseCase {
     private readonly voucherRepository: IVoucherRepository,
     private readonly policyConfigProvider: IAccountingPolicyConfigProvider,
     private readonly approvalPolicyService: ApprovalPolicyService,
-    private readonly getAccountMetadata: (companyId: string, accountIds: string[]) => Promise<AccountApprovalMetadata[]>
+    private readonly getAccountMetadata: (companyId: string, accountIds: string[]) => Promise<AccountApprovalMetadata[]>,
+    private readonly notificationService?: NotificationService,
+    private readonly getApproverUserIds?: (companyId: string) => Promise<string[]>
   ) {}
 
   /**
@@ -70,16 +74,107 @@ export class SubmitVoucherUseCase {
     const accountIds = [...new Set(voucher.lines.map(line => line.accountId))];
     const accountMetadata = await this.getAccountMetadata(companyId, accountIds);
     
-    // Step 5: Evaluate gates
-    const gateResult = this.approvalPolicyService.evaluateGates(policyConfig, accountMetadata);
+    // Step 5: Build Smart CC context with line-level debit/credit info
+    const smartCCContext = {
+      creatorUserId: submitterId,
+      voucherTotal: voucher.totalDebit || 0,
+      lines: voucher.lines.map(line => ({
+        accountId: line.accountId,
+        debitAmount: line.debitAmount || 0,
+        creditAmount: line.creditAmount || 0
+      })),
+      isReversal: !!voucher.reversalOfVoucherId
+    };
     
-    // Step 6: Create updated voucher with gate requirements frozen in metadata
+    // Step 6: Evaluate gates using Smart CC logic
+    const gateResult = this.approvalPolicyService.evaluateSmartGates(
+      policyConfig,
+      accountMetadata,
+      smartCCContext
+    );
+    
+    // Step 6.5: Check for missing custodians (if blocking enabled)
+    if (gateResult.missingCustodianAccounts && gateResult.missingCustodianAccounts.length > 0) {
+      throw new Error(
+        `Cannot submit: The following accounts require custody confirmation but have no custodian assigned: ` +
+        gateResult.missingCustodianAccounts.join(', ')
+      );
+    }
+    
+    // Step 7: Create updated voucher with gate requirements frozen in metadata
     const submittedVoucher = this.createSubmittedVoucher(voucher, submitterId, gateResult);
     
-    // Step 7: Save
+    // Step 8: Save
     const savedVoucher = await this.voucherRepository.save(submittedVoucher);
     
+    // Step 9: Dispatch notifications (non-blocking)
+    this.dispatchNotifications(companyId, savedVoucher, gateResult).catch(() => {
+      // Log error but don't fail the submission
+      console.error('[SubmitVoucherUseCase] Notification dispatch failed');
+    });
+    
     return savedVoucher;
+  }
+
+  /**
+   * Dispatch notifications to approvers and custodians
+   */
+  private async dispatchNotifications(
+    companyId: string,
+    voucher: VoucherEntity,
+    gateResult: ApprovalGateResult
+  ): Promise<void> {
+    if (!this.notificationService) return;
+
+    const voucherNo = voucher.voucherNo || voucher.id.slice(0, 8);
+
+    // Notify approvers if FA is required
+    if (gateResult.financialApprovalRequired && this.getApproverUserIds) {
+      try {
+        const approverIds = await this.getApproverUserIds(companyId);
+        if (approverIds.length > 0) {
+          await this.notificationService.notifyVoucherAction(
+            companyId,
+            approverIds,
+            voucherNo,
+            voucher.id,
+            'APPROVAL'
+          );
+        }
+      } catch (e) {
+        console.error('[SubmitVoucherUseCase] Failed to notify approvers:', e);
+      }
+    }
+
+    // Notify custodians if CC is required
+    if (gateResult.custodyConfirmationRequired && gateResult.requiredCustodians.length > 0) {
+      try {
+        await this.notificationService.notifyVoucherAction(
+          companyId,
+          gateResult.requiredCustodians,
+          voucherNo,
+          voucher.id,
+          'CUSTODY'
+        );
+      } catch (e) {
+        console.error('[SubmitVoucherUseCase] Failed to notify custodians:', e);
+      }
+    }
+
+    // Notify releasing-party custodians (awareness only, no action required)
+    if (gateResult.notifyOnlyCustodians && gateResult.notifyOnlyCustodians.length > 0) {
+      try {
+        await this.notificationService.notifyVoucherAction(
+          companyId,
+          gateResult.notifyOnlyCustodians,
+          voucherNo,
+          voucher.id,
+          'INFO' // Informational notification only
+        );
+      } catch (e) {
+        console.error('[SubmitVoucherUseCase] Failed to notify releasing parties:', e);
+      }
+    }
   }
   
   private createSubmittedVoucher(

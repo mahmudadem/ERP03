@@ -151,6 +151,7 @@ export class ReverseAndReplaceVoucherUseCase {
           .filter(acc => acc !== null)
           .map(acc => ({
             accountId: acc!.id,
+            classification: acc!.classification || 'ASSET', // Default to ASSET for CC purposes
             requiresApproval: acc!.requiresApproval || false,
             requiresCustodyConfirmation: acc!.requiresCustodyConfirmation || false,
             custodianUserId: acc!.custodianUserId || undefined

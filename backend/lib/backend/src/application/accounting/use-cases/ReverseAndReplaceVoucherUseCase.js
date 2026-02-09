@@ -111,6 +111,7 @@ class ReverseAndReplaceVoucherUseCase {
                     .filter(acc => acc !== null)
                     .map(acc => ({
                     accountId: acc.id,
+                    classification: acc.classification || 'ASSET',
                     requiresApproval: acc.requiresApproval || false,
                     requiresCustodyConfirmation: acc.requiresCustodyConfirmation || false,
                     custodianUserId: acc.custodianUserId || undefined

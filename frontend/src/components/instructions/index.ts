@@ -30,4 +30,13 @@ export { InstructionsButton } from './InstructionsButton';
 export type { PageInstructions, InstructionSection, InstructionsRegistry } from './types';
 
 // Content
-export { getInstructions, instructionsRegistry, accountingSettingsInstructions } from './content';
+export * from './content';
+export {
+  generalSettingsInstructions,
+  currenciesInstructions,
+  policiesInstructions,
+  paymentMethodsInstructions,
+  costCenterInstructions,
+  errorModeInstructions,
+  fiscalYearInstructions
+} from './content';

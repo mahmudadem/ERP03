@@ -466,13 +466,16 @@ export class VoucherEntity {
    * @param confirmedAt Date of confirmation
    * @param isFullySatisfied If true, transitions status to APPROVED
    */
-  confirmCustody(custodianUserId: string, confirmedAt: Date, isFullySatisfied: boolean): VoucherEntity {
+  confirmCustody(custodianUserId: string, confirmedAt: Date, isFullySatisfied: boolean, custodianUserEmail?: string): VoucherEntity {
     if (this.status !== VoucherStatus.PENDING) {
       throw new Error('Voucher must be in PENDING status for custody confirmation gate.');
     }
 
     const currentPending = this.metadata?.pendingCustodyConfirmations || [];
-    const newPending = currentPending.filter((id: string) => id !== custodianUserId);
+    const newPending = currentPending.filter((id: string) => 
+      id.toLowerCase() !== custodianUserId.toLowerCase() &&
+      (!custodianUserEmail || id.toLowerCase() !== custodianUserEmail.toLowerCase())
+    );
     
       const confirmations = [
       ...(this.metadata?.custodyConfirmations || []),
@@ -495,12 +498,11 @@ export class VoucherEntity {
       isFullySatisfied ? VoucherStatus.APPROVED : VoucherStatus.PENDING,
       newMetadata,
       this.createdBy, this.createdAt,
-      // Note: If transition to APPROVED happens via CC, we still record the final confirmation
-      // and potentially the last confirming person as approver if we want, 
-      // but usually the "approver" is the Finance Manager. 
-      // V1: If CC satisfies the last gate, the previous FA details are already in approval fields.
-      this.approvedBy,
-      this.approvedAt,
+      // Note: If transition to APPROVED happens via CC, we MUST set approvedAt
+      // because it wasn't set during FA (since FA wasn't final then).
+      // We set approvedBy to the custodian (as the finalizer) or keep existing if any.
+      isFullySatisfied ? (this.approvedBy || custodianUserId) : undefined,
+      isFullySatisfied ? (this.approvedAt || confirmedAt) : undefined,
       undefined, undefined, undefined,
       this.lockedBy, this.lockedAt,
       this.postedBy, this.postedAt,

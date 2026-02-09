@@ -51,23 +51,37 @@ export class NotificationMapper {
   static toDomain(data: any): Notification {
     return new Notification(
       data.id,
-      data.userId,
       data.companyId,
-      data.type,
+      data.type || 'INFO',
+      data.category || 'SYSTEM',
+      data.title || '',
       data.message,
       data.createdAt?.toDate?.() || new Date(data.createdAt),
-      data.read
+      data.recipientUserIds || [data.userId], // Backward compat
+      data.readBy || (data.read ? [data.userId] : []),
+      data.actionUrl,
+      data.sourceModule,
+      data.sourceEntityType,
+      data.sourceEntityId,
+      data.expiresAt?.toDate?.() || (data.expiresAt ? new Date(data.expiresAt) : undefined)
     );
   }
   static toPersistence(entity: Notification): any {
     return {
       id: entity.id,
-      userId: entity.userId,
       companyId: entity.companyId,
       type: entity.type,
+      category: entity.category,
+      title: entity.title,
       message: entity.message,
       createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
-      read: entity.read
+      recipientUserIds: entity.recipientUserIds,
+      readBy: entity.readBy,
+      actionUrl: entity.actionUrl || null,
+      sourceModule: entity.sourceModule || null,
+      sourceEntityType: entity.sourceEntityType || null,
+      sourceEntityId: entity.sourceEntityId || null,
+      expiresAt: entity.expiresAt ? admin.firestore.Timestamp.fromDate(entity.expiresAt) : null
     };
   }
 }

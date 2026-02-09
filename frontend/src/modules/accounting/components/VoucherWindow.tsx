@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check } from 'lucide-react';
+import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -18,9 +18,11 @@ import { VoucherCorrectionModal } from './VoucherCorrectionModal';
 import { RateDeviationDialog } from './shared/RateDeviationDialog';
 import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
+import { useAuth } from '../../../hooks/useAuth';
 import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { roundMoney } from '../../../utils/mathUtils';
+import { getCompanyToday } from '../../../utils/dateUtils';
 
 interface VoucherWindowProps {
   win: VoucherWindowType;
@@ -29,6 +31,7 @@ interface VoucherWindowProps {
   onApprove?: (id: string) => Promise<void>;
   onReject?: (id: string) => Promise<void>;
   onConfirm?: (id: string) => Promise<void>;
+  onPrint?: (id: string) => void;
 }
 
 export const VoucherWindow: React.FC<VoucherWindowProps> = ({ 
@@ -37,10 +40,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   onSubmit,
   onApprove,
   onReject,
-  onConfirm
+  onConfirm,
+  onPrint
 }) => {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow, updateWindowPosition, updateWindowSize, updateWindowData } = useWindowManager();
   const { settings, isLoading: settingsLoading, refresh: refreshSettings, updateSettings } = useCompanySettings();
+  const { user } = useAuth();
   const windowRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
 
@@ -76,6 +81,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [rateDeviationResult, setRateDeviationResult] = useState<RateDeviationResult | null>(null);
   const [pendingSaveData, setPendingSaveData] = useState<any>(null);
   const [isCheckingRates, setIsCheckingRates] = useState<boolean>(false);
+  const [successAction, setSuccessAction] = useState<'SUBMIT' | 'APPROVE' | 'CONFIRM_CUSTODY' | 'POST' | null>(null);
 
   // Memoized Totals & Balance State
   const { totalDebitCalc, totalCreditCalc, isBalanced } = React.useMemo(() => {
@@ -131,6 +137,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const isNested = React.useMemo(() => {
     return !!win.data?.reversalOfVoucherId;
   }, [win.data?.reversalOfVoucherId]);
+
+  const isVoucherStrict = React.useMemo(() => {
+    return win.data?.metadata?.creationMode === 'STRICT' || 
+           win.data?.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED;
+  }, [win.data?.metadata?.creationMode, win.data?.postingLockPolicy]);
+
+  const isSystemStrict = React.useMemo(() => {
+    return settings?.strictApprovalMode === true;
+  }, [settings?.strictApprovalMode]);
 
   const refreshVoucher = async () => {
     if (!win.data?.id) return;
@@ -505,8 +520,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
       await onSubmit(win.id, formData);
       
-      // Success! Reset dirty state to prevent "Unsaved Changes" prompt
       setIsDirty(false);
+      setSuccessAction('SUBMIT');
       setShowSuccessModal(true);
     } catch (error: any) {
       errorHandler.showError(error);
@@ -664,7 +679,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       >
       {/* Window Header */}
       <div
-        className="window-header flex items-center justify-between px-3 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] cursor-move select-none"
+        className="window-header relative z-50 flex items-center justify-between px-3 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] cursor-move select-none"
         onMouseDown={handleMouseDown}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -698,23 +713,62 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 </span>
               )}
               
-              {/* Status Indicator Dot - Visual Clue for Approval Mode */}
-              <div className="group relative ml-1">
-                <div 
-                  className={`w-2 h-2 rounded-full transition-all cursor-help ${
-                    settingsLoading ? 'bg-gray-400 animate-pulse' : 
-                    (settings?.strictApprovalMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
-                  }`} 
-                />
-                <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700">
-                  <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
-                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                    <span className="text-gray-400">Policy:</span>
-                    <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
-                    </span>
-                    <span className="text-gray-400">CID:</span>
-                    <span className="font-mono opacity-70">{settings?.companyId?.slice(0, 8)}...</span>
+              {/* Policy Duo Indicator - Distinguishes between System Policy and Voucher Governance */}
+              <div className="flex items-center gap-2 px-1.5 py-0.5 bg-black/5 dark:bg-white/5 rounded-md border border-[var(--color-border)] group relative cursor-help ml-1 transition-all hover:bg-black/[0.08] dark:hover:bg-white/[0.08] scale-95 origin-left">
+                {/* System Dot Indicator */}
+                <div className="flex items-center gap-1.5">
+                  <div 
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      settingsLoading ? 'bg-gray-400 animate-pulse' : 
+                      (isSystemStrict ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
+                    }`} 
+                  />
+                  <span className="text-[8px] font-black uppercase tracking-tighter text-[var(--color-text-muted)] leading-none italic opacity-70">SYS</span>
+                </div>
+                
+                <div className="w-[1px] h-3 bg-[var(--color-border)]" />
+                
+                {/* Voucher Icon Indicator */}
+                <div className="flex items-center gap-1.5">
+                  {isVoucherStrict ? (
+                    <Lock size={10} className="text-indigo-500 transition-all group-hover:scale-110" />
+                  ) : (
+                    <Zap size={10} className="text-emerald-500 animate-pulse transition-all group-hover:scale-110" />
+                  )}
+                  <span className="text-[8px] font-black uppercase tracking-tighter text-[var(--color-text-muted)] leading-none italic opacity-70">VOC</span>
+                </div>
+
+                {/* Rich Unified Tooltip */}
+                <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] text-[10px] p-2.5 rounded-lg shadow-2xl z-[9999] border border-[var(--color-border)] min-w-[220px] backdrop-blur-md">
+                  <div className="flex justify-between items-center border-b border-[var(--color-border)] shadow-sm pb-1.5 mb-2">
+                    <span className="font-black tracking-widest text-[var(--color-text-secondary)] uppercase">Policy Governance</span>
+                    <span className="text-[8px] bg-[var(--color-bg-tertiary)] px-1 rounded text-[var(--color-text-muted)]">V2.1</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <div className={`mt-1 w-2 h-2 rounded-full flex-none ${isSystemStrict ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
+                      <div className="flex flex-col">
+                        <span className="font-bold">System Mode: {isSystemStrict ? 'Strict' : 'Flexible'}</span>
+                        <span className="text-[9px] text-[var(--color-text-secondary)] leading-tight">Global policy for new vouchers. Current setting: {isSystemStrict ? 'All require FA.' : 'Auto-post enabled.'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-2.5 pt-1 border-t border-[var(--color-border)]">
+                      <div className="mt-0.5 flex-none">
+                        {isVoucherStrict ? <Lock size={10} className="text-indigo-500" /> : <Zap size={10} className="text-emerald-500" />}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold">Voucher Policy: {isVoucherStrict ? 'Strict Audit' : 'Flexible Edit'}</span>
+                        <span className="text-[9px] text-[var(--color-text-secondary)] leading-tight">
+                          {isVoucherStrict 
+                            ? 'This specific document is locked by audit rules from its creation. Permanent immutability.' 
+                            : 'This document was created under flexible rules. Self-correction is permitted.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-[var(--color-border)] text-[8px] text-[var(--color-text-muted)] italic text-right opacity-60">
+                    Voucher ID: {win.data?.id?.slice(0, 8)}...
                   </div>
                 </div>
               </div>
@@ -959,7 +1013,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                                    liveData?.currency || 
                                    win.data?.currency || 
                                    rows.find((r: any) => r.currency)?.currency || 
-                                   (win.voucherType as any)?.defaultCurrency || 
                                    settings?.baseCurrency || '';
             
             return (
@@ -1008,6 +1061,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             title="Create a new voucher in this window"
           >
             New
+          </button>
+
+          <button
+            className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors flex items-center gap-1.5"
+            onClick={() => win.data?.id && onPrint?.(win.data.id)}
+            disabled={!win.data?.id}
+            title="Print voucher"
+          >
+            <Printer className="w-4 h-4" />
+            Print
           </button>
 
           {(() => {
@@ -1120,6 +1183,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     try {
                       await onApprove(win.data.id);
                       setIsDirty(false);
+                      setSuccessAction('APPROVE');
                       setShowSuccessModal(true);
                     } catch (error: any) {
                       errorHandler.showError(error);
@@ -1135,8 +1199,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 Approve
               </button>
 
-              {/* Confirm Custody Button - Only shown if user is a pending custodian */}
-              {win.data?.metadata?.pendingCustodyConfirmations?.length > 0 && (
+              {/* Confirm Custody Button - Only shown if user is a pending custodian (ID or Email check) */}
+              {win.data?.metadata?.pendingCustodyConfirmations?.some((id: string) => 
+                id.toLowerCase() === user?.uid?.toLowerCase() || 
+                (user?.email && id.toLowerCase() === user.email.toLowerCase())
+              ) && (
                 <button
                   onClick={async () => {
                     if (onConfirm && win.data?.id) {
@@ -1144,6 +1211,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                       try {
                         await onConfirm(win.data.id);
                         setIsDirty(false);
+                        setSuccessAction('CONFIRM_CUSTODY');
                         setShowSuccessModal(true);
                       } catch (error: any) {
                         errorHandler.showError(error);
@@ -1288,12 +1356,14 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">
-                {win.data?.status?.toLowerCase() === 'posted' ? 'Posted Successfully!' : 
+                {successAction === 'CONFIRM_CUSTODY' ? 'Custody Confirmed!' :
+                 win.data?.status?.toLowerCase() === 'posted' ? 'Posted Successfully!' : 
                  win.data?.status?.toLowerCase() === 'draft' ? 'Saved Successfully!' : 
                  'Submitted Successfully!'}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {win.data?.status?.toLowerCase() === 'posted' ? 'Voucher has been posted to the ledger.' : 
+                {successAction === 'CONFIRM_CUSTODY' ? 'You have successfully confirmed custody of this voucher.' :
+                 win.data?.status?.toLowerCase() === 'posted' ? 'Voucher has been posted to the ledger.' : 
                  win.data?.status?.toLowerCase() === 'draft' ? 'Voucher saved as draft.' : 
                  'Voucher has been sent for approval.'}
               </p>

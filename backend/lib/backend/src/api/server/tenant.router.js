@@ -19,6 +19,7 @@ const company_admin_routes_1 = __importDefault(require("../routes/company-admin.
 // Legacy routes (to be migrated to modules)
 const system_rbac_routes_1 = __importDefault(require("../routes/system.rbac.routes"));
 const company_moduleSettings_routes_1 = __importDefault(require("../routes/company.moduleSettings.routes"));
+const notification_routes_1 = __importDefault(require("../routes/notification.routes"));
 const router = (0, express_1.Router)();
 // Apply Auth & Tenant Context Middleware
 router.use(authMiddleware_1.authMiddleware);
@@ -36,5 +37,6 @@ for (const module of modules) {
 }
 router.use('/rbac', system_rbac_routes_1.default);
 router.use(company_moduleSettings_routes_1.default);
+router.use(notification_routes_1.default);
 exports.default = router;
 //# sourceMappingURL=tenant.router.js.map

@@ -16,6 +16,7 @@ interface WindowsDesktopProps {
   onApproveVoucher?: (windowId: string, id: string) => Promise<void>;
   onRejectVoucher?: (windowId: string, id: string) => Promise<void>;
   onConfirmVoucher?: (windowId: string, id: string) => Promise<void>;
+  onPrintVoucher?: (id: string) => void;
 }
 
 export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ 
@@ -23,7 +24,8 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
   onSubmitVoucher,
   onApproveVoucher,
   onRejectVoucher,
-  onConfirmVoucher
+  onConfirmVoucher,
+  onPrintVoucher
 }) => {
   const { windows } = useWindowManager();
 
@@ -39,6 +41,7 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
           onApprove={onApproveVoucher ? (id) => onApproveVoucher(window.id, id) : undefined}
           onReject={onRejectVoucher ? (id) => onRejectVoucher(window.id, id) : undefined}
           onConfirm={onConfirmVoucher ? (id) => onConfirmVoucher(window.id, id) : undefined}
+          onPrint={onPrintVoucher}
         />
       ))}
 

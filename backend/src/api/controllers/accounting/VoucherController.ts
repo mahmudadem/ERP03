@@ -111,6 +111,7 @@ export class VoucherController {
           .filter(acc => acc !== null)
           .map(acc => ({
             accountId: acc!.id,
+            classification: acc!.classification || 'ASSET', // Default to ASSET for CC purposes
             requiresApproval: acc!.requiresApproval || false,
             requiresCustodyConfirmation: acc!.requiresCustodyConfirmation || false,
             custodianUserId: acc!.custodianUserId || undefined
@@ -240,6 +241,7 @@ export class VoucherController {
     try {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
+      const userEmail = (req as any).user.email;
       
       const { ConfirmCustodyUseCase } = await import('../../../application/accounting/use-cases/ConfirmCustodyUseCase');
       const { ApprovalPolicyService } = await import('../../../domain/accounting/policies/ApprovalPolicyService');
@@ -249,7 +251,7 @@ export class VoucherController {
         new ApprovalPolicyService()
       );
       
-      let voucher = await useCase.execute(companyId, req.params.id, userId);
+      let voucher = await useCase.execute(companyId, req.params.id, userId, userEmail);
 
       // If this confirmation satisfied ALL gates, it is now APPROVED.
       // We should check for auto-post here as well for seamless UX.

@@ -17,6 +17,7 @@ import companyAdminRouter from '../routes/company-admin.routes';
 // Legacy routes (to be migrated to modules)
 import rbacRoutes from '../routes/system.rbac.routes';
 import companyModuleSettingsRoutes from '../routes/company.moduleSettings.routes';
+import notificationRoutes from '../routes/notification.routes';
 
 const router = Router();
 
@@ -44,5 +45,7 @@ for (const module of modules) {
 
 router.use('/rbac', rbacRoutes);
 router.use(companyModuleSettingsRoutes);
+router.use(notificationRoutes);
 
 export default router;
+

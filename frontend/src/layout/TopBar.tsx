@@ -7,6 +7,7 @@ import { useCompanySettings } from '../hooks/useCompanySettings';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { Menu, Transition } from '@headlessui/react';
+import { NotificationBell } from '../components/NotificationBell';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -106,6 +107,9 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
            >
              {theme === 'light' ? '🌙' : '☀️'}
            </Button>
+
+           {/* Notification Bell */}
+           <NotificationBell />
         </div>
 
         <Menu as="div" className="relative ml-3">

@@ -20,18 +20,24 @@ export class LogAuditActionUseCase {
   }
 }
 
+/**
+ * Legacy SendNotificationUseCase
+ * @deprecated Use NotificationService instead for new code
+ */
 export class SendNotificationUseCase {
   constructor(private notifRepo: INotificationRepository) {}
 
   async execute(userId: string, companyId: string, type: 'INFO'|'WARNING', message: string): Promise<void> {
+    // Updated to match new Notification constructor
     const notif = new Notification(
       `notif_${Date.now()}`,
-      userId,
       companyId,
       type,
+      'SYSTEM',            // category
+      '',                  // title (empty for legacy)
       message,
       new Date(),
-      false
+      [userId]             // recipientUserIds
     );
     await this.notifRepo.sendNotification(notif);
   }

@@ -229,5 +229,18 @@ export const diContainer = {
   get tokenVerifier(): ITokenVerifier { return new FirebaseTokenVerifier(); },
 
   // SYSTEM METADATA
-  get systemMetadataRepository(): ISystemMetadataRepository { return new FirestoreSystemMetadataRepository(getDb()); }
+  get systemMetadataRepository(): ISystemMetadataRepository { return new FirestoreSystemMetadataRepository(getDb()); },
+
+  // REAL-TIME DISPATCHER
+  get realtimeDispatcher() {
+    const { FirebaseRealtimeDispatcher } = require('../realtime/FirebaseRealtimeDispatcher');
+    return new FirebaseRealtimeDispatcher();
+  },
+
+  // NOTIFICATION SERVICE
+  get notificationService() {
+    const { NotificationService } = require('../../application/system/services/NotificationService');
+    return new NotificationService(this.notificationRepository, this.realtimeDispatcher);
+  }
 };
+

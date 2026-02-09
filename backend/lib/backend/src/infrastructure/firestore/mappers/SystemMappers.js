@@ -66,18 +66,26 @@ class PermissionMapper {
 exports.PermissionMapper = PermissionMapper;
 class NotificationMapper {
     static toDomain(data) {
-        var _a, _b;
-        return new Notification_1.Notification(data.id, data.userId, data.companyId, data.type, data.message, ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt), data.read);
+        var _a, _b, _c, _d;
+        return new Notification_1.Notification(data.id, data.companyId, data.type || 'INFO', data.category || 'SYSTEM', data.title || '', data.message, ((_b = (_a = data.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt), data.recipientUserIds || [data.userId], // Backward compat
+        data.readBy || (data.read ? [data.userId] : []), data.actionUrl, data.sourceModule, data.sourceEntityType, data.sourceEntityId, ((_d = (_c = data.expiresAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || (data.expiresAt ? new Date(data.expiresAt) : undefined));
     }
     static toPersistence(entity) {
         return {
             id: entity.id,
-            userId: entity.userId,
             companyId: entity.companyId,
             type: entity.type,
+            category: entity.category,
+            title: entity.title,
             message: entity.message,
             createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
-            read: entity.read
+            recipientUserIds: entity.recipientUserIds,
+            readBy: entity.readBy,
+            actionUrl: entity.actionUrl || null,
+            sourceModule: entity.sourceModule || null,
+            sourceEntityType: entity.sourceEntityType || null,
+            sourceEntityId: entity.sourceEntityId || null,
+            expiresAt: entity.expiresAt ? admin.firestore.Timestamp.fromDate(entity.expiresAt) : null
         };
     }
 }

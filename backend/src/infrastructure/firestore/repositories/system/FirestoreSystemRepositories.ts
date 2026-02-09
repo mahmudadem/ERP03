@@ -21,7 +21,6 @@ export class FirestoreModuleRepository extends BaseFirestoreRepository<Module> i
   }
 
   async getEnabledModules(companyId: string): Promise<Module[]> {
-    // In MVP, this might just query a modules collection or company.modules
     const snapshot = await this.db.collection(this.collectionName).where('enabled', '==', true).get();
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }
@@ -75,15 +74,90 @@ export class FirestoreNotificationRepository extends BaseFirestoreRepository<Not
   protected toDomain = NotificationMapper.toDomain;
   protected toPersistence = NotificationMapper.toPersistence;
 
+  /**
+   * Create a notification for multiple recipients
+   */
+  async create(notification: Notification): Promise<void> {
+    return this.save(notification);
+  }
+
+  /**
+   * Legacy method - backward compat
+   */
   async sendNotification(notification: Notification): Promise<void> {
     return this.save(notification);
   }
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    const snapshot = await this.db.collection(this.collectionName).where('userId', '==', userId).get();
+
+  /**
+   * Get unread notifications for a specific user
+   */
+  async getUnreadForUser(companyId: string, userId: string): Promise<Notification[]> {
+    const snapshot = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('recipientUserIds', 'array-contains', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get();
+    
+    return snapshot.docs
+      .map(doc => this.toDomain(doc.data()))
+      .filter(n => !n.isReadByUser(userId) && !n.isExpired());
+  }
+
+  /**
+   * Get all notifications for a specific user (paginated)
+   */
+  async getUserNotifications(companyId: string, userId: string, limit: number = 20): Promise<Notification[]> {
+    const snapshot = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('recipientUserIds', 'array-contains', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
+    
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }
+
+  /**
+   * Mark notification as read by a specific user
+   */
+  async markAsReadByUser(notificationId: string, userId: string): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(notificationId);
+    await docRef.update({
+      readBy: admin.firestore.FieldValue.arrayUnion(userId)
+    });
+  }
+
+  /**
+   * Legacy method - backward compat
+   */
   async markAsRead(notificationId: string): Promise<void> {
     await this.db.collection(this.collectionName).doc(notificationId).update({ read: true });
+  }
+
+  /**
+   * Get unread count for a user
+   */
+  async getUnreadCount(companyId: string, userId: string): Promise<number> {
+    const unread = await this.getUnreadForUser(companyId, userId);
+    return unread.length;
+  }
+
+  /**
+   * Delete expired notifications (cleanup job)
+   */
+  async deleteExpired(companyId: string): Promise<number> {
+    const now = admin.firestore.Timestamp.now();
+    const snapshot = await this.db.collection(this.collectionName)
+      .where('companyId', '==', companyId)
+      .where('expiresAt', '<', now)
+      .get();
+    
+    const batch = this.db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    
+    return snapshot.size;
   }
 }
 
@@ -96,7 +170,6 @@ export class FirestoreAuditLogRepository extends BaseFirestoreRepository<AuditLo
     return this.save(entry);
   }
   async getLogs(companyId: string, filters?: any): Promise<AuditLog[]> {
-    // Basic query
     const snapshot = await this.db.collection(this.collectionName).limit(50).get();
     return snapshot.docs.map(doc => this.toDomain(doc.data()));
   }

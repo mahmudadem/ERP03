@@ -13,12 +13,20 @@ class LogAuditActionUseCase {
     }
 }
 exports.LogAuditActionUseCase = LogAuditActionUseCase;
+/**
+ * Legacy SendNotificationUseCase
+ * @deprecated Use NotificationService instead for new code
+ */
 class SendNotificationUseCase {
     constructor(notifRepo) {
         this.notifRepo = notifRepo;
     }
     async execute(userId, companyId, type, message) {
-        const notif = new Notification_1.Notification(`notif_${Date.now()}`, userId, companyId, type, message, new Date(), false);
+        // Updated to match new Notification constructor
+        const notif = new Notification_1.Notification(`notif_${Date.now()}`, companyId, type, 'SYSTEM', // category
+        '', // title (empty for legacy)
+        message, new Date(), [userId] // recipientUserIds
+        );
         await this.notifRepo.sendNotification(notif);
     }
 }

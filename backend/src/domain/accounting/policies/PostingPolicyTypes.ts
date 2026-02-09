@@ -80,6 +80,42 @@ export interface AccountingPolicyConfig {
    */
   custodyConfirmationEnabled: boolean;
   
+  /**
+   * Smart CC: Third-Party Voucher Mode
+   * - 'RECEIVER_ONLY': Only receiving custodian confirms (default)
+   * - 'BOTH': Both receiving AND releasing custodians must confirm
+   * Only applies when voucher creator is neither the receiving nor releasing custodian.
+   */
+  ccThirdPartyMode?: 'RECEIVER_ONLY' | 'BOTH';
+  
+  /**
+   * Smart CC: Minimum Amount Threshold
+   * CC is only required if voucher total >= this amount.
+   * 0 = always require CC (default)
+   */
+  ccAmountThreshold?: number;
+  
+  /**
+   * Smart CC: Allow Self-Confirmation
+   * When false (default): If creator IS the receiving custodian, auto-approve (self-admission)
+   * When true: Creator must still confirm their own receipt
+   */
+  ccAllowSelfConfirmation?: boolean;
+  
+  /**
+   * Smart CC: Block If No Custodian
+   * When true (default): Block submission if account has CC required but no custodian assigned
+   * When false: Skip CC for that account and allow submission
+   */
+  ccBlockIfNoCustodian?: boolean;
+  
+  /**
+   * Smart CC: Reversal Mode
+   * - 'SAME_AS_ORIGINAL': Reversal requires same CC as original (default)
+   * - 'AUTO_APPROVE': Reversals auto-approve without CC
+   */
+  ccReversalMode?: 'SAME_AS_ORIGINAL' | 'AUTO_APPROVE';
+  
   // Legacy field (maps to financialApprovalEnabled for backward compatibility)
   approvalRequired: boolean;
   

@@ -1,8 +1,36 @@
-1: implement the custodianship feature
-2: fix UX of company creation wizard and accoutnting app wizard
-    -some suggestions needs to be seen and reordered be seen first
-3: لما منغير عملة حساب وعندو اولاد لازم نعطي تحذير انو في اولاد بغير عملة ولازم تتغير عملاتهم
- وكمان اذا الاب او الاولاد الهم حركات مالية لازم نعرف شو نعمل بهيك حالة 
- ممكن اذا الو اولاد ما نسمح ؟؟
+1-fix how this works and save settings in accouting settings page: 
+those must be topic related buttons no auto save for all pages and the how this works 
+intruct users how this specific setting affects the system.
 
- before retesting the totals currency is hard coded to USD it must follow voucher currency which comes from header, if header select currency does not exist we must depened on first line or maybe base currency of the company ??
+2- insure that UI in bothe view web and windwos are the same.
+i noticed that chages and fixes we made is being applied to the windwos view only regarding what buttons we show and what we hide.
+
+3- check if we are ready to test adding new users to the company and assign roles to them.  
+
+4- check if notifications are working and ready to be tested.
+in Accounting Settings page we need a dedicated section for notifications settings,where we can enable or disable
+ notifications and set the notification type.
+ for example we can have a section for email notifications and another section for sms notifications and push notifications.
+ when system send the notification ? those are options like when voucher is created or when voucher is approved or when voucher is posted.
+you must think of what we need as a product owner.and not as a developer. 
+think and analyze our need based on our system and the business we are in.
+
+5- plan cost center functionality and add it to the system.
+- start with explaining what is cost center and why we need it for me .
+- Define the hierarchy: Support for parent and sub-cost centers to allow for nested reporting.
+- Transaction Tagging: Add cost center selection to Voucher entries, Invoices, and Expenses.
+- Validation Rules: Option to make cost centers mandatory for specific GL accounts (e.g., all expense/revenue accounts).
+- Cost Allocation: Implement a feature to split a single transaction across multiple cost centers by percentage or fixed amount.
+- Reporting: Develop a "Cost Center Statement" and "Profit & Loss by Cost Center" report.
+- Budgeting: Allow setting and tracking budgets per cost center.
+
+6- 
+
+
+
+
+
+
+
+VERY IMPORTANT: 
+DO NOT ACT JUST PLAN AND THINK OF THE BEST SOLUTION FOR THE SYSTEM.

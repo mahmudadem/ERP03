@@ -6,14 +6,13 @@ import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown, CheckCircle, RotateCcw, Ban, RefreshCw } from 'lucide-react';
+import { Eye, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Filter, X, Printer, Lock, ChevronRight, ChevronDown, CheckCircle, RotateCcw, Ban, RefreshCw, MoreVertical, Check, Search, Info, GripVertical, Settings2 } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
 import { useAccounts } from '../../../context/AccountsContext';
 import { VoucherFormConfig } from '../voucher-wizard/types';
-import { Info, GripVertical, Settings2, Check } from 'lucide-react';
 
 const STORAGE_KEY_WIDTHS = 'erp_voucher_list_column_widths';
 const STORAGE_KEY_FONT_SIZE = 'erp_voucher_list_font_size';
@@ -71,6 +70,8 @@ interface Props {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onConfirm?: (id: string) => void;
+  onPost?: (id: string) => void;
+  onReverse?: (id: string) => void;
   dateRange?: { from: string; to: string };
   externalFilters?: {
     search?: string;
@@ -114,6 +115,8 @@ export const VoucherTable: React.FC<Props> = ({
   onApprove,
   onReject,
   onConfirm,
+  onPost,
+  onReverse,
   dateRange,
   externalFilters = {}
 }) => {
@@ -1043,55 +1046,22 @@ export const VoucherTable: React.FC<Props> = ({
 
                     {visibleColumns.includes('actions') && (
                       <td className="px-6 py-3 whitespace-nowrap text-right font-medium">
-                        <div className="flex items-center justify-end gap-2 text-[var(--color-text-secondary)]">
+                        <div className="flex items-center justify-end gap-1 text-[var(--color-text-secondary)]">
+                          {/* PRIMARY ACTIONS */}
                           <button 
                             onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
-                            className="hover:text-primary-600 transition-colors p-1"
+                            className="hover:text-primary-600 transition-colors p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-full"
                             title="View Official / Print"
                           >
                             <Printer size={16} />
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
-                            disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                            className={clsx(
-                              "transition-colors p-1",
-                              (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "hover:text-primary-600"
-                            )}
-                            title="Edit Voucher"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
-                            disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                            className={clsx(
-                              "transition-colors p-1",
-                              (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested)
-                                ? "text-gray-300 cursor-not-allowed"
-                                : "hover:text-red-600"
-                            )}
-                            title="Delete Voucher"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                          {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
-                              className="hover:text-amber-600 transition-colors p-1"
-                              title="Cancel / Void Voucher"
-                            >
-                              <Ban size={16} />
-                            </button>
-                          )}
+
                           {voucher.status.toLowerCase() === 'pending' && !isNested && (
-                            <div className="flex items-center gap-1">
+                            <>
                               {voucher.metadata?.pendingFinancialApproval && (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); onApprove?.(voucher.id); }}
-                                  className="text-success-600 hover:bg-success-50 rounded p-1 transition-colors"
+                                  className="text-success-600 hover:bg-success-50 dark:hover:bg-success-900/10 rounded-full p-1.5 transition-colors"
                                   title="Approve / Verify"
                                 >
                                   <CheckCircle size={16} />
@@ -1100,21 +1070,81 @@ export const VoucherTable: React.FC<Props> = ({
                               {(voucher.metadata?.pendingCustodyConfirmations?.length || 0) > 0 && (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); onConfirm?.(voucher.id); }}
-                                  className="text-purple-600 hover:bg-purple-50 rounded p-1 transition-colors"
+                                  className="text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10 rounded-full p-1.5 transition-colors"
                                   title="Confirm Custody"
                                 >
                                   <Check size={16} />
                                 </button>
                               )}
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); onReject?.(voucher.id); }}
-                                className="text-danger-600 hover:bg-danger-50 rounded p-1 transition-colors"
-                                title="Reject"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
+                            </>
                           )}
+
+                          {voucher.status.toLowerCase() === 'approved' && !voucher.postedAt && !isNested && (
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); onPost?.(voucher.id); }}
+                                className="text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 rounded-full p-1.5 transition-colors"
+                                title="Post to Ledger"
+                             >
+                                <CheckCircle size={16} />
+                             </button>
+                          )}
+
+                          {/* SECONDARY ACTIONS (DROPDOWN) */}
+                          <div className="relative group">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); }}
+                              className="hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors p-1.5 rounded-full"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            
+                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] py-1 text-left origin-bottom-right scale-95 group-hover:scale-100">
+                               <button 
+                                  onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
+                                  disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                               >
+                                  <Edit size={14} /> Edit Voucher
+                               </button>
+
+                               {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
+                                 <button 
+                                    onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/10 text-amber-600 transition-colors"
+                                 >
+                                    <Ban size={14} /> Cancel / Void
+                                 </button>
+                               )}
+
+                               {voucher.status.toLowerCase() === 'pending' && !isNested && (
+                                 <button 
+                                    onClick={(e) => { e.stopPropagation(); onReject?.(voucher.id); }}
+                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 transition-colors"
+                                 >
+                                    <Ban size={14} /> Reject Approval
+                                 </button>
+                               )}
+
+                               {voucher.postedAt && !isNested && (
+                                  <button 
+                                     onClick={(e) => { e.stopPropagation(); onReverse?.(voucher.id); }}
+                                     className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/10 text-amber-600 transition-colors"
+                                  >
+                                     <RotateCcw size={14} /> Reverse Voucher
+                                  </button>
+                               )}
+
+                               <div className="h-[1px] bg-[var(--color-border)] my-1" />
+                               
+                               <button 
+                                  onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
+                                  disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 transition-colors disabled:opacity-50"
+                               >
+                                  <Trash2 size={14} /> Delete Forever
+                               </button>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     )}

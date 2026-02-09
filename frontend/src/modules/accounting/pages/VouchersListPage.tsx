@@ -59,11 +59,6 @@ const VouchersListPage: React.FC = () => {
   const [editingVoucher, setEditingVoucher] = React.useState<any>(null);
   const [modalType, setModalType] = React.useState<any>(null);
   
-  // Print View State
-  const [isPrintViewOpen, setIsPrintViewOpen] = React.useState(false);
-  const [viewingVoucher, setViewingVoucher] = React.useState<any>(null);
-  const [viewingFormType, setViewingFormType] = React.useState<any>(null);
-
   // Delete Modal State
   const [deleteVoucherId, setDeleteVoucherId] = React.useState<string | null>(null);
 
@@ -209,7 +204,7 @@ const VouchersListPage: React.FC = () => {
     }
   };
 
-  const handleViewPrint = async (id: string) => {
+  const handleViewPrint = (id: string) => {
     const summary = vouchers.find(v => v.id === id);
     if (!summary) return;
     
@@ -230,19 +225,7 @@ const VouchersListPage: React.FC = () => {
           return keywords.some(kw => formIdLower.includes(kw) || formNameLower.includes(kw) || formCodeLower.includes(kw));
         });
 
-    try {
-      const fullVoucher = await accountingApi.getVoucher(id);
-      setViewingVoucher(fullVoucher);
-      setViewingFormType(formDefinition);
-      setIsPrintViewOpen(true);
-    } catch (error) {
-      console.error('Failed to fetch voucher for viewing:', error);
-      errorHandler.showError({
-        code: 'FETCH_ERROR',
-        message: 'Failed to load voucher for viewing',
-        severity: 'ERROR'
-      } as any);
-    }
+    window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id, formType: formDefinition } }));
   };
 
   const handleSaveWeb = async (data: any) => {
@@ -344,6 +327,78 @@ const VouchersListPage: React.FC = () => {
     setRateDeviationResult(null);
   };
 
+  const handleApprove = async (id: string) => {
+    try {
+      await accountingApi.approveVoucher(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Voucher approved successfully');
+    } catch (e: any) {
+      console.error('Approval failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await accountingApi.rejectVoucher(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Voucher rejected');
+    } catch (e: any) {
+      console.error('Rejection failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
+  const handleConfirm = async (id: string) => {
+    try {
+      await accountingApi.confirmVoucherCustody(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Custody confirmed');
+    } catch (e: any) {
+      console.error('Confirmation failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
+  const handlePost = async (id: string) => {
+    try {
+      await accountingApi.postVoucher(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Voucher posted successfully');
+    } catch (e: any) {
+      console.error('Post failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    try {
+      await accountingApi.cancelVoucher(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Voucher cancelled successfully');
+    } catch (e: any) {
+      console.error('Cancel failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
+  const handleReverse = async (id: string) => {
+    try {
+      await accountingApi.reverseVoucher(id);
+      invalidateVouchers();
+      errorHandler.showSuccess('Reversal voucher created successfully');
+    } catch (e: any) {
+      console.error('Reverse failed:', e);
+      errorHandler.showError(e);
+      throw e;
+    }
+  };
+
   return (
     <AccountsProvider>
       <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] relative transition-colors duration-300">
@@ -405,42 +460,12 @@ const VouchersListPage: React.FC = () => {
                 onRowClick={handleRowClick}
                 onEdit={(voucher) => handleRowClick(voucher.id)}
                 onDelete={(id) => setDeleteVoucherId(id)}
-                onCancel={async (id) => {
-                  try {
-                    await accountingApi.cancelVoucher(id);
-                    invalidateVouchers();
-                    errorHandler.showSuccess('Voucher cancelled successfully');
-                  } catch (e: any) {
-                    console.error('Cancel failed:', e);
-                  }
-                }}
-                onApprove={async (id) => {
-                  try {
-                     await accountingApi.approveVoucher(id);
-                     invalidateVouchers();
-                     errorHandler.showSuccess('Voucher approved successfully');
-                  } catch (e: any) {
-                     console.error('Approval failed:', e);
-                  }
-                }}
-                onReject={async (id) => {
-                  try {
-                     await accountingApi.rejectVoucher(id);
-                     invalidateVouchers();
-                     errorHandler.showSuccess('Voucher rejected');
-                  } catch (e: any) {
-                     console.error('Rejection failed:', e);
-                  }
-                }}
-                onConfirm={async (id) => {
-                  try {
-                     await accountingApi.confirmVoucherCustody(id);
-                     invalidateVouchers();
-                     errorHandler.showSuccess('Custody confirmed');
-                  } catch (e: any) {
-                     console.error('Confirmation failed:', e);
-                  }
-                }}
+                onCancel={handleCancel}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onConfirm={handleConfirm}
+                onPost={handlePost}
+                onReverse={handleReverse}
                 onRefresh={() => invalidateVouchers()}
                 externalFilters={clientFilters}
                 dateRange={dateRange}
@@ -458,18 +483,16 @@ const VouchersListPage: React.FC = () => {
             uiMode={uiMode}
             onSave={handleSaveWeb}
             initialData={editingVoucher}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            onConfirm={handleConfirm}
+            onPost={handlePost}
+            onCancel={handleCancel}
+            onReverse={handleReverse}
+            onPrint={handleViewPrint}
           />
         )}
 
-        {/* Official View / Print View */}
-        {isPrintViewOpen && viewingVoucher && (
-          <VoucherPrintView 
-            voucher={viewingVoucher}
-            voucherType={viewingFormType}
-            onClose={() => setIsPrintViewOpen(false)}
-          />
-        )}
-        
         {/* Delete Confirmation Modal */}
         {deleteVoucherId && (
           <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">

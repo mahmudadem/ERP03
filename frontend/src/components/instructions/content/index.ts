@@ -25,4 +25,4 @@ export function getInstructions(pageId: string): PageInstructions | undefined {
 }
 
 // Re-export for convenience
-export { accountingSettingsInstructions };
+export * from './accounting-settings';

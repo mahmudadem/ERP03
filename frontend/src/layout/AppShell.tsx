@@ -9,11 +9,18 @@ import { useVoucherActions } from '../hooks/useVoucherActions';
 import { clsx } from 'clsx';
 import React from 'react'; // Added React import for React.useEffect
 import { PageTitleManager } from '../components/common/PageTitleManager';
+import { accountingApi } from '../api/accountingApi';
+import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintView';
 
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher } = useVoucherActions();
+  
+  // Printing State (Moved to Shell for global access)
+  const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
+  const [viewingVoucher, setViewingVoucher] = useState<any>(null);
+  const [viewingFormType, setViewingFormType] = useState<any>(null);
 
   const isWindowsMode = uiMode === 'windows';
 
@@ -23,6 +30,44 @@ export const AppShell: React.FC = () => {
       setIsSidebarOpen(true);
     }
   }, [sidebarPinned]);
+
+  const handleGlobalPrint = (idOrVoucher: string | any, formType?: any) => {
+    if (typeof idOrVoucher === 'string') {
+      // If only ID is passed, we might need a separate mechanism to fetch, 
+      // but for now we expect the caller to pass the object or we use a global bus.
+      // Actually, let's support dispatching an event that VouchersListPage (which has the data) or a service can hear.
+      window.dispatchEvent(new CustomEvent('request-print-voucher', { detail: { id: idOrVoucher } }));
+    } else {
+      setViewingVoucher(idOrVoucher);
+      setViewingFormType(formType);
+      setIsPrintViewOpen(true);
+    }
+  };
+
+  // Listen for print requests
+  React.useEffect(() => {
+     const handler = async (e: any) => {
+        const { id, voucher, formType } = e.detail;
+        if (voucher) {
+           setViewingVoucher(voucher);
+           setViewingFormType(formType);
+           setIsPrintViewOpen(true);
+        } else if (id) {
+           // Fetch and print
+           try {
+              const fullVoucher = await accountingApi.getVoucher(id);
+              // We'll need the form type. We can try to infer it or just pass it in detail.
+              setViewingVoucher(fullVoucher);
+              setViewingFormType(formType); 
+              setIsPrintViewOpen(true);
+           } catch (err) {
+              console.error('Failed to fetch voucher for global print:', err);
+           }
+        }
+     };
+     window.addEventListener('print-voucher', handler as any);
+     return () => window.removeEventListener('print-voucher', handler as any);
+  }, []);
 
   return (
     <AccountsProvider>
@@ -63,6 +108,18 @@ export const AppShell: React.FC = () => {
             onApproveVoucher={handleApproveVoucher}
             onRejectVoucher={handleRejectVoucher}
             onConfirmVoucher={handleConfirmVoucher}
+            onPrintVoucher={(id) => {
+               window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
+            }}
+          />
+        )}
+
+        {/* Global Print View */}
+        {isPrintViewOpen && viewingVoucher && (
+          <VoucherPrintView 
+            voucher={viewingVoucher}
+            voucherType={viewingFormType}
+            onClose={() => setIsPrintViewOpen(false)}
           />
         )}
       </div>

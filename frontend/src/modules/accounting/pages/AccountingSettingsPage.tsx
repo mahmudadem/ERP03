@@ -1,18 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
-import { InstructionsButton, accountingSettingsInstructions } from '../../../components/instructions';
+import { 
+  InstructionsButton, 
+  generalSettingsInstructions,
+  currenciesInstructions,
+  policiesInstructions,
+  paymentMethodsInstructions,
+  costCenterInstructions,
+  errorModeInstructions,
+  fiscalYearInstructions
+} from '../../../components/instructions';
 
 interface PolicyConfig {
   // Approval Policy V1 Toggles
   financialApprovalEnabled: boolean;      // FA: Role-based financial approval
   faApplyMode: 'ALL' | 'MARKED_ONLY';     // FA scope: all vouchers or only marked accounts
   custodyConfirmationEnabled: boolean;    // CC: User-bound custody confirmation
+  
+  // Smart CC Settings (V2)
+  ccThirdPartyMode?: 'RECEIVER_ONLY' | 'BOTH';  // Who confirms third-party vouchers
+  ccAmountThreshold?: number;                     // Min amount for CC
+  ccAllowSelfConfirmation?: boolean;              // Allow creator to confirm own receipt
+  ccBlockIfNoCustodian?: boolean;                 // Block if custodian unassigned
+  ccReversalMode?: 'SAME_AS_ORIGINAL' | 'AUTO_APPROVE';  // Reversal CC behavior
   
   // Legacy (kept for backward compatibility)
   approvalRequired: boolean;              // Maps to financialApprovalEnabled
@@ -43,8 +59,37 @@ interface PaymentMethodDefinition {
   isEnabled: boolean;
 }
 
+const SectionHeader: React.FC<{ 
+  title: string; 
+  description: string; 
+  onSave: () => void;
+  disabled: boolean;
+  saving: boolean;
+}> = ({ title, description, onSave, disabled, saving }) => (
+  <div className="flex flex-col gap-4 mb-8">
+    <div className="flex items-center justify-between">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{title}</h2>
+        <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{description}</p>
+      </div>
+      <button
+        onClick={onSave}
+        disabled={disabled}
+        className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm font-bold active:scale-95"
+      >
+        {saving ? (
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <Save size={18} />
+        )}
+        {saving ? 'Saving...' : `Save ${title}`}
+      </button>
+    </div>
+  </div>
+);
+
 export const AccountingSettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'error-mode' | 'fiscal'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
@@ -137,37 +182,44 @@ export const AccountingSettingsPage: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (section?: string) => {
     if (!companyId) return;
     
     setSaving(true);
     try {
-      // Filter out any unintentional baseCurrency if it leaked into state
-      const { baseCurrency, ...savePayload } = config as any;
-      
-      const result = await client.put(`tenant/accounting/policy-config`, savePayload) as any;
-      
-      // Check if success (interceptor returns the whole {success, message} for PUT responses)
-      if (result?.success === false) {
-        throw new Error(result.error?.message || 'Failed to save policy settings');
+      if (section === 'general') {
+        // Save ONLY core settings (timezone, dateFormat, uiMode, strictApprovalMode)
+        const settingsToSave = {
+          ...localCoreSettings,
+          strictApprovalMode: config.financialApprovalEnabled
+        };
+        await updateCoreSettings(settingsToSave);
+        setOriginalCoreSettings(settingsToSave);
+        errorHandler.showSuccess('General settings saved!');
+      } else {
+        // Save policy config for the active section
+        const { baseCurrency, ...savePayload } = config as any;
+        const result = await client.put(`tenant/accounting/policy-config`, savePayload) as any;
+        if (result?.success === false) {
+          throw new Error(result.error?.message || 'Failed to save policy settings');
+        }
+        setOriginalConfig(config);
+
+        // If policies tab, also sync strictApprovalMode bidirectionally
+        if (section === 'policies') {
+          const settingsToSave = {
+            ...localCoreSettings,
+            strictApprovalMode: config.financialApprovalEnabled
+          };
+          await updateCoreSettings(settingsToSave);
+          setOriginalCoreSettings(settingsToSave);
+          const modeText = settingsToSave.strictApprovalMode ? 'Strict Mode [ON]' : 'Strict Mode [OFF]';
+          errorHandler.showSuccess(`Approval & Posting saved! ${modeText}`);
+        } else {
+          const label = section ? section.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Settings';
+          errorHandler.showSuccess(`${label} saved!`);
+        }
       }
-
-      // ALWAYS ENSURE BIDIRECTIONAL SYNC
-      // financialApprovalEnabled controls strictApprovalMode
-      const settingsToSave = { 
-        ...localCoreSettings,
-        strictApprovalMode: config.financialApprovalEnabled 
-      };
-
-      // Force save regardless of optimization if approval setting is involved
-      await updateCoreSettings(settingsToSave);
-
-      // Explicit confirmation
-      const modeText = settingsToSave.strictApprovalMode ? "Strict Mode [ON]" : "Strict Mode [OFF]";
-      errorHandler.showSuccess(`Settings saved! ${modeText}`);
-
-      setOriginalConfig(config);
-      setOriginalCoreSettings(settingsToSave); // Update with what we actually saved
     } catch (error: any) {
       const errorData = error.response?.data?.error;
       if (errorData?.details?.violations) {
@@ -181,9 +233,30 @@ export const AccountingSettingsPage: React.FC = () => {
     }
   };
 
-  const hasChanges = 
-    JSON.stringify(config) !== JSON.stringify(originalConfig) ||
-    JSON.stringify(localCoreSettings) !== JSON.stringify(originalCoreSettings);
+  // Section-specific change detection
+  const hasGeneralChanges = JSON.stringify(localCoreSettings) !== JSON.stringify(originalCoreSettings);
+  
+  const hasPolicyChanges = originalConfig ? (
+    config.financialApprovalEnabled !== originalConfig.financialApprovalEnabled ||
+    config.faApplyMode !== originalConfig.faApplyMode ||
+    config.custodyConfirmationEnabled !== originalConfig.custodyConfirmationEnabled ||
+    config.ccThirdPartyMode !== originalConfig.ccThirdPartyMode ||
+    config.ccAmountThreshold !== originalConfig.ccAmountThreshold ||
+    config.ccAllowSelfConfirmation !== originalConfig.ccAllowSelfConfirmation ||
+    config.ccBlockIfNoCustodian !== originalConfig.ccBlockIfNoCustodian ||
+    config.ccReversalMode !== originalConfig.ccReversalMode ||
+    config.autoPostEnabled !== originalConfig.autoPostEnabled ||
+    config.allowEditDeletePosted !== originalConfig.allowEditDeletePosted
+  ) : false;
+
+  const hasMethodChanges = JSON.stringify(config.paymentMethods) !== JSON.stringify(originalConfig?.paymentMethods);
+  const hasCostCenterChanges = JSON.stringify(config.costCenterPolicy) !== JSON.stringify(originalConfig?.costCenterPolicy);
+  const hasErrorModeChanges = config.policyErrorMode !== originalConfig?.policyErrorMode;
+  const hasFiscalChanges = config.periodLockEnabled !== originalConfig?.periodLockEnabled || 
+                          config.lockedThroughDate !== originalConfig?.lockedThroughDate;
+
+  // Global change flag (for reference)
+  const hasAnyChanges = hasGeneralChanges || hasPolicyChanges || hasMethodChanges || hasCostCenterChanges || hasErrorModeChanges || hasFiscalChanges;
 
   if (loading) {
     return (
@@ -198,7 +271,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-[var(--color-bg-primary)]">
-      {/* Header with Instructions and Save Button */}
+      {/* Header (Simplified - Save buttons moved to sections) */}
       <div className="flex-none px-8 py-6 bg-white dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Accounting Settings</h1>
@@ -207,19 +280,17 @@ export const AccountingSettingsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <InstructionsButton instructions={accountingSettingsInstructions} />
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
-          >
-            {saving ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <InstructionsButton 
+            instructions={
+              activeTab === 'general' ? generalSettingsInstructions :
+              activeTab === 'currencies' ? currenciesInstructions :
+              activeTab === 'policies' ? policiesInstructions :
+              activeTab === 'payment-methods' ? paymentMethodsInstructions :
+              activeTab === 'cost-center' ? costCenterInstructions :
+              activeTab === 'error-mode' ? errorModeInstructions :
+              fiscalYearInstructions
+            } 
+          />
         </div>
       </div>
 
@@ -233,7 +304,7 @@ export const AccountingSettingsPage: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                     ${isActive
@@ -256,30 +327,20 @@ export const AccountingSettingsPage: React.FC = () => {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto bg-white dark:bg-[var(--color-bg-secondary)]">
           <div className="p-8">
-            {/* Mobile Tab Dropdown */}
-            <div className="md:hidden mb-6">
-              <select
-                className="block w-full rounded-md border-gray-300 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] focus:border-indigo-500 focus:ring-indigo-500"
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value)}
-              >
-                {tabs.map((tab) => (
-                  <option key={tab.id} value={tab.id}>{tab.label}</option>
-                ))}
-              </select>
-            </div>
 
-            {/* General Settings Tab */}
-            {activeTab === 'general' && (
-              <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">General Settings</h2>
-                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-                    Configure general company preferences that affect the accounting module
-                  </p>
-                </div>
 
-                <div className="space-y-6">
+                  {/* General Settings Tab */}
+                  {activeTab === 'general' && (
+                    <div className="max-w-4xl mx-auto space-y-8">
+                      <SectionHeader 
+                        title="General Settings" 
+                        description="Configure general company preferences that affect the accounting module"
+                        onSave={() => handleSave('general')}
+                        disabled={!hasGeneralChanges || saving}
+                        saving={saving}
+                      />
+                      
+                      <div className="space-y-6">
                   {/* Timezone */}
                   <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                     <label className="flex items-center gap-2 font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
@@ -382,25 +443,35 @@ export const AccountingSettingsPage: React.FC = () => {
                         <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">Multi-window multitasking</div>
                       </button>
                     </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Currencies Tab */}
-            {activeTab === 'currencies' && (
-              <CompanyCurrencySettings />
-            )}
+                  {/* Currencies Tab */}
+                  {(activeTab as string) === 'currencies' && (
+                    <div className="max-w-6xl mx-auto space-y-8">
+                      <SectionHeader 
+                        title="Currencies" 
+                        description="Manage your enterprise currency list and base currency"
+                        onSave={() => handleSave('currencies')}
+                        disabled={saving} // Currencies handled internally by CompanyCurrencySettings components
+                        saving={saving}
+                      />
+                      <CompanyCurrencySettings />
+                    </div>
+                  )}
 
-            {/* Policy Configuration Tab (Merged: Approval & Posting) */}
-            {activeTab === 'policies' && (
-              <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Approval & Posting</h2>
-                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-                    Configure approval gates and posting behavior
-                  </p>
-                </div>
+                  {/* Policy Configuration Tab (Merged: Approval & Posting) */}
+                  {(activeTab as string) === 'policies' && (
+                    <div className="w-full space-y-8">
+                      <SectionHeader 
+                        title="Approval & Posting" 
+                        description="Configure approval gates and posting behavior"
+                        onSave={() => handleSave('policies')}
+                        disabled={!hasPolicyChanges || saving}
+                        saving={saving}
+                      />
 
                 {/* Approval Gates Section */}
                 <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-xl p-6 shadow-sm">
@@ -412,14 +483,23 @@ export const AccountingSettingsPage: React.FC = () => {
                     Enable approval requirements before vouchers can be posted to ledger
                   </p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-6">
                     {/* Financial Approval Toggle */}
                     <div className="bg-white/70 dark:bg-[var(--color-bg-tertiary)] rounded-xl p-5 border border-indigo-100 dark:border-[var(--color-border)] shadow-sm">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Financial Approval (FA)</label>
+                          <div className="flex items-center gap-2">
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Financial Approval (FA)</label>
+                            <div className="group relative">
+                              <Info size={14} className="text-gray-400 hover:text-indigo-600 cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
+                                Require manager approval for vouchers before they affect the ledger.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                            Role-based approval gate. Vouchers require manager approval before posting.
+                            Role-based approval gate.
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -477,9 +557,18 @@ export const AccountingSettingsPage: React.FC = () => {
                     <div className="bg-white/70 dark:bg-[var(--color-bg-tertiary)] rounded-xl p-5 border border-indigo-100 dark:border-[var(--color-border)] shadow-sm">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Custody Confirmation (CC)</label>
+                          <div className="flex items-center gap-2">
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Custody Confirmation (CC)</label>
+                            <div className="group relative">
+                              <Info size={14} className="text-gray-400 hover:text-purple-600 cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
+                                Ensure funds/assets are physically received by the custodian.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                              </div>
+                            </div>
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                            User-bound custody gate. Custodians must confirm before posting.
+                            User-bound custody gate.
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -497,6 +586,218 @@ export const AccountingSettingsPage: React.FC = () => {
                               <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.custodyConfirmationEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </div>
                           </label>
+                        </div>
+                      </div>
+                      
+                      {/* Smart CC Settings - Horizontal Row */}
+                      {config.custodyConfirmationEnabled && (
+                        <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700/50">
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider mb-3">Smart Configuration</p>
+                          
+                          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+                             
+                             {/* 1. Third Party Mode */}
+                             <div className="xl:col-span-1">
+                               <div className="flex items-center gap-1.5 mb-2">
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Third-Party</label>
+                                 <div className="group relative">
+                                   <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
+                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
+                                     Who validates vouchers where creator ≠ sender/receiver (e.g. transfers).
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className="flex flex-col gap-1.5">
+                                 <button
+                                   onClick={() => setConfig({ ...config, ccThirdPartyMode: 'RECEIVER_ONLY' })}
+                                   className={`w-full px-3 py-1.5 text-xs font-medium rounded-md transition-all text-left flex items-center justify-between group ${
+                                     (config.ccThirdPartyMode || 'RECEIVER_ONLY') === 'RECEIVER_ONLY'
+                                       ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-600 py-2'
+                                       : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                   }`}
+                                 >
+                                   <span>Receiver Only</span>
+                                   {(config.ccThirdPartyMode || 'RECEIVER_ONLY') === 'RECEIVER_ONLY' && <CheckCircle2 size={12} className="text-purple-600" />}
+                                 </button>
+                                 <button
+                                   onClick={() => setConfig({ ...config, ccThirdPartyMode: 'BOTH' })}
+                                   className={`w-full px-3 py-1.5 text-xs font-medium rounded-md transition-all text-left flex items-center justify-between group ${
+                                     config.ccThirdPartyMode === 'BOTH'
+                                       ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-600 py-2'
+                                       : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                   }`}
+                                 >
+                                   <span>Both Parties</span>
+                                   {config.ccThirdPartyMode === 'BOTH' && <CheckCircle2 size={12} className="text-purple-600" />}
+                                 </button>
+                               </div>
+                             </div>
+
+                             {/* 2. Reversal Mode */}
+                             <div className="xl:col-span-1">
+                               <div className="flex items-center gap-1.5 mb-2">
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Reversal Logic</label>
+                                 <div className="group relative">
+                                   <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
+                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
+                                     How to handle confirmation for reversal (correction) vouchers.
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className="flex flex-col gap-1.5">
+                                 <button
+                                   onClick={() => setConfig({ ...config, ccReversalMode: 'SAME_AS_ORIGINAL' })}
+                                   className={`w-full px-3 py-1.5 text-xs font-medium rounded-md transition-all text-left flex items-center justify-between group ${
+                                     (config.ccReversalMode || 'SAME_AS_ORIGINAL') === 'SAME_AS_ORIGINAL'
+                                       ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-600 py-2'
+                                       : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                   }`}
+                                 >
+                                   <span>Match Original</span>
+                                   {(config.ccReversalMode || 'SAME_AS_ORIGINAL') === 'SAME_AS_ORIGINAL' && <CheckCircle2 size={12} className="text-purple-600" />}
+                                 </button>
+                                 <button
+                                   onClick={() => setConfig({ ...config, ccReversalMode: 'AUTO_APPROVE' })}
+                                   className={`w-full px-3 py-1.5 text-xs font-medium rounded-md transition-all text-left flex items-center justify-between group ${
+                                     config.ccReversalMode === 'AUTO_APPROVE'
+                                       ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-600 py-2'
+                                       : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                   }`}
+                                 >
+                                   <span>Auto-Approve</span>
+                                   {config.ccReversalMode === 'AUTO_APPROVE' && <CheckCircle2 size={12} className="text-purple-600" />}
+                                 </button>
+                               </div>
+                             </div>
+
+                             {/* 3. Self Confirm */}
+                             <div className="xl:col-span-1">
+                               <div className="flex items-center gap-1.5 mb-2">
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Self-Confirm</label>
+                                 <div className="group relative">
+                                   <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
+                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
+                                     Allow the voucher creator to also confirm custody if they are the receiver.
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50">
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only peer"
+                                      checked={config.ccAllowSelfConfirmation || false}
+                                      onChange={(e) => setConfig({ ...config, ccAllowSelfConfirmation: e.target.checked })}
+                                    />
+                                    <div className="w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
+                                      <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAllowSelfConfirmation ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                    </div>
+                                  </label>
+                                  <span className="text-[10px] text-gray-500 leading-tight">Allow creators to confirm their own receipts.</span>
+                               </div>
+                             </div>
+
+                             {/* 4. Block Missing */}
+                             <div className="xl:col-span-1">
+                               <div className="flex items-center gap-1.5 mb-2">
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Block Missing</label>
+                                 <div className="group relative">
+                                   <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
+                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
+                                     Prevent submission if no valid custodian user is assigned to the cash account.
+                                   </div>
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50/50">
+                                  <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only peer"
+                                      checked={config.ccBlockIfNoCustodian ?? true}
+                                      onChange={(e) => setConfig({ ...config, ccBlockIfNoCustodian: e.target.checked })}
+                                    />
+                                    <div className="w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
+                                      <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${(config.ccBlockIfNoCustodian ?? true) ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                    </div>
+                                  </label>
+                                  <span className="text-[10px] text-gray-500 leading-tight">Block submission if custodian is missing.</span>
+                               </div>
+                             </div>
+
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Voucher Amount Threshold (Extracted) */}
+                    <div className="bg-white/70 dark:bg-[var(--color-bg-tertiary)] rounded-xl p-5 border border-indigo-100 dark:border-[var(--color-border)] shadow-sm">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Voucher Amount Threshold</label>
+                            <div className="group relative">
+                              <Info size={14} className="text-gray-400 hover:text-indigo-600 cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
+                                Set a minimum monetary value. Vouchers below this amount skip custody confirmation.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                              </div>
+                            </div>
+                            
+                            {/* Toggle Switch */}
+                            <div className="flex items-center gap-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={!!config.ccAmountThreshold}
+                                    onChange={(e) => {
+                                       if (e.target.checked) {
+                                          setConfig({ ...config, ccAmountThreshold: 100 });
+                                       } else {
+                                          setConfig({ ...config, ccAmountThreshold: 0 });
+                                       }
+                                    }}
+                                  />
+                                  <div className={`w-9 h-5 rounded-full transition-colors ${config.ccAmountThreshold ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                                    <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAmountThreshold ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                  </div>
+                                </label>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${config.ccAmountThreshold ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                  {config.ccAmountThreshold ? 'ON' : 'OFF'}
+                                </span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
+                            {config.ccAmountThreshold 
+                              ? 'Custody confirmation required only for vouchers exceeding this amount.' 
+                              : 'Minimum amount disabled. Custody confirmation required for ALL vouchers.'}
+                          </p>
+                        </div>
+                        
+                        {/* Dynamic Input (Always Visible, Disabled if OFF) */}
+                        <div className={`flex items-center gap-2 shrink-0 ml-4 border-b-2 px-2 py-1 transition-all ${
+                          config.ccAmountThreshold 
+                            ? 'border-indigo-100 dark:border-indigo-900/50 opacity-100' 
+                            : 'border-gray-100 dark:border-gray-800 opacity-50'
+                        }`}>
+                           <span className={`text-xs font-semibold uppercase ${
+                             config.ccAmountThreshold ? 'text-gray-400' : 'text-gray-300'
+                           }`}>
+                               {coreSettings?.baseCurrency || 'USD'}
+                           </span>
+                           <input
+                             type="number"
+                             min="0"
+                             value={config.ccAmountThreshold || 0}
+                             disabled={!config.ccAmountThreshold}
+                             onChange={(e) => setConfig({ ...config, ccAmountThreshold: Number(e.target.value) })}
+                             className={`w-24 text-base font-bold bg-transparent border-none focus:ring-0 p-0 text-right ${
+                               config.ccAmountThreshold 
+                                ? 'text-gray-900 dark:text-gray-100' 
+                                : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                             }`}
+                           />
                         </div>
                       </div>
                     </div>
@@ -633,219 +934,19 @@ export const AccountingSettingsPage: React.FC = () => {
                     ) : null}
                   </div>
                 </div>
-
-                <div className="space-y-6">
-                  {/* Period Lock */}
-                  <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
-                    <div className="flex items-start gap-6">
-                      <div className="flex-1">
-                        <label className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-                          <Lock size={20} className="text-red-500" />
-                          Period Lock
-                        </label>
-                        <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                          Prevent posting to closed accounting periods
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-xs font-bold uppercase tracking-wider ${config.periodLockEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
-                          {config.periodLockEnabled ? 'ON' : 'OFF'}
-                        </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={config.periodLockEnabled}
-                            onChange={(e) => setConfig({ ...config, periodLockEnabled: e.target.checked })}
-                          />
-                          <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
-                            <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.periodLockEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                    
-                    {config.periodLockEnabled && (
-                      <div className="mt-6 pt-6 border-t border-gray-100 dark:border-[var(--color-border)]">
-                        <label className="block text-sm font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
-                          Locked Through Date
-                        </label>
-                        <input
-                          type="date"
-                          className="block w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] dark:text-[var(--color-text-primary)] rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          value={config.lockedThroughDate || ''}
-                          onChange={(e) => setConfig({ ...config, lockedThroughDate: e.target.value })}
-                        />
-                        <p className="mt-2 text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">
-                          Transactions on or before this date cannot be modified or posted.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Account Access Control */}
-                  <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
-                    <div className="flex items-start gap-6">
-                      <div className="flex-1">
-                        <label className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-                          <Building2 size={20} className="text-green-500" />
-                          Account Access Control
-                        </label>
-                        <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                          Enforce permission-based access to specific ledger accounts
-                        </p>
-                        <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-2 rounded-lg">
-                          <Shield size={14} />
-                          Users can only post to accounts they have access to
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className={`text-xs font-bold uppercase tracking-wider ${config.accountAccessEnabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
-                          {config.accountAccessEnabled ? 'ON' : 'OFF'}
-                        </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={config.accountAccessEnabled}
-                            onChange={(e) => setConfig({ ...config, accountAccessEnabled: e.target.checked })}
-                          />
-                          <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
-                            <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.accountAccessEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* Approval System Tab - Static Approval Policy V1 */}
-            {activeTab === 'approval' && (
-              <div className="space-y-4">
-                {/* Header & Mode Indicator - Compact */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Approval Policy V1</h2>
-                    <p className="text-sm text-gray-500">Dual-gate workflow for voucher approvals</p>
-                  </div>
-                  <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                    config.financialApprovalEnabled || config.custodyConfirmationEnabled
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-emerald-100 text-emerald-700'
-                  }`}>
-                    {!config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Mode A: Auto-Post'}
-                    {!config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Mode B: Custody Only'}
-                    {config.financialApprovalEnabled && !config.custodyConfirmationEnabled && 'Mode C: FA Only'}
-                    {config.financialApprovalEnabled && config.custodyConfirmationEnabled && 'Mode D: Dual-Gate'}
-                  </div>
-                </div>
-
-                {/* Two-Column Gate Controls */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Financial Approval Card */}
-                  <div className={`rounded-xl p-4 border transition-all ${
-                    config.financialApprovalEnabled 
-                      ? 'bg-indigo-50 border-indigo-200' 
-                      : 'bg-white border-gray-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Shield size={16} className={config.financialApprovalEnabled ? 'text-indigo-600' : 'text-gray-400'} />
-                        <span className="font-bold text-sm">Financial Approval</span>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={config.financialApprovalEnabled}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            setConfig({ ...config, financialApprovalEnabled: val, approvalRequired: val });
-                            setLocalCoreSettings(prev => ({ ...prev, strictApprovalMode: val }));
-                          }}
-                        />
-                        <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-indigo-600 transition-colors">
-                          <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.financialApprovalEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </div>
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-2">Manager approval before posting</p>
-                    
-                    {config.financialApprovalEnabled && (
-                      <div className="mt-3 pt-3 border-t border-indigo-100 space-y-2">
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase">Apply To:</p>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input type="radio" name="faApplyMode" checked={config.faApplyMode === 'ALL'} 
-                            onChange={() => setConfig({ ...config, faApplyMode: 'ALL' })} className="w-3 h-3" />
-                          <span className={config.faApplyMode === 'ALL' ? 'font-semibold' : ''}>All Vouchers</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input type="radio" name="faApplyMode" checked={config.faApplyMode === 'MARKED_ONLY'} 
-                            onChange={() => setConfig({ ...config, faApplyMode: 'MARKED_ONLY' })} className="w-3 h-3" />
-                          <span className={config.faApplyMode === 'MARKED_ONLY' ? 'font-semibold' : ''}>Marked Accounts Only</span>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Custody Confirmation Card */}
-                  <div className={`rounded-xl p-4 border transition-all ${
-                    config.custodyConfirmationEnabled 
-                      ? 'bg-purple-50 border-purple-200' 
-                      : 'bg-white border-gray-200'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Lock size={16} className={config.custodyConfirmationEnabled ? 'text-purple-600' : 'text-gray-400'} />
-                        <span className="font-bold text-sm">Custody Confirmation</span>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={config.custodyConfirmationEnabled}
-                          onChange={(e) => setConfig({ ...config, custodyConfirmationEnabled: e.target.checked })}
-                        />
-                        <div className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-purple-600 transition-colors">
-                          <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.custodyConfirmationEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </div>
-                      </label>
-                    </div>
-                    <p className="text-xs text-gray-500">Custodian must confirm before posting</p>
-                    
-                    {config.custodyConfirmationEnabled && (
-                      <div className="mt-3 pt-3 border-t border-purple-100">
-                        <p className="text-[10px] text-purple-600">Applies to accounts with assigned custodians</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Governance Notice - Compact */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
-                  <AlertTriangle size={14} className="shrink-0" />
-                  <span><strong>Governance:</strong> Only Owner or Admin roles should modify these settings.</span>
-                </div>
-
-                {/* Hard Policy - Minimal */}
-                <div className="px-3 py-2 bg-gray-800 rounded-lg text-xs text-gray-300">
-                  <strong className="text-white">Hard Policy:</strong> Posting occurs ONLY after ALL enabled gates are satisfied.
-                </div>
-              </div>
-            )}
-
-
-            {/* Payment Methods Tab */}
-            {activeTab === 'payment-methods' && (
+              {/* Payment Methods Tab */}
+              {(activeTab as string) === 'payment-methods' && (
               <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Payment Methods</h2>
-                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-                    Define and manage payment methods used across vouchers
-                  </p>
-                </div>
+                <SectionHeader 
+                  title="Payment Methods" 
+                  description="Define and manage payment methods used across vouchers"
+                  onSave={() => handleSave('payment-methods')}
+                  disabled={!hasMethodChanges || saving}
+                  saving={saving}
+                />
 
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
                   <div className="p-6 border-b border-gray-200 dark:border-[var(--color-border)] bg-gray-50/50 dark:bg-[var(--color-bg-tertiary)] flex items-center justify-between">
@@ -930,6 +1031,7 @@ export const AccountingSettingsPage: React.FC = () => {
                   </div>
                 </div>
 
+
                 <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl">
                   <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-800/30 flex items-center justify-center shrink-0">
                     <Layout size={16} className="text-blue-600 dark:text-blue-400" />
@@ -943,18 +1045,19 @@ export const AccountingSettingsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+              )}
 
 
             {/* Cost Center Required Tab */}
-            {activeTab === 'cost-center' && (
+            {(activeTab as string) === 'cost-center' && (
               <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Cost Center Required</h2>
-                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-                    Define when cost center assignment is mandatory
-                  </p>
-                </div>
+                <SectionHeader 
+                  title="Cost Center Required" 
+                  description="Define when cost center assignment is mandatory"
+                  onSave={() => handleSave('cost-center')}
+                  disabled={!hasCostCenterChanges || saving}
+                  saving={saving}
+                />
 
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                   <div className="flex items-start gap-6 mb-4">
@@ -1029,14 +1132,15 @@ export const AccountingSettingsPage: React.FC = () => {
             )}
 
             {/* Policy Error Mode Tab */}
-            {activeTab === 'error-mode' && (
+            {(activeTab as string) === 'error-mode' && (
               <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">Policy Error Mode</h2>
-                  <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">
-                    Control how validation failures are reported
-                  </p>
-                </div>
+                <SectionHeader 
+                  title="Policy Error Mode" 
+                  description="Control how validation failures are reported"
+                  onSave={() => handleSave('error-mode')}
+                  disabled={!hasErrorModeChanges || saving}
+                  saving={saving}
+                />
 
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
@@ -1093,30 +1197,31 @@ export const AccountingSettingsPage: React.FC = () => {
             )}
 
             {/* Fiscal Year Tab */}
-            {activeTab === 'fiscal' && (
+            {(activeTab as string) === 'fiscal' && (
               <div className="max-w-4xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Fiscal Year</h2>
-                  <p className="text-gray-600">
-                    Define your company's financial reporting period
-                  </p>
-                </div>
+                <SectionHeader 
+                  title="Fiscal Year" 
+                  description="Define your company's financial reporting period"
+                  onSave={() => handleSave('fiscal')}
+                  disabled={!hasFiscalChanges || saving}
+                  saving={saving}
+                />
                 
-                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl p-12 text-center">
-                  <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-200 flex items-center justify-center mx-auto mb-4 text-gray-400">
+                <div className="bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-2 border-dashed border-gray-200 dark:border-[var(--color-border)] rounded-3xl p-12 text-center text-[var(--color-text-muted)]">
+                  <div className="w-16 h-16 bg-white dark:bg-[var(--color-bg-tertiary)] rounded-2xl shadow-sm border border-gray-200 dark:border-[var(--color-border)] flex items-center justify-center mx-auto mb-4 text-gray-400">
                     <Building2 size={32} />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Under Construction</h3>
-                  <p className="text-gray-500 max-w-xs mx-auto mt-2">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Under Construction</h3>
+                  <p className="text-gray-500 dark:text-[var(--color-text-secondary)] max-w-xs mx-auto mt-2">
                     Fiscal year settings are being migrated to the new policy framework.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Metadata */}
+            {/* Metadata and Closing of IIFE */}
             {config.updatedAt && (
-              <div className="mt-8 pt-4 border-t text-sm text-gray-500">
+              <div className="mt-8 pt-4 border-t border-[var(--color-border)] text-sm text-[var(--color-text-muted)] italic">
                 Last updated: {new Date(config.updatedAt).toLocaleString()}
                 {config.updatedBy && ` by ${config.updatedBy}`}
               </div>

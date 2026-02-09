@@ -344,13 +344,14 @@ class VoucherEntity {
      * @param confirmedAt Date of confirmation
      * @param isFullySatisfied If true, transitions status to APPROVED
      */
-    confirmCustody(custodianUserId, confirmedAt, isFullySatisfied) {
+    confirmCustody(custodianUserId, confirmedAt, isFullySatisfied, custodianUserEmail) {
         var _a, _b;
         if (this.status !== VoucherTypes_1.VoucherStatus.PENDING) {
             throw new Error('Voucher must be in PENDING status for custody confirmation gate.');
         }
         const currentPending = ((_a = this.metadata) === null || _a === void 0 ? void 0 : _a.pendingCustodyConfirmations) || [];
-        const newPending = currentPending.filter((id) => id !== custodianUserId);
+        const newPending = currentPending.filter((id) => id.toLowerCase() !== custodianUserId.toLowerCase() &&
+            (!custodianUserEmail || id.toLowerCase() !== custodianUserEmail.toLowerCase()));
         const confirmations = [
             ...(((_b = this.metadata) === null || _b === void 0 ? void 0 : _b.custodyConfirmations) || []),
             {
@@ -360,11 +361,10 @@ class VoucherEntity {
         ];
         const newMetadata = Object.assign(Object.assign({}, this.metadata), { pendingCustodyConfirmations: newPending, custodyConfirmations: confirmations });
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, isFullySatisfied ? VoucherTypes_1.VoucherStatus.APPROVED : VoucherTypes_1.VoucherStatus.PENDING, newMetadata, this.createdBy, this.createdAt, 
-        // Note: If transition to APPROVED happens via CC, we still record the final confirmation
-        // and potentially the last confirming person as approver if we want, 
-        // but usually the "approver" is the Finance Manager. 
-        // V1: If CC satisfies the last gate, the previous FA details are already in approval fields.
-        this.approvedBy, this.approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date());
+        // Note: If transition to APPROVED happens via CC, we MUST set approvedAt
+        // because it wasn't set during FA (since FA wasn't final then).
+        // We set approvedBy to the custodian (as the finalizer) or keep existing if any.
+        isFullySatisfied ? (this.approvedBy || custodianUserId) : undefined, isFullySatisfied ? (this.approvedAt || confirmedAt) : undefined, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date());
     }
     /**
      * Create rejected version (immutable update)

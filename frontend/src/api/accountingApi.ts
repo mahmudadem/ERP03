@@ -236,6 +236,13 @@ export const accountingApi = {
   },
 
   // --- CORRECTIONS ---
+  reverseVoucher: (id: string, reversalDate?: string): Promise<CorrectionResponse> => {
+    return client.post(`/tenant/accounting/vouchers/${id}/correct`, { 
+      correctionMode: 'REVERSE_ONLY',
+      options: { reversalDate: reversalDate || 'today' }
+    });
+  },
+
   reverseAndReplaceVoucher: (id: string, request: CorrectionRequest): Promise<CorrectionResponse> => {
     return client.post(`/tenant/accounting/vouchers/${id}/correct`, request);
   },

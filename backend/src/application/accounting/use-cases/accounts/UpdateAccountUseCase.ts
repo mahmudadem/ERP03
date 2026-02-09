@@ -289,6 +289,11 @@ export class UpdateAccountUseCase {
     if (data.fixedCurrencyCode !== undefined) updateInput.fixedCurrencyCode = data.fixedCurrencyCode;
     if (data.currency !== undefined) updateInput.fixedCurrencyCode = data.currency;
     if (data.allowedCurrencyCodes !== undefined) updateInput.allowedCurrencyCodes = data.allowedCurrencyCodes;
+    
+    // Approval policy fields
+    if ((data as any).requiresApproval !== undefined) updateInput.requiresApproval = (data as any).requiresApproval;
+    if ((data as any).requiresCustodyConfirmation !== undefined) updateInput.requiresCustodyConfirmation = (data as any).requiresCustodyConfirmation;
+    if ((data as any).custodianUserId !== undefined) updateInput.custodianUserId = (data as any).custodianUserId;
 
     // 13. Perform update
     const updated = await this.accountRepo.update(companyId, accountId, updateInput);

@@ -23,8 +23,8 @@ async function runTest() {
     };
     // 3. Setup Account Metadata Mock (Triggering both gates)
     const mockAccountMetadata = async () => [
-        { accountId: 'acc-cash', requiresApproval: true, requiresCustodyConfirmation: true, custodianUserId: 'user-custodian' },
-        { accountId: 'acc-exp', requiresApproval: false, requiresCustodyConfirmation: false }
+        { accountId: 'acc-cash', classification: 'ASSET', requiresApproval: true, requiresCustodyConfirmation: true, custodianUserId: 'user-custodian' },
+        { accountId: 'acc-exp', classification: 'EXPENSE', requiresApproval: false, requiresCustodyConfirmation: false }
     ];
     const useCase = new SubmitVoucherUseCase_1.SubmitVoucherUseCase(mockRepo, mockConfig, new ApprovalPolicyService_1.ApprovalPolicyService(), mockAccountMetadata);
     console.log('Executing SubmitVoucherUseCase...');

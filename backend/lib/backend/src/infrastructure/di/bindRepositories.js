@@ -160,6 +160,16 @@ exports.diContainer = {
     // AUTH
     get tokenVerifier() { return new FirebaseTokenVerifier_1.FirebaseTokenVerifier(); },
     // SYSTEM METADATA
-    get systemMetadataRepository() { return new FirestoreSystemMetadataRepository_1.FirestoreSystemMetadataRepository(getDb()); }
+    get systemMetadataRepository() { return new FirestoreSystemMetadataRepository_1.FirestoreSystemMetadataRepository(getDb()); },
+    // REAL-TIME DISPATCHER
+    get realtimeDispatcher() {
+        const { FirebaseRealtimeDispatcher } = require('../realtime/FirebaseRealtimeDispatcher');
+        return new FirebaseRealtimeDispatcher();
+    },
+    // NOTIFICATION SERVICE
+    get notificationService() {
+        const { NotificationService } = require('../../application/system/services/NotificationService');
+        return new NotificationService(this.notificationRepository, this.realtimeDispatcher);
+    }
 };
 //# sourceMappingURL=bindRepositories.js.map
