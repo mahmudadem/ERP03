@@ -15,7 +15,7 @@ import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintV
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
-  const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher } = useVoucherActions();
+  const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher, post, cancel, reverse } = useVoucherActions();
   
   // Printing State (Moved to Shell for global access)
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
@@ -108,6 +108,9 @@ export const AppShell: React.FC = () => {
             onApproveVoucher={handleApproveVoucher}
             onRejectVoucher={handleRejectVoucher}
             onConfirmVoucher={handleConfirmVoucher}
+            onPostVoucher={post}
+            onCancelVoucher={cancel}
+            onReverseVoucher={reverse}
             onPrintVoucher={(id) => {
                window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
             }}

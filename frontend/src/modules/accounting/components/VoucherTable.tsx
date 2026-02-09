@@ -13,6 +13,8 @@ import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
 import { DatePicker } from './shared/DatePicker';
 import { useAccounts } from '../../../context/AccountsContext';
 import { VoucherFormConfig } from '../voucher-wizard/types';
+import { useAuth } from '../../../hooks/useAuth';
+import { getPrimaryActions, getDropdownActions, VoucherActionDefinition, VoucherActionType } from '../utils/voucherActions';
 
 const STORAGE_KEY_WIDTHS = 'erp_voucher_list_column_widths';
 const STORAGE_KEY_FONT_SIZE = 'erp_voucher_list_font_size';
@@ -72,6 +74,8 @@ interface Props {
   onConfirm?: (id: string) => void;
   onPost?: (id: string) => void;
   onReverse?: (id: string) => void;
+  /** Generic action handler — if provided, used for all actions not covered by specific callbacks */
+  onAction?: (type: VoucherActionType, id: string, voucher?: VoucherListItem) => void;
   dateRange?: { from: string; to: string };
   externalFilters?: {
     search?: string;
@@ -117,6 +121,7 @@ export const VoucherTable: React.FC<Props> = ({
   onConfirm,
   onPost,
   onReverse,
+  onAction,
   dateRange,
   externalFilters = {}
 }) => {
@@ -124,6 +129,7 @@ export const VoucherTable: React.FC<Props> = ({
   const pageInfo = pagination || { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 };
   const { settings } = useCompanySettings();
   const { getAccountById } = useAccounts();
+  const { user } = useAuth();
   
   // States for row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -1044,110 +1050,113 @@ export const VoucherTable: React.FC<Props> = ({
                       </td>
                     )}
 
-                    {visibleColumns.includes('actions') && (
-                      <td className="px-6 py-3 whitespace-nowrap text-right font-medium">
-                        <div className="flex items-center justify-end gap-1 text-[var(--color-text-secondary)]">
-                          {/* PRIMARY ACTIONS */}
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onViewPrint?.(voucher.id); }}
-                            className="hover:text-primary-600 transition-colors p-1.5 hover:bg-primary-50 dark:hover:bg-primary-900/10 rounded-full"
-                            title="View Official / Print"
-                          >
-                            <Printer size={16} />
-                          </button>
+                    {visibleColumns.includes('actions') && (() => {
+                      // ── Centralized action resolution ──────────────────
+                      const actionCtx = { voucher, settings, user, isNested };
+                      const primaryActions = getPrimaryActions(actionCtx);
+                      const dropdownActions = getDropdownActions(actionCtx);
 
-                          {voucher.status.toLowerCase() === 'pending' && !isNested && (
-                            <>
-                              {voucher.metadata?.pendingFinancialApproval && (
+                      // Icon lookup map
+                      const ICON_MAP: Record<string, React.ReactNode> = {
+                        Printer: <Printer size={16} />,
+                        CheckCircle: <CheckCircle size={16} />,
+                        Check: <Check size={16} />,
+                        Edit: <Edit size={14} />,
+                        Ban: <Ban size={14} />,
+                        RotateCcw: <RotateCcw size={14} />,
+                        RefreshCw: <RefreshCw size={14} />,
+                        Trash2: <Trash2 size={14} />,
+                      };
+
+                      // Primary variant CSS
+                      const PRIMARY_CSS: Record<string, string> = {
+                        secondary: 'hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/10',
+                        success: 'text-success-600 hover:bg-success-50 dark:hover:bg-success-900/10',
+                        purple: 'text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10',
+                      };
+
+                      // Dropdown variant CSS (text color only)
+                      const DROPDOWN_CSS: Record<string, string> = {
+                        secondary: 'hover:bg-[var(--color-bg-tertiary)]',
+                        danger: 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10',
+                        amber: 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10',
+                      };
+
+                      // Route action to the correct callback
+                      const dispatchAction = (action: VoucherActionDefinition) => {
+                        const id = voucher.id;
+                        switch (action.type) {
+                          case 'PRINT': onViewPrint?.(id); break;
+                          case 'APPROVE': onApprove?.(id); break;
+                          case 'CONFIRM_CUSTODY': onConfirm?.(id); break;
+                          case 'POST': onPost?.(id); break;
+                          case 'EDIT': onEdit?.(voucher); break;
+                          case 'REJECT': onReject?.(id); break;
+                          case 'CANCEL': onCancel?.(id); break;
+                          case 'REVERSE': onReverse?.(id); break;
+                          case 'DELETE': onDelete?.(id); break;
+                          default: onAction?.(action.type, id, voucher);
+                        }
+                      };
+
+                      return (
+                        <td className="px-6 py-3 whitespace-nowrap text-right font-medium">
+                          <div className="flex items-center justify-end gap-1 text-[var(--color-text-secondary)]">
+                            {/* PRIMARY ACTIONS — always-visible icon buttons */}
+                            {primaryActions.map(action => (
+                              <button 
+                                key={action.type}
+                                onClick={(e) => { e.stopPropagation(); dispatchAction(action); }}
+                                disabled={!action.isEnabled}
+                                className={clsx(
+                                  'transition-colors p-1.5 rounded-full',
+                                  PRIMARY_CSS[action.variant] || PRIMARY_CSS.secondary,
+                                  !action.isEnabled && 'opacity-40 cursor-not-allowed'
+                                )}
+                                title={action.tooltip || action.label}
+                              >
+                                {ICON_MAP[action.icon] || <Info size={16} />}
+                              </button>
+                            ))}
+
+                            {/* DROPDOWN — secondary actions behind MoreVertical */}
+                            {dropdownActions.length > 0 && (
+                              <div className="relative group">
                                 <button 
-                                  onClick={(e) => { e.stopPropagation(); onApprove?.(voucher.id); }}
-                                  className="text-success-600 hover:bg-success-50 dark:hover:bg-success-900/10 rounded-full p-1.5 transition-colors"
-                                  title="Approve / Verify"
+                                  onClick={(e) => { e.stopPropagation(); }}
+                                  className="hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors p-1.5 rounded-full"
                                 >
-                                  <CheckCircle size={16} />
+                                  <MoreVertical size={16} />
                                 </button>
-                              )}
-                              {(voucher.metadata?.pendingCustodyConfirmations?.length || 0) > 0 && (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); onConfirm?.(voucher.id); }}
-                                  className="text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/10 rounded-full p-1.5 transition-colors"
-                                  title="Confirm Custody"
-                                >
-                                  <Check size={16} />
-                                </button>
-                              )}
-                            </>
-                          )}
-
-                          {voucher.status.toLowerCase() === 'approved' && !voucher.postedAt && !isNested && (
-                             <button 
-                                onClick={(e) => { e.stopPropagation(); onPost?.(voucher.id); }}
-                                className="text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 rounded-full p-1.5 transition-colors"
-                                title="Post to Ledger"
-                             >
-                                <CheckCircle size={16} />
-                             </button>
-                          )}
-
-                          {/* SECONDARY ACTIONS (DROPDOWN) */}
-                          <div className="relative group">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); }}
-                              className="hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors p-1.5 rounded-full"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            
-                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] py-1 text-left origin-bottom-right scale-95 group-hover:scale-100">
-                               <button 
-                                  onClick={(e) => { e.stopPropagation(); onEdit?.(voucher); }}
-                                  disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
-                               >
-                                  <Edit size={14} /> Edit Voucher
-                               </button>
-
-                               {(voucher.status.toLowerCase() === 'draft' || voucher.status.toLowerCase() === 'approved') && !voucher.postedAt && !isNested && (
-                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); onCancel?.(voucher.id); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/10 text-amber-600 transition-colors"
-                                 >
-                                    <Ban size={14} /> Cancel / Void
-                                 </button>
-                               )}
-
-                               {voucher.status.toLowerCase() === 'pending' && !isNested && (
-                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); onReject?.(voucher.id); }}
-                                    className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 transition-colors"
-                                 >
-                                    <Ban size={14} /> Reject Approval
-                                 </button>
-                               )}
-
-                               {voucher.postedAt && !isNested && (
-                                  <button 
-                                     onClick={(e) => { e.stopPropagation(); onReverse?.(voucher.id); }}
-                                     className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-amber-50 dark:hover:bg-amber-900/10 text-amber-600 transition-colors"
-                                  >
-                                     <RotateCcw size={14} /> Reverse Voucher
-                                  </button>
-                               )}
-
-                               <div className="h-[1px] bg-[var(--color-border)] my-1" />
-                               
-                               <button 
-                                  onClick={(e) => { e.stopPropagation(); onDelete?.(voucher.id); }}
-                                  disabled={voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isNested}
-                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 transition-colors disabled:opacity-50"
-                               >
-                                  <Trash2 size={14} /> Delete Forever
-                               </button>
-                            </div>
+                                
+                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] py-1 text-left origin-bottom-right scale-95 group-hover:scale-100">
+                                  {dropdownActions.map((action, idx) => {
+                                    // Add separator before DELETE
+                                    const showSeparator = action.type === 'DELETE' && idx > 0;
+                                    return (
+                                      <React.Fragment key={action.type}>
+                                        {showSeparator && <div className="h-[1px] bg-[var(--color-border)] my-1" />}
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); dispatchAction(action); }}
+                                          disabled={!action.isEnabled}
+                                          className={clsx(
+                                            'w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors disabled:opacity-50',
+                                            DROPDOWN_CSS[action.variant] || DROPDOWN_CSS.secondary
+                                          )}
+                                        >
+                                          {ICON_MAP[action.icon] || <Info size={14} />}
+                                          {action.label}
+                                        </button>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                    )}
+                        </td>
+                      );
+                    })()}
                   </tr>
                 );
               })

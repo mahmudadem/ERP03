@@ -21,6 +21,7 @@ import { VoucherEntryModal } from '../components/VoucherEntryModal';
 import { VoucherPrintView } from '../components/VoucherPrintView';
 import { RateDeviationDialog } from '../components/shared/RateDeviationDialog';
 import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
+import { useVoucherActions } from '../../../hooks/useVoucherActions';
 
 
 const VouchersListPage: React.FC = () => {
@@ -48,6 +49,7 @@ const VouchersListPage: React.FC = () => {
   const { voucherTypes, loading: typesLoading } = useVoucherTypes();
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferences();
+  const voucherActions = useVoucherActions();
   
   // Determine view mode
   const isJournalEntry = !typeFromUrl || typeFromUrl.toLowerCase() === 'all';
@@ -327,77 +329,14 @@ const VouchersListPage: React.FC = () => {
     setRateDeviationResult(null);
   };
 
-  const handleApprove = async (id: string) => {
-    try {
-      await accountingApi.approveVoucher(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Voucher approved successfully');
-    } catch (e: any) {
-      console.error('Approval failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      await accountingApi.rejectVoucher(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Voucher rejected');
-    } catch (e: any) {
-      console.error('Rejection failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
-
-  const handleConfirm = async (id: string) => {
-    try {
-      await accountingApi.confirmVoucherCustody(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Custody confirmed');
-    } catch (e: any) {
-      console.error('Confirmation failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
-
-  const handlePost = async (id: string) => {
-    try {
-      await accountingApi.postVoucher(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Voucher posted successfully');
-    } catch (e: any) {
-      console.error('Post failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
-
-  const handleCancel = async (id: string) => {
-    try {
-      await accountingApi.cancelVoucher(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Voucher cancelled successfully');
-    } catch (e: any) {
-      console.error('Cancel failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
-
-  const handleReverse = async (id: string) => {
-    try {
-      await accountingApi.reverseVoucher(id);
-      invalidateVouchers();
-      errorHandler.showSuccess('Reversal voucher created successfully');
-    } catch (e: any) {
-      console.error('Reverse failed:', e);
-      errorHandler.showError(e);
-      throw e;
-    }
-  };
+  // ── All action handlers from centralized hook ──────────────
+  const handleApprove = voucherActions.approve;
+  const handleReject = (id: string) => voucherActions.reject(id);
+  const handleConfirm = voucherActions.confirmCustody;
+  const handlePost = voucherActions.post;
+  const handleCancel = voucherActions.cancel;
+  const handleReverse = voucherActions.reverse;
+  const handleDelete = voucherActions.remove;
 
   return (
     <AccountsProvider>

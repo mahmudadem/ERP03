@@ -23,6 +23,7 @@ import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { roundMoney } from '../../../utils/mathUtils';
 import { getCompanyToday } from '../../../utils/dateUtils';
+import { isActionAvailable, VoucherActionContext } from '../utils/voucherActions';
 
 interface VoucherWindowProps {
   win: VoucherWindowType;
@@ -31,6 +32,9 @@ interface VoucherWindowProps {
   onApprove?: (id: string) => Promise<void>;
   onReject?: (id: string) => Promise<void>;
   onConfirm?: (id: string) => Promise<void>;
+  onPost?: (id: string) => Promise<void>;
+  onCancel?: (id: string) => Promise<void>;
+  onReverse?: (id: string) => Promise<void>;
   onPrint?: (id: string) => void;
 }
 
@@ -41,6 +45,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   onApprove,
   onReject,
   onConfirm,
+  onPost,
+  onCancel,
+  onReverse,
   onPrint
 }) => {
   const { closeWindow, minimizeWindow, maximizeWindow, focusWindow, updateWindowPosition, updateWindowSize, updateWindowData } = useWindowManager();
@@ -533,12 +540,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const handleCancel = async () => {
     if (!win.data?.id) return;
     try {
-      await accountingApi.cancelVoucher(win.data.id);
-      errorHandler.showSuccess('Voucher cancelled successfully');
+      // Use centralized handler if available, fallback to direct API call
+      if (onCancel) {
+        await onCancel(win.data.id);
+      } else {
+        await accountingApi.cancelVoucher(win.data.id);
+        errorHandler.showSuccess('Voucher cancelled successfully');
+        globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
+      }
       setContextMenu(null);
-      // Trigger global refresh so list updates
-      globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
-      // Close window after cancellation as it's a terminal state
       closeWindow(win.id);
     } catch (error: any) {
       errorHandler.showError(error);
