@@ -40,8 +40,7 @@ export type VoucherActionType =
   | 'CANCEL' 
   | 'REVERSE' 
   | 'REVERSE_AND_REPLACE' 
-  | 'DELETE' 
-  | 'NEW';
+  | 'DELETE';
 
 export type ActionVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'purple' | 'amber';
 
@@ -256,18 +255,6 @@ export const getVoucherActions = (ctx: VoucherActionContext): VoucherActionDefin
     isEnabled: !isStrictLocked && !isNested,
     isHidden: isCancelled,
     tooltip: 'Permanently delete this voucher',
-    placement: 'dropdown'
-  });
-
-  // 13. NEW — Always available (primarily for Window/Modal views)
-  actions.push({
-    type: 'NEW',
-    label: 'New',
-    icon: 'Plus',
-    variant: 'secondary',
-    isEnabled: true,
-    isHidden: false,
-    tooltip: 'Create a new voucher',
     placement: 'dropdown'
   });
 
