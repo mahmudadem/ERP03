@@ -584,22 +584,44 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const performNew = () => {
     if (rendererRef.current) {
       rendererRef.current.resetData();
-      
-      // Reset local window states
-      setIsDirty(false);
-      setLiveLines([]);
-      setLiveCurrency(settings?.baseCurrency || '');
-      
-      // Update window context data to reflect new state
-      updateWindowData(win.id, {
-        ...win.data,
-        id: undefined,
-        voucherNo: undefined,
-        status: 'Draft',
-        lines: [],
-        date: getCompanyToday(settings)
-      });
     }
+      
+    // Reset ALL local window states
+    setIsDirty(false);
+    setLiveLines([]);
+    setLiveCurrency(settings?.baseCurrency || '');
+    setShowSuccessModal(false);
+    setShowCorrectionModal(false);
+    setContextMenu(null);
+    
+    // Build a completely CLEAN data object — no spreading of old voucher data
+    // Only preserve the form definition so the renderer knows which template to use
+    const cleanData: Record<string, any> = {
+      voucherConfig: win.data?.voucherConfig || win.voucherType,
+      formId: win.voucherType?.id,
+      type: win.voucherType?.code || win.voucherType?.id,
+      status: 'Draft',
+      date: getCompanyToday(settings),
+      currency: settings?.baseCurrency || '',
+      baseCurrency: settings?.baseCurrency || '',
+      exchangeRate: 1,
+      lines: [],
+      metadata: {},
+      // Explicitly undefined — these must NOT carry over
+      id: undefined,
+      voucherNo: undefined,
+      voucherNumber: undefined,
+      description: '',
+      reference: '',
+      notes: '',
+      postedAt: undefined,
+      approvedAt: undefined,
+      approvedBy: undefined,
+      postingLockPolicy: undefined,
+    };
+    
+    // Update window context to reflect the clean state
+    updateWindowData(win.id, cleanData);
   };
 
   const isVoucherReadOnly = React.useMemo(() => {

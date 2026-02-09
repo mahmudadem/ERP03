@@ -68,25 +68,48 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [pendingSaveData, setPendingSaveData] = useState<any>(null);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<CorrectionMode>('REVERSE_ONLY');
+  const [isNewMode, setIsNewMode] = useState(false); // Tracks when user clicked "New" to reset form
   
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
 
+  // When initialData changes (user opens a different voucher), reset new mode
+  React.useEffect(() => {
+    setIsNewMode(false);
+  }, [initialData?.id]);
+
+  // Effective voucher data for action button visibility
+  // When isNewMode is true, use a clean draft state instead of stale initialData
+  const effectiveData = React.useMemo(() => {
+    if (isNewMode) {
+      return {
+        status: 'draft',
+        metadata: {},
+        id: undefined,
+        postedAt: undefined,
+        approvedAt: undefined,
+        postingLockPolicy: undefined,
+        type: voucherType?.code || voucherType?.id,
+      };
+    }
+    return initialData;
+  }, [isNewMode, initialData, voucherType]);
+
   const isReversal = React.useMemo(() => {
-    return !!initialData?.reversalOfVoucherId || initialData?.type?.toLowerCase() === 'reversal';
-  }, [initialData]);
+    return !!effectiveData?.reversalOfVoucherId || effectiveData?.type?.toLowerCase() === 'reversal';
+  }, [effectiveData]);
 
   const forceStrictMode = React.useMemo(() => {
     return settings?.strictApprovalMode === true || isReversal;
   }, [settings?.strictApprovalMode, isReversal]);
 
   const isAlreadyReversed = React.useMemo(() => {
-    return !!initialData?.metadata?.reversedByVoucherId || !!initialData?.metadata?.isReversed;
-  }, [initialData?.metadata?.reversedByVoucherId, initialData?.metadata?.isReversed]);
+    return !!effectiveData?.metadata?.reversedByVoucherId || !!effectiveData?.metadata?.isReversed;
+  }, [effectiveData?.metadata?.reversedByVoucherId, effectiveData?.metadata?.isReversed]);
 
   const isCancelled = React.useMemo(() => {
-    const status = initialData?.status?.toLowerCase();
+    const status = effectiveData?.status?.toLowerCase();
     return status === 'cancelled' || status === 'void';
-  }, [initialData?.status]);
+  }, [effectiveData?.status]);
 
   // Calculate totals during render to ensure reactivity to renderer updates via forceUpdate
   const currentRows = rendererRef.current?.getRows() || [];
@@ -98,8 +121,8 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const hasMinLines = currentRows.filter(r => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
 
   const isVoucherReadOnly = React.useMemo(() => {
-    if (!initialData?.status) return false;
-    const status = initialData.status.toLowerCase();
+    if (!effectiveData?.status) return false;
+    const status = effectiveData.status.toLowerCase();
     
     // In STRICT mode, many statuses are read-only
     if (forceStrictMode) {
@@ -108,7 +131,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     
     // In FLEXIBLE mode (default), only locked is read-only
     return status === 'locked';
-  }, [initialData?.status, forceStrictMode]);
+  }, [effectiveData?.status, forceStrictMode]);
 
   if (!isOpen) return null;
 
@@ -250,10 +273,19 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const handleNew = () => {
     if (rendererRef.current) {
       rendererRef.current.resetData();
-      setIsDirty(false);
-      setError(null);
-      forceUpdate({});
     }
+    // Full state reset — no stale data should survive
+    setIsNewMode(true);
+    setIsDirty(false);
+    setError(null);
+    setIsSaving(false);
+    setIsSubmitting(false);
+    setShowSuccessModal(false);
+    setShowConfirmSubmitModal(false);
+    setShowCorrectionModal(false);
+    setRateDeviationResult(null);
+    setPendingSaveData(null);
+    forceUpdate({});
   };
 
   return (
@@ -275,23 +307,23 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
             <div className="flex items-center gap-4">
               <div>
                 <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-                  {initialData ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
+                  {effectiveData?.id ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
                 </h2>
                 <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-                  {initialData ? 'Update details below' : 'Fill in the details below'} • Mode: {uiMode === 'windows' ? 'Windows' : 'Web View'}
+                  {effectiveData?.id ? 'Update details below' : 'Fill in the details below'} • Mode: {uiMode === 'windows' ? 'Windows' : 'Web View'}
                 </p>
               </div>
 
               {/* Status Badge & Dot */}
               <div className="flex items-center gap-2 mb-[-10px]">
-                {initialData?.status && (
+                {effectiveData?.status && (
                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                    initialData.status.toLowerCase() === 'approved' || initialData.status.toLowerCase() === 'posted' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
-                    initialData.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
-                    initialData.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
+                    effectiveData.status.toLowerCase() === 'approved' || effectiveData.status.toLowerCase() === 'posted' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+                    effectiveData.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
+                    effectiveData.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
                     'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                   }`}>
-                    {initialData.status}
+                    {effectiveData.status}
                   </span>
                 )}
 
@@ -396,8 +428,8 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
               <button
                 className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors flex items-center gap-1.5"
-                onClick={() => initialData?.id && onPrint?.(initialData.id)}
-                disabled={!initialData?.id}
+                onClick={() => effectiveData?.id && onPrint?.(effectiveData.id)}
+                disabled={!effectiveData?.id}
                 title="Print voucher"
               >
                 <Printer size={16} />
@@ -460,15 +492,15 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     <>
                       {(() => {
                         if (!forceStrictMode) return <CheckCircle className="w-4 h-4" />;
-                        const status = initialData?.status?.toLowerCase();
+                        const status = effectiveData?.status?.toLowerCase();
                         if (status === 'pending' || status === 'approved' || status === 'posted') return <Save className="w-4 h-4" />;
                         return <Save className="w-4 h-4" />;
                       })()}
                       {(() => {
                         if (!forceStrictMode) {
-                           return initialData?.postedAt ? 'Update & Post' : 'Save & Post';
+                           return effectiveData?.postedAt ? 'Update & Post' : 'Save & Post';
                         }
-                        const status = initialData?.status?.toLowerCase();
+                        const status = effectiveData?.status?.toLowerCase();
                         if (status === 'pending') return 'Update Pending Voucher';
                         if (status === 'approved' || status === 'posted') return 'Save Changes';
                         return 'Save as Draft';
@@ -479,7 +511,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               )}
 
               {/* Submit button only shown when strict mode is explicitly true */}
-              {!settingsLoading && forceStrictMode && (!initialData?.status || initialData?.status?.toLowerCase() === 'draft' || initialData?.status?.toLowerCase() === 'rejected') && (
+              {!settingsLoading && forceStrictMode && (!effectiveData?.status || effectiveData?.status?.toLowerCase() === 'draft' || effectiveData?.status?.toLowerCase() === 'rejected') && (
                 <button
                   onClick={() => setShowConfirmSubmitModal(true)} 
                   className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
@@ -498,14 +530,14 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               )}
 
               {/* Approval Action Buttons (Synced from VoucherWindow) */}
-              {initialData?.status?.toLowerCase() === 'pending' && (
+              {effectiveData?.status?.toLowerCase() === 'pending' && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={async () => {
-                      if (onApprove && initialData?.id) {
+                      if (onApprove && effectiveData?.id) {
                         setIsSubmitting(true);
                         try {
-                          await onApprove(initialData.id);
+                          await onApprove(effectiveData.id);
                           setIsDirty(false);
                           setSuccessAction('APPROVE');
                           setShowSuccessModal(true);
@@ -517,23 +549,23 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                       }
                     }}
                     className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
-                    disabled={isSubmitting || !initialData?.metadata?.pendingFinancialApproval}
+                    disabled={isSubmitting || !effectiveData?.metadata?.pendingFinancialApproval}
                   >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     Approve
                   </button>
 
                   {/* Confirm Custody Button - Only shown if user is a pending custodian */}
-                  {initialData?.metadata?.pendingCustodyConfirmations?.some((id: string) => 
+                  {effectiveData?.metadata?.pendingCustodyConfirmations?.some((id: string) => 
                     id.toLowerCase() === user?.uid?.toLowerCase() || 
                     (user?.email && id.toLowerCase() === user.email.toLowerCase())
                   ) && (
                     <button
                       onClick={async () => {
-                        if (onConfirm && initialData?.id) {
+                        if (onConfirm && effectiveData?.id) {
                           setIsSubmitting(true);
                           try {
-                            await onConfirm(initialData.id);
+                            await onConfirm(effectiveData.id);
                             setIsDirty(false);
                             setSuccessAction('CONFIRM_CUSTODY');
                             setShowSuccessModal(true);
@@ -554,10 +586,10 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
                   <button
                     onClick={async () => {
-                      if (onReject && initialData?.id) {
+                      if (onReject && effectiveData?.id) {
                         setIsSubmitting(true);
                         try {
-                          await onReject(initialData.id);
+                          await onReject(effectiveData.id);
                           setIsDirty(false);
                           onClose();
                         } catch (err: any) {
@@ -576,13 +608,13 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               )}
 
               {/* Post Button for APPROVED vouchers that are not yet posted */}
-              {initialData?.status?.toLowerCase() === 'approved' && !initialData?.postedAt && (
+              {effectiveData?.status?.toLowerCase() === 'approved' && !effectiveData?.postedAt && (
                 <button
                   onClick={async () => {
-                    if (onPost && initialData?.id) {
+                    if (onPost && effectiveData?.id) {
                       setIsSubmitting(true);
                       try {
-                        await onPost(initialData.id);
+                        await onPost(effectiveData.id);
                         setIsDirty(false);
                         setSuccessAction('POST');
                         setShowSuccessModal(true);
