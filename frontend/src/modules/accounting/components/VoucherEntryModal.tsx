@@ -20,6 +20,8 @@ import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDe
 import { getCompanyToday } from '../../../utils/dateUtils';
 import { errorHandler } from '../../../services/errorHandler';
 import { accountingApi, CorrectionMode } from '../../../api/accountingApi';
+import { PolicyGovernanceIndicator } from './PolicyGovernanceIndicator';
+import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
@@ -327,24 +329,14 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   </span>
                 )}
 
-                {/* Status Indicator Dot - Visual Clue for Approval Mode */}
-                <div className="group relative">
-                  <div 
-                    className={`w-2 h-2 rounded-full transition-all cursor-help ${
-                      settingsLoading ? 'bg-gray-400 animate-pulse' : 
-                      (forceStrictMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
-                    }`} 
-                  />
-                  <div className="absolute left-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700">
-                    <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
-                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                      <span className="text-gray-400">Policy:</span>
-                      <span className={forceStrictMode ? "text-indigo-300" : "text-emerald-300"}>
-                        {forceStrictMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+
+              {/* Policy Indicator */}
+              <PolicyGovernanceIndicator 
+                isSystemStrict={!!settings?.strictApprovalMode}
+                isVoucherStrict={effectiveData?.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isReversal}
+                settingsLoading={settingsLoading}
+                isNewVoucher={!effectiveData?.id}
+              />
               </div>
             </div>
             <button
