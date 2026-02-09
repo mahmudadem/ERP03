@@ -15,7 +15,7 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
   isNewVoucher = false,
 }) => {
   return (
-    <div className="flex items-center gap-2 px-1.5 py-0.5 bg-black/5 dark:bg-white/5 rounded-md border border-[var(--color-border)] group relative cursor-help ml-1 transition-all hover:bg-black/[0.08] dark:hover:bg-white/[0.08] scale-95 origin-left">
+    <div className="flex items-center gap-2 px-1.5 py-0.5 bg-black/5 dark:bg-white/5 rounded-md border border-[var(--color-border)] group relative z-50 cursor-help ml-1 transition-all hover:bg-black/[0.08] dark:hover:bg-white/[0.08] scale-95 origin-left">
       {/* System Dot Indicator */}
       <div className="flex items-center gap-1.5">
         <div 

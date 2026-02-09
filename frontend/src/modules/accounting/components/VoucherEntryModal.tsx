@@ -305,7 +305,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)] relative z-10">
             <div className="flex items-center gap-4">
               <div>
                 <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
