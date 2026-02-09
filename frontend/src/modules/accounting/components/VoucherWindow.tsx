@@ -19,6 +19,7 @@ import { RateDeviationDialog } from './shared/RateDeviationDialog';
 import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { PolicyGovernanceIndicator } from './PolicyGovernanceIndicator';
+import { VoucherTotalsDisplay } from './VoucherTotalsDisplay';
 import { useAuth } from '../../../hooks/useAuth';
 import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
@@ -985,10 +986,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
             const hasValues = totalDebitCalc > 0 || totalCreditCalc > 0;
             
-            // Gray when both are 0, green when balanced with values, red when unbalanced
-            const bgColor = !hasValues ? 'bg-[var(--color-bg-tertiary)]' : (isBalanced ? 'bg-success-100/30 dark:bg-success-900/20' : 'bg-danger-100/30 dark:bg-danger-900/20');
-            const borderColor = !hasValues ? 'border-[var(--color-border)]' : (isBalanced ? 'border-success-500/30' : 'border-danger-500/30');
-            
             const liveData = rendererRef.current?.getData();
             const voucherCurrency = liveCurrency || 
                                    liveData?.currency || 
@@ -996,40 +993,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                                    rows.find((r: any) => r.currency)?.currency || 
                                    settings?.baseCurrency || '';
             
-            return (
-              <div className="flex flex-col gap-2">
-                <div className={`flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">Total Debit ({voucherCurrency})</span>
-                    <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                      {new Intl.NumberFormat('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(totalDebitCalc)}
-                    </span>
-                  </div>
-                  
-                  {/* Vertical Divider (Pipeline) */}
-                  <div className="w-[1px] h-5 bg-[var(--color-border)] opacity-50" />
-                  
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Total Credit ({voucherCurrency})</span>
-                    <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
-                      {new Intl.NumberFormat('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }).format(totalCreditCalc)}
-                    </span>
-                  </div>
-                </div>
+            const difference = Math.abs(totalDebitCalc - totalCreditCalc);
 
-                {!isBalanced && hasValues && (
-                  <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-tight animate-pulse">
-                    <AlertTriangle size={12} strokeWidth={3} />
-                    Voucher Unbalanced: {Math.abs(totalDebitCalc - totalCreditCalc).toFixed(2)} {voucherCurrency} difference
-                  </div>
-                )}
-              </div>
+            return (
+              <VoucherTotalsDisplay
+                totalDebit={totalDebitCalc}
+                totalCredit={totalCreditCalc}
+                currency={voucherCurrency}
+                isBalanced={isBalanced}
+                difference={difference}
+              />
             );
           })()}
         </div>
