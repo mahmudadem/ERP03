@@ -305,46 +305,55 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)] relative z-10">
-            <div className="flex items-center gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-                  {effectiveData?.id ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
-                </h2>
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-                  {effectiveData?.id ? 'Update details below' : 'Fill in the details below'} • Mode: {uiMode === 'windows' ? 'Windows' : 'Web View'}
-                </p>
-              </div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] relative z-10 bg-[var(--color-bg-secondary)] rounded-t-lg select-none">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
+                {effectiveData?.id ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
+              </h2>
 
-              {/* Status Badge & Dot */}
-              <div className="flex items-center gap-2 mb-[-10px]">
+              {/* Status Indicators */}
+              <div className="flex items-center gap-1.5 ml-2 border-l border-[var(--color-border)] pl-3">
                 {effectiveData?.status && (
                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                    effectiveData.status.toLowerCase() === 'approved' || effectiveData.status.toLowerCase() === 'posted' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+                    effectiveData.status.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
                     effectiveData.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
                     effectiveData.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
+                    effectiveData.status.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
                     'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                   }`}>
                     {effectiveData.status}
                   </span>
                 )}
+                
+                {/* Posting Badge (derived from postedAt) */}
+                {(effectiveData?.status?.toLowerCase() === 'approved' || effectiveData?.status?.toLowerCase() === 'posted') && (
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                    effectiveData.postedAt 
+                      ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                  }`}>
+                    {effectiveData.postedAt ? 'POSTED' : 'NOT POSTED'}
+                  </span>
+                )}
 
-
-              {/* Policy Indicator */}
-              <PolicyGovernanceIndicator 
-                isSystemStrict={!!settings?.strictApprovalMode}
-                isVoucherStrict={effectiveData?.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isReversal}
-                settingsLoading={settingsLoading}
-                isNewVoucher={!effectiveData?.id}
-              />
+                {/* Policy Governance Indicator */}
+                <PolicyGovernanceIndicator 
+                  isSystemStrict={!!settings?.strictApprovalMode}
+                  isVoucherStrict={effectiveData?.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED || isReversal}
+                  settingsLoading={settingsLoading}
+                  isNewVoucher={!effectiveData?.id}
+                />
               </div>
             </div>
+
             <button
               onClick={handleCloseAttempt}
-              className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
+              className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               disabled={isSaving}
+              title="Close (Esc)"
             >
-              <X className="w-5 h-5 text-[var(--color-text-secondary)]" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
