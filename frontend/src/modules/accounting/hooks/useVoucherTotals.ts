@@ -16,6 +16,8 @@ export const useVoucherTotals = (
   const { totalDebitVoucher, totalCreditVoucher, isBalanced, differenceVoucher } = useMemo(() => {
     let debitEqSum = 0;
     let creditEqSum = 0;
+    let debitAmountSum = 0;
+    let creditAmountSum = 0;
 
     rows.forEach(row => {
       // Use equivalent (Base Currency Amount for Posted, or Voucher Currency Amount for Draft)
@@ -25,8 +27,10 @@ export const useVoucherTotals = (
 
       if (debit > 0) {
         debitEqSum += eq || debit; 
+        debitAmountSum += debit;
       } else if (credit > 0) {
         creditEqSum += eq || credit;
+        creditAmountSum += credit;
       }
     });
 
@@ -34,17 +38,31 @@ export const useVoucherTotals = (
     const isBalanced = Math.abs(debitEqSum - creditEqSum) < 0.05;
 
     // Calculate totals in VOUCHER CURRENCY
-    // If convertFromBase is true (Posted/DB Loaded), 'equivalent' is in Base Currency, so we divide by Header Rate.
-    // If false (Draft/Frontend), 'equivalent' is already in Voucher Currency, so we sum directly.
+    // Adaptive Logic: Check if equivalents seem to be in Base Currency (Huge) or Voucher Currency (Normal)
+    // This handles inconsistent backend states where some posted vouchers return Base Eq and others return Voucher Eq.
     const validatedHeaderRate = headerRate || 1;
-    const totalDebitVoucher = convertFromBase ? (debitEqSum / validatedHeaderRate) : debitEqSum;
-    const totalCreditVoucher = convertFromBase ? (creditEqSum / validatedHeaderRate) : creditEqSum;
+    let finalDebitVoucher = debitEqSum;
+    let finalCreditVoucher = creditEqSum;
 
-    const differenceVoucher = Math.abs(totalDebitVoucher - totalCreditVoucher);
+    if (convertFromBase && validatedHeaderRate > 1.2) {
+       // Heuristic: If Equivalent/Amount ratio is significant (close to HeaderRate), assume Base Equivalents and divide.
+       // If ratio is small (close to 1), assume Voucher Equivalents and keep as is.
+       const debitRatio = debitAmountSum > 0 ? (debitEqSum / debitAmountSum) : 0;
+       if (debitRatio > (validatedHeaderRate * 0.3)) { // Threshold: 30% of Header Rate
+          finalDebitVoucher = debitEqSum / validatedHeaderRate;
+       }
+
+       const creditRatio = creditAmountSum > 0 ? (creditEqSum / creditAmountSum) : 0;
+       if (creditRatio > (validatedHeaderRate * 0.3)) {
+          finalCreditVoucher = creditEqSum / validatedHeaderRate;
+       }
+    }
+
+    const differenceVoucher = Math.abs(finalDebitVoucher - finalCreditVoucher);
 
     return {
-      totalDebitVoucher,
-      totalCreditVoucher,
+      totalDebitVoucher: finalDebitVoucher,
+      totalCreditVoucher: finalCreditVoucher,
       isBalanced,
       differenceVoucher
     };
