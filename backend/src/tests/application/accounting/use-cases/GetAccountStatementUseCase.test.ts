@@ -19,9 +19,9 @@ describe('GetAccountStatementUseCase', () => {
 
   it('computes opening balance and running balance across entries', async () => {
     const rawEntries = [
-      { id: 'pre', date: '2025-12-15', debit: 200, credit: 0, voucherId: 'v0', baseAmount: 1000, exchangeRate: 5 },
-      { id: 'e1', date: '2026-01-01', debit: 100, credit: 0, voucherId: 'v1', voucherNo: 'V-001', baseAmount: 500, exchangeRate: 5 },
-      { id: 'e2', date: '2026-01-10', debit: 0, credit: 50, voucherId: 'v2', voucherNo: 'V-002', baseAmount: 250, exchangeRate: 5 },
+      { id: 'pre', date: '2025-12-15', side: 'Debit', amount: 200, baseAmount: 1000, voucherId: 'v0', exchangeRate: 5 },
+      { id: 'e1', date: '2026-01-01', side: 'Debit', amount: 100, baseAmount: 500, voucherId: 'v1', voucherNo: 'V-001', exchangeRate: 5 },
+      { id: 'e2', date: '2026-01-10', side: 'Credit', amount: 50, baseAmount: 250, voucherId: 'v2', voucherNo: 'V-002', exchangeRate: 5 },
     ];
 
     const ledgerRepo = baseMockRepo();
@@ -31,44 +31,46 @@ describe('GetAccountStatementUseCase', () => {
       const openingItems = rawEntries.filter(e => new Date(e.date) < start);
       const rangeItems = rawEntries.filter(e => new Date(e.date) >= start && new Date(e.date) <= end);
 
-      const openingBalance = openingItems.reduce((sum, e) => sum + (e.debit || 0) - (e.credit || 0), 0);
-      const openingBase = openingItems.reduce((sum, e) => {
-        const base = typeof e.baseAmount === 'number' ? e.baseAmount : (e.debit || 0) * (e.exchangeRate || 1) - (e.credit || 0) * (e.exchangeRate || 1);
-        return sum + base * (e.debit && e.debit > 0 ? 1 : -1);
-      }, 0);
-      let running = openingBalance;
-      let runningBase = openingBase;
-      let totalDebit = 0;
-      let totalCredit = 0;
-      let totalBaseDebit = 0;
+        const openingBalance = openingItems.reduce((sum, e) => {
+          return sum + (e.side === 'Debit' ? e.amount : -e.amount);
+        }, 0);
+        const openingBase = openingItems.reduce((sum, e) => {
+          const base = typeof e.baseAmount === 'number' ? e.baseAmount : (e.amount || 0) * (e.exchangeRate || 1);
+          return sum + (e.side === 'Debit' ? base : -base);
+        }, 0);
+        let running = openingBalance;
+        let runningBase = openingBase;
+        let totalDebit = 0;
+        let totalCredit = 0;
+        let totalBaseDebit = 0;
       let totalBaseCredit = 0;
 
-      const entries = rangeItems.map((e) => {
-        const debit = e.debit || 0;
-        const credit = e.credit || 0;
-        running += debit - credit;
-        totalDebit += debit;
-        totalCredit += credit;
-        const baseValue = typeof e.baseAmount === 'number' ? e.baseAmount : (debit - credit) * (e.exchangeRate || 1);
-        const baseDebit = debit > 0 ? baseValue : 0;
-        const baseCredit = credit > 0 ? baseValue : 0;
-        runningBase += baseDebit - baseCredit;
-        totalBaseDebit += baseDebit;
-        totalBaseCredit += baseCredit;
-        return {
-          id: e.id,
-          date: e.date,
-          voucherId: e.voucherId,
-          voucherNo: e.voucherNo || e.voucherId,
-          description: '',
-          debit,
-          credit,
-          balance: running,
-          baseDebit,
-          baseCredit,
-          baseBalance: runningBase
-        };
-      });
+        const entries = rangeItems.map((e) => {
+          const debit = e.side === 'Debit' ? e.amount : 0;
+          const credit = e.side === 'Credit' ? e.amount : 0;
+          running += e.side === 'Debit' ? debit : -credit;
+          totalDebit += debit;
+          totalCredit += credit;
+          const baseValue = typeof e.baseAmount === 'number' ? e.baseAmount : (e.amount || 0) * (e.exchangeRate || 1);
+          const baseDebit = e.side === 'Debit' ? baseValue : 0;
+          const baseCredit = e.side === 'Credit' ? baseValue : 0;
+          runningBase += e.side === 'Debit' ? baseDebit : -baseCredit;
+          totalBaseDebit += baseDebit;
+          totalBaseCredit += baseCredit;
+          return {
+            id: e.id,
+            date: e.date,
+            voucherId: e.voucherId,
+            voucherNo: e.voucherNo || e.voucherId,
+            description: '',
+            debit,
+            credit,
+            balance: running,
+            baseDebit,
+            baseCredit,
+            baseBalance: runningBase
+          };
+        });
 
       const result: AccountStatementData = {
         accountId,

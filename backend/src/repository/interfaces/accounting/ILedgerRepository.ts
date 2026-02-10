@@ -24,14 +24,14 @@ export interface AccountStatementEntry {
   voucherId: string;
   voucherNo: string;
   description: string;
-  debit: number;
-  credit: number;
-  balance: number; // Running balance
-  baseDebit?: number;
-  baseCredit?: number;
-  baseBalance?: number;
+  debit: number; // Account currency debit
+  credit: number; // Account currency credit
+  balance: number; // Running balance (account currency)
+  baseDebit?: number; // Base currency debit
+  baseCredit?: number; // Base currency credit
+  baseBalance?: number; // Running balance (base currency)
   currency?: string;
-  fxAmount?: number;
+  fxAmount?: number; // Same as amount (account currency) for compatibility
   exchangeRate?: number;
 }
 
@@ -60,5 +60,11 @@ export interface ILedgerRepository {
   getAccountLedger(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<LedgerEntry[]>;
   getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]>;
   getGeneralLedger(companyId: string, filters: GLFilters): Promise<LedgerEntry[]>;
-  getAccountStatement(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<AccountStatementData>;
+  getAccountStatement(
+    companyId: string,
+    accountId: string,
+    fromDate: string,
+    toDate: string,
+    options?: { includeUnposted?: boolean }
+  ): Promise<AccountStatementData>;
 }

@@ -326,10 +326,11 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
   },
 
-  getAccountStatement: (accountId: string, fromDate?: string, toDate?: string): Promise<AccountStatementData> => {
-    const params: Record<string, string> = { accountId };
+  getAccountStatement: (accountId: string, fromDate?: string, toDate?: string, includeUnposted?: boolean): Promise<AccountStatementData> => {
+    const params: Record<string, any> = { accountId };
     if (fromDate) params.fromDate = fromDate;
     if (toDate) params.toDate = toDate;
+    if (includeUnposted) params.includeUnposted = 'true';
     return client
       .get('/tenant/accounting/reports/account-statement', { params })
       .then((r: any) => {

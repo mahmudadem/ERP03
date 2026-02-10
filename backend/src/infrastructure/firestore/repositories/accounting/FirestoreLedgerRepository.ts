@@ -40,21 +40,17 @@ const dateToIso = (val: any): string => {
   return String(val);
 };
 
-const getBaseAmounts = (entry: any): { baseDebit: number; baseCredit: number } => {
-  const debit = entry.debit || 0;
-  const credit = entry.credit || 0;
-  const baseAmount = entry.baseAmount;
-  const rate = entry.exchangeRate || 1;
+const getAmountsBySide = (entry: any) => {
+  const side = entry.side || 'Debit';
+  const accountAmount = entry.amount ?? entry.fxAmount ?? 0;
+  const baseAmount = entry.baseAmount ?? 0;
 
-  if (typeof baseAmount === 'number') {
-    if (debit > 0) return { baseDebit: Math.abs(baseAmount), baseCredit: 0 };
-    if (credit > 0) return { baseDebit: 0, baseCredit: Math.abs(baseAmount) };
-  }
+  const debit = side === 'Debit' ? Math.abs(accountAmount) : 0;
+  const credit = side === 'Credit' ? Math.abs(accountAmount) : 0;
+  const baseDebit = side === 'Debit' ? Math.abs(baseAmount) : 0;
+  const baseCredit = side === 'Credit' ? Math.abs(baseAmount) : 0;
 
-  return {
-    baseDebit: Math.abs(debit * rate),
-    baseCredit: Math.abs(credit * rate)
-  };
+  return { debit, credit, baseDebit, baseCredit, side };
 };
 
 export class FirestoreLedgerRepository implements ILedgerRepository {
@@ -192,7 +188,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
     }
   }
 
-  async getAccountStatement(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<AccountStatementData> {
+  async getAccountStatement(companyId: string, accountId: string, fromDate: string, toDate: string, options?: { includeUnposted?: boolean }): Promise<AccountStatementData> {
     try {
       const startDate = fromDate || '1900-01-01';
       const endDate = toDate || new Date().toISOString().split('T')[0];
@@ -208,14 +204,22 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
         .collection('accounts')
         .doc(accountId);
 
+      const includeUnposted = options?.includeUnposted ?? false;
+
+      const ledgerCol = this.col(companyId);
+      const applyPostingFilter = (query: admin.firestore.Query) => {
+        if (includeUnposted) return query;
+        return query.where('isPosted', '==', true);
+      };
+
       const [accountDoc, companyDoc, openingSnap, rangeSnap] = await Promise.all([
         accountRef.get(),
         this.db.collection('companies').doc(companyId).get(),
-        this.col(companyId)
+        applyPostingFilter(ledgerCol)
           .where('accountId', '==', accountId)
           .where('date', '<', startTs)
           .get(),
-        this.col(companyId)
+        applyPostingFilter(ledgerCol)
           .where('accountId', '==', accountId)
           .where('date', '>=', startTs)
           .where('date', '<=', endTs)
@@ -233,9 +237,11 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       let openingBalanceBase = 0;
       openingSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
-        openingBalance += (e.debit || 0) - (e.credit || 0);
-        const { baseDebit, baseCredit } = getBaseAmounts(e);
-        openingBalanceBase += baseDebit - baseCredit;
+        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+        const signedAccount = side === 'Debit' ? debit : -credit;
+        const signedBase = side === 'Debit' ? baseDebit : -baseCredit;
+        openingBalance += signedAccount;
+        openingBalanceBase += signedBase;
       });
 
       let running = openingBalance;
@@ -248,14 +254,11 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
       rangeSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
-        const debit = e.debit || 0;
-        const credit = e.credit || 0;
-        running += debit - credit;
+        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+        running += side === 'Debit' ? debit : -credit;
+        runningBase += side === 'Debit' ? baseDebit : -baseCredit;
         totalDebit += debit;
         totalCredit += credit;
-
-        const { baseDebit, baseCredit } = getBaseAmounts(e);
-        runningBase += baseDebit - baseCredit;
         totalBaseDebit += baseDebit;
         totalBaseCredit += baseCredit;
 

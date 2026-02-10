@@ -43,13 +43,13 @@ const getBaseAmounts = (entry) => {
     const rate = entry.exchangeRate || 1;
     if (typeof baseAmount === 'number') {
         if (debit > 0)
-            return { baseDebit: baseAmount, baseCredit: 0 };
+            return { baseDebit: Math.abs(baseAmount), baseCredit: 0 };
         if (credit > 0)
-            return { baseDebit: 0, baseCredit: baseAmount };
+            return { baseDebit: 0, baseCredit: Math.abs(baseAmount) };
     }
     return {
-        baseDebit: debit * rate,
-        baseCredit: credit * rate
+        baseDebit: Math.abs(debit * rate),
+        baseCredit: Math.abs(credit * rate)
     };
 };
 class FirestoreLedgerRepository {

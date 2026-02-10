@@ -26,6 +26,7 @@ const AccountStatementPage: React.FC = () => {
   const [data, setData] = useState<AccountStatementData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeUnposted, setIncludeUnposted] = useState<boolean>(false);
 
   const baseCurrency = data?.baseCurrency || '';
   const accountCurrency = data?.accountCurrency || '';
@@ -39,7 +40,12 @@ const AccountStatementPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await accountingApi.getAccountStatement(selectedAccountId, fromDate || undefined, toDate || undefined);
+      const result = await accountingApi.getAccountStatement(
+        selectedAccountId,
+        fromDate || undefined,
+        toDate || undefined,
+        includeUnposted
+      );
       setData(result);
     } catch (err: any) {
       console.error(err);
@@ -142,7 +148,16 @@ const AccountStatementPage: React.FC = () => {
               className="w-full px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)]">
+              <input
+                type="checkbox"
+                checked={includeUnposted}
+                onChange={(e) => setIncludeUnposted(e.target.checked)}
+                className="rounded border-[var(--color-border)]"
+              />
+              Include unposted vouchers (info only)
+            </label>
             <Button onClick={fetchReport} variant="primary" className="flex-1 flex items-center justify-center gap-2">
               <Search className="w-4 h-4" /> Load Statement
             </Button>
