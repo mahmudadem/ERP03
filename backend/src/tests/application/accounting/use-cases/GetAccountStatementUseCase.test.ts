@@ -19,9 +19,9 @@ describe('GetAccountStatementUseCase', () => {
 
   it('computes opening balance and running balance across entries', async () => {
     const rawEntries = [
-      { id: 'pre', date: '2025-12-15', debit: 200, credit: 0, voucherId: 'v0' },
-      { id: 'e1', date: '2026-01-01', debit: 100, credit: 0, voucherId: 'v1', voucherNo: 'V-001' },
-      { id: 'e2', date: '2026-01-10', debit: 0, credit: 50, voucherId: 'v2', voucherNo: 'V-002' },
+      { id: 'pre', date: '2025-12-15', debit: 200, credit: 0, voucherId: 'v0', baseAmount: 1000, exchangeRate: 5 },
+      { id: 'e1', date: '2026-01-01', debit: 100, credit: 0, voucherId: 'v1', voucherNo: 'V-001', baseAmount: 500, exchangeRate: 5 },
+      { id: 'e2', date: '2026-01-10', debit: 0, credit: 50, voucherId: 'v2', voucherNo: 'V-002', baseAmount: 250, exchangeRate: 5 },
     ];
 
     const ledgerRepo = baseMockRepo();
@@ -32,9 +32,16 @@ describe('GetAccountStatementUseCase', () => {
       const rangeItems = rawEntries.filter(e => new Date(e.date) >= start && new Date(e.date) <= end);
 
       const openingBalance = openingItems.reduce((sum, e) => sum + (e.debit || 0) - (e.credit || 0), 0);
+      const openingBase = openingItems.reduce((sum, e) => {
+        const base = typeof e.baseAmount === 'number' ? e.baseAmount : (e.debit || 0) * (e.exchangeRate || 1) - (e.credit || 0) * (e.exchangeRate || 1);
+        return sum + base * (e.debit && e.debit > 0 ? 1 : -1);
+      }, 0);
       let running = openingBalance;
+      let runningBase = openingBase;
       let totalDebit = 0;
       let totalCredit = 0;
+      let totalBaseDebit = 0;
+      let totalBaseCredit = 0;
 
       const entries = rangeItems.map((e) => {
         const debit = e.debit || 0;
@@ -42,6 +49,12 @@ describe('GetAccountStatementUseCase', () => {
         running += debit - credit;
         totalDebit += debit;
         totalCredit += credit;
+        const baseValue = typeof e.baseAmount === 'number' ? e.baseAmount : (debit - credit) * (e.exchangeRate || 1);
+        const baseDebit = debit > 0 ? baseValue : 0;
+        const baseCredit = credit > 0 ? baseValue : 0;
+        runningBase += baseDebit - baseCredit;
+        totalBaseDebit += baseDebit;
+        totalBaseCredit += baseCredit;
         return {
           id: e.id,
           date: e.date,
@@ -50,7 +63,10 @@ describe('GetAccountStatementUseCase', () => {
           description: '',
           debit,
           credit,
-          balance: running
+          balance: running,
+          baseDebit,
+          baseCredit,
+          baseBalance: runningBase
         };
       });
 
@@ -63,10 +79,14 @@ describe('GetAccountStatementUseCase', () => {
         fromDate,
         toDate,
         openingBalance,
+        openingBalanceBase: openingBase,
         entries,
         closingBalance: running,
+        closingBalanceBase: runningBase,
         totalDebit,
-        totalCredit
+        totalCredit,
+        totalBaseDebit,
+        totalBaseCredit
       };
       return result;
     });
@@ -79,7 +99,10 @@ describe('GetAccountStatementUseCase', () => {
     expect(result.entries.map(e => e.balance)).toEqual([300, 250]);
     expect(result.totalDebit).toBe(100);
     expect(result.totalCredit).toBe(50);
+    expect(result.totalBaseDebit).toBe(500);
+    expect(result.totalBaseCredit).toBe(250);
     expect(result.closingBalance).toBe(250);
+    expect(result.closingBalanceBase).toBe(1250);
   });
 
   it('returns zeros for empty accounts', async () => {

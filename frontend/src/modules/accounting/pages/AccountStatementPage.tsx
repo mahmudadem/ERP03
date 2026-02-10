@@ -28,6 +28,8 @@ const AccountStatementPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const baseCurrency = data?.baseCurrency || '';
+  const accountCurrency = data?.accountCurrency || '';
+  const showBaseColumns = data && baseCurrency && accountCurrency && baseCurrency !== accountCurrency;
 
   const fetchReport = async () => {
     if (!selectedAccountId) {
@@ -174,6 +176,14 @@ const AccountStatementPage: React.FC = () => {
                 {currencyFormat(data.openingBalance, baseCurrency)}
               </span>
             </div>
+            {showBaseColumns && (
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Opening Balance (Base)</span>
+                <span className={`text-sm font-semibold ${data.openingBalanceBase && data.openingBalanceBase < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
+                  {currencyFormat(data.openingBalanceBase ?? 0, baseCurrency)}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -185,7 +195,16 @@ const AccountStatementPage: React.FC = () => {
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Description</th>
                   <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit</th>
                   <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit</th>
+                  {showBaseColumns && (
+                    <>
+                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit (Base)</th>
+                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit (Base)</th>
+                    </>
+                  )}
                   <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance</th>
+                  {showBaseColumns && (
+                    <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance (Base)</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
@@ -198,6 +217,11 @@ const AccountStatementPage: React.FC = () => {
                   <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                     {currencyFormat(data.openingBalance, baseCurrency)}
                   </td>
+                  {showBaseColumns && (
+                    <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalanceBase && data.openingBalanceBase < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
+                      {currencyFormat(data.openingBalanceBase ?? 0, baseCurrency)}
+                    </td>
+                  )}
                 </tr>
 
                 {loading ? (
@@ -228,6 +252,11 @@ const AccountStatementPage: React.FC = () => {
                       <td className={`px-4 py-2 text-right text-sm font-mono font-semibold ${entry.balance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                         {entry.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
+                      {showBaseColumns && (
+                        <td className={`px-4 py-2 text-right text-sm font-mono font-semibold ${entry.baseBalance && entry.baseBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
+                          {(entry.baseBalance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -242,13 +271,29 @@ const AccountStatementPage: React.FC = () => {
                     <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
                       {totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCurrency}
                     </td>
+                    {showBaseColumns && (
+                      <>
+                        <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
+                          {(data.totalBaseDebit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCurrency}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
+                          {(data.totalBaseCredit ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCurrency}
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-2"></td>
+                    {showBaseColumns && <td className="px-4 py-2"></td>}
                   </tr>
                   <tr>
                     <td colSpan={5} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Closing Balance</td>
                     <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalance < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
                       {currencyFormat(data.closingBalance, baseCurrency)}
                     </td>
+                    {showBaseColumns && (
+                      <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalanceBase && data.closingBalanceBase < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
+                        {currencyFormat(data.closingBalanceBase ?? 0, baseCurrency)}
+                      </td>
+                    )}
                   </tr>
                 </tfoot>
               )}

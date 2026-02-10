@@ -40,6 +40,23 @@ const dateToIso = (val: any): string => {
   return String(val);
 };
 
+const getBaseAmounts = (entry: any): { baseDebit: number; baseCredit: number } => {
+  const debit = entry.debit || 0;
+  const credit = entry.credit || 0;
+  const baseAmount = entry.baseAmount;
+  const rate = entry.exchangeRate || 1;
+
+  if (typeof baseAmount === 'number') {
+    if (debit > 0) return { baseDebit: baseAmount, baseCredit: 0 };
+    if (credit > 0) return { baseDebit: 0, baseCredit: baseAmount };
+  }
+
+  return {
+    baseDebit: debit * rate,
+    baseCredit: credit * rate
+  };
+};
+
 export class FirestoreLedgerRepository implements ILedgerRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
@@ -213,14 +230,20 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const baseCurrency = (companyDoc.exists ? (companyDoc.data() as any)?.baseCurrency : '') || '';
 
       let openingBalance = 0;
+      let openingBalanceBase = 0;
       openingSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
         openingBalance += (e.debit || 0) - (e.credit || 0);
+        const { baseDebit, baseCredit } = getBaseAmounts(e);
+        openingBalanceBase += baseDebit - baseCredit;
       });
 
       let running = openingBalance;
+      let runningBase = openingBalanceBase;
       let totalDebit = 0;
       let totalCredit = 0;
+      let totalBaseDebit = 0;
+      let totalBaseCredit = 0;
       const entries: AccountStatementEntry[] = [];
 
       rangeSnap.docs.forEach((doc) => {
@@ -231,6 +254,11 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
         totalDebit += debit;
         totalCredit += credit;
 
+        const { baseDebit, baseCredit } = getBaseAmounts(e);
+        runningBase += baseDebit - baseCredit;
+        totalBaseDebit += baseDebit;
+        totalBaseCredit += baseCredit;
+
         entries.push({
           id: e.id || doc.id,
           date: dateToIso(e.date),
@@ -240,6 +268,9 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           debit,
           credit,
           balance: running,
+          baseDebit,
+          baseCredit,
+          baseBalance: runningBase,
           currency: e.currency,
           fxAmount: e.amount,
           exchangeRate: e.exchangeRate
@@ -255,10 +286,14 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
         fromDate: dateToIso(startDate),
         toDate: dateToIso(endDate),
         openingBalance,
+        openingBalanceBase,
         entries,
         closingBalance: running,
+        closingBalanceBase: runningBase,
         totalDebit,
-        totalCredit
+        totalCredit,
+        totalBaseDebit,
+        totalBaseCredit
       };
     } catch (error) {
       throw new InfrastructureError('Failed to get account statement', error);
