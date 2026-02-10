@@ -40,10 +40,28 @@ const dateToIso = (val: any): string => {
   return String(val);
 };
 
-const getAmountsBySide = (entry: any) => {
+const getAmountsBySide = (entry: any, targetAccountCurrency: string | undefined, baseCurrency: string | undefined) => {
   const side = entry.side || 'Debit';
-  const accountAmount = entry.amount ?? entry.fxAmount ?? 0;
-  const baseAmount = entry.baseAmount ?? 0;
+  const entryCurrency = (entry.currency || '').toUpperCase();
+  const baseCur = (baseCurrency || '').toUpperCase();
+  const targetCurrency = (targetAccountCurrency || '').toUpperCase();
+
+  // Use stored amounts
+  let accountAmount = entry.amount ?? entry.fxAmount ?? 0;
+  let baseAmount = entry.baseAmount ?? 0;
+
+  // If the ledger stored amount in a different currency than the account (e.g., base),
+  // convert from baseAmount using exchangeRate when possible.
+  if (targetCurrency && entryCurrency && entryCurrency !== targetCurrency) {
+    if (baseAmount && entry.exchangeRate) {
+      accountAmount = baseAmount / entry.exchangeRate;
+    }
+  }
+
+  // If baseAmount missing but we have amount and exchange rate, derive base
+  if (!baseAmount && accountAmount && entry.exchangeRate) {
+    baseAmount = accountAmount * entry.exchangeRate;
+  }
 
   const debit = side === 'Debit' ? Math.abs(accountAmount) : 0;
   const credit = side === 'Credit' ? Math.abs(accountAmount) : 0;
@@ -237,7 +255,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       let openingBalanceBase = 0;
       openingSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
-        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
         const signedAccount = side === 'Debit' ? debit : -credit;
         const signedBase = side === 'Debit' ? baseDebit : -baseCredit;
         openingBalance += signedAccount;
@@ -254,7 +272,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
       rangeSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
-        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+        const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
         running += side === 'Debit' ? debit : -credit;
         runningBase += side === 'Debit' ? baseDebit : -baseCredit;
         totalDebit += debit;
@@ -274,7 +292,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           baseDebit,
           baseCredit,
           baseBalance: runningBase,
-          currency: e.currency,
+          currency: accountCurrency || e.currency,
           fxAmount: e.amount,
           exchangeRate: e.exchangeRate
         });

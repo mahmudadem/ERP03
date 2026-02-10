@@ -31,6 +31,7 @@ const AccountStatementPage: React.FC = () => {
   const baseCurrency = data?.baseCurrency || '';
   const accountCurrency = data?.accountCurrency || '';
   const showBaseColumns = data && baseCurrency && accountCurrency && baseCurrency !== accountCurrency;
+  const columnCount = showBaseColumns ? 10 : 7;
 
   const fetchReport = async () => {
     if (!selectedAccountId) {
@@ -230,6 +231,12 @@ const AccountStatementPage: React.FC = () => {
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">Opening Balance</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
+                  {showBaseColumns && (
+                    <>
+                      <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
+                      <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
+                    </>
+                  )}
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                     {currencyFormat(data.openingBalance, accountCurrency || baseCurrency)}
@@ -243,11 +250,11 @@ const AccountStatementPage: React.FC = () => {
 
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Loading...</td>
+                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Loading...</td>
                   </tr>
                 ) : visibleEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-[var(--color-text-muted)]">No entries for this period.</td>
+                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">No entries for this period.</td>
                   </tr>
                 ) : (
                   visibleEntries.map((entry) => (
@@ -266,6 +273,16 @@ const AccountStatementPage: React.FC = () => {
                       <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-primary)]">
                         {entry.credit ? entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
                       </td>
+                      {showBaseColumns && (
+                        <>
+                          <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-primary)]">
+                            {entry.baseDebit !== undefined ? entry.baseDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
+                          </td>
+                          <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-primary)]">
+                            {entry.baseCredit !== undefined ? entry.baseCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-muted)]">
                         {entry.exchangeRate ? entry.exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 4 }) : '—'}
                       </td>
@@ -302,10 +319,11 @@ const AccountStatementPage: React.FC = () => {
                       </>
                     )}
                     <td className="px-4 py-2"></td>
+                    <td className="px-4 py-2"></td>
                     {showBaseColumns && <td className="px-4 py-2"></td>}
                   </tr>
                   <tr>
-                    <td colSpan={5} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Closing Balance</td>
+                    <td colSpan={showBaseColumns ? columnCount - 2 : columnCount - 1} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Closing Balance</td>
                     <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalance < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
                       {currencyFormat(data.closingBalance, accountCurrency || baseCurrency)}
                     </td>

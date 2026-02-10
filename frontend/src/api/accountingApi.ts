@@ -88,6 +88,9 @@ export interface AccountStatementEntry {
   debit: number;
   credit: number;
   balance: number;
+  baseDebit?: number;
+  baseCredit?: number;
+  baseBalance?: number;
   currency?: string;
   fxAmount?: number;
   exchangeRate?: number;
@@ -102,10 +105,14 @@ export interface AccountStatementData {
   fromDate: string;
   toDate: string;
   openingBalance: number;
+  openingBalanceBase?: number;
   entries: AccountStatementEntry[];
   closingBalance: number;
+  closingBalanceBase?: number;
   totalDebit: number;
   totalCredit: number;
+  totalBaseDebit?: number;
+  totalBaseCredit?: number;
 }
 
 

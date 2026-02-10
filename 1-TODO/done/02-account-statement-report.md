@@ -1,7 +1,7 @@
 # 02 - Account Statement Report
 
-- Added ledger repository account statement query with opening balance and running balance computation (Firestore implementation + interface).
+- Added ledger repository account statement query with opening balance + running balances and base/account currency columns (Firestore implementation + interface).
 - Added GetAccountStatement use case, API endpoint, and route guarded by `accounting.reports.generalLedger.view`.
-- Added backend unit tests for account statement calculations and refreshed balance sheet test compatibility.
-- Exposed frontend API, built Account Statement page with account/date filters, running balance, voucher links, totals/print, and navigation link.
-- Tests: `cd backend && npm test -- --testPathPatterns GetAccountStatementUseCase`, `cd backend && npm test -- --testPathPatterns GetBalanceSheetUseCase`.
+- Fixed currency handling to prefer stored amount/baseAmount, avoid double conversion, and surface exchange rate per line; optional include-unposted support.
+- Exposed frontend API and Account Statement page with filters, FX rate column, account/base columns, voucher links, totals/print, and navigation link.
+- Tests: `cd backend && npm test -- --runTestsByPath src/tests/application/accounting/use-cases/GetAccountStatementUseCase.test.ts`, `cd backend && npm test -- --runTestsByPath src/tests/application/accounting/use-cases/GetBalanceSheetUseCase.test.ts`.
