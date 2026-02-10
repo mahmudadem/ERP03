@@ -162,12 +162,17 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const headerRate = parseFloat(renderData?.exchangeRate || win.data?.exchangeRate) || 1;
   const calculationLines = (renderRows && renderRows.length > 0) ? renderRows : liveLines;
 
+  // Detect if voucher is posted/approved (stored in Base Currency Equivalents)
+  const isPosted = win.data?.status === 'posted' || 
+                   win.data?.status === 'approved' || 
+                   !!win.data?.metadata?.isPosted;
+
   const { 
     totalDebitVoucher, 
     totalCreditVoucher, 
     isBalanced: isBalancedVoucher, 
     differenceVoucher 
-  } = useVoucherTotals(calculationLines, headerRate);
+  } = useVoucherTotals(calculationLines, headerRate, isPosted);
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;

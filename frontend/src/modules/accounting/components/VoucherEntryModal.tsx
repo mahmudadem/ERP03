@@ -115,20 +115,29 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     return status === 'cancelled' || status === 'void';
   }, [effectiveData?.status]);
 
-  // Calculate totals using centralized hook (Sum of Equivalents / Header Rate)
+  // Totals Calculation (Unified Logic)
+  // Use live data from renderer
   const currentRows = rendererRef.current?.getRows() || [];
   const headerData = rendererRef.current?.getData();
-  const headerRate = parseFloat(headerData?.exchangeRate) || 1;
   
+  // Fallback to effectiveData if renderer is not ready (initial load)
+  const headerRate = parseFloat(headerData?.exchangeRate || effectiveData?.exchangeRate) || 1;
+  const calculationLines = (currentRows && currentRows.length > 0) ? currentRows : (effectiveData?.lines || []);
+  
+  // Detect if voucher is posted/approved (stored in Base Currency Equivalents)
+  const isPosted = effectiveData?.status === 'posted' || 
+                   effectiveData?.status === 'approved' || 
+                   !!effectiveData?.metadata?.isPosted;
+
   const { 
     totalDebitVoucher: totalDebit, 
     totalCreditVoucher: totalCredit, 
     isBalanced, 
-    differenceVoucher: diff 
-  } = useVoucherTotals(currentRows, headerRate);
+    differenceVoucher: diff
+  } = useVoucherTotals(calculationLines, headerRate, isPosted);
 
   const hasValues = totalDebit > 0 || totalCredit > 0;
-  const hasMinLines = currentRows.filter((r: any) => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+  const hasMinLines = calculationLines.filter((r: any) => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
 
   const isVoucherReadOnly = React.useMemo(() => {
     if (!effectiveData?.status) return false;
