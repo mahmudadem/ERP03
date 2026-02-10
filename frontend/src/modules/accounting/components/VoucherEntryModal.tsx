@@ -22,6 +22,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { accountingApi, CorrectionMode } from '../../../api/accountingApi';
 import { PolicyGovernanceIndicator } from './PolicyGovernanceIndicator';
 import { VoucherTotalsDisplay } from './VoucherTotalsDisplay';
+import { useVoucherTotals } from '../hooks/useVoucherTotals';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 
 interface VoucherEntryModalProps {
@@ -114,21 +115,20 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     return status === 'cancelled' || status === 'void';
   }, [effectiveData?.status]);
 
-  // Calculate totals during render to ensure reactivity to renderer updates via forceUpdate
+  // Calculate totals using centralized hook (Sum of Equivalents / Header Rate)
   const currentRows = rendererRef.current?.getRows() || [];
+  const headerData = rendererRef.current?.getData();
+  const headerRate = parseFloat(headerData?.exchangeRate) || 1;
   
-  // Display Totals: Sum of Raw Debit/Credit (Transaction Currency)
-  const totalDebit = currentRows.reduce((sum: number, row: any) => sum + (parseFloat(row.debit) || 0), 0);
-  const totalCredit = currentRows.reduce((sum: number, row: any) => sum + (parseFloat(row.credit) || 0), 0);
+  const { 
+    totalDebitVoucher: totalDebit, 
+    totalCreditVoucher: totalCredit, 
+    isBalanced, 
+    differenceVoucher: diff 
+  } = useVoucherTotals(currentRows, headerRate);
 
-  // Balance Check: Sum of Equivalents (Base Currency) - Essential for multi-currency validation
-  const totalDebitEq = currentRows.reduce((sum: number, row: any) => sum + (parseFloat(row.equivalent) || 0) * ((parseFloat(row.debit) || 0) > 0 ? 1 : 0), 0);
-  const totalCreditEq = currentRows.reduce((sum: number, row: any) => sum + (parseFloat(row.equivalent) || 0) * ((parseFloat(row.credit) || 0) > 0 ? 1 : 0), 0);
-  // Use Equivalents for Validation
-  const isBalanced = Math.abs(totalDebitEq - totalCreditEq) < 0.005;
   const hasValues = totalDebit > 0 || totalCredit > 0;
-  const diff = Math.abs(totalDebitEq - totalCreditEq);
-  const hasMinLines = currentRows.filter(r => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+  const hasMinLines = currentRows.filter((r: any) => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
 
   const isVoucherReadOnly = React.useMemo(() => {
     if (!effectiveData?.status) return false;

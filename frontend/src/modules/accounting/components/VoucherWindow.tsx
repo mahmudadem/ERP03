@@ -20,6 +20,7 @@ import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDe
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { PolicyGovernanceIndicator } from './PolicyGovernanceIndicator';
 import { VoucherTotalsDisplay } from './VoucherTotalsDisplay';
+import { useVoucherTotals } from '../hooks/useVoucherTotals';
 import { useAuth } from '../../../hooks/useAuth';
 import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
@@ -151,6 +152,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     return win.data?.metadata?.creationMode === 'STRICT' || 
            win.data?.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED;
   }, [win.data?.metadata?.creationMode, win.data?.postingLockPolicy]);
+  
+  // Totals Calculation (Unified Logic)
+  const headerRate = parseFloat(win.data?.exchangeRate) || 1;
+  const { 
+    totalDebitVoucher, 
+    totalCreditVoucher, 
+    isBalanced: isBalancedVoucher, 
+    differenceVoucher 
+  } = useVoucherTotals(liveLines, headerRate);
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;
@@ -983,25 +993,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         {/* Totals Display */}
         <div className="flex items-center gap-4">
           {(() => {
-            const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
-            const hasValues = totalDebitCalc > 0 || totalCreditCalc > 0;
+            const hasValues = totalDebitVoucher > 0 || totalCreditVoucher > 0;
             
-            const liveData = rendererRef.current?.getData();
-            const voucherCurrency = liveCurrency || 
-                                   liveData?.currency || 
-                                   win.data?.currency || 
-                                   rows.find((r: any) => r.currency)?.currency || 
+            // Use live calculated values from hook
+            const voucherCurrency = win.data?.currency || 
+                                   liveCurrency || 
+                                   rendererRef.current?.getData()?.currency || 
                                    settings?.baseCurrency || '';
             
-            const difference = Math.abs(totalDebitCalc - totalCreditCalc);
-
             return (
               <VoucherTotalsDisplay
-                totalDebit={totalDebitCalc}
-                totalCredit={totalCreditCalc}
+                totalDebit={totalDebitVoucher}
+                totalCredit={totalCreditVoucher}
                 currency={voucherCurrency}
-                isBalanced={isBalanced}
-                difference={difference}
+                isBalanced={isBalancedVoucher}
+                difference={differenceVoucher}
               />
             );
           })()}
