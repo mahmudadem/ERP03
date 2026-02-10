@@ -39,21 +39,21 @@ export const useVoucherTotals = (
 
     // Calculate totals in VOUCHER CURRENCY
     // Adaptive Logic: Check if equivalents seem to be in Base Currency (Huge) or Voucher Currency (Normal)
-    // This handles inconsistent backend states where some posted vouchers return Base Eq and others return Voucher Eq.
+    // We check both sides using Max Ratio to determine the mode for the WHOLE voucher (Unified Mode).
     const validatedHeaderRate = headerRate || 1;
     let finalDebitVoucher = debitEqSum;
     let finalCreditVoucher = creditEqSum;
 
     if (convertFromBase && validatedHeaderRate > 1.2) {
-       // Heuristic: If Equivalent/Amount ratio is significant (close to HeaderRate), assume Base Equivalents and divide.
-       // If ratio is small (close to 1), assume Voucher Equivalents and keep as is.
+       // Heuristic: If Combined/Max Ratio is significant (close to HeaderRate), assume Base Equivalents for EVERYTHING.
        const debitRatio = debitAmountSum > 0 ? (debitEqSum / debitAmountSum) : 0;
-       if (debitRatio > (validatedHeaderRate * 0.3)) { // Threshold: 30% of Header Rate
-          finalDebitVoucher = debitEqSum / validatedHeaderRate;
-       }
-
        const creditRatio = creditAmountSum > 0 ? (creditEqSum / creditAmountSum) : 0;
-       if (creditRatio > (validatedHeaderRate * 0.3)) {
+       
+       // Use max signal to detect Base Mode (if any side is clearly Base, the file is likely Base)
+       const maxRatio = Math.max(debitRatio, creditRatio);
+       
+       if (maxRatio > (validatedHeaderRate * 0.3)) { // Threshold: 30% of Header Rate
+          finalDebitVoucher = debitEqSum / validatedHeaderRate;
           finalCreditVoucher = creditEqSum / validatedHeaderRate;
        }
     }

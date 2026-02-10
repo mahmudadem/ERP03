@@ -31,6 +31,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   creationMode: 80,
   approvedAt: 128,
   status: 96,
+  currency: 80,
   amount: 128,
   ref: 128,
   actions: 96
@@ -46,6 +47,7 @@ const COLUMN_LABELS: Record<string, string> = {
   creationMode: 'C-Mode',
   approvedAt: 'Approved At',
   status: 'Status',
+  currency: 'Currency',
   amount: 'Amount',
   ref: 'Ref',
   actions: 'Actions'
@@ -182,16 +184,23 @@ export const VoucherTable: React.FC<Props> = ({
 
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  
+  // State for actions dropdown
+  const [activeActionVoucherId, setActiveActionVoucherId] = useState<string | null>(null);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
         setShowSettings(false);
       }
+      if (activeActionVoucherId && actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setActiveActionVoucherId(null);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [activeActionVoucherId]);
 
   const toggleColumn = (col: string) => {
     setVisibleColumns(prev => 
@@ -790,6 +799,13 @@ export const VoucherTable: React.FC<Props> = ({
                 </th>
               )}
 
+              {visibleColumns.includes('currency') && (
+                <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.currency }}>
+                  Currency
+                  <div onMouseDown={(e) => handleResizeStart('currency', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
+                </th>
+              )}
+
               {visibleColumns.includes('amount') && (
                 <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.amount }}>
                   Amount
@@ -1035,11 +1051,16 @@ export const VoucherTable: React.FC<Props> = ({
                         </div>
                       </td>
                     )}
+                    {visibleColumns.includes('currency') && (
+                      <td className={clsx("px-6 py-3 whitespace-nowrap text-center text-[var(--color-text-secondary)] font-medium", fontSize)}>
+                        {voucher.currency}
+                      </td>
+                    )}
 
                     {visibleColumns.includes('amount') && (
                       <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)] text-right font-mono font-semibold", fontSize)}>
                         {typeof displayAmount === 'number' 
-                          ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${voucher.currency}`
+                          ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                           : displayAmount}
                       </td>
                     )}
@@ -1121,15 +1142,23 @@ export const VoucherTable: React.FC<Props> = ({
 
                             {/* DROPDOWN — secondary actions behind MoreVertical */}
                             {dropdownActions.length > 0 && (
-                              <div className="relative group">
+                              <div className="relative" ref={activeActionVoucherId === voucher.id ? actionMenuRef : null}>
                                 <button 
-                                  onClick={(e) => { e.stopPropagation(); }}
-                                  className="hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-colors p-1.5 rounded-full"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setActiveActionVoucherId(activeActionVoucherId === voucher.id ? null : voucher.id);
+                                  }}
+                                  className={clsx(
+                                    "transition-colors p-1.5 rounded-full hover:bg-[var(--color-bg-tertiary)]",
+                                    activeActionVoucherId === voucher.id ? "text-primary-600 bg-primary-50 dark:bg-primary-900/20" : "hover:text-[var(--color-text-primary)]"
+                                  )}
+                                  title="More actions"
                                 >
                                   <MoreVertical size={16} />
                                 </button>
                                 
-                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] py-1 text-left origin-bottom-right scale-95 group-hover:scale-100">
+                                {activeActionVoucherId === voucher.id && (
+                                  <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-xl z-[100] py-1 text-left origin-bottom-right animate-in fade-in zoom-in-95 duration-100">
                                   {dropdownActions.map((action, idx) => {
                                     // Add separator before DELETE
                                     const showSeparator = action.type === 'DELETE' && idx > 0;
@@ -1151,6 +1180,7 @@ export const VoucherTable: React.FC<Props> = ({
                                     );
                                   })}
                                 </div>
+                                )}
                               </div>
                             )}
                           </div>

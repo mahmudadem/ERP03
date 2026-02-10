@@ -24,7 +24,7 @@ import { useVoucherTotals } from '../hooks/useVoucherTotals';
 import { useAuth } from '../../../hooks/useAuth';
 import { AccountingPolicyConfig } from '../../../api/accountingApi';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
-import { roundMoney } from '../../../utils/mathUtils';
+
 import { getCompanyToday } from '../../../utils/dateUtils';
 import { isActionAvailable, VoucherActionContext } from '../utils/voucherActions';
 
@@ -93,38 +93,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const [isCheckingRates, setIsCheckingRates] = useState<boolean>(false);
   const [successAction, setSuccessAction] = useState<'SUBMIT' | 'APPROVE' | 'CONFIRM_CUSTODY' | 'POST' | null>(null);
 
-  // Memoized Totals & Balance State
-  const { totalDebitCalc, totalCreditCalc, isBalanced } = React.useMemo(() => {
-    const rows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
-    let td = 0;
-    let tc = 0;
-
-    for (const row of rows) {
-      let debit = Number(row.debit) || 0;
-      let credit = Number(row.credit) || 0;
-
-      // Fallback: if debit/credit are both 0, try side/amount format
-      if (debit === 0 && credit === 0 && row.side && row.amount) {
-        const amt = Number(row.amount) || 0;
-        if (row.side.toLowerCase() === 'debit') debit = amt;
-        else if (row.side.toLowerCase() === 'credit') credit = amt;
-      }
-
-      // Apply parity for base currency equivalent and ROUND each line
-      const parity = Number(row.parity) || Number(row.exchangeRate) || 1;
-      td = roundMoney(td + roundMoney(debit * parity));
-      tc = roundMoney(tc + roundMoney(credit * parity));
-    }
-
-    // Increased tolerance (0.1) to allow for "Penny Balancing" residuals
-    const balanced = Math.abs(td - tc) <= 0.1;
-    
-    return { 
-      totalDebitCalc: td, 
-      totalCreditCalc: tc, 
-      isBalanced: balanced 
-    };
-  }, [liveLines, forceUpdate, win.data?.id]);
+  // NOTE: Totals are now calculated exclusively by useVoucherTotals hook (see below, ~line 170).
+  // The old duplicate useMemo (totalDebitCalc/totalCreditCalc/isBalanced) has been removed.
+  // All validation, button state, and display now use: totalDebitVoucher, totalCreditVoucher, isBalancedVoucher.
 
   const isReversal = React.useMemo(() => {
     return !!win.data?.reversalOfVoucherId || win.data?.type?.toLowerCase() === 'reversal';
@@ -387,12 +358,12 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
     
     // Balance Validation: For multi-currency, check equivalent totals in base currency
-    if (!isBalanced) {
+    if (!isBalancedVoucher) {
       errorHandler.showError(
-        `Voucher is not balanced in base currency (${baseCurrency}). ` +
-        `Total Debit: ${totalDebitCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
-        `Total Credit: ${totalCreditCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
-        `Diff: ${Math.abs(totalDebitCalc - totalCreditCalc).toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Voucher is not balanced (${baseCurrency}). ` +
+        `Total Debit: ${totalDebitVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
+        `Total Credit: ${totalCreditVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Diff: ${differenceVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
         `Please ensure the voucher balances before saving.`
       );
       return;
@@ -527,13 +498,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
     
     // Balance Validation: For multi-currency, check equivalent totals in base currency
-    if (!isBalanced) {
+    if (!isBalancedVoucher) {
       setShowConfirmSubmitModal(false);
       errorHandler.showError(
-        `Voucher is not balanced in base currency (${baseCurrency}). ` +
-        `Total Debit: ${totalDebitCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
-        `Total Credit: ${totalCreditCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
-        `Diff: ${Math.abs(totalDebitCalc - totalCreditCalc).toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Voucher is not balanced (${baseCurrency}). ` +
+        `Total Debit: ${totalDebitVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ` +
+        `Total Credit: ${totalCreditVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
+        `Diff: ${differenceVoucher.toLocaleString(undefined, { minimumFractionDigits: 2 })}. ` +
         `Please ensure the voucher balances before submitting.`
       );
       return;
@@ -1007,10 +978,10 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           {(() => {
             const hasValues = totalDebitVoucher > 0 || totalCreditVoucher > 0;
             
-            // Use live calculated values from hook
-            const voucherCurrency = win.data?.currency || 
-                                   liveCurrency || 
+            // Use live currency from renderer/state FIRST, fall back to saved data
+            const voucherCurrency = liveCurrency || 
                                    rendererRef.current?.getData()?.currency || 
+                                   win.data?.currency || 
                                    settings?.baseCurrency || '';
             
             return (
@@ -1020,6 +991,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 currency={voucherCurrency}
                 isBalanced={isBalancedVoucher}
                 difference={differenceVoucher}
+                lines={calculationLines}
+                baseCurrency={settings?.baseCurrency || 'SYP'}
+                headerRate={headerRate}
               />
             );
           })()}
@@ -1087,7 +1061,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
             const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
             const hasLines = currentRows.filter(r => r.accountId && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
-            const canSave = isBalanced && hasLines;
+            const canSave = isBalancedVoucher && hasLines;
 
             return (
               <button
@@ -1103,7 +1077,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
                 )}
                 disabled={isSaving || settingsLoading || policyLoading || !canSave}
-                title={!isBalanced ? "Voucher must be balanced to save" : !hasLines ? "Voucher must have at least 2 lines" : ""}
+                title={!isBalancedVoucher ? "Voucher must be balanced to save" : !hasLines ? "Voucher must have at least 2 lines" : ""}
               >
                 {isSaving || settingsLoading || policyLoading ? (
                   <>
@@ -1133,8 +1107,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               <button
                 onClick={handleSubmit}
                 className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-                disabled={isSubmitting || !isBalanced}
-                title={!isBalanced ? "Voucher must be balanced to submit" : ""}
+                disabled={isSubmitting || !isBalancedVoucher}
+                title={!isBalancedVoucher ? "Voucher must be balanced to submit" : ""}
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

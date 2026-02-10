@@ -403,8 +403,12 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
             <VoucherTotalsDisplay
               totalDebit={totalDebit}
               totalCredit={totalCredit}
-              currency={voucherType.defaultCurrency || 'SYP'}
+              currency={headerData?.currency || effectiveData?.currency || voucherType.defaultCurrency || settings?.baseCurrency || 'SYP'}
               isBalanced={isBalanced}
+              difference={diff}
+              lines={calculationLines}
+              baseCurrency={settings?.baseCurrency || 'SYP'}
+              headerRate={headerRate}
             />
 
             {/* Action Buttons (Synced from VoucherWindow) */}

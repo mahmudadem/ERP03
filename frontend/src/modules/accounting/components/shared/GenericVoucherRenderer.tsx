@@ -770,13 +770,73 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const handleInputChange = (fieldId: string, value: any) => {
     setFormData((prev: any) => {
       const next = { ...prev, [fieldId]: value };
-      
-      // If header-level exchange rate changes, we might want to update all lines
-      // that are using the default currency parity. But for now, lines handle their own parity.
-      
       onChangeRef.current?.({ ...next, lines: rows });
       return next;
     });
+
+    // HEADER CURRENCY CHANGED: Recalculate ALL line parities relative to the new voucher currency
+    if (fieldId === 'currency' && value) {
+      const newVoucherCurrency = (value as string).toUpperCase();
+      const baseCurrency = (company?.baseCurrency || '').toUpperCase();
+
+      // We need the current exchange rate for the new currency
+      const currentHeaderRate = Number(formData?.exchangeRate) || 1.0;
+
+      const recalculateAllParities = async () => {
+        const updatedRows: JournalRow[] = [];
+        const ratePromises: Promise<void>[] = [];
+
+        for (const row of rows) {
+          const lineCurrency = (row.currency || '').toUpperCase();
+          const debit = Number(row.debit) || 0;
+          const credit = Number(row.credit) || 0;
+          const amount = debit || credit || 0;
+
+          if (!lineCurrency || !amount) {
+            updatedRows.push(row);
+            continue;
+          }
+
+          if (lineCurrency === newVoucherCurrency) {
+            // Same as new voucher currency → parity = 1
+            updatedRows.push({ ...row, parity: 1.0, equivalent: amount });
+          } else if (lineCurrency === baseCurrency) {
+            // Line is in base currency, voucher is in foreign currency
+            const parity = currentHeaderRate !== 0 ? (1 / currentHeaderRate) : 1.0;
+            updatedRows.push({ ...row, parity, equivalent: roundMoney(amount * parity) });
+          } else {
+            // Line is in a different foreign currency — need to fetch rate
+            const idx = updatedRows.length;
+            updatedRows.push(row); // placeholder, will be updated by promise
+            ratePromises.push(
+              accountingApi.getSuggestedRate(
+                lineCurrency,
+                newVoucherCurrency,
+                formData?.date || getCompanyToday(settings)
+              ).then(result => {
+                if (result.rate) {
+                  const parity = result.rate;
+                  updatedRows[idx] = { ...row, parity, equivalent: roundMoney(amount * parity) };
+                }
+              }).catch(err => {
+                console.error(`[HEADER CURRENCY CHANGE] Failed to fetch rate for ${lineCurrency}→${newVoucherCurrency}:`, err);
+              })
+            );
+          }
+        }
+
+        // Wait for any async rate fetches
+        if (ratePromises.length > 0) {
+          await Promise.all(ratePromises);
+        }
+
+        // Apply all updated rows at once
+        setRows(updatedRows);
+        onChangeRef.current?.({ ...formData, currency: value, lines: updatedRows });
+      };
+
+      recalculateAllParities();
+    }
   };
 
   const handleRowChange = async (id: number, field: keyof JournalRow, value: any) => {

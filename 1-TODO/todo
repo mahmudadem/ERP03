@@ -8,6 +8,7 @@ i noticed that chages and fixes we made is being applied to the windwos view onl
 3- check if we are ready to test adding new users to the company and assign roles to them.  
 
 4- check if notifications are working and ready to be tested.
+
 in Accounting Settings page we need a dedicated section for notifications settings,where we can enable or disable
  notifications and set the notification type.
  for example we can have a section for email notifications and another section for sms notifications and push notifications.
@@ -24,8 +25,9 @@ think and analyze our need based on our system and the business we are in.
 - Reporting: Develop a "Cost Center Statement" and "Profit & Loss by Cost Center" report.
 - Budgeting: Allow setting and tracking budgets per cost center.
 
-6- 
-
+6- fix totlas they are broken 
+unify total calculation in voucher window and voucher renderer.
+then fix whats wrong with it. and fix list page currency and amount
 
 
 
