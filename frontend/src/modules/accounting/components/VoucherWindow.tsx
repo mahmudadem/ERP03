@@ -154,13 +154,20 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   }, [win.data?.metadata?.creationMode, win.data?.postingLockPolicy]);
   
   // Totals Calculation (Unified Logic)
-  const headerRate = parseFloat(win.data?.exchangeRate) || 1;
+  // Use live data from renderer to ensure rate changes are reflected immediately
+  const renderData = rendererRef.current?.getData();
+  const renderRows = rendererRef.current?.getRows();
+  
+  // Fallback to win.data if renderer is not ready (initial load)
+  const headerRate = parseFloat(renderData?.exchangeRate || win.data?.exchangeRate) || 1;
+  const calculationLines = (renderRows && renderRows.length > 0) ? renderRows : liveLines;
+
   const { 
     totalDebitVoucher, 
     totalCreditVoucher, 
     isBalanced: isBalancedVoucher, 
     differenceVoucher 
-  } = useVoucherTotals(liveLines, headerRate);
+  } = useVoucherTotals(calculationLines, headerRate);
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;
