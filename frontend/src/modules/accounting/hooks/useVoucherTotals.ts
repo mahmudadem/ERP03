@@ -33,14 +33,16 @@ export const useVoucherTotals = (
       }
     });
 
-    // Valid balance check is ALWAYS done in Base Currency Equivalents
+    // Valid balance check is done on the summed values (Voucher Currency)
+    // If voucher is balanced in voucher currency, it implies balance in base (assuming consistent rates)
     const isBalanced = Math.abs(debitEqSum - creditEqSum) < 0.05;
 
     // Calculate totals in VOUCHER CURRENCY
-    // Formula: TotalEquivalent / VoucherHeaderRate
-    const validatedHeaderRate = headerRate || 1;
-    const totalDebitVoucher = debitEqSum / validatedHeaderRate;
-    const totalCreditVoucher = creditEqSum / validatedHeaderRate;
+    // The 'equivalent' column from renderer (calculated as Amount * Parity) 
+    // represents the value in the Voucher's Currency.
+    // So we just sum them up. No extra division needed.
+    const totalDebitVoucher = debitEqSum;
+    const totalCreditVoucher = creditEqSum;
 
     const differenceVoucher = Math.abs(totalDebitVoucher - totalCreditVoucher);
 
