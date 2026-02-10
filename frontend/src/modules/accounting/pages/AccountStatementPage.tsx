@@ -171,9 +171,9 @@ const AccountStatementPage: React.FC = () => {
               <span className="text-sm font-semibold text-[var(--color-text-primary)]">{baseCurrency || '—'}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Opening Balance</span>
+              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Opening Balance ({accountCurrency || baseCurrency})</span>
               <span className={`text-sm font-semibold ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
-                {currencyFormat(data.openingBalance, baseCurrency)}
+                {currencyFormat(data.openingBalance, accountCurrency || baseCurrency)}
               </span>
             </div>
             {showBaseColumns && (
@@ -193,15 +193,15 @@ const AccountStatementPage: React.FC = () => {
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Date</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Voucher</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Description</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit ({accountCurrency || baseCurrency})</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit ({accountCurrency || baseCurrency})</th>
                   {showBaseColumns && (
                     <>
                       <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit (Base)</th>
                       <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit (Base)</th>
                     </>
                   )}
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance ({accountCurrency || baseCurrency})</th>
                   {showBaseColumns && (
                     <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance (Base)</th>
                   )}
@@ -215,7 +215,7 @@ const AccountStatementPage: React.FC = () => {
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
-                    {currencyFormat(data.openingBalance, baseCurrency)}
+                    {currencyFormat(data.openingBalance, accountCurrency || baseCurrency)}
                   </td>
                   {showBaseColumns && (
                     <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalanceBase && data.openingBalanceBase < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
@@ -266,10 +266,10 @@ const AccountStatementPage: React.FC = () => {
                   <tr>
                     <td colSpan={3} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Totals</td>
                     <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
-                      {totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCurrency}
+                      {totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {accountCurrency || baseCurrency}
                     </td>
                     <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
-                      {totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCurrency}
+                      {totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {accountCurrency || baseCurrency}
                     </td>
                     {showBaseColumns && (
                       <>
@@ -287,7 +287,7 @@ const AccountStatementPage: React.FC = () => {
                   <tr>
                     <td colSpan={5} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Closing Balance</td>
                     <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalance < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
-                      {currencyFormat(data.closingBalance, baseCurrency)}
+                      {currencyFormat(data.closingBalance, accountCurrency || baseCurrency)}
                     </td>
                     {showBaseColumns && (
                       <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalanceBase && data.closingBalanceBase < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
