@@ -47,12 +47,12 @@ class GetAccountStatementUseCase {
         this.ledgerRepo = ledgerRepo;
         this.permissionChecker = permissionChecker;
     }
-    async execute(companyId, userId, accountId, fromDate, toDate) {
+    async execute(companyId, userId, accountId, fromDate, toDate, options) {
         if (!accountId) {
             throw new Error('accountId is required');
         }
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
-        return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate);
+        return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
     }
 }
 exports.GetAccountStatementUseCase = GetAccountStatementUseCase;

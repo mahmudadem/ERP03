@@ -95,12 +95,12 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
-            const { accountId, fromDate, toDate } = req.query;
+            const { accountId, fromDate, toDate, includeUnposted } = req.query;
             if (!accountId) {
                 return res.status(400).json({ error: 'accountId is required' });
             }
             const useCase = new LedgerUseCases_1.GetAccountStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker);
-            const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '');
+            const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '', { includeUnposted: includeUnposted === 'true' });
             res.status(200).json({
                 success: true,
                 data: report,

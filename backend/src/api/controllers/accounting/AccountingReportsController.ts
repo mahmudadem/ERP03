@@ -116,7 +116,7 @@ export class AccountingReportsController {
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
 
-      const { accountId, fromDate, toDate } = req.query;
+      const { accountId, fromDate, toDate, includeUnposted } = req.query;
       if (!accountId) {
         return res.status(400).json({ error: 'accountId is required' });
       }
@@ -127,7 +127,8 @@ export class AccountingReportsController {
         userId,
         accountId as string,
         (fromDate as string) || '',
-        (toDate as string) || ''
+        (toDate as string) || '',
+        { includeUnposted: includeUnposted === 'true' }
       );
 
       (res as any).status(200).json({

@@ -216,6 +216,7 @@ const AccountStatementPage: React.FC = () => {
                       <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit (Base)</th>
                     </>
                   )}
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24">FX Rate</th>
                   <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance ({accountCurrency || baseCurrency})</th>
                   {showBaseColumns && (
                     <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance (Base)</th>
@@ -227,6 +228,7 @@ const AccountStatementPage: React.FC = () => {
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">Opening</td>
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">Opening Balance</td>
+                  <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className={`px-4 py-2 text-right text-sm font-mono ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
@@ -263,6 +265,9 @@ const AccountStatementPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-primary)]">
                         {entry.credit ? entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-mono text-[var(--color-text-muted)]">
+                        {entry.exchangeRate ? entry.exchangeRate.toLocaleString(undefined, { minimumFractionDigits: 4 }) : '—'}
                       </td>
                       <td className={`px-4 py-2 text-right text-sm font-mono font-semibold ${entry.balance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                         {entry.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}

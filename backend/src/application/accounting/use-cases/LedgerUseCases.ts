@@ -53,12 +53,12 @@ export class GetAccountStatementUseCase {
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string, userId: string, accountId: string, fromDate: string, toDate: string) {
+  async execute(companyId: string, userId: string, accountId: string, fromDate: string, toDate: string, options?: { includeUnposted?: boolean }) {
     if (!accountId) {
       throw new Error('accountId is required');
     }
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
-    return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate);
+    return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
   }
 }
 

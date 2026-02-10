@@ -36,21 +36,16 @@ const dateToIso = (val) => {
     }
     return String(val);
 };
-const getBaseAmounts = (entry) => {
-    const debit = entry.debit || 0;
-    const credit = entry.credit || 0;
-    const baseAmount = entry.baseAmount;
-    const rate = entry.exchangeRate || 1;
-    if (typeof baseAmount === 'number') {
-        if (debit > 0)
-            return { baseDebit: Math.abs(baseAmount), baseCredit: 0 };
-        if (credit > 0)
-            return { baseDebit: 0, baseCredit: Math.abs(baseAmount) };
-    }
-    return {
-        baseDebit: Math.abs(debit * rate),
-        baseCredit: Math.abs(credit * rate)
-    };
+const getAmountsBySide = (entry) => {
+    var _a, _b, _c;
+    const side = entry.side || 'Debit';
+    const accountAmount = (_b = (_a = entry.amount) !== null && _a !== void 0 ? _a : entry.fxAmount) !== null && _b !== void 0 ? _b : 0;
+    const baseAmount = (_c = entry.baseAmount) !== null && _c !== void 0 ? _c : 0;
+    const debit = side === 'Debit' ? Math.abs(accountAmount) : 0;
+    const credit = side === 'Credit' ? Math.abs(accountAmount) : 0;
+    const baseDebit = side === 'Debit' ? Math.abs(baseAmount) : 0;
+    const baseCredit = side === 'Credit' ? Math.abs(baseAmount) : 0;
+    return { debit, credit, baseDebit, baseCredit, side };
 };
 class FirestoreLedgerRepository {
     constructor(db) {
@@ -179,8 +174,8 @@ class FirestoreLedgerRepository {
             throw new InfrastructureError_1.InfrastructureError('Failed to get general ledger', error);
         }
     }
-    async getAccountStatement(companyId, accountId, fromDate, toDate) {
-        var _a;
+    async getAccountStatement(companyId, accountId, fromDate, toDate, options) {
+        var _a, _b;
         try {
             const startDate = fromDate || '1900-01-01';
             const endDate = toDate || new Date().toISOString().split('T')[0];
@@ -193,14 +188,21 @@ class FirestoreLedgerRepository {
                 .doc('Data')
                 .collection('accounts')
                 .doc(accountId);
+            const includeUnposted = (_a = options === null || options === void 0 ? void 0 : options.includeUnposted) !== null && _a !== void 0 ? _a : false;
+            const ledgerCol = this.col(companyId);
+            const applyPostingFilter = (query) => {
+                if (includeUnposted)
+                    return query;
+                return query.where('isPosted', '==', true);
+            };
             const [accountDoc, companyDoc, openingSnap, rangeSnap] = await Promise.all([
                 accountRef.get(),
                 this.db.collection('companies').doc(companyId).get(),
-                this.col(companyId)
+                applyPostingFilter(ledgerCol)
                     .where('accountId', '==', accountId)
                     .where('date', '<', startTs)
                     .get(),
-                this.col(companyId)
+                applyPostingFilter(ledgerCol)
                     .where('accountId', '==', accountId)
                     .where('date', '>=', startTs)
                     .where('date', '<=', endTs)
@@ -211,14 +213,16 @@ class FirestoreLedgerRepository {
             const accountCode = (accountData === null || accountData === void 0 ? void 0 : accountData.userCode) || (accountData === null || accountData === void 0 ? void 0 : accountData.code) || '';
             const accountName = (accountData === null || accountData === void 0 ? void 0 : accountData.name) || 'Unknown Account';
             const accountCurrency = (accountData === null || accountData === void 0 ? void 0 : accountData.fixedCurrencyCode) || (accountData === null || accountData === void 0 ? void 0 : accountData.currency) || '';
-            const baseCurrency = (companyDoc.exists ? (_a = companyDoc.data()) === null || _a === void 0 ? void 0 : _a.baseCurrency : '') || '';
+            const baseCurrency = (companyDoc.exists ? (_b = companyDoc.data()) === null || _b === void 0 ? void 0 : _b.baseCurrency : '') || '';
             let openingBalance = 0;
             let openingBalanceBase = 0;
             openingSnap.docs.forEach((doc) => {
                 const e = doc.data();
-                openingBalance += (e.debit || 0) - (e.credit || 0);
-                const { baseDebit, baseCredit } = getBaseAmounts(e);
-                openingBalanceBase += baseDebit - baseCredit;
+                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+                const signedAccount = side === 'Debit' ? debit : -credit;
+                const signedBase = side === 'Debit' ? baseDebit : -baseCredit;
+                openingBalance += signedAccount;
+                openingBalanceBase += signedBase;
             });
             let running = openingBalance;
             let runningBase = openingBalanceBase;
@@ -229,13 +233,11 @@ class FirestoreLedgerRepository {
             const entries = [];
             rangeSnap.docs.forEach((doc) => {
                 const e = doc.data();
-                const debit = e.debit || 0;
-                const credit = e.credit || 0;
-                running += debit - credit;
+                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+                running += side === 'Debit' ? debit : -credit;
+                runningBase += side === 'Debit' ? baseDebit : -baseCredit;
                 totalDebit += debit;
                 totalCredit += credit;
-                const { baseDebit, baseCredit } = getBaseAmounts(e);
-                runningBase += baseDebit - baseCredit;
                 totalBaseDebit += baseDebit;
                 totalBaseCredit += baseCredit;
                 entries.push({
