@@ -11,6 +11,31 @@ const toTimestamp = (val) => {
     const date = val instanceof Date ? val : new Date(val);
     return firestore_1.Timestamp.fromDate(date);
 };
+const toTimestampBoundary = (val, endOfDay = false) => {
+    const date = val instanceof Date ? val : new Date(val);
+    if (endOfDay) {
+        date.setHours(23, 59, 59, 999);
+    }
+    return firestore_1.Timestamp.fromDate(date);
+};
+const dateToIso = (val) => {
+    if (!val)
+        return '';
+    if (val instanceof Date) {
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    if (typeof val === 'string') {
+        return val.includes('T') ? val.split('T')[0] : val;
+    }
+    if (typeof val === 'object' && 'seconds' in val) {
+        const d = new Date(val.seconds * 1000);
+        return dateToIso(d);
+    }
+    return String(val);
+};
 class FirestoreLedgerRepository {
     constructor(db) {
         this.db = db;
@@ -136,6 +161,88 @@ class FirestoreLedgerRepository {
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to get general ledger', error);
+        }
+    }
+    async getAccountStatement(companyId, accountId, fromDate, toDate) {
+        var _a;
+        try {
+            const startDate = fromDate || '1900-01-01';
+            const endDate = toDate || new Date().toISOString().split('T')[0];
+            const startTs = toTimestampBoundary(startDate);
+            const endTs = toTimestampBoundary(endDate, true);
+            const accountRef = this.db
+                .collection('companies')
+                .doc(companyId)
+                .collection('accounting')
+                .doc('Data')
+                .collection('accounts')
+                .doc(accountId);
+            const [accountDoc, companyDoc, openingSnap, rangeSnap] = await Promise.all([
+                accountRef.get(),
+                this.db.collection('companies').doc(companyId).get(),
+                this.col(companyId)
+                    .where('accountId', '==', accountId)
+                    .where('date', '<', startTs)
+                    .get(),
+                this.col(companyId)
+                    .where('accountId', '==', accountId)
+                    .where('date', '>=', startTs)
+                    .where('date', '<=', endTs)
+                    .orderBy('date', 'asc')
+                    .get()
+            ]);
+            const accountData = accountDoc.exists ? accountDoc.data() : null;
+            const accountCode = (accountData === null || accountData === void 0 ? void 0 : accountData.userCode) || (accountData === null || accountData === void 0 ? void 0 : accountData.code) || '';
+            const accountName = (accountData === null || accountData === void 0 ? void 0 : accountData.name) || 'Unknown Account';
+            const accountCurrency = (accountData === null || accountData === void 0 ? void 0 : accountData.fixedCurrencyCode) || (accountData === null || accountData === void 0 ? void 0 : accountData.currency) || '';
+            const baseCurrency = (companyDoc.exists ? (_a = companyDoc.data()) === null || _a === void 0 ? void 0 : _a.baseCurrency : '') || '';
+            let openingBalance = 0;
+            openingSnap.docs.forEach((doc) => {
+                const e = doc.data();
+                openingBalance += (e.debit || 0) - (e.credit || 0);
+            });
+            let running = openingBalance;
+            let totalDebit = 0;
+            let totalCredit = 0;
+            const entries = [];
+            rangeSnap.docs.forEach((doc) => {
+                const e = doc.data();
+                const debit = e.debit || 0;
+                const credit = e.credit || 0;
+                running += debit - credit;
+                totalDebit += debit;
+                totalCredit += credit;
+                entries.push({
+                    id: e.id || doc.id,
+                    date: dateToIso(e.date),
+                    voucherId: e.voucherId,
+                    voucherNo: e.voucherNo || e.voucherId || '',
+                    description: e.notes || e.description || '',
+                    debit,
+                    credit,
+                    balance: running,
+                    currency: e.currency,
+                    fxAmount: e.amount,
+                    exchangeRate: e.exchangeRate
+                });
+            });
+            return {
+                accountId,
+                accountCode,
+                accountName,
+                accountCurrency,
+                baseCurrency,
+                fromDate: dateToIso(startDate),
+                toDate: dateToIso(endDate),
+                openingBalance,
+                entries,
+                closingBalance: running,
+                totalDebit,
+                totalCredit
+            };
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Failed to get account statement', error);
         }
     }
     async executeQuery(collection, filters) {

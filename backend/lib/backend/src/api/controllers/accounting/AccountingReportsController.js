@@ -86,6 +86,34 @@ class AccountingReportsController {
             next(error);
         }
     }
+    static async getAccountStatement(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId) || req.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            if (!companyId)
+                throw ApiError_1.ApiError.badRequest('Company Context Missing');
+            if (!userId)
+                throw ApiError_1.ApiError.unauthorized('User missing');
+            const { accountId, fromDate, toDate } = req.query;
+            if (!accountId) {
+                return res.status(400).json({ error: 'accountId is required' });
+            }
+            const useCase = new LedgerUseCases_1.GetAccountStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker);
+            const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '');
+            res.status(200).json({
+                success: true,
+                data: report,
+                meta: {
+                    generatedAt: new Date().toISOString(),
+                    filters: { accountId, fromDate, toDate }
+                }
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.AccountingReportsController = AccountingReportsController;
 //# sourceMappingURL=AccountingReportsController.js.map

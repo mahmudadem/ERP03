@@ -8,7 +8,8 @@ const createMockLedgerRepo = (): jest.Mocked<ILedgerRepository> => ({
   deleteForVoucher: jest.fn(),
   getAccountLedger: jest.fn(),
   getTrialBalance: jest.fn(),
-  getGeneralLedger: jest.fn()
+  getGeneralLedger: jest.fn(),
+  getAccountStatement: jest.fn()
 });
 
 const createMockAccountRepo = (): jest.Mocked<IAccountRepository> => ({

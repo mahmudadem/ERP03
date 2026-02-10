@@ -1,7 +1,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase } from '../../../application/accounting/use-cases/ReportingUseCases';
-import { GetBalanceSheetUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
@@ -102,6 +102,40 @@ export class AccountingReportsController {
         meta: {
           generatedAt: new Date().toISOString(),
           asOfDate
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getAccountStatement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user?.companyId || (req as any).companyId;
+      const userId = (req as any).user?.uid;
+      if (!companyId) throw ApiError.badRequest('Company Context Missing');
+      if (!userId) throw ApiError.unauthorized('User missing');
+
+      const { accountId, fromDate, toDate } = req.query;
+      if (!accountId) {
+        return res.status(400).json({ error: 'accountId is required' });
+      }
+
+      const useCase = new GetAccountStatementUseCase(diContainer.ledgerRepository, permissionChecker);
+      const report = await useCase.execute(
+        companyId,
+        userId,
+        accountId as string,
+        (fromDate as string) || '',
+        (toDate as string) || ''
+      );
+
+      (res as any).status(200).json({
+        success: true,
+        data: report,
+        meta: {
+          generatedAt: new Date().toISOString(),
+          filters: { accountId, fromDate, toDate }
         }
       });
     } catch (error) {

@@ -48,6 +48,7 @@ router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accou
 router.get('/reports/balance-sheet', (0, permissionGuard_1.permissionGuard)('accounting.reports.balanceSheet.view'), AccountingReportsController_1.AccountingReportsController.getBalanceSheet);
 router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), AccountingReportsController_1.AccountingReportsController.getTrialBalance);
 router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getGeneralLedger);
+router.get('/reports/account-statement', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getAccountStatement);
 router.get('/reports/journal', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), ReportingController_1.ReportingController.journal);
 // Designer (Module-specific)
 router.get('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypes);

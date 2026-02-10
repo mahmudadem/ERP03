@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { ILedgerRepository, TrialBalanceRow, GLFilters } from '../../../../repository/interfaces/accounting/ILedgerRepository';
+import { ILedgerRepository, TrialBalanceRow, GLFilters, AccountStatementData, AccountStatementEntry } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
@@ -12,6 +12,32 @@ const toTimestamp = (val: any) => {
   if (!val) return serverTimestamp();
   const date = val instanceof Date ? val : new Date(val);
   return Timestamp.fromDate(date);
+};
+
+const toTimestampBoundary = (val: any, endOfDay = false) => {
+  const date = val instanceof Date ? val : new Date(val);
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return Timestamp.fromDate(date);
+};
+
+const dateToIso = (val: any): string => {
+  if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof val === 'string') {
+    return val.includes('T') ? val.split('T')[0] : val;
+  }
+  if (typeof val === 'object' && 'seconds' in val) {
+    const d = new Date((val as any).seconds * 1000);
+    return dateToIso(d);
+  }
+  return String(val);
 };
 
 export class FirestoreLedgerRepository implements ILedgerRepository {
@@ -146,6 +172,96 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       return snap.docs.map((d) => d.data() as LedgerEntry);
     } catch (error) {
       throw new InfrastructureError('Failed to get general ledger', error);
+    }
+  }
+
+  async getAccountStatement(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<AccountStatementData> {
+    try {
+      const startDate = fromDate || '1900-01-01';
+      const endDate = toDate || new Date().toISOString().split('T')[0];
+
+      const startTs = toTimestampBoundary(startDate);
+      const endTs = toTimestampBoundary(endDate, true);
+
+      const accountRef = this.db
+        .collection('companies')
+        .doc(companyId)
+        .collection('accounting')
+        .doc('Data')
+        .collection('accounts')
+        .doc(accountId);
+
+      const [accountDoc, companyDoc, openingSnap, rangeSnap] = await Promise.all([
+        accountRef.get(),
+        this.db.collection('companies').doc(companyId).get(),
+        this.col(companyId)
+          .where('accountId', '==', accountId)
+          .where('date', '<', startTs)
+          .get(),
+        this.col(companyId)
+          .where('accountId', '==', accountId)
+          .where('date', '>=', startTs)
+          .where('date', '<=', endTs)
+          .orderBy('date', 'asc')
+          .get()
+      ]);
+
+      const accountData = accountDoc.exists ? accountDoc.data() as any : null;
+      const accountCode = accountData?.userCode || accountData?.code || '';
+      const accountName = accountData?.name || 'Unknown Account';
+      const accountCurrency = accountData?.fixedCurrencyCode || accountData?.currency || '';
+      const baseCurrency = (companyDoc.exists ? (companyDoc.data() as any)?.baseCurrency : '') || '';
+
+      let openingBalance = 0;
+      openingSnap.docs.forEach((doc) => {
+        const e = doc.data() as any;
+        openingBalance += (e.debit || 0) - (e.credit || 0);
+      });
+
+      let running = openingBalance;
+      let totalDebit = 0;
+      let totalCredit = 0;
+      const entries: AccountStatementEntry[] = [];
+
+      rangeSnap.docs.forEach((doc) => {
+        const e = doc.data() as any;
+        const debit = e.debit || 0;
+        const credit = e.credit || 0;
+        running += debit - credit;
+        totalDebit += debit;
+        totalCredit += credit;
+
+        entries.push({
+          id: e.id || doc.id,
+          date: dateToIso(e.date),
+          voucherId: e.voucherId,
+          voucherNo: e.voucherNo || e.voucherId || '',
+          description: e.notes || e.description || '',
+          debit,
+          credit,
+          balance: running,
+          currency: e.currency,
+          fxAmount: e.amount,
+          exchangeRate: e.exchangeRate
+        });
+      });
+
+      return {
+        accountId,
+        accountCode,
+        accountName,
+        accountCurrency,
+        baseCurrency,
+        fromDate: dateToIso(startDate),
+        toDate: dateToIso(endDate),
+        openingBalance,
+        entries,
+        closingBalance: running,
+        totalDebit,
+        totalCredit
+      };
+    } catch (error) {
+      throw new InfrastructureError('Failed to get account statement', error);
     }
   }
 

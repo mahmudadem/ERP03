@@ -47,6 +47,21 @@ export class GetGeneralLedgerUseCase {
   }
 }
 
+export class GetAccountStatementUseCase {
+  constructor(
+    private ledgerRepo: ILedgerRepository,
+    private permissionChecker: PermissionChecker
+  ) {}
+
+  async execute(companyId: string, userId: string, accountId: string, fromDate: string, toDate: string) {
+    if (!accountId) {
+      throw new Error('accountId is required');
+    }
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
+    return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate);
+  }
+}
+
 export interface BalanceSheetLine {
   accountId: string;
   code: string;

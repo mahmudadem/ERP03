@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GetJournalUseCase = exports.GetBalanceSheetUseCase = exports.GetGeneralLedgerUseCase = exports.GetTrialBalanceUseCase = exports.DeleteVoucherLedgerUseCase = void 0;
+exports.GetJournalUseCase = exports.GetBalanceSheetUseCase = exports.GetAccountStatementUseCase = exports.GetGeneralLedgerUseCase = exports.GetTrialBalanceUseCase = exports.DeleteVoucherLedgerUseCase = void 0;
 const Account_1 = require("../../../domain/accounting/entities/Account");
 /**
  * DeleteVoucherLedgerUseCase
@@ -42,6 +42,20 @@ class GetGeneralLedgerUseCase {
     }
 }
 exports.GetGeneralLedgerUseCase = GetGeneralLedgerUseCase;
+class GetAccountStatementUseCase {
+    constructor(ledgerRepo, permissionChecker) {
+        this.ledgerRepo = ledgerRepo;
+        this.permissionChecker = permissionChecker;
+    }
+    async execute(companyId, userId, accountId, fromDate, toDate) {
+        if (!accountId) {
+            throw new Error('accountId is required');
+        }
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
+        return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate);
+    }
+}
+exports.GetAccountStatementUseCase = GetAccountStatementUseCase;
 class GetBalanceSheetUseCase {
     constructor(ledgerRepo, accountRepo, permissionChecker, companyRepo) {
         this.ledgerRepo = ledgerRepo;

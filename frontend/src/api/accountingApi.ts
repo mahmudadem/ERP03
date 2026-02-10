@@ -79,6 +79,35 @@ export interface BalanceSheetData {
   isBalanced: boolean;
 }
 
+export interface AccountStatementEntry {
+  id: string;
+  date: string;
+  voucherId: string;
+  voucherNo: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  currency?: string;
+  fxAmount?: number;
+  exchangeRate?: number;
+}
+
+export interface AccountStatementData {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountCurrency: string;
+  baseCurrency: string;
+  fromDate: string;
+  toDate: string;
+  openingBalance: number;
+  entries: AccountStatementEntry[];
+  closingBalance: number;
+  totalDebit: number;
+  totalCredit: number;
+}
+
 
 export interface AccountDTO {
   // Identity
@@ -295,6 +324,13 @@ export const accountingApi = {
     if (to) params.append('to', to);
     const queryString = params.toString();
     return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getAccountStatement: (accountId: string, fromDate?: string, toDate?: string): Promise<AccountStatementData> => {
+    const params: Record<string, string> = { accountId };
+    if (fromDate) params.fromDate = fromDate;
+    if (toDate) params.toDate = toDate;
+    return client.get('/tenant/accounting/reports/account-statement', { params }).then(r => (r.data as any).data || r.data);
   },
 
   getPolicyConfig: (): Promise<AccountingPolicyConfig> => {
