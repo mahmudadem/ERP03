@@ -16,6 +16,7 @@ const permissions = [
   { id: 'accounting.vouchers.cancel', category: 'accounting', labelEn: 'Cancel Voucher', labelAr: 'إلغاء سند', labelTr: 'Fiş İptal Et', descriptionEn: 'Cancel vouchers' },
   { id: 'accounting.vouchers.changeStatus', category: 'accounting', labelEn: 'Change Voucher Status', labelAr: 'تغيير حالة السند', labelTr: 'Fiş Durumunu Değiştir', descriptionEn: 'Change voucher status' },
   { id: 'accounting.reports.trialBalance.view', category: 'accounting', labelEn: 'View Trial Balance', labelAr: 'عرض ميزان المراجعة', labelTr: 'Mizan Görüntüle', descriptionEn: 'View trial balance report' },
+  { id: 'accounting.reports.balanceSheet.view', category: 'accounting', labelEn: 'View Balance Sheet', labelAr: 'عرض الميزانية العمومية', labelTr: 'Bilanço Görüntüle', descriptionEn: 'View balance sheet report' },
   { id: 'accounting.reports.profitAndLoss.view', category: 'accounting', labelEn: 'View Profit & Loss', labelAr: 'عرض الأرباح والخسائر', labelTr: 'Kar Zarar Görüntüle', descriptionEn: 'View profit and loss report' },
   { id: 'accounting.reports.generalLedger.view', category: 'accounting', labelEn: 'View General Ledger', labelAr: 'عرض دفتر الأستاذ', labelTr: 'Genel Muhasebe Defteri Görüntüle', descriptionEn: 'View general ledger' },
   { id: 'accounting.accounts.create', category: 'accounting', labelEn: 'Create Account', labelAr: 'إنشاء حساب', labelTr: 'Hesap Oluştur', descriptionEn: 'Create chart of accounts' },

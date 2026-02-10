@@ -57,6 +57,28 @@ export interface GeneralLedgerEntry {
   postedByEmail?: string;
 }
 
+export interface BalanceSheetLine {
+  accountId: string;
+  code: string;
+  name: string;
+  parentId?: string | null;
+  level: number;
+  balance: number;
+  isParent: boolean;
+}
+
+export interface BalanceSheetData {
+  asOfDate: string;
+  baseCurrency: string;
+  assets: { accounts: BalanceSheetLine[]; total: number };
+  liabilities: { accounts: BalanceSheetLine[]; total: number };
+  equity: { accounts: BalanceSheetLine[]; total: number };
+  retainedEarnings: number;
+  totalAssets: number;
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+}
+
 
 export interface AccountDTO {
   // Identity
@@ -257,6 +279,13 @@ export const accountingApi = {
     params.append('from', fromDate);
     params.append('to', toDate);
     return client.get(`/tenant/accounting/reports/profit-loss?${params.toString()}`);
+  },
+
+  getBalanceSheet: (asOfDate?: string): Promise<BalanceSheetData> => {
+    const params = new URLSearchParams();
+    if (asOfDate) params.append('asOfDate', asOfDate);
+    const qs = params.toString();
+    return client.get(`/tenant/accounting/reports/balance-sheet${qs ? `?${qs}` : ''}`);
   },
 
   getGeneralLedger: (accountId?: string, from?: string, to?: string): Promise<GeneralLedgerEntry[]> => {

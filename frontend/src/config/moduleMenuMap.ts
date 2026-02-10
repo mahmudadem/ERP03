@@ -25,6 +25,7 @@ export const moduleMenuMap: Record<
         icon: 'BarChart3',
         children: [
           { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
+          { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet', permission: 'accounting.reports.balanceSheet.view', icon: 'BookMinus' },
           { label: 'General Ledger', path: '/accounting/reports/general-ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
           { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
         ]

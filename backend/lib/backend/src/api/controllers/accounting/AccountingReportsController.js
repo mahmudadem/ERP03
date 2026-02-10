@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AccountingReportsController = void 0;
 const ReportingUseCases_1 = require("../../../application/accounting/use-cases/ReportingUseCases");
+const LedgerUseCases_1 = require("../../../application/accounting/use-cases/LedgerUseCases");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const ApiError_1 = require("../../errors/ApiError");
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
@@ -53,6 +54,31 @@ class AccountingReportsController {
                 meta: {
                     generatedAt: new Date().toISOString(),
                     filters: { accountId, from, to }
+                }
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getBalanceSheet(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId) || req.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            if (!companyId)
+                throw ApiError_1.ApiError.badRequest('Company Context Missing');
+            if (!userId)
+                throw ApiError_1.ApiError.unauthorized('User missing');
+            const asOfDate = req.query.asOfDate || new Date().toISOString().split('T')[0];
+            const useCase = new LedgerUseCases_1.GetBalanceSheetUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.companyRepository);
+            const report = await useCase.execute(companyId, userId, asOfDate);
+            res.status(200).json({
+                success: true,
+                data: report,
+                meta: {
+                    generatedAt: new Date().toISOString(),
+                    asOfDate
                 }
             });
         }

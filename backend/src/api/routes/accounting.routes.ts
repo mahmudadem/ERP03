@@ -52,6 +52,7 @@ router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'
 
 // Reports
 router.get('/reports/profit-loss', permissionGuard('accounting.reports.profitAndLoss.view'), ReportingController.profitAndLoss);
+router.get('/reports/balance-sheet', permissionGuard('accounting.reports.balanceSheet.view'), AccountingReportsController.getBalanceSheet);
 router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBalance.view'), AccountingReportsController.getTrialBalance);
 router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getGeneralLedger);
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);

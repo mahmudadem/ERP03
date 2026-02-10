@@ -85,7 +85,7 @@ const AccountingDashboard: React.FC = () => {
               <p className="text-slate-400 text-sm mb-8">Access Profit & Loss, Balance Sheets, and Trial Balances with one click.</p>
               
               <ul className="space-y-4">
-                {['Trial Balance', 'Profit & Loss', 'Ledger Analytics'].map(report => (
+                {['Trial Balance', 'Balance Sheet', 'Profit & Loss', 'Ledger Analytics'].map(report => (
                   <li key={report} className="flex items-center justify-between group cursor-pointer hover:text-primary-400 transition-colors">
                     <span className="font-semibold text-slate-200 group-hover:text-white">{report}</span>
                     <TrendingUp size={16} className="text-slate-600 group-hover:text-primary-400" />

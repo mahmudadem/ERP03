@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { PendingApprovalsWidget } from '../components/PendingApprovalsWidget';
-import { Plus, FileText, BarChart2, Settings, ArrowRight } from 'lucide-react';
+import { Plus, FileText, BarChart2, Settings, ArrowRight, PieChart, Scale } from 'lucide-react';
 
 const AccountingHomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -86,6 +86,69 @@ const AccountingHomePage: React.FC = () => {
             <p className="text-sm font-medium text-gray-400 mt-1">Coming Soon</p>
          </div>
 
+       </div>
+
+       {/* Financial Reports */}
+       <div className="space-y-3">
+         <div className="flex items-center justify-between">
+           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Financial Reports</h2>
+           <p className="text-sm text-[var(--color-text-muted)]">Balance Sheet, Trial Balance, and Profit &amp; Loss</p>
+         </div>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+           <Card
+             className="p-5 border border-gray-200 hover:border-emerald-200 hover:shadow-lg transition-all cursor-pointer"
+             onClick={() => navigate('/accounting/reports/balance-sheet')}
+           >
+             <div className="flex items-center gap-3 mb-3">
+               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                 <Scale size={20} />
+               </div>
+               <div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Position</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Balance Sheet</p>
+               </div>
+             </div>
+             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               View Assets, Liabilities, and Equity with retained earnings in one snapshot.
+             </p>
+           </Card>
+
+           <Card
+             className="p-5 border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all cursor-pointer"
+             onClick={() => navigate('/accounting/reports/trial-balance')}
+           >
+             <div className="flex items-center gap-3 mb-3">
+               <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                 <BarChart2 size={20} />
+               </div>
+               <div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Control</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Trial Balance</p>
+               </div>
+             </div>
+             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               Quickly verify that debits and credits are balanced across the chart.
+             </p>
+           </Card>
+
+           <Card
+             className="p-5 border border-gray-200 hover:border-amber-200 hover:shadow-lg transition-all cursor-pointer"
+             onClick={() => navigate('/accounting/reports/profit-loss')}
+           >
+             <div className="flex items-center gap-3 mb-3">
+               <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                 <PieChart size={20} />
+               </div>
+               <div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Performance</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Profit &amp; Loss</p>
+               </div>
+             </div>
+             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               Analyze revenue and expenses for the selected period with one click.
+             </p>
+           </Card>
+         </div>
        </div>
     </div>
   );
