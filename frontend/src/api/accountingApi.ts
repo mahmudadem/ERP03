@@ -330,7 +330,14 @@ export const accountingApi = {
     const params: Record<string, string> = { accountId };
     if (fromDate) params.fromDate = fromDate;
     if (toDate) params.toDate = toDate;
-    return client.get('/tenant/accounting/reports/account-statement', { params }).then(r => (r.data as any).data || r.data);
+    return client
+      .get('/tenant/accounting/reports/account-statement', { params })
+      .then((r: any) => {
+        if (r && r.data && typeof r.data === 'object') {
+          return (r.data as any).data ?? r.data;
+        }
+        return r;
+      });
   },
 
   getPolicyConfig: (): Promise<AccountingPolicyConfig> => {
