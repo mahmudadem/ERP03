@@ -7,6 +7,7 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AlertTriangle, ArrowUpRight, Filter, Printer, RefreshCw, Search } from 'lucide-react';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
+import { useTranslation } from 'react-i18next';
 
 const currencyFormat = (value: number, currency?: string) => {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -16,6 +17,7 @@ const currencyFormat = (value: number, currency?: string) => {
 const AccountStatementPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings } = useCompanySettings();
+  const { t } = useTranslation('accounting');
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>(() => {
@@ -36,7 +38,7 @@ const AccountStatementPage: React.FC = () => {
 
   const fetchReport = async () => {
     if (!selectedAccountId) {
-      setError('Please select an account');
+      setError(t('accountStatement.selectPrompt'));
       return;
     }
     setLoading(true);
@@ -51,7 +53,7 @@ const AccountStatementPage: React.FC = () => {
       setData(result);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || 'Failed to load account statement. Please try again.');
+      setError(err?.message || t('accountStatement.loading'));
       setData(null);
     } finally {
       setLoading(false);
@@ -88,13 +90,13 @@ const AccountStatementPage: React.FC = () => {
     <div className="space-y-6 pb-20 print:pb-0">
       <div className="flex items-start justify-between flex-wrap gap-4 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Account Statement</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('accountStatement.title')}</h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
-            Running balance per account with opening and closing balances.
+            {t('accountStatement.subtitle')}
           </p>
           {data && (
             <p className="text-xs text-[var(--color-text-muted)] mt-2">
-              Period: {formatCompanyDate(data.fromDate, settings)} → {formatCompanyDate(data.toDate, settings)}
+              {t('accountStatement.period')}: {formatCompanyDate(data.fromDate, settings)} → {formatCompanyDate(data.toDate, settings)}
             </p>
           )}
         </div>
@@ -107,41 +109,41 @@ const AccountStatementPage: React.FC = () => {
                   exportToExcel(
                     data.entries,
                     [
-                      { header: 'Date', key: 'date' },
-                      { header: 'Voucher', key: 'voucherNo' },
-                      { header: 'Description', key: 'description' },
-                      { header: `Debit (${accountCurrency || baseCurrency})`, key: 'debit', isNumber: true },
-                      { header: `Credit (${accountCurrency || baseCurrency})`, key: 'credit', isNumber: true },
-                      { header: 'FX Rate', key: 'exchangeRate', isNumber: true },
-                      { header: 'Balance', key: 'balance', isNumber: true }
+                      { header: t('accountStatement.date'), key: 'date' },
+                      { header: t('accountStatement.voucher'), key: 'voucherNo' },
+                      { header: t('accountStatement.description'), key: 'description' },
+                      { header: t('accountStatement.debit', { currency: accountCurrency || baseCurrency }), key: 'debit', isNumber: true },
+                      { header: t('accountStatement.credit', { currency: accountCurrency || baseCurrency }), key: 'credit', isNumber: true },
+                      { header: t('accountStatement.fxRate'), key: 'exchangeRate', isNumber: true },
+                      { header: t('accountStatement.balance', { currency: accountCurrency || baseCurrency }), key: 'balance', isNumber: true }
                     ],
                     `Account-Statement-${data.accountCode}-${data.toDate}`,
-                    'Account Statement',
+                    t('accountStatement.title'),
                     `${data.accountCode} - ${data.accountName}`
                   )
                 }
                 className="flex items-center gap-1"
               >
-                Export Excel
+                {t('accountStatement.exportExcel')}
               </Button>
               <Button variant="secondary" onClick={() => exportElementToPDF('account-statement-report', 'Account-Statement')} className="flex items-center gap-1">
-                Export PDF
+                {t('accountStatement.exportPDF')}
               </Button>
             </>
           )}
           <Button onClick={handlePrint} variant="secondary" className="flex items-center gap-2">
-            <Printer className="w-4 h-4" /> Print
+            <Printer className="w-4 h-4" /> {t('accountStatement.print')}
           </Button>
           <Button onClick={fetchReport} variant="primary" className="flex items-center gap-2">
             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Filter className="w-4 h-4" />}
-            Load
+            {t('accountStatement.load')}
           </Button>
         </div>
       </div>
 
       {/* Print Header */}
       <div className="hidden print:block mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Account Statement</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('accountStatement.title')}</h1>
         {data && (
           <p className="text-sm text-gray-600">
             {data.accountCode} - {data.accountName} | {formatCompanyDate(data.fromDate, settings)} → {formatCompanyDate(data.toDate, settings)}
@@ -153,17 +155,17 @@ const AccountStatementPage: React.FC = () => {
       <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl p-4 print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">Account</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.account')}</label>
             <AccountSelector
               value={selectedAccountId}
               onChange={(account) => {
                 setSelectedAccountId(account ? account.id : '');
               }}
-              placeholder="Select an account"
+              placeholder={t('accountStatement.selectPrompt')}
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">From</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.from')}</label>
             <input
               type="date"
               value={fromDate}
@@ -172,7 +174,7 @@ const AccountStatementPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">To</label>
+            <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.to')}</label>
             <input
               type="date"
               value={toDate}
@@ -188,10 +190,10 @@ const AccountStatementPage: React.FC = () => {
                 onChange={(e) => setIncludeUnposted(e.target.checked)}
                 className="rounded border-[var(--color-border)]"
               />
-              Include unposted vouchers (info only)
+              {t('accountStatement.includeUnposted')}
             </label>
             <Button onClick={fetchReport} variant="primary" className="flex-1 flex items-center justify-center gap-2">
-              <Search className="w-4 h-4" /> Load Statement
+              <Search className="w-4 h-4" /> {t('accountStatement.loadStatement')}
             </Button>
           </div>
         </div>
@@ -208,24 +210,24 @@ const AccountStatementPage: React.FC = () => {
         <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden" id="account-statement-report">
           <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-wrap gap-3 justify-between">
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Account</span>
+              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{t('accountStatement.account')}</span>
               <span className="text-sm font-semibold text-[var(--color-text-primary)]">
                 {data.accountCode} — {data.accountName} {data.accountCurrency && <span className="text-[var(--color-text-muted)] text-xs">({data.accountCurrency})</span>}
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Base Currency</span>
+              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{t('accountStatement.baseCurrency')}</span>
               <span className="text-sm font-semibold text-[var(--color-text-primary)]">{baseCurrency || '—'}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Opening Balance ({accountCurrency || baseCurrency})</span>
+              <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{t('accountStatement.openingBalance', { currency: accountCurrency || baseCurrency })}</span>
               <span className={`text-sm font-semibold ${data.openingBalance < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                 {currencyFormat(data.openingBalance, accountCurrency || baseCurrency)}
               </span>
             </div>
             {showBaseColumns && (
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Opening Balance (Base)</span>
+                <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{t('accountStatement.openingBalanceBase')}</span>
                 <span className={`text-sm font-semibold ${data.openingBalanceBase && data.openingBalanceBase < 0 ? 'text-red-600' : 'text-[var(--color-text-primary)]'}`}>
                   {currencyFormat(data.openingBalanceBase ?? 0, baseCurrency)}
                 </span>
@@ -237,29 +239,29 @@ const AccountStatementPage: React.FC = () => {
             <table className="min-w-full divide-y divide-[var(--color-border)]">
               <thead className="bg-[var(--color-bg-tertiary)]">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Date</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Voucher</th>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Description</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit ({accountCurrency || baseCurrency})</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit ({accountCurrency || baseCurrency})</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.date')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">{t('accountStatement.voucher')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('accountStatement.description')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.debit', { currency: accountCurrency || baseCurrency })}</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.credit', { currency: accountCurrency || baseCurrency })}</th>
                   {showBaseColumns && (
                     <>
-                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Debit (Base)</th>
-                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">Credit (Base)</th>
+                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.debitBase')}</th>
+                      <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.creditBase')}</th>
                     </>
                   )}
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24">FX Rate</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance ({accountCurrency || baseCurrency})</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24">{t('accountStatement.fxRate')}</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">{t('accountStatement.balance', { currency: accountCurrency || baseCurrency })}</th>
                   {showBaseColumns && (
-                    <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">Balance (Base)</th>
+                    <th className="px-4 py-2 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">{t('accountStatement.balanceBase')}</th>
                   )}
                 </tr>
               </thead>
               <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
                 <tr className="bg-[var(--color-bg-tertiary)] font-semibold">
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">—</td>
-                  <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">Opening</td>
-                  <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">Opening Balance</td>
+                  <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">{t('accountStatement.opening')}</td>
+                  <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">{t('accountStatement.openingBalance', { currency: accountCurrency || baseCurrency })}</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-right text-sm text-[var(--color-text-secondary)]">—</td>
                   {showBaseColumns && (
@@ -281,11 +283,11 @@ const AccountStatementPage: React.FC = () => {
 
                 {loading ? (
                   <tr>
-                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">Loading...</td>
+                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">{t('accountStatement.loading')}</td>
                   </tr>
                 ) : visibleEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">No entries for this period.</td>
+                    <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">{t('accountStatement.noEntries')}</td>
                   </tr>
                 ) : (
                   visibleEntries.map((entry) => (
@@ -332,7 +334,7 @@ const AccountStatementPage: React.FC = () => {
               {data && (
                 <tfoot className="bg-[var(--color-bg-tertiary)] font-bold border-t border-[var(--color-border)]">
                   <tr>
-                    <td colSpan={3} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Totals</td>
+                    <td colSpan={3} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">{t('accountStatement.totals')}</td>
                     <td className="px-4 py-2 text-right font-mono text-sm text-primary-700">
                       {totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {accountCurrency || baseCurrency}
                     </td>
@@ -354,7 +356,7 @@ const AccountStatementPage: React.FC = () => {
                     {showBaseColumns && <td className="px-4 py-2"></td>}
                   </tr>
                   <tr>
-                    <td colSpan={showBaseColumns ? columnCount - 2 : columnCount - 1} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Closing Balance</td>
+                    <td colSpan={showBaseColumns ? columnCount - 2 : columnCount - 1} className="px-4 py-2 text-right text-xs text-[var(--color-text-muted)] uppercase tracking-wider">{t('accountStatement.closingBalance')}</td>
                     <td className={`px-4 py-2 text-right font-mono text-sm font-bold ${data.closingBalance < 0 ? 'text-red-700' : 'text-[var(--color-text-primary)]'}`}>
                       {currencyFormat(data.closingBalance, accountCurrency || baseCurrency)}
                     </td>
@@ -372,7 +374,7 @@ const AccountStatementPage: React.FC = () => {
       ) : (
         !loading && (
           <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 text-center text-[var(--color-text-muted)]">
-            Select an account and date range, then click Load to view the statement.
+            {t('accountStatement.selectPrompt')}
           </div>
         )
       )}

@@ -4,15 +4,18 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import enCommon from '../locales/en/common.json';
 import enDashboard from '../locales/en/dashboard.json';
+import enAccounting from '../locales/en/accounting.json';
 import arCommon from '../locales/ar/common.json';
 import arDashboard from '../locales/ar/dashboard.json';
+import arAccounting from '../locales/ar/accounting.json';
 import trCommon from '../locales/tr/common.json';
 import trDashboard from '../locales/tr/dashboard.json';
+import trAccounting from '../locales/tr/accounting.json';
 
 const resources = {
-  en: { common: enCommon, dashboard: enDashboard },
-  ar: { common: arCommon, dashboard: arDashboard },
-  tr: { common: trCommon, dashboard: trDashboard },
+  en: { common: enCommon, dashboard: enDashboard, accounting: enAccounting },
+  ar: { common: arCommon, dashboard: arDashboard, accounting: arAccounting },
+  tr: { common: trCommon, dashboard: trDashboard, accounting: trAccounting },
 };
 
 const RTL_LANGS = ['ar'];
@@ -33,7 +36,7 @@ i18n
     fallbackLng: 'en',
     supportedLngs: ['en', 'ar', 'tr'],
     lng: 'en',
-    ns: ['common', 'dashboard'],
+    ns: ['common', 'dashboard', 'accounting'],
     defaultNS: 'common',
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
