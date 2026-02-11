@@ -537,6 +537,18 @@ export const accountingApi = {
     if (accountId) params.accountId = accountId;
     return client.get('/tenant/accounting/reports/aging', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
+
+  // --- CONSOLIDATION ---
+  listCompanyGroups: (): Promise<CompanyGroupDTO[]> => {
+    return client.get('/tenant/accounting/company-groups').then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  createCompanyGroup: (payload: { name: string; reportingCurrency: string; members: { companyId: string; weight?: number }[] }): Promise<CompanyGroupDTO> => {
+    return client.post('/tenant/accounting/company-groups', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  getConsolidatedTrialBalance: (groupId: string, asOfDate: string): Promise<ConsolidatedTrialBalanceDTO> => {
+    const params = { groupId, asOfDate };
+    return client.get('/tenant/accounting/reports/consolidated-trial-balance', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
 };
 
 // Currency DTOs
@@ -659,6 +671,26 @@ export interface AgingReportData {
   accounts: AgingReportRow[];
   totals: number[];
   grandTotal: number;
+}
+export interface CompanyGroupDTO {
+  id: string;
+  name: string;
+  reportingCurrency: string;
+  members: { companyId: string; weight?: number }[];
+}
+export interface ConsolidatedTrialBalanceDTO {
+  groupId: string;
+  reportingCurrency: string;
+  asOfDate: string;
+  lines: {
+    accountId: string;
+    accountCode: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+    balance: number;
+  }[];
+  totals: { debit: number; credit: number; balance: number };
 }
 // Cost Centers
 export interface CostCenterDTO {

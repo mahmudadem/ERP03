@@ -16,6 +16,7 @@ import { CostCenterController } from '../controllers/accounting/CostCenterContro
 import { VoucherSequenceController } from '../controllers/accounting/VoucherSequenceController';
 import { BankReconciliationController } from '../controllers/accounting/BankReconciliationController';
 import { BudgetController } from '../controllers/accounting/BudgetController';
+import { ConsolidationController } from '../controllers/accounting/ConsolidationController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -77,6 +78,10 @@ router.get('/budgets', permissionGuard('accounting.settings.read'), BudgetContro
 router.post('/budgets', permissionGuard('accounting.settings.write'), BudgetController.create);
 router.put('/budgets/:id', permissionGuard('accounting.settings.write'), BudgetController.update);
 router.post('/budgets/:id/approve', permissionGuard('accounting.settings.write'), BudgetController.approve);
+// Consolidation
+router.post('/company-groups', permissionGuard('accounting.settings.write'), ConsolidationController.createGroup);
+router.get('/company-groups', permissionGuard('accounting.settings.read'), ConsolidationController.listGroups);
+router.get('/reports/consolidated-trial-balance', permissionGuard('accounting.reports.trialBalance.view'), ConsolidationController.consolidatedTrialBalance);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

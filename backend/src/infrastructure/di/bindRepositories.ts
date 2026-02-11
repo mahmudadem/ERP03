@@ -33,6 +33,7 @@ import { FirestoreFiscalYearRepository } from '../firestore/repositories/account
 import { FirestoreBankStatementRepository } from '../firestore/repositories/accounting/FirestoreBankStatementRepository';
 import { FirestoreReconciliationRepository } from '../firestore/repositories/accounting/FirestoreReconciliationRepository';
 import { FirestoreBudgetRepository } from '../firestore/repositories/accounting/FirestoreBudgetRepository';
+import { FirestoreCompanyGroupRepository } from '../firestore/repositories/accounting/FirestoreCompanyGroupRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
@@ -147,6 +148,7 @@ export const diContainer = {
   get bankStatementRepository(): AccRepo.IBankStatementRepository { return new FirestoreBankStatementRepository(getDb()); },
   get reconciliationRepository(): AccRepo.IReconciliationRepository { return new FirestoreReconciliationRepository(getDb()); },
   get budgetRepository(): AccRepo.IBudgetRepository { return new FirestoreBudgetRepository(getDb()); },
+  get companyGroupRepository(): AccRepo.ICompanyGroupRepository { return new FirestoreCompanyGroupRepository(getDb()); },
 
   // INVENTORY
   get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },
