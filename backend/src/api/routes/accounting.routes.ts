@@ -60,6 +60,7 @@ router.get('/reports/general-ledger', permissionGuard('accounting.reports.genera
 router.get('/reports/account-statement', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getAccountStatement);
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
+router.get('/reports/cash-flow', permissionGuard('accounting.reports.cashFlow.view'), AccountingReportsController.getCashFlow);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

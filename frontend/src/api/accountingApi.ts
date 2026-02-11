@@ -413,6 +413,13 @@ export const accountingApi = {
     return client.get('/tenant/accounting/reports/dashboard-summary').then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
+  getCashFlow: (from?: string, to?: string): Promise<any> => {
+    const params: any = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    return client.get('/tenant/accounting/reports/cash-flow', { params }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
   // --- CURRENCIES ---
   
   /** Get all active currencies from the system */

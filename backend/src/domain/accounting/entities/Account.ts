@@ -151,6 +151,7 @@ export interface AccountProps {
   status: AccountStatus;
   isProtected: boolean;
   replacedByAccountId?: string | null;
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Audit
   createdAt: Date;
@@ -195,6 +196,7 @@ export class Account {
   status: AccountStatus;
   isProtected: boolean;
   replacedByAccountId: string | null;
+  cashFlowCategory: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Audit
   updatedAt: Date;
@@ -240,6 +242,7 @@ export class Account {
     this.status = props.status;
     this.isProtected = props.isProtected;
     this.replacedByAccountId = props.replacedByAccountId ?? null;
+    this.cashFlowCategory = props.cashFlowCategory ?? null;
     
     // Audit
     this.updatedAt = props.updatedAt;
@@ -416,7 +419,8 @@ export class Account {
       updatedBy: this.updatedBy,
       requiresApproval: this.requiresApproval,
       requiresCustodyConfirmation: this.requiresCustodyConfirmation,
-      custodianUserId: this.custodianUserId
+      custodianUserId: this.custodianUserId,
+      cashFlowCategory: this.cashFlowCategory
     };
   }
   
@@ -444,6 +448,7 @@ export class Account {
       status: data.status || (data.active === false ? 'INACTIVE' : 'ACTIVE'),
       isProtected: data.isProtected ?? false,
       replacedByAccountId: data.replacedByAccountId,
+      cashFlowCategory: data.cashFlowCategory ?? null,
       createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt || Date.now()),
       createdBy: data.createdBy || 'SYSTEM',
       updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt || Date.now()),

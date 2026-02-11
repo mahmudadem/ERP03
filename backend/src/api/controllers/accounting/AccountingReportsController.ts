@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase } from '../../../application/accounting/use-cases/ReportingUseCases';
 import { GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetCashFlowStatementUseCase } from '../../../application/accounting/use-cases/CashFlowUseCases';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
@@ -191,6 +192,26 @@ export class AccountingReportsController {
       };
 
       (res as any).status(200).json({ success: true, data: response });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCashFlow(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user?.companyId || (req as any).companyId;
+      const userId = (req as any).user?.uid;
+      if (!companyId) throw ApiError.badRequest('Company Context Missing');
+      if (!userId) throw ApiError.unauthorized('User missing');
+      const { from, to } = req.query;
+      const useCase = new GetCashFlowStatementUseCase(
+        diContainer.ledgerRepository,
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+        permissionChecker
+      );
+      const data = await useCase.execute(companyId, userId, (from as string) || '', (to as string) || '');
+      (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);
     }
