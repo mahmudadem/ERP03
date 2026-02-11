@@ -28,7 +28,7 @@ export class PeriodLockPolicy implements IPostingPolicy {
     private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string) => Promise<PeriodStatus | null> | undefined
   ) {}
 
-  validate(ctx: PostingPolicyContext): PolicyResult {
+  async validate(ctx: PostingPolicyContext): Promise<PolicyResult> {
     try {
       const voucherDate = normalizeAccountingDate(ctx.voucherDate);
 

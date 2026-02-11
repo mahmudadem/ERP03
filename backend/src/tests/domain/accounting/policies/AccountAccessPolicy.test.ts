@@ -1,11 +1,11 @@
 import { describe, it, expect } from '@jest/globals';
-import { AccountAccessPolicy } from '../../../../../src/domain/accounting/policies/implementations/AccountAccessPolicy';
-import { PostingPolicyContext } from '../../../../../src/domain/accounting/policies/PostingPolicyTypes';
-import { VoucherStatus, VoucherType } from '../../../../../src/domain/accounting/types/VoucherTypes';
-import { UserAccessScope } from '../../../../../src/domain/accounting/policies/UserAccessTypes';
-import { IUserAccessScopeProvider } from '../../../../../src/infrastructure/accounting/access/IUserAccessScopeProvider';
-import { IAccountLookupService, AccountWithAccess } from '../../../../../src/domain/accounting/services/IAccountLookupService';
-import { VoucherLineEntity } from '../../../../../src/domain/accounting/entities/VoucherLineEntity';
+import { AccountAccessPolicy } from '../../../../domain/accounting/policies/implementations/AccountAccessPolicy';
+import { PostingPolicyContext, PolicyResult } from '../../../../domain/accounting/policies/PostingPolicyTypes';
+import { VoucherStatus, VoucherType } from '../../../../domain/accounting/types/VoucherTypes';
+import { UserAccessScope } from '../../../../domain/accounting/policies/UserAccessTypes';
+import { IUserAccessScopeProvider } from '../../../../infrastructure/accounting/access/IUserAccessScopeProvider';
+import { IAccountLookupService, AccountWithAccess } from '../../../../domain/accounting/services/IAccountLookupService';
+import { VoucherLineEntity } from '../../../../domain/accounting/entities/VoucherLineEntity';
 
 describe('AccountAccessPolicy', () => {
   // Mock providers
@@ -35,8 +35,8 @@ describe('AccountAccessPolicy', () => {
 
   it('should allow access for super user', async () => {
     const userScope = { allowedUnitIds: [], isSuper: true };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Restricted Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Restricted Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -53,8 +53,8 @@ describe('AccountAccessPolicy', () => {
 
   it('should allow access to shared account', async () => {
     const userScope = { allowedUnitIds: ['branch-b'] };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Petty Cash', ownerScope: 'shared' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Petty Cash', ownerScope: 'shared', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -71,8 +71,8 @@ describe('AccountAccessPolicy', () => {
 
   it('should allow access when user has matching unit', async () => {
     const userScope = { allowedUnitIds: ['branch-a', 'dept-1'] };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -89,8 +89,8 @@ describe('AccountAccessPolicy', () => {
 
   it('should deny access when user lacks matching unit', async () => {
     const userScope = { allowedUnitIds: ['branch-b'] };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -100,10 +100,10 @@ describe('AccountAccessPolicy', () => {
 
     const lines = [new VoucherLineEntity(1, 'acc-1', 'Debit', 100, 'USD', 100, 'USD', 1.0)];
     const context = createContext('user-1', lines);
-    const result = await policy.validate(context);
+    const result: PolicyResult = await policy.validate(context);
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.code).toBe('ACCOUNT_ACCESS_DENIED');
       expect(result.error.message).toContain('Branch A Cash');
       expect(result.error.fieldHints).toContain('lines[0].accountId');
@@ -112,8 +112,8 @@ describe('AccountAccessPolicy', () => {
 
   it('should allow access to account without metadata (default shared)', async () => {
     const userScope = { allowedUnitIds: ['branch-a'] };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'General Cash' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'General Cash', ownerScope: 'shared', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -130,9 +130,9 @@ describe('AccountAccessPolicy', () => {
 
   it('should detect violation on second line', async () => {
     const userScope = { allowedUnitIds: ['branch-a'] };
-    const accountLookup = createMockAccountLookup(new Map([
-      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted' }],
-      ['acc-2', { id: 'acc-2', code: 'C002', name: 'Branch B Cash', ownerUnitIds: ['branch-b'], ownerScope: 'restricted' }]
+    const accountLookup = createMockAccountLookup(new Map<string, AccountWithAccess>([
+      ['acc-1', { id: 'acc-1', code: 'C001', name: 'Branch A Cash', ownerUnitIds: ['branch-a'], ownerScope: 'restricted', type: 'Asset' }],
+      ['acc-2', { id: 'acc-2', code: 'C002', name: 'Branch B Cash', ownerUnitIds: ['branch-b'], ownerScope: 'restricted', type: 'Asset' }]
     ]));
     
     const policy = new AccountAccessPolicy(
@@ -145,10 +145,10 @@ describe('AccountAccessPolicy', () => {
       new VoucherLineEntity(2, 'acc-2', 'Credit', 100, 'USD', 100, 'USD', 1.0)
     ];
     const context = createContext('user-1', lines);
-    const result = await policy.validate(context);
+    const result: PolicyResult = await policy.validate(context);
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.fieldHints).toContain('lines[1].accountId');
     }
   });

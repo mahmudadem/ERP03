@@ -114,10 +114,10 @@ export class ReceiptVoucherHandler {
       1,  // Line ID
       input.cashAccountId,
       'Debit',
-      amount,
-      currency,
       baseAmount,
       baseCurrency,
+      amount,
+      currency,
       exchangeRate,
       input.notes || input.description,
       input.costCenterId
@@ -128,10 +128,10 @@ export class ReceiptVoucherHandler {
       2,  // Line ID
       input.revenueAccountId,
       'Credit',
-      amount,
-      currency,
       baseAmount,
       baseCurrency,
+      amount,
+      currency,
       exchangeRate,
       input.notes || input.description,
       input.costCenterId

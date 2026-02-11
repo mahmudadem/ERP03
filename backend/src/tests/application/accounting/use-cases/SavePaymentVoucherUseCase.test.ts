@@ -16,12 +16,12 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { SavePaymentVoucherUseCase } from '../../../../src/application/accounting/use-cases/SavePaymentVoucherUseCase';
-import { PaymentVoucherInput } from '../../../../src/domain/accounting/handlers/PaymentVoucherHandler';
-import { VoucherStatus, VoucherType } from '../../../../src/domain/accounting/types/VoucherTypes';
-import { SimpleCompanyService } from '../../../../src/application/accounting/services/SimpleCompanyService';
-import { SimpleExchangeRateService } from '../../../../src/application/accounting/services/SimpleExchangeRateService';
-import { SimpleVoucherNumberGenerator } from '../../../../src/application/accounting/services/SimpleVoucherNumberGenerator';
+import { SavePaymentVoucherUseCase } from '../../../../application/accounting/use-cases/SavePaymentVoucherUseCase';
+import { PaymentVoucherInput } from '../../../../domain/accounting/handlers/PaymentVoucherHandler';
+import { VoucherStatus, VoucherType } from '../../../../domain/accounting/types/VoucherTypes';
+import { SimpleCompanyService } from '../../../../application/accounting/services/SimpleCompanyService';
+import { SimpleExchangeRateService } from '../../../../application/accounting/services/SimpleExchangeRateService';
+import { SimpleVoucherNumberGenerator } from '../../../../application/accounting/services/SimpleVoucherNumberGenerator';
 import { InMemoryVoucherRepository } from '../../../helpers/InMemoryVoucherRepository';
 
 describe('SavePaymentVoucherUseCase - Integration', () => {
@@ -202,12 +202,12 @@ describe('SavePaymentVoucherUseCase - Integration', () => {
       expect(voucher.currency).toBe('EUR');
       expect(voucher.baseCurrency).toBe('USD');
       expect(voucher.exchangeRate).toBe(1.10);
-      expect(voucher.totalDebit).toBe(110);  // 100 EUR * 1.10 = 110 USD
-      expect(voucher.totalCredit).toBe(110);
+      expect(voucher.totalDebit).toBeCloseTo(110);  // 100 EUR * 1.10 = 110 USD
+      expect(voucher.totalCredit).toBeCloseTo(110);
       
       voucher.lines.forEach(line => {
         expect(line.amount).toBe(100);  // Transaction amount in EUR
-        expect(line.baseAmount).toBe(110);  // Base amount in USD
+        expect(line.baseAmount).toBeCloseTo(110);  // Base amount in USD
       });
     });
 

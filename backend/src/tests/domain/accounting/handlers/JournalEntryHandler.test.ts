@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { JournalEntryHandler, JournalEntryInput, JournalEntryLineInput } from '../../../../src/domain/accounting/handlers/JournalEntryHandler';
+import { JournalEntryHandler, JournalEntryInput, JournalEntryLineInput } from '../../../../domain/accounting/handlers/JournalEntryHandler';
 
 describe('JournalEntryHandler', () => {
   let handler: JournalEntryHandler;
@@ -279,7 +279,7 @@ describe('JournalEntryHandler', () => {
 
       const debitLine = lines.find(l => l.side === 'Debit');
       expect(debitLine!.amount).toBe(100);      // Transaction amount in EUR
-      expect(debitLine!.baseAmount).toBe(110);  // Base amount in USD
+      expect(debitLine!.baseAmount).toBeCloseTo(110);  // Base amount in USD
     });
 
     it('should preserve line notes', () => {

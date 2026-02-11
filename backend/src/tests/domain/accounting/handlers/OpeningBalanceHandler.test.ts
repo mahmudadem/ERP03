@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { OpeningBalanceHandler, OpeningBalanceInput } from '../../../../src/domain/accounting/handlers/OpeningBalanceHandler';
+import { OpeningBalanceHandler, OpeningBalanceInput } from '../../../../domain/accounting/handlers/OpeningBalanceHandler';
 
 describe('OpeningBalanceHandler', () => {
   let handler: OpeningBalanceHandler;

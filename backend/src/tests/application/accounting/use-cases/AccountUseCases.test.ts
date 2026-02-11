@@ -9,6 +9,8 @@ import { UpdateAccountUseCase } from '../../../../application/accounting/use-cas
 import { DeleteAccountUseCase } from '../../../../application/accounting/use-cases/accounts/DeleteAccountUseCase';
 import { Account } from '../../../../domain/accounting/entities/Account';
 import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
+import { ICompanyRepository } from '../../../../repository/interfaces/core/ICompanyRepository';
+import { ICompanyCurrencyRepository } from '../../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 
 // Mock repository
 const createMockRepo = (): jest.Mocked<IAccountRepository> => ({
@@ -60,10 +62,18 @@ describe('Account Use Cases', () => {
   describe('CreateAccountUseCase', () => {
     let useCase: CreateAccountUseCase;
     let mockRepo: jest.Mocked<IAccountRepository>;
+    let mockCompanyRepo: jest.Mocked<ICompanyRepository>;
+    let mockCompanyCurrencyRepo: jest.Mocked<ICompanyCurrencyRepository>;
 
     beforeEach(() => {
       mockRepo = createMockRepo();
-      useCase = new CreateAccountUseCase(mockRepo);
+      mockCompanyRepo = {
+        findById: jest.fn().mockResolvedValue({ id: 'company-1', baseCurrency: 'USD' })
+      } as any;
+      mockCompanyCurrencyRepo = {
+        getBaseCurrency: jest.fn().mockResolvedValue('USD')
+      } as any;
+      useCase = new CreateAccountUseCase(mockRepo, mockCompanyRepo, mockCompanyCurrencyRepo);
     });
 
     it('should create an account with valid data', async () => {
@@ -161,10 +171,18 @@ describe('Account Use Cases', () => {
   describe('UpdateAccountUseCase', () => {
     let useCase: UpdateAccountUseCase;
     let mockRepo: jest.Mocked<IAccountRepository>;
+    let mockCompanyRepo: jest.Mocked<ICompanyRepository>;
+    let mockCompanyCurrencyRepo: jest.Mocked<ICompanyCurrencyRepository>;
 
     beforeEach(() => {
       mockRepo = createMockRepo();
-      useCase = new UpdateAccountUseCase(mockRepo);
+      mockCompanyRepo = {
+        findById: jest.fn().mockResolvedValue({ id: 'company-1', baseCurrency: 'USD' })
+      } as any;
+      mockCompanyCurrencyRepo = {
+        getBaseCurrency: jest.fn().mockResolvedValue('USD')
+      } as any;
+      useCase = new UpdateAccountUseCase(mockRepo, mockCompanyRepo, mockCompanyCurrencyRepo);
     });
 
     it('should update mutable fields (name, description)', async () => {

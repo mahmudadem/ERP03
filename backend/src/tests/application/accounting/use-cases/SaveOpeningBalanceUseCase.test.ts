@@ -13,12 +13,12 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { SaveOpeningBalanceUseCase } from '../../../../src/application/accounting/use-cases/SaveOpeningBalanceUseCase';
-import { OpeningBalanceInput } from '../../../../src/domain/accounting/handlers/OpeningBalanceHandler';
-import { VoucherStatus, VoucherType } from '../../../../src/domain/accounting/types/VoucherTypes';
-import { SimpleCompanyService } from '../../../../src/application/accounting/services/SimpleCompanyService';
-import { SimpleExchangeRateService } from '../../../../src/application/accounting/services/SimpleExchangeRateService';
-import { SimpleVoucherNumberGenerator } from '../../../../src/application/accounting/services/SimpleVoucherNumberGenerator';
+import { SaveOpeningBalanceUseCase } from '../../../../application/accounting/use-cases/SaveOpeningBalanceUseCase';
+import { OpeningBalanceInput } from '../../../../domain/accounting/handlers/OpeningBalanceHandler';
+import { VoucherStatus, VoucherType } from '../../../../domain/accounting/types/VoucherTypes';
+import { SimpleCompanyService } from '../../../../application/accounting/services/SimpleCompanyService';
+import { SimpleExchangeRateService } from '../../../../application/accounting/services/SimpleExchangeRateService';
+import { SimpleVoucherNumberGenerator } from '../../../../application/accounting/services/SimpleVoucherNumberGenerator';
 import { InMemoryVoucherRepository } from '../../../helpers/InMemoryVoucherRepository';
 
 describe('SaveOpeningBalanceUseCase - Integration', () => {

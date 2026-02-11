@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { PaymentVoucherHandler, PaymentVoucherInput } from '../../../../src/domain/accounting/handlers/PaymentVoucherHandler';
+import { PaymentVoucherHandler, PaymentVoucherInput } from '../../../../domain/accounting/handlers/PaymentVoucherHandler';
 
 describe('PaymentVoucherHandler', () => {
   let handler: PaymentVoucherHandler;
@@ -186,7 +186,7 @@ describe('PaymentVoucherHandler', () => {
         expect(line.baseCurrency).toBe('USD');
         expect(line.exchangeRate).toBe(1.10);
         expect(line.amount).toBe(100);  // Transaction amount
-        expect(line.baseAmount).toBe(110);  // Base amount (100 * 1.10)
+        expect(line.baseAmount).toBeCloseTo(110);  // Base amount (100 * 1.10)
       });
     });
 

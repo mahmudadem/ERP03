@@ -1,13 +1,15 @@
 import { describe, it, expect } from '@jest/globals';
-import { CostCenterRequiredPolicy } from '../../../../../src/domain/accounting/policies/implementations/CostCenterRequiredPolicy';
-import { PostingPolicyContext } from '../../../../../src/domain/accounting/policies/PostingPolicyTypes';
-import { VoucherType, VoucherStatus } from '../../../../../src/domain/accounting/types/VoucherTypes';
-import { VoucherLineEntity } from '../../../../../src/domain/accounting/entities/VoucherLineEntity';
+import { CostCenterRequiredPolicy } from '../../../../domain/accounting/policies/implementations/CostCenterRequiredPolicy';
+import { PostingPolicyContext, PolicyResult } from '../../../../domain/accounting/policies/PostingPolicyTypes';
+import { VoucherType, VoucherStatus } from '../../../../domain/accounting/types/VoucherTypes';
+import { VoucherLineEntity } from '../../../../domain/accounting/entities/VoucherLineEntity';
+import { AccountWithAccess } from '../../../../domain/accounting/services/IAccountLookupService';
 
 // Mock Account Lookup Service
-const createMockAccountLookup = (accounts: any[]) => ({
-  getAccountsByIds: async (companyId: string, accountIds: string[]) => {
-    return accounts.filter(acc => accountIds.includes(acc.id));
+const createMockAccountLookup = (accounts: AccountWithAccess[]) => ({
+  getAccountsByIds: async (_companyId: string, accountIds: string[]) => {
+    const filtered = accounts.filter(acc => accountIds.includes(acc.id));
+    return new Map(filtered.map(acc => [acc.id, acc]));
   }
 });
 
@@ -49,7 +51,7 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-1', side: 'Debit', amount: 100 }
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(true);
   });
 
@@ -67,7 +69,7 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-expense', side: 'Debit', amount: 100, costCenterId: 'cc-1' }
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(true);
   });
 
@@ -85,9 +87,9 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-expense', side: 'Debit', amount: 100 } // No costCenterId
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.code).toBe('COST_CENTER_REQUIRED');
       expect(result.error.message).toContain('Travel Expense');
       expect(result.error.fieldHints).toContain('lines[0].costCenterId');
@@ -108,7 +110,7 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-expense', side: 'Debit', amount: 100, costCenterId: '   ' } // Empty/whitespace
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(false);
   });
 
@@ -126,7 +128,7 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-cash', side: 'Credit', amount: 100 } // No costCenterId but not expense
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(true);
   });
 
@@ -144,7 +146,7 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-special', side: 'Debit', amount: 100 } // No costCenterId
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(false);
   });
 
@@ -166,9 +168,9 @@ describe('CostCenterRequiredPolicy', () => {
       { accountId: 'acc-cash', side: 'Credit', amount: 100 }
     ]);
 
-    const result = await policy.validate(ctx);
+    const result: PolicyResult = await policy.validate(ctx);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       expect(result.error.fieldHints).toContain('lines[1].costCenterId');
     }
   });
