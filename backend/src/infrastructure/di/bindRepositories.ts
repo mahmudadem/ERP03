@@ -28,6 +28,7 @@ import { IVoucherRepository } from '../../domain/accounting/repositories/IVouche
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
 import { FirestoreAccountingCurrencyRepository, FirestoreCompanyCurrencyRepository } from '../firestore/repositories/accounting/FirestoreCurrencyRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
+import { FirestoreFiscalYearRepository } from '../firestore/repositories/accounting/FirestoreFiscalYearRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
@@ -135,6 +136,7 @@ export const diContainer = {
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(settingsResolver); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(settingsResolver); },
   get ledgerRepository(): AccRepo.ILedgerRepository { return new FirestoreLedgerRepository(getDb()); },
+  get fiscalYearRepository(): AccRepo.IFiscalYearRepository { return new FirestoreFiscalYearRepository(getDb()); },
   get accountingCurrencyRepository(): AccRepo.ICurrencyRepository { return new FirestoreAccountingCurrencyRepository(settingsResolver); },
   get companyCurrencyRepository(): AccRepo.ICompanyCurrencyRepository { return new FirestoreCompanyCurrencyRepository(settingsResolver); },
 
@@ -216,7 +218,9 @@ export const diContainer = {
     const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
     const accountLookup = new FirestoreAccountLookupService(db);
     
-    return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+    const { FirestoreFiscalYearRepository } = require('../firestore/repositories/accounting/FirestoreFiscalYearRepository');
+    const fiscalYearRepo = new FirestoreFiscalYearRepository(db);
+    return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup, fiscalYearRepo);
   },
 
   // ACCOUNTING POLICY CONFIG (for use cases that need approval settings)

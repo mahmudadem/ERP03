@@ -6,6 +6,8 @@ import { PeriodLockPolicy } from '../../../domain/accounting/policies/implementa
 import { AccountAccessPolicy } from '../../../domain/accounting/policies/implementations/AccountAccessPolicy';
 import { IUserAccessScopeProvider } from '../../../infrastructure/accounting/access/IUserAccessScopeProvider';
 import { IAccountLookupService } from '../../../domain/accounting/services/IAccountLookupService';
+import { IFiscalYearRepository } from '../../../repository/interfaces/accounting/IFiscalYearRepository';
+import { PeriodStatus } from '../../../domain/accounting/entities/FiscalYear';
 
 /**
  * AccountingPolicyRegistry
@@ -24,7 +26,8 @@ export class AccountingPolicyRegistry {
   constructor(
     private readonly configProvider: IAccountingPolicyConfigProvider,
     private readonly userScopeProvider?: IUserAccessScopeProvider,
-    private readonly accountLookup?: IAccountLookupService
+    private readonly accountLookup?: IAccountLookupService,
+    private readonly fiscalYearRepo?: IFiscalYearRepository
   ) {}
 
   /**
@@ -46,7 +49,14 @@ export class AccountingPolicyRegistry {
     }
 
     if (config.periodLockEnabled) {
-      policies.push(new PeriodLockPolicy(config.lockedThroughDate));
+      const fiscalResolver = this.fiscalYearRepo
+        ? async (companyId: string, date: string) => {
+            const fy = await this.fiscalYearRepo!.findActiveForDate(companyId, date);
+            const period = fy?.getPeriodForDate(date);
+            return period?.status ?? null;
+          }
+        : undefined;
+      policies.push(new PeriodLockPolicy(config.lockedThroughDate, fiscalResolver));
     }
 
     if (config.accountAccessEnabled && this.userScopeProvider && this.accountLookup) {

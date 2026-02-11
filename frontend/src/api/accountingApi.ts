@@ -115,6 +115,25 @@ export interface AccountStatementData {
   totalBaseCredit?: number;
 }
 
+// Fiscal Year DTOs
+export interface FiscalPeriodDTO {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: 'OPEN' | 'CLOSED' | 'LOCKED';
+}
+
+export interface FiscalYearDTO {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: 'OPEN' | 'CLOSED' | 'LOCKED';
+  periods: FiscalPeriodDTO[];
+  closingVoucherId?: string;
+}
+
 
 export interface AccountDTO {
   // Identity
@@ -350,6 +369,27 @@ export const accountingApi = {
 
   getPolicyConfig: (): Promise<AccountingPolicyConfig> => {
     return client.get('/tenant/accounting/policy-config');
+  },
+
+  // --- FISCAL YEARS ---
+  listFiscalYears: (): Promise<FiscalYearDTO[]> => {
+    return client.get('/tenant/accounting/fiscal-years').then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  createFiscalYear: (payload: { year: number; startMonth: number; name?: string }): Promise<FiscalYearDTO> => {
+    return client.post('/tenant/accounting/fiscal-years', payload).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  closeFiscalPeriod: (fiscalYearId: string, periodId: string): Promise<FiscalYearDTO> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-period`, { periodId }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  reopenFiscalPeriod: (fiscalYearId: string, periodId: string): Promise<FiscalYearDTO> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/reopen-period`, { periodId }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  closeFiscalYear: (fiscalYearId: string, retainedEarningsAccountId: string): Promise<{ success: boolean; data: any }> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-year`, { retainedEarningsAccountId }).then((r: any) => (r?.data ?? r));
   },
 
   // --- CURRENCIES ---

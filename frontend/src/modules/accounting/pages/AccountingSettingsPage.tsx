@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
+import { accountingApi, FiscalYearDTO } from '../../../api/accountingApi';
 import { 
   InstructionsButton, 
   generalSettingsInstructions,
@@ -120,6 +121,11 @@ export const AccountingSettingsPage: React.FC = () => {
   const [originalCoreSettings, setOriginalCoreSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [fiscalYears, setFiscalYears] = useState<FiscalYearDTO[]>([]);
+  const [fiscalLoading, setFiscalLoading] = useState(false);
+  const [fyYear, setFyYear] = useState<number>(new Date().getFullYear());
+  const [fyStartMonth, setFyStartMonth] = useState<number>(1);
+  const [retainedEarningsAccountId, setRetainedEarningsAccountId] = useState<string>('');
 
   // Granular tabs as per implementation plan
   const tabs = [
@@ -152,6 +158,12 @@ export const AccountingSettingsPage: React.FC = () => {
     loadSettings();
   }, [companyId]);
 
+  useEffect(() => {
+    if (activeTab === 'fiscal') {
+      loadFiscalYears();
+    }
+  }, [activeTab]);
+
   const loadSettings = async () => {
     if (!companyId) {
       setLoading(false);
@@ -179,6 +191,18 @@ export const AccountingSettingsPage: React.FC = () => {
       errorHandler.showError(error.response?.data?.error?.message || 'Failed to load settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFiscalYears = async () => {
+    setFiscalLoading(true);
+    try {
+      const data = await accountingApi.listFiscalYears();
+      setFiscalYears(data as any);
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to load fiscal years');
+    } finally {
+      setFiscalLoading(false);
     }
   };
 
@@ -257,6 +281,62 @@ export const AccountingSettingsPage: React.FC = () => {
 
   // Global change flag (for reference)
   const hasAnyChanges = hasGeneralChanges || hasPolicyChanges || hasMethodChanges || hasCostCenterChanges || hasErrorModeChanges || hasFiscalChanges;
+
+  const handleCreateFiscalYear = async () => {
+    try {
+      setFiscalLoading(true);
+      await accountingApi.createFiscalYear({ year: fyYear, startMonth: fyStartMonth });
+      await loadFiscalYears();
+      errorHandler.showSuccess('Fiscal year created');
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to create fiscal year');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleClosePeriod = async (fyId: string, periodId: string) => {
+    try {
+      setFiscalLoading(true);
+      await accountingApi.closeFiscalPeriod(fyId, periodId);
+      await loadFiscalYears();
+      errorHandler.showSuccess('Period closed');
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close period');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleReopenPeriod = async (fyId: string, periodId: string) => {
+    try {
+      setFiscalLoading(true);
+      await accountingApi.reopenFiscalPeriod(fyId, periodId);
+      await loadFiscalYears();
+      errorHandler.showSuccess('Period reopened');
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to reopen period');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleCloseYear = async (fyId: string) => {
+    if (!retainedEarningsAccountId) {
+      errorHandler.showError('Retained earnings account is required');
+      return;
+    }
+    try {
+      setFiscalLoading(true);
+      await accountingApi.closeFiscalYear(fyId, retainedEarningsAccountId);
+      await loadFiscalYears();
+      errorHandler.showSuccess('Fiscal year closed');
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close fiscal year');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1207,14 +1287,124 @@ export const AccountingSettingsPage: React.FC = () => {
                   saving={saving}
                 />
                 
-                <div className="bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-2 border-dashed border-gray-200 dark:border-[var(--color-border)] rounded-3xl p-12 text-center text-[var(--color-text-muted)]">
-                  <div className="w-16 h-16 bg-white dark:bg-[var(--color-bg-tertiary)] rounded-2xl shadow-sm border border-gray-200 dark:border-[var(--color-border)] flex items-center justify-center mx-auto mb-4 text-gray-400">
-                    <Building2 size={32} />
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-end gap-4">
+                    <div className="flex-1">
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Fiscal Year</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          className="w-32 px-3 py-2 border rounded-md"
+                          value={fyYear}
+                          onChange={(e) => setFyYear(Number(e.target.value))}
+                        />
+                        <select
+                          className="px-3 py-2 border rounded-md"
+                          value={fyStartMonth}
+                          onChange={(e) => setFyStartMonth(Number(e.target.value))}
+                        >
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                            <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString('en', { month: 'long' })}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Retained Earnings Account ID</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md"
+                        value={retainedEarningsAccountId}
+                        onChange={(e) => setRetainedEarningsAccountId(e.target.value)}
+                        placeholder="Enter retained earnings account id"
+                      />
+                    </div>
+                    <button
+                      onClick={handleCreateFiscalYear}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition"
+                      disabled={fiscalLoading}
+                    >
+                      {fiscalLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      Create Year
+                    </button>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Under Construction</h3>
-                  <p className="text-gray-500 dark:text-[var(--color-text-secondary)] max-w-xs mx-auto mt-2">
-                    Fiscal year settings are being migrated to the new policy framework.
-                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Fiscal Years</h3>
+                    <button
+                      onClick={loadFiscalYears}
+                      className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${fiscalLoading ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                  </div>
+
+                  {fiscalYears.length === 0 ? (
+                    <p className="text-sm text-[var(--color-text-muted)]">No fiscal years defined yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {fiscalYears.map((fy) => (
+                        <div key={fy.id} className="border border-[var(--color-border)] rounded-xl p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <div className="text-sm font-bold text-[var(--color-text-primary)]">{fy.name}</div>
+                              <div className="text-xs text-[var(--color-text-muted)]">
+                                {fy.startDate} → {fy.endDate}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${fy.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : fy.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {fy.status}
+                              </span>
+                              <button
+                                onClick={() => handleCloseYear(fy.id)}
+                                disabled={fiscalLoading || fy.status !== 'OPEN'}
+                                className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md disabled:opacity-50"
+                              >
+                                Close Year
+                              </button>
+                          </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                            {fy.periods.map((p) => (
+                              <div key={p.id} className="flex items-center justify-between bg-[var(--color-bg-secondary)] rounded-lg px-3 py-2">
+                                <div>
+                                  <div className="text-sm font-semibold">{p.name}</div>
+                                  <div className="text-[10px] text-[var(--color-text-muted)]">{p.startDate} → {p.endDate}</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : p.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {p.status}
+                                  </span>
+                                  {p.status === 'OPEN' ? (
+                                    <button
+                                      onClick={() => handleClosePeriod(fy.id, p.id)}
+                                      className="text-xs px-2 py-1 bg-gray-900 text-white rounded"
+                                      disabled={fiscalLoading}
+                                    >
+                                      Close
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleReopenPeriod(fy.id, p.id)}
+                                      className="text-xs px-2 py-1 bg-white border border-[var(--color-border)] rounded"
+                                      disabled={fiscalLoading || fy.status !== 'OPEN'}
+                                    >
+                                      Reopen
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

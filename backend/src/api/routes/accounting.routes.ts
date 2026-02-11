@@ -11,6 +11,7 @@ import { AccountingReportsController } from '../controllers/accounting/Accountin
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { SettingsController } from '../controllers/accounting/SettingsController';
 import { CurrencyController } from '../controllers/accounting/CurrencyController';
+import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -68,6 +69,13 @@ router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.d
 // Policy Configuration
 router.get('/policy-config', permissionGuard('accounting.vouchers.view'), SettingsController.getSettings);
 router.put('/policy-config', permissionGuard('accounting.settings.write'), SettingsController.updateSettings);
+
+// Fiscal Year Management
+router.get('/fiscal-years', permissionGuard('accounting.settings.read'), FiscalYearController.list);
+router.post('/fiscal-years', permissionGuard('accounting.settings.write'), FiscalYearController.create);
+router.post('/fiscal-years/:id/close-period', permissionGuard('accounting.settings.write'), FiscalYearController.closePeriod);
+router.post('/fiscal-years/:id/reopen-period', permissionGuard('accounting.settings.write'), FiscalYearController.reopenPeriod);
+router.post('/fiscal-years/:id/close-year', permissionGuard('accounting.settings.write'), FiscalYearController.closeYear);
 
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);

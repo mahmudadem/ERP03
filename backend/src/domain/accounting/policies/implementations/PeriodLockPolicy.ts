@@ -1,6 +1,7 @@
 import { IPostingPolicy } from '../IPostingPolicy';
 import { PostingPolicyContext, PolicyResult } from '../PostingPolicyTypes';
 import { normalizeAccountingDate } from '../../utils/DateNormalization';
+import { PeriodStatus } from '../../entities/FiscalYear';
 
 /**
  * PeriodLockPolicy
@@ -22,20 +23,36 @@ export class PeriodLockPolicy implements IPostingPolicy {
   readonly id = 'period-lock';
   readonly name = 'Period Lock';
 
-  constructor(private readonly lockedThroughDate?: string) {}
+  constructor(
+    private readonly lockedThroughDate?: string,
+    private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string) => Promise<PeriodStatus | null> | undefined
+  ) {}
 
   validate(ctx: PostingPolicyContext): PolicyResult {
-    // If no locked date configured, policy passes
-    if (!this.lockedThroughDate) {
-      return { ok: true };
-    }
-
-    // Normalize both dates to YYYY-MM-DD for timezone-safe comparison
     try {
       const voucherDate = normalizeAccountingDate(ctx.voucherDate);
+
+      // Fiscal period check (if resolver provided)
+      if (this.resolveFiscalPeriodStatus) {
+        const status = await this.resolveFiscalPeriodStatus(ctx.companyId, voucherDate);
+        if (status === PeriodStatus.LOCKED || status === PeriodStatus.CLOSED) {
+          return {
+            ok: false,
+            error: {
+              code: 'PERIOD_CLOSED',
+              message: `Cannot post to ${status?.toLowerCase()} period for date ${voucherDate}`,
+              fieldHints: ['date']
+            }
+          };
+        }
+      }
+
+      if (!this.lockedThroughDate) {
+        return { ok: true };
+      }
+
       const lockedDate = normalizeAccountingDate(this.lockedThroughDate);
 
-      // Simple string comparison works for ISO dates (YYYY-MM-DD)
       if (voucherDate <= lockedDate) {
         return {
           ok: false,
@@ -49,7 +66,6 @@ export class PeriodLockPolicy implements IPostingPolicy {
 
       return { ok: true };
     } catch (error: any) {
-      // Date normalization failed - treat as validation error
       return {
         ok: false,
         error: {
