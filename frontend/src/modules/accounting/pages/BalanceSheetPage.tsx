@@ -5,6 +5,7 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Printer, RefreshCw } from 'lucide-react';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const formatAmount = (value: number, currency: string) => {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -192,6 +193,38 @@ const BalanceSheetPage: React.FC = () => {
               className="bg-transparent border-none text-sm text-[var(--color-text-primary)] focus:outline-none"
             />
           </div>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!data) return;
+              const rows: any[] = [];
+              const pushSection = (section: BalanceSheetData['assets'], label: string) => {
+                section.accounts.forEach((a) => rows.push({ section: label, code: a.code, name: a.name, balance: a.balance }));
+                rows.push({ section: label, code: '', name: `Total ${label}`, balance: section.total });
+              };
+              pushSection(data.assets, 'Assets');
+              pushSection(data.liabilities, 'Liabilities');
+              pushSection(data.equity, 'Equity');
+              exportToExcel(
+                rows,
+                [
+                  { header: 'Section', key: 'section' },
+                  { header: 'Code', key: 'code' },
+                  { header: 'Account', key: 'name' },
+                  { header: `Balance (${baseCurrency})`, key: 'balance', isNumber: true }
+                ],
+                `Balance-Sheet-${asOfDate}`,
+                'Balance Sheet',
+                `As of ${formatCompanyDate(asOfDate, settings)}`
+              );
+            }}
+            className="flex items-center gap-2"
+          >
+            Export Excel
+          </Button>
+          <Button variant="secondary" onClick={() => exportElementToPDF('balance-sheet-report', 'Balance-Sheet')} className="flex items-center gap-2">
+            Export PDF
+          </Button>
           <Button onClick={handlePrint} variant="secondary" className="flex items-center gap-2">
             <Printer className="w-4 h-4" /> Print
           </Button>
@@ -212,6 +245,7 @@ const BalanceSheetPage: React.FC = () => {
         </div>
       )}
 
+      <div id="balance-sheet-report">
       {loading && !data ? (
         <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 text-center text-[var(--color-text-muted)]">
           Loading balance sheet...
@@ -272,6 +306,7 @@ const BalanceSheetPage: React.FC = () => {
           No data to display.
         </div>
       )}
+      </div>
     </div>
   );
 };

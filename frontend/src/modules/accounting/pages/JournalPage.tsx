@@ -4,6 +4,7 @@ import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { RefreshCw, Printer, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const JournalPage: React.FC = () => {
   const { settings } = useCompanySettings();
@@ -49,6 +50,46 @@ const JournalPage: React.FC = () => {
           <p className="text-sm text-slate-600">Vouchers listed chronologically with full lines.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const rows: any[] = [];
+              data.forEach((v) =>
+                v.lines.forEach((l: any) =>
+                  rows.push({
+                    date: v.date,
+                    voucherNo: v.voucherNo,
+                    account: l.accountCode,
+                    description: l.description,
+                    debit: l.debit,
+                    credit: l.credit
+                  })
+                )
+              );
+              exportToExcel(
+                rows,
+                [
+                  { header: 'Date', key: 'date' },
+                  { header: 'Voucher', key: 'voucherNo' },
+                  { header: 'Account', key: 'account' },
+                  { header: 'Description', key: 'description' },
+                  { header: 'Debit', key: 'debit', isNumber: true },
+                  { header: 'Credit', key: 'credit', isNumber: true }
+                ],
+                `Journal-${fromDate}-${toDate}`,
+                'Journal / Day Book',
+                `Period ${fromDate} to ${toDate}`
+              );
+            }}
+            className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm"
+          >
+            Export Excel
+          </button>
+          <button
+            onClick={() => exportElementToPDF('journal-report', 'Journal')}
+            className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm"
+          >
+            Export PDF
+          </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm">
             <Printer className="w-4 h-4" /> Print
           </button>
@@ -84,7 +125,7 @@ const JournalPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4" id="journal-report">
         {loading ? (
           <div className="text-sm text-slate-500">Loading...</div>
         ) : data.length === 0 ? (

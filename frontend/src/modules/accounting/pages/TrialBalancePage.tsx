@@ -4,6 +4,7 @@ import { accountingApi, TrialBalanceLine } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const TrialBalancePage: React.FC = () => {
   const { settings } = useCompanySettings();
@@ -47,6 +48,29 @@ const TrialBalancePage: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">Financial Position Overview</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              exportToExcel(
+                data,
+                [
+                  { header: 'Code', key: 'code' },
+                  { header: 'Account Name', key: 'name' },
+                  { header: 'Type', key: 'type' },
+                  { header: 'Debit', key: 'totalDebit', isNumber: true },
+                  { header: 'Credit', key: 'totalCredit', isNumber: true },
+                  { header: 'Net Balance', key: 'netBalance', isNumber: true }
+                ],
+                `Trial-Balance-${formatCompanyDate(new Date(), settings)}`,
+                'Trial Balance'
+              )
+            }
+          >
+            Export Excel
+          </Button>
+          <Button variant="secondary" onClick={() => exportElementToPDF('trial-balance-report', 'Trial-Balance')}>
+            Export PDF
+          </Button>
           <Button onClick={handlePrint} variant="secondary">Print / PDF</Button>
           <Button onClick={fetchReport} variant="primary">Refresh</Button>
         </div>
@@ -64,7 +88,7 @@ const TrialBalancePage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden print:shadow-none print:border">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden print:shadow-none print:border" id="trial-balance-report">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 print:bg-gray-100">

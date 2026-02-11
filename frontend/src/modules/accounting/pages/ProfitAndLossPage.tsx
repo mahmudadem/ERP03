@@ -4,6 +4,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate, getCompanyToday } from '../../../utils/dateUtils';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { DatePicker } from '../components/shared/DatePicker';
 
@@ -75,31 +76,25 @@ const ProfitAndLossPage: React.FC = () => {
     return formatCompanyDate(dateStr, settings);
   };
 
-  const handleExport = () => {
+  const handleExportExcel = async () => {
     if (!data) return;
-    
-    // Simple CSV export
-    const csv = [
-      ['Profit & Loss Statement'],
-      [`Period: ${formatDate(data.period.from)} to ${formatDate(data.period.to)}`],
-      [''],
-      ['Revenue'],
-      ...data.revenueByAccount.map(acc => [acc.accountName, formatCurrency(acc.amount)]),
-      ['Total Revenue', formatCurrency(data.revenue)],
-      [''],
-      ['Expenses'],
-      ...data.expensesByAccount.map(acc => [acc.accountName, formatCurrency(acc.amount)]),
-      ['Total Expenses', formatCurrency(data.expenses)],
-      [''],
-      ['Net Profit/Loss', formatCurrency(data.netProfit)]
-    ].map(row => row.join(',')).join('\\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `profit-loss-${fromDate}-${toDate}.csv`;
-    a.click();
+    const rows: any[] = [];
+    data.revenueByAccount.forEach((acc) => rows.push({ section: 'Revenue', account: acc.accountName, amount: acc.amount }));
+    rows.push({ section: 'Revenue', account: 'Total Revenue', amount: data.revenue });
+    data.expensesByAccount.forEach((acc) => rows.push({ section: 'Expenses', account: acc.accountName, amount: acc.amount }));
+    rows.push({ section: 'Expenses', account: 'Total Expenses', amount: data.expenses });
+    rows.push({ section: 'Net', account: 'Net Profit/Loss', amount: data.netProfit });
+    await exportToExcel(
+      rows,
+      [
+        { header: 'Section', key: 'section' },
+        { header: 'Account', key: 'account' },
+        { header: 'Amount', key: 'amount', isNumber: true }
+      ],
+      `Profit-Loss-${fromDate}-${toDate}`,
+      'Profit & Loss',
+      `Period: ${formatDate(data.period.from)} to ${formatDate(data.period.to)}`
+    );
   };
 
   const profitMargin = data ? ((data.netProfit / data.revenue) * 100) : 0;
@@ -114,9 +109,14 @@ const ProfitAndLossPage: React.FC = () => {
         </div>
         
         {data && (
-          <Button onClick={handleExport} variant="secondary">
-            📥 Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExportExcel} variant="secondary">
+              Export Excel
+            </Button>
+            <Button variant="secondary" onClick={() => exportElementToPDF('pl-report', 'Profit-and-Loss')}>
+              Export PDF
+            </Button>
+          </div>
         )}
       </div>
 
@@ -154,7 +154,7 @@ const ProfitAndLossPage: React.FC = () => {
 
       {/* Report Content */}
       {data && !loading && (
-        <>
+        <div id="pl-report" className="space-y-4">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg shadow border border-green-200">

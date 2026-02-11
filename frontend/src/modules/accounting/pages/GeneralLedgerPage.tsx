@@ -8,6 +8,7 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { formatCompanyDate, formatCompanyDateTime } from '../../../utils/dateUtils';
 import { Search, RefreshCw, Printer, Filter, X, Settings2 } from 'lucide-react';
 import { AccountSelector } from '../components/shared/AccountSelector';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const GeneralLedgerPage: React.FC = () => {
   const { settings } = useCompanySettings();
@@ -221,6 +222,30 @@ const GeneralLedgerPage: React.FC = () => {
             <Printer className="w-4 h-4" />
             Print
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              exportToExcel(
+                filteredData,
+                [
+                  { header: 'Date', key: 'date' },
+                  { header: 'Voucher #', key: 'voucherNo' },
+                  { header: 'Account', key: 'accountName' },
+                  { header: 'Description', key: 'description' },
+                  { header: 'Debit', key: 'debit', isNumber: true },
+                  { header: 'Credit', key: 'credit', isNumber: true },
+                  { header: 'Balance', key: 'runningBalance', isNumber: true }
+                ],
+                `General-Ledger-${new Date().toISOString().slice(0,10)}`,
+                'General Ledger'
+              )
+            }
+          >
+            Export Excel
+          </Button>
+          <Button variant="secondary" onClick={() => exportElementToPDF('general-ledger-report', 'General-Ledger')}>
+            Export PDF
+          </Button>
           <Button onClick={fetchReport} variant="primary" className="flex items-center gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -312,7 +337,7 @@ const GeneralLedgerPage: React.FC = () => {
       )}
 
       {/* Data Table */}
-      <div className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] shadow-sm print:shadow-none print:border h-[calc(100vh-340px)] flex flex-col min-w-0">
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] shadow-sm print:shadow-none print:border h-[calc(100vh-340px)] flex flex-col min-w-0" id="general-ledger-report">
         <div className="overflow-auto flex-1 relative max-w-full">
           <table className="min-w-full divide-y divide-[var(--color-border)] relative">
             <thead className="bg-[var(--color-bg-tertiary)] print:bg-gray-100 sticky top-0 z-10 shadow-sm">

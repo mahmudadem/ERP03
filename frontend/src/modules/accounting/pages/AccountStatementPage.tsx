@@ -6,6 +6,7 @@ import { AccountSelector } from '../components/shared/AccountSelector';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AlertTriangle, ArrowUpRight, Filter, Printer, RefreshCw, Search } from 'lucide-react';
+import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const currencyFormat = (value: number, currency?: string) => {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -98,6 +99,36 @@ const AccountStatementPage: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {data && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  exportToExcel(
+                    data.entries,
+                    [
+                      { header: 'Date', key: 'date' },
+                      { header: 'Voucher', key: 'voucherNo' },
+                      { header: 'Description', key: 'description' },
+                      { header: `Debit (${accountCurrency || baseCurrency})`, key: 'debit', isNumber: true },
+                      { header: `Credit (${accountCurrency || baseCurrency})`, key: 'credit', isNumber: true },
+                      { header: 'FX Rate', key: 'exchangeRate', isNumber: true },
+                      { header: 'Balance', key: 'balance', isNumber: true }
+                    ],
+                    `Account-Statement-${data.accountCode}-${data.toDate}`,
+                    'Account Statement',
+                    `${data.accountCode} - ${data.accountName}`
+                  )
+                }
+                className="flex items-center gap-1"
+              >
+                Export Excel
+              </Button>
+              <Button variant="secondary" onClick={() => exportElementToPDF('account-statement-report', 'Account-Statement')} className="flex items-center gap-1">
+                Export PDF
+              </Button>
+            </>
+          )}
           <Button onClick={handlePrint} variant="secondary" className="flex items-center gap-2">
             <Printer className="w-4 h-4" /> Print
           </Button>
@@ -174,7 +205,7 @@ const AccountStatementPage: React.FC = () => {
       )}
 
       {data ? (
-        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden" id="account-statement-report">
           <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)] flex flex-wrap gap-3 justify-between">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wide">Account</span>
