@@ -17,7 +17,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const sections = useSidebarConfig();
   const { sidebarMode, sidebarPinned, toggleSidebarPinned } = useUserPreferences();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const isRtl = i18n.dir() === 'rtl';
   const toggleSidebar = () => {
     if (onToggle) onToggle();
@@ -104,18 +104,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
       {/* Footer - Company Settings */}
       <div className="shrink-0 p-3 border-t border-[var(--color-border)]">
         <SidebarItem
-          label="Company Settings"
+          label={t('sidebar.companySettings')}
           iconName="Settings"
           isOpen={isOpen}
           onClick={onNavigate}
           children={[
-            { label: 'Overview', path: '/company-admin/overview', icon: 'Layout' },
-            { label: 'Users', path: '/company-admin/users', icon: 'User' },
-            { label: 'Roles', path: '/company-admin/roles', icon: 'Shield' },
-            { label: 'Modules', path: '/company-admin/modules', icon: 'Package' },
-            { label: 'Features', path: '/company-admin/features', icon: 'Zap' },
-            { label: 'Bundles', path: '/company-admin/bundles', icon: 'Layers' },
-            { label: 'General Settings', path: '/company-admin/settings', icon: 'Settings' }
+            { label: t('sidebar.overview'), path: '/company-admin/overview', icon: 'Layout' },
+            { label: t('sidebar.users'), path: '/company-admin/users', icon: 'User' },
+            { label: t('sidebar.roles'), path: '/company-admin/roles', icon: 'Shield' },
+            { label: t('sidebar.modules'), path: '/company-admin/modules', icon: 'Package' },
+            { label: t('sidebar.features'), path: '/company-admin/features', icon: 'Zap' },
+            { label: t('sidebar.bundles'), path: '/company-admin/bundles', icon: 'Layers' },
+            { label: t('sidebar.generalSettings'), path: '/company-admin/settings', icon: 'Settings' }
           ]}
         />
       </div>
