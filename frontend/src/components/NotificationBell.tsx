@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { client } from '../api/client';
 import { getDatabase, ref, onValue, off } from 'firebase/database';
+import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 
 interface NotificationItem {
   id: string;
@@ -30,6 +32,8 @@ export const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
 
   // Listen to Firebase Realtime DB for real-time updates
   useEffect(() => {
@@ -137,7 +141,12 @@ export const NotificationBell: React.FC = () => {
       >
         <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+          <span
+            className={clsx(
+              "absolute -top-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1",
+              isRtl ? "-left-1" : "-right-1"
+            )}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -145,7 +154,13 @@ export const NotificationBell: React.FC = () => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50">
+        <div
+          className={clsx(
+            "absolute mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50",
+            isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right"
+          )}
+          style={{ insetInlineEnd: isRtl ? 'auto' : 0, insetInlineStart: isRtl ? 0 : 'auto' } as any}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200">Notifications</h3>

@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
@@ -21,6 +21,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation('common');
+  const isRtl = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
   const languages = [
     { code: 'en', label: t('language.english') },
@@ -138,7 +139,12 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-[var(--color-bg-primary)] py-1 shadow-lg border border-[var(--color-border)] focus:outline-none">
+            <Menu.Items
+              className={clsx(
+                "absolute z-10 mt-2 w-48 rounded-md bg-[var(--color-bg-primary)] py-1 shadow-lg border border-[var(--color-border)] focus:outline-none",
+                isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right"
+              )}
+            >
               <div className="px-4 py-2 border-b border-[var(--color-border)]">
                 <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{user?.displayName || 'User'}</p>
                 <p className="text-xs text-[var(--color-text-secondary)] truncate">{user?.email}</p>
