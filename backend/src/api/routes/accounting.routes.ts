@@ -59,6 +59,7 @@ router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBa
 router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getGeneralLedger);
 router.get('/reports/account-statement', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getAccountStatement);
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
+router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

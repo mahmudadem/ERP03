@@ -176,4 +176,40 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     
     return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
   }
+
+  async getRecent(companyId: string, limit: number): Promise<VoucherEntity[]> {
+    const snapshot = await this.getCollection(companyId)
+      .orderBy('postedAt', 'desc')
+      .limit(limit)
+      .get();
+    return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+  }
+
+  async getCounts(companyId: string, monthStart: string, monthEnd: string) {
+    const coll = this.getCollection(companyId);
+    const allSnap = await coll.limit(1000).get();
+    const vouchers = allSnap.docs.map((d) => VoucherEntity.fromJSON(d.data()));
+    const total = vouchers.length;
+    const draft = vouchers.filter((v) => v.status.toUpperCase() === VoucherStatus.DRAFT.toUpperCase()).length;
+    const pending = vouchers.filter((v) => v.status.toUpperCase() === VoucherStatus.PENDING.toUpperCase()).length;
+    const postedThisMonth = vouchers.filter(
+      (v) => v.postedAt && v.date >= monthStart && v.date <= monthEnd
+    ).length;
+
+    // last month window
+    const start = new Date(monthStart);
+    const prevStart = new Date(start);
+    prevStart.setMonth(prevStart.getMonth() - 1);
+    const prevEnd = new Date(monthStart);
+    prevEnd.setDate(0); // last day previous month
+    const prevStartIso = prevStart.toISOString().split('T')[0];
+    const prevEndIso = prevEnd.toISOString().split('T')[0];
+    const lastMonthTotal = vouchers.filter((v) => v.date >= prevStartIso && v.date <= prevEndIso).length;
+
+    const unbalancedDrafts = vouchers.filter(
+      (v) => v.status.toUpperCase() === VoucherStatus.DRAFT.toUpperCase() && Math.abs(v.totalDebit - v.totalCredit) > 0.01
+    ).length;
+
+    return { total, draft, pending, postedThisMonth, lastMonthTotal, unbalancedDrafts };
+  }
 }

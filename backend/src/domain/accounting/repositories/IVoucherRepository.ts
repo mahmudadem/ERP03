@@ -147,4 +147,17 @@ export interface IVoucherRepository {
    * @param limit Maximum results
    */
   findPendingCustodyConfirmations(companyId: string, custodianUserId: string, limit?: number): Promise<VoucherEntity[]>;
+
+  /**
+   * Dashboard helpers
+   */
+  getRecent(companyId: string, limit: number): Promise<VoucherEntity[]>;
+  getCounts(companyId: string, monthStart: string, monthEnd: string): Promise<{
+    total: number;
+    draft: number;
+    pending: number;
+    postedThisMonth: number;
+    lastMonthTotal: number;
+    unbalancedDrafts: number;
+  }>;
 }

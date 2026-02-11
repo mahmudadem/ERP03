@@ -409,6 +409,10 @@ export const accountingApi = {
     return client.delete(`/tenant/accounting/cost-centers/${id}`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
+  getDashboardSummary: (): Promise<any> => {
+    return client.get('/tenant/accounting/reports/dashboard-summary').then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
   // --- CURRENCIES ---
   
   /** Get all active currencies from the system */

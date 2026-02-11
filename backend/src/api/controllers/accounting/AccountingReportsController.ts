@@ -6,6 +6,7 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -139,6 +140,57 @@ export class AccountingReportsController {
           filters: { accountId, fromDate, toDate }
         }
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getDashboardSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user?.companyId || (req as any).companyId;
+      const userId = (req as any).user?.uid;
+      if (!companyId) throw ApiError.badRequest('Company Context Missing');
+      if (!userId) throw ApiError.unauthorized('User missing');
+
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      const [counts, recent, trialBalance, accounts, fiscal] = await Promise.all([
+        diContainer.voucherRepository.getCounts(companyId, monthStart, monthEnd),
+        diContainer.voucherRepository.getRecent(companyId, 10),
+        diContainer.ledgerRepository.getTrialBalance(companyId, monthEnd),
+        diContainer.accountRepository.list(companyId),
+        diContainer.fiscalYearRepository.findActiveForDate(companyId, monthEnd).catch(() => null)
+      ]);
+
+      const cashAccounts = new Set(
+        accounts.filter((a: any) => ['CASH', 'BANK'].includes((a.accountRole || '').toUpperCase())).map((a: any) => a.id)
+      );
+      const cashPosition = trialBalance
+        .filter((r: any) => cashAccounts.has(r.accountId))
+        .reduce((sum, r) => sum + (r.debit || 0) - (r.credit || 0), 0);
+
+      const recentDtos = recent.map((v: any) => ({
+        id: v.id,
+        voucherNo: v.voucherNo,
+        date: v.date,
+        type: v.type,
+        status: v.status,
+        amount: Math.max(v.totalDebit, v.totalCredit),
+        posted: !!v.postedAt
+      }));
+
+      const response = {
+        vouchers: counts,
+        cashPosition,
+        recentVouchers: recentDtos,
+        unbalancedDrafts: counts.unbalancedDrafts,
+        fiscalPeriodStatus: fiscal?.getPeriodForDate(monthEnd)?.status || null,
+        baseCurrency: (await diContainer.companyRepository.findById(companyId).catch(() => null as any))?.baseCurrency || ''
+      };
+
+      (res as any).status(200).json({ success: true, data: response });
     } catch (error) {
       next(error);
     }
