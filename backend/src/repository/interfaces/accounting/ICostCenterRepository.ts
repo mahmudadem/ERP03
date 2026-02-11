@@ -1,12 +1,10 @@
-
 import { CostCenter } from '../../../domain/accounting/entities/CostCenter';
 
-/**
- * Interface for Cost Center access.
- */
 export interface ICostCenterRepository {
-  createCostCenter(costCenter: CostCenter): Promise<void>;
-  updateCostCenter(id: string, data: Partial<CostCenter>): Promise<void>;
-  getCostCenter(companyId: string, id: string): Promise<CostCenter | null>;
-  getCompanyCostCenters(companyId: string): Promise<CostCenter[]>;
+  findAll(companyId: string): Promise<CostCenter[]>;
+  findById(companyId: string, id: string): Promise<CostCenter | null>;
+  findByCode(companyId: string, code: string): Promise<CostCenter | null>;
+  create(costCenter: CostCenter): Promise<CostCenter>;
+  update(costCenter: CostCenter): Promise<CostCenter>;
+  delete(companyId: string, id: string): Promise<void>;
 }

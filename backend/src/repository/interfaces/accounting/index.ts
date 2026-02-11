@@ -6,5 +6,6 @@ export * from './IExchangeRateRepository';
 export * from './ILedgerRepository';
 export * from './ICurrencyRepository';
 export * from './ICompanyCurrencyRepository';
+export * from './ICostCenterRepository';
 export * from './IFiscalYearRepository';
 

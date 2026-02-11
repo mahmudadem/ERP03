@@ -7,6 +7,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { AccountSelectorCombobox } from '../../../components/accounting/AccountSelectorCombobox';
+import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../services/errorHandler';
 import { getCompanyToday } from '../../../utils/dateUtils';
@@ -230,7 +231,8 @@ const VoucherEditorPage: React.FC = () => {
   }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
 
   const customComponents = {
-    'account-selector': AccountSelectorCombobox
+    'account-selector': AccountSelectorCombobox,
+    'cost-center-selector': CostCenterSelector
   };
 
   return (

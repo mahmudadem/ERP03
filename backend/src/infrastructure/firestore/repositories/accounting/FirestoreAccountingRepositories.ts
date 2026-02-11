@@ -1,5 +1,5 @@
 import { ICostCenterRepository, IExchangeRateRepository } from '../../../../repository/interfaces/accounting';
-import { CostCenter } from '../../../../domain/accounting/entities/CostCenter';
+import { CostCenter, CostCenterStatus } from '../../../../domain/accounting/entities/CostCenter';
 import { ExchangeRate } from '../../../../domain/accounting/entities/ExchangeRate';
 import * as admin from 'firebase-admin';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
@@ -8,14 +8,32 @@ import { SettingsResolver } from '../../../../application/common/services/Settin
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {
     static toDomain(id: string, d: any) { 
-      return new CostCenter(id, d.companyId, d.name, d.code, d.parentId); 
+      return new CostCenter(
+        id,
+        d.companyId,
+        d.name,
+        d.code,
+        d.description || null,
+        d.parentId || null,
+        d.status || CostCenterStatus.ACTIVE,
+        d.createdAt?.toDate?.() || new Date(),
+        d.createdBy || '',
+        d.updatedAt?.toDate?.() || new Date(),
+        d.updatedBy || ''
+      ); 
     }
     static toPersistence(e: CostCenter) { 
       return { 
         companyId: e.companyId,
         name: e.name,
         code: e.code,
-        parentId: e.parentId || null
+        description: e.description || null,
+        parentId: e.parentId || null,
+        status: e.status,
+        createdAt: e.createdAt ? Timestamp.fromDate(e.createdAt) : Timestamp.fromDate(new Date()),
+        createdBy: e.createdBy || null,
+        updatedAt: e.updatedAt ? Timestamp.fromDate(e.updatedAt) : Timestamp.fromDate(new Date()),
+        updatedBy: e.updatedBy || null
       }; 
     }
 }
@@ -56,26 +74,38 @@ export class FirestoreCostCenterRepository implements ICostCenterRepository {
     return this.settingsResolver.getCostCentersCollection(companyId);
   }
 
-  async createCostCenter(costCenter: CostCenter): Promise<void> { 
+  async create(costCenter: CostCenter): Promise<CostCenter> { 
     const col = this.getCollection(costCenter.companyId);
     await col.doc(costCenter.id).set(CostCenterMapper.toPersistence(costCenter));
+    return costCenter;
   }
 
-  async updateCostCenter(id: string, data: Partial<CostCenter>): Promise<void> {
-    if (!data.companyId) throw new Error("companyId required for updateCostCenter");
-    const col = this.getCollection(data.companyId);
-    await col.doc(id).update(data);
+  async update(costCenter: CostCenter): Promise<CostCenter> {
+    const col = this.getCollection(costCenter.companyId);
+    await col.doc(costCenter.id).set(CostCenterMapper.toPersistence(costCenter), { merge: true });
+    return costCenter;
   }
 
-  async getCostCenter(companyId: string, id: string): Promise<CostCenter | null> { 
+  async findById(companyId: string, id: string): Promise<CostCenter | null> { 
     const doc = await this.getCollection(companyId).doc(id).get();
     if (!doc.exists) return null;
     return CostCenterMapper.toDomain(doc.id, doc.data());
   }
 
-  async getCompanyCostCenters(companyId: string): Promise<CostCenter[]> {
-      const snap = await this.getCollection(companyId).get();
-      return snap.docs.map(d => CostCenterMapper.toDomain(d.id, d.data()));
+  async findByCode(companyId: string, code: string): Promise<CostCenter | null> {
+    const snap = await this.getCollection(companyId).where('code', '==', code).limit(1).get();
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return CostCenterMapper.toDomain(d.id, d.data());
+  }
+
+  async findAll(companyId: string): Promise<CostCenter[]> {
+    const snap = await this.getCollection(companyId).orderBy('code').get();
+    return snap.docs.map(d => CostCenterMapper.toDomain(d.id, d.data()));
+  }
+
+  async delete(companyId: string, id: string): Promise<void> {
+    await this.getCollection(companyId).doc(id).delete();
   }
 }
 

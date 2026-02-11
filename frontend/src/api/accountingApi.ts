@@ -392,6 +392,23 @@ export const accountingApi = {
     return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-year`, { retainedEarningsAccountId }).then((r: any) => (r?.data ?? r));
   },
 
+  // --- COST CENTERS ---
+  listCostCenters: (): Promise<CostCenterDTO[]> => {
+    return client.get('/tenant/accounting/cost-centers').then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  getCostCenter: (id: string): Promise<CostCenterDTO> => {
+    return client.get(`/tenant/accounting/cost-centers/${id}`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  createCostCenter: (payload: Partial<CostCenterDTO>): Promise<CostCenterDTO> => {
+    return client.post('/tenant/accounting/cost-centers', payload).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  updateCostCenter: (id: string, payload: Partial<CostCenterDTO>): Promise<CostCenterDTO> => {
+    return client.put(`/tenant/accounting/cost-centers/${id}`, payload).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  deactivateCostCenter: (id: string): Promise<any> => {
+    return client.delete(`/tenant/accounting/cost-centers/${id}`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
   // --- CURRENCIES ---
   
   /** Get all active currencies from the system */
@@ -483,4 +500,15 @@ export interface RateDeviationWarning {
 export interface RateDeviationDTO {
   warnings: RateDeviationWarning[];
   hasWarnings: boolean;
+}
+
+// Cost Centers
+export interface CostCenterDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  parentId?: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
 }

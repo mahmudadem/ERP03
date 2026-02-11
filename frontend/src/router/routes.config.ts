@@ -16,6 +16,7 @@ const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBal
 const GeneralLedgerPage = lazy(() => import('../modules/accounting/pages/GeneralLedgerPage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
 const AccountStatementPage = lazy(() => import('../modules/accounting/pages/AccountStatementPage'));
+const CostCentersPage = lazy(() => import('../modules/accounting/pages/CostCentersPage'));
 
 // Initialization Wizards
 const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
@@ -109,6 +110,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/balance-sheet', label: 'Balance Sheet', component: BalanceSheetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.balanceSheet.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/general-ledger', label: 'General Ledger', component: GeneralLedgerPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
+  { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
   { path: '/accounting/window-config-test', label: '🎨 Window Config Test', component: lazy(() => import('../modules/accounting/pages/WindowConfigTestPage').then(m => ({ default: m.WindowConfigTestPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },

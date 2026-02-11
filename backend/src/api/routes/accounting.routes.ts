@@ -12,6 +12,7 @@ import { AccountingDesignerController } from '../controllers/accounting/Accounti
 import { SettingsController } from '../controllers/accounting/SettingsController';
 import { CurrencyController } from '../controllers/accounting/CurrencyController';
 import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
+import { CostCenterController } from '../controllers/accounting/CostCenterController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -76,6 +77,13 @@ router.post('/fiscal-years', permissionGuard('accounting.settings.write'), Fisca
 router.post('/fiscal-years/:id/close-period', permissionGuard('accounting.settings.write'), FiscalYearController.closePeriod);
 router.post('/fiscal-years/:id/reopen-period', permissionGuard('accounting.settings.write'), FiscalYearController.reopenPeriod);
 router.post('/fiscal-years/:id/close-year', permissionGuard('accounting.settings.write'), FiscalYearController.closeYear);
+
+// Cost Centers
+router.get('/cost-centers', permissionGuard('accounting.accounts.view'), CostCenterController.list);
+router.get('/cost-centers/:id', permissionGuard('accounting.accounts.view'), CostCenterController.getById);
+router.post('/cost-centers', permissionGuard('accounting.settings.write'), CostCenterController.create);
+router.put('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.update);
+router.delete('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.deactivate);
 
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);
