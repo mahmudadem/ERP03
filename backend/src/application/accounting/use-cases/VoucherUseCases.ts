@@ -16,6 +16,7 @@ import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { AccountValidationService } from '../services/AccountValidationService';
+import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 
 export class CreateVoucherUseCase {
   constructor(
@@ -28,7 +29,8 @@ export class CreateVoucherUseCase {
     private policyConfigProvider?: IAccountingPolicyConfigProvider,
     private ledgerRepo?: ILedgerRepository, // Needed for auto-post
     private policyRegistry?: any, // Needed for auto-post
-    private currencyRepo?: ICompanyCurrencyRepository // NEW: Optional for backward compat in constructor, but required logic
+    private currencyRepo?: ICompanyCurrencyRepository, // NEW: Optional for backward compat in constructor, but required logic
+    private sequenceRepo?: IVoucherSequenceRepository
   ) {}
   
   private validationService = new VoucherValidationService();
@@ -75,7 +77,14 @@ export class CreateVoucherUseCase {
 
 
       const voucherId = payload.id || randomUUID();
-      const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
+      let voucherNo = payload.voucherNo || '';
+      if (autoNumbering && this.sequenceRepo) {
+        const prefix = payload.prefix || (payload.type || 'V').toString();
+        const useYear = settings?.resetVoucherNumbersAnnually ? new Date(payload.date || Date.now()).getFullYear() : undefined;
+        voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear);
+      } else if (autoNumbering) {
+        voucherNo = `V-${Date.now()}`;
+      }
 
       let lines: VoucherLineEntity[] = [];
       const voucherType = (payload.type as VoucherType) || VoucherType.JOURNAL_ENTRY;

@@ -60,7 +60,8 @@ export class VoucherController {
         diContainer.accountingPolicyConfigProvider as any,
         diContainer.ledgerRepository as any,
         diContainer.policyRegistry as any,
-        diContainer.companyCurrencyRepository as any
+        diContainer.companyCurrencyRepository as any,
+        diContainer.voucherSequenceRepository as any
       );
       const voucher = await useCase.execute(companyId, userId, req.body);
       res.json({ success: true, data: voucher });

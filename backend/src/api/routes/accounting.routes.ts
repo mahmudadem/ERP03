@@ -13,6 +13,7 @@ import { SettingsController } from '../controllers/accounting/SettingsController
 import { CurrencyController } from '../controllers/accounting/CurrencyController';
 import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
 import { CostCenterController } from '../controllers/accounting/CostCenterController';
+import { VoucherSequenceController } from '../controllers/accounting/VoucherSequenceController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -86,6 +87,10 @@ router.get('/cost-centers/:id', permissionGuard('accounting.accounts.view'), Cos
 router.post('/cost-centers', permissionGuard('accounting.settings.write'), CostCenterController.create);
 router.put('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.update);
 router.delete('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.deactivate);
+
+// Voucher Sequences
+router.get('/voucher-sequences', permissionGuard('accounting.settings.write'), VoucherSequenceController.list);
+router.post('/voucher-sequences/next', permissionGuard('accounting.settings.write'), VoucherSequenceController.setNext);
 
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', permissionGuard('accounting.designer.view'), VoucherFormController.list);

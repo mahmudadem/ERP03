@@ -420,6 +420,13 @@ export const accountingApi = {
     return client.get('/tenant/accounting/reports/cash-flow', { params }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
+  listVoucherSequences: (): Promise<VoucherSequenceDTO[]> => {
+    return client.get('/tenant/accounting/voucher-sequences').then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  setNextVoucherNumber: (prefix: string, nextNumber: number, year?: number): Promise<void> => {
+    return client.post('/tenant/accounting/voucher-sequences/next', { prefix, nextNumber, year }).then(() => {});
+  },
+
   // --- CURRENCIES ---
   
   /** Get all active currencies from the system */
@@ -513,6 +520,14 @@ export interface RateDeviationDTO {
   hasWarnings: boolean;
 }
 
+export interface VoucherSequenceDTO {
+  id: string;
+  prefix: string;
+  year?: number;
+  lastNumber: number;
+  format?: string;
+  updatedAt?: string;
+}
 // Cost Centers
 export interface CostCenterDTO {
   id: string;

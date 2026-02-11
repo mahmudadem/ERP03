@@ -24,6 +24,7 @@ import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/F
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
 import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
+import { FirestoreVoucherSequenceRepository } from '../firestore/repositories/accounting/FirestoreVoucherSequenceRepository';
 import { IVoucherRepository } from '../../domain/accounting/repositories/IVoucherRepository';
 import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '../firestore/repositories/accounting/FirestoreAccountingRepositories';
 import { FirestoreAccountingCurrencyRepository, FirestoreCompanyCurrencyRepository } from '../firestore/repositories/accounting/FirestoreCurrencyRepositories';
@@ -133,6 +134,7 @@ export const diContainer = {
     // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
     return new FirestoreVoucherRepositoryV2(getDb(), settingsResolver);
   },
+  get voucherSequenceRepository(): AccRepo.IVoucherSequenceRepository { return new FirestoreVoucherSequenceRepository(getDb()); },
   get costCenterRepository(): AccRepo.ICostCenterRepository { return new FirestoreCostCenterRepository(settingsResolver); },
   get exchangeRateRepository(): AccRepo.IExchangeRateRepository { return new FirestoreExchangeRateRepository(settingsResolver); },
   get ledgerRepository(): AccRepo.ILedgerRepository { return new FirestoreLedgerRepository(getDb()); },

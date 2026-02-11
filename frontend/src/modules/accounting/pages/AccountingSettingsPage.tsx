@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
@@ -126,6 +126,10 @@ export const AccountingSettingsPage: React.FC = () => {
   const [fyYear, setFyYear] = useState<number>(new Date().getFullYear());
   const [fyStartMonth, setFyStartMonth] = useState<number>(1);
   const [retainedEarningsAccountId, setRetainedEarningsAccountId] = useState<string>('');
+  const [sequences, setSequences] = useState<any[]>([]);
+  const [seqPrefix, setSeqPrefix] = useState<string>('JE');
+  const [seqYear, setSeqYear] = useState<number | ''>('');
+  const [seqNext, setSeqNext] = useState<number>(1);
 
   // Granular tabs as per implementation plan
   const tabs = [
@@ -136,6 +140,7 @@ export const AccountingSettingsPage: React.FC = () => {
     { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
     { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
     { id: 'fiscal', label: 'Fiscal Year', icon: Building2 },
+    { id: 'numbering', label: 'Voucher Numbering', icon: Hash },
   ];
 
   // Mode A = both Financial Approval AND Custody Confirmation are OFF
@@ -161,6 +166,9 @@ export const AccountingSettingsPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'fiscal') {
       loadFiscalYears();
+    }
+    if (activeTab === 'numbering') {
+      loadSequences();
     }
   }, [activeTab]);
 
@@ -203,6 +211,15 @@ export const AccountingSettingsPage: React.FC = () => {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to load fiscal years');
     } finally {
       setFiscalLoading(false);
+    }
+  };
+
+  const loadSequences = async () => {
+    try {
+      const data = await accountingApi.listVoucherSequences();
+      setSequences(data || []);
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to load sequences');
     }
   };
 
@@ -335,6 +352,23 @@ export const AccountingSettingsPage: React.FC = () => {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close fiscal year');
     } finally {
       setFiscalLoading(false);
+    }
+  };
+
+  const handleSetNextNumber = async () => {
+    if (!seqPrefix || !seqNext) {
+      errorHandler.showError('Prefix and next number are required');
+      return;
+    }
+    try {
+      setSaving(true);
+      await accountingApi.setNextVoucherNumber(seqPrefix, seqNext, seqYear === '' ? undefined : Number(seqYear));
+      await loadSequences();
+      errorHandler.showSuccess('Next number updated');
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to update sequence');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1401,6 +1435,61 @@ export const AccountingSettingsPage: React.FC = () => {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Voucher Numbering Tab */}
+            {(activeTab as string) === 'numbering' && (
+              <div className="max-w-4xl mx-auto space-y-6">
+                <SectionHeader 
+                  title="Voucher Numbering" 
+                  description="Configure sequential voucher numbers per type/prefix"
+                  onSave={() => handleSave('numbering')}
+                  disabled={saving}
+                  saving={saving}
+                />
+
+                <div className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Prefix</label>
+                      <input className="w-full border rounded px-3 py-2 text-sm" value={seqPrefix} onChange={(e) => setSeqPrefix(e.target.value.toUpperCase())} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Year (optional)</label>
+                      <input className="w-full border rounded px-3 py-2 text-sm" value={seqYear} onChange={(e) => setSeqYear(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Next Number</label>
+                      <input type="number" className="w-full border rounded px-3 py-2 text-sm" value={seqNext} onChange={(e) => setSeqNext(Number(e.target.value))} />
+                    </div>
+                    <div className="flex items-end">
+                      <button onClick={handleSetNextNumber} className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2" disabled={saving}>
+                        <Save size={16} />
+                        Save Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-800 mb-3">Sequences</h3>
+                  {sequences.length === 0 ? (
+                    <p className="text-sm text-[var(--color-text-muted)]">No sequences yet.</p>
+                  ) : (
+                    <div className="divide-y">
+                      {sequences.map((s) => (
+                        <div key={s.id} className="py-2 flex justify-between items-center">
+                          <div>
+                            <div className="font-semibold">{s.prefix}{s.year ? `-${s.year}` : ''}</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Last: {s.lastNumber}</div>
+                          </div>
+                          <div className="text-xs text-[var(--color-text-muted)]">{s.updatedAt}</div>
                         </div>
                       ))}
                     </div>
