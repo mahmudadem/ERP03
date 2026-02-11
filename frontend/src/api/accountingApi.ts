@@ -484,6 +484,32 @@ export const accountingApi = {
   checkRateDeviation: (fromCurrency: string, toCurrency: string, proposedRate: number): Promise<RateDeviationDTO> => {
     return client.post('/tenant/accounting/exchange-rates/check-deviation', { fromCurrency, toCurrency, proposedRate });
   },
+
+  // --- BANK RECONCILIATION ---
+  importBankStatement: (payload: {
+    accountId: string;
+    bankName: string;
+    statementDate: string;
+    format: 'csv' | 'ofx';
+    content: string;
+    columnMap?: any;
+  }): Promise<BankStatementDTO> => {
+    return client.post('/tenant/accounting/bank-statements/import', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  listBankStatements: (accountId?: string): Promise<BankStatementDTO[]> => {
+    const params: any = {};
+    if (accountId) params.accountId = accountId;
+    return client.get('/tenant/accounting/bank-statements', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  getReconciliation: (accountId: string): Promise<{ reconciliation: ReconciliationDTO; statement: BankStatementDTO; unreconciledLedger: any[] }> => {
+    return client.get(`/tenant/accounting/reconciliation/${accountId}`).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  completeReconciliation: (accountId: string, payload: { statementId: string; adjustments?: any[] }): Promise<ReconciliationDTO> => {
+    return client.post(`/tenant/accounting/reconciliation/${accountId}/complete`, payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  manualMatch: (payload: { statementId: string; lineId: string; ledgerEntryId: string }): Promise<void> => {
+    return client.post('/tenant/accounting/reconciliation/match', payload).then(() => {});
+  },
 };
 
 // Currency DTOs
@@ -530,6 +556,42 @@ export interface VoucherSequenceDTO {
   lastNumber: number;
   format?: string;
   updatedAt?: string;
+}
+// Bank Reconciliation
+export interface BankStatementLineDTO {
+  id: string;
+  date: string;
+  description: string;
+  reference?: string;
+  amount: number;
+  balance?: number;
+  matchedLedgerEntryId?: string;
+  matchStatus: 'UNMATCHED' | 'AUTO_MATCHED' | 'MANUAL_MATCHED';
+}
+
+export interface BankStatementDTO {
+  id: string;
+  companyId: string;
+  accountId: string;
+  bankName: string;
+  statementDate: string;
+  importedAt: string;
+  importedBy: string;
+  lines: BankStatementLineDTO[];
+}
+
+export interface ReconciliationDTO {
+  id: string;
+  companyId: string;
+  accountId: string;
+  bankStatementId: string;
+  periodEnd: string;
+  bookBalance: number;
+  bankBalance: number;
+  adjustments: any[];
+  status: string;
+  completedAt?: string;
+  completedBy?: string;
 }
 // Cost Centers
 export interface CostCenterDTO {

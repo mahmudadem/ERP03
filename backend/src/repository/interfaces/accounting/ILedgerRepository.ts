@@ -67,4 +67,16 @@ export interface ILedgerRepository {
     toDate: string,
     options?: { includeUnposted?: boolean }
   ): Promise<AccountStatementData>;
+  getUnreconciledEntries(
+    companyId: string,
+    accountId: string,
+    fromDate?: string,
+    toDate?: string
+  ): Promise<LedgerEntry[]>;
+  markReconciled(
+    companyId: string,
+    ledgerEntryId: string,
+    reconciliationId: string,
+    bankStatementLineId: string
+  ): Promise<void>;
 }

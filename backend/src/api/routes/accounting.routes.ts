@@ -14,6 +14,7 @@ import { CurrencyController } from '../controllers/accounting/CurrencyController
 import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
 import { CostCenterController } from '../controllers/accounting/CostCenterController';
 import { VoucherSequenceController } from '../controllers/accounting/VoucherSequenceController';
+import { BankReconciliationController } from '../controllers/accounting/BankReconciliationController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -62,6 +63,12 @@ router.get('/reports/account-statement', permissionGuard('accounting.reports.gen
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
 router.get('/reports/cash-flow', permissionGuard('accounting.reports.cashFlow.view'), AccountingReportsController.getCashFlow);
+// Bank Reconciliation
+router.post('/bank-statements/import', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.import);
+router.get('/bank-statements', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.listStatements);
+router.get('/reconciliation/:accountId', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.getReconciliation);
+router.post('/reconciliation/:accountId/complete', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.complete);
+router.post('/reconciliation/match', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.manualMatch);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

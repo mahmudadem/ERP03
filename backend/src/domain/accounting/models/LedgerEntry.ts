@@ -17,5 +17,7 @@ export interface LedgerEntry {
   costCenterId?: string;
   metadata?: Record<string, any>;
   isPosted?: boolean;
+  reconciliationId?: string;
+  bankStatementLineId?: string;
   createdAt: any;
 }

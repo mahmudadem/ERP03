@@ -30,6 +30,8 @@ import { FirestoreCostCenterRepository, FirestoreExchangeRateRepository } from '
 import { FirestoreAccountingCurrencyRepository, FirestoreCompanyCurrencyRepository } from '../firestore/repositories/accounting/FirestoreCurrencyRepositories';
 import { FirestoreLedgerRepository } from '../firestore/repositories/accounting/FirestoreLedgerRepository';
 import { FirestoreFiscalYearRepository } from '../firestore/repositories/accounting/FirestoreFiscalYearRepository';
+import { FirestoreBankStatementRepository } from '../firestore/repositories/accounting/FirestoreBankStatementRepository';
+import { FirestoreReconciliationRepository } from '../firestore/repositories/accounting/FirestoreReconciliationRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
 import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
@@ -141,6 +143,8 @@ export const diContainer = {
   get fiscalYearRepository(): AccRepo.IFiscalYearRepository { return new FirestoreFiscalYearRepository(getDb()); },
   get accountingCurrencyRepository(): AccRepo.ICurrencyRepository { return new FirestoreAccountingCurrencyRepository(settingsResolver); },
   get companyCurrencyRepository(): AccRepo.ICompanyCurrencyRepository { return new FirestoreCompanyCurrencyRepository(settingsResolver); },
+  get bankStatementRepository(): AccRepo.IBankStatementRepository { return new FirestoreBankStatementRepository(getDb()); },
+  get reconciliationRepository(): AccRepo.IReconciliationRepository { return new FirestoreReconciliationRepository(getDb()); },
 
   // INVENTORY
   get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },

@@ -19,6 +19,7 @@ const AccountStatementPage = lazy(() => import('../modules/accounting/pages/Acco
 const CostCentersPage = lazy(() => import('../modules/accounting/pages/CostCentersPage'));
 const CashFlowPage = lazy(() => import('../modules/accounting/pages/CashFlowPage'));
 const JournalPage = lazy(() => import('../modules/accounting/pages/JournalPage'));
+const BankReconciliationPage = lazy(() => import('../modules/accounting/pages/BankReconciliationPage'));
 
 // Initialization Wizards
 const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
@@ -112,6 +113,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/balance-sheet', label: 'Balance Sheet', component: BalanceSheetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.balanceSheet.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/general-ledger', label: 'General Ledger', component: GeneralLedgerPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/journal', label: 'Journal', component: JournalPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/bank-reconciliation', label: 'Bank Reconciliation', component: BankReconciliationPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/cash-flow', label: 'Cash Flow', component: CashFlowPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.cashFlow.view', requiredModule: 'accounting' },
   { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },

@@ -108,6 +108,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           costCenterId: line.costCenterId || null,
           metadata: line.metadata || {},
           isPosted: true,
+          reconciliationId: null,
+          bankStatementLineId: null,
           createdAt: serverTimestamp(),
         };
 
@@ -339,5 +341,47 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       ref = ref.where('date', '<=', Timestamp.fromDate(end));
     }
     return ref.orderBy('date', 'asc').get();
+  }
+
+  async getUnreconciledEntries(
+    companyId: string,
+    accountId: string,
+    fromDate?: string,
+    toDate?: string
+  ): Promise<LedgerEntry[]> {
+    try {
+      let query: admin.firestore.Query = this.col(companyId).where('accountId', '==', accountId);
+      if (fromDate) {
+        query = query.where('date', '>=', toTimestampBoundary(fromDate));
+      }
+      if (toDate) {
+        query = query.where('date', '<=', toTimestampBoundary(toDate, true));
+      }
+      query = query.where('isPosted', '==', true).where('reconciliationId', '==', null);
+      const snap = await query.orderBy('date', 'asc').get();
+      return snap.docs.map((d) => d.data() as LedgerEntry);
+    } catch (error) {
+      throw new InfrastructureError('Failed to get unreconciled ledger entries', error);
+    }
+  }
+
+  async markReconciled(
+    companyId: string,
+    ledgerEntryId: string,
+    reconciliationId: string,
+    bankStatementLineId: string
+  ): Promise<void> {
+    try {
+      await this.col(companyId).doc(ledgerEntryId).set(
+        {
+          reconciliationId,
+          bankStatementLineId,
+          metadata: { reconciliationId, bankStatementLineId }
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      throw new InfrastructureError('Failed to mark ledger entry as reconciled', error);
+    }
   }
 }
