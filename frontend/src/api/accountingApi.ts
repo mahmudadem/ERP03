@@ -510,6 +510,27 @@ export const accountingApi = {
   manualMatch: (payload: { statementId: string; lineId: string; ledgerEntryId: string }): Promise<void> => {
     return client.post('/tenant/accounting/reconciliation/match', payload).then(() => {});
   },
+
+  // --- BUDGETS ---
+  listBudgets: (fiscalYearId?: string): Promise<BudgetDTO[]> => {
+    const params: any = {};
+    if (fiscalYearId) params.fiscalYearId = fiscalYearId;
+    return client.get('/tenant/accounting/budgets', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  createBudget: (payload: { fiscalYearId: string; name: string; version?: number; lines: BudgetLineDTO[] }): Promise<BudgetDTO> => {
+    return client.post('/tenant/accounting/budgets', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  updateBudget: (id: string, payload: Partial<{ fiscalYearId: string; name: string; version?: number; lines: BudgetLineDTO[] }>): Promise<BudgetDTO> => {
+    return client.put(`/tenant/accounting/budgets/${id}`, payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  approveBudget: (id: string): Promise<void> => {
+    return client.post(`/tenant/accounting/budgets/${id}/approve`).then(() => {});
+  },
+  budgetVsActual: (budgetId: string, costCenterId?: string): Promise<any[]> => {
+    const params: any = { budgetId };
+    if (costCenterId) params.costCenterId = costCenterId;
+    return client.get('/tenant/accounting/reports/budget-vs-actual', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
 };
 
 // Currency DTOs
@@ -592,6 +613,28 @@ export interface ReconciliationDTO {
   status: string;
   completedAt?: string;
   completedBy?: string;
+}
+
+// Budgets
+export interface BudgetLineDTO {
+  accountId: string;
+  costCenterId?: string;
+  monthlyAmounts: number[];
+  annualTotal: number;
+}
+
+export interface BudgetDTO {
+  id: string;
+  companyId: string;
+  fiscalYearId: string;
+  name: string;
+  version: number;
+  status: 'DRAFT' | 'APPROVED' | 'CLOSED';
+  lines: BudgetLineDTO[];
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 // Cost Centers
 export interface CostCenterDTO {

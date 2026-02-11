@@ -15,6 +15,7 @@ import { FiscalYearController } from '../controllers/accounting/FiscalYearContro
 import { CostCenterController } from '../controllers/accounting/CostCenterController';
 import { VoucherSequenceController } from '../controllers/accounting/VoucherSequenceController';
 import { BankReconciliationController } from '../controllers/accounting/BankReconciliationController';
+import { BudgetController } from '../controllers/accounting/BudgetController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -63,12 +64,18 @@ router.get('/reports/account-statement', permissionGuard('accounting.reports.gen
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
 router.get('/reports/cash-flow', permissionGuard('accounting.reports.cashFlow.view'), AccountingReportsController.getCashFlow);
+router.get('/reports/budget-vs-actual', permissionGuard('accounting.reports.trialBalance.view'), BudgetController.budgetVsActual);
 // Bank Reconciliation
 router.post('/bank-statements/import', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.import);
 router.get('/bank-statements', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.listStatements);
 router.get('/reconciliation/:accountId', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.getReconciliation);
 router.post('/reconciliation/:accountId/complete', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.complete);
 router.post('/reconciliation/match', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.manualMatch);
+// Budgets
+router.get('/budgets', permissionGuard('accounting.settings.read'), BudgetController.list);
+router.post('/budgets', permissionGuard('accounting.settings.write'), BudgetController.create);
+router.put('/budgets/:id', permissionGuard('accounting.settings.write'), BudgetController.update);
+router.post('/budgets/:id/approve', permissionGuard('accounting.settings.write'), BudgetController.approve);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

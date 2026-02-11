@@ -10,4 +10,5 @@ export * from './IFiscalYearRepository';
 export * from './IVoucherSequenceRepository';
 export * from './IBankStatementRepository';
 export * from './IReconciliationRepository';
+export * from './IBudgetRepository';
 
