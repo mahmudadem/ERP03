@@ -1,27 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { accountingApi, CompanyGroupDTO } from '../../../api/accountingApi';
-
-type Template = {
-  id: string;
-  name: string;
-  sourceVoucherId: string;
-  frequency: string;
-  dayOfMonth: number;
-  startDate: string;
-  endDate?: string;
-  maxOccurrences?: number;
-  occurrencesGenerated: number;
-  nextGenerationDate: string;
-  status: string;
-};
+import { accountingApi, RecurringVoucherTemplateDTO } from '../../../api/accountingApi';
 
 const RecurringVouchersPage: React.FC = () => {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [form, setForm] = useState<Partial<Template>>({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: new Date().toISOString().slice(0, 10) });
+  const [templates, setTemplates] = useState<RecurringVoucherTemplateDTO[]>([]);
+  const [form, setForm] = useState<Partial<RecurringVoucherTemplateDTO>>({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: new Date().toISOString().slice(0, 10) });
   const [message, setMessage] = useState<string | null>(null);
 
   const load = async () => {
-    const data = await accountingApi.get('/tenant/accounting/recurring-vouchers').then((r: any) => r.data.data ?? r.data ?? r);
+    const data = await accountingApi.listRecurringVouchers();
     setTemplates(data);
   };
 
@@ -30,22 +16,22 @@ const RecurringVouchersPage: React.FC = () => {
   }, []);
 
   const create = async () => {
-    await accountingApi.post('/tenant/accounting/recurring-vouchers', form);
+    await accountingApi.createRecurringVoucher(form as any);
     setMessage('Template created');
-    setForm({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: form.startDate });
+    setForm({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: form.startDate || new Date().toISOString().slice(0, 10) });
     load();
   };
 
   const pause = async (id: string) => {
-    await accountingApi.post(`/tenant/accounting/recurring-vouchers/${id}/pause`, {});
+    await accountingApi.pauseRecurringVoucher(id);
     load();
   };
   const resume = async (id: string) => {
-    await accountingApi.post(`/tenant/accounting/recurring-vouchers/${id}/resume`, {});
+    await accountingApi.resumeRecurringVoucher(id);
     load();
   };
   const generate = async () => {
-    await accountingApi.post('/tenant/accounting/recurring-vouchers/generate', { asOfDate: new Date().toISOString().slice(0, 10) });
+    await accountingApi.generateRecurringVouchers();
     setMessage('Generation triggered');
     load();
   };

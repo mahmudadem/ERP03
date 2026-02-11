@@ -549,6 +549,43 @@ export const accountingApi = {
     const params = { groupId, asOfDate };
     return client.get('/tenant/accounting/reports/consolidated-trial-balance', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
+
+  // --- RECURRING VOUCHERS ---
+  listRecurringVouchers: (): Promise<RecurringVoucherTemplateDTO[]> => {
+    return client.get('/tenant/accounting/recurring-vouchers').then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  createRecurringVoucher: (payload: {
+    name: string;
+    sourceVoucherId: string;
+    frequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+    dayOfMonth: number;
+    startDate: string;
+    endDate?: string;
+    maxOccurrences?: number;
+  }): Promise<RecurringVoucherTemplateDTO> => {
+    return client.post('/tenant/accounting/recurring-vouchers', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  updateRecurringVoucher: (id: string, payload: Partial<{
+    name: string;
+    sourceVoucherId: string;
+    frequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+    dayOfMonth: number;
+    startDate: string;
+    endDate?: string;
+    maxOccurrences?: number;
+  }>): Promise<RecurringVoucherTemplateDTO> => {
+    return client.put(`/tenant/accounting/recurring-vouchers/${id}`, payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  pauseRecurringVoucher: (id: string): Promise<RecurringVoucherTemplateDTO> => {
+    return client.post(`/tenant/accounting/recurring-vouchers/${id}/pause`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  resumeRecurringVoucher: (id: string): Promise<RecurringVoucherTemplateDTO> => {
+    return client.post(`/tenant/accounting/recurring-vouchers/${id}/resume`, {}).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  generateRecurringVouchers: (asOfDate?: string): Promise<any[]> => {
+    return client.post('/tenant/accounting/recurring-vouchers/generate', { asOfDate: asOfDate || new Date().toISOString().slice(0, 10) })
+      .then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
 };
 
 // Currency DTOs
@@ -691,6 +728,23 @@ export interface ConsolidatedTrialBalanceDTO {
     balance: number;
   }[];
   totals: { debit: number; credit: number; balance: number };
+}
+export interface RecurringVoucherTemplateDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  sourceVoucherId: string;
+  frequency: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  dayOfMonth: number;
+  startDate: string;
+  endDate?: string;
+  maxOccurrences?: number;
+  occurrencesGenerated: number;
+  nextGenerationDate: string;
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 // Cost Centers
 export interface CostCenterDTO {
