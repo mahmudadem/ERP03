@@ -241,7 +241,7 @@ const ProfitAndLossPage: React.FC = () => {
           <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
             Report Period: {formatDate(data.period.from)} to {formatDate(data.period.to)}
           </div>
-        </>
+        </div>
       )}
 
       {/* Loading State */}

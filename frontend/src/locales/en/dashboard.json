@@ -1,0 +1,13 @@
+{
+  "title": "Dashboard",
+  "metric": "Metric {{number}}",
+  "amountLabel": "Amount",
+  "growth": "+{{value}} from last month",
+  "activity": "Activity Overview",
+  "chartPlaceholder": "Chart Placeholder",
+  "quickActions": "Quick Actions",
+  "createInvoice": "Create Invoice",
+  "addInventory": "Add Inventory",
+  "asOf": "As of {{date}}",
+  "currencyLabel": "USD"
+}

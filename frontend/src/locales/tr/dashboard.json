@@ -1,0 +1,13 @@
+{
+  "title": "Gösterge Paneli",
+  "metric": "Metri̇k {{number}}",
+  "amountLabel": "Tutar",
+  "growth": "Geçen aya göre +{{value}}",
+  "activity": "Aktivite Özeti",
+  "chartPlaceholder": "Grafik Alanı",
+  "quickActions": "Hızlı İşlemler",
+  "createInvoice": "Fatura Oluştur",
+  "addInventory": "Stok Ekle",
+  "asOf": "{{date}} itibariyle",
+  "currencyLabel": "USD"
+}

@@ -1,0 +1,13 @@
+{
+  "title": "لوحة التحكم",
+  "metric": "المؤشر {{number}}",
+  "amountLabel": "المبلغ",
+  "growth": "+{{value}} عن الشهر الماضي",
+  "activity": "نظرة عامة على النشاط",
+  "chartPlaceholder": "مساحة للرسم البياني",
+  "quickActions": "إجراءات سريعة",
+  "createInvoice": "إنشاء فاتورة",
+  "addInventory": "إضافة مخزون",
+  "asOf": "حتى تاريخ {{date}}",
+  "currencyLabel": "دولار"
+}
