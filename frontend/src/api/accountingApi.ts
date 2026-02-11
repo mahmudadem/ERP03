@@ -419,6 +419,9 @@ export const accountingApi = {
     if (to) params.to = to;
     return client.get('/tenant/accounting/reports/cash-flow', { params }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
+  getJournal: (params: any): Promise<any[]> => {
+    return client.get('/tenant/accounting/reports/journal', { params }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
 
   listVoucherSequences: (): Promise<VoucherSequenceDTO[]> => {
     return client.get('/tenant/accounting/voucher-sequences').then((r: any) => (r?.data?.data ?? r?.data ?? r));

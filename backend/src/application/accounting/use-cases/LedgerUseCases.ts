@@ -225,12 +225,56 @@ export class GetBalanceSheetUseCase {
 
 export class GetJournalUseCase {
   constructor(
-    private ledgerRepo: ILedgerRepository,
+    private voucherRepo: any,
+    private accountRepo: any,
     private permissionChecker: PermissionChecker
   ) {}
 
   async execute(companyId: string, userId: string, filters: GLFilters) {
-    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
-    return this.ledgerRepo.getGeneralLedger(companyId, filters);
+    await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
+
+    const accounts = this.accountRepo.getAccounts
+      ? await this.accountRepo.getAccounts(companyId)
+      : await this.accountRepo.list(companyId);
+    const accountMap = new Map(accounts.map((a: any) => [a.id, a]));
+
+    const vouchers = await this.voucherRepo.findByDateRange(
+      companyId,
+      (filters as any).fromDate || '1900-01-01',
+      (filters as any).toDate || new Date().toISOString().split('T')[0]
+    );
+    const filtered = (filters as any).voucherType
+      ? vouchers.filter((v: any) => (v.type || '').toString() === (filters as any).voucherType)
+      : vouchers;
+
+    return filtered.map((v: any) => {
+      const lines = (v.lines || []).map((l: any) => {
+        const acc = accountMap.get(l.accountId) as any;
+        return {
+          accountId: l.accountId,
+          accountCode: acc?.userCode || acc?.code || l.accountId,
+          accountName: acc?.name || 'Unknown',
+          description: l.notes || l.description || '',
+          debit: l.debitAmount || 0,
+          credit: l.creditAmount || 0,
+          currency: l.currency,
+          exchangeRate: l.exchangeRate
+        };
+      });
+      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      return {
+        voucherId: v.id,
+        voucherNo: v.voucherNo || v.id,
+        date: v.date,
+        type: v.type,
+        description: v.description,
+        status: v.status,
+        currency: v.currency,
+        lines,
+        totalDebit,
+        totalCredit
+      };
+    });
   }
 }

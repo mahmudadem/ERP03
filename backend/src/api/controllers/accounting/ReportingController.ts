@@ -87,7 +87,7 @@ export class ReportingController {
         toDate: req.query.toDate as string,
         voucherType: req.query.voucherType as string,
       };
-      const useCase = new GetJournalUseCase(diContainer.ledgerRepository, permissionChecker);
+      const useCase = new GetJournalUseCase(diContainer.voucherRepository, diContainer.accountRepository, permissionChecker);
       const data = await useCase.execute(companyId, userId, filters);
       res.json({ success: true, data });
     } catch (err) {
