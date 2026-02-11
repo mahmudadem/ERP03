@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { clsx } from 'clsx';
 import * as Icons from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarItemData {
   path?: string;
@@ -29,6 +30,9 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
   defaultExpanded = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
+  const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   // Resolve Icon from name if provided
   const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
@@ -62,10 +66,10 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
         
         {isOpen ? (
           <>
-            <span className="truncate flex-1 text-left">{title}</span>
+            <span className={clsx("truncate flex-1", isRtl ? "text-right" : "text-left")}>{title}</span>
             {isExpanded 
               ? <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" /> 
-              : <ChevronRight className="w-3 h-3 text-gray-400 shrink-0" />
+              : <InlineChevron className="w-3 h-3 text-gray-400 shrink-0" />
             }
           </>
         ) : (
@@ -79,7 +83,11 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
       {isExpanded && (
         <div className={clsx(
           "space-y-0.5 mt-1 transition-all duration-300",
-          isOpen && "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+          isOpen && (
+            isRtl
+              ? "mr-6 border-r border-[var(--color-border)] pr-[1px]"
+              : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+          )
         )}>
           {items.map((item, idx) => (
             <SidebarItem

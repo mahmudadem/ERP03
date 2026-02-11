@@ -11,11 +11,21 @@ import React from 'react'; // Added React import for React.useEffect
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { accountingApi } from '../api/accountingApi';
 import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintView';
+import { useTranslation } from 'react-i18next';
 
 export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher, post, cancel, reverse } = useVoucherActions();
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
+
+  React.useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   
   // Printing State (Moved to Shell for global access)
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
@@ -87,9 +97,15 @@ export const AppShell: React.FC = () => {
         {/* Main Content Area */}
         <div 
           className={clsx(
-            "flex-1 flex flex-col h-screen transition-all duration-300",
-            isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+            "flex-1 flex flex-col h-screen transition-all duration-300"
           )}
+          style={
+            isDesktop
+              ? (isRtl 
+                ? { marginRight: isSidebarOpen ? '14.4rem' : '4.5rem', marginLeft: 0 } 
+                : { marginLeft: isSidebarOpen ? '14.4rem' : '4.5rem', marginRight: 0 })
+              : undefined
+          }
         >
           <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 

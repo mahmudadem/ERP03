@@ -6,6 +6,7 @@ import { LayoutDashboard } from 'lucide-react';
 import { SidebarItem } from '../components/navigation/SidebarItem';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
   const sections = useSidebarConfig();
   const { sidebarMode, sidebarPinned, toggleSidebarPinned } = useUserPreferences();
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
   const toggleSidebar = () => {
     if (onToggle) onToggle();
   };
@@ -23,9 +26,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-out flex flex-col",
-        "bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]",
-        isOpen ? 'w-64' : 'w-24'
+        "fixed inset-y-0 z-40 transition-all duration-300 ease-out flex flex-col",
+        "bg-[var(--color-bg-primary)] border-[var(--color-border)]",
+        isOpen ? 'w-64' : 'w-24',
+        isRtl ? 'right-0 border-l' : 'left-0 border-r'
       )}
     >
       {/* Header / Logo Area */}

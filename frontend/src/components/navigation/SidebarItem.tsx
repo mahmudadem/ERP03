@@ -2,9 +2,10 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import * as Icons from 'lucide-react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { Portal } from '@headlessui/react';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarItemProps {
   path?: string;
@@ -31,6 +32,9 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 }) => {
   const location = useLocation();
   const { sidebarMode } = useUserPreferences();
+  const { i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
+  const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
   
   // Resolve Icon from name if provided
   const ResolvedIcon = iconName ? (Icons as any)[iconName] : null;
@@ -121,7 +125,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk) */}
       {!isFlyout && (active || isAnyChildActive) && (isOpen ? (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-r-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
+        <span
+          className={clsx(
+            "absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]",
+            isRtl ? "right-0 rounded-l-full" : "left-0 rounded-r-full"
+          )}
+        />
       ) : (
         <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-t-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
       ))}
@@ -168,7 +177,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           {(!isSubmenusMode && isExpanded) ? (
             <ChevronDown className="w-4 h-4 text-[var(--color-text-muted)]" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200 group-hover:translate-x-0.5" />
+            <InlineChevron
+              className={clsx(
+                "w-4 h-4 text-[var(--color-text-muted)] transition-transform duration-200",
+                isRtl ? "group-hover:-translate-x-0.5" : "group-hover:translate-x-0.5"
+              )}
+            />
           )}
         </div>
       )}
@@ -184,7 +198,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <button className="w-full text-left outline-none group">
+        <button className={clsx("w-full outline-none group", isRtl ? "text-right" : "text-left")}>
           {itemContent}
         </button>
 
@@ -194,11 +208,13 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               className={clsx(
                 "fixed z-[100] rounded-xl shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
                 "backdrop-blur-md bg-[var(--color-bg-primary)]/95 border-[var(--color-border)]",
-                "animate-in fade-in slide-in-from-left-1 duration-200"
+                "animate-in fade-in duration-200"
               )}
               style={{ 
                 ...(opensUpward ? { bottom: (window.innerHeight - coords.bottom) - 4 } : { top: coords.top - 4 }),
-                left: coords.left + (isFlyout ? 1 : 11) 
+                ...(isRtl
+                  ? { right: (window.innerWidth - coords.left) + (isFlyout ? 1 : 11) }
+                  : { left: coords.left + (isFlyout ? 1 : 11) })
               }}
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
@@ -206,7 +222,9 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               {/* Safe Zone Bridge */}
               <div className={clsx(
                 "absolute top-0 bottom-0 w-[22px] bg-transparent",
-                isFlyout ? "left-[-8px]" : "left-[-22px]"
+                isFlyout 
+                  ? (isRtl ? "right-[-8px]" : "left-[-8px]") 
+                  : (isRtl ? "right-[-22px]" : "left-[-22px]")
               )} />
               
               <div className="relative z-10 space-y-0.5">
@@ -246,7 +264,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
             }
             if (onClick) onClick();
           }}
-          className="w-full text-left outline-none"
+          className={clsx("w-full outline-none", isRtl ? "text-right" : "text-left")}
           title={!isOpen ? label : undefined}
         >
           {itemContent}
@@ -264,7 +282,12 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 
       {/* Render children inline (Classic Mode) */}
       {hasChildren && isExpanded && isOpen && !isSubmenusMode && (
-        <div className="ml-6 mt-1 space-y-0.5 border-l border-[var(--color-border)] pl-[1px] transition-all duration-300">
+        <div
+          className={clsx(
+            "mt-1 space-y-0.5 transition-all duration-300",
+            isRtl ? "mr-6 border-r border-[var(--color-border)] pr-[1px]" : "ml-6 border-l border-[var(--color-border)] pl-[1px]"
+          )}
+        >
           {children.map((child, idx) => (
             <SidebarItem
               key={child.path || idx}
