@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { accountingApi, BudgetDTO, BudgetLineDTO } from '../../../api/accountingApi';
-import { accountingColors } from '../../core/utils/colors';
 
 const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 

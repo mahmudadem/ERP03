@@ -113,7 +113,7 @@ const BalanceSheetPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const baseCurrency = data?.baseCurrency || company?.baseCurrency || company?.currency || '';
+  const baseCurrency = data?.baseCurrency || company?.baseCurrency || '';
 
   const fetchReport = async () => {
     setLoading(true);

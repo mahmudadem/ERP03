@@ -3,7 +3,11 @@ import { accountingApi, RecurringVoucherTemplateDTO } from '../../../api/account
 
 const RecurringVouchersPage: React.FC = () => {
   const [templates, setTemplates] = useState<RecurringVoucherTemplateDTO[]>([]);
-  const [form, setForm] = useState<Partial<RecurringVoucherTemplateDTO>>({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState<Partial<RecurringVoucherTemplateDTO>>({
+    frequency: 'MONTHLY',
+    dayOfMonth: 1,
+    startDate: new Date().toISOString().slice(0, 10)
+  });
   const [message, setMessage] = useState<string | null>(null);
 
   const load = async () => {
@@ -44,7 +48,11 @@ const RecurringVouchersPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <input className="border rounded px-2 py-1" placeholder="Name" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input className="border rounded px-2 py-1" placeholder="Source Voucher ID" value={form.sourceVoucherId || ''} onChange={(e) => setForm({ ...form, sourceVoucherId: e.target.value })} />
-          <select className="border rounded px-2 py-1" value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })}>
+          <select
+            className="border rounded px-2 py-1"
+            value={form.frequency}
+            onChange={(e) => setForm({ ...form, frequency: e.target.value as RecurringVoucherTemplateDTO['frequency'] })}
+          >
             <option value="MONTHLY">Monthly</option>
             <option value="QUARTERLY">Quarterly</option>
             <option value="ANNUALLY">Annually</option>
