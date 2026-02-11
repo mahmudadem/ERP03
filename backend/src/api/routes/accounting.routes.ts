@@ -18,6 +18,8 @@ import { BankReconciliationController } from '../controllers/accounting/BankReco
 import { BudgetController } from '../controllers/accounting/BudgetController';
 import { ConsolidationController } from '../controllers/accounting/ConsolidationController';
 import { RecurringVoucherController } from '../controllers/accounting/RecurringVoucherController';
+import { AttachmentController } from '../controllers/accounting/AttachmentController';
+import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -90,6 +92,13 @@ router.put('/recurring-vouchers/:id', permissionGuard('accounting.vouchers.creat
 router.post('/recurring-vouchers/:id/pause', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.pause);
 router.post('/recurring-vouchers/:id/resume', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.resume);
 router.post('/recurring-vouchers/generate', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.generate);
+
+// Attachments
+const upload = multer({ storage: multer.memoryStorage() });
+router.get('/vouchers/:id/attachments', permissionGuard('accounting.vouchers.view'), AttachmentController.list);
+router.post('/vouchers/:id/attachments', permissionGuard('accounting.vouchers.edit'), upload.single('file'), AttachmentController.upload);
+router.get('/vouchers/:id/attachments/:aid', permissionGuard('accounting.vouchers.view'), AttachmentController.download);
+router.delete('/vouchers/:id/attachments/:aid', permissionGuard('accounting.vouchers.edit'), AttachmentController.remove);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

@@ -11,6 +11,7 @@ import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { RequirePermission } from '../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../services/errorHandler';
 import { getCompanyToday } from '../../../utils/dateUtils';
+import attachmentsApi from '../../../api/attachmentsApi';
 
 const VoucherEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,8 @@ const VoucherEditorPage: React.FC = () => {
   const [initialValues, setInitialValues] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [currentVoucher, setCurrentVoucher] = useState<any>(null); 
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (id && id !== 'new') {
@@ -49,6 +52,7 @@ const VoucherEditorPage: React.FC = () => {
       setDataLoading(true);
       const voucher = await accountingApi.getVoucher(voucherId);
       setCurrentVoucher(voucher);
+      loadAttachments(voucherId);
       
       setInitialValues({
         header: {
@@ -235,6 +239,36 @@ const VoucherEditorPage: React.FC = () => {
     'cost-center-selector': CostCenterSelector
   };
 
+  const loadAttachments = async (voucherId: string) => {
+    try {
+      const files = await attachmentsApi.list(voucherId);
+      setAttachments(files);
+    } catch (err: any) {
+      // silent
+    }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!id || id === 'new') return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await attachmentsApi.upload(id, file);
+      loadAttachments(id);
+    } catch (err: any) {
+      errorHandler.showError(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!id || id === 'new') return;
+    await attachmentsApi.remove(id, attachmentId);
+    loadAttachments(id);
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       <div className="flex justify-between items-center bg-white p-4 rounded border border-gray-200 shadow-sm">
@@ -278,6 +312,35 @@ const VoucherEditorPage: React.FC = () => {
         onSubmit={isReadOnly ? () => {} : handleSave}
         customComponents={customComponents} 
       />
+
+      {id && id !== 'new' && (
+        <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-800">Attachments</h3>
+            <label className={`btn btn-secondary ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+              {uploading ? 'Uploading...' : 'Upload'}
+              <input type="file" className="hidden" onChange={handleUpload} disabled={uploading || isReadOnly} />
+            </label>
+          </div>
+          {attachments.length === 0 && <div className="text-sm text-gray-500">No attachments yet.</div>}
+          <ul className="divide-y divide-gray-200">
+            {attachments.map((a) => (
+              <li key={a.id} className="flex items-center justify-between py-2">
+                <div>
+                  <div className="text-sm font-medium">{a.name}</div>
+                  <div className="text-xs text-gray-500">{Math.round(a.size / 1024)} KB • {a.type}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a className="text-blue-600 text-sm" href={`/tenant/accounting/vouchers/${id}/attachments/${a.id}`} target="_blank" rel="noreferrer">Download</a>
+                  {!isReadOnly && (
+                    <button className="text-red-600 text-sm" onClick={() => handleDeleteAttachment(a.id)}>Delete</button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       
       {isReadOnly && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm">
