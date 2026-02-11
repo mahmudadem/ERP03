@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase } from '../../../application/accounting/use-cases/ReportingUseCases';
 import { GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { GetCashFlowStatementUseCase } from '../../../application/accounting/use-cases/CashFlowUseCases';
+import { AgingReportUseCase } from '../../../application/accounting/use-cases/AgingReportUseCase';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
@@ -211,6 +212,21 @@ export class AccountingReportsController {
         permissionChecker
       );
       const data = await useCase.execute(companyId, userId, (from as string) || '', (to as string) || '');
+      (res as any).status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getAgingReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user?.companyId || (req as any).companyId;
+      const userId = (req as any).user?.uid;
+      if (!companyId) throw ApiError.badRequest('Company Context Missing');
+      if (!userId) throw ApiError.unauthorized('User missing');
+      const { type = 'AR', asOfDate, accountId } = req.query;
+      const useCase = new AgingReportUseCase(diContainer.ledgerRepository, diContainer.accountRepository, permissionChecker);
+      const data = await useCase.execute(companyId, userId, (type as any) || 'AR', (asOfDate as string) || new Date().toISOString().slice(0, 10), accountId as string | undefined);
       (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);

@@ -64,6 +64,7 @@ router.get('/reports/account-statement', permissionGuard('accounting.reports.gen
 router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger.view'), ReportingController.journal);
 router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
 router.get('/reports/cash-flow', permissionGuard('accounting.reports.cashFlow.view'), AccountingReportsController.getCashFlow);
+router.get('/reports/aging', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getAgingReport);
 router.get('/reports/budget-vs-actual', permissionGuard('accounting.reports.trialBalance.view'), BudgetController.budgetVsActual);
 // Bank Reconciliation
 router.post('/bank-statements/import', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.import);

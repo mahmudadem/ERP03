@@ -531,6 +531,12 @@ export const accountingApi = {
     if (costCenterId) params.costCenterId = costCenterId;
     return client.get('/tenant/accounting/reports/budget-vs-actual', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
+
+  getAgingReport: (type: 'AR' | 'AP', asOfDate: string, accountId?: string): Promise<AgingReportData> => {
+    const params: any = { type, asOfDate };
+    if (accountId) params.accountId = accountId;
+    return client.get('/tenant/accounting/reports/aging', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
 };
 
 // Currency DTOs
@@ -635,6 +641,24 @@ export interface BudgetDTO {
   createdBy: string;
   updatedAt?: string;
   updatedBy?: string;
+}
+
+export interface AgingReportRow {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  bucketAmounts: number[];
+  total: number;
+  entries?: { id: string; date: string; description?: string; amount: number; days: number }[];
+}
+
+export interface AgingReportData {
+  asOfDate: string;
+  type: 'AR' | 'AP';
+  buckets: string[];
+  accounts: AgingReportRow[];
+  totals: number[];
+  grandTotal: number;
 }
 // Cost Centers
 export interface CostCenterDTO {

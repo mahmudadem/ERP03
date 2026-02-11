@@ -21,6 +21,7 @@ const CashFlowPage = lazy(() => import('../modules/accounting/pages/CashFlowPage
 const JournalPage = lazy(() => import('../modules/accounting/pages/JournalPage'));
 const BudgetPage = lazy(() => import('../modules/accounting/pages/BudgetPage'));
 const BudgetVsActualPage = lazy(() => import('../modules/accounting/pages/BudgetVsActualPage'));
+const AgingReportPage = lazy(() => import('../modules/accounting/pages/AgingReportPage'));
 const BankReconciliationPage = lazy(() => import('../modules/accounting/pages/BankReconciliationPage'));
 
 // Initialization Wizards
@@ -120,6 +121,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/cash-flow', label: 'Cash Flow', component: CashFlowPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.cashFlow.view', requiredModule: 'accounting' },
   { path: '/accounting/budgets', label: 'Budgets', component: BudgetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.settings.read', requiredModule: 'accounting' },
   { path: '/accounting/reports/budget-vs-actual', label: 'Budget vs Actual', component: BudgetVsActualPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/aging', label: 'Aging', component: AgingReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
