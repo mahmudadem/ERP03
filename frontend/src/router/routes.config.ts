@@ -23,6 +23,7 @@ const BudgetPage = lazy(() => import('../modules/accounting/pages/BudgetPage'));
 const BudgetVsActualPage = lazy(() => import('../modules/accounting/pages/BudgetVsActualPage'));
 const AgingReportPage = lazy(() => import('../modules/accounting/pages/AgingReportPage'));
 const ConsolidatedTrialBalancePage = lazy(() => import('../modules/accounting/pages/ConsolidatedTrialBalancePage'));
+const RecurringVouchersPage = lazy(() => import('../modules/accounting/pages/RecurringVouchersPage'));
 const BankReconciliationPage = lazy(() => import('../modules/accounting/pages/BankReconciliationPage'));
 
 // Initialization Wizards
@@ -124,6 +125,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/budget-vs-actual', label: 'Budget vs Actual', component: BudgetVsActualPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/aging', label: 'Aging', component: AgingReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/consolidated-trial-balance', label: 'Consolidated TB', component: ConsolidatedTrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
+  { path: '/accounting/recurring-vouchers', label: 'Recurring Vouchers', component: RecurringVouchersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },

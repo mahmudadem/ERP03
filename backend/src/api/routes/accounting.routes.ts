@@ -17,6 +17,7 @@ import { VoucherSequenceController } from '../controllers/accounting/VoucherSequ
 import { BankReconciliationController } from '../controllers/accounting/BankReconciliationController';
 import { BudgetController } from '../controllers/accounting/BudgetController';
 import { ConsolidationController } from '../controllers/accounting/ConsolidationController';
+import { RecurringVoucherController } from '../controllers/accounting/RecurringVoucherController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
@@ -82,6 +83,13 @@ router.post('/budgets/:id/approve', permissionGuard('accounting.settings.write')
 router.post('/company-groups', permissionGuard('accounting.settings.write'), ConsolidationController.createGroup);
 router.get('/company-groups', permissionGuard('accounting.settings.read'), ConsolidationController.listGroups);
 router.get('/reports/consolidated-trial-balance', permissionGuard('accounting.reports.trialBalance.view'), ConsolidationController.consolidatedTrialBalance);
+// Recurring Vouchers
+router.get('/recurring-vouchers', permissionGuard('accounting.vouchers.view'), RecurringVoucherController.list);
+router.post('/recurring-vouchers', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.create);
+router.put('/recurring-vouchers/:id', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.update);
+router.post('/recurring-vouchers/:id/pause', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.pause);
+router.post('/recurring-vouchers/:id/resume', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.resume);
+router.post('/recurring-vouchers/generate', permissionGuard('accounting.vouchers.create'), RecurringVoucherController.generate);
 
 // Designer (Module-specific)
 router.get('/designer/voucher-types', permissionGuard('accounting.designer.view'), AccountingDesignerController.getVoucherTypes);

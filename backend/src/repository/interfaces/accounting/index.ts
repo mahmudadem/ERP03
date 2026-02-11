@@ -12,4 +12,5 @@ export * from './IBankStatementRepository';
 export * from './IReconciliationRepository';
 export * from './IBudgetRepository';
 export * from './ICompanyGroupRepository';
+export * from './IRecurringVoucherTemplateRepository';
 
