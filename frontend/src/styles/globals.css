@@ -27,6 +27,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* RTL support */
+html[dir="rtl"] body {
+  direction: rtl;
+}
+html[dir="rtl"] input,
+html[dir="rtl"] select,
+html[dir="rtl"] textarea {
+  text-align: right;
+}
+html[dir="rtl"] .ltr {
+  direction: ltr;
+}
+
 #root {
   min-height: 100vh;
 }
