@@ -7,6 +7,25 @@
     "turkish": "Türkçe",
     "description": "Menüler, sayfalar ve fişler için dili belirler."
   },
+  "profile": {
+    "title": "Kullanıcı Profili ve Ayarlar",
+    "personalInfo": "Kişisel Bilgiler",
+    "personalInfoDesc": "Hesabınız ve şirket erişimi hakkında bilgiler.",
+    "uiTitle": "Arayüz ve Gezinme",
+    "uiSubtitle": "Uygulamanın görünümü ve hissi.",
+    "sidebarLabel": "Kenar Menü Stili",
+    "sidebarClassic": "Standart (Akordeon)",
+    "sidebarSubmenus": "Modern (Açılır alt menüler)",
+    "sidebarHint": "Modüller arasında nasıl gezineceğinizi değiştirir.",
+    "layoutLabel": "Genel Uygulama Yerleşimi",
+    "layoutClassic": "Web Modu (Tek görünüm / Modallar)",
+    "layoutWindows": "Windows Modu (Çoklu pencere)",
+    "layoutHint": "Web gezintisi ile masaüstü benzeri deneyim arasında geçiş yapın.",
+    "saveBtn": "Tercihleri Kaydet",
+    "saving": "Kaydediliyor...",
+    "saved": "Tercihler kaydedildi.",
+    "saveError": "Tercihler kaydedilemedi."
+  },
   "sidebar": {
     "accounting": "Muhasebe",
     "inventory": "Stok",

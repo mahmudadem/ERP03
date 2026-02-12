@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences, SidebarMode, UiMode } from '../../../hooks/useUserPreferences';
@@ -7,8 +7,10 @@ import { useTranslation } from 'react-i18next';
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { company } = useCompanyAccess();
-  const { sidebarMode, setSidebarMode, uiMode, setUiMode, language, setLanguage } = useUserPreferences();
+  const { sidebarMode, setSidebarMode, uiMode, setUiMode, language, setLanguage, savePreferences, loadingFromServer } = useUserPreferences();
   const { t } = useTranslation('common');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -51,45 +53,45 @@ const ProfilePage: React.FC = () => {
         <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
             <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2">
-              <span>🎨</span> UI Appearance & Navigation
+              <span>🎨</span> {t('profile.uiTitle', 'UI Appearance & Navigation')}
             </h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">How you want the application to look and feel.</p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">{t('profile.uiSubtitle', 'How you want the application to look and feel.')}</p>
           </div>
           <div className="px-4 py-5 sm:px-6">
             <div className="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-2">
               {/* Sidebar Style */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Sidebar Menu Style
+                  {t('profile.sidebarLabel', 'Sidebar Menu Style')}
                 </label>
                 <select
                   value={sidebarMode}
                   onChange={(e) => setSidebarMode(e.target.value as SidebarMode)}
                   className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm bg-white"
                 >
-                  <option value="classic">Standard (Accordion Expansion)</option>
-                  <option value="submenus">Modern (Flyout Sub-menus)</option>
+                  <option value="classic">{t('profile.sidebarClassic', 'Standard (Accordion Expansion)')}</option>
+                  <option value="submenus">{t('profile.sidebarSubmenus', 'Modern (Flyout Sub-menus)')}</option>
                 </select>
                 <p className="mt-2 text-xs text-gray-500 italic">
-                  Changes how you navigate between modules in the sidebar.
+                  {t('profile.sidebarHint', 'Changes how you navigate between modules in the sidebar.')}
                 </p>
               </div>
 
               {/* Layout Mode */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Overall Application Layout
+                  {t('profile.layoutLabel', 'Overall Application Layout')}
                 </label>
                 <select
                   value={uiMode}
                   onChange={(e) => setUiMode(e.target.value as UiMode)}
                   className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm bg-white"
                 >
-                  <option value="classic">Web Mode (Single View / Modals)</option>
-                  <option value="windows">Windows Mode (Multi-window Desktop)</option>
+                  <option value="classic">{t('profile.layoutClassic', 'Web Mode (Single View / Modals)')}</option>
+                  <option value="windows">{t('profile.layoutWindows', 'Windows Mode (Multi-window Desktop)')}</option>
                 </select>
                 <p className="mt-2 text-xs text-gray-500 italic">
-                  Switch between standard web navigation or a desktop-like multitasking experience.
+                  {t('profile.layoutHint', 'Switch between standard web navigation or a desktop-like multitasking experience.')}
                 </p>
               </div>
 
@@ -111,6 +113,28 @@ const ProfilePage: React.FC = () => {
                   {t('language.description', 'Applies to menus, pages, and vouchers you see.')}
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={async () => {
+                  setSaving(true);
+                  setSaveMsg(null);
+                  try {
+                    await savePreferences();
+                    setSaveMsg(t('profile.saved', 'Preferences saved.'));
+                  } catch {
+                    setSaveMsg(t('profile.saveError', 'Could not save preferences.'));
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving || loadingFromServer}
+                className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? t('profile.saving', 'Saving...') : t('profile.saveBtn', 'Save Preferences')}
+              </button>
+              {saveMsg && <span className="text-xs text-gray-600">{saveMsg}</span>}
             </div>
           </div>
         </div>

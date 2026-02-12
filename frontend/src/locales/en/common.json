@@ -7,6 +7,25 @@
     "turkish": "Turkish",
     "description": "Applies to menus, pages, and vouchers you see."
   },
+  "profile": {
+    "title": "User Profile & Settings",
+    "personalInfo": "Personal Information",
+    "personalInfoDesc": "Details about your account and company access.",
+    "uiTitle": "UI Appearance & Navigation",
+    "uiSubtitle": "How you want the application to look and feel.",
+    "sidebarLabel": "Sidebar Menu Style",
+    "sidebarClassic": "Standard (Accordion Expansion)",
+    "sidebarSubmenus": "Modern (Flyout Sub-menus)",
+    "sidebarHint": "Changes how you navigate between modules in the sidebar.",
+    "layoutLabel": "Overall Application Layout",
+    "layoutClassic": "Web Mode (Single View / Modals)",
+    "layoutWindows": "Windows Mode (Multi-window Desktop)",
+    "layoutHint": "Switch between standard web navigation or a desktop-like multitasking experience.",
+    "saveBtn": "Save Preferences",
+    "saving": "Saving...",
+    "saved": "Preferences saved.",
+    "saveError": "Could not save preferences."
+  },
   "sidebar": {
     "accounting": "Accounting",
     "inventory": "Inventory",

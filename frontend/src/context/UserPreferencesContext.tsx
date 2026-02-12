@@ -21,6 +21,8 @@ interface UserPreferencesContextType {
   toggleSidebarMode: () => void;
   toggleTheme: () => void;
   toggleSidebarPinned: () => void;
+  savePreferences: () => Promise<void>;
+  loadingFromServer: boolean;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -108,20 +110,16 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     }
   }, [language]);
 
-  // Persist to backend when loaded
-  useEffect(() => {
-    if (!loadedFromServer) return;
-    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
-    userPreferencesApi.upsert(payload).catch(() => {
-      /* silent fail; localStorage still holds state */
-    });
-  }, [language, uiMode, theme, sidebarMode, sidebarPinned, loadedFromServer]);
-
   const setUiMode = (mode: UiMode) => setUiModeState(mode);
   const setSidebarMode = (mode: SidebarMode) => setSidebarModeState(mode);
   const setTheme = (t: Theme) => setThemeState(t);
   const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
   const setLanguagePref = (lang: string) => setLanguage(lang);
+
+  const savePreferences = async () => {
+    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
+    await userPreferencesApi.upsert(payload);
+  };
 
   const toggleUiMode = () => {
     setUiModeState(prev => prev === 'classic' ? 'windows' : 'classic');
@@ -154,7 +152,9 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       toggleUiMode,
       toggleSidebarMode,
       toggleTheme,
-      toggleSidebarPinned
+      toggleSidebarPinned,
+      savePreferences,
+      loadingFromServer: !loadedFromServer
     }}>
       {children}
     </UserPreferencesContext.Provider>
