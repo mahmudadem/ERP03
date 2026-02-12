@@ -135,6 +135,19 @@
     "financing": "Financing Activities",
     "netChange": "Net Change in Cash"
   },
+  "aging": {
+    "accountsReceivable": "Accounts Receivable",
+    "accountsPayable": "Accounts Payable",
+    "load": "Load",
+    "account": "Account",
+    "total": "Total",
+    "transactions": "Transactions",
+    "date": "Date",
+    "description": "Description",
+    "amount": "Amount",
+    "days": "Days",
+    "totals": "Totals"
+  },
   "accountStatement": {
     "title": "Account Statement",
     "subtitle": "Running balance per account with opening and closing balances.",

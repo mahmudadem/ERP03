@@ -135,6 +135,19 @@
     "financing": "أنشطة التمويل",
     "netChange": "التغير الصافي في النقد"
   },
+  "aging": {
+    "accountsReceivable": "الذمم المدينة",
+    "accountsPayable": "الذمم الدائنة",
+    "load": "تحميل",
+    "account": "الحساب",
+    "total": "الإجمالي",
+    "transactions": "الحركات",
+    "date": "التاريخ",
+    "description": "الوصف",
+    "amount": "المبلغ",
+    "days": "الأيام",
+    "totals": "الإجماليات"
+  },
   "accountStatement": {
     "title": "كشف حساب",
     "subtitle": "رصيد جاري لكل حساب مع الأرصدة الافتتاحية والختامية.",

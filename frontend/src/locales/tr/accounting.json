@@ -135,6 +135,19 @@
     "financing": "Finansman Faaliyetleri",
     "netChange": "Nakitte Net Değişim"
   },
+  "aging": {
+    "accountsReceivable": "Alacaklar",
+    "accountsPayable": "Borçlar",
+    "load": "Yükle",
+    "account": "Hesap",
+    "total": "Toplam",
+    "transactions": "Hareketler",
+    "date": "Tarih",
+    "description": "Açıklama",
+    "amount": "Tutar",
+    "days": "Gün",
+    "totals": "Toplamlar"
+  },
   "accountStatement": {
     "title": "Hesap Ekstresi",
     "subtitle": "Açılış ve kapanış bakiyeleriyle hesap bazında hareket özeti.",
