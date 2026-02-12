@@ -580,6 +580,49 @@
       "amount": "Tutar",
       "ref": "Ref",
       "actions": "İşlemler"
+    },
+    "creationMode": {
+      "strict": "Sıkı",
+      "flexible": "Esnek",
+      "na": "Yok"
+    },
+    "settings": {
+      "title": "Tablo Ayarları",
+      "fontSize": "Yazı Boyutu",
+      "visibleColumns": "Görünen Sütunlar"
+    },
+    "filters": {
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "searchNumber": "Numara ara...",
+      "apply": "Uygula"
+    },
+    "status": {
+      "posted": "İşlendi",
+      "reversed": "Ters Kayıt",
+      "pendingApproval": "Onay Bekliyor",
+      "pendingCustody": "Zimmet Bekliyor ({{count}})",
+      "pendingFinalization": "Sonlandırma Bekliyor",
+      "postedOn": "{{date}} tarihinde işlendi"
+    },
+    "tooltips": {
+      "auditLocked": "Denetim Kilitli",
+      "reversal": "Ters Kayıt",
+      "reversalRejected": "Ters Kayıt Reddedildi",
+      "reversalPending": "Ters Kayıt Onay Bekliyor",
+      "moreActions": "Diğer işlemler"
+    },
+    "multipleAccounts": "Birden Fazla Hesap",
+    "loading": "Fişler yükleniyor...",
+    "error": "Hata: {{error}}",
+    "empty": "Filtrelerinizle eşleşen fiş bulunamadı.",
+    "pagination": {
+      "showingPage": "Gösterilen sayfa",
+      "of": "/",
+      "items": "{{count}} kayıt",
+      "previous": "Önceki",
+      "next": "Sonraki"
+    }
   },
   "voucherRenderer": {
     "loading": "Tanım yükleniyor...",
@@ -599,6 +642,18 @@
     "saveDraft": "Taslak olarak kaydet",
     "savePost": "Kaydet ve işle",
     "submitApproval": "Onaya gönder",
+    "addLine": "Satır ekle",
+    "actions": {
+      "save": "Kaydet",
+      "print": "Yazdır"
+    },
+    "context": {
+      "deleteLine": "Satırı sil",
+      "copyLine": "Satırı kopyala",
+      "pasteLine": "Satırı yapıştır",
+      "insertBelow": "Alta ekle",
+      "highlight": "Satırı vurgula"
+    },
     "columns": {
       "account": "Hesap",
       "debit": "Borç",
@@ -667,49 +722,6 @@
       "submittedMsg": "Fiş onaya gönderildi.",
       "createAnother": "Başka fiş oluştur",
       "close": "Pencereyi kapat"
-    }
-  },
-    "creationMode": {
-      "strict": "Sıkı",
-      "flexible": "Esnek",
-      "na": "Yok"
-    },
-    "settings": {
-      "title": "Tablo Ayarları",
-      "fontSize": "Yazı Boyutu",
-      "visibleColumns": "Görünen Sütunlar"
-    },
-    "filters": {
-      "from": "Başlangıç",
-      "to": "Bitiş",
-      "searchNumber": "Numara ara...",
-      "apply": "Uygula"
-    },
-    "status": {
-      "posted": "İşlendi",
-      "reversed": "Ters Kayıt",
-      "pendingApproval": "Onay Bekliyor",
-      "pendingCustody": "Zimmet Bekliyor ({{count}})",
-      "pendingFinalization": "Sonlandırma Bekliyor",
-      "postedOn": "{{date}} tarihinde işlendi"
-    },
-    "tooltips": {
-      "auditLocked": "Denetim Kilitli",
-      "reversal": "Ters Kayıt",
-      "reversalRejected": "Ters Kayıt Reddedildi",
-      "reversalPending": "Ters Kayıt Onay Bekliyor",
-      "moreActions": "Diğer işlemler"
-    },
-    "multipleAccounts": "Birden Fazla Hesap",
-    "loading": "Fişler yükleniyor...",
-    "error": "Hata: {{error}}",
-    "empty": "Filtrelerinizle eşleşen fiş bulunamadı.",
-    "pagination": {
-      "showingPage": "Gösterilen sayfa",
-      "of": "/",
-      "items": "{{count}} kayıt",
-      "previous": "Önceki",
-      "next": "Sonraki"
     }
   }
 }

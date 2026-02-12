@@ -580,6 +580,49 @@
       "amount": "المبلغ",
       "ref": "المرجع",
       "actions": "الإجراءات"
+    },
+    "creationMode": {
+      "strict": "صارم",
+      "flexible": "مرن",
+      "na": "غير متوفر"
+    },
+    "settings": {
+      "title": "إعدادات الجدول",
+      "fontSize": "حجم الخط",
+      "visibleColumns": "الأعمدة الظاهرة"
+    },
+    "filters": {
+      "from": "من",
+      "to": "إلى",
+      "searchNumber": "بحث عن رقم...",
+      "apply": "تطبيق"
+    },
+    "status": {
+      "posted": "مرحّل",
+      "reversed": "معكوس",
+      "pendingApproval": "بانتظار الاعتماد",
+      "pendingCustody": "بانتظار الاستلام ({{count}})",
+      "pendingFinalization": "بانتظار الإنهاء",
+      "postedOn": "رُحّل في {{date}}"
+    },
+    "tooltips": {
+      "auditLocked": "مقفل للتدقيق",
+      "reversal": "عكس",
+      "reversalRejected": "عكس مرفوض",
+      "reversalPending": "عكس بانتظار الاعتماد",
+      "moreActions": "إجراءات أخرى"
+    },
+    "multipleAccounts": "حسابات متعددة",
+    "loading": "جارٍ تحميل القيود...",
+    "error": "خطأ: {{error}}",
+    "empty": "لم يُعثر على قيود مطابقة للفلاتر.",
+    "pagination": {
+      "showingPage": "عرض صفحة",
+      "of": "من",
+      "items": "{{count}} عنصر",
+      "previous": "السابق",
+      "next": "التالي"
+    }
   },
   "voucherRenderer": {
     "loading": "جارٍ تحميل التعريف...",
@@ -599,6 +642,18 @@
     "saveDraft": "حفظ كمسودة",
     "savePost": "حفظ وترحيل",
     "submitApproval": "إرسال للاعتماد",
+    "addLine": "إضافة سطر",
+    "actions": {
+      "save": "حفظ",
+      "print": "طباعة"
+    },
+    "context": {
+      "deleteLine": "حذف السطر",
+      "copyLine": "نسخ السطر",
+      "pasteLine": "لصق السطر",
+      "insertBelow": "إدراج أسفل",
+      "highlight": "تمييز السطر"
+    },
     "columns": {
       "account": "الحساب",
       "debit": "مدين",
@@ -667,49 +722,6 @@
       "submittedMsg": "تم إرسال القيد للاعتماد.",
       "createAnother": "إنشاء قيد آخر",
       "close": "إغلاق النافذة"
-    }
-  },
-    "creationMode": {
-      "strict": "صارم",
-      "flexible": "مرن",
-      "na": "غير متوفر"
-    },
-    "settings": {
-      "title": "إعدادات الجدول",
-      "fontSize": "حجم الخط",
-      "visibleColumns": "الأعمدة الظاهرة"
-    },
-    "filters": {
-      "from": "من",
-      "to": "إلى",
-      "searchNumber": "بحث عن رقم...",
-      "apply": "تطبيق"
-    },
-    "status": {
-      "posted": "مرحّل",
-      "reversed": "معكوس",
-      "pendingApproval": "بانتظار الاعتماد",
-      "pendingCustody": "بانتظار الاستلام ({{count}})",
-      "pendingFinalization": "بانتظار الإنهاء",
-      "postedOn": "رُحّل في {{date}}"
-    },
-    "tooltips": {
-      "auditLocked": "مقفل للتدقيق",
-      "reversal": "عكس",
-      "reversalRejected": "عكس مرفوض",
-      "reversalPending": "عكس بانتظار الاعتماد",
-      "moreActions": "إجراءات أخرى"
-    },
-    "multipleAccounts": "حسابات متعددة",
-    "loading": "جارٍ تحميل القيود...",
-    "error": "خطأ: {{error}}",
-    "empty": "لم يُعثر على قيود مطابقة للفلاتر.",
-    "pagination": {
-      "showingPage": "عرض صفحة",
-      "of": "من",
-      "items": "{{count}} عنصر",
-      "previous": "السابق",
-      "next": "التالي"
     }
   }
 }

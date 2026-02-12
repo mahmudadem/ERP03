@@ -1006,19 +1006,19 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           <button
             className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
             onClick={handleNew}
-            title={t('voucherWindow.newTooltip')}
+            title={t('voucherWindow.newTooltip', 'Create a new voucher in this window')}
           >
-            {t('voucherWindow.new')}
+            {t('voucherWindow.new', 'New')}
           </button>
 
           <button
             className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors flex items-center gap-1.5"
             onClick={() => win.data?.id && onPrint?.(win.data.id)}
             disabled={!win.data?.id}
-            title={t('voucherWindow.printTooltip')}
+            title={t('voucherWindow.printTooltip', 'Print voucher')}
           >
             <Printer className="w-4 h-4" />
-            {t('voucherWindow.print')}
+            {t('voucherWindow.print', 'Print')}
           </button>
 
           {(() => {
@@ -1027,7 +1027,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               return (
                 <div className="flex items-center gap-2 px-6 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-xs font-bold">{t('voucherWindow.loadingPolicies')}</span>
+                  <span className="text-xs font-bold">{t('voucherWindow.loadingPolicies', 'Loading Policies...')}</span>
                 </div>
               );
             }
@@ -1079,23 +1079,23 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
                 )}
                 disabled={isSaving || settingsLoading || policyLoading || !canSave}
-                title={!isBalancedVoucher ? t('voucherWindow.mustBalance') : !hasLines ? t('voucherWindow.mustLines') : ""}
+                title={!isBalancedVoucher ? t('voucherWindow.mustBalance', 'Voucher must be balanced') : !hasLines ? t('voucherWindow.mustLines', 'Voucher must have at least 2 lines') : ""}
               >
                 {isSaving || settingsLoading || policyLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {settingsLoading || policyLoading ? t('voucherWindow.loading') : (forceStrictMode ? t('voucherWindow.saving') : t('voucherWindow.posting'))}
+                    {settingsLoading || policyLoading ? t('voucherWindow.loading', 'Loading...') : (forceStrictMode ? t('voucherWindow.saving', 'Saving...') : t('voucherWindow.posting', 'Posting...'))}
                   </>
                 ) : (
                   <>
                     {!forceStrictMode ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                     {(() => {
                       if (!forceStrictMode) {
-                        return win.data?.postedAt ? t('voucherWindow.updatePost') : t('voucherWindow.savePost');
+                        return win.data?.postedAt ? t('voucherWindow.updatePost', 'Update & Post') : t('voucherWindow.savePost', 'Save & Post');
                       }
                       const s = win.data?.status?.toLowerCase();
-                      if (s === 'pending') return t('voucherWindow.updatePending');
-                      return t('voucherWindow.saveDraft');
+                      if (s === 'pending') return t('voucherWindow.updatePending', 'Update Pending Voucher');
+                      return t('voucherWindow.saveDraft', 'Save as Draft');
                     })()}
                   </>
                 )}
@@ -1110,14 +1110,14 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 onClick={handleSubmit}
                 className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
                 disabled={isSubmitting || !isBalancedVoucher}
-                title={!isBalancedVoucher ? t('voucherWindow.mustBalance') : ""}
+                title={!isBalancedVoucher ? t('voucherWindow.mustBalance', 'Voucher must be balanced') : ""}
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                {isSubmitting ? t('voucherWindow.submitting') : t('voucherWindow.submitApproval')}
+                {isSubmitting ? t('voucherWindow.submitting', 'Submitting...') : t('voucherWindow.submitApproval', 'Submit Approval')}
               </button>
             );
           })()}
@@ -1144,7 +1144,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 disabled={isSubmitting || !win.data?.metadata?.pendingFinancialApproval}
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                {t('voucherWindow.approve')}
+                {t('voucherWindow.approve', 'Approve')}
               </button>
 
               {/* Confirm Custody Button - Only shown if user is a pending custodian (ID or Email check) */}
@@ -1172,7 +1172,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check size={16} />}
-                  {t('voucherWindow.confirmCustody')}
+                  {t('voucherWindow.confirmCustody', 'Confirm Custody')}
                 </button>
               )}
 
@@ -1194,7 +1194,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-danger-600 text-white rounded-lg hover:bg-danger-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
-                {t('voucherWindow.reject')}
+                {t('voucherWindow.reject', 'Reject')}
               </button>
             </div>
           )}
@@ -1222,7 +1222,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 disabled={isSubmitting}
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                {t('voucherWindow.post')}
+                {t('voucherWindow.post', 'Post to Ledger')}
               </button>
             </div>
           )}
@@ -1271,8 +1271,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
               <Send size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">{t('voucherWindow.confirmSubmitTitle')}</h3>
-              <p className="text-sm text-gray-500 mt-1">{t('voucherWindow.confirmSubmitBody')}</p>
+              <h3 className="text-lg font-bold text-gray-900">{t('voucherWindow.confirmSubmitTitle', 'Submit for Approval?')}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t('voucherWindow.confirmSubmitBody', 'This will lock the voucher and notify approvers. You cannot edit it afterwards.')}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-3 w-full mt-2">
@@ -1280,13 +1280,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 onClick={() => setShowConfirmSubmitModal(false)}
                 className="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                {t('common.cancel')}
+                {t('common.cancel', 'Cancel')}
               </button>
               <button 
                 onClick={handleConfirmSubmit}
                 className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-md transition-all active:scale-[0.98]"
               >
-                {t('voucherWindow.confirmSubmit')}
+                {t('voucherWindow.confirmSubmit', 'Confirm Submit')}
               </button>
             </div>
           </div>
@@ -1304,16 +1304,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">
-                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custody') :
-                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.posted') : 
-                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.saved') : 
-                 t('voucherWindow.success.submitted')}
+                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custody', 'Custody Confirmed!') :
+                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.posted', 'Posted Successfully!') : 
+                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.saved', 'Saved Successfully!') : 
+                 t('voucherWindow.success.submitted', 'Submitted Successfully!')}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custodyMsg') :
-                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.postedMsg') : 
-                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.savedMsg') : 
-                 t('voucherWindow.success.submittedMsg')}
+                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custodyMsg', 'You have successfully confirmed custody of this voucher.') :
+                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.postedMsg', 'Voucher has been posted to the ledger.') : 
+                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.savedMsg', 'Voucher saved as draft.') : 
+                 t('voucherWindow.success.submittedMsg', 'Voucher has been sent for approval.')}
               </p>
             </div>
             
@@ -1322,13 +1322,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 onClick={handleSuccessNew}
                 className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
               >
-                <Plus size={16} /> {t('voucherWindow.success.createAnother')}
+                <Plus size={16} /> {t('voucherWindow.success.createAnother', 'Create Another Voucher')}
               </button>
               <button 
                 onClick={handleSuccessClose}
                 className="w-full px-4 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
               >
-                {t('voucherWindow.success.close')}
+                {t('voucherWindow.success.close', 'Close Window')}
               </button>
             </div>
           </div>

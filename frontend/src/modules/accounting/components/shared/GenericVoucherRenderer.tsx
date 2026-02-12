@@ -1,4 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { JournalRow } from '../../forms-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
@@ -58,9 +59,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const { company } = useCompanyAccess();
   const { data: companyCurrencies = [] } = useCompanyCurrencies();
 
-  // Language support with fallback (works without LanguageProvider)
-  const t = (key: string) => key; // Simple fallback - just return key
-  const isRTL = false; // Default LTR
+  // Language support
+  const { t, i18n } = useTranslation('accounting');
+  const isRTL = (i18n.language || '').startsWith('ar');
   
   const [formData, setFormData] = useState<any>(initialData || {});
   const [rows, setRows] = useState<JournalRow[]>(INITIAL_ROWS);
@@ -1663,8 +1664,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             </table>
             </div>
               {!readOnly && (
-               <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
-                   + {t('addLine')}
+              <button onClick={addRow} className="w-full py-2 text-center text-xs font-medium text-primary-600 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-all">
+                   + {t('voucherRenderer.addLine')}
                </button>
               )}
         </div>
@@ -1838,7 +1839,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     return (
        <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
-         <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">Line Items</h3>
+         <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{t('voucherRenderer.lineItems')}</h3>
         {renderField('lineItems')}
       </div>
     );
@@ -1923,11 +1924,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
            <div className="bg-[var(--color-bg-primary)] border-t border-[var(--color-border)] p-3 grid grid-cols-2 gap-3 transition-colors">
              <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-primary-500/10 transition-all bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98]">
                <Save size={16} />
-               Save
+               {t('voucherRenderer.actions.save')}
              </button>
              <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]">
                <Printer size={16} />
-               Print
+               {t('voucherRenderer.actions.print')}
              </button>
            </div>
         );

@@ -580,6 +580,49 @@
       "amount": "Amount",
       "ref": "Ref",
       "actions": "Actions"
+    },
+    "creationMode": {
+      "strict": "Strict",
+      "flexible": "Flexible",
+      "na": "N/A"
+    },
+    "settings": {
+      "title": "Table Settings",
+      "fontSize": "Font Size",
+      "visibleColumns": "Visible Columns"
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "searchNumber": "Search number...",
+      "apply": "Apply"
+    },
+    "status": {
+      "posted": "Posted",
+      "reversed": "Reversed",
+      "pendingApproval": "Pending Approval",
+      "pendingCustody": "Pending Custody ({{count}})",
+      "pendingFinalization": "Pending Finalization",
+      "postedOn": "Posted on {{date}}"
+    },
+    "tooltips": {
+      "auditLocked": "Audit Locked",
+      "reversal": "Reversal",
+      "reversalRejected": "Reversal Rejected",
+      "reversalPending": "Reversal Pending Approval",
+      "moreActions": "More actions"
+    },
+    "multipleAccounts": "Multiple Accounts",
+    "loading": "Loading vouchers...",
+    "error": "Error: {{error}}",
+    "empty": "No vouchers found matching your filters.",
+    "pagination": {
+      "showingPage": "Showing page",
+      "of": "of",
+      "items": "{{count}} items",
+      "previous": "Previous",
+      "next": "Next"
+    }
   },
   "voucherRenderer": {
     "loading": "Loading definition...",
@@ -599,6 +642,18 @@
     "saveDraft": "Save as Draft",
     "savePost": "Save & Post",
     "submitApproval": "Submit Approval",
+    "addLine": "Add Line",
+    "actions": {
+      "save": "Save",
+      "print": "Print"
+    },
+    "context": {
+      "deleteLine": "Delete Line",
+      "copyLine": "Copy Line",
+      "pasteLine": "Paste Line",
+      "insertBelow": "Insert Below",
+      "highlight": "Highlight Row"
+    },
     "columns": {
       "account": "Account",
       "debit": "Debit",
@@ -667,49 +722,6 @@
       "submittedMsg": "Voucher has been sent for approval.",
       "createAnother": "Create Another Voucher",
       "close": "Close Window"
-    }
-  },
-    "creationMode": {
-      "strict": "Strict",
-      "flexible": "Flexible",
-      "na": "N/A"
-    },
-    "settings": {
-      "title": "Table Settings",
-      "fontSize": "Font Size",
-      "visibleColumns": "Visible Columns"
-    },
-    "filters": {
-      "from": "From",
-      "to": "To",
-      "searchNumber": "Search number...",
-      "apply": "Apply"
-    },
-    "status": {
-      "posted": "Posted",
-      "reversed": "Reversed",
-      "pendingApproval": "Pending Approval",
-      "pendingCustody": "Pending Custody ({{count}})",
-      "pendingFinalization": "Pending Finalization",
-      "postedOn": "Posted on {{date}}"
-    },
-    "tooltips": {
-      "auditLocked": "Audit Locked",
-      "reversal": "Reversal",
-      "reversalRejected": "Reversal Rejected",
-      "reversalPending": "Reversal Pending Approval",
-      "moreActions": "More actions"
-    },
-    "multipleAccounts": "Multiple Accounts",
-    "loading": "Loading vouchers...",
-    "error": "Error: {{error}}",
-    "empty": "No vouchers found matching your filters.",
-    "pagination": {
-      "showingPage": "Showing page",
-      "of": "of",
-      "items": "{{count}} items",
-      "previous": "Previous",
-      "next": "Next"
     }
   }
 }
