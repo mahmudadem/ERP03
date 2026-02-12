@@ -717,7 +717,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         }}
       >
         <div className="flex items-center gap-2">
-          <h3 className="font-bold text-sm text-[var(--color-text-primary)]">{win.title}</h3>
+          <h3 className="font-bold text-sm text-[var(--color-text-primary)]">
+            {win.data?.id
+              ? t('voucherEditor.existingTitle', { name: win.voucherType?.name || win.title, id: win.data?.voucherNumber || win.data?.voucherNo || win.data?.id || '' })
+              : t('voucherEditor.newTitle', { name: win.voucherType?.name || win.title })}
+          </h3>
           {win.data?.status && (
             <div className="flex items-center gap-1.5">
               {/* V1: Workflow Badge */}
@@ -728,7 +732,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                 win.data.status.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
                 'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
               }`}>
-                {win.data.status}
+                {t(`statuses.${win.data.status.toLowerCase()}`, { defaultValue: win.data.status })}
               </span>
               
               {/* V1: Posting Badge (derived from postedAt) */}
@@ -738,7 +742,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                     : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                 }`}>
-                  {win.data.postedAt ? 'POSTED' : 'NOT POSTED'}
+                  {win.data.postedAt ? t('statuses.posted') : t('voucherWindow.notPosted', { defaultValue: 'Not Posted' })}
                 </span>
               )}
               
@@ -752,7 +756,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
               {win.data.status.toLowerCase() === 'pending' && win.data.metadata?.isEdited && (
                 <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 text-amber-600 rounded-md border border-amber-100 animate-pulse">
-                  (EDITED)
+                  {t('voucherWindow.edited', { defaultValue: 'Edited' })}
                 </span>
               )}
               

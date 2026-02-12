@@ -844,6 +844,7 @@
     "alreadyReversed": "Zaten ters çevrildi",
     "reversal": "Ters Kayıt",
     "notPosted": "İşlenmedi",
+    "edited": "Düzenlendi",
     "tooltip": {
       "reversalCannotReverse": "Bu bir ters kayıt, yeniden ters çevrilemez.",
       "alreadyReversed": "Bu fiş zaten ters çevrildi.",
