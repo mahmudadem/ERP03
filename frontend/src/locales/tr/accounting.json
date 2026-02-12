@@ -333,6 +333,23 @@
     "delete": "Sil",
     "readOnly": "Bu fiş {{status}} ve düzenlenemez."
   },
+  "voucherFilters": {
+    "search": "ID, Referans veya Tutar ile ara...",
+    "allTypes": "Tüm Türler",
+    "allStatus": "Tüm Durumlar",
+    "apply": "Uygula",
+    "clear": "Temizle",
+    "resetTitle": "Tüm filtreleri ve tarihleri sıfırla"
+  },
+  "statuses": {
+    "draft": "Taslak",
+    "pending": "Beklemede",
+    "approved": "Onaylandı",
+    "posted": "İşlendi",
+    "reversed": "Ters çevrildi",
+    "locked": "Kilitli",
+    "void": "Geçersiz"
+  },
   "home": {
     "title": "Muhasebe Genel Bakış",
     "subtitle": "Kayıtları yönetin, onayları izleyin ve raporlar oluşturun.",
@@ -456,5 +473,59 @@
     "totals": "Toplamlar",
     "closingBalance": "Kapanış Bakiyesi",
     "openVoucher": "Fişi aç"
+  },
+  "voucherTable": {
+    "columns": {
+      "date": "Tarih",
+      "number": "Numara",
+      "type": "Tür",
+      "name": "Fiş Adı",
+      "debitAccount": "Borç Hesabı",
+      "creditAccount": "Alacak Hesabı",
+      "creationMode": "Mod",
+      "approvedAt": "Onay Tarihi",
+      "status": "Durum",
+      "currency": "Para Birimi",
+      "amount": "Tutar",
+      "ref": "Ref",
+      "actions": "İşlemler"
+    },
+    "settings": {
+      "title": "Tablo Ayarları",
+      "fontSize": "Yazı Boyutu",
+      "visibleColumns": "Görünen Sütunlar"
+    },
+    "filters": {
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "searchNumber": "Numara ara...",
+      "apply": "Uygula"
+    },
+    "status": {
+      "posted": "İşlendi",
+      "reversed": "Ters Kayıt",
+      "pendingApproval": "Onay Bekliyor",
+      "pendingCustody": "Zimmet Bekliyor ({{count}})",
+      "pendingFinalization": "Sonlandırma Bekliyor",
+      "postedOn": "{{date}} tarihinde işlendi"
+    },
+    "tooltips": {
+      "auditLocked": "Denetim Kilitli",
+      "reversal": "Ters Kayıt",
+      "reversalRejected": "Ters Kayıt Reddedildi",
+      "reversalPending": "Ters Kayıt Onay Bekliyor",
+      "moreActions": "Diğer işlemler"
+    },
+    "multipleAccounts": "Birden Fazla Hesap",
+    "loading": "Fişler yükleniyor...",
+    "error": "Hata: {{error}}",
+    "empty": "Filtrelerinizle eşleşen fiş bulunamadı.",
+    "pagination": {
+      "showingPage": "Gösterilen sayfa",
+      "of": "/",
+      "items": "{{count}} kayıt",
+      "previous": "Önceki",
+      "next": "Sonraki"
+    }
   }
 }

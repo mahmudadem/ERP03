@@ -2,6 +2,7 @@
  * VoucherFiltersBar.tsx
  */
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { DateRange, VoucherFilters } from '../../../hooks/useVouchersWithCache';
 import { DatePicker } from './shared/DatePicker';
 import { Button } from '../../../components/ui/Button';
@@ -24,6 +25,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   hideTypeFilter, 
   voucherTypes = [] 
 }) => {
+  const { t } = useTranslation('accounting');
   // Local state for buffering changes
   const [localFilters, setLocalFilters] = React.useState<VoucherFilters>(filters);
   const [localDateRange, setLocalDateRange] = React.useState<DateRange>(dateRange);
@@ -85,7 +87,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         <input
           type="text"
           name="search"
-          placeholder="Search by ID, Ref, Amount..."
+          placeholder={t('voucherFilters.search')}
           className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded pl-10 pr-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           value={localFilters.search || ''}
           onChange={handleInputChange}
@@ -98,11 +100,11 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         <div className="w-full lg:w-40">
           <select
             name="type"
-            className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
-            value={localFilters.type || 'ALL'}
-            onChange={handleInputChange}
-          >
-            <option value="ALL">All Types</option>
+          className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
+          value={localFilters.type || 'ALL'}
+          onChange={handleInputChange}
+        >
+            <option value="ALL">{t('voucherFilters.allTypes')}</option>
             {voucherTypes.map(vt => {
               const value = (vt as any).baseType || vt.code || vt.id;
               return (
@@ -123,14 +125,14 @@ export const VoucherFiltersBar: React.FC<Props> = ({
           value={localFilters.status || 'ALL'}
           onChange={handleInputChange}
         >
-          <option value="ALL">All Status</option>
-          <option value="DRAFT">Draft</option>
-          <option value="PENDING">Pending</option>
-          <option value="APPROVED">Approved</option>
-          <option value="POSTED">Posted</option>
-          <option value="REVERSED">Reversed</option>
-          <option value="LOCKED">Locked</option>
-          <option value="VOID">Void</option>
+          <option value="ALL">{t('voucherFilters.allStatus')}</option>
+          <option value="DRAFT">{t('statuses.draft')}</option>
+          <option value="PENDING">{t('statuses.pending')}</option>
+          <option value="APPROVED">{t('statuses.approved')}</option>
+          <option value="POSTED">{t('statuses.posted')}</option>
+          <option value="REVERSED">{t('statuses.reversed')}</option>
+          <option value="LOCKED">{t('statuses.locked')}</option>
+          <option value="VOID">{t('statuses.void')}</option>
         </select>
       </div>
 
@@ -157,16 +159,16 @@ export const VoucherFiltersBar: React.FC<Props> = ({
           className="flex-1 lg:flex-none gap-2 shadow-sm"
           leftIcon={<Filter size={16} />}
         >
-          Apply
+          {t('voucherFilters.apply')}
         </Button>
         <Button 
           variant="secondary" 
           onClick={handleClear}
           className="flex-1 lg:flex-none gap-2"
           leftIcon={<RotateCcw size={16} />}
-          title="Reset all filters and dates"
+          title={t('voucherFilters.resetTitle')}
         >
-          Clear
+          {t('voucherFilters.clear')}
         </Button>
       </div>
 

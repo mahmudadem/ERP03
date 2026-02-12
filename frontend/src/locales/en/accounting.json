@@ -333,6 +333,23 @@
     "delete": "Delete",
     "readOnly": "This voucher is {{status}} and cannot be edited."
   },
+  "voucherFilters": {
+    "search": "Search by ID, Ref, Amount...",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "apply": "Apply",
+    "clear": "Clear",
+    "resetTitle": "Reset all filters and dates"
+  },
+  "statuses": {
+    "draft": "Draft",
+    "pending": "Pending",
+    "approved": "Approved",
+    "posted": "Posted",
+    "reversed": "Reversed",
+    "locked": "Locked",
+    "void": "Void"
+  },
   "home": {
     "title": "Accounting Overview",
     "subtitle": "Manage transactions, monitor approvals, and generate reports.",
@@ -456,5 +473,59 @@
     "totals": "Totals",
     "closingBalance": "Closing Balance",
     "openVoucher": "Open voucher"
+  },
+  "voucherTable": {
+    "columns": {
+      "date": "Date",
+      "number": "Number",
+      "type": "Type",
+      "name": "Voucher Name",
+      "debitAccount": "Debit Account",
+      "creditAccount": "Credit Account",
+      "creationMode": "C-Mode",
+      "approvedAt": "Approved At",
+      "status": "Status",
+      "currency": "Currency",
+      "amount": "Amount",
+      "ref": "Ref",
+      "actions": "Actions"
+    },
+    "settings": {
+      "title": "Table Settings",
+      "fontSize": "Font Size",
+      "visibleColumns": "Visible Columns"
+    },
+    "filters": {
+      "from": "From",
+      "to": "To",
+      "searchNumber": "Search number...",
+      "apply": "Apply"
+    },
+    "status": {
+      "posted": "Posted",
+      "reversed": "Reversed",
+      "pendingApproval": "Pending Approval",
+      "pendingCustody": "Pending Custody ({{count}})",
+      "pendingFinalization": "Pending Finalization",
+      "postedOn": "Posted on {{date}}"
+    },
+    "tooltips": {
+      "auditLocked": "Audit Locked",
+      "reversal": "Reversal",
+      "reversalRejected": "Reversal Rejected",
+      "reversalPending": "Reversal Pending Approval",
+      "moreActions": "More actions"
+    },
+    "multipleAccounts": "Multiple Accounts",
+    "loading": "Loading vouchers...",
+    "error": "Error: {{error}}",
+    "empty": "No vouchers found matching your filters.",
+    "pagination": {
+      "showingPage": "Showing page",
+      "of": "of",
+      "items": "{{count}} items",
+      "previous": "Previous",
+      "next": "Next"
+    }
   }
 }
