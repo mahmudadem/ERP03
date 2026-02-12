@@ -13,6 +13,16 @@ const ProfilePage: React.FC = () => {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
 
+  // Auto-clear status message after a few seconds
+  React.useEffect(() => {
+    if (!saveStatus) return;
+    const timer = setTimeout(() => {
+      setSaveMsg(null);
+      setSaveStatus(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [saveStatus]);
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">User Profile & Settings</h1>
@@ -116,7 +126,7 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-6">
               <button
                 onClick={async () => {
                   setSaving(true);
