@@ -13,7 +13,24 @@ const permissionChecker = new PermissionChecker(
   )
 );
 
-const bucket = admin.storage().bucket();
+/**
+ * Lazily resolve the storage bucket to avoid crashing the app at import-time
+ * when storageBucket is not configured (e.g., during local emulation without
+ * attachments features enabled).
+ */
+const getBucket = () => {
+  const bucketName =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    (admin.app().options as any)?.storageBucket;
+
+  if (!bucketName) {
+    throw new Error(
+      'Storage bucket not configured. Set FIREBASE_STORAGE_BUCKET or storageBucket in Firebase config.'
+    );
+  }
+
+  return admin.storage().bucket(bucketName);
+};
 
 const MAX_FILES = 5;
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -52,6 +69,7 @@ export class AttachmentController {
       const existing = voucher.metadata?.attachments || [];
       if (existing.length >= MAX_FILES) return res.status(400).json({ error: 'Attachment limit reached' });
 
+      const bucket = getBucket();
       const path = `companies/${companyId}/vouchers/${voucherId}/attachments/${Date.now()}_${file.originalname}`;
       const blob = bucket.file(path);
       await blob.save(file.buffer, { contentType: file.mimetype, resumable: false });
@@ -117,6 +135,7 @@ export class AttachmentController {
       const voucher = await diContainer.voucherRepository.findById(companyId, voucherId);
       const attachment = voucher?.metadata?.attachments?.find((a: any) => a.id === attachmentId);
       if (!attachment) return res.status(404).json({ error: 'Attachment not found' });
+      const bucket = getBucket();
       const file = bucket.file(attachment.path);
       const [url] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
       res.redirect(url);
@@ -137,6 +156,7 @@ export class AttachmentController {
       const attachments = voucher.metadata?.attachments || [];
       const target = attachments.find((a: any) => a.id === attachmentId);
       if (!target) return res.status(404).json({ error: 'Attachment not found' });
+      const bucket = getBucket();
       await bucket.file(target.path).delete().catch(() => {});
       const updatedList = attachments.filter((a: any) => a.id !== attachmentId);
       const metadata = { ...voucher.metadata, attachments: updatedList };
