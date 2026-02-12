@@ -397,7 +397,9 @@
       "dateFormatDesc": "اختر كيفية عرض التواريخ في التطبيق",
       "uiMode": "نمط الواجهة",
       "uiModeDesc": "اختر تجربة سطح المكتب الرئيسية",
+      "classic": "الكلاسيكي",
       "classicDesc": "واجهة مبوبة ومسطحة",
+      "windows": "ويندوز (V3)",
       "windowsDesc": "تعدد نوافذ مع مهام متعددة"
     },
     "currencies": {
@@ -416,7 +418,26 @@
       "custody": "تأكيد الاستلام (CC)",
       "custodyHelp": "تأكد من استلام الصندوق/الأصل فعلياً من الأمين.",
       "custodyHint": "بوابة استلام مرتبطة بالمستخدم.",
-      "smart": "إعدادات ذكية"
+      "smart": "إعدادات ذكية",
+      "smartConfig": "إعدادات ذكية",
+      "thirdParty": "طرف ثالث",
+      "thirdPartyHelp": "من يصدق القيود حيث المنشئ لا يساوي المرسل/المستلم (مثل التحويلات).",
+      "receiverOnly": "المستلم فقط",
+      "bothParties": "كلا الطرفين",
+      "reversalLogic": "منطق العكس",
+      "reversalHelp": "كيفية التعامل مع تأكيد قيود التصحيح/العكس.",
+      "matchOriginal": "مطابقة الأصل",
+      "autoApprove": "اعتماد تلقائي",
+      "selfConfirm": "تأكيد ذاتي",
+      "selfConfirmHelp": "السماح لمنشئ القيد بتأكيد العهدة إذا كان هو المستلم.",
+      "selfConfirmHint": "السماح للمنشئين بتأكيد استلامهم.",
+      "blockMissing": "منع في حال عدم التعيين",
+      "blockMissingHelp": "منع الإرسال إذا لم يتم تعيين أمين عهدة صالح للحساب النقدي.",
+      "blockMissingHint": "منع الإرسال عند غياب أمين العهدة.",
+      "amountThreshold": "حد أدنى لمبلغ العهدة",
+      "amountThresholdHelp": "حدد قيمة مالية دنيا. القيود تحت هذا الحد تتجاوز تأكيد العهدة.",
+      "amountThresholdOn": "يُطلب تأكيد العهدة فقط للقيود التي تتجاوز هذا المبلغ.",
+      "amountThresholdOff": "الحد الأدنى معطل. تأكيد العهدة مطلوب لكل القيود."
     },
     "costCenter": {
       "description": "حدد متى يكون تعيين مركز التكلفة إلزامياً",
@@ -438,7 +459,70 @@
     "saveLabel": "حفظ {{section}}",
     "loading": "جارٍ تحميل الإعدادات...",
     "on": "تشغيل",
-    "off": "إيقاف"
+    "off": "إيقاف",
+    "common": {
+      "refresh": "تحديث"
+    },
+    "errorMode": {
+      "title": "وضع أخطاء السياسات",
+      "description": "التحكم في كيفية عرض أخطاء التحقق",
+      "validationBehavior": "سلوك التحقق",
+      "validationDesc": "اختر كيفية تفاعل النظام عند وجود عدة انتهاكات للسياسات",
+      "failFast": "إيقاف عند أول خطأ",
+      "failFastDesc": "إيقاف وإظهار أول خطأ. أسرع أداءً لكنه قد يتطلب عدة محاولات لإصلاح كل المشاكل.",
+      "recommended": "موصى به",
+      "aggregate": "تجميع",
+      "aggregateDesc": "تشغيل كل الفحوصات وإظهار جميع الأخطاء دفعة واحدة للحصول على قائمة شاملة بما يجب إصلاحه."
+    },
+    "fiscal": {
+      "title": "السنة المالية",
+      "description": "تحديد فترة التقرير المالي للشركة",
+      "fiscalYear": "سنة مالية",
+      "retainedEarnings": "حساب الأرباح المحتجزة",
+      "retainedPlaceholder": "أدخل معرف حساب الأرباح المحتجزة",
+      "createYear": "إنشاء سنة",
+      "fiscalYears": "السنوات المالية",
+      "none": "لا توجد سنوات مالية محددة بعد.",
+      "closeYear": "إقفال السنة",
+      "close": "إقفال",
+      "reopen": "إعادة فتح",
+      "status": {
+        "open": "مفتوحة",
+        "closed": "مقفلة",
+        "locked": "مغلقة"
+      }
+    },
+    "numbering": {
+      "title": "ترقيم القيود",
+      "description": "تهيئة تسلسل أرقام القيود حسب النوع/البادئة",
+      "prefix": "بادئة",
+      "yearOptional": "السنة (اختياري)",
+      "nextNumber": "الرقم التالي",
+      "saveNext": "حفظ الرقم التالي",
+      "sequences": "التسلسلات",
+      "noSequences": "لا توجد تسلسلات بعد.",
+      "last": "آخر رقم: {{value}}"
+    },
+    "messages": {
+      "generalSaved": "تم حفظ الإعدادات العامة",
+      "strictOn": "وضع صارم [تشغيل]",
+      "strictOff": "وضع صارم [إيقاف]",
+      "policiesSaved": "تم حفظ الموافقات والترحيل! {{mode}}",
+      "settings": "الإعدادات",
+      "sectionSaved": "تم حفظ {{section}}",
+      "saveFailed": "فشل حفظ الإعدادات",
+      "fiscalYearCreated": "تم إنشاء السنة المالية",
+      "periodClosed": "تم إقفال الفترة",
+      "periodReopened": "تم إعادة فتح الفترة",
+      "retainedRequired": "مطلوب تحديد حساب الأرباح المحتجزة",
+      "fiscalYearClosed": "تم إقفال السنة المالية",
+      "prefixRequired": "مطلوب البادئة والرقم التالي",
+      "nextNumberUpdated": "تم تحديث الرقم التالي"
+    },
+    "metadata": {
+      "lastUpdated": "آخر تحديث: {{value}}",
+      "updatedBy": " بواسطة {{user}}"
+    }
   },
   "dashboard": {
     "actionRequired": "إجراء مطلوب",

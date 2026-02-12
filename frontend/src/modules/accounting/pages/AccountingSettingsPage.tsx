@@ -94,7 +94,7 @@ const SectionHeader: React.FC<{
 };
 
 export const AccountingSettingsPage: React.FC = () => {
-  const { t } = useTranslation('accounting');
+  const { t, i18n } = useTranslation('accounting');
   const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'error-mode' | 'fiscal' | 'numbering'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
@@ -241,7 +241,7 @@ export const AccountingSettingsPage: React.FC = () => {
         };
         await updateCoreSettings(settingsToSave);
         setOriginalCoreSettings(settingsToSave);
-        errorHandler.showSuccess('General settings saved!');
+        errorHandler.showSuccess(t('settings.messages.generalSaved'));
       } else {
         // Save policy config for the active section
         const { baseCurrency, ...savePayload } = config as any;
@@ -259,11 +259,11 @@ export const AccountingSettingsPage: React.FC = () => {
           };
           await updateCoreSettings(settingsToSave);
           setOriginalCoreSettings(settingsToSave);
-          const modeText = settingsToSave.strictApprovalMode ? 'Strict Mode [ON]' : 'Strict Mode [OFF]';
-          errorHandler.showSuccess(`Approval & Posting saved! ${modeText}`);
+          const modeText = settingsToSave.strictApprovalMode ? t('settings.messages.strictOn') : t('settings.messages.strictOff');
+          errorHandler.showSuccess(t('settings.messages.policiesSaved', { mode: modeText }));
         } else {
-          const label = section ? section.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Settings';
-          errorHandler.showSuccess(`${label} saved!`);
+          const label = section ? t(`settings.tabs.${section.replace(/-/g, '')}`, { defaultValue: section }) : t('settings.messages.settings');
+          errorHandler.showSuccess(t('settings.messages.sectionSaved', { section: label }));
         }
       }
     } catch (error: any) {
@@ -272,7 +272,7 @@ export const AccountingSettingsPage: React.FC = () => {
         const messages = errorData.details.violations.map((v: any) => v.message).join(', ');
         errorHandler.showError(messages);
       } else {
-        errorHandler.showError(errorData?.message || 'Failed to save settings');
+        errorHandler.showError(errorData?.message || t('settings.messages.saveFailed'));
       }
     } finally {
       setSaving(false);
@@ -309,7 +309,7 @@ export const AccountingSettingsPage: React.FC = () => {
       setFiscalLoading(true);
       await accountingApi.createFiscalYear({ year: fyYear, startMonth: fyStartMonth });
       await loadFiscalYears();
-      errorHandler.showSuccess('Fiscal year created');
+      errorHandler.showSuccess(t('settings.messages.fiscalYearCreated'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to create fiscal year');
     } finally {
@@ -322,7 +322,7 @@ export const AccountingSettingsPage: React.FC = () => {
       setFiscalLoading(true);
       await accountingApi.closeFiscalPeriod(fyId, periodId);
       await loadFiscalYears();
-      errorHandler.showSuccess('Period closed');
+      errorHandler.showSuccess(t('settings.messages.periodClosed'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close period');
     } finally {
@@ -335,7 +335,7 @@ export const AccountingSettingsPage: React.FC = () => {
       setFiscalLoading(true);
       await accountingApi.reopenFiscalPeriod(fyId, periodId);
       await loadFiscalYears();
-      errorHandler.showSuccess('Period reopened');
+      errorHandler.showSuccess(t('settings.messages.periodReopened'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to reopen period');
     } finally {
@@ -345,14 +345,14 @@ export const AccountingSettingsPage: React.FC = () => {
 
   const handleCloseYear = async (fyId: string) => {
     if (!retainedEarningsAccountId) {
-      errorHandler.showError('Retained earnings account is required');
+      errorHandler.showError(t('settings.messages.retainedRequired'));
       return;
     }
     try {
       setFiscalLoading(true);
       await accountingApi.closeFiscalYear(fyId, retainedEarningsAccountId);
       await loadFiscalYears();
-      errorHandler.showSuccess('Fiscal year closed');
+      errorHandler.showSuccess(t('settings.messages.fiscalYearClosed'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close fiscal year');
     } finally {
@@ -362,14 +362,14 @@ export const AccountingSettingsPage: React.FC = () => {
 
   const handleSetNextNumber = async () => {
     if (!seqPrefix || !seqNext) {
-      errorHandler.showError('Prefix and next number are required');
+      errorHandler.showError(t('settings.messages.prefixRequired'));
       return;
     }
     try {
       setSaving(true);
       await accountingApi.setNextVoucherNumber(seqPrefix, seqNext, seqYear === '' ? undefined : Number(seqYear));
       await loadSequences();
-      errorHandler.showSuccess('Next number updated');
+      errorHandler.showSuccess(t('settings.messages.nextNumberUpdated'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to update sequence');
     } finally {
@@ -547,7 +547,7 @@ export const AccountingSettingsPage: React.FC = () => {
                           : 'border-gray-200 dark:border-[var(--color-border)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'
                         }`}
                       >
-                        <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Classic</div>
+                        <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.general.classic')}</div>
                         <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{t('settings.general.classicDesc')}</div>
                       </button>
                       <button
@@ -558,7 +558,7 @@ export const AccountingSettingsPage: React.FC = () => {
                           : 'border-gray-200 dark:border-[var(--color-border)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'
                         }`}
                       >
-                        <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Windows (V3)</div>
+                        <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.general.windows')}</div>
                         <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{t('settings.general.windowsDesc')}</div>
                       </button>
                     </div>
@@ -623,7 +623,7 @@ export const AccountingSettingsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
                           <span className={`text-xs font-bold uppercase tracking-wider ${config.financialApprovalEnabled ? 'text-indigo-600' : 'text-gray-400'}`}>
-                            {config.financialApprovalEnabled ? 'ON' : 'OFF'}
+                            {config.financialApprovalEnabled ? t('settings.on') : t('settings.off')}
                           </span>
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -692,7 +692,7 @@ export const AccountingSettingsPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
                           <span className={`text-xs font-bold uppercase tracking-wider ${config.custodyConfirmationEnabled ? 'text-purple-600' : 'text-gray-400'}`}>
-                            {config.custodyConfirmationEnabled ? 'ON' : 'OFF'}
+                            {config.custodyConfirmationEnabled ? t('settings.on') : t('settings.off')}
                           </span>
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input
@@ -711,18 +711,18 @@ export const AccountingSettingsPage: React.FC = () => {
                       {/* Smart CC Settings - Horizontal Row */}
                       {config.custodyConfirmationEnabled && (
                         <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-700/50">
-                          <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider mb-3">Smart Configuration</p>
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider mb-3">{t('settings.policies.smartConfig')}</p>
                           
                           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
                              
                              {/* 1. Third Party Mode */}
                              <div className="xl:col-span-1">
                                <div className="flex items-center gap-1.5 mb-2">
-                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Third-Party</label>
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">{t('settings.policies.thirdParty')}</label>
                                  <div className="group relative">
                                    <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
-                                     Who validates vouchers where creator ≠ sender/receiver (e.g. transfers).
+                                     {t('settings.policies.thirdPartyHelp')}
                                    </div>
                                  </div>
                                </div>
@@ -735,7 +735,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                    }`}
                                  >
-                                   <span>Receiver Only</span>
+                                   <span>{t('settings.policies.receiverOnly')}</span>
                                    {(config.ccThirdPartyMode || 'RECEIVER_ONLY') === 'RECEIVER_ONLY' && <CheckCircle2 size={12} className="text-purple-600" />}
                                  </button>
                                  <button
@@ -746,7 +746,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                    }`}
                                  >
-                                   <span>Both Parties</span>
+                                   <span>{t('settings.policies.bothParties')}</span>
                                    {config.ccThirdPartyMode === 'BOTH' && <CheckCircle2 size={12} className="text-purple-600" />}
                                  </button>
                                </div>
@@ -755,11 +755,11 @@ export const AccountingSettingsPage: React.FC = () => {
                              {/* 2. Reversal Mode */}
                              <div className="xl:col-span-1">
                                <div className="flex items-center gap-1.5 mb-2">
-                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Reversal Logic</label>
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">{t('settings.policies.reversalLogic')}</label>
                                  <div className="group relative">
                                    <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
-                                     How to handle confirmation for reversal (correction) vouchers.
+                                     {t('settings.policies.reversalHelp')}
                                    </div>
                                  </div>
                                </div>
@@ -772,7 +772,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                    }`}
                                  >
-                                   <span>Match Original</span>
+                                   <span>{t('settings.policies.matchOriginal')}</span>
                                    {(config.ccReversalMode || 'SAME_AS_ORIGINAL') === 'SAME_AS_ORIGINAL' && <CheckCircle2 size={12} className="text-purple-600" />}
                                  </button>
                                  <button
@@ -783,7 +783,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                    }`}
                                  >
-                                   <span>Auto-Approve</span>
+                                   <span>{t('settings.policies.autoApprove')}</span>
                                    {config.ccReversalMode === 'AUTO_APPROVE' && <CheckCircle2 size={12} className="text-purple-600" />}
                                  </button>
                                </div>
@@ -792,11 +792,11 @@ export const AccountingSettingsPage: React.FC = () => {
                              {/* 3. Self Confirm */}
                              <div className="xl:col-span-1">
                                <div className="flex items-center gap-1.5 mb-2">
-                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Self-Confirm</label>
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">{t('settings.policies.selfConfirm')}</label>
                                  <div className="group relative">
                                    <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
-                                     Allow the voucher creator to also confirm custody if they are the receiver.
+                                     {t('settings.policies.selfConfirmHelp')}
                                    </div>
                                  </div>
                                </div>
@@ -812,18 +812,18 @@ export const AccountingSettingsPage: React.FC = () => {
                                       <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAllowSelfConfirmation ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                     </div>
                                   </label>
-                                  <span className="text-[10px] text-gray-500 leading-tight">Allow creators to confirm their own receipts.</span>
+                                  <span className="text-[10px] text-gray-500 leading-tight">{t('settings.policies.selfConfirmHint')}</span>
                                </div>
                              </div>
 
                              {/* 4. Block Missing */}
                              <div className="xl:col-span-1">
                                <div className="flex items-center gap-1.5 mb-2">
-                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Block Missing</label>
+                                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">{t('settings.policies.blockMissing')}</label>
                                  <div className="group relative">
                                    <Info size={12} className="text-gray-400 hover:text-purple-600 cursor-help" />
                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none">
-                                     Prevent submission if no valid custodian user is assigned to the cash account.
+                                     {t('settings.policies.blockMissingHelp')}
                                    </div>
                                  </div>
                                </div>
@@ -839,7 +839,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                       <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${(config.ccBlockIfNoCustodian ?? true) ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                     </div>
                                   </label>
-                                  <span className="text-[10px] text-gray-500 leading-tight">Block submission if custodian is missing.</span>
+                                  <span className="text-[10px] text-gray-500 leading-tight">{t('settings.policies.blockMissingHint')}</span>
                                </div>
                              </div>
 
@@ -853,11 +853,11 @@ export const AccountingSettingsPage: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Voucher Amount Threshold</label>
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">{t('settings.policies.amountThreshold')}</label>
                             <div className="group relative">
                               <Info size={14} className="text-gray-400 hover:text-indigo-600 cursor-help" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
-                                Set a minimum monetary value. Vouchers below this amount skip custody confirmation.
+                                {t('settings.policies.amountThresholdHelp')}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                               </div>
                             </div>
@@ -882,15 +882,15 @@ export const AccountingSettingsPage: React.FC = () => {
                                   </div>
                                 </label>
                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${config.ccAmountThreshold ? 'text-indigo-600' : 'text-gray-400'}`}>
-                                  {config.ccAmountThreshold ? 'ON' : 'OFF'}
+                                  {config.ccAmountThreshold ? t('settings.on') : t('settings.off')}
                                 </span>
                             </div>
                           </div>
                           
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
                             {config.ccAmountThreshold 
-                              ? 'Custody confirmation required only for vouchers exceeding this amount.' 
-                              : 'Minimum amount disabled. Custody confirmation required for ALL vouchers.'}
+                              ? t('settings.policies.amountThresholdOn')
+                              : t('settings.policies.amountThresholdOff')}
                           </p>
                         </div>
                         
@@ -1254,8 +1254,8 @@ export const AccountingSettingsPage: React.FC = () => {
             {(activeTab as string) === 'error-mode' && (
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
-                  title="Policy Error Mode" 
-                  description="Control how validation failures are reported"
+                  title={t('settings.errorMode.title')} 
+                  description={t('settings.errorMode.description')}
                   onSave={() => handleSave('error-mode')}
                   disabled={!hasErrorModeChanges || saving}
                   saving={saving}
@@ -1264,10 +1264,10 @@ export const AccountingSettingsPage: React.FC = () => {
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
                     <AlertTriangle size={20} className="text-amber-500" />
-                    Validation Behavior
+                    {t('settings.errorMode.validationBehavior')}
                   </div>
                   <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-6">
-                    Choose how the system reacts when multiple policy rules are violated
+                    {t('settings.errorMode.validationDesc')}
                   </p>
                   <div className="space-y-4">
                     <label className={`
@@ -1282,11 +1282,11 @@ export const AccountingSettingsPage: React.FC = () => {
                       />
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-gray-900">FAIL_FAST</span>
-                          {config.policyErrorMode === 'FAIL_FAST' && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">Recommended</span>}
+                          <span className="font-bold text-gray-900">{t('settings.errorMode.failFast')}</span>
+                          {config.policyErrorMode === 'FAIL_FAST' && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{t('settings.errorMode.recommended')}</span>}
                         </div>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Stop and report on the first error encountered. Faster performance but may require multiple attempts to fix all issues.
+                          {t('settings.errorMode.failFastDesc')}
                         </p>
                       </div>
                     </label>
@@ -1303,10 +1303,10 @@ export const AccountingSettingsPage: React.FC = () => {
                       />
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-gray-900">AGGREGATE</span>
+                          <span className="font-bold text-gray-900">{t('settings.errorMode.aggregate')}</span>
                         </div>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Run all checks and report all errors at once. Provides a comprehensive list of what needs fixing.
+                          {t('settings.errorMode.aggregateDesc')}
                         </p>
                       </div>
                     </label>
@@ -1319,8 +1319,8 @@ export const AccountingSettingsPage: React.FC = () => {
             {(activeTab as string) === 'fiscal' && (
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
-                  title="Fiscal Year" 
-                  description="Define your company's financial reporting period"
+                  title={t('settings.fiscal.title')} 
+                  description={t('settings.fiscal.description')}
                   onSave={() => handleSave('fiscal')}
                   disabled={!hasFiscalChanges || saving}
                   saving={saving}
@@ -1329,7 +1329,7 @@ export const AccountingSettingsPage: React.FC = () => {
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-end gap-4">
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Fiscal Year</label>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.fiscal.fiscalYear')}</label>
                       <div className="flex gap-2">
                         <input
                           type="number"
@@ -1343,19 +1343,19 @@ export const AccountingSettingsPage: React.FC = () => {
                           onChange={(e) => setFyStartMonth(Number(e.target.value))}
                         >
                           {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                            <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString('en', { month: 'long' })}</option>
+                            <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString(i18n.language || 'en', { month: 'long' })}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Retained Earnings Account ID</label>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.fiscal.retainedEarnings')}</label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border rounded-md"
                         value={retainedEarningsAccountId}
                         onChange={(e) => setRetainedEarningsAccountId(e.target.value)}
-                        placeholder="Enter retained earnings account id"
+                        placeholder={t('settings.fiscal.retainedPlaceholder')}
                       />
                     </div>
                     <button
@@ -1364,25 +1364,25 @@ export const AccountingSettingsPage: React.FC = () => {
                       disabled={fiscalLoading}
                     >
                       {fiscalLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                      Create Year
+                      {t('settings.fiscal.createYear')}
                     </button>
                   </div>
                 </div>
 
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Fiscal Years</h3>
+                    <h3 className="text-lg font-bold text-[var(--color-text-primary)]">{t('settings.fiscal.fiscalYears')}</h3>
                     <button
                       onClick={loadFiscalYears}
                       className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
                     >
                       <RefreshCw className={`w-4 h-4 ${fiscalLoading ? 'animate-spin' : ''}`} />
-                      Refresh
+                      {t('settings.common.refresh')}
                     </button>
                   </div>
 
                   {fiscalYears.length === 0 ? (
-                    <p className="text-sm text-[var(--color-text-muted)]">No fiscal years defined yet.</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.fiscal.none')}</p>
                   ) : (
                     <div className="space-y-3">
                       {fiscalYears.map((fy) => (
@@ -1396,14 +1396,14 @@ export const AccountingSettingsPage: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-bold ${fy.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : fy.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                {fy.status}
+                                {t(`settings.fiscal.status.${fy.status.toLowerCase() as 'open' | 'closed' | 'locked'}`, { defaultValue: fy.status })}
                               </span>
                               <button
                                 onClick={() => handleCloseYear(fy.id)}
                                 disabled={fiscalLoading || fy.status !== 'OPEN'}
                                 className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md disabled:opacity-50"
                               >
-                                Close Year
+                                {t('settings.fiscal.closeYear')}
                               </button>
                           </div>
                           </div>
@@ -1417,7 +1417,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : p.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {p.status}
+                                    {t(`settings.fiscal.status.${p.status.toLowerCase() as 'open' | 'closed' | 'locked'}`, { defaultValue: p.status })}
                                   </span>
                                   {p.status === 'OPEN' ? (
                                     <button
@@ -1425,7 +1425,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                       className="text-xs px-2 py-1 bg-gray-900 text-white rounded"
                                       disabled={fiscalLoading}
                                     >
-                                      Close
+                                      {t('settings.fiscal.close')}
                                     </button>
                                   ) : (
                                     <button
@@ -1433,7 +1433,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                       className="text-xs px-2 py-1 bg-white border border-[var(--color-border)] rounded"
                                       disabled={fiscalLoading || fy.status !== 'OPEN'}
                                     >
-                                      Reopen
+                                      {t('settings.fiscal.reopen')}
                                     </button>
                                   )}
                                 </div>
@@ -1452,8 +1452,8 @@ export const AccountingSettingsPage: React.FC = () => {
             {(activeTab as string) === 'numbering' && (
               <div className="max-w-4xl mx-auto space-y-6">
                 <SectionHeader 
-                  title="Voucher Numbering" 
-                  description="Configure sequential voucher numbers per type/prefix"
+                  title={t('settings.numbering.title')} 
+                  description={t('settings.numbering.description')}
                   onSave={() => handleSave('numbering')}
                   disabled={saving}
                   saving={saving}
@@ -1462,37 +1462,37 @@ export const AccountingSettingsPage: React.FC = () => {
                 <div className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Prefix</label>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.prefix')}</label>
                       <input className="w-full border rounded px-3 py-2 text-sm" value={seqPrefix} onChange={(e) => setSeqPrefix(e.target.value.toUpperCase())} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Year (optional)</label>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.yearOptional')}</label>
                       <input className="w-full border rounded px-3 py-2 text-sm" value={seqYear} onChange={(e) => setSeqYear(e.target.value === '' ? '' : Number(e.target.value))} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">Next Number</label>
+                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.nextNumber')}</label>
                       <input type="number" className="w-full border rounded px-3 py-2 text-sm" value={seqNext} onChange={(e) => setSeqNext(Number(e.target.value))} />
                     </div>
                     <div className="flex items-end">
                       <button onClick={handleSetNextNumber} className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2" disabled={saving}>
                         <Save size={16} />
-                        Save Next
+                        {t('settings.numbering.saveNext')}
                       </button>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-800 mb-3">Sequences</h3>
+                  <h3 className="text-sm font-bold text-slate-800 mb-3">{t('settings.numbering.sequences')}</h3>
                   {sequences.length === 0 ? (
-                    <p className="text-sm text-[var(--color-text-muted)]">No sequences yet.</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.numbering.noSequences')}</p>
                   ) : (
                     <div className="divide-y">
                       {sequences.map((s) => (
                         <div key={s.id} className="py-2 flex justify-between items-center">
                           <div>
                             <div className="font-semibold">{s.prefix}{s.year ? `-${s.year}` : ''}</div>
-                            <div className="text-xs text-[var(--color-text-muted)]">Last: {s.lastNumber}</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.numbering.last', { value: s.lastNumber })}</div>
                           </div>
                           <div className="text-xs text-[var(--color-text-muted)]">{s.updatedAt}</div>
                         </div>
@@ -1506,8 +1506,8 @@ export const AccountingSettingsPage: React.FC = () => {
             {/* Metadata and Closing of IIFE */}
             {config.updatedAt && (
               <div className="mt-8 pt-4 border-t border-[var(--color-border)] text-sm text-[var(--color-text-muted)] italic">
-                Last updated: {new Date(config.updatedAt).toLocaleString()}
-                {config.updatedBy && ` by ${config.updatedBy}`}
+                {t('settings.metadata.lastUpdated', { value: new Date(config.updatedAt).toLocaleString(i18n.language) })}
+                {config.updatedBy && t('settings.metadata.updatedBy', { user: config.updatedBy })}
               </div>
             )}
           </div>

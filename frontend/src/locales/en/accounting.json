@@ -397,7 +397,9 @@
       "dateFormatDesc": "Choose how dates are displayed across the application",
       "uiMode": "Interface Style",
       "uiModeDesc": "Choose the primary desktop experience",
+      "classic": "Classic",
       "classicDesc": "Tabbed, flat interface",
+      "windows": "Windows (V3)",
       "windowsDesc": "Multi-window multitasking"
     },
     "currencies": {
@@ -416,7 +418,26 @@
       "custody": "Custody Confirmation (CC)",
       "custodyHelp": "Ensure funds/assets are physically received by the custodian.",
       "custodyHint": "User-bound custody gate.",
-      "smart": "Smart Configuration"
+      "smart": "Smart Configuration",
+      "smartConfig": "Smart Configuration",
+      "thirdParty": "Third-Party",
+      "thirdPartyHelp": "Who validates vouchers where creator ≠ sender/receiver (e.g. transfers).",
+      "receiverOnly": "Receiver Only",
+      "bothParties": "Both Parties",
+      "reversalLogic": "Reversal Logic",
+      "reversalHelp": "How to handle confirmation for reversal (correction) vouchers.",
+      "matchOriginal": "Match Original",
+      "autoApprove": "Auto-Approve",
+      "selfConfirm": "Self-Confirm",
+      "selfConfirmHelp": "Allow the voucher creator to also confirm custody if they are the receiver.",
+      "selfConfirmHint": "Allow creators to confirm their own receipts.",
+      "blockMissing": "Block Missing",
+      "blockMissingHelp": "Prevent submission if no valid custodian user is assigned to the cash account.",
+      "blockMissingHint": "Block submission if custodian is missing.",
+      "amountThreshold": "Voucher Amount Threshold",
+      "amountThresholdHelp": "Set a minimum monetary value. Vouchers below this amount skip custody confirmation.",
+      "amountThresholdOn": "Custody confirmation required only for vouchers exceeding this amount.",
+      "amountThresholdOff": "Minimum amount disabled. Custody confirmation required for ALL vouchers."
     },
     "costCenter": {
       "description": "Define when cost center assignment is mandatory",
@@ -438,7 +459,70 @@
     "saveLabel": "Save {{section}}",
     "loading": "Loading settings...",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "common": {
+      "refresh": "Refresh"
+    },
+    "errorMode": {
+      "title": "Policy Error Mode",
+      "description": "Control how validation failures are reported",
+      "validationBehavior": "Validation Behavior",
+      "validationDesc": "Choose how the system reacts when multiple policy rules are violated",
+      "failFast": "Fail Fast",
+      "failFastDesc": "Stop and report on the first error encountered. Faster performance but may require multiple attempts to fix all issues.",
+      "recommended": "Recommended",
+      "aggregate": "Aggregate",
+      "aggregateDesc": "Run all checks and report all errors at once. Provides a comprehensive list of what needs fixing."
+    },
+    "fiscal": {
+      "title": "Fiscal Year",
+      "description": "Define your company's financial reporting period",
+      "fiscalYear": "Fiscal Year",
+      "retainedEarnings": "Retained Earnings Account ID",
+      "retainedPlaceholder": "Enter retained earnings account id",
+      "createYear": "Create Year",
+      "fiscalYears": "Fiscal Years",
+      "none": "No fiscal years defined yet.",
+      "closeYear": "Close Year",
+      "close": "Close",
+      "reopen": "Reopen",
+      "status": {
+        "open": "Open",
+        "closed": "Closed",
+        "locked": "Locked"
+      }
+    },
+    "numbering": {
+      "title": "Voucher Numbering",
+      "description": "Configure sequential voucher numbers per type/prefix",
+      "prefix": "Prefix",
+      "yearOptional": "Year (optional)",
+      "nextNumber": "Next Number",
+      "saveNext": "Save Next",
+      "sequences": "Sequences",
+      "noSequences": "No sequences yet.",
+      "last": "Last: {{value}}"
+    },
+    "messages": {
+      "generalSaved": "General settings saved!",
+      "strictOn": "Strict Mode [ON]",
+      "strictOff": "Strict Mode [OFF]",
+      "policiesSaved": "Approval & Posting saved! {{mode}}",
+      "settings": "Settings",
+      "sectionSaved": "{{section}} saved!",
+      "saveFailed": "Failed to save settings",
+      "fiscalYearCreated": "Fiscal year created",
+      "periodClosed": "Period closed",
+      "periodReopened": "Period reopened",
+      "retainedRequired": "Retained earnings account is required",
+      "fiscalYearClosed": "Fiscal year closed",
+      "prefixRequired": "Prefix and next number are required",
+      "nextNumberUpdated": "Next number updated"
+    },
+    "metadata": {
+      "lastUpdated": "Last updated: {{value}}",
+      "updatedBy": " by {{user}}"
+    }
   },
   "dashboard": {
     "actionRequired": "Action Required",

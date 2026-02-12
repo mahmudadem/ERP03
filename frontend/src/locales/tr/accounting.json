@@ -397,7 +397,9 @@
       "dateFormatDesc": "Tarihler uygulamada nasıl gösterilsin",
       "uiMode": "Arayüz Stili",
       "uiModeDesc": "Birincil masaüstü deneyimini seçin",
+      "classic": "Klasik",
       "classicDesc": "Sekmeli, düz arayüz",
+      "windows": "Windows (V3)",
       "windowsDesc": "Çok pencereli çoklu görev"
     },
     "currencies": {
@@ -416,7 +418,26 @@
       "custody": "Zimmet Doğrulaması (CC)",
       "custodyHelp": "Varlıkların/ödemelerin fiilen teslim alındığından emin olun.",
       "custodyHint": "Kullanıcı bağlı zimmet kapısı.",
-      "smart": "Akıllı yapılandırma"
+      "smart": "Akıllı yapılandırma",
+      "smartConfig": "Akıllı yapılandırma",
+      "thirdParty": "Üçüncü Taraf",
+      "thirdPartyHelp": "Oluşturan ile gönderen/alıcı farklıysa kim doğrular (ör. transferler).",
+      "receiverOnly": "Sadece alıcı",
+      "bothParties": "Her iki taraf",
+      "reversalLogic": "Ters kayıt mantığı",
+      "reversalHelp": "Ters (düzeltme) fişlerindeki onay nasıl ele alınacak.",
+      "matchOriginal": "Aslıyla aynı",
+      "autoApprove": "Otomatik onay",
+      "selfConfirm": "Kendi kendine onay",
+      "selfConfirmHelp": "Oluşturan kişi aynı zamanda alıcıysa zimmeti onaylayabilsin.",
+      "selfConfirmHint": "Oluşturanların kendi teslimlerini onaylamasına izin ver.",
+      "blockMissing": "Eksikse engelle",
+      "blockMissingHelp": "Nakit hesapta geçerli zimmet kullanıcısı yoksa gönderimi engelle.",
+      "blockMissingHint": "Zimmet atanmadıysa gönderimi durdur.",
+      "amountThreshold": "Zimmet tutar eşiği",
+      "amountThresholdHelp": "Minimum parasal değer belirleyin. Bu tutarın altındaki fişler zimmet onayını atlar.",
+      "amountThresholdOn": "Yalnızca bu tutarı aşan fişler için zimmet onayı gerekir.",
+      "amountThresholdOff": "Eşik kapalı. Tüm fişler için zimmet onayı gerekir."
     },
     "costCenter": {
       "description": "Maliyet merkezi atamasının ne zaman zorunlu olacağını belirleyin",
@@ -438,7 +459,70 @@
     "saveLabel": "{{section}} kaydet",
     "loading": "Ayarlar yükleniyor...",
     "on": "Açık",
-    "off": "Kapalı"
+    "off": "Kapalı",
+    "common": {
+      "refresh": "Yenile"
+    },
+    "errorMode": {
+      "title": "Politika Hata Modu",
+      "description": "Doğrulama hatalarının nasıl bildirileceğini kontrol et",
+      "validationBehavior": "Doğrulama davranışı",
+      "validationDesc": "Birden fazla politika ihlali olduğunda sistemin tepkisini seçin",
+      "failFast": "İlk hatada dur",
+      "failFastDesc": "İlk hatada durur ve bildirir. Daha hızlıdır ancak tüm sorunları düzeltmek için tekrar gerekir.",
+      "recommended": "Önerilen",
+      "aggregate": "Toplu",
+      "aggregateDesc": "Tüm kontrolleri çalıştırır ve hataları tek seferde listeler."
+    },
+    "fiscal": {
+      "title": "Mali Yıl",
+      "description": "Şirketin finansal raporlama dönemini tanımlayın",
+      "fiscalYear": "Mali Yıl",
+      "retainedEarnings": "Geçmiş yıllar kârı hesabı",
+      "retainedPlaceholder": "Geçmiş kâr hesabı ID'si",
+      "createYear": "Yıl oluştur",
+      "fiscalYears": "Mali Yıllar",
+      "none": "Henüz tanımlı mali yıl yok.",
+      "closeYear": "Yılı kapat",
+      "close": "Kapat",
+      "reopen": "Yeniden aç",
+      "status": {
+        "open": "Açık",
+        "closed": "Kapalı",
+        "locked": "Kilitli"
+      }
+    },
+    "numbering": {
+      "title": "Fiş Numaralama",
+      "description": "Tür/ön ek bazlı ardışık fiş numaralarını ayarla",
+      "prefix": "Ön ek",
+      "yearOptional": "Yıl (opsiyonel)",
+      "nextNumber": "Sonraki numara",
+      "saveNext": "Sonrakini kaydet",
+      "sequences": "Sekanslar",
+      "noSequences": "Henüz sekans yok.",
+      "last": "Son: {{value}}"
+    },
+    "messages": {
+      "generalSaved": "Genel ayarlar kaydedildi",
+      "strictOn": "Sıkı mod [Açık]",
+      "strictOff": "Sıkı mod [Kapalı]",
+      "policiesSaved": "Onay & İşleme kaydedildi! {{mode}}",
+      "settings": "Ayarlar",
+      "sectionSaved": "{{section}} kaydedildi",
+      "saveFailed": "Ayarlar kaydedilemedi",
+      "fiscalYearCreated": "Mali yıl oluşturuldu",
+      "periodClosed": "Dönem kapatıldı",
+      "periodReopened": "Dönem yeniden açıldı",
+      "retainedRequired": "Geçmiş kâr hesabı zorunlu",
+      "fiscalYearClosed": "Mali yıl kapatıldı",
+      "prefixRequired": "Ön ek ve sonraki numara gerekli",
+      "nextNumberUpdated": "Sonraki numara güncellendi"
+    },
+    "metadata": {
+      "lastUpdated": "Son güncelleme: {{value}}",
+      "updatedBy": " - {{user}}"
+    }
   },
   "dashboard": {
     "actionRequired": "İşlem Gerekli",
