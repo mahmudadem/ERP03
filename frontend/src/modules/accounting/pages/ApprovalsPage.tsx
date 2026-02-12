@@ -5,6 +5,7 @@
  * Consolidates 'Awaiting Financial Approval' and 'Awaiting Custody Confirmation'.
  */
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { accountingApi } from '../../../api/accountingApi';
 import { VoucherTable } from '../components/VoucherTable';
@@ -19,6 +20,7 @@ import { AccountsProvider } from '../../../context/AccountsContext';
 import { RejectionModal } from '../components/RejectionModal';
 
 const ApprovalsPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const { voucherTypes } = useVoucherTypes();
   const { openWindow } = useWindowManager();
   const { handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher } = useVoucherActions();
@@ -81,12 +83,12 @@ const ApprovalsPage: React.FC = () => {
         <div className="flex-none p-8 pb-4">
           <div className="flex justify-between items-end mb-8">
             <div>
-              <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">Approval Center</h1>
+              <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">{t('approvals.title')}</h1>
               <p className="text-[var(--color-text-muted)] mt-1 flex items-center gap-2">
-                Manage your pending financial verifications and custody gate satisfactions.
+                {t('approvals.subtitle')}
                 {totalPending > 0 && (
                   <Badge variant="warning" className="animate-pulse">
-                    {totalPending} ACTIONS REQUIRED
+                    {t('approvals.actionsRequired', { count: totalPending })}
                   </Badge>
                 )}
               </p>
@@ -94,7 +96,7 @@ const ApprovalsPage: React.FC = () => {
             <button 
               onClick={handleRefresh}
               className="p-2 hover:bg-[var(--color-bg-tertiary)] rounded-full transition-colors"
-              title="Refresh lists"
+              title={t('approvals.refresh')}
             >
                {isLoading ? <Loader2 size={20} className="animate-spin text-primary-500" /> : <AlertCircle size={20} className="text-[var(--color-text-muted)]" />}
             </button>
@@ -108,7 +110,7 @@ const ApprovalsPage: React.FC = () => {
                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
                     <Shield size={18} />
                  </div>
-                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Awaiting My Approval</h2>
+                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('approvals.awaitingApproval')}</h2>
                  <span className="ml-auto text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded-full">
                    {pendingApprovals.length}
                  </span>
@@ -129,7 +131,7 @@ const ApprovalsPage: React.FC = () => {
                 {pendingApprovals.length === 0 && !loadingApprovals && (
                    <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
                       <Shield size={48} className="opacity-10 mb-2" />
-                      <p className="text-sm font-medium">All caught up! No vouchers pending your approval.</p>
+                      <p className="text-sm font-medium">{t('approvals.noneApproval')}</p>
                    </div>
                 )}
               </div>
@@ -141,7 +143,7 @@ const ApprovalsPage: React.FC = () => {
                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
                     <UserCheck size={18} />
                  </div>
-                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Awaiting Custody Confirmation</h2>
+                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('approvals.awaitingCustody')}</h2>
                  <span className="ml-auto text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded-full">
                    {pendingCustody.length}
                  </span>
@@ -162,7 +164,7 @@ const ApprovalsPage: React.FC = () => {
                 {pendingCustody.length === 0 && !loadingCustody && (
                    <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
                       <UserCheck size={48} className="opacity-10 mb-2" />
-                      <p className="text-sm font-medium">No assets awaiting your physical confirmation.</p>
+                      <p className="text-sm font-medium">{t('approvals.noneCustody')}</p>
                    </div>
                 )}
               </div>

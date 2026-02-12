@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import client from '../../../api/client';
@@ -66,30 +67,34 @@ const SectionHeader: React.FC<{
   onSave: () => void;
   disabled: boolean;
   saving: boolean;
-}> = ({ title, description, onSave, disabled, saving }) => (
-  <div className="flex flex-col gap-4 mb-8">
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{title}</h2>
-        <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{description}</p>
+}> = ({ title, description, onSave, disabled, saving }) => {
+  const { t } = useTranslation('accounting');
+  return (
+    <div className="flex flex-col gap-4 mb-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{title}</h2>
+          <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{description}</p>
+        </div>
+        <button
+          onClick={onSave}
+          disabled={disabled}
+          className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm font-bold active:scale-95"
+        >
+          {saving ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save size={18} />
+          )}
+          {saving ? t('settings.saving') : t('settings.saveLabel', { section: title })}
+        </button>
       </div>
-      <button
-        onClick={onSave}
-        disabled={disabled}
-        className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm font-bold active:scale-95"
-      >
-        {saving ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <Save size={18} />
-        )}
-        {saving ? 'Saving...' : `Save ${title}`}
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 export const AccountingSettingsPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'error-mode' | 'fiscal' | 'numbering'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
@@ -133,14 +138,14 @@ export const AccountingSettingsPage: React.FC = () => {
 
   // Granular tabs as per implementation plan
   const tabs = [
-    { id: 'general', label: 'General Settings', icon: Globe },
-    { id: 'currencies', label: 'Currencies', icon: Coins },
-    { id: 'policies', label: 'Approval & Posting', icon: Shield },
-    { id: 'payment-methods', label: 'Payment Methods', icon: CreditCard },
-    { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
-    { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
-    { id: 'fiscal', label: 'Fiscal Year', icon: Building2 },
-    { id: 'numbering', label: 'Voucher Numbering', icon: Hash },
+    { id: 'general', label: t('settings.tabs.general'), icon: Globe },
+    { id: 'currencies', label: t('settings.tabs.currencies'), icon: Coins },
+    { id: 'policies', label: t('settings.tabs.policies'), icon: Shield },
+    { id: 'payment-methods', label: t('settings.tabs.paymentMethods'), icon: CreditCard },
+    { id: 'cost-center', label: t('settings.tabs.costCenter'), icon: DollarSign },
+    { id: 'error-mode', label: t('settings.tabs.errorMode'), icon: AlertTriangle },
+    { id: 'fiscal', label: t('settings.tabs.fiscal'), icon: Building2 },
+    { id: 'numbering', label: t('settings.tabs.numbering'), icon: Hash },
   ];
 
   // Mode A = both Financial Approval AND Custody Confirmation are OFF
@@ -377,7 +382,7 @@ export const AccountingSettingsPage: React.FC = () => {
       <div className="flex items-center justify-center h-full p-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading settings...</p>
+          <p className="mt-4 text-gray-500">{t('settings.loading')}</p>
         </div>
       </div>
     );
@@ -388,9 +393,9 @@ export const AccountingSettingsPage: React.FC = () => {
       {/* Header (Simplified - Save buttons moved to sections) */}
       <div className="flex-none px-8 py-6 bg-white dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Accounting Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.title')}</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">
-            Manage your company's accounting preferences and policies
+            {t('settings.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-3">

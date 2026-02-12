@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { PendingApprovalsWidget } from '../components/PendingApprovalsWidget';
 import { Plus, FileText, BarChart2, Settings, ArrowRight, PieChart, Scale } from 'lucide-react';
 
 const AccountingHomePage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const navigate = useNavigate();
 
   return (
@@ -13,8 +15,8 @@ const AccountingHomePage: React.FC = () => {
        {/* Welcome Header */}
        <div className="flex justify-between items-center">
          <div>
-           <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">Accounting Overview</h1>
-           <p className="text-[var(--color-text-muted)] mt-1">Manage transactions, monitor approvals, and generate reports.</p>
+           <h1 className="text-3xl font-extrabold text-[var(--color-text-primary)] tracking-tight">{t('home.title')}</h1>
+           <p className="text-[var(--color-text-muted)] mt-1">{t('home.subtitle')}</p>
          </div>
          <Button 
            variant="primary" 
@@ -23,7 +25,7 @@ const AccountingHomePage: React.FC = () => {
            onClick={() => navigate('/accounting/vouchers/new')}
          >
            <Plus size={20} />
-           New Voucher
+           {t('home.newVoucher')}
          </Button>
        </div>
 
@@ -43,10 +45,10 @@ const AccountingHomePage: React.FC = () => {
             <div className="bg-blue-50 text-blue-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                <FileText size={20} />
             </div>
-            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Journal</h3>
-            <p className="text-xl font-black text-gray-900">Voucher List</p>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.journalTag')}</h3>
+            <p className="text-xl font-black text-gray-900">{t('home.journalTitle')}</p>
             <div className="flex items-center gap-1 text-sm text-blue-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-               Go to list <ArrowRight size={14} />
+               {t('home.goToList')} <ArrowRight size={14} />
             </div>
          </Card>
 
@@ -58,10 +60,10 @@ const AccountingHomePage: React.FC = () => {
             <div className="bg-indigo-50 text-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                <Settings size={20} />
             </div>
-            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Structure</h3>
-            <p className="text-xl font-black text-gray-900">Chart of Accounts</p>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.structureTag')}</h3>
+            <p className="text-xl font-black text-gray-900">{t('home.chartOfAccounts')}</p>
             <div className="flex items-center gap-1 text-sm text-indigo-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-               Manage structure <ArrowRight size={14} />
+               {t('home.manageStructure')} <ArrowRight size={14} />
             </div>
          </Card>
 
@@ -73,17 +75,17 @@ const AccountingHomePage: React.FC = () => {
             <div className="bg-purple-50 text-purple-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                <BarChart2 size={20} />
             </div>
-            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Analysis</h3>
-            <p className="text-xl font-black text-gray-900">Trial Balance</p>
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{t('home.analysisTag')}</h3>
+            <p className="text-xl font-black text-gray-900">{t('home.trialBalance')}</p>
             <div className="flex items-center gap-1 text-sm text-purple-600 font-bold mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-               View analytics <ArrowRight size={14} />
+               {t('home.viewAnalytics')} <ArrowRight size={14} />
             </div>
          </Card>
 
          {/* More coming soon... */}
          <div className="p-6 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center opacity-50">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">More modules</p>
-            <p className="text-sm font-medium text-gray-400 mt-1">Coming Soon</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('home.moreModules')}</p>
+            <p className="text-sm font-medium text-gray-400 mt-1">{t('home.comingSoon')}</p>
          </div>
 
        </div>
@@ -91,8 +93,8 @@ const AccountingHomePage: React.FC = () => {
        {/* Financial Reports */}
        <div className="space-y-3">
          <div className="flex items-center justify-between">
-           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Financial Reports</h2>
-           <p className="text-sm text-[var(--color-text-muted)]">Balance Sheet, Trial Balance, and Profit &amp; Loss</p>
+           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('home.financialReports')}</h2>
+           <p className="text-sm text-[var(--color-text-muted)]">{t('home.financialReportsDesc')}</p>
          </div>
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
            <Card
@@ -104,12 +106,12 @@ const AccountingHomePage: React.FC = () => {
                  <Scale size={20} />
                </div>
                <div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Position</p>
-                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Balance Sheet</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">{t('home.positionTag')}</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">{t('home.balanceSheet')}</p>
                </div>
              </div>
-             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-               View Assets, Liabilities, and Equity with retained earnings in one snapshot.
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               {t('home.balanceSheetDesc')}
              </p>
            </Card>
 
@@ -122,12 +124,12 @@ const AccountingHomePage: React.FC = () => {
                  <BarChart2 size={20} />
                </div>
                <div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">Control</p>
-                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Trial Balance</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">{t('home.controlTag')}</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">{t('home.trialBalance')}</p>
                </div>
              </div>
-             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-               Quickly verify that debits and credits are balanced across the chart.
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               {t('home.trialBalanceDesc')}
              </p>
            </Card>
 
@@ -140,12 +142,12 @@ const AccountingHomePage: React.FC = () => {
                  <PieChart size={20} />
                </div>
                <div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Performance</p>
-                 <p className="text-lg font-bold text-[var(--color-text-primary)]">Profit &amp; Loss</p>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">{t('home.performanceTag')}</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">{t('home.profitLoss')}</p>
                </div>
              </div>
-             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-               Analyze revenue and expenses for the selected period with one click.
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               {t('home.profitLossDesc')}
              </p>
            </Card>
          </div>
