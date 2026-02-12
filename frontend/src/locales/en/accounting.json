@@ -372,6 +372,41 @@
   "settings": {
     "title": "Accounting Settings",
     "subtitle": "Manage your company's accounting preferences and policies",
+    "general": {
+      "description": "Configure general company preferences that affect the accounting module",
+      "timezone": "Company Timezone",
+      "timezoneDesc": "Select the primary timezone for financial reports and transaction timestamps",
+      "dateFormat": "Date Format",
+      "dateFormatDesc": "Choose how dates are displayed across the application",
+      "uiMode": "Interface Style",
+      "uiModeDesc": "Choose the primary desktop experience",
+      "classicDesc": "Tabbed, flat interface",
+      "windowsDesc": "Multi-window multitasking"
+    },
+    "currencies": {
+      "description": "Manage your enterprise currency list and base currency"
+    },
+    "policies": {
+      "description": "Configure approval gates and posting behavior",
+      "approvalGates": "Approval Gates",
+      "approvalDesc": "Enable approval requirements before vouchers can be posted to ledger",
+      "financialApproval": "Financial Approval (FA)",
+      "financialApprovalHelp": "Require manager approval for vouchers before they affect the ledger.",
+      "financialApprovalHint": "Role-based approval gate.",
+      "applyTo": "Apply To:",
+      "applyAll": "All Vouchers",
+      "applyMarked": "Marked Accounts Only",
+      "custody": "Custody Confirmation (CC)",
+      "custodyHelp": "Ensure funds/assets are physically received by the custodian.",
+      "custodyHint": "User-bound custody gate.",
+      "smart": "Smart Configuration"
+    },
+    "costCenter": {
+      "description": "Define when cost center assignment is mandatory",
+      "title": "Enforce Cost Centers",
+      "subtitle": "Require cost center assignment on specific account types",
+      "requiredFor": "Required for Account Types:"
+    },
     "tabs": {
       "general": "General Settings",
       "currencies": "Currencies",
@@ -384,7 +419,9 @@
     },
     "saving": "Saving...",
     "saveLabel": "Save {{section}}",
-    "loading": "Loading settings..."
+    "loading": "Loading settings...",
+    "on": "ON",
+    "off": "OFF"
   },
   "accountStatement": {
     "title": "Account Statement",

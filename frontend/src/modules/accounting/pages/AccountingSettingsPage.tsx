@@ -452,8 +452,8 @@ export const AccountingSettingsPage: React.FC = () => {
                   {activeTab === 'general' && (
                     <div className="max-w-4xl mx-auto space-y-8">
                       <SectionHeader 
-                        title="General Settings" 
-                        description="Configure general company preferences that affect the accounting module"
+                        title={t('settings.tabs.general')} 
+                        description={t('settings.general.description')}
                         onSave={() => handleSave('general')}
                         disabled={!hasGeneralChanges || saving}
                         saving={saving}
@@ -464,10 +464,10 @@ export const AccountingSettingsPage: React.FC = () => {
                   <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                     <label className="flex items-center gap-2 font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
                       <Globe size={20} className="text-blue-500" />
-                      Company Timezone
+                      {t('settings.general.timezone')}
                     </label>
                     <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-4">
-                      Select the primary timezone for financial reports and transaction timestamps
+                      {t('settings.general.timezoneDesc')}
                     </p>
                     <select
                       className="block w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] dark:text-[var(--color-text-primary)] rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
@@ -486,10 +486,10 @@ export const AccountingSettingsPage: React.FC = () => {
                   <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                     <label className="flex items-center gap-2 font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
                       <Calendar size={20} className="text-green-500" />
-                      Date Format
+                      {t('settings.general.dateFormat')}
                     </label>
                     <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-4">
-                      Choose how dates are displayed across the application
+                      {t('settings.general.dateFormatDesc')}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
                       {['DD/MM/YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY', 'DD.MM.YYYY'].map((format) => (
@@ -533,10 +533,10 @@ export const AccountingSettingsPage: React.FC = () => {
                   <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                     <label className="flex items-center gap-2 font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
                       <Layout size={20} className="text-purple-500" />
-                      Interface Style
+                      {t('settings.general.uiMode')}
                     </label>
                     <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-4">
-                      Choose the primary desktop experience
+                      {t('settings.general.uiModeDesc')}
                     </p>
                     <div className="flex gap-4">
                       <button
@@ -548,7 +548,7 @@ export const AccountingSettingsPage: React.FC = () => {
                         }`}
                       >
                         <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Classic</div>
-                        <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">Tabbed, flat interface</div>
+                        <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{t('settings.general.classicDesc')}</div>
                       </button>
                       <button
                         onClick={() => setLocalCoreSettings({ ...localCoreSettings, uiMode: 'windows' })}
@@ -559,7 +559,7 @@ export const AccountingSettingsPage: React.FC = () => {
                         }`}
                       >
                         <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Windows (V3)</div>
-                        <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">Multi-window multitasking</div>
+                        <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{t('settings.general.windowsDesc')}</div>
                       </button>
                     </div>
                     </div>
@@ -571,8 +571,8 @@ export const AccountingSettingsPage: React.FC = () => {
                   {(activeTab as string) === 'currencies' && (
                     <div className="max-w-6xl mx-auto space-y-8">
                       <SectionHeader 
-                        title="Currencies" 
-                        description="Manage your enterprise currency list and base currency"
+                        title={t('settings.tabs.currencies')} 
+                        description={t('settings.currencies.description')}
                         onSave={() => handleSave('currencies')}
                         disabled={saving} // Currencies handled internally by CompanyCurrencySettings components
                         saving={saving}
@@ -585,8 +585,8 @@ export const AccountingSettingsPage: React.FC = () => {
                   {(activeTab as string) === 'policies' && (
                     <div className="w-full space-y-8">
                       <SectionHeader 
-                        title="Approval & Posting" 
-                        description="Configure approval gates and posting behavior"
+                        title={t('settings.tabs.policies')} 
+                        description={t('settings.policies.description')}
                         onSave={() => handleSave('policies')}
                         disabled={!hasPolicyChanges || saving}
                         saving={saving}
@@ -596,10 +596,10 @@ export const AccountingSettingsPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-xl p-6 shadow-sm">
                   <h3 className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-4">
                     <Shield size={20} className="text-indigo-600 dark:text-indigo-400" />
-                    Approval Gates
+                    {t('settings.policies.approvalGates')}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-[var(--color-text-secondary)] mb-6">
-                    Enable approval requirements before vouchers can be posted to ledger
+                    {t('settings.policies.approvalDesc')}
                   </p>
                   
                   <div className="flex flex-col gap-6">
@@ -608,17 +608,17 @@ export const AccountingSettingsPage: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Financial Approval (FA)</label>
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">{t('settings.policies.financialApproval')}</label>
                             <div className="group relative">
                               <Info size={14} className="text-gray-400 hover:text-indigo-600 cursor-help" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
-                                Require manager approval for vouchers before they affect the ledger.
+                                {t('settings.policies.financialApprovalHelp')}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                               </div>
                             </div>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                            Role-based approval gate.
+                            {t('settings.policies.financialApprovalHint')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -645,7 +645,7 @@ export const AccountingSettingsPage: React.FC = () => {
                       
                       {config.financialApprovalEnabled && (
                         <div className="mt-4 pt-4 border-t border-indigo-100">
-                          <label className="text-xs font-semibold text-gray-700 mb-2 block">Apply To:</label>
+                          <label className="text-xs font-semibold text-gray-700 mb-2 block">{t('settings.policies.applyTo')}</label>
                           <div className="flex gap-2">
                             <button
                               onClick={() => setConfig({ ...config, faApplyMode: 'ALL' })}
@@ -655,7 +655,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                   : 'bg-gray-100 dark:bg-[var(--color-bg-secondary)] text-gray-600 dark:text-[var(--color-text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--color-bg-tertiary)]'
                               }`}
                             >
-                              All Vouchers
+                              {t('settings.policies.applyAll')}
                             </button>
                             <button
                               onClick={() => setConfig({ ...config, faApplyMode: 'MARKED_ONLY' })}
@@ -665,7 +665,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                   : 'bg-gray-100 dark:bg-[var(--color-bg-secondary)] text-gray-600 dark:text-[var(--color-text-secondary)] hover:bg-gray-200 dark:hover:bg-[var(--color-bg-tertiary)]'
                               }`}
                             >
-                              Marked Accounts Only
+                              {t('settings.policies.applyMarked')}
                             </button>
                           </div>
                         </div>
@@ -677,17 +677,17 @@ export const AccountingSettingsPage: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">Custody Confirmation (CC)</label>
+                            <label className="font-semibold text-gray-800 dark:text-[var(--color-text-primary)]">{t('settings.policies.custody')}</label>
                             <div className="group relative">
                               <Info size={14} className="text-gray-400 hover:text-purple-600 cursor-help" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 pointer-events-none text-center">
-                                Ensure funds/assets are physically received by the custodian.
+                                {t('settings.policies.custodyHelp')}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                               </div>
                             </div>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                            User-bound custody gate.
+                            {t('settings.policies.custodyHint')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -1171,8 +1171,8 @@ export const AccountingSettingsPage: React.FC = () => {
             {(activeTab as string) === 'cost-center' && (
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
-                  title="Cost Center Required" 
-                  description="Define when cost center assignment is mandatory"
+                  title={t('settings.tabs.costCenter')} 
+                  description={t('settings.costCenter.description')}
                   onSave={() => handleSave('cost-center')}
                   disabled={!hasCostCenterChanges || saving}
                   saving={saving}
@@ -1183,15 +1183,15 @@ export const AccountingSettingsPage: React.FC = () => {
                     <div className="flex-1">
                       <label className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
                         <DollarSign size={20} className="text-purple-500" />
-                        Enforce Cost Centers
+                        {t('settings.costCenter.title')}
                       </label>
                       <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                        Require cost center assignment on specific account types
+                        {t('settings.costCenter.subtitle')}
                       </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className={`text-xs font-bold uppercase tracking-wider ${config.costCenterPolicy.enabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
-                        {config.costCenterPolicy.enabled ? 'ON' : 'OFF'}
+                        {config.costCenterPolicy.enabled ? t('settings.on') : t('settings.off')}
                       </span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -1215,7 +1215,7 @@ export const AccountingSettingsPage: React.FC = () => {
                   
                   {config.costCenterPolicy.enabled && (
                     <div className="mt-6 pt-6 border-t border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900 mb-4">Required for Account Types:</p>
+                      <p className="text-sm font-semibold text-gray-900 mb-4">{t('settings.costCenter.requiredFor')}</p>
                       <div className="grid grid-cols-2 gap-4">
                         {['EXPENSE', 'ASSET', 'LIABILITY', 'REVENUE'].map((type) => (
                           <label key={type} className="flex items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">

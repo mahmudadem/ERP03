@@ -372,6 +372,41 @@
   "settings": {
     "title": "Muhasebe Ayarları",
     "subtitle": "Şirketinizin muhasebe tercihlerini ve politikalarını yönetin",
+    "general": {
+      "description": "Muhasebe modülünü etkileyen genel şirket tercihlerini yapılandırın",
+      "timezone": "Şirket Saat Dilimi",
+      "timezoneDesc": "Raporlar ve zaman damgaları için ana saat dilimini seçin",
+      "dateFormat": "Tarih Formatı",
+      "dateFormatDesc": "Tarihler uygulamada nasıl gösterilsin",
+      "uiMode": "Arayüz Stili",
+      "uiModeDesc": "Birincil masaüstü deneyimini seçin",
+      "classicDesc": "Sekmeli, düz arayüz",
+      "windowsDesc": "Çok pencereli çoklu görev"
+    },
+    "currencies": {
+      "description": "Kur listesi ve baz para birimini yönetin"
+    },
+    "policies": {
+      "description": "Onay kapıları ve işleme davranışını yapılandırın",
+      "approvalGates": "Onay Kapıları",
+      "approvalDesc": "Fişler deftere işlenmeden önce onay gereksinimini etkinleştirin",
+      "financialApproval": "Finansal Onay (FA)",
+      "financialApprovalHelp": "Fişlerin defteri etkilemeden önce yönetici onayı gerekir.",
+      "financialApprovalHint": "Rol tabanlı onay kapısı.",
+      "applyTo": "Uygulama:",
+      "applyAll": "Tüm fişler",
+      "applyMarked": "Sadece işaretli hesaplar",
+      "custody": "Zimmet Doğrulaması (CC)",
+      "custodyHelp": "Varlıkların/ödemelerin fiilen teslim alındığından emin olun.",
+      "custodyHint": "Kullanıcı bağlı zimmet kapısı.",
+      "smart": "Akıllı yapılandırma"
+    },
+    "costCenter": {
+      "description": "Maliyet merkezi atamasının ne zaman zorunlu olacağını belirleyin",
+      "title": "Maliyet Merkezlerini Zorunlu Kıl",
+      "subtitle": "Belirli hesap türlerinde maliyet merkezi atamasını zorunlu tut",
+      "requiredFor": "Gerekli Hesap Türleri:"
+    },
     "tabs": {
       "general": "Genel Ayarlar",
       "currencies": "Para Birimleri",
@@ -384,7 +419,9 @@
     },
     "saving": "Kaydediliyor...",
     "saveLabel": "{{section}} kaydet",
-    "loading": "Ayarlar yükleniyor..."
+    "loading": "Ayarlar yükleniyor...",
+    "on": "Açık",
+    "off": "Kapalı"
   },
   "accountStatement": {
     "title": "Hesap Ekstresi",
