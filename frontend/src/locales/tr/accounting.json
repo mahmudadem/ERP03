@@ -741,6 +741,12 @@
     "loading": "Hesaplar yükleniyor...",
     "noResults": "Hesap bulunamadı"
   },
+  "currencySelector": {
+    "placeholder": "...Para birimi",
+    "searchPlaceholder": "Para birimi ara...",
+    "loading": "Para birimleri yükleniyor...",
+    "noResults": "Para birimi bulunamadı"
+  },
   "voucherRenderer": {
     "loading": "Tanım yükleniyor...",
     "systemMode": "Sistem Modu",

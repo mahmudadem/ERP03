@@ -741,6 +741,12 @@
     "loading": "Loading accounts...",
     "noResults": "No accounts found"
   },
+  "currencySelector": {
+    "placeholder": "...Cur",
+    "searchPlaceholder": "Search currency...",
+    "loading": "Loading currencies...",
+    "noResults": "No currencies found"
+  },
   "voucherRenderer": {
     "loading": "Loading definition...",
     "systemMode": "System Mode",

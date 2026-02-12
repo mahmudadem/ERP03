@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, Loader2, Globe, ChevronDown, Check } from 'lucide-react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { useCompanyCurrencies, Currency } from '../../hooks/useCompanyCurrencies';
@@ -31,13 +32,14 @@ interface CurrencySelectorProps {
 export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorProps>(({
   value,
   onChange,
-  placeholder = 'Cur...',
+  placeholder,
   disabled = false,
   className = '',
   noBorder = false,
   onKeyDown: externalKeyDown,
   onBlur: externalBlur
 }, ref) => {
+  const { t } = useTranslation('accounting');
   const { data: currencies = [], isLoading, isError } = useCompanyCurrencies();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -234,7 +236,7 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          placeholder={placeholder}
+          placeholder={placeholder || t('currencySelector.placeholder', { defaultValue: '...Cur' })}
           disabled={disabled || isLoading}
           className={`w-full text-xs text-center font-bold transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
@@ -265,7 +267,7 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
                       setHighlightedIndex(0);
                     }}
                     onKeyDown={handleModalKeyDown}
-                    placeholder="Search currency..."
+                    placeholder={t('currencySelector.searchPlaceholder', { defaultValue: 'Search currency...' })}
                     className="flex-1 bg-transparent border-none outline-none text-sm uppercase text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
                     autoFocus
                   />
@@ -280,7 +282,9 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
               
               <div className="flex-1 overflow-y-auto custom-scroll p-1">
                 {filteredCurrencies.length === 0 ? (
-                  <div className="p-4 text-center text-[var(--color-text-muted)] text-sm">No currencies found</div>
+                  <div className="p-4 text-center text-[var(--color-text-muted)] text-sm">
+                    {t('currencySelector.noResults', { defaultValue: 'No currencies found' })}
+                  </div>
                 ) : (
                   <div className="space-y-0.5">
                     {filteredCurrencies.map((currency, index) => (

@@ -1318,10 +1318,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             onChange={(val) => handleRowChange(row.id, 'account', val)} 
                                                             noBorder={true}
                                                             disabled={readOnly}
+                                                            placeholder={t('accountSelector.placeholder', { defaultValue: '...Account code' })}
                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
                                                             onBlur={() => onBlurRef.current?.()}
                                                         />
-                                                     </div>
+                                                    </div>
 
                                                  ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' ? (
                                                      <AmountInput
@@ -1376,18 +1377,19 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                      </div>
                                                  ) : colId === 'currency' ? (
                                                      <div className="p-0.5 relative group/curr">
-                                                       <CurrencySelector
-                                                           ref={(el) => registerCellRef(index, colIndex, el)}
-                                                           value={row.currency}
-                                                           disabled={readOnly || (() => {
-                                                             const acc = getAccountByCode(row.account);
-                                                             return acc?.currencyPolicy === 'FIXED';
-                                                           })()}
-                                                           onChange={(val) => handleRowChange(row.id, 'currency', val)}
-                                                           onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
-                                                           onBlur={() => onBlurRef.current?.()}
-                                                           noBorder
-                                                       />
+                                                        <CurrencySelector
+                                                            ref={(el) => registerCellRef(index, colIndex, el)}
+                                                            value={row.currency}
+                                                            disabled={readOnly || (() => {
+                                                              const acc = getAccountByCode(row.account);
+                                                              return acc?.currencyPolicy === 'FIXED';
+                                                            })()}
+                                                            placeholder={t('currencySelector.placeholder', { defaultValue: '...Cur' })}
+                                                            onChange={(val) => handleRowChange(row.id, 'currency', val)}
+                                                            onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                            onBlur={() => onBlurRef.current?.()}
+                                                            noBorder
+                                                        />
                                                        {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
                                                          <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
                                                            <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>
@@ -1544,18 +1546,19 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                              />
                                          ) : colId === 'currency' ? (
                                              <div className="relative group/curr">
-                                               <CurrencySelector
-                                                   ref={(el) => registerCellRef(index, colIdx, el)}
-                                                   value={row.currency}
-                                                   disabled={readOnly || (() => {
-                                                     const acc = getAccountByCode(row.account);
-                                                     return acc?.currencyPolicy === 'FIXED';
-                                                   })()}
-                                                   onChange={(val) => handleRowChange(row.id, 'currency', val)}
-                                                   onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
-                                                   onBlur={() => onBlurRef.current?.()}
-                                                   noBorder
-                                               />
+                                              <CurrencySelector
+                                                  ref={(el) => registerCellRef(index, colIdx, el)}
+                                                  value={row.currency}
+                                                  disabled={readOnly || (() => {
+                                                    const acc = getAccountByCode(row.account);
+                                                    return acc?.currencyPolicy === 'FIXED';
+                                                  })()}
+                                                  placeholder={t('currencySelector.placeholder', { defaultValue: '...Cur' })}
+                                                  onChange={(val) => handleRowChange(row.id, 'currency', val)}
+                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                  onBlur={() => onBlurRef.current?.()}
+                                                  noBorder
+                                              />
                                                {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
                                                  <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
                                                    <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>

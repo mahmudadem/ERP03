@@ -741,6 +741,12 @@
     "loading": "جارٍ تحميل الحسابات...",
     "noResults": "لا توجد حسابات"
   },
+  "currencySelector": {
+    "placeholder": "...عملة",
+    "searchPlaceholder": "ابحث عن عملة...",
+    "loading": "جارٍ تحميل العملات...",
+    "noResults": "لا توجد عملات"
+  },
   "voucherRenderer": {
     "loading": "جارٍ تحميل التعريف...",
     "systemMode": "وضع النظام",
