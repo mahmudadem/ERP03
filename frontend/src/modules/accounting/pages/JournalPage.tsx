@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { accountingApi } from '../../../api/accountingApi';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -7,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 
 const JournalPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const { settings } = useCompanySettings();
   const navigate = useNavigate();
   const [fromDate, setFromDate] = useState<string>(() => `${new Date().getFullYear()}-01-01`);
@@ -46,8 +48,8 @@ const JournalPage: React.FC = () => {
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Journal / Day Book</h1>
-          <p className="text-sm text-slate-600">Vouchers listed chronologically with full lines.</p>
+          <h1 className="text-2xl font-bold">{t('journal.title')}</h1>
+          <p className="text-sm text-slate-600">{t('journal.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -68,51 +70,51 @@ const JournalPage: React.FC = () => {
               exportToExcel(
                 rows,
                 [
-                  { header: 'Date', key: 'date' },
-                  { header: 'Voucher', key: 'voucherNo' },
-                  { header: 'Account', key: 'account' },
-                  { header: 'Description', key: 'description' },
-                  { header: 'Debit', key: 'debit', isNumber: true },
-                  { header: 'Credit', key: 'credit', isNumber: true }
+                  { header: t('journal.date'), key: 'date' },
+                  { header: t('journal.voucher'), key: 'voucherNo' },
+                  { header: t('journal.account'), key: 'account' },
+                  { header: t('journal.description'), key: 'description' },
+                  { header: t('journal.debit'), key: 'debit', isNumber: true },
+                  { header: t('journal.credit'), key: 'credit', isNumber: true }
                 ],
                 `Journal-${fromDate}-${toDate}`,
-                'Journal / Day Book',
-                `Period ${fromDate} to ${toDate}`
+                t('journal.title'),
+                t('journal.period', { from: fromDate, to: toDate })
               );
             }}
             className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm"
           >
-            Export Excel
+            {t('common.exportExcel')}
           </button>
           <button
             onClick={() => exportElementToPDF('journal-report', 'Journal')}
             className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm"
           >
-            Export PDF
+            {t('common.exportPDF')}
           </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-2 border rounded-md text-sm">
-            <Printer className="w-4 h-4" /> Print
+            <Printer className="w-4 h-4" /> {t('common.print')}
           </button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 items-end bg-white border rounded-xl p-4 shadow-sm">
         <div>
-          <label className="text-xs font-semibold text-[var(--color-text-muted)]">From</label>
+          <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.from')}</label>
           <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
         </div>
         <div>
-          <label className="text-xs font-semibold text-[var(--color-text-muted)]">To</label>
+          <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.to')}</label>
           <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
         </div>
         <div>
-          <label className="text-xs font-semibold text-[var(--color-text-muted)]">Voucher Type</label>
+          <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.voucherType')}</label>
           <input
             type="text"
             value={voucherType}
             onChange={(e) => setVoucherType(e.target.value.toUpperCase())}
             className="border rounded px-2 py-1 text-sm"
-            placeholder="JE, PV, RV..."
+            placeholder={t('journal.voucherTypePlaceholder')}
           />
         </div>
         <button
@@ -121,28 +123,28 @@ const JournalPage: React.FC = () => {
           disabled={loading}
         >
           {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Filter className="w-4 h-4" />}
-          Apply
+          {t('common.apply')}
         </button>
       </div>
 
       <div className="space-y-4" id="journal-report">
         {loading ? (
-          <div className="text-sm text-slate-500">Loading...</div>
+          <div className="text-sm text-slate-500">{t('common.loading')}</div>
         ) : data.length === 0 ? (
-          <div className="text-sm text-slate-500">No vouchers in this period.</div>
+          <div className="text-sm text-slate-500">{t('journal.empty')}</div>
         ) : (
           data.map((v) => (
             <div key={v.voucherId} className="bg-white border rounded-xl shadow-sm p-4">
               <div className="flex justify-between items-center mb-2">
                 <div>
                   <div className="text-sm font-semibold">
-                    Date: {formatCompanyDate(v.date, settings)} &nbsp; · &nbsp; Voucher:{" "}
+                    {t('journal.dateLabel', { date: formatCompanyDate(v.date, settings) })} &nbsp; · &nbsp; {t('journal.voucherLabel')}{" "}
                     <button className="text-indigo-600 font-bold" onClick={() => navigate(`/accounting/vouchers/${v.voucherId}`)}>
                       {v.voucherNo}
                     </button>
-                    &nbsp; · &nbsp; Type: {v.type}
+                    &nbsp; · &nbsp; {t('journal.type')}: {v.type}
                   </div>
-                  <div className="text-xs text-slate-500">Description: {v.description || '—'}</div>
+                  <div className="text-xs text-slate-500">{t('journal.descriptionLabel')}: {v.description || '—'}</div>
                 </div>
                 <div className="text-xs uppercase font-bold text-slate-600">{v.status}</div>
               </div>
@@ -150,10 +152,10 @@ const JournalPage: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="border-b">
                   <tr className="text-left text-xs text-slate-500">
-                    <th className="py-2">Account</th>
-                    <th className="py-2">Description</th>
-                    <th className="py-2 text-right">Debit</th>
-                    <th className="py-2 text-right">Credit</th>
+                    <th className="py-2">{t('journal.account')}</th>
+                    <th className="py-2">{t('journal.description')}</th>
+                    <th className="py-2 text-right">{t('journal.debit')}</th>
+                    <th className="py-2 text-right">{t('journal.credit')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -172,8 +174,8 @@ const JournalPage: React.FC = () => {
               </table>
 
               <div className="flex justify-end gap-6 mt-2 text-sm font-bold">
-                <span>Debit: {v.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                <span>Credit: {v.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>{t('journal.debitTotal')}: {v.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>{t('journal.creditTotal')}: {v.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           ))
@@ -182,8 +184,8 @@ const JournalPage: React.FC = () => {
 
       {!loading && data.length > 0 && (
         <div className="bg-white border rounded-xl p-4 shadow-sm flex justify-end gap-6 font-bold">
-          <span>Total Debit: {totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          <span>Total Credit: {totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span>{t('journal.debitTotal')}: {totals.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span>{t('journal.creditTotal')}: {totals.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
       )}
     </div>

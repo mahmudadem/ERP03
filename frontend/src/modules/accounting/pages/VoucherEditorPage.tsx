@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -14,6 +15,7 @@ import { getCompanyToday } from '../../../utils/dateUtils';
 import attachmentsApi from '../../../api/attachmentsApi';
 
 const VoucherEditorPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -103,7 +105,7 @@ const VoucherEditorPage: React.FC = () => {
           await accountingApi.sendVoucherToApproval(created.id);
         }
         
-        errorHandler.showSuccess('SAVE');
+        errorHandler.showSuccess(t('voucherEditor.saved'));
         navigate(`/accounting/vouchers/${created.id}`);
       } else {
         await accountingApi.updateVoucher(id!, payload);
@@ -112,7 +114,7 @@ const VoucherEditorPage: React.FC = () => {
           await accountingApi.sendVoucherToApproval(id!);
         }
         
-        errorHandler.showSuccess('SAVE');
+        errorHandler.showSuccess(t('voucherEditor.saved'));
         loadVoucherData(id!);
       }
     } catch (err: any) {
@@ -127,19 +129,19 @@ const VoucherEditorPage: React.FC = () => {
       switch (action) {
         case 'sendToApproval':
           updatedVoucher = await accountingApi.sendVoucherToApproval(id);
-          errorHandler.showSuccess('Sent to Approval');
+          errorHandler.showSuccess(t('voucherEditor.sentForApproval'));
           break;
         case 'approve':
           updatedVoucher = await accountingApi.approveVoucher(id);
-          errorHandler.showSuccess('Voucher Approved');
+          errorHandler.showSuccess(t('voucherEditor.approved'));
           break;
         case 'lock':
           updatedVoucher = await accountingApi.lockVoucher(id);
-          errorHandler.showSuccess('Voucher Locked');
+          errorHandler.showSuccess(t('voucherEditor.locked'));
           break;
         case 'cancel':
           updatedVoucher = await accountingApi.cancelVoucher(id);
-          errorHandler.showSuccess('Voucher Cancelled');
+          errorHandler.showSuccess(t('voucherEditor.cancelled'));
           break;
       }
       
@@ -153,11 +155,11 @@ const VoucherEditorPage: React.FC = () => {
   };
 
   if (defLoading || dataLoading || !initialValues || !companySettings) {
-    return <div className="p-8 text-center text-gray-500">Loading editor...</div>;
+    return <div className="p-8 text-center text-gray-500">{t('voucherEditor.loading')}</div>;
   }
 
   if (defError || !definition) {
-    return <div className="p-8 text-center text-red-500">Error: {defError || 'Definition not found'}</div>;
+    return <div className="p-8 text-center text-red-500">{t('voucherEditor.loadError', { error: defError || t('voucherEditor.definitionMissing') })}</div>;
   }
 
   const renderStatusBadge = () => {
@@ -273,14 +275,14 @@ const VoucherEditorPage: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
       <div className="flex justify-between items-center bg-white p-4 rounded border border-gray-200 shadow-sm">
         <div className="flex items-center gap-4">
-           <div>
-             <h1 className="text-xl font-bold text-gray-800">
-               {id === 'new' ? `New ${definition.name}` : `${definition.name} #${id}`}
-             </h1>
-             <p className="text-xs text-gray-500 mt-1">
-               {id !== 'new' && `Created by ${currentVoucher?.createdBy || 'System'}`}
-             </p>
-           </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">
+              {id === 'new' ? t('voucherEditor.newTitle', { name: definition.name }) : t('voucherEditor.existingTitle', { name: definition.name, id })}
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">
+              {id !== 'new' && t('voucherEditor.createdBy', { user: currentVoucher?.createdBy || t('voucherEditor.systemUser') })}
+            </p>
+          </div>
            {renderStatusBadge()}
 
            {/* Status Indicator Dot - Visual Clue for Approval Mode */}
@@ -294,9 +296,9 @@ const VoucherEditorPage: React.FC = () => {
               <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700 font-normal">
                 <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
                 <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                  <span className="text-gray-400">Policy:</span>
+                  <span className="text-gray-400">{t('voucherEditor.policyLabel')}</span>
                   <span className={companySettings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                    {companySettings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
+                    {companySettings?.strictApprovalMode ? t('voucherEditor.strictMode') : t('voucherEditor.flexibleMode')}
                   </span>
                 </div>
               </div>
@@ -318,11 +320,11 @@ const VoucherEditorPage: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-gray-800">Attachments</h3>
             <label className={`btn btn-secondary ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-              {uploading ? 'Uploading...' : 'Upload'}
+              {uploading ? t('voucherEditor.uploading') : t('voucherEditor.upload')}
               <input type="file" className="hidden" onChange={handleUpload} disabled={uploading || isReadOnly} />
             </label>
           </div>
-          {attachments.length === 0 && <div className="text-sm text-gray-500">No attachments yet.</div>}
+          {attachments.length === 0 && <div className="text-sm text-gray-500">{t('voucherEditor.noAttachments')}</div>}
           <ul className="divide-y divide-gray-200">
             {attachments.map((a) => (
               <li key={a.id} className="flex items-center justify-between py-2">
@@ -331,9 +333,9 @@ const VoucherEditorPage: React.FC = () => {
                   <div className="text-xs text-gray-500">{Math.round(a.size / 1024)} KB • {a.type}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a className="text-blue-600 text-sm" href={`/tenant/accounting/vouchers/${id}/attachments/${a.id}`} target="_blank" rel="noreferrer">Download</a>
+                  <a className="text-blue-600 text-sm" href={`/tenant/accounting/vouchers/${id}/attachments/${a.id}`} target="_blank" rel="noreferrer">{t('voucherEditor.download')}</a>
                   {!isReadOnly && (
-                    <button className="text-red-600 text-sm" onClick={() => handleDeleteAttachment(a.id)}>Delete</button>
+                    <button className="text-red-600 text-sm" onClick={() => handleDeleteAttachment(a.id)}>{t('voucherEditor.delete')}</button>
                   )}
                 </div>
               </li>
@@ -344,7 +346,7 @@ const VoucherEditorPage: React.FC = () => {
       
       {isReadOnly && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm">
-          This voucher is {currentVoucher.status} and cannot be edited.
+          {t('voucherEditor.readOnly', { status: currentVoucher.status })}
         </div>
       )}
     </div>

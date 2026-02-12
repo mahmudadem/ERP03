@@ -2,6 +2,7 @@
  * VouchersListPage.tsx
  */
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useVouchersWithCache } from '../../../hooks/useVouchersWithCache';
 import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
@@ -25,6 +26,7 @@ import { useVoucherActions } from '../../../hooks/useVoucherActions';
 
 
 const VouchersListPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeFromUrl = searchParams.get('type')?.trim();
@@ -113,8 +115,8 @@ const VouchersListPage: React.FC = () => {
   // Dynamic Title
   const currentVoucherType = voucherTypes.find(vt => vt.id === selectedType);
   const pageTitle = !isJournalEntry && currentVoucherType 
-    ? `${currentVoucherType.name}s` 
-    : 'All Vouchers';
+    ? t('voucherList.titleType', { name: currentVoucherType.name })
+    : t('voucherList.titleAll');
   
   const isLoading = vouchersLoading || typesLoading;
 
@@ -349,10 +351,10 @@ const VouchersListPage: React.FC = () => {
                 variant="outline" 
                 onClick={() => invalidateVouchers()} 
                 className="gap-2"
-                title="Refresh List"
+                title={t('voucherList.refresh')}
               >
                 <RefreshCw size={16} />
-                Refresh
+                {t('voucherList.refresh')}
               </Button>
               <RequirePermission permission="accounting.vouchers.create">
                 <div className="flex items-center gap-2">
@@ -368,7 +370,7 @@ const VouchersListPage: React.FC = () => {
                     </select>
                   )}
                   <Button onClick={handleCreate} disabled={!selectedType}>
-                    + New {currentVoucherType?.name || 'Voucher'}
+                    + {t('voucherList.new', { name: currentVoucherType?.name || t('voucherList.voucher') })}
                   </Button>
                 </div>
               </RequirePermission>
@@ -442,13 +444,13 @@ const VouchersListPage: React.FC = () => {
                       <AlertTriangle className="text-red-600" size={24} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">Confirm Deletion</h3>
-                      <p className="text-sm text-gray-500">Are you sure you want to delete this voucher?</p>
+                      <h3 className="text-lg font-bold text-gray-900">{t('voucherList.deleteTitle')}</h3>
+                      <p className="text-sm text-gray-500">{t('voucherList.deleteBody')}</p>
                     </div>
                   </div>
                   
                   <div className="p-4 bg-red-50 border border-red-100 rounded-lg text-sm text-red-800">
-                    <strong>Warning:</strong> After confirming deletion, you cannot undo this action ever, and the entry will be lost forever.
+                    <strong>{t('voucherList.warningLabel')}</strong> {t('voucherList.deleteWarning')}
                   </div>
                   
                   <div className="flex items-center justify-end gap-3 mt-2">
@@ -456,7 +458,7 @@ const VouchersListPage: React.FC = () => {
                       onClick={() => setDeleteVoucherId(null)}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={async () => {
@@ -464,14 +466,14 @@ const VouchersListPage: React.FC = () => {
                             await accountingApi.deleteVoucher(deleteVoucherId);
                             invalidateVouchers();
                             setDeleteVoucherId(null);
-                            errorHandler.showSuccess('Voucher deleted permanently');
+                            errorHandler.showSuccess(t('voucherList.deleted'));
                          } catch (e: any) {
                             console.error('Delete failed:', e);
                          }
                       }}
                       className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
                     >
-                      Confirm Deletion
+                      {t('voucherList.confirmDelete')}
                     </button>
                   </div>
                 </div>
