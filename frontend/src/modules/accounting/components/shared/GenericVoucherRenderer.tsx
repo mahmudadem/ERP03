@@ -1107,7 +1107,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       return label.replace(/🔴\s*TEST:\s*/gi, '').replace(/TEST:\s*/gi, '');
     };
 
-    const finalLabel = cleanLabel(labelOverride || t(fieldId) || fieldId);
+    const finalLabel = cleanLabel(
+      labelOverride || t(`voucherRenderer.fields.${fieldId}`, { defaultValue: labelOverride || fieldId })
+    );
     
     // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
     if (fieldId === 'exchangeRate') {
@@ -1124,7 +1126,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const CurrencyComp = CustomComponentRegistry.currencyExchange;
       // Fix label if it comes through as the raw ID
       const displayLabel = (finalLabel === 'CURRENCYEXCHANGE' || finalLabel === 'currencyExchange') 
-                          ? 'Exchange Rate' 
+                          ? t('voucherRenderer.fields.exchangeRate', { defaultValue: 'Exchange Rate' }) 
                           : finalLabel;
                           
       return (
@@ -1952,19 +1954,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
          className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] p-3 grid grid-cols-12 gap-3 transition-colors"
          style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
        >
-         {actionFields.map((field: any, index: number) => (
-           <button 
-             key={field.fieldId || index}
-             className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]"
-             style={{
-               gridColumnStart: (field.col || 0) + 1,
-               gridColumnEnd: `span ${field.colSpan || 4}`,
-               gridRowStart: (field.row || 0) + 1
-             }}
-           >
-             {field.labelOverride || field.fieldId}
-           </button>
-         ))}
+         {actionFields.map((field: any, index: number) => {
+           const actionKey = (field.fieldId || '').replace(/^action_/, '');
+            const actionLabel = field.labelOverride || t(`voucherRenderer.actions.${actionKey}`, { defaultValue: field.labelOverride || actionKey });
+            return (
+              <button 
+                key={field.fieldId || index}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]"
+                style={{
+                  gridColumnStart: (field.col || 0) + 1,
+                  gridColumnEnd: `span ${field.colSpan || 4}`,
+                  gridRowStart: (field.row || 0) + 1
+                }}
+              >
+                {actionLabel}
+              </button>
+            );
+          })}
        </div>
     );
   };

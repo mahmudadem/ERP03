@@ -655,16 +655,16 @@
       "confirmSubmitTitle": "Onaya gönderilsin mi?",
       "confirmSubmitBody": "Bu fiş kilitlenir ve onaylayıcılara bildirilir. Sonrasında düzenleyemezsiniz.",
       "confirmSubmit": "Göndermeyi onayla",
-    "reversalSubmitted": "Ters kayıt onaya gönderildi.",
-    "reverseVoucher": "Fişi Ters Çevir",
-    "reverseReplace": "Ters Çevir ve Değiştir",
-    "alreadyReversed": "Zaten ters çevrildi",
-    "reversal": "Ters Kayıt",
-    "tooltip": {
-      "reversalCannotReverse": "Bu bir ters kayıt, yeniden ters çevrilemez.",
-      "alreadyReversed": "Bu fiş zaten ters çevrildi.",
-      "createReversal": "Bu fiş kilitli. Düzeltmek için ters kayıt oluşturun."
-    },
+      "reversalSubmitted": "Ters kayıt onaya gönderildi.",
+      "reverseVoucher": "Fişi Ters Çevir",
+      "reverseReplace": "Ters Çevir ve Değiştir",
+      "alreadyReversed": "Zaten ters çevrildi",
+      "reversal": "Ters Kayıt",
+      "tooltip": {
+        "reversalCannotReverse": "Bu bir ters kayıt, yeniden ters çevrilemez.",
+        "alreadyReversed": "Bu fiş zaten ters çevrildi.",
+        "createReversal": "Bu fiş kilitli. Düzeltmek için ters kayıt oluşturun."
+      },
       "success": {
         "custody": "Zimmet doğrulandı!",
         "custodyMsg": "Bu fişin zimmetini başarıyla doğruladınız.",
@@ -734,5 +734,69 @@
     "baseNote": "Tüm fişler sadece {{base}} temel para birimiyle defteri etkiler.",
     "convertedNote": "Yukarıdaki toplamlar görüntü için {{currency}} olarak gösterilir.",
     "unbalancedShort": "Fiş dengede değil: {{amount}} {{currency}} fark"
+  },
+  "voucherRenderer": {
+    "loading": "Tanım yükleniyor...",
+    "systemMode": "Sistem Modu",
+    "policy": "Politika",
+    "strict": "Sıkı (Onay gerekli)",
+    "flexible": "Esnek (Oto-işleme)",
+    "headerInfo": "Başlık Bilgileri",
+    "noHeader": "Tanımlı başlık alanı yok.",
+    "lineItems": "Satır Kalemleri",
+    "subtotal": "Ara toplam",
+    "taxZero": "Vergi (0%)",
+    "total": "Toplam",
+    "discard": "Vazgeç",
+    "saving": "Kaydediliyor...",
+    "posting": "İşleniyor...",
+    "saveDraft": "Taslak olarak kaydet",
+    "savePost": "Kaydet ve işle",
+    "submitApproval": "Onaya gönder",
+    "addLine": "Satır ekle",
+    "actions": {
+      "save": "Kaydet",
+      "print": "Yazdır",
+      "email": "E-posta Gönder",
+      "downloadPdf": "PDF indir"
+    },
+    "context": {
+      "deleteLine": "Satırı sil",
+      "copyLine": "Satırı kopyala",
+      "pasteLine": "Satırı yapıştır",
+      "insertBelow": "Alta ekle",
+      "highlight": "Satırı vurgula"
+    },
+    "columns": {
+      "account": "Hesap",
+      "debit": "Borç",
+      "credit": "Alacak",
+      "description": "Açıklama",
+      "notes": "Notlar",
+      "amount": "Tutar",
+      "currency": "Para birimi",
+      "exchangeRate": "Kur",
+      "default": "Sütun"
+    },
+    "fields": {
+      "date": "Tarih",
+      "createdAt": "Oluşturma tarihi",
+      "createdBy": "Oluşturan",
+      "status": "Durum",
+      "voucherNumber": "Fiş numarası",
+      "reference": "Referans",
+      "description": "Açıklama",
+      "currency": "Para birimi",
+      "exchangeRate": "Kur",
+      "parity": "Parite",
+      "equivalent": "Eşdeğer",
+      "lineDescription": "Satır açıklaması",
+      "account": "Hesap",
+      "debit": "Borç",
+      "credit": "Alacak"
+    },
+    "selectPlaceholder": "Seçiniz...",
+    "checkboxYes": "Evet",
+    "unknownType": "Bilinmeyen alan türü"
   }
 }

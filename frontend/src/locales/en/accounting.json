@@ -655,16 +655,16 @@
       "confirmSubmitTitle": "Submit for Approval?",
       "confirmSubmitBody": "This will lock the voucher and notify approvers. You cannot edit it afterwards.",
       "confirmSubmit": "Confirm Submit",
-    "reversalSubmitted": "Voucher reversal submitted for approval.",
-    "reverseVoucher": "Reverse Voucher",
-    "reverseReplace": "Reverse & Replace",
-    "alreadyReversed": "Already Reversed",
-    "reversal": "Reversal",
-    "tooltip": {
-      "reversalCannotReverse": "This is a reversal voucher and cannot be reversed again.",
-      "alreadyReversed": "This voucher has already been reversed.",
-      "createReversal": "This voucher is locked. Create a reversal to correct it."
-    },
+      "reversalSubmitted": "Voucher reversal submitted for approval.",
+      "reverseVoucher": "Reverse Voucher",
+      "reverseReplace": "Reverse & Replace",
+      "alreadyReversed": "Already Reversed",
+      "reversal": "Reversal",
+      "tooltip": {
+        "reversalCannotReverse": "This is a reversal voucher and cannot be reversed again.",
+        "alreadyReversed": "This voucher has already been reversed.",
+        "createReversal": "This voucher is locked. Create a reversal to correct it."
+      },
       "success": {
         "custody": "Custody Confirmed!",
         "custodyMsg": "You have successfully confirmed custody of this voucher.",
@@ -734,5 +734,69 @@
     "baseNote": "All vouchers affect the ledger in {{base}} (base currency) only.",
     "convertedNote": "Totals above are shown in {{currency}} for display.",
     "unbalancedShort": "Voucher Unbalanced: {{amount}} {{currency}} difference"
+  },
+  "voucherRenderer": {
+    "loading": "Loading definition...",
+    "systemMode": "System Mode",
+    "policy": "Policy",
+    "strict": "Strict (Approval Required)",
+    "flexible": "Flexible (Auto-Post)",
+    "headerInfo": "Header Information",
+    "noHeader": "No header fields defined.",
+    "lineItems": "Line Items",
+    "subtotal": "Subtotal",
+    "taxZero": "Tax (0%)",
+    "total": "Total",
+    "discard": "Discard",
+    "saving": "Saving...",
+    "posting": "Posting...",
+    "saveDraft": "Save as Draft",
+    "savePost": "Save & Post",
+    "submitApproval": "Submit Approval",
+    "addLine": "Add Line",
+    "actions": {
+      "save": "Save",
+      "print": "Print",
+      "email": "Send Email",
+      "downloadPdf": "Download PDF"
+    },
+    "context": {
+      "deleteLine": "Delete Line",
+      "copyLine": "Copy Line",
+      "pasteLine": "Paste Line",
+      "insertBelow": "Insert Below",
+      "highlight": "Highlight Row"
+    },
+    "columns": {
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "description": "Description",
+      "notes": "Notes",
+      "amount": "Amount",
+      "currency": "Currency",
+      "exchangeRate": "Rate",
+      "default": "Column"
+    },
+    "fields": {
+      "date": "Date",
+      "createdAt": "Created At",
+      "createdBy": "Created By",
+      "status": "Status",
+      "voucherNumber": "Voucher Number",
+      "reference": "Reference",
+      "description": "Description",
+      "currency": "Currency",
+      "exchangeRate": "Exchange Rate",
+      "parity": "Parity",
+      "equivalent": "Equivalent",
+      "lineDescription": "Line Description",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit"
+    },
+    "selectPlaceholder": "Select...",
+    "checkboxYes": "Yes",
+    "unknownType": "Unknown field type"
   }
 }
