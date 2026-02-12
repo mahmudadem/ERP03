@@ -24,6 +24,26 @@
     "loading": "Loading balance sheet...",
     "noData": "No data to display."
   },
+  "trialBalance": {
+    "title": "Trial Balance",
+    "subtitle": "Financial position overview",
+    "code": "Code",
+    "accountName": "Account Name",
+    "type": "Type",
+    "debit": "Debit",
+    "credit": "Credit",
+    "netBalance": "Net Balance",
+    "exportExcel": "Export Excel",
+    "exportPDF": "Export PDF",
+    "print": "Print / PDF",
+    "refresh": "Refresh",
+    "loading": "Loading report...",
+    "noData": "No transactions found for this period.",
+    "totals": "Totals",
+    "unbalanced": "UNBALANCED",
+    "loadError": "Failed to load report. Please try again.",
+    "generatedOn": "Generated on {{date}}"
+  },
   "accountStatement": {
     "title": "Account Statement",
     "subtitle": "Running balance per account with opening and closing balances.",

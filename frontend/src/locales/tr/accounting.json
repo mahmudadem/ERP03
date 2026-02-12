@@ -24,6 +24,26 @@
     "loading": "Bilanço yükleniyor...",
     "noData": "Gösterilecek veri yok."
   },
+  "trialBalance": {
+    "title": "Mizan",
+    "subtitle": "Finansal durum özeti",
+    "code": "Kod",
+    "accountName": "Hesap Adı",
+    "type": "Tip",
+    "debit": "Borç",
+    "credit": "Alacak",
+    "netBalance": "Net Bakiye",
+    "exportExcel": "Excel'e Aktar",
+    "exportPDF": "PDF'ye Aktar",
+    "print": "Yazdır / PDF",
+    "refresh": "Yenile",
+    "loading": "Rapor yükleniyor...",
+    "noData": "Bu dönem için hareket yok.",
+    "totals": "Toplamlar",
+    "unbalanced": "DENGESİZ",
+    "loadError": "Rapor yüklenemedi, lütfen tekrar deneyin.",
+    "generatedOn": "{{date}} tarihinde üretildi"
+  },
   "accountStatement": {
     "title": "Hesap Ekstresi",
     "subtitle": "Açılış ve kapanış bakiyeleriyle hesap bazında hareket özeti.",

@@ -5,12 +5,14 @@ import { Button } from '../../../components/ui/Button';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
+import { useTranslation } from 'react-i18next';
 
 const TrialBalancePage: React.FC = () => {
   const { settings } = useCompanySettings();
   const [data, setData] = useState<TrialBalanceLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation('accounting');
 
   const fetchReport = async () => {
     setLoading(true);
@@ -20,7 +22,7 @@ const TrialBalancePage: React.FC = () => {
       setData(result);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to load report. Please try again.');
+      setError(err.message || t('trialBalance.loadError'));
       // Remove demo fallback to ensure we see real errors in production
       setData([]); 
     } finally {
@@ -44,8 +46,8 @@ const TrialBalancePage: React.FC = () => {
     <div className="space-y-6 pb-20 print:pb-0">
       <div className="flex justify-between items-center print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Trial Balance</h1>
-          <p className="text-sm text-gray-500 mt-1">Financial Position Overview</p>
+          <h1 className="text-2xl font-bold text-gray-800">{t('trialBalance.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('trialBalance.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -54,32 +56,32 @@ const TrialBalancePage: React.FC = () => {
               exportToExcel(
                 data,
                 [
-                  { header: 'Code', key: 'code' },
-                  { header: 'Account Name', key: 'name' },
-                  { header: 'Type', key: 'type' },
-                  { header: 'Debit', key: 'totalDebit', isNumber: true },
-                  { header: 'Credit', key: 'totalCredit', isNumber: true },
-                  { header: 'Net Balance', key: 'netBalance', isNumber: true }
+                  { header: t('trialBalance.code'), key: 'code' },
+                  { header: t('trialBalance.accountName'), key: 'name' },
+                  { header: t('trialBalance.type'), key: 'type' },
+                  { header: t('trialBalance.debit'), key: 'totalDebit', isNumber: true },
+                  { header: t('trialBalance.credit'), key: 'totalCredit', isNumber: true },
+                  { header: t('trialBalance.netBalance'), key: 'netBalance', isNumber: true }
                 ],
                 `Trial-Balance-${formatCompanyDate(new Date(), settings)}`,
-                'Trial Balance'
+                t('trialBalance.title')
               )
             }
           >
-            Export Excel
+            {t('trialBalance.exportExcel')}
           </Button>
           <Button variant="secondary" onClick={() => exportElementToPDF('trial-balance-report', 'Trial-Balance')}>
-            Export PDF
+            {t('trialBalance.exportPDF')}
           </Button>
-          <Button onClick={handlePrint} variant="secondary">Print / PDF</Button>
-          <Button onClick={fetchReport} variant="primary">Refresh</Button>
+          <Button onClick={handlePrint} variant="secondary">{t('trialBalance.print')}</Button>
+          <Button onClick={fetchReport} variant="primary">{t('trialBalance.refresh')}</Button>
         </div>
       </div>
 
       {/* Print Header */}
       <div className="hidden print:block mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Trial Balance Report</h1>
-        <p className="text-sm text-gray-600">Generated on {formatCompanyDate(new Date(), settings)}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t('trialBalance.title')}</h1>
+        <p className="text-sm text-gray-600">{t('trialBalance.generatedOn', { date: formatCompanyDate(new Date(), settings) })}</p>
       </div>
 
       {error && (
@@ -93,19 +95,19 @@ const TrialBalancePage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 print:bg-gray-100">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">Code</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Account Name</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">Type</th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Debit</th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Credit</th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">Net Balance</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">{t('trialBalance.code')}</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('trialBalance.accountName')}</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">{t('trialBalance.type')}</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">{t('trialBalance.debit')}</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">{t('trialBalance.credit')}</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32">{t('trialBalance.netBalance')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">Loading Report...</td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">{t('trialBalance.loading')}</td></tr>
               ) : data.length === 0 && !error ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No transactions found for this period.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">{t('trialBalance.noData')}</td></tr>
               ) : (
                 data.map((row) => (
                   <tr key={row.accountId} className="hover:bg-gray-50 break-inside-avoid">
@@ -128,7 +130,7 @@ const TrialBalancePage: React.FC = () => {
             {data.length > 0 && (
               <tfoot className="bg-gray-50 font-bold border-t border-gray-200 print:bg-gray-100">
                  <tr>
-                    <td colSpan={3} className="px-6 py-3 text-right uppercase text-xs text-gray-500 tracking-wider">Totals</td>
+                    <td colSpan={3} className="px-6 py-3 text-right uppercase text-xs text-gray-500 tracking-wider">{t('trialBalance.totals')}</td>
                     <td className="px-6 py-3 text-right font-mono text-sm text-blue-900">
                       {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
@@ -136,7 +138,7 @@ const TrialBalancePage: React.FC = () => {
                       {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-3 text-center">
-                      {!isBalanced && <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">UNBALANCED</span>}
+                      {!isBalanced && <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">{t('trialBalance.unbalanced')}</span>}
                     </td>
                  </tr>
               </tfoot>
