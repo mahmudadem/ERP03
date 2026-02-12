@@ -5,6 +5,14 @@ const projectId =
   (process.env.FIREBASE_CONFIG && JSON.parse(process.env.FIREBASE_CONFIG).projectId) ||
   'erp-03';
 
+// Storage bucket is optional in many local/dev setups. Provide a safe fallback to
+// prevent Firebase Admin from throwing at module load when code calls
+// `storage().bucket()` without a configured name (e.g., in emulators).
+const storageBucket =
+  process.env.FIREBASE_STORAGE_BUCKET ||
+  (process.env.FIREBASE_CONFIG && JSON.parse(process.env.FIREBASE_CONFIG).storageBucket) ||
+  (process.env.FUNCTIONS_EMULATOR ? 'dev-null-bucket' : undefined);
+
 // DEBUG: Log environment
 console.log('🔍 Firebase Init:', {
   projectId,
@@ -28,10 +36,8 @@ if (process.env.FUNCTIONS_EMULATOR || process.env.FIREBASE_AUTH_EMULATOR_HOST) {
 }
 
 if (!admin.apps.length) {
-  admin.initializeApp({ projectId });
+  admin.initializeApp({ projectId, storageBucket });
 }
 
 export { admin };
 export default admin;
-
-
