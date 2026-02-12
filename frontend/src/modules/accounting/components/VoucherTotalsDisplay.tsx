@@ -34,7 +34,8 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
   baseCurrency,
   headerRate
 }) => {
-  const { t } = useTranslation('accounting');
+  const { t, i18n } = useTranslation('accounting');
+  const isRTL = (i18n.language || '').startsWith('ar');
   const hasValues = totalDebit > 0 || totalCredit > 0;
   const diff = difference !== undefined ? difference : Math.abs(totalDebit - totalCredit);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -152,7 +153,8 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
         {showTooltip && hasValues && (
           <div 
             ref={tooltipRef} 
-            className="absolute bottom-full left-0 mb-2 z-[9999] w-max max-w-[480px] animate-in fade-in zoom-in-95 duration-150"
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className={`absolute bottom-full ${isRTL ? 'right-0' : 'left-0'} mb-2 z-[9999] w-max max-w-[480px] animate-in fade-in zoom-in-95 duration-150 ${isRTL ? 'text-right' : 'text-left'}`}
           >
             <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-2xl p-4 space-y-3">
               {/* Header */}
@@ -160,7 +162,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
                 <Info size={14} className="text-primary-500" />
                 <span className="text-xs font-bold text-[var(--color-text-primary)]">{t('voucherTotals.breakdown', 'Totals Breakdown')}</span>
                 {isForeignVoucher && headerRate && (
-                  <span className="ml-auto mr-6 text-[10px] text-[var(--color-text-muted)] font-mono">
+                  <span className={`${isRTL ? 'mr-auto ml-6' : 'ml-auto mr-6'} text-[10px] text-[var(--color-text-muted)] font-mono`}>
                     1 {currency} = {formatCompact(headerRate)} {baseCurrency}
                   </span>
                 )}
