@@ -798,5 +798,52 @@
     "selectPlaceholder": "Select...",
     "checkboxYes": "Yes",
     "unknownType": "Unknown field type"
+  },
+  "voucherWindow": {
+    "new": "New",
+    "newTooltip": "Create a new voucher in this window",
+    "print": "Print",
+    "printTooltip": "Print voucher",
+    "loadingPolicies": "Loading Policies...",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "posting": "Posting...",
+    "updatePost": "Update & Post",
+    "savePost": "Save & Post",
+    "updatePending": "Update Pending Voucher",
+    "saveDraft": "Save as Draft",
+    "mustBalance": "Voucher must be balanced",
+    "mustLines": "Voucher must have at least 2 lines",
+    "submitApproval": "Submit Approval",
+    "submitting": "Submitting...",
+    "approve": "Approve",
+    "confirmCustody": "Confirm Custody",
+    "reject": "Reject",
+    "post": "Post to Ledger",
+    "confirmSubmitTitle": "Submit for Approval?",
+    "confirmSubmitBody": "This will lock the voucher and notify approvers. You cannot edit it afterwards.",
+    "confirmSubmit": "Confirm Submit",
+    "reversalSubmitted": "Voucher reversal submitted for approval.",
+    "reverseVoucher": "Reverse Voucher",
+    "reverseReplace": "Reverse & Replace",
+    "alreadyReversed": "Already Reversed",
+    "reversal": "Reversal",
+    "tooltip": {
+      "reversalCannotReverse": "This is a reversal voucher and cannot be reversed again.",
+      "alreadyReversed": "This voucher has already been reversed.",
+      "createReversal": "This voucher is locked. Create a reversal to correct it."
+    },
+    "success": {
+      "custody": "Custody Confirmed!",
+      "custodyMsg": "You have successfully confirmed custody of this voucher.",
+      "posted": "Posted Successfully!",
+      "postedMsg": "Voucher has been posted to the ledger.",
+      "saved": "Saved Successfully!",
+      "savedMsg": "Voucher saved as draft.",
+      "submitted": "Submitted Successfully!",
+      "submittedMsg": "Voucher has been sent for approval.",
+      "createAnother": "Create Another Voucher",
+      "close": "Close Window"
+    }
   }
 }

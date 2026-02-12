@@ -1043,9 +1043,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     // Only return defaults if property is missing entirely
     if (rawColumns === undefined || rawColumns === null) {
       const baseColumns = [
-        { id: 'account', label: t('account') || 'Account', width: '25%' },
-        { id: 'debit', label: t('debit') || 'Debit', width: '15%' },
-        { id: 'credit', label: t('credit') || 'Credit', width: '15%' }
+        { id: 'account', label: t('voucherRenderer.columns.account', { defaultValue: 'Account' }), width: '25%' },
+        { id: 'debit', label: t('voucherRenderer.columns.debit', { defaultValue: 'Debit' }), width: '15%' },
+        { id: 'credit', label: t('voucherRenderer.columns.credit', { defaultValue: 'Credit' }), width: '15%' }
       ];
       
       // Safety Net: If it's a Journal Entry, include multi-currency columns in the default view
@@ -1054,13 +1054,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                    
       if (isJE) {
         baseColumns.push(
-          { id: 'currency', label: t('currency') || 'Currency', width: '80px' },
-          { id: 'parity', label: t('parity') || 'Parity', width: '80px' },
-          { id: 'equivalent', label: t('equivalent') || 'Equivalent', width: '100px' }
+          { id: 'currency', label: t('voucherRenderer.columns.currency', { defaultValue: 'Currency' }), width: '80px' },
+          { id: 'parity', label: t('voucherRenderer.columns.exchangeRate', { defaultValue: 'Parity' }), width: '80px' },
+          { id: 'equivalent', label: t('voucherRenderer.columns.amount', { defaultValue: 'Equivalent' }), width: '100px' }
         );
       }
       
-      baseColumns.push({ id: 'notes', label: t('notes') || 'Notes', width: 'auto' });
+      baseColumns.push({ id: 'notes', label: t('voucherRenderer.columns.notes', { defaultValue: 'Notes' }), width: 'auto' });
       return baseColumns;
     }
 
@@ -1074,7 +1074,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         const fallbackLabel = col.charAt(0).toUpperCase() + col.slice(1);
         return { 
           id: col, 
-          label: t(col) || fallbackLabel,
+          label: t(`voucherRenderer.columns.${col}`, { defaultValue: fallbackLabel }),
           width: 'auto'
         };
       }
@@ -1086,7 +1086,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       return {
         id: colId,
-        label: col.labelOverride || col.label || (colId ? t(colId) : undefined) || fallbackLabel,
+        label: col.labelOverride || col.label || (colId ? t(`voucherRenderer.columns.${colId}`, { defaultValue: fallbackLabel }) : fallbackLabel),
         width: col.width || 'auto'
       };
     });

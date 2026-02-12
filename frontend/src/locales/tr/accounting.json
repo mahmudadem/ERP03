@@ -798,5 +798,52 @@
     "selectPlaceholder": "Seçiniz...",
     "checkboxYes": "Evet",
     "unknownType": "Bilinmeyen alan türü"
+  },
+  "voucherWindow": {
+    "new": "Yeni",
+    "newTooltip": "Bu pencerede yeni fiş oluştur",
+    "print": "Yazdır",
+    "printTooltip": "Fişi yazdır",
+    "loadingPolicies": "Politikalar yükleniyor...",
+    "loading": "Yükleniyor...",
+    "saving": "Kaydediliyor...",
+    "posting": "İşleniyor...",
+    "updatePost": "Güncelle ve işle",
+    "savePost": "Kaydet ve işle",
+    "updatePending": "Bekleyen fişi güncelle",
+    "saveDraft": "Taslak olarak kaydet",
+    "mustBalance": "Fiş dengede olmalı",
+    "mustLines": "Fişte en az 2 satır olmalı",
+    "submitApproval": "Onaya gönder",
+    "submitting": "Gönderiliyor...",
+    "approve": "Onayla",
+    "confirmCustody": "Zimmeti doğrula",
+    "reject": "Reddet",
+    "post": "Deftere işle",
+    "confirmSubmitTitle": "Onaya gönderilsin mi?",
+    "confirmSubmitBody": "Bu fiş kilitlenir ve onaylayıcılara bildirilir. Sonrasında düzenleyemezsiniz.",
+    "confirmSubmit": "Göndermeyi onayla",
+    "reversalSubmitted": "Ters kayıt onaya gönderildi.",
+    "reverseVoucher": "Fişi Ters Çevir",
+    "reverseReplace": "Ters Çevir ve Değiştir",
+    "alreadyReversed": "Zaten ters çevrildi",
+    "reversal": "Ters Kayıt",
+    "tooltip": {
+      "reversalCannotReverse": "Bu bir ters kayıt, yeniden ters çevrilemez.",
+      "alreadyReversed": "Bu fiş zaten ters çevrildi.",
+      "createReversal": "Bu fiş kilitli. Düzeltmek için ters kayıt oluşturun."
+    },
+    "success": {
+      "custody": "Zimmet doğrulandı!",
+      "custodyMsg": "Bu fişin zimmetini başarıyla doğruladınız.",
+      "posted": "Başarıyla işlendi!",
+      "postedMsg": "Fiş deftere işlendi.",
+      "saved": "Başarıyla kaydedildi!",
+      "savedMsg": "Fiş taslak olarak kaydedildi.",
+      "submitted": "Başarıyla gönderildi!",
+      "submittedMsg": "Fiş onaya gönderildi.",
+      "createAnother": "Başka fiş oluştur",
+      "close": "Pencereyi kapat"
+    }
   }
 }
