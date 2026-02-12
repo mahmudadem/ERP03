@@ -76,7 +76,7 @@ class ReportingController {
                 toDate: req.query.toDate,
                 voucherType: req.query.voucherType,
             };
-            const useCase = new LedgerUseCases_1.GetJournalUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker);
+            const useCase = new LedgerUseCases_1.GetJournalUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
             const data = await useCase.execute(companyId, userId, filters);
             res.json({ success: true, data });
         }

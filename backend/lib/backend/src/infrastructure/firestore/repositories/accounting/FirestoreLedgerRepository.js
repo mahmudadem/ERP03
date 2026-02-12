@@ -36,11 +36,26 @@ const dateToIso = (val) => {
     }
     return String(val);
 };
-const getAmountsBySide = (entry) => {
+const getAmountsBySide = (entry, targetAccountCurrency, baseCurrency) => {
     var _a, _b, _c;
     const side = entry.side || 'Debit';
-    const accountAmount = (_b = (_a = entry.amount) !== null && _a !== void 0 ? _a : entry.fxAmount) !== null && _b !== void 0 ? _b : 0;
-    const baseAmount = (_c = entry.baseAmount) !== null && _c !== void 0 ? _c : 0;
+    const entryCurrency = (entry.currency || '').toUpperCase();
+    const baseCur = (baseCurrency || '').toUpperCase();
+    const targetCurrency = (targetAccountCurrency || '').toUpperCase();
+    // Use stored amounts
+    let accountAmount = (_b = (_a = entry.amount) !== null && _a !== void 0 ? _a : entry.fxAmount) !== null && _b !== void 0 ? _b : 0;
+    let baseAmount = (_c = entry.baseAmount) !== null && _c !== void 0 ? _c : 0;
+    // If the ledger stored amount in a different currency than the account (e.g., base),
+    // convert from baseAmount using exchangeRate when possible.
+    if (targetCurrency && entryCurrency && entryCurrency !== targetCurrency) {
+        if (baseAmount && entry.exchangeRate) {
+            accountAmount = baseAmount / entry.exchangeRate;
+        }
+    }
+    // If baseAmount missing but we have amount and exchange rate, derive base
+    if (!baseAmount && accountAmount && entry.exchangeRate) {
+        baseAmount = accountAmount * entry.exchangeRate;
+    }
     const debit = side === 'Debit' ? Math.abs(accountAmount) : 0;
     const credit = side === 'Credit' ? Math.abs(accountAmount) : 0;
     const baseDebit = side === 'Debit' ? Math.abs(baseAmount) : 0;
@@ -82,6 +97,8 @@ class FirestoreLedgerRepository {
                     costCenterId: line.costCenterId || null,
                     metadata: line.metadata || {},
                     isPosted: true,
+                    reconciliationId: null,
+                    bankStatementLineId: null,
                     createdAt: serverTimestamp(),
                 };
                 if (transaction) {
@@ -218,7 +235,7 @@ class FirestoreLedgerRepository {
             let openingBalanceBase = 0;
             openingSnap.docs.forEach((doc) => {
                 const e = doc.data();
-                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
                 const signedAccount = side === 'Debit' ? debit : -credit;
                 const signedBase = side === 'Debit' ? baseDebit : -baseCredit;
                 openingBalance += signedAccount;
@@ -233,7 +250,7 @@ class FirestoreLedgerRepository {
             const entries = [];
             rangeSnap.docs.forEach((doc) => {
                 const e = doc.data();
-                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e);
+                const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
                 running += side === 'Debit' ? debit : -credit;
                 runningBase += side === 'Debit' ? baseDebit : -baseCredit;
                 totalDebit += debit;
@@ -252,7 +269,7 @@ class FirestoreLedgerRepository {
                     baseDebit,
                     baseCredit,
                     baseBalance: runningBase,
-                    currency: e.currency,
+                    currency: accountCurrency || e.currency,
                     fxAmount: e.amount,
                     exchangeRate: e.exchangeRate
                 });
@@ -297,6 +314,35 @@ class FirestoreLedgerRepository {
             ref = ref.where('date', '<=', firestore_1.Timestamp.fromDate(end));
         }
         return ref.orderBy('date', 'asc').get();
+    }
+    async getUnreconciledEntries(companyId, accountId, fromDate, toDate) {
+        try {
+            let query = this.col(companyId).where('accountId', '==', accountId);
+            if (fromDate) {
+                query = query.where('date', '>=', toTimestampBoundary(fromDate));
+            }
+            if (toDate) {
+                query = query.where('date', '<=', toTimestampBoundary(toDate, true));
+            }
+            query = query.where('isPosted', '==', true).where('reconciliationId', '==', null);
+            const snap = await query.orderBy('date', 'asc').get();
+            return snap.docs.map((d) => d.data());
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Failed to get unreconciled ledger entries', error);
+        }
+    }
+    async markReconciled(companyId, ledgerEntryId, reconciliationId, bankStatementLineId) {
+        try {
+            await this.col(companyId).doc(ledgerEntryId).set({
+                reconciliationId,
+                bankStatementLineId,
+                metadata: { reconciliationId, bankStatementLineId }
+            }, { merge: true });
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Failed to mark ledger entry as reconciled', error);
+        }
     }
 }
 exports.FirestoreLedgerRepository = FirestoreLedgerRepository;

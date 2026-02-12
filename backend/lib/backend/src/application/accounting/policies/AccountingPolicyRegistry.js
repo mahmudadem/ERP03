@@ -41,10 +41,11 @@ const AccountAccessPolicy_1 = require("../../../domain/accounting/policies/imple
  * Business logic belongs in individual policy implementations.
  */
 class AccountingPolicyRegistry {
-    constructor(configProvider, userScopeProvider, accountLookup) {
+    constructor(configProvider, userScopeProvider, accountLookup, fiscalYearRepo) {
         this.configProvider = configProvider;
         this.userScopeProvider = userScopeProvider;
         this.accountLookup = accountLookup;
+        this.fiscalYearRepo = fiscalYearRepo;
     }
     /**
      * Get enabled policies for a company
@@ -64,7 +65,15 @@ class AccountingPolicyRegistry {
             policies.push(new ApprovalRequiredPolicy_1.ApprovalRequiredPolicy());
         }
         if (config.periodLockEnabled) {
-            policies.push(new PeriodLockPolicy_1.PeriodLockPolicy(config.lockedThroughDate));
+            const fiscalResolver = this.fiscalYearRepo
+                ? async (companyId, date) => {
+                    var _a;
+                    const fy = await this.fiscalYearRepo.findActiveForDate(companyId, date);
+                    const period = fy === null || fy === void 0 ? void 0 : fy.getPeriodForDate(date);
+                    return (_a = period === null || period === void 0 ? void 0 : period.status) !== null && _a !== void 0 ? _a : null;
+                }
+                : undefined;
+            policies.push(new PeriodLockPolicy_1.PeriodLockPolicy(config.lockedThroughDate, fiscalResolver));
         }
         if (config.accountAccessEnabled && this.userScopeProvider && this.accountLookup) {
             policies.push(new AccountAccessPolicy_1.AccountAccessPolicy(this.userScopeProvider, this.accountLookup));

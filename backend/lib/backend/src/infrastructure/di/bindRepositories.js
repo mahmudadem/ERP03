@@ -11,11 +11,19 @@ const FirestoreCompanyRepository_1 = require("../firestore/repositories/core/Fir
 const FirestoreUserRepository_1 = require("../firestore/repositories/core/FirestoreUserRepository");
 const FirestoreCompanyUserRepository_1 = require("../firestore/repositories/core/FirestoreCompanyUserRepository");
 const FirestoreCompanySettingsRepository_1 = require("../firestore/repositories/core/FirestoreCompanySettingsRepository");
+const FirestoreUserPreferencesRepository_1 = require("../firestore/repositories/core/FirestoreUserPreferencesRepository");
 const FirestoreSystemRepositories_1 = require("../firestore/repositories/system/FirestoreSystemRepositories");
 const FirestoreVoucherRepositoryV2_1 = require("../firestore/repositories/accounting/FirestoreVoucherRepositoryV2");
+const FirestoreVoucherSequenceRepository_1 = require("../firestore/repositories/accounting/FirestoreVoucherSequenceRepository");
 const FirestoreAccountingRepositories_1 = require("../firestore/repositories/accounting/FirestoreAccountingRepositories");
 const FirestoreCurrencyRepositories_1 = require("../firestore/repositories/accounting/FirestoreCurrencyRepositories");
 const FirestoreLedgerRepository_1 = require("../firestore/repositories/accounting/FirestoreLedgerRepository");
+const FirestoreFiscalYearRepository_1 = require("../firestore/repositories/accounting/FirestoreFiscalYearRepository");
+const FirestoreBankStatementRepository_1 = require("../firestore/repositories/accounting/FirestoreBankStatementRepository");
+const FirestoreReconciliationRepository_1 = require("../firestore/repositories/accounting/FirestoreReconciliationRepository");
+const FirestoreBudgetRepository_1 = require("../firestore/repositories/accounting/FirestoreBudgetRepository");
+const FirestoreCompanyGroupRepository_1 = require("../firestore/repositories/accounting/FirestoreCompanyGroupRepository");
+const FirestoreRecurringVoucherTemplateRepository_1 = require("../firestore/repositories/accounting/FirestoreRecurringVoucherTemplateRepository");
 const AccountRepositoryFirestore_1 = require("../firestore/accounting/AccountRepositoryFirestore");
 const FirestoreInventoryRepositories_1 = require("../firestore/repositories/inventory/FirestoreInventoryRepositories");
 const FirestoreHRRepositories_1 = require("../firestore/repositories/hr/FirestoreHRRepositories");
@@ -70,6 +78,7 @@ exports.diContainer = {
     get userRepository() { return new FirestoreUserRepository_1.FirestoreUserRepository(getDb()); },
     get companyUserRepository() { return new FirestoreCompanyUserRepository_1.FirestoreCompanyUserRepository(getDb()); },
     get companySettingsRepository() { return new FirestoreCompanySettingsRepository_1.FirestoreCompanySettingsRepository(settingsResolver); },
+    get userPreferencesRepository() { return new FirestoreUserPreferencesRepository_1.FirestoreUserPreferencesRepository(getDb()); },
     get companyModuleRepository() { return new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb()); },
     get moduleActivationService() { return moduleActivationService; },
     // SYSTEM
@@ -85,11 +94,18 @@ exports.diContainer = {
         // TODO: Implement PrismaVoucherRepositoryV2 when SQL support needed
         return new FirestoreVoucherRepositoryV2_1.FirestoreVoucherRepositoryV2(getDb(), settingsResolver);
     },
+    get voucherSequenceRepository() { return new FirestoreVoucherSequenceRepository_1.FirestoreVoucherSequenceRepository(getDb()); },
     get costCenterRepository() { return new FirestoreAccountingRepositories_1.FirestoreCostCenterRepository(settingsResolver); },
     get exchangeRateRepository() { return new FirestoreAccountingRepositories_1.FirestoreExchangeRateRepository(settingsResolver); },
     get ledgerRepository() { return new FirestoreLedgerRepository_1.FirestoreLedgerRepository(getDb()); },
+    get fiscalYearRepository() { return new FirestoreFiscalYearRepository_1.FirestoreFiscalYearRepository(getDb()); },
     get accountingCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreAccountingCurrencyRepository(settingsResolver); },
     get companyCurrencyRepository() { return new FirestoreCurrencyRepositories_1.FirestoreCompanyCurrencyRepository(settingsResolver); },
+    get bankStatementRepository() { return new FirestoreBankStatementRepository_1.FirestoreBankStatementRepository(getDb()); },
+    get reconciliationRepository() { return new FirestoreReconciliationRepository_1.FirestoreReconciliationRepository(getDb()); },
+    get budgetRepository() { return new FirestoreBudgetRepository_1.FirestoreBudgetRepository(getDb()); },
+    get companyGroupRepository() { return new FirestoreCompanyGroupRepository_1.FirestoreCompanyGroupRepository(getDb()); },
+    get recurringVoucherTemplateRepository() { return new FirestoreRecurringVoucherTemplateRepository_1.FirestoreRecurringVoucherTemplateRepository(getDb()); },
     // INVENTORY
     get itemRepository() { return new FirestoreInventoryRepositories_1.FirestoreItemRepository(getDb()); },
     get warehouseRepository() { return new FirestoreInventoryRepositories_1.FirestoreWarehouseRepository(getDb()); },
@@ -150,7 +166,9 @@ exports.diContainer = {
         const configProvider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
         const userScopeProvider = new FirestoreUserAccessScopeProvider(db);
         const accountLookup = new FirestoreAccountLookupService(db);
-        return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup);
+        const { FirestoreFiscalYearRepository } = require('../firestore/repositories/accounting/FirestoreFiscalYearRepository');
+        const fiscalYearRepo = new FirestoreFiscalYearRepository(db);
+        return new AccountingPolicyRegistry(configProvider, userScopeProvider, accountLookup, fiscalYearRepo);
     },
     // ACCOUNTING POLICY CONFIG (for use cases that need approval settings)
     get accountingPolicyConfigProvider() {

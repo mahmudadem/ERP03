@@ -7,14 +7,21 @@ const firestore_1 = require("firebase-admin/firestore");
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {
     static toDomain(id, d) {
-        return new CostCenter_1.CostCenter(id, d.companyId, d.name, d.code, d.parentId);
+        var _a, _b, _c, _d;
+        return new CostCenter_1.CostCenter(id, d.companyId, d.name, d.code, d.description || null, d.parentId || null, d.status || CostCenter_1.CostCenterStatus.ACTIVE, ((_b = (_a = d.createdAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(), d.createdBy || '', ((_d = (_c = d.updatedAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || new Date(), d.updatedBy || '');
     }
     static toPersistence(e) {
         return {
             companyId: e.companyId,
             name: e.name,
             code: e.code,
-            parentId: e.parentId || null
+            description: e.description || null,
+            parentId: e.parentId || null,
+            status: e.status,
+            createdAt: e.createdAt ? firestore_1.Timestamp.fromDate(e.createdAt) : firestore_1.Timestamp.fromDate(new Date()),
+            createdBy: e.createdBy || null,
+            updatedAt: e.updatedAt ? firestore_1.Timestamp.fromDate(e.updatedAt) : firestore_1.Timestamp.fromDate(new Date()),
+            updatedBy: e.updatedBy || null
         };
     }
 }
@@ -54,25 +61,35 @@ class FirestoreCostCenterRepository {
     getCollection(companyId) {
         return this.settingsResolver.getCostCentersCollection(companyId);
     }
-    async createCostCenter(costCenter) {
+    async create(costCenter) {
         const col = this.getCollection(costCenter.companyId);
         await col.doc(costCenter.id).set(CostCenterMapper.toPersistence(costCenter));
+        return costCenter;
     }
-    async updateCostCenter(id, data) {
-        if (!data.companyId)
-            throw new Error("companyId required for updateCostCenter");
-        const col = this.getCollection(data.companyId);
-        await col.doc(id).update(data);
+    async update(costCenter) {
+        const col = this.getCollection(costCenter.companyId);
+        await col.doc(costCenter.id).set(CostCenterMapper.toPersistence(costCenter), { merge: true });
+        return costCenter;
     }
-    async getCostCenter(companyId, id) {
+    async findById(companyId, id) {
         const doc = await this.getCollection(companyId).doc(id).get();
         if (!doc.exists)
             return null;
         return CostCenterMapper.toDomain(doc.id, doc.data());
     }
-    async getCompanyCostCenters(companyId) {
-        const snap = await this.getCollection(companyId).get();
+    async findByCode(companyId, code) {
+        const snap = await this.getCollection(companyId).where('code', '==', code).limit(1).get();
+        if (snap.empty)
+            return null;
+        const d = snap.docs[0];
+        return CostCenterMapper.toDomain(d.id, d.data());
+    }
+    async findAll(companyId) {
+        const snap = await this.getCollection(companyId).orderBy('code').get();
         return snap.docs.map(d => CostCenterMapper.toDomain(d.id, d.data()));
+    }
+    async delete(companyId, id) {
+        await this.getCollection(companyId).doc(id).delete();
     }
 }
 exports.FirestoreCostCenterRepository = FirestoreCostCenterRepository;

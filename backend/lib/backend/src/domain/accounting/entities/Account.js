@@ -102,7 +102,7 @@ function validateCurrencyPolicy(policy, fixedCurrencyCode, allowedCurrencyCodes)
 exports.validateCurrencyPolicy = validateCurrencyPolicy;
 class Account {
     constructor(props) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         // Runtime flags (computed, not persisted directly)
         this._hasChildren = false;
         this._isUsed = false;
@@ -131,13 +131,14 @@ class Account {
         this.status = props.status;
         this.isProtected = props.isProtected;
         this.replacedByAccountId = (_e = props.replacedByAccountId) !== null && _e !== void 0 ? _e : null;
+        this.cashFlowCategory = (_f = props.cashFlowCategory) !== null && _f !== void 0 ? _f : null;
         // Audit
         this.updatedAt = props.updatedAt;
         this.updatedBy = props.updatedBy;
         // Legacy
-        this.requiresApproval = (_f = props.requiresApproval) !== null && _f !== void 0 ? _f : false;
-        this.requiresCustodyConfirmation = (_g = props.requiresCustodyConfirmation) !== null && _g !== void 0 ? _g : false;
-        this.custodianUserId = (_h = props.custodianUserId) !== null && _h !== void 0 ? _h : null;
+        this.requiresApproval = (_g = props.requiresApproval) !== null && _g !== void 0 ? _g : false;
+        this.requiresCustodyConfirmation = (_h = props.requiresCustodyConfirmation) !== null && _h !== void 0 ? _h : false;
+        this.custodianUserId = (_j = props.custodianUserId) !== null && _j !== void 0 ? _j : null;
     }
     // =========================================================================
     // COMPUTED PROPERTIES (Legacy compatibility)
@@ -279,14 +280,15 @@ class Account {
             updatedBy: this.updatedBy,
             requiresApproval: this.requiresApproval,
             requiresCustodyConfirmation: this.requiresCustodyConfirmation,
-            custodianUserId: this.custodianUserId
+            custodianUserId: this.custodianUserId,
+            cashFlowCategory: this.cashFlowCategory
         };
     }
     /**
      * Create an Account from raw data (persistence)
      */
     static fromJSON(data) {
-        var _a;
+        var _a, _b;
         return new Account({
             id: data.id,
             systemCode: data.systemCode || data.code || data.id,
@@ -305,6 +307,7 @@ class Account {
             status: data.status || (data.active === false ? 'INACTIVE' : 'ACTIVE'),
             isProtected: (_a = data.isProtected) !== null && _a !== void 0 ? _a : false,
             replacedByAccountId: data.replacedByAccountId,
+            cashFlowCategory: (_b = data.cashFlowCategory) !== null && _b !== void 0 ? _b : null,
             createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt || Date.now()),
             createdBy: data.createdBy || 'SYSTEM',
             updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt || Date.now()),

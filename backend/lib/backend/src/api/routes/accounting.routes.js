@@ -2,6 +2,9 @@
 /**
  * accounting.routes.ts (Updated with designer routes)
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const AccountController_1 = require("../controllers/accounting/AccountController");
@@ -12,6 +15,15 @@ const AccountingReportsController_1 = require("../controllers/accounting/Account
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
 const CurrencyController_1 = require("../controllers/accounting/CurrencyController");
+const FiscalYearController_1 = require("../controllers/accounting/FiscalYearController");
+const CostCenterController_1 = require("../controllers/accounting/CostCenterController");
+const VoucherSequenceController_1 = require("../controllers/accounting/VoucherSequenceController");
+const BankReconciliationController_1 = require("../controllers/accounting/BankReconciliationController");
+const BudgetController_1 = require("../controllers/accounting/BudgetController");
+const ConsolidationController_1 = require("../controllers/accounting/ConsolidationController");
+const RecurringVoucherController_1 = require("../controllers/accounting/RecurringVoucherController");
+const AttachmentController_1 = require("../controllers/accounting/AttachmentController");
+const multer_1 = __importDefault(require("multer"));
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const companyContextMiddleware_1 = require("../middlewares/companyContextMiddleware");
 const permissionGuard_1 = require("../middlewares/guards/permissionGuard");
@@ -50,6 +62,38 @@ router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('acc
 router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getGeneralLedger);
 router.get('/reports/account-statement', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getAccountStatement);
 router.get('/reports/journal', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), ReportingController_1.ReportingController.journal);
+router.get('/reports/dashboard-summary', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), AccountingReportsController_1.AccountingReportsController.getDashboardSummary);
+router.get('/reports/cash-flow', (0, permissionGuard_1.permissionGuard)('accounting.reports.cashFlow.view'), AccountingReportsController_1.AccountingReportsController.getCashFlow);
+router.get('/reports/aging', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getAgingReport);
+router.get('/reports/budget-vs-actual', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), BudgetController_1.BudgetController.budgetVsActual);
+// Bank Reconciliation
+router.post('/bank-statements/import', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.import);
+router.get('/bank-statements', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.listStatements);
+router.get('/reconciliation/:accountId', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.getReconciliation);
+router.post('/reconciliation/:accountId/complete', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.complete);
+router.post('/reconciliation/match', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.manualMatch);
+// Budgets
+router.get('/budgets', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), BudgetController_1.BudgetController.list);
+router.post('/budgets', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), BudgetController_1.BudgetController.create);
+router.put('/budgets/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), BudgetController_1.BudgetController.update);
+router.post('/budgets/:id/approve', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), BudgetController_1.BudgetController.approve);
+// Consolidation
+router.post('/company-groups', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), ConsolidationController_1.ConsolidationController.createGroup);
+router.get('/company-groups', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), ConsolidationController_1.ConsolidationController.listGroups);
+router.get('/reports/consolidated-trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), ConsolidationController_1.ConsolidationController.consolidatedTrialBalance);
+// Recurring Vouchers
+router.get('/recurring-vouchers', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), RecurringVoucherController_1.RecurringVoucherController.list);
+router.post('/recurring-vouchers', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), RecurringVoucherController_1.RecurringVoucherController.create);
+router.put('/recurring-vouchers/:id', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), RecurringVoucherController_1.RecurringVoucherController.update);
+router.post('/recurring-vouchers/:id/pause', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), RecurringVoucherController_1.RecurringVoucherController.pause);
+router.post('/recurring-vouchers/:id/resume', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), RecurringVoucherController_1.RecurringVoucherController.resume);
+router.post('/recurring-vouchers/generate', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), RecurringVoucherController_1.RecurringVoucherController.generate);
+// Attachments
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
+router.get('/vouchers/:id/attachments', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), AttachmentController_1.AttachmentController.list);
+router.post('/vouchers/:id/attachments', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.edit'), upload.single('file'), AttachmentController_1.AttachmentController.upload);
+router.get('/vouchers/:id/attachments/:aid', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), AttachmentController_1.AttachmentController.download);
+router.delete('/vouchers/:id/attachments/:aid', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.edit'), AttachmentController_1.AttachmentController.remove);
 // Designer (Module-specific)
 router.get('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypes);
 router.get('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), AccountingDesignerController_1.AccountingDesignerController.getVoucherTypeByCode);
@@ -59,6 +103,21 @@ router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permiss
 // Policy Configuration
 router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), SettingsController_1.SettingsController.getSettings);
 router.put('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), SettingsController_1.SettingsController.updateSettings);
+// Fiscal Year Management
+router.get('/fiscal-years', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), FiscalYearController_1.FiscalYearController.list);
+router.post('/fiscal-years', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.create);
+router.post('/fiscal-years/:id/close-period', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.closePeriod);
+router.post('/fiscal-years/:id/reopen-period', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.reopenPeriod);
+router.post('/fiscal-years/:id/close-year', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.closeYear);
+// Cost Centers
+router.get('/cost-centers', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CostCenterController_1.CostCenterController.list);
+router.get('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CostCenterController_1.CostCenterController.getById);
+router.post('/cost-centers', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.create);
+router.put('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.update);
+router.delete('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.deactivate);
+// Voucher Sequences
+router.get('/voucher-sequences', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), VoucherSequenceController_1.VoucherSequenceController.list);
+router.post('/voucher-sequences/next', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), VoucherSequenceController_1.VoucherSequenceController.setNext);
 // VoucherForms (UI layouts)
 router.get('/voucher-forms', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.list);
 router.get('/voucher-forms/by-type/:typeId', (0, permissionGuard_1.permissionGuard)('accounting.designer.view'), VoucherFormController_1.VoucherFormController.getByType);

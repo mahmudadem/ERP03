@@ -21,4 +21,11 @@ __exportStar(require("./IExchangeRateRepository"), exports);
 __exportStar(require("./ILedgerRepository"), exports);
 __exportStar(require("./ICurrencyRepository"), exports);
 __exportStar(require("./ICompanyCurrencyRepository"), exports);
+__exportStar(require("./IFiscalYearRepository"), exports);
+__exportStar(require("./IVoucherSequenceRepository"), exports);
+__exportStar(require("./IBankStatementRepository"), exports);
+__exportStar(require("./IReconciliationRepository"), exports);
+__exportStar(require("./IBudgetRepository"), exports);
+__exportStar(require("./ICompanyGroupRepository"), exports);
+__exportStar(require("./IRecurringVoucherTemplateRepository"), exports);
 //# sourceMappingURL=index.js.map

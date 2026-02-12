@@ -3,6 +3,7 @@ import admin from '../../../firebaseAdmin';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -38,7 +39,7 @@ export class AttachmentController {
       const companyId = (req as any).user?.companyId || (req as any).companyId;
       const userId = (req as any).user?.uid;
       const voucherId = req.params.id;
-      const file = (req as any).file as Express.Multer.File;
+      const file = (req as any).file as any;
       if (!file) return res.status(400).json({ error: 'file is required' });
 
       if (file.size > MAX_SIZE) return res.status(400).json({ error: 'File too large' });
@@ -68,7 +69,7 @@ export class AttachmentController {
         ...voucher.metadata,
         attachments: [...existing, attachment]
       };
-      const updatedVoucher = voucher.withMetadata ? (voucher as any).withMetadata(metadata) : new (voucher as any).constructor(
+      const updatedVoucher = new VoucherEntity(
         voucher.id,
         voucher.companyId,
         voucher.voucherNo,
@@ -84,7 +85,20 @@ export class AttachmentController {
         voucher.status,
         metadata,
         voucher.createdBy,
-        voucher.createdAt
+        voucher.createdAt,
+        voucher.approvedBy,
+        voucher.approvedAt,
+        voucher.rejectedBy,
+        voucher.rejectedAt,
+        voucher.rejectionReason,
+        voucher.lockedBy,
+        voucher.lockedAt,
+        voucher.postedBy,
+        voucher.postedAt,
+        (voucher as any).postingLockPolicy,
+        (voucher as any).reversalOfVoucherId,
+        (voucher as any).reference,
+        (voucher as any).updatedAt
       );
       await diContainer.voucherRepository.save(updatedVoucher);
       res.status(201).json({ success: true, data: attachment });
@@ -126,7 +140,7 @@ export class AttachmentController {
       await bucket.file(target.path).delete().catch(() => {});
       const updatedList = attachments.filter((a: any) => a.id !== attachmentId);
       const metadata = { ...voucher.metadata, attachments: updatedList };
-      const updatedVoucher = voucher.withMetadata ? (voucher as any).withMetadata(metadata) : new (voucher as any).constructor(
+      const updatedVoucher = new VoucherEntity(
         voucher.id,
         voucher.companyId,
         voucher.voucherNo,
@@ -142,7 +156,20 @@ export class AttachmentController {
         voucher.status,
         metadata,
         voucher.createdBy,
-        voucher.createdAt
+        voucher.createdAt,
+        voucher.approvedBy,
+        voucher.approvedAt,
+        voucher.rejectedBy,
+        voucher.rejectedAt,
+        voucher.rejectionReason,
+        voucher.lockedBy,
+        voucher.lockedAt,
+        voucher.postedBy,
+        voucher.postedAt,
+        (voucher as any).postingLockPolicy,
+        (voucher as any).reversalOfVoucherId,
+        (voucher as any).reference,
+        (voucher as any).updatedAt
       );
       await diContainer.voucherRepository.save(updatedVoucher);
       res.status(200).json({ success: true });

@@ -37,8 +37,8 @@ const AccountValidationService_1 = require("../services/AccountValidationService
 class CreateVoucherUseCase {
     constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post
     policyRegistry, // Needed for auto-post
-    currencyRepo // NEW: Optional for backward compat in constructor, but required logic
-    ) {
+    currencyRepo, // NEW: Optional for backward compat in constructor, but required logic
+    sequenceRepo) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.settingsRepo = settingsRepo;
@@ -49,6 +49,7 @@ class CreateVoucherUseCase {
         this.ledgerRepo = ledgerRepo;
         this.policyRegistry = policyRegistry;
         this.currencyRepo = currencyRepo;
+        this.sequenceRepo = sequenceRepo;
         this.validationService = new VoucherValidationService_1.VoucherValidationService();
     }
     async execute(companyId, userId, payload) {
@@ -78,7 +79,15 @@ class CreateVoucherUseCase {
             }
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
-            const voucherNo = autoNumbering ? `V-${Date.now()}` : payload.voucherNo || '';
+            let voucherNo = payload.voucherNo || '';
+            if (autoNumbering && this.sequenceRepo) {
+                const prefix = payload.prefix || (payload.type || 'V').toString();
+                const useYear = (settings === null || settings === void 0 ? void 0 : settings.resetVoucherNumbersAnnually) ? new Date(payload.date || Date.now()).getFullYear() : undefined;
+                voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear);
+            }
+            else if (autoNumbering) {
+                voucherNo = `V-${Date.now()}`;
+            }
             let lines = [];
             const voucherType = payload.type || VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
             const strategy = VoucherPostingStrategyFactory_1.VoucherPostingStrategyFactory.getStrategy(voucherType);

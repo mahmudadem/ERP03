@@ -78,10 +78,10 @@ class ReceiptVoucherHandler {
         const baseAmount = amount * exchangeRate;
         // Line 1: DEBIT Cash/Bank
         const debitLine = new VoucherLineEntity_1.VoucherLineEntity(1, // Line ID
-        input.cashAccountId, 'Debit', amount, currency, baseAmount, baseCurrency, exchangeRate, input.notes || input.description, input.costCenterId);
+        input.cashAccountId, 'Debit', baseAmount, baseCurrency, amount, currency, exchangeRate, input.notes || input.description, input.costCenterId);
         // Line 2: CREDIT Revenue/Receivable
         const creditLine = new VoucherLineEntity_1.VoucherLineEntity(2, // Line ID
-        input.revenueAccountId, 'Credit', amount, currency, baseAmount, baseCurrency, exchangeRate, input.notes || input.description, input.costCenterId);
+        input.revenueAccountId, 'Credit', baseAmount, baseCurrency, amount, currency, exchangeRate, input.notes || input.description, input.costCenterId);
         // ALWAYS return exactly 2 lines
         // This is the contract of a receipt voucher
         return [debitLine, creditLine];

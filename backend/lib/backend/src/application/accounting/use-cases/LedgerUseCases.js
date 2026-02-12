@@ -169,13 +169,50 @@ class GetBalanceSheetUseCase {
 }
 exports.GetBalanceSheetUseCase = GetBalanceSheetUseCase;
 class GetJournalUseCase {
-    constructor(ledgerRepo, permissionChecker) {
-        this.ledgerRepo = ledgerRepo;
+    constructor(voucherRepo, accountRepo, permissionChecker) {
+        this.voucherRepo = voucherRepo;
+        this.accountRepo = accountRepo;
         this.permissionChecker = permissionChecker;
     }
     async execute(companyId, userId, filters) {
-        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
-        return this.ledgerRepo.getGeneralLedger(companyId, filters);
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
+        const accounts = this.accountRepo.getAccounts
+            ? await this.accountRepo.getAccounts(companyId)
+            : await this.accountRepo.list(companyId);
+        const accountMap = new Map(accounts.map((a) => [a.id, a]));
+        const vouchers = await this.voucherRepo.findByDateRange(companyId, filters.fromDate || '1900-01-01', filters.toDate || new Date().toISOString().split('T')[0]);
+        const filtered = filters.voucherType
+            ? vouchers.filter((v) => (v.type || '').toString() === filters.voucherType)
+            : vouchers;
+        return filtered.map((v) => {
+            const lines = (v.lines || []).map((l) => {
+                const acc = accountMap.get(l.accountId);
+                return {
+                    accountId: l.accountId,
+                    accountCode: (acc === null || acc === void 0 ? void 0 : acc.userCode) || (acc === null || acc === void 0 ? void 0 : acc.code) || l.accountId,
+                    accountName: (acc === null || acc === void 0 ? void 0 : acc.name) || 'Unknown',
+                    description: l.notes || l.description || '',
+                    debit: l.debitAmount || 0,
+                    credit: l.creditAmount || 0,
+                    currency: l.currency,
+                    exchangeRate: l.exchangeRate
+                };
+            });
+            const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+            const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+            return {
+                voucherId: v.id,
+                voucherNo: v.voucherNo || v.id,
+                date: v.date,
+                type: v.type,
+                description: v.description,
+                status: v.status,
+                currency: v.currency,
+                lines,
+                totalDebit,
+                totalCredit
+            };
+        });
     }
 }
 exports.GetJournalUseCase = GetJournalUseCase;

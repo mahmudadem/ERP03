@@ -9,6 +9,7 @@ const company_wizard_routes_1 = __importDefault(require("../routes/company-wizar
 const impersonation_routes_1 = __importDefault(require("../routes/impersonation.routes"));
 const user_companies_routes_1 = __importDefault(require("../routes/user.companies.routes"));
 const core_routes_1 = __importDefault(require("../routes/core.routes"));
+const user_preferences_routes_1 = __importDefault(require("../routes/user.preferences.routes"));
 const onboarding_routes_1 = __importDefault(require("../routes/onboarding.routes"));
 const company_modules_routes_1 = __importDefault(require("../routes/company-modules.routes"));
 const system_metadata_routes_1 = __importDefault(require("../routes/system.metadata.routes"));
@@ -18,6 +19,7 @@ router.use('/onboarding', onboarding_routes_1.default);
 router.use('/company-wizard', company_wizard_routes_1.default);
 router.use('/impersonate', impersonation_routes_1.default);
 router.use(user_companies_routes_1.default);
+router.use(user_preferences_routes_1.default);
 router.use('/core', core_routes_1.default);
 router.use('/company-modules', company_modules_routes_1.default);
 router.use('/system/metadata', system_metadata_routes_1.default);
