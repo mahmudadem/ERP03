@@ -580,7 +580,37 @@
       "amount": "Tutar",
       "ref": "Ref",
       "actions": "İşlemler"
-    },
+  },
+  "voucherRenderer": {
+    "loading": "Tanım yükleniyor...",
+    "systemMode": "Sistem Modu",
+    "policy": "Politika",
+    "strict": "Sıkı (Onay gerekli)",
+    "flexible": "Esnek (Oto-işleme)",
+    "headerInfo": "Başlık Bilgileri",
+    "noHeader": "Tanımlı başlık alanı yok.",
+    "lineItems": "Satır Kalemleri",
+    "subtotal": "Ara toplam",
+    "taxZero": "Vergi (0%)",
+    "total": "Toplam",
+    "discard": "Vazgeç",
+    "saving": "Kaydediliyor...",
+    "posting": "İşleniyor...",
+    "saveDraft": "Taslak olarak kaydet",
+    "savePost": "Kaydet ve işle",
+    "submitApproval": "Onaya gönder",
+    "columns": {
+      "account": "Hesap",
+      "debit": "Borç",
+      "credit": "Alacak",
+      "description": "Açıklama",
+      "notes": "Notlar",
+      "amount": "Tutar",
+      "currency": "Para birimi",
+      "exchangeRate": "Kur",
+      "default": "Sütun"
+    }
+  },
     "creationMode": {
       "strict": "Sıkı",
       "flexible": "Esnek",

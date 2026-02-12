@@ -580,7 +580,37 @@
       "amount": "Amount",
       "ref": "Ref",
       "actions": "Actions"
-    },
+  },
+  "voucherRenderer": {
+    "loading": "Loading definition...",
+    "systemMode": "System Mode",
+    "policy": "Policy",
+    "strict": "Strict (Approval Required)",
+    "flexible": "Flexible (Auto-Post)",
+    "headerInfo": "Header Information",
+    "noHeader": "No header fields defined.",
+    "lineItems": "Line Items",
+    "subtotal": "Subtotal",
+    "taxZero": "Tax (0%)",
+    "total": "Total",
+    "discard": "Discard",
+    "saving": "Saving...",
+    "posting": "Posting...",
+    "saveDraft": "Save as Draft",
+    "savePost": "Save & Post",
+    "submitApproval": "Submit Approval",
+    "columns": {
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "description": "Description",
+      "notes": "Notes",
+      "amount": "Amount",
+      "currency": "Currency",
+      "exchangeRate": "Rate",
+      "default": "Column"
+    }
+  },
     "creationMode": {
       "strict": "Strict",
       "flexible": "Flexible",

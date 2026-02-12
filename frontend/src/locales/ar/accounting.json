@@ -580,7 +580,37 @@
       "amount": "المبلغ",
       "ref": "المرجع",
       "actions": "الإجراءات"
-    },
+  },
+  "voucherRenderer": {
+    "loading": "جارٍ تحميل التعريف...",
+    "systemMode": "وضع النظام",
+    "policy": "السياسة",
+    "strict": "صارم (يتطلب اعتماد)",
+    "flexible": "مرن (ترحيل تلقائي)",
+    "headerInfo": "معلومات الرأس",
+    "noHeader": "لا توجد حقول رأس معرّفة.",
+    "lineItems": "بنود القيد",
+    "subtotal": "الإجمالي الفرعي",
+    "taxZero": "ضريبة (0%)",
+    "total": "الإجمالي",
+    "discard": "إلغاء",
+    "saving": "جارٍ الحفظ...",
+    "posting": "جارٍ الترحيل...",
+    "saveDraft": "حفظ كمسودة",
+    "savePost": "حفظ وترحيل",
+    "submitApproval": "إرسال للاعتماد",
+    "columns": {
+      "account": "الحساب",
+      "debit": "مدين",
+      "credit": "دائن",
+      "description": "الوصف",
+      "notes": "ملاحظات",
+      "amount": "المبلغ",
+      "currency": "العملة",
+      "exchangeRate": "السعر",
+      "default": "عمود"
+    }
+  },
     "creationMode": {
       "strict": "صارم",
       "flexible": "مرن",

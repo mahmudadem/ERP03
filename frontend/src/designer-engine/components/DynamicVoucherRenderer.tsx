@@ -3,6 +3,7 @@
  * Renders a full voucher document (Header Form + Line Items Table).
  */
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VoucherTypeDefinition, TableColumn } from '../types/VoucherTypeDefinition';
 import { FieldDefinition } from '../types/FieldDefinition';
 import { DynamicSectionRenderer } from './DynamicSectionRenderer';
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialValues, onSubmit, customComponents, readOnly }) => {
+  const { t } = useTranslation('accounting');
   const { settings, isLoading: settingsLoading } = useCompanySettings();
 
   // Header State
@@ -74,7 +76,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
   // Calculate Totals (Mock simple summation logic for now)
   const totalAmount = lines.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
 
-  if (!definition) return <div>Loading definition...</div>;
+  if (!definition) return <div>{t('voucherRenderer.loading')}</div>;
 
   return (
     <div className="space-y-6">
@@ -92,11 +94,11 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
                   }`} 
                 />
                 <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700 font-normal">
-                  <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
+                  <div className="font-bold mb-1 border-b border-gray-600 pb-1">{t('voucherRenderer.systemMode')}</div>
                   <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                    <span className="text-gray-400">Policy:</span>
+                    <span className="text-gray-400">{t('voucherRenderer.policy')}:</span>
                     <span className={settings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                      {settings?.strictApprovalMode ? 'Strict (Approval Required)' : 'Flexible (Auto-Post)'}
+                      {settings?.strictApprovalMode ? t('voucherRenderer.strict') : t('voucherRenderer.flexible')}
                     </span>
                   </div>
                 </div>
@@ -106,12 +108,12 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         </div>
         
         <div className="p-6">
-          {/* Render Header Fields in a default section */}
+                  {/* Render Header Fields in a default section */}
           {definition.headerFields && definition.headerFields.length > 0 ? (
             <DynamicSectionRenderer
                   section={{
                       id: 'main-header',
-                      title: 'Header Information',
+                      title: t('voucherRenderer.headerInfo'),
                       fieldIds: definition.headerFields.map(f => f.id)
                   }}
                   allFields={definition.headerFields}
@@ -123,20 +125,20 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
                   readOnly={readOnly}
             />
           ) : (
-            <div className="text-gray-400 italic">No header fields defined.</div>
+            <div className="text-gray-400 italic">{t('voucherRenderer.noHeader')}</div>
           )}
         </div>
       </div>
 
       {/* 2. Line Items Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="font-bold text-gray-700 mb-2">Line Items</h3>
+        <h3 className="font-bold text-gray-700 mb-2">{t('voucherRenderer.lineItems')}</h3>
         {definition.tableColumns && definition.tableColumns.length > 0 && (
             <DynamicTableRenderer
             definition={{ 
               id: 'lines-table', 
               name: 'items', 
-              columns: resolveTableFields(definition)
+              columns: resolveTableFields(definition, t)
             }} 
             rows={lines}
             onChange={setLines}
@@ -150,16 +152,16 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
         <div className="flex justify-end mt-4 pt-4 border-t">
           <div className="w-64 space-y-2">
              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotal:</span>
+                <span className="text-gray-500">{t('voucherRenderer.subtotal')}:</span>
                 <span className="font-medium text-gray-900">{totalAmount.toFixed(2)}</span>
              </div>
              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Tax (0%):</span>
+                <span className="text-gray-500">{t('voucherRenderer.taxZero')}</span>
                 <span className="font-medium text-gray-900">0.00</span>
              </div>
              <div className="flex justify-between text-lg font-bold border-t pt-2">
-                <span>Total:</span>
-                <span>${totalAmount.toFixed(2)}</span>
+                <span>{t('voucherRenderer.total')}:</span>
+                <span>{totalAmount.toFixed(2)}</span>
              </div>
           </div>
         </div>
@@ -167,7 +169,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
 
       {/* 3. Actions */}
       <div className="flex justify-end gap-3 sticky bottom-4 z-10 bg-white/80 p-4 backdrop-blur-sm rounded-lg border shadow-lg transition-colors">
-         <Button variant="secondary" onClick={() => window.history.back()}>Discard</Button>
+         <Button variant="secondary" onClick={() => window.history.back()}>{t('voucherRenderer.discard')}</Button>
          
          <button
             onClick={() => handleSave()}
@@ -185,12 +187,12 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
             {isSaving || settingsLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {settingsLoading ? 'Loading...' : (settings?.strictApprovalMode === true ? 'Saving...' : 'Posting...')}
+                {settingsLoading ? t('voucherRenderer.loading') : (settings?.strictApprovalMode === true ? t('voucherRenderer.saving') : t('voucherRenderer.posting'))}
               </>
             ) : (
               <>
                 {settings?.strictApprovalMode === true ? <Save className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                {settings?.strictApprovalMode === true ? 'Save as Draft' : 'Save & Post'}
+                {settings?.strictApprovalMode === true ? t('voucherRenderer.saveDraft') : t('voucherRenderer.savePost')}
               </>
             )}
           </button>
@@ -207,7 +209,7 @@ export const DynamicVoucherRenderer: React.FC<Props> = ({ definition, initialVal
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  Submit Approval
+                  {t('voucherRenderer.submitApproval')}
                 </>
               )}
             </button>
@@ -269,7 +271,7 @@ const STANDARD_TABLE_FIELDS: Record<string, Partial<FieldDefinition>> = {
 /**
  * Resolves TableColumn IDs into full FieldDefinition objects
  */
-function resolveTableFields(definition: VoucherTypeDefinition): FieldDefinition[] {
+function resolveTableFields(definition: VoucherTypeDefinition, t: (key: string, opt?: any) => string): FieldDefinition[] {
   return (definition.tableColumns || []).map(col => {
     // Robustly identify the ID (handle strings or objects)
     const colId = typeof col === 'string' ? col : (col.fieldId || (col as any).id);
@@ -308,7 +310,7 @@ function resolveTableFields(definition: VoucherTypeDefinition): FieldDefinition[
       schemaVersion: 2,
       ...baseField,
       // Override with user customizations from the wizard
-      label: (colObj as any).labelOverride || (colObj as any).label || baseField.label || colId,
+      label: (colObj as any).labelOverride || (colObj as any).label || t(`voucherRenderer.columns.${colId}`, { defaultValue: baseField.label || colId }),
       width: (colObj as any).width || baseField.width,
     } as FieldDefinition;
   });
