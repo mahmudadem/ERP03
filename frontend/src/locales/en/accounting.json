@@ -197,6 +197,11 @@
     "totalBudget": "Budget Total",
     "existing": "Existing Budgets",
     "edit": "Edit",
+    "statuses": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "closed": "Closed"
+    },
     "months": {
       "jan": "Jan",
       "feb": "Feb",
@@ -210,6 +215,64 @@
       "oct": "Oct",
       "nov": "Nov",
       "dec": "Dec"
+    }
+  },
+  "budgetVsActual": {
+    "selectBudget": "Select Budget",
+    "option": "{{name}} (v{{version}}) - {{status}}",
+    "account": "Account",
+    "budget": "Budget",
+    "actual": "Actual",
+    "variance": "Variance",
+    "variancePct": "Variance %",
+    "costCenter": "CC {{id}}"
+  },
+  "costCenters": {
+    "title": "Cost Centers",
+    "subtitle": "Track departments, branches, and projects.",
+    "refresh": "Refresh",
+    "code": "Code",
+    "name": "Name",
+    "description": "Description",
+    "create": "Create",
+    "update": "Update",
+    "saved": "Saved",
+    "saveError": "Failed to save",
+    "deactivateError": "Failed to deactivate",
+    "empty": "No cost centers yet.",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "recurring": {
+    "title": "Recurring Vouchers",
+    "messageCreated": "Template created",
+    "messageGenerated": "Generation triggered",
+    "name": "Name",
+    "sourceVoucherId": "Source Voucher ID",
+    "frequency": "Frequency",
+    "dayOfMonth": "Day of Month",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "maxOccurrences": "Max occurrences",
+    "createTemplate": "Create Template",
+    "generate": "Generate Due Vouchers",
+    "nextDate": "Next Date",
+    "status": "Status",
+    "generated": "Generated",
+    "actions": "Actions",
+    "pause": "Pause",
+    "resume": "Resume",
+    "frequencies": {
+      "MONTHLY": "Monthly",
+      "QUARTERLY": "Quarterly",
+      "ANNUALLY": "Annually"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "PAUSED": "Paused",
+      "COMPLETED": "Completed"
     }
   },
   "accountStatement": {

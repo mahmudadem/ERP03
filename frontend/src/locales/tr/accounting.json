@@ -197,6 +197,11 @@
     "totalBudget": "Bütçe Toplamı",
     "existing": "Mevcut Bütçeler",
     "edit": "Düzenle",
+    "statuses": {
+      "draft": "Taslak",
+      "approved": "Onaylandı",
+      "closed": "Kapalı"
+    },
     "months": {
       "jan": "Oca",
       "feb": "Şub",
@@ -210,6 +215,64 @@
       "oct": "Eki",
       "nov": "Kas",
       "dec": "Ara"
+    }
+  },
+  "budgetVsActual": {
+    "selectBudget": "Bütçe Seçin",
+    "option": "{{name}} (sürüm {{version}}) - {{status}}",
+    "account": "Hesap",
+    "budget": "Bütçe",
+    "actual": "Gerçekleşen",
+    "variance": "Sapma",
+    "variancePct": "Sapma %",
+    "costCenter": "MB {{id}}"
+  },
+  "costCenters": {
+    "title": "Maliyet Merkezleri",
+    "subtitle": "Şubeleri, departmanları ve projeleri takip edin.",
+    "refresh": "Yenile",
+    "code": "Kod",
+    "name": "Ad",
+    "description": "Açıklama",
+    "create": "Oluştur",
+    "update": "Güncelle",
+    "saved": "Kaydedildi",
+    "saveError": "Kaydedilemedi",
+    "deactivateError": "Pasif edilemedi",
+    "empty": "Henüz maliyet merkezi yok.",
+    "status": {
+      "active": "Aktif",
+      "inactive": "Pasif"
+    }
+  },
+  "recurring": {
+    "title": "Tekrarlayan Fişler",
+    "messageCreated": "Şablon oluşturuldu",
+    "messageGenerated": "Oluşturma tetiklendi",
+    "name": "Ad",
+    "sourceVoucherId": "Kaynak Fiş ID",
+    "frequency": "Sıklık",
+    "dayOfMonth": "Ayın Günü",
+    "startDate": "Başlangıç Tarihi",
+    "endDate": "Bitiş Tarihi",
+    "maxOccurrences": "Maks. tekrar",
+    "createTemplate": "Şablon Oluştur",
+    "generate": "Vadesi Gelenleri Oluştur",
+    "nextDate": "Sonraki Tarih",
+    "status": "Durum",
+    "generated": "Üretilen",
+    "actions": "İşlemler",
+    "pause": "Duraklat",
+    "resume": "Sürdür",
+    "frequencies": {
+      "MONTHLY": "Aylık",
+      "QUARTERLY": "Üç Aylık",
+      "ANNUALLY": "Yıllık"
+    },
+    "statuses": {
+      "ACTIVE": "Aktif",
+      "PAUSED": "Duraklatıldı",
+      "COMPLETED": "Tamamlandı"
     }
   },
   "accountStatement": {

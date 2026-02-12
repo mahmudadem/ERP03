@@ -197,6 +197,11 @@
     "totalBudget": "إجمالي الموازنة",
     "existing": "الموازنات الحالية",
     "edit": "تعديل",
+    "statuses": {
+      "draft": "مسودة",
+      "approved": "معتمدة",
+      "closed": "مغلقة"
+    },
     "months": {
       "jan": "يناير",
       "feb": "فبراير",
@@ -210,6 +215,64 @@
       "oct": "أكتوبر",
       "nov": "نوفمبر",
       "dec": "ديسمبر"
+    }
+  },
+  "budgetVsActual": {
+    "selectBudget": "اختر الموازنة",
+    "option": "{{name}} (الإصدار {{version}}) - {{status}}",
+    "account": "الحساب",
+    "budget": "الموازنة",
+    "actual": "الفعلي",
+    "variance": "الانحراف",
+    "variancePct": "الانحراف %",
+    "costCenter": "مركز تكلفة {{id}}"
+  },
+  "costCenters": {
+    "title": "مراكز التكلفة",
+    "subtitle": "تتبع الفروع والأقسام والمشاريع.",
+    "refresh": "تحديث",
+    "code": "الرمز",
+    "name": "الاسم",
+    "description": "الوصف",
+    "create": "إنشاء",
+    "update": "تحديث",
+    "saved": "تم الحفظ",
+    "saveError": "فشل الحفظ",
+    "deactivateError": "فشل الإيقاف",
+    "empty": "لا توجد مراكز تكلفة بعد.",
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    }
+  },
+  "recurring": {
+    "title": "القيود المتكررة",
+    "messageCreated": "تم إنشاء القالب",
+    "messageGenerated": "تم تشغيل التوليد",
+    "name": "الاسم",
+    "sourceVoucherId": "معرف القيد المصدر",
+    "frequency": "التكرار",
+    "dayOfMonth": "يوم الشهر",
+    "startDate": "تاريخ البدء",
+    "endDate": "تاريخ الانتهاء",
+    "maxOccurrences": "أقصى عدد مرات",
+    "createTemplate": "إنشاء قالب",
+    "generate": "توليد القيود المستحقة",
+    "nextDate": "التاريخ القادم",
+    "status": "الحالة",
+    "generated": "المُنتج",
+    "actions": "إجراءات",
+    "pause": "إيقاف مؤقت",
+    "resume": "استئناف",
+    "frequencies": {
+      "MONTHLY": "شهرياً",
+      "QUARTERLY": "ربع سنوي",
+      "ANNUALLY": "سنوي"
+    },
+    "statuses": {
+      "ACTIVE": "نشط",
+      "PAUSED": "متوقف",
+      "COMPLETED": "مكتمل"
     }
   },
   "accountStatement": {

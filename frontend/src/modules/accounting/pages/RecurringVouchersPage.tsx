@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { accountingApi, RecurringVoucherTemplateDTO } from '../../../api/accountingApi';
 
 const RecurringVouchersPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [templates, setTemplates] = useState<RecurringVoucherTemplateDTO[]>([]);
   const [form, setForm] = useState<Partial<RecurringVoucherTemplateDTO>>({
     frequency: 'MONTHLY',
@@ -21,7 +23,7 @@ const RecurringVouchersPage: React.FC = () => {
 
   const create = async () => {
     await accountingApi.createRecurringVoucher(form as any);
-    setMessage('Template created');
+    setMessage(t('recurring.messageCreated'));
     setForm({ frequency: 'MONTHLY', dayOfMonth: 1, startDate: form.startDate || new Date().toISOString().slice(0, 10) });
     load();
   };
@@ -36,61 +38,61 @@ const RecurringVouchersPage: React.FC = () => {
   };
   const generate = async () => {
     await accountingApi.generateRecurringVouchers();
-    setMessage('Generation triggered');
+    setMessage(t('recurring.messageGenerated'));
     load();
   };
 
   return (
     <div className="p-6 space-y-4">
-      <h2 className="text-lg font-semibold">Recurring Vouchers</h2>
+      <h2 className="text-lg font-semibold">{t('recurring.title')}</h2>
       {message && <div className="p-2 bg-green-50 border border-green-200 rounded">{message}</div>}
       <div className="border rounded p-4 space-y-2">
         <div className="grid grid-cols-2 gap-3">
-          <input className="border rounded px-2 py-1" placeholder="Name" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <input className="border rounded px-2 py-1" placeholder="Source Voucher ID" value={form.sourceVoucherId || ''} onChange={(e) => setForm({ ...form, sourceVoucherId: e.target.value })} />
+          <input className="border rounded px-2 py-1" placeholder={t('recurring.name')} value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input className="border rounded px-2 py-1" placeholder={t('recurring.sourceVoucherId')} value={form.sourceVoucherId || ''} onChange={(e) => setForm({ ...form, sourceVoucherId: e.target.value })} />
           <select
             className="border rounded px-2 py-1"
             value={form.frequency}
             onChange={(e) => setForm({ ...form, frequency: e.target.value as RecurringVoucherTemplateDTO['frequency'] })}
           >
-            <option value="MONTHLY">Monthly</option>
-            <option value="QUARTERLY">Quarterly</option>
-            <option value="ANNUALLY">Annually</option>
+            <option value="MONTHLY">{t('recurring.frequencies.MONTHLY')}</option>
+            <option value="QUARTERLY">{t('recurring.frequencies.QUARTERLY')}</option>
+            <option value="ANNUALLY">{t('recurring.frequencies.ANNUALLY')}</option>
           </select>
-          <input className="border rounded px-2 py-1" type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })} />
-          <input className="border rounded px-2 py-1" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-          <input className="border rounded px-2 py-1" type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value || undefined })} />
-          <input className="border rounded px-2 py-1" type="number" min={1} value={form.maxOccurrences || ''} placeholder="Max occurrences" onChange={(e) => setForm({ ...form, maxOccurrences: e.target.value ? Number(e.target.value) : undefined })} />
+          <input className="border rounded px-2 py-1" type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })} placeholder={t('recurring.dayOfMonth')} />
+          <input className="border rounded px-2 py-1" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} aria-label={t('recurring.startDate')} />
+          <input className="border rounded px-2 py-1" type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value || undefined })} aria-label={t('recurring.endDate')} />
+          <input className="border rounded px-2 py-1" type="number" min={1} value={form.maxOccurrences || ''} placeholder={t('recurring.maxOccurrences')} onChange={(e) => setForm({ ...form, maxOccurrences: e.target.value ? Number(e.target.value) : undefined })} />
         </div>
-        <button className="btn btn-primary" onClick={create}>Create Template</button>
-        <button className="btn btn-secondary" onClick={generate}>Generate Due Vouchers</button>
+        <button className="btn btn-primary" onClick={create}>{t('recurring.createTemplate')}</button>
+        <button className="btn btn-secondary" onClick={generate}>{t('recurring.generate')}</button>
       </div>
 
       <div className="border rounded overflow-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="p-2 text-left">Name</th>
-              <th className="p-2 text-left">Frequency</th>
-              <th className="p-2 text-left">Next Date</th>
-              <th className="p-2 text-left">Status</th>
-              <th className="p-2 text-left">Generated</th>
-              <th className="p-2 text-left">Actions</th>
+              <th className="p-2 text-left">{t('recurring.name')}</th>
+              <th className="p-2 text-left">{t('recurring.frequency')}</th>
+              <th className="p-2 text-left">{t('recurring.nextDate')}</th>
+              <th className="p-2 text-left">{t('recurring.status')}</th>
+              <th className="p-2 text-left">{t('recurring.generated')}</th>
+              <th className="p-2 text-left">{t('recurring.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            {templates.map((t) => (
-              <tr key={t.id} className="border-t">
-                <td className="p-2">{t.name}</td>
-                <td className="p-2">{t.frequency}</td>
-                <td className="p-2">{t.nextGenerationDate}</td>
-                <td className="p-2">{t.status}</td>
-                <td className="p-2">{t.occurrencesGenerated}</td>
+            {templates.map((tmpl) => (
+              <tr key={tmpl.id} className="border-t">
+                <td className="p-2">{tmpl.name}</td>
+                <td className="p-2">{t('recurring.frequencies.' + tmpl.frequency)}</td>
+                <td className="p-2">{tmpl.nextGenerationDate}</td>
+                <td className="p-2">{t('recurring.statuses.' + tmpl.status)}</td>
+                <td className="p-2">{tmpl.occurrencesGenerated}</td>
                 <td className="p-2 space-x-2">
-                  {t.status === 'ACTIVE' ? (
-                    <button className="btn btn-link text-amber-700" onClick={() => pause(t.id)}>Pause</button>
+                  {tmpl.status === 'ACTIVE' ? (
+                    <button className="btn btn-link text-amber-700" onClick={() => pause(tmpl.id)}>{t('recurring.pause')}</button>
                   ) : (
-                    <button className="btn btn-link text-green-700" onClick={() => resume(t.id)}>Resume</button>
+                    <button className="btn btn-link text-green-700" onClick={() => resume(tmpl.id)}>{t('recurring.resume')}</button>
                   )}
                 </td>
               </tr>
