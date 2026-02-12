@@ -15,7 +15,7 @@ const projectId = process.env.GCLOUD_PROJECT ||
 // `storage().bucket()` without a configured name (e.g., in emulators).
 const storageBucket = process.env.FIREBASE_STORAGE_BUCKET ||
     (process.env.FIREBASE_CONFIG && JSON.parse(process.env.FIREBASE_CONFIG).storageBucket) ||
-    (process.env.FUNCTIONS_EMULATOR ? 'dev-null-bucket' : undefined);
+    'dev-null-bucket'; // harmless fallback for emulators/local
 // DEBUG: Log environment
 console.log('🔍 Firebase Init:', {
     projectId,
