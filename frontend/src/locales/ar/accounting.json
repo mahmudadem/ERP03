@@ -581,6 +581,11 @@
       "ref": "المرجع",
       "actions": "الإجراءات"
     },
+    "creationMode": {
+      "strict": "صارم",
+      "flexible": "مرن",
+      "na": "غير متوفر"
+    },
     "settings": {
       "title": "إعدادات الجدول",
       "fontSize": "حجم الخط",

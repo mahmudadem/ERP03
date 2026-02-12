@@ -581,6 +581,11 @@
       "ref": "Ref",
       "actions": "Actions"
     },
+    "creationMode": {
+      "strict": "Strict",
+      "flexible": "Flexible",
+      "na": "N/A"
+    },
     "settings": {
       "title": "Table Settings",
       "fontSize": "Font Size",

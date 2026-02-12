@@ -581,6 +581,11 @@
       "ref": "Ref",
       "actions": "İşlemler"
     },
+    "creationMode": {
+      "strict": "Sıkı",
+      "flexible": "Esnek",
+      "na": "Yok"
+    },
     "settings": {
       "title": "Tablo Ayarları",
       "fontSize": "Yazı Boyutu",

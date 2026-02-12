@@ -2,6 +2,7 @@
  * VoucherTable.tsx
  */
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VoucherListItem } from '../../../types/accounting/VoucherListTypes';
 import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 import { Badge } from '../../../components/ui/Badge';
@@ -37,21 +38,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   actions: 96
 };
 
-const COLUMN_LABELS: Record<string, string> = {
-  date: 'Date',
-  number: 'Number',
-  type: 'Type',
-  name: 'Voucher Name',
-  debitAccount: 'Debit Account',
-  creditAccount: 'Credit Account',
-  creationMode: 'C-Mode',
-  approvedAt: 'Approved At',
-  status: 'Status',
-  currency: 'Currency',
-  amount: 'Amount',
-  ref: 'Ref',
-  actions: 'Actions'
-};
+const COLUMN_KEYS = ['date', 'number', 'type', 'name', 'debitAccount', 'creditAccount', 'creationMode', 'approvedAt', 'status', 'currency', 'amount', 'ref', 'actions'] as const;
 
 interface Props {
   vouchers: VoucherListItem[];
@@ -132,6 +119,14 @@ export const VoucherTable: React.FC<Props> = ({
   const { settings } = useCompanySettings();
   const { getAccountById } = useAccounts();
   const { user } = useAuth();
+  const { t } = useTranslation('accounting');
+
+  // Build translated column labels
+  const COLUMN_LABELS: Record<string, string> = useMemo(() => {
+    const labels: Record<string, string> = {};
+    COLUMN_KEYS.forEach(key => { labels[key] = t(`voucherTable.columns.${key}`); });
+    return labels;
+  }, [t]);
   
   // States for row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -176,10 +171,10 @@ export const VoucherTable: React.FC<Props> = ({
       try {
         return JSON.parse(saved);
       } catch (e) {
-        return Object.keys(COLUMN_LABELS);
+        return [...COLUMN_KEYS];
       }
     }
-    return Object.keys(COLUMN_LABELS);
+    return [...COLUMN_KEYS];
   });
 
   const [showSettings, setShowSettings] = useState(false);
@@ -533,11 +528,11 @@ export const VoucherTable: React.FC<Props> = ({
   };
   
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading vouchers...</div>;
+    return <div className="p-8 text-center text-gray-500">{t('voucherTable.loading')}</div>;
   }
 
   if (error) {
-    return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+    return <div className="p-8 text-center text-red-500">{t('voucherTable.error', { error })}</div>;
   }
 
   return (
@@ -553,7 +548,7 @@ export const VoucherTable: React.FC<Props> = ({
                   <button 
                     onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
                     className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors text-[var(--color-text-secondary)]"
-                    title="Table Settings"
+                    title={t('voucherTable.settings.title')}
                   >
                     <Settings2 size={16} />
                   </button>
@@ -561,7 +556,7 @@ export const VoucherTable: React.FC<Props> = ({
                   {showSettings && (
                     <div className="absolute top-full left-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[100] p-4 text-xs normal-case font-normal text-[var(--color-text-primary)]">
                       <div className="mb-4">
-                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">Font Size</h3>
+                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">{t('voucherTable.settings.fontSize')}</h3>
                         <div className="flex gap-2">
                           {['text-xs', 'text-sm', 'text-base'].map(size => (
                             <button
@@ -581,7 +576,7 @@ export const VoucherTable: React.FC<Props> = ({
                       </div>
                       
                       <div>
-                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">Visible Columns</h3>
+                        <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">{t('voucherTable.settings.visibleColumns')}</h3>
                         <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto pr-1">
                           {Object.entries(COLUMN_LABELS).map(([key, label]) => (
                             <button
@@ -612,7 +607,7 @@ export const VoucherTable: React.FC<Props> = ({
                   style={{ width: columnWidths.date }}
                 >
                   <div className="flex items-center gap-2">
-                    <span>Date</span>
+                    <span>{t('voucherTable.columns.date')}</span>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleSort('date')} className="p-1 hover:text-primary-600">
                         {renderSortIcon('date')}
@@ -626,14 +621,14 @@ export const VoucherTable: React.FC<Props> = ({
                     <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">From</label>
+                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">{t('voucherTable.filters.from')}</label>
                           <DatePicker 
                             value={filters.dateFrom || ''} 
                             onChange={(val: string) => setFilters({ ...filters, dateFrom: val })} 
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">To</label>
+                          <label className="block text-xs font-bold text-[var(--color-text-muted)] uppercase mb-1">{t('voucherTable.filters.to')}</label>
                           <DatePicker 
                             value={filters.dateTo || ''} 
                             onChange={(val: string) => setFilters({ ...filters, dateTo: val })} 
@@ -652,7 +647,7 @@ export const VoucherTable: React.FC<Props> = ({
                   style={{ width: columnWidths.number }}
                 >
                   <div className="flex items-center gap-2">
-                    <span>Number</span>
+                    <span>{t('voucherTable.columns.number')}</span>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleSort('voucherNo')} className="p-1 hover:text-primary-600">
                         {renderSortIcon('voucherNo')}
@@ -666,7 +661,7 @@ export const VoucherTable: React.FC<Props> = ({
                     <div ref={filterRef} className="absolute top-full left-0 mt-1 p-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-md z-50 min-w-[200px] normal-case font-normal text-[var(--color-text-primary)]">
                       <input 
                         type="text" 
-                        placeholder="Search number..." 
+                        placeholder={t('voucherTable.filters.searchNumber')} 
                         className="w-full px-2 py-1 text-xs border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none" 
                         value={filters.searchNumber || ''} 
                         onChange={(e) => setFilters({ ...filters, searchNumber: e.target.value })}
@@ -684,7 +679,7 @@ export const VoucherTable: React.FC<Props> = ({
                   style={{ width: columnWidths.type }}
                 >
                   <div className="flex items-center gap-2">
-                    <span>Type</span>
+                    <span>{t('voucherTable.columns.type')}</span>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleSort('type')} className="p-1 hover:text-primary-600">
                         {renderSortIcon('type')}
@@ -716,31 +711,31 @@ export const VoucherTable: React.FC<Props> = ({
 
               {visibleColumns.includes('name') && (
                 <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.name }}>
-                  Voucher Name
+                  {t('voucherTable.columns.name')}
                   <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('debitAccount') && (
                 <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.debitAccount }}>
-                  Debit Account
+                  {t('voucherTable.columns.debitAccount')}
                   <div onMouseDown={(e) => handleResizeStart('debitAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('creditAccount') && (
                 <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creditAccount }}>
-                  Credit Account
+                  {t('voucherTable.columns.creditAccount')}
                   <div onMouseDown={(e) => handleResizeStart('creditAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('creationMode') && (
                 <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creationMode }}>
-                  C-Mode
+                  {t('voucherTable.columns.creationMode')}
                   <div onMouseDown={(e) => handleResizeStart('creationMode', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('approvedAt') && (
                 <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.approvedAt }}>
-                  Approved At
+                  {t('voucherTable.columns.approvedAt')}
                   <div onMouseDown={(e) => handleResizeStart('approvedAt', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
@@ -752,7 +747,7 @@ export const VoucherTable: React.FC<Props> = ({
                   style={{ width: columnWidths.status }}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <span>Status</span>
+                    <span>{t('voucherTable.columns.status')}</span>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
                       <button 
                         onClick={() => setActiveFilterColumn(activeFilterColumn === 'status' ? null : 'status')} 
@@ -790,7 +785,7 @@ export const VoucherTable: React.FC<Props> = ({
                               setActiveFilterColumn(null);
                            }}
                          >
-                           Apply
+                           {t('voucherTable.filters.apply')}
                          </Button>
                       </div>
                     </div>
@@ -801,26 +796,26 @@ export const VoucherTable: React.FC<Props> = ({
 
               {visibleColumns.includes('currency') && (
                 <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.currency }}>
-                  Currency
+                  {t('voucherTable.columns.currency')}
                   <div onMouseDown={(e) => handleResizeStart('currency', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
 
               {visibleColumns.includes('amount') && (
                 <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.amount }}>
-                  Amount
+                  {t('voucherTable.columns.amount')}
                   <div onMouseDown={(e) => handleResizeStart('amount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('ref') && (
                 <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.ref }}>
-                  Ref
+                  {t('voucherTable.columns.ref')}
                   <div onMouseDown={(e) => handleResizeStart('ref', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('actions') && (
                 <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.actions }}>
-                  Actions
+                  {t('voucherTable.columns.actions')}
                   <div onMouseDown={(e) => handleResizeStart('actions', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
@@ -830,7 +825,7 @@ export const VoucherTable: React.FC<Props> = ({
             {displayVouchers.length === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length + 1} className={clsx("px-6 py-12 text-center text-[var(--color-text-muted)]", fontSize)}>
-                  No vouchers found matching your filters.
+                  {t('voucherTable.empty')}
                 </td>
               </tr>
             ) : (
@@ -844,11 +839,11 @@ export const VoucherTable: React.FC<Props> = ({
                 
                 const debitAccountName = debitLines.length === 1 
                   ? (getAccountById(debitLines[0].accountId)?.name || debitLines[0].accountId)
-                  : (debitLines.length > 1 ? 'Multiple Accounts' : '-');
+                  : (debitLines.length > 1 ? t('voucherTable.multipleAccounts') : '-');
                   
                 const creditAccountName = creditLines.length === 1 
                   ? (getAccountById(creditLines[0].accountId)?.name || creditLines[0].accountId)
-                  : (creditLines.length > 1 ? 'Multiple Accounts' : '-');
+                  : (creditLines.length > 1 ? t('voucherTable.multipleAccounts') : '-');
 
                 // Display amount in original voucher currency
                 const displayFullAmount = voucher.voucherAmount !== undefined ? voucher.voucherAmount : voucher.totalDebit;
@@ -898,22 +893,22 @@ export const VoucherTable: React.FC<Props> = ({
                       <td className={clsx("px-6 py-3 whitespace-nowrap font-mono text-[var(--color-text-secondary)]", fontSize)}>
                         <div className="flex items-center gap-2">
                            {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
-                             <span title="Audit Locked">
+                             <span title={t('voucherTable.tooltips.auditLocked')}>
                                <Lock size={12} className="text-amber-600" />
                              </span>
                            )}
                            {isNested && (
-                             <span title="Reversal">
+                             <span title={t('voucherTable.tooltips.reversal')}>
                                <RotateCcw size={12} className="text-amber-600" />
                              </span>
                            )}
                            {!isNested && hasReversalMap.has(voucher.id) && !isActuallyReversedMap.has(voucher.id) && (
                              isReversalRejectedMap.has(voucher.id) ? (
-                               <span title="Reversal Rejected">
+                                <span title={t('voucherTable.tooltips.reversalRejected')}>
                                  <RefreshCw size={12} className="text-red-500" />
                                </span>
                              ) : (
-                               <span title="Reversal Pending Approval">
+                                <span title={t('voucherTable.tooltips.reversalPending')}>
                                  <RefreshCw size={12} className="text-amber-500 animate-pulse" />
                                </span>
                              )
@@ -965,7 +960,13 @@ export const VoucherTable: React.FC<Props> = ({
                                       (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'STRICT' : 
                                        voucher.postingLockPolicy === PostingLockPolicy.FLEXIBLE_LOCKED ? 'FLEXIBLE' : '-');
                           
-                          if (mode === '-') return <span className={clsx("text-gray-400", fontSize)}>-</span>;
+                          const modeLabel = mode === 'STRICT'
+                            ? t('voucherTable.creationMode.strict')
+                            : mode === 'FLEXIBLE'
+                              ? t('voucherTable.creationMode.flexible')
+                              : t('voucherTable.creationMode.na');
+
+                          if (mode === '-') return <span className={clsx("text-gray-400", fontSize)}>{modeLabel}</span>;
 
                           return (
                             <span className={clsx(
@@ -973,7 +974,7 @@ export const VoucherTable: React.FC<Props> = ({
                               mode === 'STRICT' ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-emerald-50 text-emerald-600 border-emerald-100",
                               fontSize
                             )}>
-                              {mode}
+                              {modeLabel}
                             </span>
                           );
                         })()}
@@ -1005,16 +1006,16 @@ export const VoucherTable: React.FC<Props> = ({
                             );
                             const isPosted = !!voucher.postedAt;
                             
-                            let label = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
+                            let label = t(`statuses.${voucher.status.toLowerCase()}`, { defaultValue: voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1) });
                             let variant: any = getStatusVariant(voucher.status);
                             let Icon = null;
 
                             if (isReversed) {
-                              label = 'Reversed';
+                              label = t('voucherTable.status.reversed');
                               variant = 'warning';
                               Icon = RotateCcw;
                             } else if (isPosted) {
-                              label = 'Posted';
+                              label = t('voucherTable.status.posted');
                               variant = 'success';
                               Icon = CheckCircle;
                             } else if (voucher.status.toLowerCase() === 'pending') {
@@ -1022,11 +1023,11 @@ export const VoucherTable: React.FC<Props> = ({
                               const numCC = voucher.metadata?.pendingCustodyConfirmations?.length || 0;
                               
                               if (needsFA) {
-                                label = 'Pending Approval';
+                                label = t('voucherTable.status.pendingApproval');
                               } else if (numCC > 0) {
-                                label = `Pending Custody (${numCC})`;
+                                label = t('voucherTable.status.pendingCustody', { count: numCC });
                               } else {
-                                label = 'Pending Finalization';
+                                label = t('voucherTable.status.pendingFinalization');
                               }
                               variant = 'warning';
                               Icon = RefreshCw;
@@ -1041,7 +1042,7 @@ export const VoucherTable: React.FC<Props> = ({
                                   isReversed && "!bg-amber-500 !text-white border-none shadow-sm",
                                   fontSize
                                 )}
-                                title={voucher.postedAt ? `Posted on ${formatCompanyDate(voucher.postedAt, settings)}` : label}
+                                title={voucher.postedAt ? t('voucherTable.status.postedOn', { date: formatCompanyDate(voucher.postedAt, settings) }) : label}
                               >
                                 {Icon && <Icon size={fontSize === 'text-xs' ? 10 : 12} className="stroke-[3px]" />}
                                 {label}
@@ -1152,7 +1153,7 @@ export const VoucherTable: React.FC<Props> = ({
                                     "transition-colors p-1.5 rounded-full hover:bg-[var(--color-bg-tertiary)]",
                                     activeActionVoucherId === voucher.id ? "text-primary-600 bg-primary-50 dark:bg-primary-900/20" : "hover:text-[var(--color-text-primary)]"
                                   )}
-                                  title="More actions"
+                                   title={t('voucherTable.tooltips.moreActions')}
                                 >
                                   <MoreVertical size={16} />
                                 </button>
@@ -1199,7 +1200,7 @@ export const VoucherTable: React.FC<Props> = ({
       {pagination && onPageChange && (
         <div className="flex-none px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-between">
           <div className="text-sm text-[var(--color-text-secondary)]">
-            Showing page <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.page}</span> of <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.totalPages || 1}</span> ({pageInfo.totalItems} items)
+            {t('voucherTable.pagination.showingPage')} <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.page}</span> {t('voucherTable.pagination.of')} <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.totalPages || 1}</span> ({t('voucherTable.pagination.items', { count: pageInfo.totalItems })})
           </div>
           <div className="flex gap-2">
             <Button 
@@ -1208,7 +1209,7 @@ export const VoucherTable: React.FC<Props> = ({
               disabled={pageInfo.page <= 1}
               onClick={() => onPageChange(pageInfo.page - 1)}
             >
-              Previous
+              {t('voucherTable.pagination.previous')}
             </Button>
             <Button 
               variant="secondary" 
@@ -1216,7 +1217,7 @@ export const VoucherTable: React.FC<Props> = ({
               disabled={pageInfo.page >= pageInfo.totalPages}
               onClick={() => onPageChange(pageInfo.page + 1)}
             >
-              Next
+              {t('voucherTable.pagination.next')}
             </Button>
           </div>
         </div>
