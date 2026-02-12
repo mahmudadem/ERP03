@@ -491,6 +491,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const totalRows = rows.length;
     let newRowIndex = rowIndex;
     let newColIndex = colIndex;
+    // Respect RTL: visual left/right should mirror column movement
+    const leftDelta = isRTL ? 1 : -1;
+    const rightDelta = isRTL ? -1 : 1;
     
     switch (e.key) {
       case 'ArrowUp':
@@ -506,14 +509,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         }
         break;
       case 'ArrowLeft':
-        if (colIndex > 0) {
-          newColIndex = colIndex - 1;
+        if ((isRTL && colIndex < totalCols - 1) || (!isRTL && colIndex > 0)) {
+          newColIndex = colIndex + leftDelta;
           e.preventDefault();
         }
         break;
       case 'ArrowRight':
-        if (colIndex < totalCols - 1) {
-          newColIndex = colIndex + 1;
+        if ((isRTL && colIndex > 0) || (!isRTL && colIndex < totalCols - 1)) {
+          newColIndex = colIndex + rightDelta;
           e.preventDefault();
         }
         break;
