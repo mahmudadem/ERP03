@@ -69,7 +69,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', d
         ref={dateInputRef}
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         tabIndex={-1}
       />
       
@@ -81,7 +81,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', d
         onKeyDown={handleKeyDown}
         disabled={disabled}
         placeholder={settings?.dateFormat || 'YYYY-MM-DD'}
-        className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
+        className={`w-full h-[36px] px-3 pr-8 border border-[var(--color-border)] rounded text-sm focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
           disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : 'bg-[var(--color-bg-primary)]'
         }`}
       />
