@@ -3,6 +3,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const numberFmt = (n: number, currency?: string) =>
   `${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}${currency ? ` ${currency}` : ''}`;
@@ -26,6 +27,7 @@ const Section: React.FC<{ title: string; total: number; items: any[]; currency: 
 
 const CashFlowPage: React.FC = () => {
   const { settings } = useCompanySettings();
+  const { t } = useTranslation('accounting');
   const [from, setFrom] = useState<string>(() => `${new Date().getFullYear()}-01-01`);
   const [to, setTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<any>(null);
@@ -49,7 +51,7 @@ const CashFlowPage: React.FC = () => {
     return (
       <div className="p-6">
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 border rounded" disabled={loading}>
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Load
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t('cashFlow.load')}
         </button>
       </div>
     );
@@ -61,42 +63,42 @@ const CashFlowPage: React.FC = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Cash Flow Statement (Indirect)</h1>
+          <h1 className="text-2xl font-bold">{t('cashFlow.title')}</h1>
           <p className="text-sm text-slate-600">
-            Period: {formatCompanyDate(data.period.from, settings)} → {formatCompanyDate(data.period.to, settings)}
+            {t('cashFlow.period', { from: formatCompanyDate(data.period.from, settings), to: formatCompanyDate(data.period.to, settings) })}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1 text-sm" />
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border rounded px-2 py-1 text-sm" />
           <button onClick={load} className="flex items-center gap-2 px-3 py-2 border rounded text-sm" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Apply
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t('cashFlow.apply')}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border rounded-xl p-4 shadow-sm">
-          <div className="text-xs text-slate-500 uppercase font-semibold">Net Income</div>
+          <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.netIncome')}</div>
           <div className="text-2xl font-bold">{numberFmt(data.netIncome, currency)}</div>
         </div>
         <div className="bg-white border rounded-xl p-4 shadow-sm">
-          <div className="text-xs text-slate-500 uppercase font-semibold">Opening Cash</div>
+          <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.openingCash')}</div>
           <div className="text-2xl font-bold">{numberFmt(data.openingCashBalance, currency)}</div>
         </div>
         <div className="bg-white border rounded-xl p-4 shadow-sm">
-          <div className="text-xs text-slate-500 uppercase font-semibold">Closing Cash</div>
+          <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.closingCash')}</div>
           <div className="text-2xl font-bold">{numberFmt(data.closingCashBalance, currency)}</div>
         </div>
       </div>
 
-      <Section title="Operating Activities" total={data.operating.total} items={data.operating.items} currency={currency} />
-      <Section title="Investing Activities" total={data.investing.total} items={data.investing.items} currency={currency} />
-      <Section title="Financing Activities" total={data.financing.total} items={data.financing.items} currency={currency} />
+      <Section title={t('cashFlow.operating')} total={data.operating.total} items={data.operating.items} currency={currency} />
+      <Section title={t('cashFlow.investing')} total={data.investing.total} items={data.investing.items} currency={currency} />
+      <Section title={t('cashFlow.financing')} total={data.financing.total} items={data.financing.items} currency={currency} />
 
       <div className="bg-white border rounded-xl p-4 shadow-sm">
         <div className="flex justify-between text-lg font-bold">
-          <span>Net Change in Cash</span>
+          <span>{t('cashFlow.netChange')}</span>
           <span>{numberFmt(data.netCashChange, currency)}</span>
         </div>
       </div>

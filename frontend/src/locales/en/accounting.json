@@ -122,6 +122,19 @@
     "origCurrency": "Orig. Currency",
     "exchangeRate": "Exch. Rate"
   },
+  "cashFlow": {
+    "title": "Cash Flow Statement (Indirect)",
+    "period": "Period: {{from}} → {{to}}",
+    "apply": "Apply",
+    "load": "Load",
+    "netIncome": "Net Income",
+    "openingCash": "Opening Cash",
+    "closingCash": "Closing Cash",
+    "operating": "Operating Activities",
+    "investing": "Investing Activities",
+    "financing": "Financing Activities",
+    "netChange": "Net Change in Cash"
+  },
   "accountStatement": {
     "title": "Account Statement",
     "subtitle": "Running balance per account with opening and closing balances.",

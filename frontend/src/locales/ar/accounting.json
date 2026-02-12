@@ -122,6 +122,19 @@
     "origCurrency": "العملة الأصلية",
     "exchangeRate": "سعر الصرف"
   },
+  "cashFlow": {
+    "title": "بيان التدفقات النقدية (غير مباشر)",
+    "period": "الفترة: {{from}} → {{to}}",
+    "apply": "تطبيق",
+    "load": "تحميل",
+    "netIncome": "صافي الدخل",
+    "openingCash": "رصيد نقدي افتتاحي",
+    "closingCash": "رصيد نقدي ختامي",
+    "operating": "أنشطة التشغيل",
+    "investing": "أنشطة الاستثمار",
+    "financing": "أنشطة التمويل",
+    "netChange": "التغير الصافي في النقد"
+  },
   "accountStatement": {
     "title": "كشف حساب",
     "subtitle": "رصيد جاري لكل حساب مع الأرصدة الافتتاحية والختامية.",

@@ -122,6 +122,19 @@
     "origCurrency": "Orijinal Para",
     "exchangeRate": "Kur"
   },
+  "cashFlow": {
+    "title": "Nakit Akış Tablosu (Dolaylı)",
+    "period": "Dönem: {{from}} → {{to}}",
+    "apply": "Uygula",
+    "load": "Yükle",
+    "netIncome": "Net Gelir",
+    "openingCash": "Açılış Nakit",
+    "closingCash": "Kapanış Nakit",
+    "operating": "Faaliyetlerden Nakit",
+    "investing": "Yatırım Faaliyetleri",
+    "financing": "Finansman Faaliyetleri",
+    "netChange": "Nakitte Net Değişim"
+  },
   "accountStatement": {
     "title": "Hesap Ekstresi",
     "subtitle": "Açılış ve kapanış bakiyeleriyle hesap bazında hareket özeti.",
