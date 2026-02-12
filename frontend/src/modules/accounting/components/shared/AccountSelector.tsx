@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAccounts, Account } from '../../../../context/AccountsContext';
 import { Search, X } from 'lucide-react';
 
@@ -32,6 +33,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   onKeyDown: externalKeyDown,
   onBlur: externalBlur
 }, ref) => {
+  const { t } = useTranslation('accounting');
   const { validAccounts, isLoading, getAccountByCode, getAccountById } = useAccounts();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -247,7 +249,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          placeholder={placeholder}
+          placeholder={placeholder || t('accountSelector.placeholder', 'Account code...')}
           disabled={disabled}
           className={`w-full text-xs transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
@@ -289,7 +291,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                       setHighlightedIndex(0);
                     }}
                     onKeyDown={handleModalKeyDown}
-                    placeholder="Search accounts..."
+                    placeholder={t('accountSelector.searchPlaceholder', 'Search accounts...')}
                     className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
                     autoFocus
                   />
@@ -307,10 +309,12 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                 {isLoading ? (
                   <div className="p-8 text-center text-[var(--color-text-muted)] text-sm flex flex-col items-center gap-3">
                     <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                    Loading accounts...
+                    {t('accountSelector.loading', 'Loading accounts...')}
                   </div>
                 ) : filteredAccounts.length === 0 ? (
-                  <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">No accounts found</div>
+                  <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
+                    {t('accountSelector.noResults', 'No accounts found')}
+                  </div>
                 ) : (
                   <div className="space-y-0.5">
                     {filteredAccounts.map((account, index) => (

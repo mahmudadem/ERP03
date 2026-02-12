@@ -735,6 +735,12 @@
     "convertedNote": "Totals above are shown in {{currency}} for display.",
     "unbalancedShort": "Voucher Unbalanced: {{amount}} {{currency}} difference"
   },
+  "accountSelector": {
+    "placeholder": "Account code...",
+    "searchPlaceholder": "Search accounts...",
+    "loading": "Loading accounts...",
+    "noResults": "No accounts found"
+  },
   "voucherRenderer": {
     "loading": "Loading definition...",
     "systemMode": "System Mode",

@@ -735,6 +735,12 @@
     "convertedNote": "الإجماليات أعلاه معروضة بعملة {{currency}} لأغراض العرض.",
     "unbalancedShort": "القيد غير متوازن: فرق {{amount}} {{currency}}"
   },
+  "accountSelector": {
+    "placeholder": "رمز الحساب...",
+    "searchPlaceholder": "ابحث عن الحسابات...",
+    "loading": "جارٍ تحميل الحسابات...",
+    "noResults": "لا توجد حسابات"
+  },
   "voucherRenderer": {
     "loading": "جارٍ تحميل التعريف...",
     "systemMode": "وضع النظام",

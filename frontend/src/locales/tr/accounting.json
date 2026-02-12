@@ -735,6 +735,12 @@
     "convertedNote": "Yukarıdaki toplamlar görüntü için {{currency}} olarak gösterilir.",
     "unbalancedShort": "Fiş dengede değil: {{amount}} {{currency}} fark"
   },
+  "accountSelector": {
+    "placeholder": "Hesap kodu...",
+    "searchPlaceholder": "Hesap ara...",
+    "loading": "Hesaplar yükleniyor...",
+    "noResults": "Hesap bulunamadı"
+  },
   "voucherRenderer": {
     "loading": "Tanım yükleniyor...",
     "systemMode": "Sistem Modu",
