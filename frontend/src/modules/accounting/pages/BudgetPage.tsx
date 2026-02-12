@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { accountingApi, BudgetDTO, BudgetLineDTO } from '../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
-const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 
 const emptyLine = (): BudgetLineDTO => ({
   accountId: '',
@@ -11,6 +12,7 @@ const emptyLine = (): BudgetLineDTO => ({
 });
 
 const BudgetPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [budgets, setBudgets] = useState<BudgetDTO[]>([]);
   const [selected, setSelected] = useState<BudgetDTO | null>(null);
   const [lines, setLines] = useState<BudgetLineDTO[]>([emptyLine()]);
@@ -43,14 +45,14 @@ const BudgetPage: React.FC = () => {
   const save = async () => {
     const payload = { fiscalYearId, name, version, lines };
     const saved = await accountingApi.createBudget(payload);
-    setStatusMessage('Budget saved');
+    setStatusMessage(t('budget.saved'));
     setSelected(saved);
     refresh();
   };
 
   const approve = async (id: string) => {
     await accountingApi.approveBudget(id);
-    setStatusMessage('Budget approved');
+    setStatusMessage(t('budget.approved'));
     refresh();
   };
 
@@ -58,14 +60,15 @@ const BudgetPage: React.FC = () => {
     () => lines.reduce((s, l) => s + (l.annualTotal || 0), 0),
     [lines]
   );
+  const monthLabels = useMemo(() => monthKeys.map((k) => t(`budget.months.${k}`)), [t]);
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <input className="border rounded px-3 py-2" placeholder="Fiscal Year Id" value={fiscalYearId} onChange={(e) => setFiscalYearId(e.target.value)} />
-        <input className="border rounded px-3 py-2" placeholder="Budget Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="border rounded px-3 py-2" placeholder={t('budget.fiscalYearId')} value={fiscalYearId} onChange={(e) => setFiscalYearId(e.target.value)} />
+        <input className="border rounded px-3 py-2" placeholder={t('budget.name')} value={name} onChange={(e) => setName(e.target.value)} />
         <input className="border rounded px-3 py-2 w-24" type="number" min={1} value={version} onChange={(e) => setVersion(Number(e.target.value))} />
-        <button className="btn btn-primary" onClick={save}>Save Budget</button>
+        <button className="btn btn-primary" onClick={save}>{t('budget.save')}</button>
       </div>
 
       {statusMessage && <div className="p-2 bg-green-50 border border-green-200 rounded">{statusMessage}</div>}
@@ -74,12 +77,12 @@ const BudgetPage: React.FC = () => {
         <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
-              <th className="p-2 text-left w-40">Account ID</th>
-              <th className="p-2 text-left w-32">Cost Center</th>
-              {months.map((m) => (
+              <th className="p-2 text-left w-40">{t('budget.accountId')}</th>
+              <th className="p-2 text-left w-32">{t('budget.costCenter')}</th>
+              {monthLabels.map((m) => (
                 <th key={m} className="p-2 text-right">{m}</th>
               ))}
-              <th className="p-2 text-right">Total</th>
+              <th className="p-2 text-right">{t('budget.total')}</th>
             </tr>
           </thead>
           <tbody>
@@ -113,21 +116,21 @@ const BudgetPage: React.FC = () => {
           </tbody>
         </table>
         <div className="p-2 flex justify-between items-center">
-          <button className="btn btn-secondary" onClick={addLine}>Add Line</button>
-          <div className="text-right font-semibold">Budget Total: {totalBudget.toLocaleString()}</div>
+          <button className="btn btn-secondary" onClick={addLine}>{t('budget.addLine')}</button>
+          <div className="text-right font-semibold">{t('budget.totalBudget')}: {totalBudget.toLocaleString()}</div>
         </div>
       </div>
 
       <div>
-        <h3 className="font-semibold mb-2">Existing Budgets</h3>
+        <h3 className="font-semibold mb-2">{t('budget.existing')}</h3>
         <table className="w-full text-sm border">
           <thead>
             <tr className="bg-gray-50">
-              <th className="p-2 text-left">Name</th>
-              <th className="p-2 text-left">Fiscal Year</th>
-              <th className="p-2 text-left">Version</th>
-              <th className="p-2 text-left">Status</th>
-              <th className="p-2 text-left">Actions</th>
+              <th className="p-2 text-left">{t('budget.name')}</th>
+              <th className="p-2 text-left">{t('budget.fiscalYear')}</th>
+              <th className="p-2 text-left">{t('budget.version')}</th>
+              <th className="p-2 text-left">{t('budget.status')}</th>
+              <th className="p-2 text-left">{t('budget.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -138,9 +141,9 @@ const BudgetPage: React.FC = () => {
                 <td className="p-2">{b.version}</td>
                 <td className="p-2">{b.status}</td>
                 <td className="p-2 space-x-2">
-                  <button className="btn btn-link" onClick={() => { setSelected(b); setLines(b.lines); setName(b.name); setFiscalYearId(b.fiscalYearId); setVersion(b.version); }}>Edit</button>
+                  <button className="btn btn-link" onClick={() => { setSelected(b); setLines(b.lines); setName(b.name); setFiscalYearId(b.fiscalYearId); setVersion(b.version); }}>{t('budget.edit')}</button>
                   {b.status !== 'APPROVED' && (
-                    <button className="btn btn-link text-green-600" onClick={() => approve(b.id)}>Approve</button>
+                    <button className="btn btn-link text-green-600" onClick={() => approve(b.id)}>{t('budget.approve')}</button>
                   )}
                 </td>
               </tr>

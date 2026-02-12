@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { accountingApi, CompanyGroupDTO, ConsolidatedTrialBalanceDTO } from '../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
 const ConsolidatedTrialBalancePage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [groups, setGroups] = useState<CompanyGroupDTO[]>([]);
   const [groupId, setGroupId] = useState('');
   const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -21,13 +23,13 @@ const ConsolidatedTrialBalancePage: React.FC = () => {
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
         <select className="border rounded px-3 py-2" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-          <option value="">Select Group</option>
+          <option value="">{t('consolidated.selectGroup')}</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name} ({g.reportingCurrency})</option>
           ))}
         </select>
         <input type="date" className="border rounded px-3 py-2" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} />
-        <button className="btn btn-primary" onClick={load}>Load</button>
+        <button className="btn btn-primary" onClick={load}>{t('consolidated.load')}</button>
       </div>
 
       {data && (
@@ -35,10 +37,10 @@ const ConsolidatedTrialBalancePage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-gray-50">
-                <th className="p-2 text-left">Account</th>
-                <th className="p-2 text-right">Debit ({data.reportingCurrency})</th>
-                <th className="p-2 text-right">Credit ({data.reportingCurrency})</th>
-                <th className="p-2 text-right">Balance</th>
+                <th className="p-2 text-left">{t('consolidated.account')}</th>
+                <th className="p-2 text-right">{t('consolidated.debit', { currency: data.reportingCurrency })}</th>
+                <th className="p-2 text-right">{t('consolidated.credit', { currency: data.reportingCurrency })}</th>
+                <th className="p-2 text-right">{t('consolidated.balance')}</th>
               </tr>
             </thead>
             <tbody>
@@ -53,7 +55,7 @@ const ConsolidatedTrialBalancePage: React.FC = () => {
             </tbody>
             <tfoot>
               <tr className="bg-gray-50 font-semibold">
-                <td className="p-2">Totals</td>
+                <td className="p-2">{t('consolidated.totals')}</td>
                 <td className="p-2 text-right">{data.totals.debit.toLocaleString()}</td>
                 <td className="p-2 text-right">{data.totals.credit.toLocaleString()}</td>
                 <td className="p-2 text-right">{data.totals.balance.toLocaleString()}</td>

@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { accountingApi, AccountDTO, BankStatementDTO, BankStatementLineDTO } from '../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
 const fmt = (amount: number, currency?: string) =>
   `${currency ? currency + ' ' : ''}${(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const BankReconciliationPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [accounts, setAccounts] = useState<AccountDTO[]>([]);
   const [accountId, setAccountId] = useState('');
   const [statement, setStatement] = useState<BankStatementDTO | null>(null);
@@ -43,10 +45,10 @@ const BankReconciliationPage: React.FC = () => {
         content: text
       });
       setStatement(imported);
-      setMessage('Statement imported and auto-matched');
+      setMessage(t('bankRec.importSuccess'));
       refresh(accountId);
     } catch (e: any) {
-      setMessage(e?.message || 'Failed to import');
+      setMessage(e?.message || t('bankRec.importFail'));
     } finally {
       setLoading(false);
     }
@@ -60,7 +62,7 @@ const BankReconciliationPage: React.FC = () => {
   const handleComplete = async () => {
     if (!statement) return;
     await accountingApi.completeReconciliation(accountId, { statementId: statement.id, adjustments: [] });
-    setMessage('Reconciliation completed');
+    setMessage(t('bankRec.completed'));
     await refresh(accountId);
   };
 
@@ -82,7 +84,7 @@ const BankReconciliationPage: React.FC = () => {
             refresh(e.target.value);
           }}
         >
-          <option value="">Select bank account</option>
+          <option value="">{t('bankRec.selectAccount')}</option>
           {bankAccounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.userCode} — {a.name} ({a.fixedCurrencyCode || a.currency || ''})
@@ -91,10 +93,10 @@ const BankReconciliationPage: React.FC = () => {
         </select>
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
         <button className="btn btn-primary" disabled={!file || !accountId || loading} onClick={handleImport}>
-          {loading ? 'Importing...' : 'Import Statement'}
+          {loading ? t('bankRec.importing') : t('bankRec.import')}
         </button>
         <button className="btn btn-secondary" disabled={!statement} onClick={handleComplete}>
-          Complete Reconciliation
+          {t('bankRec.complete')}
         </button>
       </div>
 
@@ -103,14 +105,14 @@ const BankReconciliationPage: React.FC = () => {
       {statement && (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <h3 className="font-semibold mb-2">Bank Statement</h3>
+            <h3 className="font-semibold mb-2">{t('bankRec.statement')}</h3>
             <table className="w-full text-sm border">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="p-2 text-left">Date</th>
-                  <th className="p-2 text-left">Description</th>
-                  <th className="p-2 text-right">Amount</th>
-                  <th className="p-2">Match</th>
+                  <th className="p-2 text-left">{t('bankRec.date')}</th>
+                  <th className="p-2 text-left">{t('bankRec.description')}</th>
+                  <th className="p-2 text-right">{t('bankRec.amount')}</th>
+                  <th className="p-2">{t('bankRec.match')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -130,14 +132,14 @@ const BankReconciliationPage: React.FC = () => {
                               : 'text-green-600'
                           }
                         >
-                          {line.matchStatus.replace('_', ' ')}
+                          {t(`bankRec.status.${line.matchStatus.toLowerCase()}`, { defaultValue: line.matchStatus.replace('_', ' ') })}
                         </span>
                         {line.matchStatus === 'UNMATCHED' && (
                           <select
                             className="border rounded px-2 py-1"
                             onChange={(e) => handleMatch(line, e.target.value)}
                           >
-                            <option value="">Match…</option>
+                            <option value="">{t('bankRec.matchPlaceholder')}</option>
                             {unreconciled.map((l) => (
                               <option key={l.id} value={l.id}>
                                 {l.date} · {l.notes || l.description || ''} · {fmt(l.amount, l.currency)}
@@ -154,13 +156,13 @@ const BankReconciliationPage: React.FC = () => {
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2">Book Entries (unreconciled)</h3>
+            <h3 className="font-semibold mb-2">{t('bankRec.bookEntries')}</h3>
             <table className="w-full text-sm border">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="p-2 text-left">Date</th>
-                  <th className="p-2 text-left">Description</th>
-                  <th className="p-2 text-right">Amount</th>
+                  <th className="p-2 text-left">{t('bankRec.date')}</th>
+                  <th className="p-2 text-left">{t('bankRec.description')}</th>
+                  <th className="p-2 text-right">{t('bankRec.amount')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +176,7 @@ const BankReconciliationPage: React.FC = () => {
               </tbody>
             </table>
             <div className="mt-3 text-sm">
-              Bank balance: {fmt(bankBalance)}
+              {t('bankRec.bankBalance')}: {fmt(bankBalance)}
             </div>
           </div>
         </div>
