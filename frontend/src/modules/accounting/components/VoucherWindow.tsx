@@ -880,7 +880,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                  {win.data?.metadata?.reversedByVoucherId || win.data?.metadata?.isReversed ? 'Already Reversed' : 'Reverse Voucher'}
+                  {win.data?.metadata?.reversedByVoucherId || win.data?.metadata?.isReversed
+                    ? t('voucherWindow.alreadyReversed', 'Already Reversed')
+                    : t('voucherWindow.reverseVoucher', 'Reverse Voucher')}
                 </button>
                 {settings?.strictApprovalMode === false && (
                   <button
@@ -895,7 +897,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                     className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                    Reverse & Replace
+                    {t('voucherWindow.reverseReplace', 'Reverse & Replace')}
                   </button>
                 )}
               </>
@@ -1051,12 +1053,18 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                       : "bg-amber-600 text-white hover:bg-amber-700"
                   )}
                   title={isDisabled 
-                    ? (isReversal ? "This is a reversal voucher and cannot be reversed again." : "This voucher has already been reversed.")
-                    : "This voucher is locked. Create a reversal to correct it."
+                    ? (isReversal 
+                        ? t('voucherWindow.tooltip.reversalCannotReverse', 'This is a reversal voucher and cannot be reversed again.')
+                        : t('voucherWindow.tooltip.alreadyReversed', 'This voucher has already been reversed.'))
+                    : t('voucherWindow.tooltip.createReversal', 'This voucher is locked. Create a reversal to correct it.')
                   }
                 >
                   <RotateCcw className="w-4 h-4" />
-                  {isAlreadyReversed ? 'Already Reversed' : (isReversal ? 'Reversal' : 'Reverse Voucher')}
+                  {isAlreadyReversed 
+                    ? t('voucherWindow.alreadyReversed', 'Already Reversed') 
+                    : (isReversal 
+                        ? t('voucherWindow.reversal', 'Reversal') 
+                        : t('voucherWindow.reverseVoucher', 'Reverse Voucher'))}
                 </button>
               );
             }

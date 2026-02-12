@@ -655,7 +655,16 @@
       "confirmSubmitTitle": "إرسال للاعتماد؟",
       "confirmSubmitBody": "سيتم قفل القيد وإشعار المعتمدين. لن تتمكن من تعديله بعد ذلك.",
       "confirmSubmit": "تأكيد الإرسال",
-      "reversalSubmitted": "تم إرسال قيد العكس للاعتماد.",
+    "reversalSubmitted": "تم إرسال قيد العكس للاعتماد.",
+    "reverseVoucher": "اعكس القيد",
+    "reverseReplace": "عكس واستبدال",
+    "alreadyReversed": "تم عكسه مسبقًا",
+    "reversal": "قيد عكسي",
+    "tooltip": {
+      "reversalCannotReverse": "هذا قيد عكسي ولا يمكن عكسه مرة أخرى.",
+      "alreadyReversed": "تم عكس هذا القيد بالفعل.",
+      "createReversal": "هذا القيد مقفل. أنشئ قيد عكسي لتصحيحه."
+    },
       "success": {
         "custody": "تم تأكيد الاستلام!",
         "custodyMsg": "تم تأكيد استلام هذا القيد بنجاح.",

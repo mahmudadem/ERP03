@@ -655,7 +655,16 @@
       "confirmSubmitTitle": "Submit for Approval?",
       "confirmSubmitBody": "This will lock the voucher and notify approvers. You cannot edit it afterwards.",
       "confirmSubmit": "Confirm Submit",
-      "reversalSubmitted": "Voucher reversal submitted for approval.",
+    "reversalSubmitted": "Voucher reversal submitted for approval.",
+    "reverseVoucher": "Reverse Voucher",
+    "reverseReplace": "Reverse & Replace",
+    "alreadyReversed": "Already Reversed",
+    "reversal": "Reversal",
+    "tooltip": {
+      "reversalCannotReverse": "This is a reversal voucher and cannot be reversed again.",
+      "alreadyReversed": "This voucher has already been reversed.",
+      "createReversal": "This voucher is locked. Create a reversal to correct it."
+    },
       "success": {
         "custody": "Custody Confirmed!",
         "custodyMsg": "You have successfully confirmed custody of this voucher.",

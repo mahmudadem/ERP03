@@ -655,7 +655,16 @@
       "confirmSubmitTitle": "Onaya gönderilsin mi?",
       "confirmSubmitBody": "Bu fiş kilitlenir ve onaylayıcılara bildirilir. Sonrasında düzenleyemezsiniz.",
       "confirmSubmit": "Göndermeyi onayla",
-      "reversalSubmitted": "Ters kayıt onaya gönderildi.",
+    "reversalSubmitted": "Ters kayıt onaya gönderildi.",
+    "reverseVoucher": "Fişi Ters Çevir",
+    "reverseReplace": "Ters Çevir ve Değiştir",
+    "alreadyReversed": "Zaten ters çevrildi",
+    "reversal": "Ters Kayıt",
+    "tooltip": {
+      "reversalCannotReverse": "Bu bir ters kayıt, yeniden ters çevrilemez.",
+      "alreadyReversed": "Bu fiş zaten ters çevrildi.",
+      "createReversal": "Bu fiş kilitli. Düzeltmek için ters kayıt oluşturun."
+    },
       "success": {
         "custody": "Zimmet doğrulandı!",
         "custodyMsg": "Bu fişin zimmetini başarıyla doğruladınız.",
