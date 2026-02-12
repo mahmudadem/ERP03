@@ -23,12 +23,6 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { t, i18n } = useTranslation('common');
   const isRtl = useMemo(() => i18n.dir() === 'rtl', [i18n]);
 
-  const languages = [
-    { code: 'en', label: t('language.english') },
-    { code: 'ar', label: t('language.arabic') },
-    { code: 'tr', label: t('language.turkish') },
-  ];
-
   const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U');
 
   return (
@@ -163,28 +157,6 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   </button>
                 )}
               </Menu.Item>
-
-              <div className="px-4 pt-2 pb-1 border-t border-[var(--color-border)]">
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">
-                  {t('language.label')}
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {languages.map((lng) => (
-                    <button
-                      key={lng.code}
-                      onClick={() => i18n.changeLanguage(lng.code)}
-                      className={clsx(
-                        "text-xs px-2 py-1 rounded border transition-colors",
-                        i18n.language === lng.code
-                          ? "bg-primary-50 text-primary-700 border-primary-200"
-                          : "text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
-                      )}
-                    >
-                      {lng.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <Menu.Item>
                 {({ active }) => (

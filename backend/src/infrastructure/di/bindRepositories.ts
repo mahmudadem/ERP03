@@ -5,6 +5,7 @@ import { ICompanyRepository } from '../../repository/interfaces/core/ICompanyRep
 import { IUserRepository } from '../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository } from '../../repository/interfaces/core/ICompanyUserRepository';
 import { ICompanySettingsRepository } from '../../repository/interfaces/core/ICompanySettingsRepository';
+import { IUserPreferencesRepository } from '../../repository/interfaces/core/IUserPreferencesRepository';
 import * as SysRepo from '../../repository/interfaces/system';
 import * as AccRepo from '../../repository/interfaces/accounting';
 import * as InvRepo from '../../repository/interfaces/inventory';
@@ -22,6 +23,7 @@ import { FirestoreCompanyRepository } from '../firestore/repositories/core/Fires
 import { FirestoreUserRepository } from '../firestore/repositories/core/FirestoreUserRepository';
 import { FirestoreCompanyUserRepository } from '../firestore/repositories/core/FirestoreCompanyUserRepository';
 import { FirestoreCompanySettingsRepository } from '../firestore/repositories/core/FirestoreCompanySettingsRepository';
+import { FirestoreUserPreferencesRepository } from '../firestore/repositories/core/FirestoreUserPreferencesRepository';
 import { FirestoreModuleRepository, FirestoreRoleRepository, FirestorePermissionRepository, FirestoreNotificationRepository, FirestoreAuditLogRepository } from '../firestore/repositories/system/FirestoreSystemRepositories';
 import { FirestoreVoucherRepositoryV2 } from '../firestore/repositories/accounting/FirestoreVoucherRepositoryV2';
 import { FirestoreVoucherSequenceRepository } from '../firestore/repositories/accounting/FirestoreVoucherSequenceRepository';
@@ -122,6 +124,7 @@ export const diContainer = {
   get userRepository(): IUserRepository { return new FirestoreUserRepository(getDb()); },
   get companyUserRepository(): ICompanyUserRepository { return new FirestoreCompanyUserRepository(getDb()); },
   get companySettingsRepository(): ICompanySettingsRepository { return new FirestoreCompanySettingsRepository(settingsResolver); },
+  get userPreferencesRepository(): IUserPreferencesRepository { return new FirestoreUserPreferencesRepository(getDb()); },
   get companyModuleRepository(): ICompanyModuleRepository { return new FirestoreCompanyModuleRepository(getDb()); },
   get moduleActivationService(): ModuleActivationService { return moduleActivationService; },
 

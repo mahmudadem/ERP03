@@ -4,7 +4,8 @@
     "label": "Dil",
     "english": "İngilizce",
     "arabic": "Arapça",
-    "turkish": "Türkçe"
+    "turkish": "Türkçe",
+    "description": "Menüler, sayfalar ve fişler için dili belirler."
   },
   "sidebar": {
     "accounting": "Muhasebe",

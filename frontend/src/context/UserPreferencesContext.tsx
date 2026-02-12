@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import i18n from '../i18n/config';
+import { userPreferencesApi } from '../api/userPreferencesApi';
 
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
@@ -42,6 +44,40 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   });
 
   const [language, setLanguage] = useState('en');
+  const [loadedFromServer, setLoadedFromServer] = useState(false);
+  useEffect(() => {
+    const savedLang = localStorage.getItem('erp_language') || i18n.language || 'en';
+    setLanguage(savedLang);
+    if (i18n.language !== savedLang) {
+      i18n.changeLanguage(savedLang);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch user preferences from backend once authenticated (token handled by apiClient)
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const prefs = await userPreferencesApi.get();
+        if (cancelled) return;
+        if (prefs.uiMode) setUiModeState(prefs.uiMode);
+        if (prefs.theme) setThemeState(prefs.theme);
+        if (prefs.sidebarMode) setSidebarModeState(prefs.sidebarMode);
+        if (prefs.sidebarPinned !== undefined) setSidebarPinnedState(prefs.sidebarPinned);
+        if (prefs.language) {
+          setLanguage(prefs.language);
+          i18n.changeLanguage(prefs.language);
+        }
+      } catch {
+        // ignore and fall back to localStorage
+      } finally {
+        if (!cancelled) setLoadedFromServer(true);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   // Persist to localStorage and apply theme
   useEffect(() => {
@@ -65,10 +101,27 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     localStorage.setItem('erp_sidebar_pinned', String(sidebarPinned));
   }, [sidebarPinned]);
 
+  useEffect(() => {
+    localStorage.setItem('erp_language', language);
+    if (i18n.language !== language) {
+      i18n.changeLanguage(language);
+    }
+  }, [language]);
+
+  // Persist to backend when loaded
+  useEffect(() => {
+    if (!loadedFromServer) return;
+    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
+    userPreferencesApi.upsert(payload).catch(() => {
+      /* silent fail; localStorage still holds state */
+    });
+  }, [language, uiMode, theme, sidebarMode, sidebarPinned, loadedFromServer]);
+
   const setUiMode = (mode: UiMode) => setUiModeState(mode);
   const setSidebarMode = (mode: SidebarMode) => setSidebarModeState(mode);
   const setTheme = (t: Theme) => setThemeState(t);
   const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
+  const setLanguagePref = (lang: string) => setLanguage(lang);
 
   const toggleUiMode = () => {
     setUiModeState(prev => prev === 'classic' ? 'windows' : 'classic');
@@ -96,7 +149,7 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       setUiMode,
       setSidebarMode,
       setTheme,
-      setLanguage,
+      setLanguage: setLanguagePref,
       setSidebarPinned,
       toggleUiMode,
       toggleSidebarMode,

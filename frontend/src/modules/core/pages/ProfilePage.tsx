@@ -2,11 +2,13 @@ import React from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences, SidebarMode, UiMode } from '../../../hooks/useUserPreferences';
+import { useTranslation } from 'react-i18next';
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { company } = useCompanyAccess();
-  const { sidebarMode, setSidebarMode, uiMode, setUiMode } = useUserPreferences();
+  const { sidebarMode, setSidebarMode, uiMode, setUiMode, language, setLanguage } = useUserPreferences();
+  const { t } = useTranslation('common');
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -88,6 +90,25 @@ const ProfilePage: React.FC = () => {
                 </select>
                 <p className="mt-2 text-xs text-gray-500 italic">
                   Switch between standard web navigation or a desktop-like multitasking experience.
+                </p>
+              </div>
+
+              {/* Language Preference */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  {t('language.label', 'Language')}
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg shadow-sm bg-white"
+                >
+                  <option value="en">{t('language.english', 'English')}</option>
+                  <option value="ar">{t('language.arabic', 'Arabic')}</option>
+                  <option value="tr">{t('language.turkish', 'Turkish')}</option>
+                </select>
+                <p className="mt-2 text-xs text-gray-500 italic">
+                  {t('language.description', 'Applies to menus, pages, and vouchers you see.')}
                 </p>
               </div>
             </div>
