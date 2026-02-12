@@ -7,6 +7,7 @@ import { formatCompanyDate, getCompanyToday } from '../../../utils/dateUtils';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { DatePicker } from '../components/shared/DatePicker';
+import { useTranslation } from 'react-i18next';
 
 interface ProfitAndLossData {
   revenue: number;
@@ -24,6 +25,7 @@ const ProfitAndLossPage: React.FC = () => {
   const [data, setData] = useState<ProfitAndLossData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation('accounting');
   
   // Default dates (will be refined once settings load)
   const [fromDate, setFromDate] = useState('');
@@ -49,7 +51,7 @@ const ProfitAndLossPage: React.FC = () => {
       const response = await accountingApi.getProfitAndLoss(fromDate, toDate);
       setData(response);
     } catch (err: any) {
-      setError(err.message || 'Failed to load report');
+      setError(err.message || t('profitLoss.loadError'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -79,21 +81,21 @@ const ProfitAndLossPage: React.FC = () => {
   const handleExportExcel = async () => {
     if (!data) return;
     const rows: any[] = [];
-    data.revenueByAccount.forEach((acc) => rows.push({ section: 'Revenue', account: acc.accountName, amount: acc.amount }));
-    rows.push({ section: 'Revenue', account: 'Total Revenue', amount: data.revenue });
-    data.expensesByAccount.forEach((acc) => rows.push({ section: 'Expenses', account: acc.accountName, amount: acc.amount }));
-    rows.push({ section: 'Expenses', account: 'Total Expenses', amount: data.expenses });
-    rows.push({ section: 'Net', account: 'Net Profit/Loss', amount: data.netProfit });
+    data.revenueByAccount.forEach((acc) => rows.push({ section: t('profitLoss.revenue'), account: acc.accountName, amount: acc.amount }));
+    rows.push({ section: t('profitLoss.revenue'), account: t('profitLoss.totalRevenue'), amount: data.revenue });
+    data.expensesByAccount.forEach((acc) => rows.push({ section: t('profitLoss.expenses'), account: acc.accountName, amount: acc.amount }));
+    rows.push({ section: t('profitLoss.expenses'), account: t('profitLoss.totalExpenses'), amount: data.expenses });
+    rows.push({ section: t('profitLoss.net'), account: t('profitLoss.netProfitLoss'), amount: data.netProfit });
     await exportToExcel(
       rows,
       [
-        { header: 'Section', key: 'section' },
-        { header: 'Account', key: 'account' },
-        { header: 'Amount', key: 'amount', isNumber: true }
+        { header: t('profitLoss.section'), key: 'section' },
+        { header: t('profitLoss.account'), key: 'account' },
+        { header: t('profitLoss.amount'), key: 'amount', isNumber: true }
       ],
       `Profit-Loss-${fromDate}-${toDate}`,
-      'Profit & Loss',
-      `Period: ${formatDate(data.period.from)} to ${formatDate(data.period.to)}`
+      t('profitLoss.title'),
+      t('profitLoss.periodLabel', { from: formatDate(data.period.from), to: formatDate(data.period.to) })
     );
   };
 
@@ -104,17 +106,17 @@ const ProfitAndLossPage: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profit & Loss Statement</h1>
-          <p className="text-sm text-gray-500 mt-1">Revenue, Expenses, and Net Profit Analysis</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('profitLoss.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('profitLoss.subtitle')}</p>
         </div>
         
         {data && (
           <div className="flex gap-2">
             <Button onClick={handleExportExcel} variant="secondary">
-              Export Excel
+              {t('profitLoss.exportExcel')}
             </Button>
             <Button variant="secondary" onClick={() => exportElementToPDF('pl-report', 'Profit-and-Loss')}>
-              Export PDF
+              {t('profitLoss.exportPDF')}
             </Button>
           </div>
         )}
@@ -124,7 +126,7 @@ const ProfitAndLossPage: React.FC = () => {
       <div className="bg-white p-4 rounded-lg shadow border border-gray-200">
         <div className="flex gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('profitLoss.fromDate')}</label>
             <DatePicker
               value={fromDate}
               onChange={(val: string) => setFromDate(val)}
@@ -132,7 +134,7 @@ const ProfitAndLossPage: React.FC = () => {
           </div>
           
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('profitLoss.toDate')}</label>
             <DatePicker
               value={toDate}
               onChange={(val: string) => setToDate(val)}
@@ -140,7 +142,7 @@ const ProfitAndLossPage: React.FC = () => {
           </div>
           
           <Button onClick={loadReport} disabled={loading}>
-            {loading ? 'Loading...' : 'Generate Report'}
+            {loading ? t('profitLoss.loading') : t('profitLoss.generate')}
           </Button>
         </div>
       </div>
@@ -158,18 +160,18 @@ const ProfitAndLossPage: React.FC = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg shadow border border-green-200">
-              <div className="text-sm font-medium text-green-700 mb-1">Total Revenue</div>
+              <div className="text-sm font-medium text-green-700 mb-1">{t('profitLoss.totalRevenue')}</div>
               <div className="text-2xl font-bold text-green-900">{formatCurrency(data.revenue)}</div>
             </div>
             
             <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-lg shadow border border-red-200">
-              <div className="text-sm font-medium text-red-700 mb-1">Total Expenses</div>
+              <div className="text-sm font-medium text-red-700 mb-1">{t('profitLoss.totalExpenses')}</div>
               <div className="text-2xl font-bold text-red-900">{formatCurrency(data.expenses)}</div>
             </div>
             
             <div className={`bg-gradient-to-br ${data.netProfit >= 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 'from-orange-50 to-orange-100 border-orange-200'} p-6 rounded-lg shadow border`}>
               <div className={`text-sm font-medium ${data.netProfit >= 0 ? 'text-blue-700' : 'text-orange-700'} mb-1`}>
-                Net {data.netProfit >= 0 ? 'Profit' : 'Loss'}
+                {data.netProfit >= 0 ? t('profitLoss.netProfit') : t('profitLoss.netLoss')}
               </div>
               <div className={`text-2xl font-bold ${data.netProfit >= 0 ? 'text-blue-900' : 'text-orange-900'}`}>
                 {formatCurrency(Math.abs(data.netProfit))}
@@ -177,7 +179,7 @@ const ProfitAndLossPage: React.FC = () => {
             </div>
             
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg shadow border border-purple-200">
-              <div className="text-sm font-medium text-purple-700 mb-1">Profit Margin</div>
+              <div className="text-sm font-medium text-purple-700 mb-1">{t('profitLoss.margin')}</div>
               <div className="text-2xl font-bold text-purple-900">
                 {isFinite(profitMargin) ? profitMargin.toFixed(2) : '0.00'}%
               </div>
@@ -190,7 +192,7 @@ const ProfitAndLossPage: React.FC = () => {
             <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                 <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                Revenue Breakdown
+                {t('profitLoss.revenueBreakdown')}
               </h2>
               
               {data.revenueByAccount.length > 0 ? (
@@ -202,12 +204,12 @@ const ProfitAndLossPage: React.FC = () => {
                     </div>
                   ))}
                   <div className="flex justify-between items-center py-2 pt-4 border-t-2 border-green-200">
-                    <span className="font-bold text-gray-900">Total</span>
+                    <span className="font-bold text-gray-900">{t('profitLoss.total')}</span>
                     <span className="font-bold text-green-600 text-lg">{formatCurrency(data.revenue)}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No revenue data for this period</p>
+                <p className="text-gray-500 text-center py-8">{t('profitLoss.noRevenue')}</p>
               )}
             </div>
 
@@ -215,7 +217,7 @@ const ProfitAndLossPage: React.FC = () => {
             <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                 <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-                Expenses Breakdown
+                {t('profitLoss.expenseBreakdown')}
               </h2>
               
               {data.expensesByAccount.length > 0 ? (
@@ -227,19 +229,19 @@ const ProfitAndLossPage: React.FC = () => {
                     </div>
                   ))}
                   <div className="flex justify-between items-center py-2 pt-4 border-t-2 border-red-200">
-                    <span className="font-bold text-gray-900">Total</span>
+                    <span className="font-bold text-gray-900">{t('profitLoss.total')}</span>
                     <span className="font-bold text-red-600 text-lg">{formatCurrency(data.expenses)}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No expense data for this period</p>
+                <p className="text-gray-500 text-center py-8">{t('profitLoss.noExpense')}</p>
               )}
             </div>
           </div>
 
           {/* Period Info */}
           <div className="text-center text-sm text-gray-500 pt-4 border-t border-gray-200">
-            Report Period: {formatDate(data.period.from)} to {formatDate(data.period.to)}
+            {t('profitLoss.periodLabel', { from: formatDate(data.period.from), to: formatDate(data.period.to) })}
           </div>
         </div>
       )}
@@ -248,7 +250,7 @@ const ProfitAndLossPage: React.FC = () => {
       {loading && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-gray-500">Generating report...</p>
+          <p className="mt-4 text-gray-500">{t('profitLoss.loading')}</p>
         </div>
       )}
     </div>
