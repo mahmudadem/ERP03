@@ -9,6 +9,7 @@ import { formatCompanyDate, formatCompanyDateTime } from '../../../utils/dateUti
 import { Search, RefreshCw, Printer, Filter, X, Settings2 } from 'lucide-react';
 import { AccountSelector } from '../components/shared/AccountSelector';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
+import { useTranslation } from 'react-i18next';
 
 const GeneralLedgerPage: React.FC = () => {
   const { settings } = useCompanySettings();
@@ -18,6 +19,7 @@ const GeneralLedgerPage: React.FC = () => {
   const [data, setData] = useState<GeneralLedgerEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation('accounting');
   
   // Filters
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -39,7 +41,7 @@ const GeneralLedgerPage: React.FC = () => {
       setData(entries);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to load General Ledger. Please try again.');
+      setError(err.message || t('generalLedger.loadError'));
       setData([]);
     } finally {
       setLoading(false);
@@ -127,17 +129,42 @@ const GeneralLedgerPage: React.FC = () => {
   };
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+  const columnLabels: Record<string, string> = {
+    date: t('generalLedger.date'),
+    voucherNo: t('generalLedger.voucherNo'),
+    code: t('generalLedger.accountCode'),
+    account: t('generalLedger.accountName'),
+    description: t('generalLedger.description'),
+    debit: t('generalLedger.debit'),
+    credit: t('generalLedger.credit'),
+    balance: t('generalLedger.balance'),
+    createdAt: t('generalLedger.createdAt'),
+    createdBy: t('generalLedger.createdById'),
+    createdByName: t('generalLedger.createdByName'),
+    createdByEmail: t('generalLedger.createdByEmail'),
+    approvedAt: t('generalLedger.approvedAt'),
+    approvedBy: t('generalLedger.approvedById'),
+    approvedByName: t('generalLedger.approvedByName'),
+    approvedByEmail: t('generalLedger.approvedByEmail'),
+    postedAt: t('generalLedger.postedAt'),
+    postedBy: t('generalLedger.postedById'),
+    postedByName: t('generalLedger.postedByName'),
+    postedByEmail: t('generalLedger.postedByEmail'),
+    amount: t('generalLedger.origAmount'),
+    currency: t('generalLedger.origCurrency'),
+    exchangeRate: t('generalLedger.exchangeRate')
+  };
 
   return (
     <div className="grid grid-cols-1 w-full max-w-full overflow-hidden space-y-6 pb-20 print:pb-0">
       {/* Header */}
       <div className="flex justify-between items-start print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">General Ledger</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('generalLedger.title')}</h1>
           <p className="flex items-center text-sm text-[var(--color-text-muted)] mt-1">
-            <span>View all posted transactions</span>
+            <span>{t('generalLedger.subtitle')}</span>
             <span className="ml-3 px-2.5 py-0.5 rounded-full bg-primary-100 text-primary-700 font-semibold text-xs border border-primary-200 shadow-sm">
-              Base Currency: {currency}
+              {t('generalLedger.baseCurrency')}: {currency}
             </span>
             {selectedAccount && <span className="ml-2 text-primary-600 font-medium">• {selectedAccount.code} - {selectedAccount.name}</span>}
           </p>
@@ -148,7 +175,7 @@ const GeneralLedgerPage: React.FC = () => {
              <button 
                onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
                className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded-md transition-colors text-[var(--color-text-secondary)]"
-               title="Table Settings"
+               title={t('generalLedger.tableSettings')}
              >
                <Settings2 size={16} />
              </button>
@@ -156,7 +183,7 @@ const GeneralLedgerPage: React.FC = () => {
              {showSettings && (
                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4 animate-in fade-in zoom-in-95 duration-200 text-left">
                  <div className="mb-4">
-                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Font Size</h4>
+                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('generalLedger.fontSize')}</h4>
                    <div className="flex bg-gray-100 p-1 rounded-lg">
                      {['xs', 'sm', 'base'].map((size) => (
                         <button
@@ -175,32 +202,32 @@ const GeneralLedgerPage: React.FC = () => {
                  </div>
                  
                  <div>
-                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Visible Columns</h4>
+                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{t('generalLedger.visibleColumns')}</h4>
                    <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
                      {[
-                       { id: 'date', label: 'Date' },
-                       { id: 'voucherNo', label: 'Voucher #' },
-                       { id: 'code', label: 'Account Code' },
-                       { id: 'account', label: 'Account Name' },
-                       { id: 'description', label: 'Description' },
-                       { id: 'debit', label: 'Debit' },
-                       { id: 'credit', label: 'Credit' },
-                       { id: 'balance', label: 'Balance' },
-                        { id: 'createdAt', label: 'Created At' },
-                        { id: 'createdBy', label: 'Created By (ID)' },
-                        { id: 'createdByName', label: 'Created By (Name)' },
-                        { id: 'createdByEmail', label: 'Created By (Email)' },
-                        { id: 'approvedAt', label: 'Approved At' },
-                        { id: 'approvedBy', label: 'Approved By (ID)' },
-                        { id: 'approvedByName', label: 'Approved By (Name)' },
-                        { id: 'approvedByEmail', label: 'Approved By (Email)' },
-                        { id: 'postedAt', label: 'Posted At' },
-                        { id: 'postedBy', label: 'Posted By (ID)' },
-                        { id: 'postedByName', label: 'Posted By (Name)' },
-                        { id: 'postedByEmail', label: 'Posted By (Email)' },
-                        { id: 'amount', label: 'Orig. Amount' },
-                        { id: 'currency', label: 'Orig. Currency' },
-                        { id: 'exchangeRate', label: 'Exch. Rate' },
+                       { id: 'date', label: columnLabels.date },
+                       { id: 'voucherNo', label: columnLabels.voucherNo },
+                       { id: 'code', label: columnLabels.code },
+                       { id: 'account', label: columnLabels.account },
+                       { id: 'description', label: columnLabels.description },
+                       { id: 'debit', label: columnLabels.debit },
+                       { id: 'credit', label: columnLabels.credit },
+                       { id: 'balance', label: columnLabels.balance },
+                        { id: 'createdAt', label: columnLabels.createdAt },
+                        { id: 'createdBy', label: columnLabels.createdBy },
+                        { id: 'createdByName', label: columnLabels.createdByName },
+                        { id: 'createdByEmail', label: columnLabels.createdByEmail },
+                        { id: 'approvedAt', label: columnLabels.approvedAt },
+                        { id: 'approvedBy', label: columnLabels.approvedBy },
+                        { id: 'approvedByName', label: columnLabels.approvedByName },
+                        { id: 'approvedByEmail', label: columnLabels.approvedByEmail },
+                        { id: 'postedAt', label: columnLabels.postedAt },
+                        { id: 'postedBy', label: columnLabels.postedBy },
+                        { id: 'postedByName', label: columnLabels.postedByName },
+                        { id: 'postedByEmail', label: columnLabels.postedByEmail },
+                        { id: 'amount', label: columnLabels.amount },
+                        { id: 'currency', label: columnLabels.currency },
+                        { id: 'exchangeRate', label: columnLabels.exchangeRate },
                      ].map((col) => (
                        <label key={col.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer select-none">
                          <input 
@@ -220,7 +247,7 @@ const GeneralLedgerPage: React.FC = () => {
 
           <Button onClick={handlePrint} variant="secondary" className="flex items-center gap-2">
             <Printer className="w-4 h-4" />
-            Print
+            {t('generalLedger.print')}
           </Button>
           <Button
             variant="secondary"
@@ -228,27 +255,27 @@ const GeneralLedgerPage: React.FC = () => {
               exportToExcel(
                 filteredData,
                 [
-                  { header: 'Date', key: 'date' },
-                  { header: 'Voucher #', key: 'voucherNo' },
-                  { header: 'Account', key: 'accountName' },
-                  { header: 'Description', key: 'description' },
-                  { header: 'Debit', key: 'debit', isNumber: true },
-                  { header: 'Credit', key: 'credit', isNumber: true },
-                  { header: 'Balance', key: 'runningBalance', isNumber: true }
+                  { header: columnLabels.date, key: 'date' },
+                  { header: columnLabels.voucherNo, key: 'voucherNo' },
+                  { header: columnLabels.account, key: 'accountName' },
+                  { header: columnLabels.description, key: 'description' },
+                  { header: columnLabels.debit, key: 'debit', isNumber: true },
+                  { header: columnLabels.credit, key: 'credit', isNumber: true },
+                  { header: columnLabels.balance, key: 'runningBalance', isNumber: true }
                 ],
                 `General-Ledger-${new Date().toISOString().slice(0,10)}`,
-                'General Ledger'
+                t('generalLedger.title')
               )
             }
           >
-            Export Excel
+            {t('generalLedger.exportExcel')}
           </Button>
           <Button variant="secondary" onClick={() => exportElementToPDF('general-ledger-report', 'General-Ledger')}>
-            Export PDF
+            {t('generalLedger.exportPDF')}
           </Button>
           <Button onClick={fetchReport} variant="primary" className="flex items-center gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('generalLedger.refresh')}
           </Button>
         </div>
       </div>
@@ -258,17 +285,17 @@ const GeneralLedgerPage: React.FC = () => {
         <div className="flex flex-wrap gap-4 items-end">
           {/* Account Filter */}
           <div className="flex-1 min-w-[300px]">
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">Account</label>
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.account')}</label>
             <AccountSelector
               value={selectedAccountId}
               onChange={(account) => setSelectedAccountId(account ? account.id : '')}
-              placeholder="All Accounts"
+              placeholder={t('generalLedger.allAccounts')}
             />
           </div>
 
           {/* Date Filters */}
           <div className="w-40">
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">From Date</label>
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.fromDate')}</label>
             <input
               type="date"
               value={fromDate}
@@ -277,7 +304,7 @@ const GeneralLedgerPage: React.FC = () => {
             />
           </div>
           <div className="w-40">
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">To Date</label>
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.toDate')}</label>
             <input
               type="date"
               value={toDate}
@@ -288,14 +315,14 @@ const GeneralLedgerPage: React.FC = () => {
 
           {/* Search */}
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">Search</label>
+            <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.search')}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
               <input
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Search voucher, account, description..."
+                placeholder={t('generalLedger.searchPlaceholder')}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -305,12 +332,12 @@ const GeneralLedgerPage: React.FC = () => {
           <div className="flex gap-2">
             <Button onClick={fetchReport} variant="primary" className="flex items-center gap-2">
               <Filter className="w-4 h-4" />
-              Apply
+              {t('generalLedger.apply')}
             </Button>
             {(selectedAccountId || fromDate || toDate || searchText) && (
               <Button onClick={handleClearFilters} variant="secondary" className="flex items-center gap-2">
                 <X className="w-4 h-4" />
-                Clear
+                {t('generalLedger.clear')}
               </Button>
             )}
           </div>
@@ -319,13 +346,13 @@ const GeneralLedgerPage: React.FC = () => {
 
       {/* Print Header */}
       <div className="hidden print:block mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">General Ledger Report</h1>
-        <p className="text-sm text-gray-600">Generated on {(() => {
+        <h1 className="text-2xl font-bold text-gray-900">{t('generalLedger.title')}</h1>
+        <p className="text-sm text-gray-600">{t('generalLedger.generatedOn', { date: (() => {
           const now = new Date();
           return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        })()}</p>
+        })() })}</p>
         {selectedAccount && (
-          <p className="text-sm text-gray-600 mt-1">Account: {selectedAccount.code} - {selectedAccount.name}</p>
+          <p className="text-sm text-gray-600 mt-1">{t('generalLedger.accountPrint', { code: selectedAccount.code, name: selectedAccount.name })}</p>
         )}
       </div>
 
@@ -342,48 +369,48 @@ const GeneralLedgerPage: React.FC = () => {
           <table className="min-w-full divide-y divide-[var(--color-border)] relative">
             <thead className="bg-[var(--color-bg-tertiary)] print:bg-gray-100 sticky top-0 z-10 shadow-sm">
               <tr>
-                {visibleColumns.includes('date') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Date</th>}
-                {visibleColumns.includes('voucherNo') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-36 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Voucher #</th>}
+                {visibleColumns.includes('date') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.date}</th>}
+                {visibleColumns.includes('voucherNo') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-36 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.voucherNo}</th>}
                 {!selectedAccountId && visibleColumns.includes('code') && (
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Code</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.code}</th>
                 )}
                 {!selectedAccountId && visibleColumns.includes('account') && (
-                  <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap bg-[var(--color-bg-tertiary)]">Account</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.account}</th>
                 )}
-                {visibleColumns.includes('description') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap bg-[var(--color-bg-tertiary)]">Description</th>}
+                {visibleColumns.includes('description') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.description}</th>}
                 
                 {/* New Metadata Columns */}
-                {visibleColumns.includes('createdAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Created At</th>}
-                {visibleColumns.includes('createdBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Created By (ID)</th>}
-                {visibleColumns.includes('createdByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Created By</th>}
-                {visibleColumns.includes('createdByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Created Email</th>}
+                {visibleColumns.includes('createdAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.createdAt}</th>}
+                {visibleColumns.includes('createdBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.createdBy}</th>}
+                {visibleColumns.includes('createdByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.createdByName}</th>}
+                {visibleColumns.includes('createdByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.createdByEmail}</th>}
                 
-                {visibleColumns.includes('approvedAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Approved At</th>}
-                {visibleColumns.includes('approvedBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Approved By (ID)</th>}
-                {visibleColumns.includes('approvedByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Approved By</th>}
-                {visibleColumns.includes('approvedByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Approved Email</th>}
+                {visibleColumns.includes('approvedAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.approvedAt}</th>}
+                {visibleColumns.includes('approvedBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.approvedBy}</th>}
+                {visibleColumns.includes('approvedByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.approvedByName}</th>}
+                {visibleColumns.includes('approvedByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.approvedByEmail}</th>}
                 
-                {visibleColumns.includes('postedAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Posted At</th>}
-                {visibleColumns.includes('postedBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Posted By (ID)</th>}
-                {visibleColumns.includes('postedByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Posted By</th>}
-                {visibleColumns.includes('postedByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Posted Email</th>}
+                {visibleColumns.includes('postedAt') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.postedAt}</th>}
+                {visibleColumns.includes('postedBy') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.postedBy}</th>}
+                {visibleColumns.includes('postedByName') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.postedByName}</th>}
+                {visibleColumns.includes('postedByEmail') && <th className="px-4 py-3 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-40 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.postedByEmail}</th>}
                 
-                {visibleColumns.includes('amount') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Orig. Amount</th>}
-                {visibleColumns.includes('currency') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Orig. Currency</th>}
-                {visibleColumns.includes('exchangeRate') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Exch. Rate</th>}
+                {visibleColumns.includes('amount') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.amount}</th>}
+                {visibleColumns.includes('currency') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.currency}</th>}
+                {visibleColumns.includes('exchangeRate') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-24 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.exchangeRate}</th>}
 
-                {visibleColumns.includes('debit') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Debit</th>}
-                {visibleColumns.includes('credit') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Credit</th>}
+                {visibleColumns.includes('debit') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.debit}</th>}
+                {visibleColumns.includes('credit') && <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.credit}</th>}
                 {selectedAccountId && visibleColumns.includes('balance') && (
-                  <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">Balance</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32 whitespace-nowrap bg-[var(--color-bg-tertiary)]">{columnLabels.balance}</th>
                 )}
-              </tr>
+             </tr>
             </thead>
             <tbody className={`bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)] ${getFontSizeClass(fontSize)}`}>
               {loading ? (
-                <tr><td colSpan={20} className="px-6 py-12 text-center text-[var(--color-text-muted)]">Loading General Ledger...</td></tr>
+                <tr><td colSpan={20} className="px-6 py-12 text-center text-[var(--color-text-muted)]">{t('generalLedger.loading')}</td></tr>
               ) : filteredData.length === 0 && !error ? (
-                <tr><td colSpan={20} className="px-6 py-12 text-center text-[var(--color-text-muted)]">No ledger entries found. Post some vouchers to see data here.</td></tr>
+                <tr><td colSpan={20} className="px-6 py-12 text-center text-[var(--color-text-muted)]">{t('generalLedger.noData')}</td></tr>
               ) : (
                 filteredData.map((entry) => (
                   <tr key={entry.id} className="hover:bg-[var(--color-bg-tertiary)] break-inside-avoid transition-colors">
@@ -470,7 +497,7 @@ const GeneralLedgerPage: React.FC = () => {
                     - (visibleColumns.includes('credit') ? 1 : 0)
                     - (visibleColumns.includes('balance') ? 1 : 0)
                   } className="px-4 py-3 text-right uppercase text-xs text-[var(--color-text-muted)] tracking-wider">
-                    Totals ({filteredData.length} entries)
+                    {t('generalLedger.totals', { count: filteredData.length })}
                   </td>
                   {visibleColumns.includes('debit') && (
                     <td className="px-4 py-3 text-right font-mono text-sm text-primary-700 whitespace-nowrap bg-[var(--color-bg-tertiary)]">
