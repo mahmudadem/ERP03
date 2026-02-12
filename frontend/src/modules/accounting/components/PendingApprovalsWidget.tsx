@@ -6,12 +6,14 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { accountingApi } from '../../../api/accountingApi';
-import { Shield, UserCheck, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, UserCheck, ChevronRight, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const PendingApprovalsWidget: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation('accounting');
 
   // 1. Fetch Vouchers Pending Financial Approval
   const { 
@@ -53,8 +55,8 @@ export const PendingApprovalsWidget: React.FC = () => {
 
       <div className="flex justify-between items-start">
         <div className="flex flex-col">
-          <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary-600 transition-colors">Action Required</h3>
-          <p className="text-xs text-gray-500">You have {total} pending workflow tasks</p>
+          <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{t('dashboard.actionRequired')}</h3>
+          <p className="text-xs text-gray-500">{t('dashboard.pendingTasks', { count: total })}</p>
         </div>
         <div className={clsx(
             "p-2 rounded-xl transition-colors",
@@ -68,19 +70,19 @@ export const PendingApprovalsWidget: React.FC = () => {
         {pendingApprovals.length > 0 && (
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
             <Shield size={14} className="text-indigo-500" />
-            <span>{pendingApprovals.length} Awaiting Approval</span>
+            <span>{t('dashboard.awaitingApproval', { count: pendingApprovals.length })}</span>
           </div>
         )}
         {pendingCustody.length > 0 && (
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
             <UserCheck size={14} className="text-purple-500" />
-            <span>{pendingCustody.length} Awaiting My Custody</span>
+            <span>{t('dashboard.awaitingCustody', { count: pendingCustody.length })}</span>
           </div>
         )}
       </div>
 
       <div className="flex items-center justify-between mt-1 pt-3 border-t border-gray-100">
-        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Open Approval Center</span>
+        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">{t('dashboard.openApprovalCenter')}</span>
         <ChevronRight size={14} className="text-amber-400 group-hover:translate-x-1 transition-transform" />
       </div>
     </div>

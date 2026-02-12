@@ -440,6 +440,13 @@
     "on": "تشغيل",
     "off": "إيقاف"
   },
+  "dashboard": {
+    "actionRequired": "إجراء مطلوب",
+    "pendingTasks": "لديك {{count}} مهام عمل معلّقة",
+    "awaitingApproval": "{{count}} بانتظار الاعتماد",
+    "awaitingCustody": "{{count}} بانتظار الاستلام",
+    "openApprovalCenter": "افتح مركز الموافقات"
+  },
   "accountStatement": {
     "title": "كشف حساب",
     "subtitle": "رصيد جاري لكل حساب مع الأرصدة الافتتاحية والختامية.",

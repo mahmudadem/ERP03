@@ -440,6 +440,13 @@
     "on": "Açık",
     "off": "Kapalı"
   },
+  "dashboard": {
+    "actionRequired": "İşlem Gerekli",
+    "pendingTasks": "{{count}} bekleyen iş akışı göreviniz var",
+    "awaitingApproval": "{{count}} Onay Bekliyor",
+    "awaitingCustody": "{{count}} Zimmet Onayı Bekliyor",
+    "openApprovalCenter": "Onay Merkezini Aç"
+  },
   "accountStatement": {
     "title": "Hesap Ekstresi",
     "subtitle": "Açılış ve kapanış bakiyeleriyle hesap bazında hareket özeti.",

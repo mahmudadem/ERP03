@@ -440,6 +440,13 @@
     "on": "ON",
     "off": "OFF"
   },
+  "dashboard": {
+    "actionRequired": "Action Required",
+    "pendingTasks": "You have {{count}} pending workflow tasks",
+    "awaitingApproval": "{{count}} Awaiting Approval",
+    "awaitingCustody": "{{count}} Awaiting Custody",
+    "openApprovalCenter": "Open Approval Center"
+  },
   "accountStatement": {
     "title": "Account Statement",
     "subtitle": "Running balance per account with opening and closing balances.",
