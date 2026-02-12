@@ -609,7 +609,27 @@
       "currency": "العملة",
       "exchangeRate": "السعر",
       "default": "عمود"
-    }
+    },
+    "fields": {
+      "date": "التاريخ",
+      "createdAt": "تاريخ الإنشاء",
+      "createdBy": "أُنشئ بواسطة",
+      "status": "الحالة",
+      "voucherNumber": "رقم القيد",
+      "reference": "المرجع",
+      "description": "الوصف",
+      "currency": "العملة",
+      "exchangeRate": "سعر الصرف",
+      "parity": "تكافؤ",
+      "equivalent": "المعادِل",
+      "lineDescription": "وصف السطر",
+      "account": "الحساب",
+      "debit": "مدين",
+      "credit": "دائن"
+    },
+    "selectPlaceholder": "اختر...",
+    "checkboxYes": "نعم",
+    "unknownType": "نوع حقل غير معروف"
   },
     "creationMode": {
       "strict": "صارم",

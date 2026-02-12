@@ -609,7 +609,27 @@
       "currency": "Currency",
       "exchangeRate": "Rate",
       "default": "Column"
-    }
+    },
+    "fields": {
+      "date": "Date",
+      "createdAt": "Created At",
+      "createdBy": "Created By",
+      "status": "Status",
+      "voucherNumber": "Voucher Number",
+      "reference": "Reference",
+      "description": "Description",
+      "currency": "Currency",
+      "exchangeRate": "Exchange Rate",
+      "parity": "Parity",
+      "equivalent": "Equivalent",
+      "lineDescription": "Line Description",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit"
+    },
+    "selectPlaceholder": "Select...",
+    "checkboxYes": "Yes",
+    "unknownType": "Unknown field type"
   },
     "creationMode": {
       "strict": "Strict",

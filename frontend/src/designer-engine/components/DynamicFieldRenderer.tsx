@@ -3,6 +3,7 @@
  * Renders a single input based on FieldDefinition.
  */
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FieldDefinition } from '../types/FieldDefinition';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../utils/dateUtils';
@@ -21,6 +22,12 @@ interface Props {
 
 export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onChange, customComponents, className, noBorder, readOnly }) => {
   const { settings } = useCompanySettings();
+  const { t } = useTranslation('accounting');
+
+  const label = React.useMemo(() => {
+    const key = (field as any).labelTranslationKey || `voucherRenderer.fields.${field.id}`;
+    return t(key, { defaultValue: field.label || field.name || field.id });
+  }, [field.label, (field as any).labelTranslationKey, field.name, field.id, t]);
   
   // Custom Styles from Definition
   const style = field.style || {};
@@ -66,7 +73,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             type="text"
             className={baseInputClass}
             style={customInputStyle}
-            placeholder={field.placeholder}
+            placeholder={field.placeholder || t('voucherRenderer.selectPlaceholder')}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={field.readOnly || readOnly}
@@ -105,7 +112,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
               onChange={(e) => onChange(e.target.checked)}
               disabled={field.readOnly || readOnly}
             />
-            <span className="ml-2 text-sm text-gray-700" style={{ color: style.color }}>{field.placeholder || 'Yes'}</span>
+            <span className="ml-2 text-sm text-gray-700" style={{ color: style.color }}>{field.placeholder || t('voucherRenderer.checkboxYes')}</span>
           </div>
         );
 
@@ -118,7 +125,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             onChange={(e) => onChange(e.target.value)}
             disabled={field.readOnly || readOnly}
           >
-            <option value="">Select...</option>
+            <option value="">{t('voucherRenderer.selectPlaceholder')}</option>
             {field.options?.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -141,7 +148,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
         );
 
       default:
-        return <div className="text-red-500 text-xs">Unknown Type</div>;
+        return <div className="text-red-500 text-xs">{t('voucherRenderer.unknownType')}</div>;
     }
   };
 
@@ -158,7 +165,7 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             textTransform: style.textTransform
         }}
       >
-        {field.label} {field.required && <span className="text-red-500">*</span>}
+        {label} {field.required && <span className="text-red-500">*</span>}
       </label>
       {renderInput()}
       {error && <span className="mt-1 text-xs text-red-500">{error}</span>}

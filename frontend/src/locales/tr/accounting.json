@@ -609,7 +609,27 @@
       "currency": "Para birimi",
       "exchangeRate": "Kur",
       "default": "Sütun"
-    }
+    },
+    "fields": {
+      "date": "Tarih",
+      "createdAt": "Oluşturma tarihi",
+      "createdBy": "Oluşturan",
+      "status": "Durum",
+      "voucherNumber": "Fiş numarası",
+      "reference": "Referans",
+      "description": "Açıklama",
+      "currency": "Para birimi",
+      "exchangeRate": "Kur",
+      "parity": "Parite",
+      "equivalent": "Eşdeğer",
+      "lineDescription": "Satır açıklaması",
+      "account": "Hesap",
+      "debit": "Borç",
+      "credit": "Alacak"
+    },
+    "selectPlaceholder": "Seçiniz...",
+    "checkboxYes": "Evet",
+    "unknownType": "Bilinmeyen alan türü"
   },
     "creationMode": {
       "strict": "Sıkı",
