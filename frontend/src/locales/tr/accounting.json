@@ -772,10 +772,13 @@
       "debit": "Borç",
       "credit": "Alacak",
       "description": "Açıklama",
+      "lineDescription": "Satır açıklaması",
       "notes": "Notlar",
       "amount": "Tutar",
+      "equivalent": "Eşdeğer",
       "currency": "Para birimi",
       "exchangeRate": "Kur",
+      "parity": "Parite",
       "default": "Sütun"
     },
     "fields": {

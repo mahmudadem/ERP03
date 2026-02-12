@@ -1055,8 +1055,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (isJE) {
         baseColumns.push(
           { id: 'currency', label: t('voucherRenderer.columns.currency', { defaultValue: 'Currency' }), width: '80px' },
-          { id: 'parity', label: t('voucherRenderer.columns.exchangeRate', { defaultValue: 'Parity' }), width: '80px' },
-          { id: 'equivalent', label: t('voucherRenderer.columns.amount', { defaultValue: 'Equivalent' }), width: '100px' }
+          { id: 'parity', label: t('voucherRenderer.columns.parity', { defaultValue: 'Parity' }), width: '80px' },
+          { id: 'equivalent', label: t('voucherRenderer.columns.equivalent', { defaultValue: 'Equivalent' }), width: '100px' }
         );
       }
       

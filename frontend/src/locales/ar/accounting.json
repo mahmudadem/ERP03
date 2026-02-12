@@ -772,10 +772,13 @@
       "debit": "مدين",
       "credit": "دائن",
       "description": "الوصف",
+      "lineDescription": "وصف السطر",
       "notes": "ملاحظات",
       "amount": "المبلغ",
+      "equivalent": "المعادِل",
       "currency": "العملة",
       "exchangeRate": "السعر",
+      "parity": "التكافؤ",
       "default": "عمود"
     },
     "fields": {

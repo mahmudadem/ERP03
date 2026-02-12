@@ -772,10 +772,13 @@
       "debit": "Debit",
       "credit": "Credit",
       "description": "Description",
+      "lineDescription": "Line Description",
       "notes": "Notes",
       "amount": "Amount",
+      "equivalent": "Equivalent",
       "currency": "Currency",
       "exchangeRate": "Rate",
+      "parity": "Parity",
       "default": "Column"
     },
     "fields": {
