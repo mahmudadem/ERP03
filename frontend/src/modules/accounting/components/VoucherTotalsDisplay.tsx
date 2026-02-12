@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Info, X } from 'lucide-react';
 
 interface TotalsLine {
@@ -33,6 +34,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
   baseCurrency,
   headerRate
 }) => {
+  const { t } = useTranslation('accounting');
   const hasValues = totalDebit > 0 || totalCredit > 0;
   const diff = difference !== undefined ? difference : Math.abs(totalDebit - totalCredit);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -109,7 +111,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
       <div className={`relative flex items-center gap-6 px-4 py-2 ${bgColor} rounded-md transition-all border ${borderColor} shadow-sm`}>
         <div className="flex items-baseline gap-2">
           <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest list-none">
-            Total Debit ({currency})
+            {t('voucherTotals.totalDebit', 'Total Debit')} ({currency})
           </span>
           <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
             {format(totalDebit)}
@@ -120,7 +122,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
         
         <div className="flex items-baseline gap-2">
           <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-            Total Credit ({currency})
+            {t('voucherTotals.totalCredit', 'Total Credit')} ({currency})
           </span>
           <span className="text-base font-bold text-[var(--color-text-primary)] font-mono">
             {format(totalCredit)}
@@ -140,7 +142,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600' 
                 : 'text-[var(--color-text-muted)] hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20'
             }`}
-            title="View totals breakdown"
+            title={t('voucherTotals.viewBreakdown', 'View totals breakdown')}
           >
             <Info size={14} />
           </button>
@@ -156,7 +158,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
               {/* Header */}
               <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-border)]">
                 <Info size={14} className="text-primary-500" />
-                <span className="text-xs font-bold text-[var(--color-text-primary)]">Totals Breakdown</span>
+                <span className="text-xs font-bold text-[var(--color-text-primary)]">{t('voucherTotals.breakdown', 'Totals Breakdown')}</span>
                 {isForeignVoucher && headerRate && (
                   <span className="ml-auto mr-6 text-[10px] text-[var(--color-text-muted)] font-mono">
                     1 {currency} = {formatCompact(headerRate)} {baseCurrency}
@@ -175,11 +177,11 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
                 <>
                   <div>
                     <div className="text-[10px] font-bold text-success-600 dark:text-success-400 uppercase tracking-wider mb-1">
-                      Debit Lines
+                      {t('voucherTotals.debitLines', 'Debit Lines')}
                     </div>
                     {renderLineBreakdown(debitLines, 'debit')}
                     <div className="flex items-center gap-2 mt-1 pt-1 border-t border-dashed border-[var(--color-border)]">
-                      <span className="text-[10px] font-bold text-[var(--color-text-muted)]">Sum (equiv.)</span>
+                      <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('voucherTotals.sumEquiv', 'Sum (equiv.)')}</span>
                       <span className="ml-auto text-xs font-bold text-[var(--color-text-primary)] font-mono">{format(debitLines.reduce((sum, l) => sum + (parseFloat(l.equivalent as string) || 0), 0))}</span>
                     </div>
                     {isForeignVoucher && headerRate && headerRate > 1 && (
@@ -193,11 +195,11 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
                   {/* Credit Section */}
                   <div>
                     <div className="text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-wider mb-1">
-                      Credit Lines
+                      {t('voucherTotals.creditLines', 'Credit Lines')}
                     </div>
                     {renderLineBreakdown(creditLines, 'credit')}
                     <div className="flex items-center gap-2 mt-1 pt-1 border-t border-dashed border-[var(--color-border)]">
-                      <span className="text-[10px] font-bold text-[var(--color-text-muted)]">Sum (equiv.)</span>
+                      <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('voucherTotals.sumEquiv', 'Sum (equiv.)')}</span>
                       <span className="ml-auto text-xs font-bold text-[var(--color-text-primary)] font-mono">{format(creditLines.reduce((sum, l) => sum + (parseFloat(l.equivalent as string) || 0), 0))}</span>
                     </div>
                     {isForeignVoucher && headerRate && headerRate > 1 && (
@@ -218,8 +220,8 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
               }`}>
                 {isBalanced ? '✓' : '✗'} 
                 {isBalanced 
-                  ? `Balanced — Debit equals Credit in ${currency}` 
-                  : `Unbalanced — ${format(diff)} ${currency} difference`}
+                  ? t('voucherTotals.balanced', 'Balanced — Debit equals Credit in {{currency}}', { currency }) 
+                  : t('voucherTotals.unbalanced', 'Unbalanced — {{amount}} {{currency}} difference', { amount: format(diff), currency })}
               </div>
 
               {/* Base Currency Note */}
@@ -227,9 +229,9 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
                 <div className="flex items-start gap-2 text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] rounded px-2.5 py-2 leading-relaxed">
                   <span className="mt-0.5 shrink-0">ℹ️</span>
                   <span>
-                    All vouchers affect the ledger in <strong className="text-[var(--color-text-primary)]">{baseCurrency}</strong> (base currency) only.
+                    {t('voucherTotals.baseNote', 'All vouchers affect the ledger in {{base}} (base currency) only.', { base: baseCurrency })}
                     {isForeignVoucher && (
-                      <> The totals shown above are converted to <strong className="text-[var(--color-text-primary)]">{currency}</strong> for display.</>
+                      <> {t('voucherTotals.convertedNote', 'Totals above are shown in {{currency}} for display.', { currency })}</>
                     )}
                   </span>
                 </div>
@@ -242,7 +244,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
       {!isBalanced && hasValues && (
         <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-danger-600 dark:text-danger-400 uppercase tracking-tight animate-pulse">
           <AlertTriangle size={12} strokeWidth={3} />
-          Voucher Unbalanced: {diff.toFixed(2)} {currency} difference
+          {t('voucherTotals.unbalancedShort', 'Voucher Unbalanced: {{amount}} {{currency}} difference', { amount: diff.toFixed(2), currency })}
         </div>
       )}
     </div>
