@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Save, Loader2, Send, CheckCircle, Plus, RotateCcw, AlertTriangle, Check, RotateCw, Printer } from 'lucide-react';
 import { VoucherFormConfig } from '../voucher-wizard/types';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
@@ -75,6 +76,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [isNewMode, setIsNewMode] = useState(false); // Tracks when user clicked "New" to reset form
   
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
+  const { t } = useTranslation('accounting');
 
   // When initialData changes (user opens a different voucher), reset new mode
   React.useEffect(() => {
@@ -326,7 +328,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] relative z-10 bg-[var(--color-bg-secondary)] rounded-t-lg select-none">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-                {effectiveData?.id ? `Edit ${voucherType.name}` : `New ${voucherType.name}`}
+                {effectiveData?.id 
+                  ? t('voucherEditor.existingTitle', { name: voucherType.name, id: effectiveData.voucherNumber || effectiveData.id || '' })
+                  : t('voucherEditor.newTitle', { name: voucherType.name })}
               </h2>
 
               {/* Status Indicators */}
@@ -339,7 +343,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     effectiveData.status.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
                     'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                   }`}>
-                    {effectiveData.status}
+                    {t(`statuses.${effectiveData.status.toLowerCase()}`, { defaultValue: effectiveData.status })}
                   </span>
                 )}
                 
@@ -350,7 +354,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                       ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                       : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                   }`}>
-                    {effectiveData.postedAt ? 'POSTED' : 'NOT POSTED'}
+                    {effectiveData.postedAt ? t('statuses.posted') : t('voucherWindow.notPosted', { defaultValue: 'Not Posted' })}
                   </span>
                 )}
 
@@ -416,19 +420,19 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               <button
                 className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
                 onClick={handleNew}
-                title="Create a new voucher"
+                title={t('voucherWindow.newTooltip', { defaultValue: 'Create a new voucher in this window' })}
               >
-                New
+                {t('voucherWindow.new')}
               </button>
 
               <button
                 className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors flex items-center gap-1.5"
                 onClick={() => effectiveData?.id && onPrint?.(effectiveData.id)}
                 disabled={!effectiveData?.id}
-                title="Print voucher"
+                title={t('voucherWindow.printTooltip', { defaultValue: 'Print voucher' })}
               >
                 <Printer size={16} />
-                Print
+                {t('voucherWindow.print')}
               </button>
 
               <div className="w-[1px] h-6 bg-[var(--color-border)] mx-1" />

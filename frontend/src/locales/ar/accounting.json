@@ -843,6 +843,7 @@
     "reverseReplace": "عكس واستبدال",
     "alreadyReversed": "تم عكسه مسبقًا",
     "reversal": "قيد عكسي",
+    "notPosted": "غير مُرحّل",
     "tooltip": {
       "reversalCannotReverse": "هذا قيد عكسي ولا يمكن عكسه مرة أخرى.",
       "alreadyReversed": "تم عكس هذا القيد بالفعل.",

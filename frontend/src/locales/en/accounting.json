@@ -843,6 +843,7 @@
     "reverseReplace": "Reverse & Replace",
     "alreadyReversed": "Already Reversed",
     "reversal": "Reversal",
+    "notPosted": "Not Posted",
     "tooltip": {
       "reversalCannotReverse": "This is a reversal voucher and cannot be reversed again.",
       "alreadyReversed": "This voucher has already been reversed.",
