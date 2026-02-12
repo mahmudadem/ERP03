@@ -1084,9 +1084,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // If we have no ID at all, then "Column" is the last resort fallback
       const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
       
+      const currentLabel = col.labelOverride || col.label || '';
+      const normalizedCurrent = currentLabel.replace(/\s+/g, '').toLowerCase();
+      const normalizedFallback = (fallbackLabel || '').replace(/\s+/g, '').toLowerCase();
+      const shouldTranslate = !currentLabel || normalizedCurrent === (colId || '').toLowerCase() || normalizedCurrent === normalizedFallback;
+
       return {
         id: colId,
-        label: col.labelOverride || col.label || (colId ? t(`voucherRenderer.columns.${colId}`, { defaultValue: fallbackLabel }) : fallbackLabel),
+        label: shouldTranslate ? t(`voucherRenderer.columns.${colId}`, { defaultValue: fallbackLabel }) : currentLabel,
         width: col.width || 'auto'
       };
     });
