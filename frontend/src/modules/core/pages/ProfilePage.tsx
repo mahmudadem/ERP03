@@ -11,6 +11,7 @@ const ProfilePage: React.FC = () => {
   const { t } = useTranslation('common');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -120,11 +121,14 @@ const ProfilePage: React.FC = () => {
                 onClick={async () => {
                   setSaving(true);
                   setSaveMsg(null);
+                  setSaveStatus(null);
                   try {
                     await savePreferences();
                     setSaveMsg(t('profile.saved', 'Preferences saved.'));
+                    setSaveStatus('success');
                   } catch {
                     setSaveMsg(t('profile.saveError', 'Could not save preferences.'));
+                    setSaveStatus('error');
                   } finally {
                     setSaving(false);
                   }
@@ -134,7 +138,15 @@ const ProfilePage: React.FC = () => {
               >
                 {saving ? t('profile.saving', 'Saving...') : t('profile.saveBtn', 'Save Preferences')}
               </button>
-              {saveMsg && <span className="text-xs text-gray-600">{saveMsg}</span>}
+              {saveMsg && (
+                <span
+                  className={`text-xs ${
+                    saveStatus === 'error' ? 'text-red-600' : 'text-green-600'
+                  }`}
+                >
+                  {saveMsg}
+                </span>
+              )}
             </div>
           </div>
         </div>
