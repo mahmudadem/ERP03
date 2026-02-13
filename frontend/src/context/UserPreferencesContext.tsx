@@ -118,7 +118,23 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
   const savePreferences = async () => {
     const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
-    await userPreferencesApi.upsert(payload);
+    const saved = await userPreferencesApi.upsert(payload);
+    // Ensure local state mirrors what backend stored (guards against stale UI)
+    if (saved.language) {
+      setLanguage(saved.language);
+    }
+    if (saved.uiMode) {
+      setUiModeState(saved.uiMode);
+    }
+    if (saved.theme) {
+      setThemeState(saved.theme);
+    }
+    if (saved.sidebarMode) {
+      setSidebarModeState(saved.sidebarMode);
+    }
+    if (typeof saved.sidebarPinned === 'boolean') {
+      setSidebarPinnedState(saved.sidebarPinned);
+    }
   };
 
   const toggleUiMode = () => {
