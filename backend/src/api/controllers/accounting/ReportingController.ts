@@ -52,10 +52,11 @@ export class ReportingController {
     try {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
-      const asOfDate = String(req.query.asOfDate || new Date().toISOString());
-      const useCase = new GetTrialBalanceUseCase(diContainer.ledgerRepository, permissionChecker);
-      const data = await useCase.execute(companyId, userId, asOfDate);
-      res.json({ success: true, data });
+      const asOfDate = String(req.query.asOfDate || new Date().toISOString().split('T')[0]);
+      const includeZeroBalance = req.query.includeZeroBalance === 'true';
+      const useCase = new GetTrialBalanceUseCase(diContainer.ledgerRepository, diContainer.accountRepository, permissionChecker);
+      const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance);
+      res.json({ success: true, data: { rows: result.data, meta: result.meta } });
     } catch (err) {
       next(err);
     }

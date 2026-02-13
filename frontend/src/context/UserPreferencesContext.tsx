@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import i18n from '../i18n/config';
 import { userPreferencesApi } from '../api/userPreferencesApi';
+import { useAuth } from './AuthContext';
 
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
@@ -28,6 +29,7 @@ interface UserPreferencesContextType {
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
 
 export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [uiMode, setUiModeState] = useState<UiMode>(() => {
     return (localStorage.getItem('erp_ui_mode') as UiMode) || 'windows';
   });
@@ -59,10 +61,11 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   // Fetch user preferences from backend once authenticated (token handled by apiClient)
   useEffect(() => {
     let cancelled = false;
+    if (authLoading || !user) return;
     const load = async () => {
       try {
         const prefs = await userPreferencesApi.get();
-        console.debug('[Prefs] Loaded from backend', { prefs });
+        console.debug('[Prefs] Loaded from backend', { uid: user.uid, prefs });
         if (cancelled) return;
         if (prefs.uiMode) setUiModeState(prefs.uiMode);
         if (prefs.theme) setThemeState(prefs.theme);
@@ -80,7 +83,7 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [authLoading, user]);
 
   // Persist to localStorage and apply theme
   useEffect(() => {
@@ -119,8 +122,9 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
   const savePreferences = async () => {
     const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
+    if (!user) return;
     const saved = await userPreferencesApi.upsert(payload);
-    console.debug('[Prefs] Saved to backend', { saved });
+    console.debug('[Prefs] Saved to backend', { uid: user.uid, saved });
     // Ensure local state mirrors what backend stored (guards against stale UI)
     if (saved.language) {
       setLanguage(saved.language);

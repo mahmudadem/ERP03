@@ -21,13 +21,96 @@ class DeleteVoucherLedgerUseCase {
 }
 exports.DeleteVoucherLedgerUseCase = DeleteVoucherLedgerUseCase;
 class GetTrialBalanceUseCase {
-    constructor(ledgerRepo, permissionChecker) {
+    constructor(ledgerRepo, accountRepo, permissionChecker) {
         this.ledgerRepo = ledgerRepo;
+        this.accountRepo = accountRepo;
         this.permissionChecker = permissionChecker;
     }
-    async execute(companyId, userId, asOfDate) {
+    async execute(companyId, userId, asOfDate, includeZeroBalance = false) {
+        const effectiveDate = asOfDate || new Date().toISOString().split('T')[0];
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.trialBalance.view');
-        return this.ledgerRepo.getTrialBalance(companyId, asOfDate);
+        const [rawTB, accounts] = await Promise.all([
+            this.ledgerRepo.getTrialBalance(companyId, effectiveDate),
+            this.accountRepo.list(companyId)
+        ]);
+        // Build account lookup
+        const accountMap = new Map(accounts.map((a) => [a.id, a]));
+        // Build balance lookup from ledger
+        const balanceMap = new Map();
+        rawTB.forEach((row) => {
+            balanceMap.set(row.accountId, { debit: row.debit || 0, credit: row.credit || 0 });
+        });
+        // Enrich: join ledger data with COA — build ALL lines first
+        const allLines = [];
+        for (const account of accounts) {
+            const bal = balanceMap.get(account.id) || { debit: 0, credit: 0 };
+            const totalDebit = bal.debit;
+            const totalCredit = bal.credit;
+            const closingDebit = Math.max(0, totalDebit - totalCredit);
+            const closingCredit = Math.max(0, totalCredit - totalDebit);
+            // Legacy netBalance: positive-by-nature
+            const classification = account.classification || 'EXPENSE';
+            let netBalance;
+            if (['ASSET', 'EXPENSE'].includes(classification)) {
+                netBalance = totalDebit - totalCredit;
+            }
+            else {
+                netBalance = totalCredit - totalDebit;
+            }
+            allLines.push({
+                accountId: account.id,
+                code: account.userCode || account.code || '',
+                name: account.name || '',
+                classification,
+                totalDebit,
+                totalCredit,
+                closingDebit,
+                closingCredit,
+                netBalance,
+                parentId: account.parentId || null
+            });
+        }
+        // Filter zero-balance accounts while preserving hierarchy ancestors
+        let lines;
+        if (includeZeroBalance) {
+            lines = allLines;
+        }
+        else {
+            // Pass 1: find accounts with non-zero closing balances
+            const needed = new Set();
+            for (const line of allLines) {
+                if (line.closingDebit !== 0 || line.closingCredit !== 0) {
+                    needed.add(line.accountId);
+                    // Walk up the parentId chain to include all ancestors
+                    let pid = line.parentId;
+                    while (pid && !needed.has(pid)) {
+                        needed.add(pid);
+                        const parentAccount = accountMap.get(pid);
+                        pid = (parentAccount === null || parentAccount === void 0 ? void 0 : parentAccount.parentId) || null;
+                    }
+                }
+            }
+            // Pass 2: keep only needed accounts
+            lines = allLines.filter(l => needed.has(l.accountId));
+        }
+        // Sort by account code
+        lines.sort((a, b) => a.code.localeCompare(b.code));
+        // Compute meta
+        const totalClosingDebit = lines.reduce((sum, r) => sum + r.closingDebit, 0);
+        const totalClosingCredit = lines.reduce((sum, r) => sum + r.closingCredit, 0);
+        const difference = totalClosingDebit - totalClosingCredit;
+        return {
+            data: lines,
+            meta: {
+                generatedAt: new Date().toISOString(),
+                asOfDate: effectiveDate,
+                includeZeroBalance,
+                totalClosingDebit,
+                totalClosingCredit,
+                difference,
+                isBalanced: Math.abs(difference) < 0.005
+            }
+        };
     }
 }
 exports.GetTrialBalanceUseCase = GetTrialBalanceUseCase;

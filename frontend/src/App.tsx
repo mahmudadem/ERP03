@@ -31,8 +31,8 @@ import { UserPreferencesProvider } from './context/UserPreferencesContext';
 const App: React.FC = () => {
   return (
     <QueryProvider>
-      <UserPreferencesProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <UserPreferencesProvider>
           <CompanyAccessProvider>
             <AxiosInitializer>
               <CompanySettingsProvider>
@@ -42,8 +42,8 @@ const App: React.FC = () => {
               </CompanySettingsProvider>
             </AxiosInitializer>
           </CompanyAccessProvider>
-        </AuthProvider>
-      </UserPreferencesProvider>
+        </UserPreferencesProvider>
+      </AuthProvider>
     </QueryProvider>
   );
 };

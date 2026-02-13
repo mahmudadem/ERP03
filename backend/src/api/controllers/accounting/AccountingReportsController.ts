@@ -1,7 +1,7 @@
 
 import { Request, Response, NextFunction } from 'express';
-import { GetTrialBalanceUseCase, GetGeneralLedgerUseCase } from '../../../application/accounting/use-cases/ReportingUseCases';
-import { GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
+import { GetGeneralLedgerUseCase } from '../../../application/accounting/use-cases/ReportingUseCases';
+import { GetTrialBalanceUseCase, GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { GetCashFlowStatementUseCase } from '../../../application/accounting/use-cases/CashFlowUseCases';
 import { AgingReportUseCase } from '../../../application/accounting/use-cases/AgingReportUseCase';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
@@ -26,19 +26,23 @@ export class AccountingReportsController {
       const userId = (req as any).user?.uid;
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
+
+      const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
+      const includeZeroBalance = req.query.includeZeroBalance === 'true';
+
       const useCase = new GetTrialBalanceUseCase(
+        diContainer.ledgerRepository,
         diContainer.accountRepository,
-        diContainer.voucherRepository,
         permissionChecker
       );
-      
-      const report = await useCase.execute(companyId, userId);
+
+      const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance);
 
       (res as any).status(200).json({
         success: true,
-        data: report,
-        meta: {
-          generatedAt: new Date().toISOString()
+        data: {
+          rows: result.data,
+          meta: result.meta
         }
       });
     } catch (error) {

@@ -18,10 +18,24 @@ export interface TrialBalanceLine {
   accountId: string;
   code: string;
   name: string;
-  type: string;
+  classification: string;
   totalDebit: number;
   totalCredit: number;
+  closingDebit: number;
+  closingCredit: number;
+  /** @deprecated Use closingDebit/closingCredit instead */
   netBalance: number;
+  parentId: string | null;
+}
+
+export interface TrialBalanceMeta {
+  generatedAt: string;
+  asOfDate: string;
+  includeZeroBalance: boolean;
+  totalClosingDebit: number;
+  totalClosingCredit: number;
+  difference: number;
+  isBalanced: boolean;
 }
 
 export interface GeneralLedgerEntry {
@@ -325,9 +339,19 @@ export const accountingApi = {
   },
 
   // --- REPORTS ---
-  getTrialBalance: (): Promise<TrialBalanceLine[]> => {
-    return client.get('/tenant/accounting/reports/trial-balance');
+  getTrialBalance: async (params?: { asOfDate?: string; includeZeroBalance?: boolean }): Promise<{ data: TrialBalanceLine[]; meta: TrialBalanceMeta }> => {
+    const qp = new URLSearchParams();
+    if (params?.asOfDate) qp.append('asOfDate', params.asOfDate);
+    if (params?.includeZeroBalance) qp.append('includeZeroBalance', 'true');
+    const qs = qp.toString();
+    // Interceptor unwraps { success, data: { rows, meta } } → { rows, meta }
+    const result: any = await client.get(`/tenant/accounting/reports/trial-balance${qs ? `?${qs}` : ''}`);
+    return {
+      data: result?.rows ?? [],
+      meta: result?.meta ?? null
+    };
   },
+
 
   getProfitAndLoss: (fromDate: string, toDate: string): Promise<any> => {
     const params = new URLSearchParams();

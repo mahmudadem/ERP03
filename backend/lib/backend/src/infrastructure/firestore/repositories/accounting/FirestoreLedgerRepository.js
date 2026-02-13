@@ -156,7 +156,7 @@ class FirestoreLedgerRepository {
     }
     async getTrialBalance(companyId, asOfDate) {
         try {
-            const end = toTimestamp(asOfDate);
+            const end = toTimestampBoundary(asOfDate, true);
             const snap = await this.col(companyId)
                 .where('date', '<=', end)
                 .get();

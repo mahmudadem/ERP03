@@ -23,15 +23,141 @@ export class DeleteVoucherLedgerUseCase {
   }
 }
 
+/**
+ * TrialBalanceLine — Phase 1 DTO for the official Trial Balance report.
+ * Data source: Posted General Ledger only.
+ */
+export interface TrialBalanceLine {
+  accountId: string;
+  code: string;
+  name: string;
+  classification: string;
+  totalDebit: number;
+  totalCredit: number;
+  closingDebit: number;
+  closingCredit: number;
+  /** @deprecated Phase 2 — use closingDebit/closingCredit instead. Positive-by-nature for backward compat. */
+  netBalance: number;
+  parentId: string | null;
+}
+
+export interface TrialBalanceMeta {
+  generatedAt: string;
+  asOfDate: string;
+  includeZeroBalance: boolean;
+  totalClosingDebit: number;
+  totalClosingCredit: number;
+  difference: number;
+  isBalanced: boolean;
+}
+
 export class GetTrialBalanceUseCase {
   constructor(
     private ledgerRepo: ILedgerRepository,
+    private accountRepo: IAccountRepository,
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string, userId: string, asOfDate: string): Promise<TrialBalanceRow[]> {
+  async execute(
+    companyId: string,
+    userId: string,
+    asOfDate: string,
+    includeZeroBalance: boolean = false
+  ): Promise<{ data: TrialBalanceLine[]; meta: TrialBalanceMeta }> {
+    const effectiveDate = asOfDate || new Date().toISOString().split('T')[0];
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.trialBalance.view');
-    return this.ledgerRepo.getTrialBalance(companyId, asOfDate);
+
+    const [rawTB, accounts] = await Promise.all([
+      this.ledgerRepo.getTrialBalance(companyId, effectiveDate),
+      this.accountRepo.list(companyId)
+    ]);
+
+    // Build account lookup
+    const accountMap = new Map(accounts.map((a: any) => [a.id, a]));
+
+    // Build balance lookup from ledger
+    const balanceMap = new Map<string, { debit: number; credit: number }>();
+    rawTB.forEach((row) => {
+      balanceMap.set(row.accountId, { debit: row.debit || 0, credit: row.credit || 0 });
+    });
+
+    // Enrich: join ledger data with COA — build ALL lines first
+    const allLines: TrialBalanceLine[] = [];
+
+    for (const account of accounts) {
+      const bal = balanceMap.get(account.id) || { debit: 0, credit: 0 };
+      const totalDebit = bal.debit;
+      const totalCredit = bal.credit;
+
+      const closingDebit = Math.max(0, totalDebit - totalCredit);
+      const closingCredit = Math.max(0, totalCredit - totalDebit);
+
+      // Legacy netBalance: positive-by-nature
+      const classification = account.classification || 'EXPENSE';
+      let netBalance: number;
+      if (['ASSET', 'EXPENSE'].includes(classification)) {
+        netBalance = totalDebit - totalCredit;
+      } else {
+        netBalance = totalCredit - totalDebit;
+      }
+
+      allLines.push({
+        accountId: account.id,
+        code: account.userCode || (account as any).code || '',
+        name: account.name || '',
+        classification,
+        totalDebit,
+        totalCredit,
+        closingDebit,
+        closingCredit,
+        netBalance,
+        parentId: account.parentId || null
+      });
+    }
+
+    // Filter zero-balance accounts while preserving hierarchy ancestors
+    let lines: TrialBalanceLine[];
+    if (includeZeroBalance) {
+      lines = allLines;
+    } else {
+      // Pass 1: find accounts with non-zero closing balances
+      const needed = new Set<string>();
+      for (const line of allLines) {
+        if (line.closingDebit !== 0 || line.closingCredit !== 0) {
+          needed.add(line.accountId);
+          // Walk up the parentId chain to include all ancestors
+          let pid = line.parentId;
+          while (pid && !needed.has(pid)) {
+            needed.add(pid);
+            const parentAccount = accountMap.get(pid);
+            pid = parentAccount?.parentId || null;
+          }
+        }
+      }
+      // Pass 2: keep only needed accounts
+      lines = allLines.filter(l => needed.has(l.accountId));
+    }
+
+    // Sort by account code
+    lines.sort((a, b) => a.code.localeCompare(b.code));
+
+    // Compute meta
+    const totalClosingDebit = lines.reduce((sum, r) => sum + r.closingDebit, 0);
+    const totalClosingCredit = lines.reduce((sum, r) => sum + r.closingCredit, 0);
+    const difference = totalClosingDebit - totalClosingCredit;
+
+    return {
+      data: lines,
+      meta: {
+        generatedAt: new Date().toISOString(),
+        asOfDate: effectiveDate,
+        includeZeroBalance,
+        totalClosingDebit,
+        totalClosingCredit,
+        difference,
+        isBalanced: Math.abs(difference) < 0.005
+      }
+    };
   }
 }
 

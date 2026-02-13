@@ -169,7 +169,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
   async getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]> {
     try {
-      const end = toTimestamp(asOfDate);
+      const end = toTimestampBoundary(asOfDate, true);
       const snap = await this.col(companyId)
         .where('date', '<=', end)
         .get();

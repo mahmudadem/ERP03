@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { accountingApi, AccountStatementData } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { AccountSelector } from '../components/shared/AccountSelector';
@@ -16,10 +16,12 @@ const currencyFormat = (value: number, currency?: string) => {
 
 const AccountStatementPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { settings } = useCompanySettings();
   const { t } = useTranslation('accounting');
 
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  // Support drill-down from Trial Balance via ?accountId=xxx
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(() => searchParams.get('accountId') || '');
   const [fromDate, setFromDate] = useState<string>(() => {
     const now = new Date();
     return `${now.getFullYear()}-01-01`;
