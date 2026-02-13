@@ -25,33 +25,33 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">User Profile & Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('profile.title', 'User Profile & Settings')}</h1>
       
       <div className="space-y-6">
         {/* Personal Information */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Personal Information</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Details about your account and company access.</p>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">{t('profile.personalTitle', 'Personal Information')}</h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">{t('profile.personalDesc', 'Details about your account and company access.')}</p>
           </div>
           <div className="px-4 py-5 sm:px-6">
             <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
               <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Full name</dt>
+                <dt className="text-sm font-medium text-gray-500">{t('profile.fullName', 'Full name')}</dt>
                 <dd className="mt-1 text-sm text-gray-900 font-medium">{user?.displayName || 'N/A'}</dd>
               </div>
               <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Email address</dt>
+                <dt className="text-sm font-medium text-gray-500">{t('profile.email', 'Email address')}</dt>
                 <dd className="mt-1 text-sm text-gray-900 font-medium">{user?.email}</dd>
               </div>
               <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">User ID</dt>
+                <dt className="text-sm font-medium text-gray-500">{t('profile.userId', 'User ID')}</dt>
                 <dd className="mt-1 text-xs text-gray-400 font-mono bg-gray-50 px-2 py-1 rounded inline-block">
                   {user?.uid}
                 </dd>
               </div>
               <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Current Company</dt>
+                <dt className="text-sm font-medium text-gray-500">{t('profile.company', 'Current Company')}</dt>
                 <dd className="mt-1 text-sm text-gray-900 font-medium">
                   {company?.name || 'No company selected'}
                 </dd>
