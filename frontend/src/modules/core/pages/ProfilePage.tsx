@@ -136,8 +136,12 @@ const ProfilePage: React.FC = () => {
                     await savePreferences();
                     setSaveMsg(t('profile.saved', 'Preferences saved.'));
                     setSaveStatus('success');
-                  } catch {
-                    setSaveMsg(t('profile.saveError', 'Could not save preferences.'));
+                  } catch (err: any) {
+                    const apiMessage =
+                      err?.response?.data?.error?.message ||
+                      err?.message ||
+                      t('profile.saveError', 'Could not save preferences.');
+                    setSaveMsg(apiMessage);
                     setSaveStatus('error');
                   } finally {
                     setSaving(false);
