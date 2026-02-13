@@ -12,12 +12,13 @@ export interface UserPreferencesDTO {
 
 export const userPreferencesApi = {
   async get(): Promise<UserPreferencesDTO> {
-    const { data } = await apiClient.get('/user/preferences');
-    return data.data as UserPreferencesDTO;
+    const resp = await apiClient.get('/user/preferences');
+    const prefs = (resp as any)?.data ?? resp;
+    return prefs as UserPreferencesDTO;
   },
   async upsert(payload: Partial<UserPreferencesDTO>): Promise<UserPreferencesDTO> {
-    const { data } = await apiClient.post('/user/preferences', payload);
-    return data.data as UserPreferencesDTO;
+    const resp = await apiClient.post('/user/preferences', payload);
+    const prefs = (resp as any)?.data ?? resp;
+    return prefs as UserPreferencesDTO;
   }
 };
-
