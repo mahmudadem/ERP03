@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { IVoucherSequenceRepository } from '../../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { VoucherSequence } from '../../../../domain/accounting/entities/VoucherSequence';
 
@@ -49,7 +50,7 @@ export class FirestoreVoucherSequenceRepository implements IVoucherSequenceRepos
         year: year || null,
         lastNumber: next,
         format: seq.format || null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       }, { merge: true });
       return formatNumber(prefix, next, year, seq.format);
     });
@@ -78,7 +79,7 @@ export class FirestoreVoucherSequenceRepository implements IVoucherSequenceRepos
       year: year || null,
       lastNumber: Math.max(0, nextNumber - 1),
       format: format || null,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
   }
 

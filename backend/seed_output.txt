@@ -1,0 +1,120 @@
+﻿
+📦 Company: cmp_mkvfwfm5_h1t3vi
+──────────────────────────────────────────────────────────────────────
+📋 Found 38 accounts | Base currency: SYP
+
+  POSTING accounts by classification:
+    ASSET: 7
+        10101      Cash – Head Office             [USD]
+        10102      Cash – Retail Branch           [USD]
+        10201      cash try1                      [TRY]
+        10202      Bank - LC Payments             [TRY]
+        10301      cash syp1                      [SYP]
+        10302      In-Transit Inventory           [SYP]
+        10401      Customers Receivable           [SYP]
+    LIABILITY: 4
+        20101      Local Suppliers                [SYP]
+        20102      International Suppliers        [SYP]
+        20201      VAT Payable                    [SYP]
+        20202      Import Duties                  [SYP]
+    EQUITY: 3
+        30101      Paid-in Capital                [SYP]
+        30102      Owner Drawings                 [SYP]
+        30201      Accumulated Profit             [SYP]
+    REVENUE: 3
+        40101      Domestic Wholesale             [SYP]
+        40102      Export Sales                   [SYP]
+        40201      Flagship Store                 [SYP]
+    EXPENSE: 4
+        50101      Purchases                      [SYP]
+        50102      Freight Inward                 [SYP]
+        50201      Rent & Utilities               [SYP]
+        50202      Sales & Marketing              [SYP]
+
+🎯  Selected accounts for seeding:
+    Cash-1:      10101      Cash – Head Office           [USD] rate=13000
+    Cash-2:      10202      Bank - LC Payments           [TRY] rate=400
+    A/R:         10401      Customers Receivable         [SYP] rate=1
+    A/P:         20102      International Suppliers      [SYP] rate=1
+    Equity:      30102      Owner Drawings               [SYP] rate=1
+    Revenue:     40102      Export Sales                 [SYP] rate=1
+    Expense:     50202      Sales & Marketing            [SYP] rate=1
+
+  ✅ SEED-001 2026-02-15  Dr 100,000 SYP (7.69 USD) / Cr 100,000 SYP
+     SEED: Owner capital investment
+  ✅ SEED-002 2026-02-16  Dr 5,000 SYP / Cr 5,000 SYP
+     SEED: Office supplies on credit
+  ✅ SEED-003 2026-02-17  Dr 20,000 SYP (1.54 USD) / Cr 20,000 SYP
+     SEED: Cash sale
+  ✅ SEED-004 2026-02-18  Dr 3,000 SYP / Cr 3,000 SYP (0.23 USD)
+     SEED: Pay supplier
+  ✅ SEED-005 2026-02-19  Dr 10,000 SYP (25 TRY) / Cr 10,000 SYP (0.77 USD)
+     SEED: Internal cash transfer
+  ✅ SEED-006 2026-02-20  Dr 15,000 SYP / Cr 15,000 SYP
+     SEED: Invoice to client Alpha
+  ✅ SEED-007 2026-02-21  Dr 8,000 SYP (0.62 USD) / Cr 8,000 SYP
+     SEED: Collection from client Alpha
+  ✅ SEED-008 2026-02-22  Dr 2,500 SYP / Cr 2,500 SYP (0.19 USD)
+     SEED: Office rent
+  ✅ SEED-009 2026-02-25  Dr 12,000 SYP (30 TRY) / Cr 12,000 SYP
+     SEED: Cash sale to client Beta
+  📝 SEED-010 2026-02-28  Dr 1,000 SYP / Cr 1,000 SYP
+     SEED: DRAFT — NOT POSTED
+
+══════════════════════════════════════════════════════════════════════
+📊  EXPECTED VALUES (All amounts in base currency: SYP)
+══════════════════════════════════════════════════════════════════════
+  Posted: 9   |   Draft: 1
+──────────────────────────────────────────────────────────────────────
+
+  PER-ACCOUNT LEDGER TOTALS (added by this seed):
+  ------------------------------------------------------------------
+  Code       Name                       Ccy            Debit         Credit
+  ------------------------------------------------------------------
+  10101      Cash – Head Office         USD       128,000.00      15,500.00
+  10202      Bank - LC Payments         TRY        22,000.00              -
+  10401      Customers Receivable       SYP        15,000.00       8,000.00
+  20102      International Suppliers    SYP         3,000.00       5,000.00
+  30102      Owner Drawings             SYP                -     100,000.00
+  40102      Export Sales               SYP                -      47,000.00
+  50202      Sales & Marketing          SYP         7,500.00              -
+  ------------------------------------------------------------------
+  GRAND TOTAL                                   175,500.00     175,500.00
+  BALANCED?                                 ✅ YES
+
+  EXPECTED TRIAL BALANCE (closing columns):
+  ------------------------------------------------------------------
+  Code       Account                           Close D        Close C
+  ------------------------------------------------------------------
+  10101      Cash – Head Office             112,500.00              -
+  10202      Bank - LC Payments              22,000.00              -
+  10401      Customers Receivable             7,000.00              -
+  20102      International Suppliers                 -       2,000.00
+  30102      Owner Drawings                          -     100,000.00
+  40102      Export Sales                            -      47,000.00
+  50202      Sales & Marketing                7,500.00              -
+  ------------------------------------------------------------------
+  TB GRAND TOTAL                           149,000.00     149,000.00
+  BALANCED?                            ✅ YES
+
+  EXPECTED BALANCE SHEET:
+  --------------------------------------------------
+    Total Assets:               141,500.00 SYP
+    Total Liabilities:            2,000.00 SYP
+    Equity (excl RE):           100,000.00 SYP
+    Revenue (net):               47,000.00 SYP
+    Expenses (net):               7,500.00 SYP
+    Retained Earnings:           39,500.00 SYP
+    Total Equity + RE:          139,500.00 SYP
+    L + E + RE:                 141,500.00 SYP
+    A = L+E+RE?             ✅ YES
+  --------------------------------------------------
+
+══════════════════════════════════════════════════════════════════════
+⚠️  NOTE: These values ADD to any existing data in the company.
+    For clean validation, clear existing vouchers/ledger first,
+    or compare the DELTA from before vs. after.
+══════════════════════════════════════════════════════════════════════
+
+✅ Seeding complete!
+

@@ -27,7 +27,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
 
   return (
     <header className={clsx(
-      "h-16 flex items-center justify-between px-4 sticky top-0 z-30 transition-all duration-300",
+      "h-16 flex items-center justify-between px-4 sticky top-0 z-30 transition-all duration-300 print:hidden",
       "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm"
     )}>
       <div className="flex items-center gap-4">

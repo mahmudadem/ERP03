@@ -59,3 +59,30 @@ html[dir="rtl"] .ltr {
 .window-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-text-muted);
 }
+
+/* ── Print / PDF ─────────────────────────────────────── */
+@media print {
+  /* Allow content to flow across pages */
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Remove fixed/sticky positioning */
+  .sticky {
+    position: static !important;
+  }
+
+  /* Page-break rules for tables */
+  tr {
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;   /* Repeat thead on every printed page */
+  }
+
+  /* Remove box-shadows */
+  * {
+    box-shadow: none !important;
+  }
+}

@@ -97,7 +97,7 @@ export const AppShell: React.FC = () => {
         {/* Main Content Area */}
         <div 
           className={clsx(
-            "flex-1 flex flex-col h-screen transition-all duration-300"
+            "flex-1 flex flex-col h-screen transition-all duration-300 print:!ml-0 print:!mr-0 print:!h-auto"
           )}
           style={
             isDesktop
@@ -109,8 +109,8 @@ export const AppShell: React.FC = () => {
         >
           <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-          <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)]">
-            <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll">
+          <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
+            <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll print:!h-auto print:!overflow-visible">
               <Outlet />
             </div>
           </main>

@@ -1,28 +1,37 @@
+
+process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
+process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
+
 import * as admin from 'firebase-admin';
 
-if (admin.apps.length === 0) {
-    admin.initializeApp({
-        projectId: 'erp-03',
-    });
+if (!admin.apps.length) {
+  admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT });
 }
+const db = admin.firestore();
 
-// Connect to emulators
-process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
-process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+async function main() {
+  console.log('Listing companies...');
+  const snap = await db.collection('companies').get();
+  
+  if (snap.empty) {
+    console.log('No companies found.');
+    return;
+  }
 
-async function listCompanies() {
-    console.log('Listing companies...');
-    const db = admin.firestore();
-    const snapshot = await db.collection('companies').get();
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    console.log(`\nCompany ID: ${doc.id}`);
+    console.log(`Name: ${data.name || 'Unnamed'}`);
     
-    if (snapshot.empty) {
-        console.log('No companies found.');
-        return;
+    // Check accounts
+    const accSnap = await db.collection('companies').doc(doc.id)
+      .collection('accounting').doc('Data').collection('accounts').limit(5).get();
+      
+    console.log(`Accounts found: ${accSnap.size > 0 ? 'YES' : 'NO'}`);
+    if (accSnap.size > 0) {
+        console.log('Sample accounts:', accSnap.docs.map(d => d.data().name).join(', '));
     }
-
-    snapshot.forEach(doc => {
-        console.log(`- ID: ${doc.id}, Name: ${doc.data().name}`);
-    });
+  }
 }
 
-listCompanies().then(() => process.exit());
+main().catch(console.error);

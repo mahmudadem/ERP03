@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { format, startOfYear, endOfYear } from 'date-fns';
 import { accountingApi, AccountStatementData } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
 import { AccountSelector } from '../components/shared/AccountSelector';
@@ -8,6 +9,14 @@ import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AlertTriangle, ArrowUpRight, Filter, Printer, RefreshCw, Search } from 'lucide-react';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
+import { useWindowManager } from '../../../context/WindowManagerContext';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
+import { errorHandler } from '../../../services/errorHandler';
+import { VoucherFormConfig } from '../voucher-wizard/types';
+import { VoucherEntryModal } from '../components/VoucherEntryModal';
+import { useVoucherActions } from '../../../hooks/useVoucherActions';
+import { AccountsProvider } from '../../../context/AccountsContext';
 
 const currencyFormat = (value: number, currency?: string) => {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -19,14 +28,36 @@ const AccountStatementPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { settings } = useCompanySettings();
   const { t } = useTranslation('accounting');
+  const { openWindow } = useWindowManager();
+  const { uiMode } = useUserPreferences();
+  const { voucherTypes } = useVoucherTypes();
+  const { 
+    save: saveVoucher, 
+    approve, 
+    reject, 
+    confirmCustody, 
+    post, 
+    cancel: cancelVoucher, 
+    reverse, 
+    print: printVoucher 
+  } = useVoucherActions();
+  
+  const isWindowsMode = uiMode === 'windows';
+
+  // Modal State for Web Mode
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<VoucherFormConfig | null>(null);
+  const [editingVoucher, setEditingVoucher] = useState<any>(null);
 
   // Support drill-down from Trial Balance via ?accountId=xxx
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => searchParams.get('accountId') || '');
   const [fromDate, setFromDate] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-01-01`;
+    // Default to start of current year to show more context
+    return format(startOfYear(new Date()), 'yyyy-MM-dd');
   });
-  const [toDate, setToDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState<string>(() => {
+    return format(endOfYear(new Date()), 'yyyy-MM-dd');
+  });
 
   const [data, setData] = useState<AccountStatementData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +69,11 @@ const AccountStatementPage: React.FC = () => {
   const showBaseColumns = data && baseCurrency && accountCurrency && baseCurrency !== accountCurrency;
   const columnCount = showBaseColumns ? 10 : 7;
 
+  const fetchReport = async () => {
+    if (!selectedAccountId) {
+      setError(t('accountStatement.selectPrompt'));
+      return;
+    }
   const fetchReport = async () => {
     if (!selectedAccountId) {
       setError(t('accountStatement.selectPrompt'));
@@ -84,12 +120,67 @@ const AccountStatementPage: React.FC = () => {
     window.print();
   };
 
-  const handleOpenVoucher = (voucherId: string) => {
-    navigate(`/accounting/vouchers/${voucherId}`);
+  const handleOpenVoucher = async (voucherId: string) => {
+    try {
+      const fullVoucher = await accountingApi.getVoucher(voucherId);
+      
+      // Find form definition
+      let formDefinition = fullVoucher.formId 
+        ? voucherTypes.find(t => t.id === fullVoucher.formId)
+        : voucherTypes.find(t => {
+            const typeKeywords: Record<string, string[]> = {
+              'journal_entry': ['journal', 'journal_entry'],
+              'payment': ['payment'],
+              'receipt': ['receipt'],
+              'opening_balance': ['opening', 'balance']
+            };
+            
+            const keywords = typeKeywords[fullVoucher.type] || [];
+            const formIdLower = (t.id || '').toLowerCase();
+            const formNameLower = (t.name || '').toLowerCase();
+            const formCodeLower = (t.code || '').toLowerCase();
+            
+            return keywords.some(kw => 
+              formIdLower.includes(kw) || 
+              formNameLower.includes(kw) ||
+              formCodeLower.includes(kw)
+            );
+        });
+
+      if (formDefinition) {
+        if (isWindowsMode) {
+          openWindow(formDefinition, fullVoucher);
+        } else {
+          setModalType(formDefinition);
+          setEditingVoucher(fullVoucher);
+          setIsModalOpen(true);
+        }
+      } else {
+        errorHandler.showError({
+          code: 'VOUCH_NOT_FOUND',
+          message: `Cannot find form definition for voucher type: ${fullVoucher.type}`,
+          severity: 'ERROR'
+        } as any);
+      }
+    } catch (error) {
+      console.error('Failed to open voucher:', error);
+      errorHandler.showError({
+        code: 'FETCH_ERROR',
+        message: 'Failed to load voucher details',
+        severity: 'ERROR'
+      } as any);
+    }
+  };
+
+  const handleSaveWeb = async (data: any) => {
+    await saveVoucher('modal', data);
+    fetchReport();
+    setIsModalOpen(false);
   };
 
   return (
-    <div className="space-y-6 pb-20 print:pb-0">
+    <AccountsProvider>
+      <div className="space-y-6 pb-20 print:pb-0">
       <div className="flex items-start justify-between flex-wrap gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('accountStatement.title')}</h1>
@@ -241,6 +332,7 @@ const AccountStatementPage: React.FC = () => {
             <table className="min-w-full divide-y divide-[var(--color-border)]">
               <thead className="bg-[var(--color-bg-tertiary)]">
                 <tr>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-12">#</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-28">{t('accountStatement.date')}</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider w-32">{t('accountStatement.voucher')}</th>
                   <th className="px-4 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('accountStatement.description')}</th>
@@ -261,6 +353,7 @@ const AccountStatementPage: React.FC = () => {
               </thead>
               <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
                 <tr className="bg-[var(--color-bg-tertiary)] font-semibold">
+                  <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]"></td>
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">—</td>
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">{t('accountStatement.opening')}</td>
                   <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)]">{t('accountStatement.openingBalance', { currency: accountCurrency || baseCurrency })}</td>
@@ -292,8 +385,9 @@ const AccountStatementPage: React.FC = () => {
                     <td colSpan={columnCount} className="px-4 py-8 text-center text-[var(--color-text-muted)]">{t('accountStatement.noEntries')}</td>
                   </tr>
                 ) : (
-                  visibleEntries.map((entry) => (
+                  visibleEntries.map((entry, index) => (
                     <tr key={entry.id} className="hover:bg-[var(--color-bg-tertiary)] transition-colors">
+                      <td className="px-4 py-2 text-sm text-[var(--color-text-muted)] font-mono">{index + 1}</td>
                       <td className="px-4 py-2 text-sm text-[var(--color-text-secondary)] whitespace-nowrap">
                         {formatCompanyDate(entry.date, settings)}
                       </td>
@@ -380,7 +474,27 @@ const AccountStatementPage: React.FC = () => {
           </div>
         )
       )}
-    </div>
+      
+      {/* Web View Modal */}
+      {modalType && (
+        <VoucherEntryModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          voucherType={modalType}
+          uiMode={uiMode}
+          onSave={handleSaveWeb}
+          initialData={editingVoucher}
+          onApprove={async (id) => { await approve(id); fetchReport(); }}
+          onReject={async (id) => { await reject(id); fetchReport(); }}
+          onConfirm={async (id) => { await confirmCustody(id); fetchReport(); }}
+          onPost={async (id) => { await post(id); fetchReport(); }}
+          onCancel={async (id) => { await cancelVoucher(id); fetchReport(); }}
+          onReverse={async (id) => { await reverse(id); fetchReport(); }}
+          onPrint={(id) => printVoucher(id)}
+        />
+      )}
+      </div>
+    </AccountsProvider>
   );
 };
 

@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 z-40 transition-all duration-300 ease-out flex flex-col",
+        "fixed inset-y-0 z-40 transition-all duration-300 ease-out flex flex-col print:hidden",
         "bg-[var(--color-bg-primary)] border-[var(--color-border)]",
         isOpen ? 'w-64' : 'w-24',
         isRtl ? 'right-0 border-l' : 'left-0 border-r'

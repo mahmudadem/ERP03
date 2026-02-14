@@ -229,7 +229,7 @@ const TrialBalancePage: React.FC = () => {
   const fmtNum = (val: number) => val !== 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] pb-4 print:pb-0 print:h-auto print:block">
+    <div className="flex flex-col h-[calc(100vh-6rem)] pb-4 print:!pb-0 print:!h-auto print:!block">
       {/* Page Header */}
       <div className="flex-none flex justify-between items-center mb-4 print:hidden">
         <div>
@@ -355,10 +355,10 @@ const TrialBalancePage: React.FC = () => {
             )}
 
             {/* Scrollable table */}
-            <div className="flex-1 min-h-0 overflow-auto relative print:overflow-visible">
+            <div className="flex-1 min-h-0 overflow-auto relative print:!overflow-visible print:!min-h-full print:!flex-none">
               <table className="min-w-full relative">
                 {/* Sticky Header */}
-                <thead className="sticky top-0 z-20">
+                <thead className="sticky top-0 z-20 print:!static">
                   <tr className="bg-gradient-to-b from-gray-50 to-gray-100 border-b-2 border-gray-200">
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-28">{t('trialBalance.code')}</th>
                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t('trialBalance.accountName')}</th>
@@ -484,7 +484,7 @@ const TrialBalancePage: React.FC = () => {
 
                 {/* Sticky Footer */}
                 {meta && data.length > 0 && (
-                  <tfoot className="sticky bottom-0 z-20">
+                  <tfoot className="sticky bottom-0 z-20 print:!static">
                     <tr>
                       <td colSpan={4} className="p-0">
                         <div className="h-[2px] bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300" />
