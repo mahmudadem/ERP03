@@ -13,8 +13,9 @@ interface Props {
   onDateRangeChange: (range: DateRange) => void;
   filters: VoucherFilters;
   onChange: (partial: Partial<VoucherFilters>) => void;
+  onClear?: () => void;
   hideTypeFilter?: boolean;
-  voucherTypes?: Array<{ id: string; name: string; code?: string }>;
+  voucherTypes?: Array<{ id: string; name: string; code?: string; baseType?: string }>;
 }
 
 export const VoucherFiltersBar: React.FC<Props> = ({ 
@@ -22,6 +23,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   onDateRangeChange, 
   filters, 
   onChange, 
+  onClear,
   hideTypeFilter, 
   voucherTypes = [] 
 }) => {
@@ -29,6 +31,13 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   // Local state for buffering changes
   const [localFilters, setLocalFilters] = React.useState<VoucherFilters>(filters);
   const [localDateRange, setLocalDateRange] = React.useState<DateRange>(dateRange);
+
+  // Derive unique categories from voucherTypes plus standard types
+  const categories = React.useMemo(() => {
+    const staticTypes = ['journal_entry', 'payment_voucher', 'receipt_voucher', 'reversal'];
+    const dynamicTypes = voucherTypes.map(vt => vt.baseType).filter(Boolean) as string[];
+    return Array.from(new Set([...staticTypes, ...dynamicTypes]));
+  }, [voucherTypes]);
 
   // Sync with props when they change externally (e.g. from URL)
   React.useEffect(() => {
@@ -54,6 +63,11 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   };
 
   const handleClear = () => {
+    if (onClear) {
+      onClear();
+      return;
+    }
+    
     // Reset filters
     const defaultFilters = {
       status: undefined,
@@ -64,7 +78,6 @@ export const VoucherFiltersBar: React.FC<Props> = ({
     setLocalFilters(defaultFilters);
     
     // Reset date range to the system default (2000-01-01)
-    // We import the logic directly to avoid another round-trip
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -95,24 +108,40 @@ export const VoucherFiltersBar: React.FC<Props> = ({
         />
       </div>
 
-      {/* Type Filter */}
+      {/* Category Filter (Type) */}
       {!hideTypeFilter && (
         <div className="w-full lg:w-40">
           <select
             name="type"
-          className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
-          value={localFilters.type || 'ALL'}
-          onChange={handleInputChange}
-        >
-            <option value="ALL">{t('voucherFilters.allTypes')}</option>
-            {voucherTypes.map(vt => {
-              const value = (vt as any).baseType || vt.code || vt.id;
-              return (
-                <option key={vt.id} value={value}>
-                  {vt.name}
-                </option>
-              );
-            })}
+            className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
+            value={localFilters.type || 'ALL'}
+            onChange={handleInputChange}
+          >
+            <option value="ALL">{t('voucherFilters.allCategories', 'All Categories')}</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>
+                {t(`voucherTypes.${cat}`, cat.replace('_', ' ').toUpperCase())}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Form Filter (FormId) */}
+      {!hideTypeFilter && (
+        <div className="w-full lg:w-40">
+          <select
+            name="formId"
+            className="w-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border)] rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
+            value={localFilters.formId || 'ALL'}
+            onChange={handleInputChange}
+          >
+            <option value="ALL">{t('voucherFilters.allForms', 'All Forms')}</option>
+            {voucherTypes.map(vt => (
+              <option key={vt.id} value={vt.id}>
+                {vt.name}
+              </option>
+            ))}
           </select>
         </div>
       )}

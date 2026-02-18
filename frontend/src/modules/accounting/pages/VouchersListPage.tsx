@@ -4,7 +4,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useVouchersWithCache } from '../../../hooks/useVouchersWithCache';
+import { useVouchersWithCache, VoucherFilters } from '../../../hooks/useVouchersWithCache';
 import { VoucherFiltersBar } from '../components/VoucherFiltersBar';
 import { VoucherTable } from '../components/VoucherTable';
 import { Button } from '../../../components/ui/Button';
@@ -107,10 +107,27 @@ const VouchersListPage: React.FC = () => {
       // Set client-side filters
       // Use the actual found ID (UUID) for formId filter
       if (clientFilters.formId !== targetId) {
-        setClientFilters({ formId: targetId, type: backendType || undefined });
+        // ONLY set formId to fulfill "only filter by formid" request
+        // This avoids conflicts with Type aliases (jv vs journal_entry) on load
+        setClientFilters({ formId: targetId });
       }
     }
   }, [typeFromUrl, isJournalEntry, voucherTypes, typesLoading]);
+
+  // Handle specialized clear that respects the current page baseline
+  const handleClearFilters = () => {
+    const baseline: Partial<VoucherFilters> = {};
+    if (!isJournalEntry && selectedType) {
+      baseline.formId = selectedType;
+    }
+    
+    setClientFilters(baseline);
+    
+    // Reset date range
+    const now = new Date();
+    const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    setDateRange({ from: '2000-01-01', to });
+  };
 
   // Dynamic Title
   const currentVoucherType = voucherTypes.find(vt => vt.id === selectedType);
@@ -394,7 +411,8 @@ const VouchersListPage: React.FC = () => {
             onDateRangeChange={setDateRange}
             filters={clientFilters} 
             onChange={(partial) => setClientFilters(prev => ({ ...prev, ...partial }))} 
-            hideTypeFilter={!isJournalEntry} 
+            onClear={handleClearFilters}
+            hideTypeFilter={false} 
             voucherTypes={voucherTypes}
           />
         </div>

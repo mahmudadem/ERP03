@@ -78,8 +78,10 @@ class FirestoreVoucherRepositoryV2 {
             modularQuery = modularQuery.where('type', '==', filters.type);
         if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
             modularQuery = modularQuery.where('status', '==', filters.status);
-        if (filters === null || filters === void 0 ? void 0 : filters.formId)
-            modularQuery = modularQuery.where('metadata.formId', '==', filters.formId); // Filter by form ID
+        // Support filtering by formId (top-level as of modern toJSON, fallback to metadata for older records)
+        if (filters === null || filters === void 0 ? void 0 : filters.formId) {
+            modularQuery = modularQuery.where('formId', '==', filters.formId);
+        }
         // Fetch OFFSET + LIMIT to support slicing in memory (due to merge logic)
         // This is inefficient for deep paging but necessary for merged collections
         const fetchLimit = offset + limit;
@@ -95,7 +97,7 @@ class FirestoreVoucherRepositoryV2 {
         if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
             legacyQuery = legacyQuery.where('status', '==', filters.status);
         if (filters === null || filters === void 0 ? void 0 : filters.formId)
-            legacyQuery = legacyQuery.where('metadata.formId', '==', filters.formId);
+            legacyQuery = legacyQuery.where('formId', '==', filters.formId);
         const legacySnap = await legacyQuery.limit(fetchLimit).get();
         // Map and merge
         const modularVouchers = modularSnap.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
@@ -146,7 +148,7 @@ class FirestoreVoucherRepositoryV2 {
     }
     async countByFormId(companyId, formId) {
         try {
-            const snapshot = await this.getCollection(companyId).where('metadata.formId', '==', formId).count().get();
+            const snapshot = await this.getCollection(companyId).where('formId', '==', formId).count().get();
             return snapshot.data().count || 0;
         }
         catch (err) {

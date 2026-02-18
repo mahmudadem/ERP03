@@ -390,27 +390,59 @@ export const VoucherTable: React.FC<Props> = ({
       }
     }
     
-    // 3. Check Type (Origin-Aware & Optimized)
-    const typeFilter = filters.types || (externalFilters.type && externalFilters.type !== 'ALL' ? [externalFilters.type] : null);
-    if (typeFilter && typeFilter.length > 0) {
-      const itemType = item.type.toLowerCase();
-      const isDirectMatch = typeFilter.some(t => t.toLowerCase() === itemType);
+    // 3. Check Type & Form (Origin-Aware & Optimized)
+    // 3. Check Category (Type) & Form (Independent Filters)
+    const typeFilters = filters.types || (externalFilters.type && externalFilters.type !== 'ALL' ? [externalFilters.type] : null);
+    const formIdFilter = (externalFilters.formId && externalFilters.formId !== 'ALL') ? externalFilters.formId : null;
+
+    if ((typeFilters && typeFilters.length > 0) || formIdFilter) {
+      const itemType = item.type?.toLowerCase() || '';
+      const itemFormId = item.formId;
       
-      let isReversalMatch = false;
-      if (itemType === 'reversal') {
-         if (item.reversalOfVoucherId) {
-           const parent = voucherMap.get(item.reversalOfVoucherId);
-           if (parent) {
-             isReversalMatch = typeFilter.some(t => t.toLowerCase() === parent.type.toLowerCase());
-           }
-         }
-         if (!isReversalMatch && item.metadata?.originType) {
-            isReversalMatch = typeFilter.some(t => t.toLowerCase() === item.metadata?.originType?.toLowerCase());
-         }
+      // Category Match
+      let categoryMatch = true;
+      if (typeFilters && typeFilters.length > 0) {
+        categoryMatch = typeFilters.some(t => {
+          const ft = t.toLowerCase();
+          return ft === itemType || (ft === 'journal_entry' && itemType === 'jv') || (ft === 'jv' && itemType === 'journal_entry');
+        });
       }
-      
-      if (!isDirectMatch && !isReversalMatch) {
-         return false;
+
+      // Specific Form Match (with inheritance for reversals)
+      let formMatch = true;
+      if (formIdFilter) {
+        const filterVT = voucherTypes.find(vt => vt.id === formIdFilter || (vt as any)._typeId === formIdFilter);
+        const directMatch = itemFormId === formIdFilter || (filterVT && (itemFormId === (filterVT as any)._typeId || itemFormId === filterVT.id));
+        
+        if (directMatch) {
+          formMatch = true;
+        } else if (!itemFormId) {
+          // LEGACY FALLBACK: If item has no formId, match if its type matches the requested form's base type
+          const filterBaseType = (filterVT as any)?.baseType?.toLowerCase();
+          formMatch = !!(filterVT && (itemType === filterBaseType || 
+                       (itemType === 'jv' && filterBaseType === 'journal_entry') ||
+                       (itemType === 'journal_entry' && filterBaseType === 'jv')));
+        } else if (itemType === 'reversal' && item.reversalOfVoucherId) {
+          // Inheritance check for reversals
+          const parent = voucherMap.get(item.reversalOfVoucherId);
+          formMatch = !!(parent && (parent.formId === formIdFilter || (filterVT && (parent.formId === (filterVT as any)._typeId || parent.formId === filterVT.id))));
+        } else {
+          formMatch = false;
+        }
+      }
+
+      // Combine: Both must match if both are provided
+      if (!categoryMatch || !formMatch) {
+         // Reversal fallback: if it's a reversal and its originType matches categoryFilter, allow it 
+         // even if the reversal itself has type 'reversal'
+         let reversalCategoryExemption = false;
+         if (itemType === 'reversal' && typeFilters) {
+            const oType = item.metadata?.originType?.toLowerCase();
+            const oMatch = oType && typeFilters.some(t => t.toLowerCase() === oType);
+            if (oMatch && formMatch) reversalCategoryExemption = true;
+         }
+
+         if (!reversalCategoryExemption) return false;
       }
     }
 

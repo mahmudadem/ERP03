@@ -45,19 +45,25 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
-            const { accountId, from, to } = req.query;
+            const { accountId, from, to, limit, offset } = req.query;
             const useCase = new ReportingUseCases_1.GetGeneralLedgerUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.userRepository, permissionChecker);
-            const report = await useCase.execute(companyId, userId, {
+            const result = await useCase.execute(companyId, userId, {
                 accountId: accountId,
                 fromDate: from,
                 toDate: to,
+                limit: limit ? parseInt(limit, 10) : undefined,
+                offset: offset ? parseInt(offset, 10) : undefined
             });
             res.status(200).json({
                 success: true,
-                data: report,
+                data: result.data,
                 meta: {
                     generatedAt: new Date().toISOString(),
-                    filters: { accountId, from, to }
+                    filters: { accountId, from, to },
+                    pagination: {
+                        totalItems: result.metadata.totalItems,
+                        openingBalance: result.metadata.openingBalance
+                    }
                 }
             });
         }

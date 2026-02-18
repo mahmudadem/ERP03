@@ -317,7 +317,16 @@ class FirestoreLedgerRepository {
             end.setHours(23, 59, 59, 999);
             ref = ref.where('date', '<=', firestore_1.Timestamp.fromDate(end));
         }
-        return ref.orderBy('date', 'asc').get();
+        let query = ref.orderBy('date', 'asc');
+        if (filters.limit) {
+            query = query.limit(filters.limit);
+        }
+        if (filters.offset) {
+            // Note: Firestore doesn't have offset. For real pagination we need startAfter(doc).
+            // For simplicity in this V1 skip logic, we use offset if repo doesn't support cursors yet.
+            query = query.offset(filters.offset);
+        }
+        return query.get();
     }
     async getUnreconciledEntries(companyId, accountId, fromDate, toDate) {
         try {

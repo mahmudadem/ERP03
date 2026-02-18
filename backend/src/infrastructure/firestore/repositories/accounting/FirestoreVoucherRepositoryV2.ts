@@ -105,11 +105,21 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     if (filters?.from) modularQuery = modularQuery.where('date', '>=', filters.from);
     if (filters?.to) modularQuery = modularQuery.where('date', '<=', filters.to);
     
-    // Note: Applying type/status filters here might require compound indices in Production.
-    // However, for the Emulator or with proper indices, this is the correct place.
-    if (filters?.type && filters.type !== 'ALL') modularQuery = modularQuery.where('type', '==', filters.type);
+    if (filters?.type && filters.type !== 'ALL') {
+      const t = filters.type.toLowerCase();
+      if (t === 'journal_entry' || t === 'jv') {
+        modularQuery = modularQuery.where('type', 'in', ['journal_entry', 'jv']);
+      } else {
+        modularQuery = modularQuery.where('type', '==', filters.type);
+      }
+    }
+    
     if (filters?.status && filters.status !== 'ALL') modularQuery = modularQuery.where('status', '==', filters.status);
-    if (filters?.formId) modularQuery = modularQuery.where('metadata.formId', '==', filters.formId); // Filter by form ID
+    
+    // Support filtering by formId (top-level as of modern toJSON, fallback to metadata for older records)
+    if (filters?.formId) {
+      modularQuery = modularQuery.where('formId', '==', filters.formId);
+    }
 
     // Fetch OFFSET + LIMIT to support slicing in memory (due to merge logic)
     // This is inefficient for deep paging but necessary for merged collections
@@ -121,9 +131,18 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     
     if (filters?.from) legacyQuery = legacyQuery.where('date', '>=', filters.from);
     if (filters?.to) legacyQuery = legacyQuery.where('date', '<=', filters.to);
-    if (filters?.type && filters.type !== 'ALL') legacyQuery = legacyQuery.where('type', '==', filters.type);
+    
+    if (filters?.type && filters.type !== 'ALL') {
+      const t = filters.type.toLowerCase();
+      if (t === 'journal_entry' || t === 'jv') {
+        legacyQuery = legacyQuery.where('type', 'in', ['journal_entry', 'jv']);
+      } else {
+        legacyQuery = legacyQuery.where('type', '==', filters.type);
+      }
+    }
+
     if (filters?.status && filters.status !== 'ALL') legacyQuery = legacyQuery.where('status', '==', filters.status);
-    if (filters?.formId) legacyQuery = legacyQuery.where('metadata.formId', '==', filters.formId);
+    if (filters?.formId) legacyQuery = legacyQuery.where('formId', '==', filters.formId);
 
     const legacySnap = await legacyQuery.limit(fetchLimit).get();
 
@@ -184,7 +203,7 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
 
   async countByFormId(companyId: string, formId: string): Promise<number> {
     try {
-      const snapshot = await this.getCollection(companyId).where('metadata.formId', '==', formId).count().get();
+      const snapshot = await this.getCollection(companyId).where('formId', '==', formId).count().get();
       return snapshot.data().count || 0;
     } catch (err) {
       console.warn('Firestore count aggregation failed', err);
