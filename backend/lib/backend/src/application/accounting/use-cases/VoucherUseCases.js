@@ -157,7 +157,21 @@ class CreateVoucherUseCase {
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             })(), payload.description || '', payload.currency || baseCurrency, baseCurrency, payload.exchangeRate || 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, Object.assign(Object.assign({}, voucherMetadata), { creationMode }), // Inject creationMode here
-            userId, new Date());
+            userId, new Date(), undefined, // approvedBy
+            undefined, // approvedAt
+            undefined, // rejectedBy
+            undefined, // rejectedAt
+            undefined, // rejectionReason
+            undefined, // lockedBy
+            undefined, // lockedAt
+            undefined, // postedBy
+            undefined, // postedAt
+            undefined, // postingLockPolicy
+            undefined, // reversalOfVoucherId
+            undefined, // reference
+            undefined, // updatedAt
+            payload.postingPeriodNo // Special/Adjustment period override
+            );
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
             this.validationService.validateCore(voucher);
@@ -298,7 +312,7 @@ class UpdateVoucherUseCase {
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
         let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_c = payload.description) !== null && _c !== void 0 ? _c : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
-        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date());
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo);
         // If PENDING, mark as edited (Audit badge)
         if (updatedVoucher.isPending) {
             updatedVoucher = updatedVoucher.markAsEdited();
@@ -670,9 +684,9 @@ class ListVouchersUseCase {
         this.voucherRepo = voucherRepo;
         this.permissionChecker = permissionChecker;
     }
-    async execute(companyId, userId, limit) {
+    async execute(companyId, userId, limit, filters, offset) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
-        return this.voucherRepo.findByCompany(companyId, limit);
+        return this.voucherRepo.findByCompany(companyId, limit, filters, offset);
     }
 }
 exports.ListVouchersUseCase = ListVouchersUseCase;

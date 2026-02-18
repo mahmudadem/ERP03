@@ -1,5 +1,6 @@
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
 import { VoucherStatus, VoucherType, PostingLockPolicy } from '../../../../domain/accounting/types/VoucherTypes';
+import { CorrectionMode } from '../../../../domain/accounting/types/CorrectionTypes';
 import { UpdateVoucherUseCase, CancelVoucherUseCase } from '../VoucherUseCases';
 import { ApproveVoucherUseCase, RejectVoucherUseCase } from '../VoucherApprovalUseCases';
 import { ReverseAndReplaceVoucherUseCase } from '../ReverseAndReplaceVoucherUseCase';
@@ -17,7 +18,7 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
         mockVoucherRepo = { findById: jest.fn(), save: jest.fn() };
         mockLedgerRepo = { getGeneralLedger: jest.fn(), deleteForVoucher: jest.fn(), recordForVoucher: jest.fn() };
         mockPermissionChecker = { assertOrThrow: jest.fn() };
-        mockPolicyProvider = { getConfig: jest.fn() };
+        mockPolicyProvider = { getConfig: jest.fn().mockResolvedValue({}) };
     });
 
     /**
@@ -46,8 +47,8 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
             await updateUseCase.execute('c1', 'u1', 'v123', {});
             fail('Should have thrown 423');
         } catch (error: any) {
-            expect(error.appError.code).toBe(ErrorCode.VOUCHER_LOCKED_STRICT);
-            expect(error.appError.details.httpStatus).toBe(423);
+            expect(error.code).toBe(ErrorCode.VOUCHER_STRICT_LOCK_FOREVER);
+            expect(error.context.httpStatus).toBe(423);
         }
 
         // 2. Cancel Test
@@ -56,8 +57,8 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
             await cancelUseCase.execute('c1', 'u1', 'v123');
             fail('Should have thrown 423');
         } catch (error: any) {
-            expect(error.appError.code).toBe(ErrorCode.VOUCHER_LOCKED_STRICT);
-            expect(error.appError.details.httpStatus).toBe(423);
+            expect(error.code).toBe(ErrorCode.VOUCHER_STRICT_LOCK_FOREVER);
+            expect(error.context.httpStatus).toBe(423);
         }
 
         // 3. Approval Test
@@ -107,7 +108,7 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
         mockVoucherRepo.save.mockImplementation(v => v);
 
         const reversalUseCase = new ReverseAndReplaceVoucherUseCase(mockVoucherRepo, mockLedgerRepo, mockPermissionChecker, { runTransaction: (fn: any) => fn() } as any);
-        await reversalUseCase.execute('c1', 'u1', 'v456', { mode: 'REVERSE_ONLY', reason: 'Correction' });
+        await reversalUseCase.execute('c1', 'u1', 'v456', CorrectionMode.REVERSE_ONLY, undefined, { reason: 'Correction' });
 
         // 1. Verify Verification Query: Must use voucherId AND isPosted filter
         expect(mockLedgerRepo.getGeneralLedger).toHaveBeenCalledWith('c1', expect.objectContaining({
@@ -150,7 +151,7 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
         mockVoucherRepo.findById.mockResolvedValue(draftVoucher);
 
         const reversalUseCase = new ReverseAndReplaceVoucherUseCase(mockVoucherRepo, mockLedgerRepo, mockPermissionChecker, {} as any);
-        await expect(reversalUseCase.execute('c1', 'u1', 'v789', { mode: 'REVERSE_ONLY' }))
+        await expect(reversalUseCase.execute('c1', 'u1', 'v789', CorrectionMode.REVERSE_ONLY))
             .rejects.toThrow(/Only POSTED vouchers can be reversed/);
     });
 
@@ -182,15 +183,13 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
 
         // Act & Assert: Verify rejection with proper error structure
         await expect(
-            reversalUseCase.execute('c1', 'u1', 'v-orphan', { mode: 'REVERSE_ONLY' } as any)
+            reversalUseCase.execute('c1', 'u1', 'v-orphan', CorrectionMode.REVERSE_ONLY)
         ).rejects.toMatchObject({
-            appError: {
-                code: ErrorCode.LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER,
-                details: expect.objectContaining({
-                    httpStatus: 409,
-                    voucherId: 'v-orphan'
-                })
-            }
+            code: ErrorCode.LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER,
+            context: expect.objectContaining({
+                httpStatus: 409,
+                voucherId: 'v-orphan'
+            })
         });
 
         // Assert ledger query was called with correct voucherId filter

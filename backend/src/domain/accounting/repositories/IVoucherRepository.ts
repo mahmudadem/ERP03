@@ -77,9 +77,22 @@ export interface IVoucherRepository {
    * 
    * @param companyId Company ID
    * @param limit Maximum results (default: 100)
+   * @param filters Optional search/filter criteria
    * @returns Array of voucher entities
    */
-  findByCompany(companyId: string, limit?: number): Promise<VoucherEntity[]>;
+  findByCompany(
+    companyId: string, 
+    limit?: number,
+    filters?: {
+      from?: string;
+      to?: string;
+      type?: string;
+      status?: string;
+      search?: string;
+      formId?: string;
+    },
+    offset?: number
+  ): Promise<VoucherEntity[]>;
 
   /**
    * Delete a voucher

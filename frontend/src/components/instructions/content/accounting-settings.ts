@@ -132,12 +132,28 @@ export const errorModeInstructions: PageInstructions = {
  */
 export const fiscalYearInstructions: PageInstructions = {
   pageId: 'accounting-settings-fiscal',
-  title: 'Fiscal Year Definition',
-  overview: 'Establish the 12-month reporting cycle for your enterprise.',
+  title: 'Accounting Periods Management',
+  overview: 'Manage your company\'s financial timeline, including fiscal years, reporting periods, and data locking controls.',
   sections: [
     {
-      title: 'Reporting Periods',
-      content: 'The fiscal year start defines your period boundaries. This affects financial statements, period closing, and data locking.',
+      title: 'Fiscal Year & Periods',
+      content: 'Accounting periods are containers for your financial transactions. The system requires an active Fiscal Year to generate these periods (e.g., Monthly, Quarterly). You cannot post transactions without an open period for the transaction date.',
+      warning: 'Periods are only visible and active AFTER a Fiscal Year has been created.'
+    },
+    {
+      title: 'Period Statuses',
+      content: 
+        '• **Open:** Transactions can be posted freely.\n' +
+        '• **Closed:** Period is temporally closed for reporting. Can be reopened by an admin if adjustments are needed.\n' +
+        '• **Locked:** Period is permanently finalized (usually after year-end closing) and cannot be reopened.'
+    },
+    {
+      title: 'Data Locking (Backdated Posting)',
+      content: 'The "Locked Through Date" setting allows you to freeze all data before a specific date, regardless of the period status. This is useful for preventing accidental changes to historical data during an active audit.'
+    },
+    {
+      title: 'Year-End Closing',
+      content: 'Closing a Fiscal Year is a formal accounting action. It moves the net profit/loss to the Retained Earnings account and resets the P&L accounts for the new year. This action is irreversible.'
     }
   ]
 };

@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
+import AccountSelector from '../components/shared/AccountSelector';
 import client from '../../../api/client';
+import { AccountsProvider } from '../../../context/AccountsContext';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
 import { accountingApi, FiscalYearDTO } from '../../../api/accountingApi';
+import { accountingApi as domainApi } from '../../../api/accounting'; // For createAccount
+import { useAccounts } from '../../../context/AccountsContext';
 import { 
   InstructionsButton, 
   generalSettingsInstructions,
@@ -93,12 +98,13 @@ const SectionHeader: React.FC<{
   );
 };
 
-export const AccountingSettingsPage: React.FC = () => {
+const AccountingSettingsPageContent: React.FC = () => {
   const { t, i18n } = useTranslation('accounting');
   const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'error-mode' | 'fiscal' | 'numbering'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
+  const { accounts, refreshAccounts } = useAccounts();
 
   const [config, setConfig] = useState<PolicyConfig>({
     financialApprovalEnabled: false,
@@ -130,11 +136,36 @@ export const AccountingSettingsPage: React.FC = () => {
   const [fiscalLoading, setFiscalLoading] = useState(false);
   const [fyYear, setFyYear] = useState<number>(new Date().getFullYear());
   const [fyStartMonth, setFyStartMonth] = useState<number>(1);
+  const [fyPeriodScheme, setFyPeriodScheme] = useState<'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL'>('MONTHLY');
   const [retainedEarningsAccountId, setRetainedEarningsAccountId] = useState<string>('');
+  const [specialPeriodData, setSpecialPeriodData] = useState<{
+    isOpen: boolean;
+    fyId: string;
+    existingNames: string[];
+    newName: string;
+  }>({
+    isOpen: false,
+    fyId: '',
+    existingNames: [],
+    newName: ''
+  });
+  const [closingFyId, setClosingFyId] = useState<string | null>(null);
   const [sequences, setSequences] = useState<any[]>([]);
   const [seqPrefix, setSeqPrefix] = useState<string>('JE');
   const [seqYear, setSeqYear] = useState<number | ''>('');
   const [seqNext, setSeqNext] = useState<number>(1);
+  const [genericConfirm, setGenericConfirm] = useState<{
+    isOpen: boolean;
+    type: 'CLOSE_PERIOD' | 'REOPEN_PERIOD' | 'REOPEN_YEAR' | 'DELETE_YEAR' | null;
+    fyId: string;
+    periodId?: string;
+    label: string;
+  }>({
+    isOpen: false,
+    type: null,
+    fyId: '',
+    label: ''
+  });
 
   // Granular tabs as per implementation plan
   const tabs = [
@@ -262,6 +293,13 @@ export const AccountingSettingsPage: React.FC = () => {
           const modeText = settingsToSave.strictApprovalMode ? t('settings.messages.strictOn') : t('settings.messages.strictOff');
           errorHandler.showSuccess(t('settings.messages.policiesSaved', { mode: modeText }));
         } else {
+          // Validation for Fiscal tab
+          if (section === 'fiscal' && config.periodLockEnabled && !config.lockedThroughDate) {
+            errorHandler.showError(t('settings.fiscal.dateRequired', 'Locked Through Date is required when period locking is enabled.'));
+            setSaving(false);
+            return;
+          }
+
           const label = section ? t(`settings.tabs.${section.replace(/-/g, '')}`, { defaultValue: section }) : t('settings.messages.settings');
           errorHandler.showSuccess(t('settings.messages.sectionSaved', { section: label }));
         }
@@ -305,9 +343,20 @@ export const AccountingSettingsPage: React.FC = () => {
   const hasAnyChanges = hasGeneralChanges || hasPolicyChanges || hasMethodChanges || hasCostCenterChanges || hasErrorModeChanges || hasFiscalChanges;
 
   const handleCreateFiscalYear = async () => {
+    // Prevent duplicate years
+    const exists = fiscalYears.find(fy => fy.name.includes(fyYear.toString()));
+    if (exists) {
+      errorHandler.showError(t('settings.messages.fiscalYearExists', { year: fyYear }));
+      return;
+    }
+
     try {
       setFiscalLoading(true);
-      await accountingApi.createFiscalYear({ year: fyYear, startMonth: fyStartMonth });
+      await accountingApi.createFiscalYear({ 
+          year: fyYear, 
+          startMonth: fyStartMonth,
+          periodScheme: fyPeriodScheme
+      });
       await loadFiscalYears();
       errorHandler.showSuccess(t('settings.messages.fiscalYearCreated'));
     } catch (error: any) {
@@ -318,11 +367,46 @@ export const AccountingSettingsPage: React.FC = () => {
   };
 
   const handleClosePeriod = async (fyId: string, periodId: string) => {
+    const fy = fiscalYears.find(f => f.id === fyId);
+    if (fy?.status === 'CLOSED') {
+      errorHandler.showError(t('settings.messages.fiscalYearClosedError'));
+      return;
+    }
+    const period = fy?.periods.find(p => p.id === periodId);
+    setGenericConfirm({
+      isOpen: true,
+      type: 'CLOSE_PERIOD',
+      fyId,
+      periodId,
+      label: (period && fy) ? `${t(`budget.months.${period.name.toLowerCase().substring(0,3)}`)} ${fy.name}` : fy?.name || ''
+    });
+  };
+
+  const handleReopenPeriod = async (fyId: string, periodId: string) => {
+    const fy = fiscalYears.find(f => f.id === fyId);
+    if (fy?.status === 'CLOSED') {
+      errorHandler.showError(t('settings.messages.fiscalYearClosedError'));
+      return;
+    }
+    const period = fy?.periods.find(p => p.id === periodId);
+    setGenericConfirm({
+      isOpen: true,
+      type: 'REOPEN_PERIOD',
+      fyId,
+      periodId,
+      label: (period && fy) ? `${t(`budget.months.${period.name.toLowerCase().substring(0,3)}`)} ${fy.name}` : fy?.name || ''
+    });
+  };
+
+  const confirmClosePeriod = async () => {
+    const { fyId, periodId } = genericConfirm;
+    if (!periodId) return;
     try {
       setFiscalLoading(true);
       await accountingApi.closeFiscalPeriod(fyId, periodId);
       await loadFiscalYears();
       errorHandler.showSuccess(t('settings.messages.periodClosed'));
+      setGenericConfirm(prev => ({ ...prev, isOpen: false }));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close period');
     } finally {
@@ -330,12 +414,15 @@ export const AccountingSettingsPage: React.FC = () => {
     }
   };
 
-  const handleReopenPeriod = async (fyId: string, periodId: string) => {
+  const confirmReopenPeriod = async () => {
+    const { fyId, periodId } = genericConfirm;
+    if (!periodId) return;
     try {
       setFiscalLoading(true);
       await accountingApi.reopenFiscalPeriod(fyId, periodId);
       await loadFiscalYears();
       errorHandler.showSuccess(t('settings.messages.periodReopened'));
+      setGenericConfirm(prev => ({ ...prev, isOpen: false }));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to reopen period');
     } finally {
@@ -343,18 +430,134 @@ export const AccountingSettingsPage: React.FC = () => {
     }
   };
 
-  const handleCloseYear = async (fyId: string) => {
+  const confirmCloseYear = async () => {
+    if (!closingFyId) return;
     if (!retainedEarningsAccountId) {
       errorHandler.showError(t('settings.messages.retainedRequired'));
       return;
     }
     try {
       setFiscalLoading(true);
-      await accountingApi.closeFiscalYear(fyId, retainedEarningsAccountId);
+      await accountingApi.closeFiscalYear(closingFyId, retainedEarningsAccountId);
       await loadFiscalYears();
       errorHandler.showSuccess(t('settings.messages.fiscalYearClosed'));
+      setClosingFyId(null);
+      setRetainedEarningsAccountId('');
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close fiscal year');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleReopenYear = async (fyId: string) => {
+    const fy = fiscalYears.find(f => f.id === fyId);
+    setGenericConfirm({
+      isOpen: true,
+      type: 'REOPEN_YEAR',
+      fyId,
+      label: fy?.name || ''
+    });
+  };
+
+  const confirmReopenYear = async () => {
+    const { fyId } = genericConfirm;
+    try {
+      setFiscalLoading(true);
+      await accountingApi.reopenFiscalYear(fyId);
+      await loadFiscalYears();
+      errorHandler.showSuccess(t('settings.messages.fiscalYearReopened'));
+      setGenericConfirm(prev => ({ ...prev, isOpen: false }));
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to reopen fiscal year');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleDeleteFiscalYear = async (fyId: string) => {
+    const fy = fiscalYears.find(f => f.id === fyId);
+    setGenericConfirm({
+      isOpen: true,
+      type: 'DELETE_YEAR',
+      fyId,
+      label: fy?.name || ''
+    });
+  };
+
+  const confirmDeleteYear = async () => {
+    const { fyId } = genericConfirm;
+    try {
+      setFiscalLoading(true);
+      await accountingApi.deleteFiscalYear(fyId);
+      await loadFiscalYears();
+      errorHandler.showSuccess(t('settings.messages.fiscalYearDeleted'));
+      setGenericConfirm(prev => ({ ...prev, isOpen: false }));
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to delete fiscal year');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleEnableSpecialPeriods = (fyId: string) => {
+    const fy = fiscalYears.find(f => f.id === fyId);
+    if (!fy) return;
+    
+    const existing = fy.periods.filter(p => p.isSpecial).map(p => p.name);
+    if (existing.length >= 4) return;
+
+    setSpecialPeriodData({
+      isOpen: true,
+      fyId,
+      existingNames: existing,
+      newName: `${t('settings.fiscal.specialPeriod', 'Special Period')} P${13 + existing.length}`
+    });
+  };
+
+  const confirmAddSpecialPeriod = async () => {
+    const { fyId, existingNames, newName } = specialPeriodData;
+    if (!newName.trim()) {
+      errorHandler.showError(t('settings.fiscal.nameRequired', 'Period name is required'));
+      return;
+    }
+
+    try {
+      setFiscalLoading(true);
+      const definitions = [
+        ...existingNames.map(name => ({ name })),
+        { name: newName.trim() }
+      ];
+      await accountingApi.enableSpecialPeriods(fyId, definitions);
+      await loadFiscalYears();
+      errorHandler.showSuccess(t('settings.fiscal.messages.specialPeriodsUpdated', 'Special period added successfully'));
+      setSpecialPeriodData(prev => ({ ...prev, isOpen: false }));
+    } catch (error: any) {
+      errorHandler.showError(error?.response?.data?.error?.message || 'Failed to add special period');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const handleAutoCreateRetainedEarnings = async () => {
+    setFiscalLoading(true);
+    try {
+      const result = await accountingApi.autoCreateRetainedEarnings();
+      
+      // Refresh and Select
+      await refreshAccounts();
+      if (result.account && result.account.id) {
+        setRetainedEarningsAccountId(result.account.id);
+      }
+      
+      if (result.created) {
+        errorHandler.showSuccess(result.message);
+      } else {
+        errorHandler.showSuccess(t('settings.messages.retainedEarningsExists', result.message));
+      }
+
+    } catch (error: any) {
+      errorHandler.showError(error?.message || 'Failed to auto-create account');
     } finally {
       setFiscalLoading(false);
     }
@@ -415,7 +618,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Vertical Sidebar Navigation */}
-        <aside className="w-64 border-r border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-primary)] overflow-y-auto hidden md:block">
+        <aside className="w-64 border-r border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-primary)] overflow-y-auto block">
           <nav className="p-4 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -636,7 +839,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                 approvalRequired: e.target.checked  // Legacy sync
                               })}
                             />
-                            <div className={`w-12 h-6 rounded-full transition-colors ${config.financialApprovalEnabled ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                            <div className={`relative w-12 h-6 rounded-full transition-colors ${config.financialApprovalEnabled ? 'bg-indigo-600' : 'bg-gray-200'}`}>
                               <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.financialApprovalEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </div>
                           </label>
@@ -701,7 +904,7 @@ export const AccountingSettingsPage: React.FC = () => {
                               checked={config.custodyConfirmationEnabled}
                               onChange={(e) => setConfig({ ...config, custodyConfirmationEnabled: e.target.checked })}
                             />
-                            <div className={`w-12 h-6 rounded-full transition-colors ${config.custodyConfirmationEnabled ? 'bg-purple-600' : 'bg-gray-200'}`}>
+                            <div className={`relative w-12 h-6 rounded-full transition-colors ${config.custodyConfirmationEnabled ? 'bg-purple-600' : 'bg-gray-200'}`}>
                               <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.custodyConfirmationEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </div>
                           </label>
@@ -808,7 +1011,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                       checked={config.ccAllowSelfConfirmation || false}
                                       onChange={(e) => setConfig({ ...config, ccAllowSelfConfirmation: e.target.checked })}
                                     />
-                                    <div className="w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
+                                    <div className="relative w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
                                       <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAllowSelfConfirmation ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                     </div>
                                   </label>
@@ -835,7 +1038,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                       checked={config.ccBlockIfNoCustodian ?? true}
                                       onChange={(e) => setConfig({ ...config, ccBlockIfNoCustodian: e.target.checked })}
                                     />
-                                    <div className="w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
+                                    <div className="relative w-9 h-5 rounded-full bg-gray-200 dark:bg-gray-600 peer-checked:bg-purple-600 transition-colors">
                                       <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${(config.ccBlockIfNoCustodian ?? true) ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                     </div>
                                   </label>
@@ -877,7 +1080,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                        }
                                     }}
                                   />
-                                  <div className={`w-9 h-5 rounded-full transition-colors ${config.ccAmountThreshold ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                                  <div className={`relative w-9 h-5 rounded-full transition-colors ${config.ccAmountThreshold ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
                                     <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${config.ccAmountThreshold ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                   </div>
                                 </label>
@@ -973,7 +1176,7 @@ export const AccountingSettingsPage: React.FC = () => {
                               disabled={!isModeA}
                               onChange={(e) => setConfig({ ...config, autoPostEnabled: e.target.checked })}
                             />
-                            <div className={`w-12 h-6 rounded-full transition-colors ${
+                            <div className={`relative w-12 h-6 rounded-full transition-colors ${
                               config.autoPostEnabled 
                                 ? (isModeA ? 'bg-emerald-500' : 'bg-indigo-600') 
                                 : 'bg-gray-200'
@@ -1019,7 +1222,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                 disabled={!isModeA}
                                 onChange={(e) => setConfig({ ...config, allowEditDeletePosted: e.target.checked })}
                               />
-                              <div className={`w-12 h-6 rounded-full transition-colors ${
+                              <div className={`relative w-12 h-6 rounded-full transition-colors ${
                                 !isModeA 
                                   ? 'bg-gray-300 dark:bg-gray-600'
                                   : config.allowEditDeletePosted 
@@ -1051,13 +1254,15 @@ export const AccountingSettingsPage: React.FC = () => {
                         </p>
                       </div>
                     ) : null}
-                  </div>
-                </div>
               </div>
-            )}
+              
 
-              {/* Payment Methods Tab */}
-              {(activeTab as string) === 'payment-methods' && (
+            </div>
+          </div>
+        )}
+
+            {/* Payment Methods Tab */}
+            {(activeTab as string) === 'payment-methods' && (
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
                   title="Payment Methods" 
@@ -1129,7 +1334,7 @@ export const AccountingSettingsPage: React.FC = () => {
                                     setConfig({ ...config, paymentMethods: updated });
                                   }}
                                 />
-                                <div className={`w-10 h-5 rounded-full transition-colors ${pm.isEnabled ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                <div className={`relative w-10 h-5 rounded-full transition-colors ${pm.isEnabled ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
                                   <div className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full shadow transition-transform ${pm.isEnabled ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                 </div>
                               </label>
@@ -1206,7 +1411,7 @@ export const AccountingSettingsPage: React.FC = () => {
                             }
                           })}
                         />
-                        <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
+                        <div className="relative w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
                           <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.costCenterPolicy.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                         </div>
                       </label>
@@ -1317,6 +1522,7 @@ export const AccountingSettingsPage: React.FC = () => {
 
             {/* Fiscal Year Tab */}
             {(activeTab as string) === 'fiscal' && (
+              <>
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
                   title={t('settings.fiscal.title')} 
@@ -1325,42 +1531,153 @@ export const AccountingSettingsPage: React.FC = () => {
                   disabled={!hasFiscalChanges || saving}
                   saving={saving}
                 />
-                
-                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
-                  <div className="flex flex-col md:flex-row md:items-end gap-4">
+                  
+                {fiscalYears.length === 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 flex items-start gap-3">
+                    <AlertTriangle className="text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" size={20} />
+                    <div>
+                      <h4 className="font-bold text-amber-900 dark:text-amber-300 text-sm">No Active Accounting Periods</h4>
+                      <p className="text-amber-800 dark:text-amber-400 text-xs mt-1">
+                        Accounting periods are automatically generated when you define a Fiscal Year. 
+                        Please create a Fiscal Year below to initialize your reporting periods (e.g., Monthly, Quarterly).
+                      </p>
+                    </div>
+                  </div>
+                )}
+                  
+                {/* Period Locking Card */}
+                <div className={`bg-white dark:bg-[var(--color-bg-tertiary)] border rounded-2xl p-6 shadow-sm transition-all duration-300 ${
+                  config.periodLockEnabled 
+                    ? (!config.lockedThroughDate ? 'border-red-400 ring-4 ring-red-500/10 dark:border-red-900/40' : 'border-indigo-200 ring-4 ring-indigo-500/5 dark:border-indigo-900/40') 
+                    : 'border-gray-200 dark:border-[var(--color-border)]'
+                }`}>
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.fiscal.fiscalYear')}</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          className="w-32 px-3 py-2 border rounded-md"
-                          value={fyYear}
-                          onChange={(e) => setFyYear(Number(e.target.value))}
-                        />
-                        <select
-                          className="px-3 py-2 border rounded-md"
-                          value={fyStartMonth}
-                          onChange={(e) => setFyStartMonth(Number(e.target.value))}
-                        >
-                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
-                            <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString(i18n.language || 'en', { month: 'long' })}</option>
-                          ))}
-                        </select>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                          {t('settings.fiscal.periodLocking')}
+                        </h3>
+                        <div className="group relative">
+                           <Info size={14} className="text-gray-400 cursor-help" />
+                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-gray-900 text-white text-[10px] rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 text-center">
+                              {t('settings.fiscal.periodLockingHelp')}
+                           </div>
+                        </div>
                       </div>
+                      <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">
+                        {t('settings.fiscal.periodLockingHint')}
+                      </p>
                     </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-4">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                        config.periodLockEnabled 
+                          ? (!config.lockedThroughDate ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300') 
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800'
+                      }`}>
+                        {config.periodLockEnabled ? t('settings.on') : t('settings.off')}
+                      </span>
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={config.periodLockEnabled ?? false}
+                          onChange={(e) => {
+                            const isEnabled = e.target.checked;
+                            // Auto-set today's date if turning ON and date is empty
+                            const newDate = (isEnabled && !config.lockedThroughDate) 
+                              ? new Date().toISOString().split('T')[0] 
+                              : config.lockedThroughDate;
+                            
+                            setConfig({ ...config, periodLockEnabled: isEnabled, lockedThroughDate: newDate });
+                          }}
+                        />
+                        <div className={`relative w-12 h-6 rounded-full transition-all ${config.periodLockEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                          <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all ${config.periodLockEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {config.periodLockEnabled && (
+                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-1 duration-300">
+                       <div className={`flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border transition-all ${
+                         !config.lockedThroughDate 
+                           ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
+                           : 'bg-indigo-50/20 dark:bg-indigo-900/5 border-indigo-100/50 dark:border-indigo-900/20'
+                       }`}>
+                          <div className="flex-1">
+                             <div className="flex items-center gap-2 mb-1">
+                                <Lock size={14} className={!config.lockedThroughDate ? 'text-red-600' : 'text-indigo-600 dark:text-indigo-400'} />
+                                <label className={`text-sm font-bold ${!config.lockedThroughDate ? 'text-red-900 dark:text-red-300' : 'text-gray-800 dark:text-[var(--color-text-primary)]'}`}>
+                                   {t('settings.fiscal.lockedThroughDate')}
+                                </label>
+                                {!config.lockedThroughDate && <span className="text-[10px] font-bold text-red-600 uppercase">Required</span>}
+                             </div>
+                             <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">
+                                {t('settings.fiscal.lockedThroughDateDesc')}
+                             </p>
+                          </div>
+                          <div className="shrink-0">
+                            <input 
+                               type="date"
+                               value={config.lockedThroughDate || ''}
+                               onChange={(e) => setConfig({ ...config, lockedThroughDate: e.target.value })}
+                               className={`w-full sm:w-auto border rounded-lg px-4 py-2 text-sm dark:bg-[var(--color-bg-secondary)] dark:text-[var(--color-text-primary)] focus:ring-2 transition-all outline-none ${
+                                 !config.lockedThroughDate 
+                                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500 shadow-sm shadow-red-100' 
+                                   : 'border-gray-300 dark:border-[var(--color-border)] focus:ring-indigo-500 focus:border-indigo-500'
+                               }`}
+                            />
+                          </div>
+                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-2xl p-6 shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
                     <div className="flex-1">
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.fiscal.retainedEarnings')}</label>
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md"
-                        value={retainedEarningsAccountId}
-                        onChange={(e) => setRetainedEarningsAccountId(e.target.value)}
-                        placeholder={t('settings.fiscal.retainedPlaceholder')}
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.fiscal.fiscalYear')}</label>
+                          <input
+                            type="number"
+                            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-[var(--color-bg-secondary)]"
+                            value={fyYear}
+                            onChange={(e) => setFyYear(Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.fiscal.startMonth')}</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-[var(--color-bg-secondary)]"
+                            value={fyStartMonth}
+                            onChange={(e) => setFyStartMonth(Number(e.target.value))}
+                          >
+                            {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                              <option key={m} value={m}>{new Date(2000, m-1, 1).toLocaleString(i18n.language || 'en', { month: 'long' })}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('settings.fiscal.periodScheme')}</label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-[var(--color-bg-secondary)]"
+                            value={fyPeriodScheme}
+                            onChange={(e) => setFyPeriodScheme(e.target.value as any)}
+                          >
+                            <option value="MONTHLY">{t('settings.fiscal.monthly', 'Monthly')}</option>
+                            <option value="QUARTERLY">{t('settings.fiscal.quarterly', 'Quarterly')}</option>
+                            <option value="SEMI_ANNUAL">{t('settings.fiscal.semiAnnual', 'Semi-Annual')}</option>
+                          </select>
+                        </div>
+                      </div>
+                      {/* Special periods are added later per fiscal year */}
                     </div>
+
                     <button
                       onClick={handleCreateFiscalYear}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 transition md:mt-6"
                       disabled={fiscalLoading}
                     >
                       {fiscalLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -1394,58 +1711,307 @@ export const AccountingSettingsPage: React.FC = () => {
                                 {fy.startDate} → {fy.endDate}
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${fy.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : fy.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                {t(`settings.fiscal.status.${fy.status.toLowerCase() as 'open' | 'closed' | 'locked'}`, { defaultValue: fy.status })}
-                              </span>
-                              <button
-                                onClick={() => handleCloseYear(fy.id)}
-                                disabled={fiscalLoading || fy.status !== 'OPEN'}
-                                className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md disabled:opacity-50"
-                              >
-                                {t('settings.fiscal.closeYear')}
-                              </button>
-                          </div>
-                          </div>
+                              <div className="flex items-center gap-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${fy.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : fy.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {t(`settings.fiscal.status.${fy.status.toLowerCase() as 'open' | 'closed' | 'locked'}`, { defaultValue: fy.status })}
+                                </span>
+                                {fy.status === 'CLOSED' && (
+                                  <button
+                                    onClick={() => handleReopenYear(fy.id)}
+                                    disabled={fiscalLoading}
+                                    className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    title="Reopen Fiscal Year"
+                                  >
+                                    <RotateCcw size={16} />
+                                  </button>
+                                )}
+                                {fy.status === 'OPEN' && (
+                                  <button
+                                    onClick={() => {
+                                      setClosingFyId(fy.id);
+                                      setRetainedEarningsAccountId(''); 
+                                    }}
+                                    disabled={fiscalLoading}
+                                    className="p-1 text-gray-400 hover:text-indigo-600 transition-colors"
+                                    title={t('settings.fiscal.closeYear')}
+                                  >
+                                    <Lock size={16} />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteFiscalYear(fy.id)}
+                                  disabled={fiscalLoading}
+                                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                  title={t('settings.common.delete')}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                                {fy.status === 'OPEN' && (fy.specialPeriodsCount || 0) < 4 && (
+                                  <button
+                                    onClick={() => handleEnableSpecialPeriods(fy.id)}
+                                    disabled={fiscalLoading}
+                                    className="p-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors ml-2"
+                                    title={t('settings.fiscal.addSpecialPeriod', 'Add Special Period')}
+                                  >
+                                    + P{13 + (fy.specialPeriodsCount || 0)}
+                                  </button>
+                                )}
 
-                          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                            {fy.periods.map((p) => (
-                              <div key={p.id} className="flex items-center justify-between bg-[var(--color-bg-secondary)] rounded-lg px-3 py-2">
-                                <div>
-                                  <div className="text-sm font-semibold">{p.name}</div>
-                                  <div className="text-[10px] text-[var(--color-text-muted)]">{p.startDate} → {p.endDate}</div>
+                            </div>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                              {fy.periods.map((p) => (
+                                <div key={p.id} className="flex items-center justify-between bg-[var(--color-bg-secondary)] rounded-lg px-3 py-2">
+                                  <div>
+                                    <div className="text-sm font-semibold">{p.name}</div>
+                                    <div className="text-xs text-[var(--color-text-muted)]">
+                                      {p.startDate} - {p.endDate}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                      {p.status}
+                                    </span>
+                                    {p.status === 'OPEN' ? (
+                                      <button
+                                        onClick={() => handleClosePeriod(fy.id, p.id)}
+                                        disabled={fiscalLoading}
+                                        className="text-[var(--color-text-muted)] hover:text-indigo-600"
+                                        title={t('settings.fiscal.closePeriod')}
+                                      >
+                                        <Lock size={14} />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => handleReopenPeriod(fy.id, p.id)}
+                                        disabled={fiscalLoading}
+                                        className="text-[var(--color-text-muted)] hover:text-amber-600"
+                                        title={t('settings.fiscal.reopenPeriod')}
+                                      >
+                                        <RefreshCw size={14} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.status === 'CLOSED' ? 'bg-emerald-100 text-emerald-700' : p.status === 'LOCKED' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
-                                    {t(`settings.fiscal.status.${p.status.toLowerCase() as 'open' | 'closed' | 'locked'}`, { defaultValue: p.status })}
-                                  </span>
-                                  {p.status === 'OPEN' ? (
-                                    <button
-                                      onClick={() => handleClosePeriod(fy.id, p.id)}
-                                      className="text-xs px-2 py-1 bg-gray-900 text-white rounded"
-                                      disabled={fiscalLoading}
-                                    >
-                                      {t('settings.fiscal.close')}
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleReopenPeriod(fy.id, p.id)}
-                                      className="text-xs px-2 py-1 bg-white border border-[var(--color-border)] rounded"
-                                      disabled={fiscalLoading || fy.status !== 'OPEN'}
-                                    >
-                                      {t('settings.fiscal.reopen')}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
                       ))}
                     </div>
                   )}
+                  </div>
+
+                  {/* Closing Year Modal */}
+                  {closingFyId && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+                      <div className="bg-white dark:bg-[var(--color-bg-primary)] rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 dark:border-[var(--color-border)] transform transition-all">
+                        {/* Modal Header */}
+                        <div className="bg-amber-50 dark:bg-amber-900/20 px-6 py-4 border-b border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
+                          <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
+                             <AlertTriangle size={24} />
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                            {t('settings.fiscal.confirmations.closeYear.title')}
+                          </h3>
+                        </div>
+
+                        <div className="p-6">
+                          {/* Confirmation Message */}
+                          <div className="text-sm text-gray-600 dark:text-[var(--color-text-secondary)] mb-8 leading-relaxed">
+                            <span className="block text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
+                              {t('settings.fiscal.confirmations.closeYear.question', { 
+                                year: fiscalYears.find(f => f.id === closingFyId)?.name
+                              })}
+                            </span>
+                            <div className="p-3 bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-l-4 border-amber-400 rounded-r-lg italic">
+                              {t('settings.fiscal.confirmations.closeYear.description', { 
+                                account: accounts.find(a => a.id === retainedEarningsAccountId)?.code || 'Retained Earnings'
+                              })}
+                            </div>
+                          </div>
+                          
+                          {/* Account Selection Box */}
+                          <div className="bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-5 mb-8">
+                            <label className="block text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                              <Building2 size={16} />
+                              {t('settings.fiscal.retainedEarnings')} <span className="text-red-500">*</span>
+                            </label>
+                            <AccountSelector
+                              value={retainedEarningsAccountId}
+                              onChange={(account) => setRetainedEarningsAccountId(account?.id || '')}
+                              placeholder={t('settings.fiscal.retainedPlaceholder')}
+                              className="w-full shadow-sm"
+                            />
+                            <div className="mt-3 text-right">
+                               <button
+                                 onClick={handleAutoCreateRetainedEarnings}
+                                 className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors flex items-center gap-1 justify-end ml-auto"
+                                 disabled={fiscalLoading}
+                               >
+                                 <Plus size={12} />
+                                 {t('settings.fiscal.autoCreateAccount')}
+                               </button>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex justify-end gap-3">
+                            <button
+                              onClick={() => setClosingFyId(null)}
+                              className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 active:scale-95 transition-all dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)] dark:hover:bg-[var(--color-bg-secondary)]"
+                            >
+                              {t('settings.common.cancel')}
+                            </button>
+                            <button
+                              onClick={() => confirmCloseYear()}
+                              disabled={!retainedEarningsAccountId || fiscalLoading}
+                              className="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                              {fiscalLoading ? (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Check size={18} />
+                                  {t('settings.fiscal.confirmations.closeYear.confirm')}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
+
+                  {/* Generic Confirmation Modal */}
+                  {genericConfirm.isOpen && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+                      <div className="bg-white dark:bg-[var(--color-bg-primary)] rounded-xl shadow-2xl max-w-lg w-full p-6 border border-gray-200 dark:border-[var(--color-border)] transform transition-all">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className={`p-3 rounded-full flex-shrink-0 ${genericConfirm.type === 'DELETE_YEAR' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                            {genericConfirm.type === 'DELETE_YEAR' ? <Trash2 size={24} /> : <AlertTriangle size={24} />}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                              {t(`settings.fiscal.confirmations.${
+                                genericConfirm.type === 'CLOSE_PERIOD' ? 'closePeriod' :
+                                genericConfirm.type === 'REOPEN_PERIOD' ? 'reopenPeriod' :
+                                genericConfirm.type === 'REOPEN_YEAR' ? 'reopenYear' :
+                                'deleteYear'
+                              }.title`)}
+                            </h3>
+                            <div className="mt-2 text-sm text-gray-500 dark:text-[var(--color-text-secondary)] leading-relaxed">
+                              <span className="block font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">
+                                {t(`settings.fiscal.confirmations.${
+                                  genericConfirm.type === 'CLOSE_PERIOD' ? 'closePeriod' :
+                                  genericConfirm.type === 'REOPEN_PERIOD' ? 'reopenPeriod' :
+                                  genericConfirm.type === 'REOPEN_YEAR' ? 'reopenYear' :
+                                  'deleteYear'
+                                }.question`, { period: genericConfirm.label, year: genericConfirm.label })}
+                              </span>
+                              {t(`settings.fiscal.confirmations.${
+                                genericConfirm.type === 'CLOSE_PERIOD' ? 'closePeriod' :
+                                genericConfirm.type === 'REOPEN_PERIOD' ? 'reopenPeriod' :
+                                genericConfirm.type === 'REOPEN_YEAR' ? 'reopenYear' :
+                                'deleteYear'
+                              }.description`, { period: genericConfirm.label, year: genericConfirm.label })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                          <button
+                            onClick={() => setGenericConfirm(prev => ({ ...prev, isOpen: false }))}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)]"
+                          >
+                            {t('settings.common.cancel')}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (genericConfirm.type === 'CLOSE_PERIOD') confirmClosePeriod();
+                              else if (genericConfirm.type === 'REOPEN_PERIOD') confirmReopenPeriod();
+                              else if (genericConfirm.type === 'REOPEN_YEAR') confirmReopenYear();
+                              else if (genericConfirm.type === 'DELETE_YEAR') confirmDeleteYear();
+                            }}
+                            disabled={fiscalLoading}
+                            className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none disabled:opacity-50 shadow-sm ${
+                               genericConfirm.type === 'DELETE_YEAR' ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                            }`}
+                          >
+                            {fiscalLoading ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+                            ) : (
+                              t(`settings.fiscal.confirmations.${
+                                genericConfirm.type === 'CLOSE_PERIOD' ? 'closePeriod' :
+                                genericConfirm.type === 'REOPEN_PERIOD' ? 'reopenPeriod' :
+                                genericConfirm.type === 'REOPEN_YEAR' ? 'reopenYear' :
+                                'deleteYear'
+                              }.confirm`)
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
+                  
+                  {/* Add Special Period Modal */}
+                  {specialPeriodData.isOpen && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+                      <div className="bg-white dark:bg-[var(--color-bg-primary)] rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-[var(--color-border)] transform transition-all">
+                        <div className="flex items-center gap-3 mb-6">
+                           <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
+                             <Plus size={24} />
+                           </div>
+                           <h3 className="text-xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                             {t('settings.fiscal.addSpecialPeriodTitle', 'Add Special Period')}
+                           </h3>
+                        </div>
+
+                        <div className="space-y-4">
+                          <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">
+                            {t('settings.fiscal.specialPeriodHint', 'Special periods (P13-P16) are used for year-end adjustments and audits. They are strictly tied to the fiscal year end date.')}
+                          </p>
+                          
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                              {t('settings.fiscal.periodName', 'Period Name')}
+                            </label>
+                            <input 
+                              type="text"
+                              autoFocus
+                              value={specialPeriodData.newName}
+                              onChange={(e) => setSpecialPeriodData({ ...specialPeriodData, newName: e.target.value })}
+                              onKeyDown={(e) => e.key === 'Enter' && confirmAddSpecialPeriod()}
+                              className="w-full px-4 py-2 bg-white dark:bg-[var(--color-bg-secondary)] border border-gray-300 dark:border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                              placeholder="e.g. Year-End Adjustments"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-8">
+                          <button
+                            onClick={() => setSpecialPeriodData(prev => ({ ...prev, isOpen: false }))}
+                            className="px-6 py-2 text-sm font-bold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                          >
+                            {t('settings.common.cancel')}
+                          </button>
+                          <button
+                            onClick={confirmAddSpecialPeriod}
+                            disabled={!specialPeriodData.newName.trim() || fiscalLoading}
+                            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-lg hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-2"
+                          >
+                            {fiscalLoading ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />}
+                            {t('settings.common.add')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
                 </div>
-              </div>
+              </>
             )}
 
             {/* Voucher Numbering Tab */}
@@ -1516,3 +2082,9 @@ export const AccountingSettingsPage: React.FC = () => {
     </div>
   );
 };
+
+export const AccountingSettingsPage: React.FC = () => (
+  <AccountsProvider>
+    <AccountingSettingsPageContent />
+  </AccountsProvider>
+);

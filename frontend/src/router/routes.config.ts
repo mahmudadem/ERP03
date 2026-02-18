@@ -25,6 +25,7 @@ const AgingReportPage = lazy(() => import('../modules/accounting/pages/AgingRepo
 const ConsolidatedTrialBalancePage = lazy(() => import('../modules/accounting/pages/ConsolidatedTrialBalancePage'));
 const RecurringVouchersPage = lazy(() => import('../modules/accounting/pages/RecurringVouchersPage'));
 const BankReconciliationPage = lazy(() => import('../modules/accounting/pages/BankReconciliationPage'));
+const LedgerReportPage = lazy(() => import('../modules/accounting/pages/LedgerReportPage'));
 
 // Initialization Wizards
 const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
@@ -119,6 +120,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/general-ledger', label: 'General Ledger', component: GeneralLedgerPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/journal', label: 'Journal', component: JournalPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/bank-reconciliation', label: 'Bank Reconciliation', component: BankReconciliationPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/ledger', label: 'Ledger Report', component: LedgerReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/cash-flow', label: 'Cash Flow', component: CashFlowPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.cashFlow.view', requiredModule: 'accounting' },
   { path: '/accounting/budgets', label: 'Budgets', component: BudgetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.settings.read', requiredModule: 'accounting' },

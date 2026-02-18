@@ -20,4 +20,6 @@ export interface LedgerEntry {
   reconciliationId?: string;
   bankStatementLineId?: string;
   createdAt: any;
+  postingPeriodNo?: number | null;
+  isSpecial?: boolean;
 }

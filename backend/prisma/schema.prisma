@@ -203,6 +203,7 @@ model Voucher {
   lockedBy         String?
   reference        String?
   description      String?
+  postingPeriodNo  Int?     // Optional override (13-16 for special periods)
   metadata         Json?    @default("{}")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

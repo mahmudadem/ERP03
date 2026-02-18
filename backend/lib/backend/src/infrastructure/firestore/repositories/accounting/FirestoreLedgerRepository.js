@@ -100,6 +100,8 @@ class FirestoreLedgerRepository {
                     reconciliationId: null,
                     bankStatementLineId: null,
                     createdAt: serverTimestamp(),
+                    postingPeriodNo: voucher.postingPeriodNo || null,
+                    isSpecial: (voucher.postingPeriodNo || 0) >= 13
                 };
                 if (transaction) {
                     transaction.set(docRef, data);
@@ -154,7 +156,7 @@ class FirestoreLedgerRepository {
             throw new InfrastructureError_1.InfrastructureError('Failed to get account ledger', error);
         }
     }
-    async getTrialBalance(companyId, asOfDate) {
+    async getTrialBalance(companyId, asOfDate, excludeSpecialPeriods) {
         try {
             const end = toTimestampBoundary(asOfDate, true);
             const snap = await this.col(companyId)
@@ -163,6 +165,8 @@ class FirestoreLedgerRepository {
             const map = {};
             snap.docs.forEach((d) => {
                 const entry = d.data();
+                if (excludeSpecialPeriods && (entry.postingPeriodNo || 0) >= 13)
+                    return;
                 if (!map[entry.accountId]) {
                     map[entry.accountId] = {
                         accountId: entry.accountId,

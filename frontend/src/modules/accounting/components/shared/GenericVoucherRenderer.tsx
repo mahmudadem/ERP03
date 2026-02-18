@@ -71,6 +71,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const [savingRate, setSavingRate] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]); // Cache fiscal years for period checking
+
+  // Load fiscal years on mount
+  useEffect(() => {
+    accountingApi.listFiscalYears().then(data => {
+      setFiscalYears(data || []);
+    }).catch(err => console.error('Failed to load fiscal years', err));
+  }, []);
 
   // Sync state with initialData updates (e.g. after fetch completes)
   useEffect(() => {
@@ -1750,12 +1758,80 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                    onBlur={() => onBlurRef.current?.()}
                  />
             ) : fieldId === 'date' ? (
-                 <div className="relative">
-            <DatePicker 
-              value={formData[fieldId] || ''}
-              disabled={readOnly}
-              onChange={(val: string) => handleInputChange(fieldId, val)}
-            />
+                 <div className="space-y-1.5">
+                   <DatePicker 
+                     value={formData[fieldId] || ''}
+                     disabled={readOnly}
+                     onChange={(val: string) => handleInputChange(fieldId, val)}
+                   />
+                   {(() => {
+                      // Check if date matches any FY end date AND has special periods
+                      const date = formData[fieldId];
+                      if (!date) return null;
+                      
+                      const matchingFY = fiscalYears.find(fy => fy.endDate === date);
+                      if (matchingFY && matchingFY.specialPeriodsCount > 0) {
+                          const options = [];
+                          // Option 0: Regular Period (null)
+                          options.push({ value: '', label: t('fiscal.period.regular', 'Regular Period') });
+                          
+                          // Options for special periods: 13, 14, ...
+                          for (let i = 0; i < matchingFY.specialPeriodsCount; i++) {
+                              const pNo = 13 + i;
+                              // e.g. "Special Period 13" or lookup name if available
+                              options.push({ value: pNo, label: t(`fiscal.period.${pNo}`, `Special Period ${pNo}`) });
+                          }
+
+                          return (
+                              <div className="animate-in fade-in slide-in-from-top-1 duration-200 mt-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-800">
+                                  <label className="block text-[10px] font-bold text-indigo-800 dark:text-indigo-300 uppercase mb-1">
+                                      {t('fiscal.postingPeriod', 'Posting Period')}
+                                  </label>
+                                  <select
+                                      value={formData.postingPeriodNo || ''}
+                                      onChange={(e) => {
+                                          const val = e.target.value ? parseInt(e.target.value) : null;
+                                          handleInputChange('postingPeriodNo', val);
+                                      }}
+                                      disabled={readOnly}
+                                      className="w-full text-xs p-1.5 rounded border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 text-indigo-900 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                  >
+                                      {options.map(opt => (
+                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                      ))}
+                                  </select>
+                              </div>
+                          );
+                      }
+                      
+                      // Legacy Fallback: IsAdjustment metadata check (keep for backward compatibility)
+                      if (formData[fieldId]?.endsWith('-12-31') && !matchingFY) {
+                         return (
+                           <label className="flex items-center gap-2 cursor-pointer group mt-1">
+                             <input
+                               type="checkbox"
+                               className="sr-only"
+                               checked={!!formData.metadata?.isAdjustment}
+                               disabled={readOnly}
+                               onChange={(e) => {
+                                 const isAdj = e.target.checked;
+                                 handleInputChange('metadata', { 
+                                   ...(formData.metadata || {}), 
+                                   isAdjustment: isAdj 
+                                 });
+                               }}
+                             />
+                             <div className={`relative w-8 h-4 rounded-full transition-all ${formData.metadata?.isAdjustment ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                               <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${formData.metadata?.isAdjustment ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                             </div>
+                             <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 group-hover:text-indigo-600 transition-colors">
+                               {t('fiscal.isAdjustment', 'Adjustment Period (P13)')}
+                             </span>
+                           </label>
+                         );
+                      }
+                      return null;
+                   })()}
                  </div>
             ) : (typeOverride === 'textarea' || (!typeOverride && (fieldId === 'notes' || fieldId === 'description'))) ? (
                   <textarea 

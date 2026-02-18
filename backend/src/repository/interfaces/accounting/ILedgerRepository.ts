@@ -16,6 +16,8 @@ export interface GLFilters {
   fromDate?: string;
   toDate?: string;
   voucherType?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface AccountStatementEntry {
@@ -58,7 +60,7 @@ export interface ILedgerRepository {
   recordForVoucher(voucher: VoucherEntity, transaction?: any): Promise<void>;
   deleteForVoucher(companyId: string, voucherId: string, transaction?: any): Promise<void>;
   getAccountLedger(companyId: string, accountId: string, fromDate: string, toDate: string): Promise<LedgerEntry[]>;
-  getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]>;
+  getTrialBalance(companyId: string, asOfDate: string, excludeSpecialPeriods?: boolean): Promise<TrialBalanceRow[]>;
   getGeneralLedger(companyId: string, filters: GLFilters): Promise<LedgerEntry[]>;
   getAccountStatement(
     companyId: string,

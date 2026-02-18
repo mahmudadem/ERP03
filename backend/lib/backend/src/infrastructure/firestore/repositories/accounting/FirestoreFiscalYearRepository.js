@@ -40,9 +40,18 @@ const toDomain = (id, data) => {
             closedBy: p.closedBy,
             lockedAt: p.lockedAt ? ((_d = (_c = p.lockedAt).toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || new Date(p.lockedAt) : undefined,
             lockedBy: p.lockedBy,
+            metadata: p.metadata || {},
+            periodNo: p.periodNo || 0,
+            isSpecial: p.isSpecial || false
         });
     });
-    return new FiscalYear_1.FiscalYear(id, data.companyId, data.name, data.startDate, data.endDate, data.status, periods, data.closingVoucherId, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt) : undefined, data.createdBy);
+    // Backward Compatibility: Default to MONTHLY if missing
+    // Strict Allow-List check
+    let scheme = data.periodScheme;
+    if (!Object.values(FiscalYear_1.PeriodScheme).includes(scheme)) {
+        scheme = FiscalYear_1.PeriodScheme.MONTHLY;
+    }
+    return new FiscalYear_1.FiscalYear(id, data.companyId, data.name, data.startDate, data.endDate, data.status, periods, data.closingVoucherId, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.createdAt) : undefined, data.createdBy, scheme, data.specialPeriodsCount || 0);
 };
 const toPersistence = (f) => ({
     companyId: f.companyId,
@@ -50,10 +59,25 @@ const toPersistence = (f) => ({
     startDate: f.startDate,
     endDate: f.endDate,
     status: f.status,
-    periods: f.periods.map((p) => (Object.assign(Object.assign({}, p), { closedAt: p.closedAt ? admin.firestore.Timestamp.fromDate(p.closedAt) : undefined, lockedAt: p.lockedAt ? admin.firestore.Timestamp.fromDate(p.lockedAt) : undefined }))),
+    periods: f.periods.map((p) => ({
+        id: p.id,
+        name: p.name,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        status: p.status,
+        closedAt: p.closedAt || null,
+        closedBy: p.closedBy || null,
+        lockedAt: p.lockedAt || null,
+        lockedBy: p.lockedBy || null,
+        metadata: p.metadata || null,
+        periodNo: p.periodNo,
+        isSpecial: p.isSpecial
+    })),
     closingVoucherId: f.closingVoucherId || null,
-    createdAt: f.createdAt ? admin.firestore.Timestamp.fromDate(f.createdAt) : admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: f.createdAt || admin.firestore.FieldValue.serverTimestamp(),
     createdBy: f.createdBy || null,
+    periodScheme: f.periodScheme,
+    specialPeriodsCount: f.specialPeriodsCount || 0
 });
 class FirestoreFiscalYearRepository {
     constructor(db) {
@@ -94,6 +118,9 @@ class FirestoreFiscalYearRepository {
     }
     async update(fiscalYear) {
         await this.collection(fiscalYear.companyId).doc(fiscalYear.id).set(toPersistence(fiscalYear), { merge: true });
+    }
+    async delete(companyId, id) {
+        await this.collection(companyId).doc(id).delete();
     }
 }
 exports.FirestoreFiscalYearRepository = FirestoreFiscalYearRepository;

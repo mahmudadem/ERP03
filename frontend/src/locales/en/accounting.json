@@ -476,11 +476,11 @@
     "tabs": {
       "general": "General Settings",
       "currencies": "Currencies",
-      "policies": "Approval & Posting",
+      "policies": "Approval Workflow",
       "paymentMethods": "Payment Methods",
       "costCenter": "Cost Center Required",
       "errorMode": "Policy Error Mode",
-      "fiscal": "Fiscal Year",
+      "fiscal": "Accounting Periods",
       "numbering": "Voucher Numbering"
     },
     "saving": "Saving...",
@@ -489,7 +489,8 @@
     "on": "ON",
     "off": "OFF",
     "common": {
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "cancel": "Cancel"
     },
     "errorMode": {
       "title": "Policy Error Mode",
@@ -503,21 +504,66 @@
       "aggregateDesc": "Run all checks and report all errors at once. Provides a comprehensive list of what needs fixing."
     },
     "fiscal": {
-      "title": "Fiscal Year",
-      "description": "Define your company's financial reporting period",
+      "title": "Accounting Periods",
+      "description": "Define your company's financial reporting periods and fiscal years",
       "fiscalYear": "Fiscal Year",
+      "startMonth": "Start Month",
+      "periodScheme": "Period Scheme",
       "retainedEarnings": "Retained Earnings Account ID",
       "retainedPlaceholder": "Enter retained earnings account id",
-      "createYear": "Create Year",
+      "autoCreateAccount": "Auto-create Retained Earnings Account",
+      "isAdjustment": "Adjustment Period Voucher (P13)",
+      "isAdjustmentDesc": "Check this for year-end adjustment entries that should fall into the optional 13th period (P13).",
       "fiscalYears": "Fiscal Years",
       "none": "No fiscal years defined yet.",
       "closeYear": "Close Year",
       "close": "Close",
+      "confirmClose": "Confirm Close",
       "reopen": "Reopen",
+      "periodLocking": "Period Locking (Control)",
+      "periodLockingHelp": "Freeze all accounting data before a specific date to prevent historical changes.",
+      "periodLockingHint": "Block backdated postings before a specific date.",
+      "lockedThroughDate": "Locked Through Date",
+      "lockedThroughDateDesc": "No vouchers can be posted or edited on or before this date.",
+      "dateRequired": "Locked Through Date is required when period locking is enabled.",
       "status": {
         "open": "Open",
         "closed": "Closed",
         "locked": "Locked"
+      },
+      "confirmations": {
+        "closePeriod": {
+          "title": "Close Accounting Period",
+          "question": "Are you sure you want to close {{period}}?",
+          "description": "This will prevent any further modifications to vouchers in this specific month.",
+          "confirm": "Close Period"
+        },
+        "reopenPeriod": {
+          "title": "Reopen Accounting Period",
+          "question": "Are you sure you want to reopen {{period}}?",
+          "description": "This will allow you to edit or post new vouchers to this month. Data integrity for reports may be affected.",
+          "confirm": "Reopen Period"
+        },
+        "closeYear": {
+          "title": "Finalize Fiscal Year",
+          "question": "Are you sure you want to finalize {{year}}?",
+          "description": "Closing is a permanent operation. All monthly periods will be locked and a year-end closing entry will be generated to clear P&L balances to {{account}}.",
+          "descLock": "All 12 monthly periods will be automatically closed and locked.",
+          "descClear": "P&L balances will be cleared to the selected Retained Earnings account via a closing voucher.",
+          "confirm": "Finalize Year"
+        },
+        "reopenYear": {
+          "title": "Reopen Fiscal Year",
+          "question": "Are you sure you want to reopen {{year}}?",
+          "description": "Reopening will unlock the year's status. Note: This will NOT automatically delete or reverse the existing closing voucher. You must handle the closing entry manually.",
+          "confirm": "Reopen Year"
+        },
+        "deleteYear": {
+          "title": "Delete Fiscal Year",
+          "question": "Are you sure you want to permanently delete fiscal year {{year}}?",
+          "description": "This action cannot be undone and will remove all associated periods and historical configuration.",
+          "confirm": "Delete Year"
+        }
       }
     },
     "numbering": {
@@ -540,10 +586,15 @@
       "sectionSaved": "{{section}} saved!",
       "saveFailed": "Failed to save settings",
       "fiscalYearCreated": "Fiscal year created",
+      "fiscalYearExists": "A fiscal year for {{year}} already exists. Duplicate years are not allowed.",
       "periodClosed": "Period closed",
       "periodReopened": "Period reopened",
       "retainedRequired": "Retained earnings account is required",
       "fiscalYearClosed": "Fiscal year closed",
+      "fiscalYearReopened": "Fiscal year reopened successfully",
+      "fiscalYearDeleted": "Fiscal year deleted successfully",
+      "retainedEarningsExists": "Retained Earnings account already exists. Selected it.",
+      "fiscalYearClosedError": "Cannot modify period because the fiscal year is closed. You must reopen the fiscal year before you can change the status of its monthly periods.",
       "prefixRequired": "Prefix and next number are required",
       "nextNumberUpdated": "Next number updated"
     },

@@ -1,0 +1,101 @@
+﻿  console.log
+    [JournalEntryStrategy] Processing voucher: {
+      headerCurrency: 'USD',
+      baseCurrency: 'USD',
+      isHeaderInBaseCurrency: true,
+      providedExchangeRate: undefined,
+      effectiveHeaderRate: 1,
+      lineCount: 2
+    }
+
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:27:13)
+
+  console.log
+    [JournalEntryStrategy] Line 1: {
+      side: 'Debit',
+      amount: 100,
+      lineCurrency: 'USD',
+      lineParity: 1,
+      absoluteRate: 1,
+      baseAmount: 100,
+      baseCurrency: 'USD'
+    }
+
+      at src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:83:15
+          at Array.forEach (<anonymous>)
+
+  console.log
+    [JournalEntryStrategy] Line 2: {
+      side: 'Credit',
+      amount: 100,
+      lineCurrency: 'USD',
+      lineParity: 1,
+      absoluteRate: 1,
+      baseAmount: 100,
+      baseCurrency: 'USD'
+    }
+
+      at src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:83:15
+          at Array.forEach (<anonymous>)
+
+  console.log
+    [JournalEntryStrategy] Balance check: {
+      totalDebitBase: 100,
+      totalCreditBase: 100,
+      baseDiff: 0,
+      totalDebitHeader: 100,
+      totalCreditHeader: 100,
+      headerDiff: 0
+    }
+
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:147:13)
+
+node.exe : FAIL src/application/accounting/use-cases/Voucher
+Persistence.test.ts
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL src/appli 
+   c...istence.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Voucher Persistence Tests
+    × CreateVoucherUseCase persists postingPeriodNo (37 ms)
+    √ UpdateVoucherUseCase preserves/updates 
+postingPeriodNo (2 ms)
+
+  ● Voucher Persistence Tests › CreateVoucherUseCase 
+persists postingPeriodNo
+
+    TypeError: this.validationService.validateCore is not a 
+function
+
+    [0m [90m 217 |[39m       [90m// Mode A/B Cleanup: 
+Even if auto-posting, we MUST validate the voucher 
+first[39m
+     [90m 218 |[39m       [90m// This is the "Bomb 
+Defusal" - no voucher reaches the ledger without 
+validation[39m
+    [31m[1m>[22m[39m[90m 219 |[39m       [36mthis[39
+m[33m.[39mvalidationService[33m.[39mvalidateCore(voucher
+)[33m;[39m
+     [90m     |[39m                              
+[31m[1m^[22m[39m
+     [90m 220 |[39m
+     [90m 221 |[39m       [36mawait[39m [36mthis[39m[
+33m.[39mvoucherRepo[33m.[39msave(voucher)[33m;[39m
+     [90m 222 |[39m[0m
+
+      at src/application/accounting/use-cases/VoucherUseCase
+s.ts:219:30
+      at Object.<anonymous> (src/application/accounting/use-
+cases/VoucherPersistence.test.ts:105:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 passed, 2 total
+Snapshots:   0 total
+Time:        3.218 s, estimated 4 s
+Ran all test suites matching src/application/accounting/use-
+cases/VoucherPersistence.test.ts.

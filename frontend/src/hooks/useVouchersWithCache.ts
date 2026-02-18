@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useEffect } from 'react';
 import { accountingApi } from '../api/accountingApi';
-import { VoucherListItem } from '../types/accounting/VoucherListTypes';
+import { VoucherListItem, VoucherListResponse } from '../types/accounting/VoucherListTypes';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 
 export interface DateRange {
@@ -16,7 +16,7 @@ export interface VoucherFilters {
   search?: string;
 }
 
-// Default: 2000-01-01 (per user request) to today
+// Default: 2000-01-01 to Today
 export const getDefaultDateRange = (fiscalYearStart?: string): DateRange => {
   const now = new Date();
   const year = now.getFullYear();
@@ -56,152 +56,143 @@ export const useVouchersWithCache = (companyId: string) => {
   useEffect(() => {
     if (company?.fiscalYearStart) {
       setDateRange(prev => {
-        // Only update if we are still using the default/initial value
         if (prev.from === '2000-01-01') {
-          return getDefaultDateRange(company.fiscalYearStart);
+           return getDefaultDateRange(company.fiscalYearStart);
         }
         return prev;
       });
     }
   }, [company?.fiscalYearStart]);
 
+  // Filters (Server-Side)
   const [filters, setFilters] = useState<VoucherFilters>({});
   
-  // Pagination state
+  // View State (Pagination)
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(50); // Default 50 items per page
+  const [pageSize] = useState(100); // Fixed batch size
 
-  const {
-    data: vouchersResponse,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['vouchers', companyId], 
-    queryFn: async () => {
-      return accountingApi.listVouchers({
-        page: 1,
-        pageSize: 1000, // Reduced from 10000 for better performance
-      });
-    },
-    enabled: !!companyId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
-  
-  // Response IS the array directly, not wrapped in { items: [...] }
-  const allVouchers: VoucherListItem[] = useMemo(() => {
-    const raw = Array.isArray(vouchersResponse) 
-      ? vouchersResponse 
-      : (vouchersResponse as any)?.data || [];
-    
-    // DIAGNOSTIC LOG: See verbatim data from API
-    if (raw.length > 0) {
-      console.log('RAW_API_LOG: First voucher sample:', raw[0]);
-    }
-    
-    return raw;
-  }, [vouchersResponse]);
-
-  // Filter client-side (INSTANT, NO API CALL)
-  const filteredVouchers = useMemo(() => {
-    // 1. Define match criteria
-    const matchesFilters = (v: VoucherListItem) => {
-      // --- DATE RANGE FILTER ---
-      if (dateRange.from && v.date < dateRange.from) return false;
-      if (dateRange.to && v.date > dateRange.to) return false;
-
-      // If formId is filtered, it must match. 
-      // LEGACY SUPPORT: If voucher has no formId, we allow it to pass this check and rely on 'type' match.
-      if (filters.formId && v.formId && v.formId !== filters.formId) return false;
-      
-      if (filters.type) {
-        if (v.type?.toLowerCase() !== filters.type?.toLowerCase()) return false;
-      }
-      
-      if (filters.status) {
-        const filterS = filters.status.toUpperCase();
-        // Smart Check mirroring VoucherTable's derived status
-        const isPosted = !!v.postedAt;
-        // Basic Metadata check for caching hook (UI has more complex check but this covers 99%)
-        const isReversed = !!v.metadata?.isReversed; 
-
-        if (filterS === 'POSTED') {
-           // Show if posted AND not visually reversed
-           if (!isPosted || isReversed) return false;
-        } else if (filterS === 'REVERSED') {
-           if (!isReversed) return false;
-        } else {
-           // For specific statuses (DRAFT, APPROVED, PENDING, etc.)
-           // verify it is NOT posted or reversed (which take precedence)
-           if (isPosted || isReversed) return false;
-           if (v.status.toUpperCase() !== filterS) return false;
-        }
-      }
-      
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch = 
-          v.voucherNo?.toLowerCase().includes(searchLower) ||
-          v.reference?.toLowerCase().includes(searchLower) ||
-          v.id.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
-      }
-      
-      return true;
-    };
-
-    // 2. Identify "Primary Matches"
-    const primaryMatchIds = new Set(allVouchers.filter(matchesFilters).map(v => v.id));
-
-    // 3. Expand result set to include related hierarchy items
-    // We want: 
-    // - Every primary match
-    // - The parent of any primary match (if the match is a reversal)
-    // - Any reversal of a primary match (the "history")
-    const resultIds = new Set<string>();
-
-    allVouchers.forEach(v => {
-      if (primaryMatchIds.has(v.id)) {
-        resultIds.add(v.id);
-        // If this is a reversal, we MUST include its parent for the table to render it nested
-        if (v.reversalOfVoucherId) {
-          resultIds.add(v.reversalOfVoucherId);
-        }
-      }
-    });
-
-    // Second pass to catch "children of primary matches"
-    allVouchers.forEach(v => {
-      if (v.reversalOfVoucherId && primaryMatchIds.has(v.reversalOfVoucherId)) {
-        resultIds.add(v.id);
-      }
-    });
-
-    return allVouchers.filter(v => resultIds.has(v.id));
-  }, [allVouchers, filters, dateRange]);
-
-  // Calculate pagination
-  const totalItems = filteredVouchers.length;
-  const totalPages = Math.ceil(totalItems / pageSize) || 1;
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedVouchers = filteredVouchers.slice(startIndex, endIndex);
-
-  // Reset to page 1 when filters or date range change
+  // Sync view to Page 1 when search criteria changes
   useEffect(() => {
     setPage(1);
   }, [filters, dateRange]);
 
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['vouchers', companyId, dateRange, filters], // Includes filters -> distinct cache per search
+    queryFn: async ({ pageParam = 1 }) => {
+      const from = dateRange.from ? dateRange.from.split('T')[0] : '2000-01-01';
+      const to = dateRange.to ? dateRange.to.split('T')[0] : '2099-12-31';
+
+      // Perform SERVER-SIDE filtering:
+      // We pass the filter criteria to the API so we only get relevant matches.
+      return accountingApi.listVouchers({
+        from,
+        to,
+        page: pageParam as number,
+        pageSize: 100,
+        ...filters 
+      });
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any, allPages) => {
+      // 1. Try Typed Pagination Metadata (if backend supports it)
+      if (lastPage?.pagination) {
+         const { page, totalPages } = lastPage.pagination;
+         return page < totalPages ? page + 1 : undefined;
+      }
+
+      // 2. Fallback for array-based response
+      // Normalize items from potential response shapes
+      const items = Array.isArray(lastPage) ? lastPage : (lastPage?.items || lastPage?.data || []);
+      
+      // If we received a full batch (100 is the hardcoded limit), assume there is more
+      if (Array.isArray(items) && items.length === 100) {
+           return allPages.length + 1;
+      }
+      return undefined;
+    },
+    enabled: !!companyId,
+    // Stale time allows navigating "Back" without immediate refetch, preserving instant feel
+    staleTime: 60 * 1000, 
+  });
+  
+  // Accumulate all loaded pages (these are matches from the specific server search)
+  const allLoadedVouchers: VoucherListItem[] = useMemo(() => {
+    if (!data) return [];
+    return data.pages.flatMap((page: any) => {
+        if (page?.items) return page.items;
+        if (Array.isArray(page)) return page;
+        return page?.data || [];
+    });
+  }, [data]);
+
+  // Paginated View (Slice 1 Page) to save resources
+  // This ensures the DOM only renders 100 items at a time
+  const visibleVouchers = useMemo(() => {
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+      // Note: allLoadedVouchers contains Pages 1..N
+      // If we seek Page N, it is at index (N-1)*100
+      return allLoadedVouchers.slice(start, end);
+  }, [allLoadedVouchers, page, pageSize]);
+
+  // Metadata for Paginator
+  const loadedPages = data?.pages.length || 1;
+  
+  const { totalItems, totalPages } = useMemo(() => {
+      // 1. Try to get Real Server Totals
+      const firstPage = data?.pages?.[0] as any;
+      let serverTotal = undefined;
+      
+      if (firstPage?.pagination?.totalItems !== undefined) {
+          serverTotal = firstPage.pagination.totalItems;
+      }
+      
+      // 2. Derive Paginator limits for Sequential Fetching
+      // We limit 'totalPages' to 'loaded + 1' to force sequential "Load More" behavior.
+      // Even if serverTotal says 50 pages, we only enable the next immediate page.
+      const sequentialLimit = loadedPages + (hasNextPage ? 1 : 0);
+      
+      return {
+          totalItems: serverTotal !== undefined ? serverTotal : allLoadedVouchers.length,
+          totalPages: sequentialLimit 
+      };
+  }, [data, allLoadedVouchers.length, loadedPages, hasNextPage]);
+
+  // Handle Page Navigation
+  const handleSetPage = (newPage: number) => {
+      // If user wants next page and we haven't loaded it -> Fetch
+      if (newPage > loadedPages && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+      }
+      // Update View immediately (will show loading if fetch needed, or sliced cache if present)
+      setPage(newPage);
+  };
+  
+  // Safety: If Page exceeds Loaded (e.g. after fetch error), sync back
+  useEffect(() => {
+      if (!isLoading && !isFetchingNextPage && page > loadedPages) {
+          setPage(loadedPages);
+      }
+  }, [page, loadedPages, isLoading, isFetchingNextPage]);
+
   // Invalidate cache when vouchers are created/updated/deleted
   const invalidateVouchers = () => {
     queryClient.invalidateQueries({ queryKey: ['vouchers', companyId] });
+    setPage(1); // Reset UI page state
   };
 
   return {
-    vouchers: paginatedVouchers,
-    allVouchers, // Raw unfiltered data
-    isLoading,
+    vouchers: visibleVouchers, // Only 100 items max (Sliced View)
+    allVouchers: allLoadedVouchers, // Access to full loaded set if needed
+    isLoading: isLoading || isFetchingNextPage, // Show loading when fetching more
     error,
     dateRange,
     setDateRange,
@@ -213,9 +204,9 @@ export const useVouchersWithCache = (companyId: string) => {
       totalItems,
       totalPages,
     },
-    setPage,
+    setPage: handleSetPage,
     refetch,
     invalidateVouchers,
+    isFetchingNextPage
   };
 };
-

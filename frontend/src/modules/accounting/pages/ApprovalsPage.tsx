@@ -57,7 +57,11 @@ const ApprovalsPage: React.FC = () => {
                       voucherTypes.find(t => t.code === fullVoucher.type);
       
       if (formDef) {
-        openWindow(formDef, fullVoucher);
+        openWindow({
+          type: 'voucher',
+          title: `Edit ${formDef.name} - ${(fullVoucher as any).voucherNumber || fullVoucher.voucherNo || ''}`,
+          data: { ...fullVoucher, voucherConfig: formDef }
+        });
       } else {
         errorHandler.showError({ message: 'Voucher form definition not found.' } as any);
       }

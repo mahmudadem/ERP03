@@ -64,12 +64,69 @@ class FirestoreVoucherRepositoryV2 {
             .get();
         return snapshot.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
     }
-    async findByCompany(companyId, limit = 100) {
-        const snapshot = await this.getCollection(companyId)
-            .orderBy('date', 'desc')
-            .limit(limit)
-            .get();
-        return snapshot.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
+    async findByCompany(companyId, limit = 100, filters, offset = 0) {
+        // MODULAR TRANSITION: Try both paths and merge
+        // 1. Build Modular Query
+        let modularQuery = this.getCollection(companyId).orderBy('date', 'desc');
+        if (filters === null || filters === void 0 ? void 0 : filters.from)
+            modularQuery = modularQuery.where('date', '>=', filters.from);
+        if (filters === null || filters === void 0 ? void 0 : filters.to)
+            modularQuery = modularQuery.where('date', '<=', filters.to);
+        // Note: Applying type/status filters here might require compound indices in Production.
+        // However, for the Emulator or with proper indices, this is the correct place.
+        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL')
+            modularQuery = modularQuery.where('type', '==', filters.type);
+        if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
+            modularQuery = modularQuery.where('status', '==', filters.status);
+        if (filters === null || filters === void 0 ? void 0 : filters.formId)
+            modularQuery = modularQuery.where('metadata.formId', '==', filters.formId); // Filter by form ID
+        // Fetch OFFSET + LIMIT to support slicing in memory (due to merge logic)
+        // This is inefficient for deep paging but necessary for merged collections
+        const fetchLimit = offset + limit;
+        const modularSnap = await modularQuery.limit(fetchLimit).get();
+        // 2. Build Legacy Query
+        let legacyQuery = this.db.collection('companies').doc(companyId).collection('vouchers').orderBy('date', 'desc');
+        if (filters === null || filters === void 0 ? void 0 : filters.from)
+            legacyQuery = legacyQuery.where('date', '>=', filters.from);
+        if (filters === null || filters === void 0 ? void 0 : filters.to)
+            legacyQuery = legacyQuery.where('date', '<=', filters.to);
+        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL')
+            legacyQuery = legacyQuery.where('type', '==', filters.type);
+        if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
+            legacyQuery = legacyQuery.where('status', '==', filters.status);
+        if (filters === null || filters === void 0 ? void 0 : filters.formId)
+            legacyQuery = legacyQuery.where('metadata.formId', '==', filters.formId);
+        const legacySnap = await legacyQuery.limit(fetchLimit).get();
+        // Map and merge
+        const modularVouchers = modularSnap.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
+        const legacyVouchers = legacySnap.docs.map(doc => VoucherEntity_1.VoucherEntity.fromJSON(doc.data()));
+        // Deduplicate by ID
+        const voucherMap = new Map();
+        legacyVouchers.forEach(v => voucherMap.set(v.id, v));
+        modularVouchers.forEach(v => voucherMap.set(v.id, v));
+        // Client-side search (if provided) - used for fields not easily queryable in Firestore 
+        // like partial text matches across multiple fields without external index
+        const allUnique = Array.from(voucherMap.values());
+        let filtered = allUnique;
+        if (filters === null || filters === void 0 ? void 0 : filters.search) {
+            const s = filters.search.toLowerCase();
+            filtered = allUnique.filter(v => {
+                var _a, _b;
+                return ((_a = v.voucherNo) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(s)) ||
+                    ((_b = v.description) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes(s)) ||
+                    v.id.toLowerCase().includes(s);
+            });
+        }
+        // Sort and Slice for Pagination
+        return filtered
+            .sort((a, b) => {
+            const dateDiff = (b.date || '').localeCompare(a.date || '');
+            if (dateDiff !== 0)
+                return dateDiff;
+            // Secondary sort by ID for stability (prevents duplicates across pages)
+            return b.id.localeCompare(a.id);
+        })
+            .slice(offset, offset + limit);
     }
     async delete(companyId, voucherId) {
         const docRef = this.getCollection(companyId).doc(voucherId);

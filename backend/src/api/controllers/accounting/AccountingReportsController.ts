@@ -57,7 +57,7 @@ export class AccountingReportsController {
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
 
-      const { accountId, from, to } = req.query;
+      const { accountId, from, to, limit, offset } = req.query;
 
       const useCase = new GetGeneralLedgerUseCase(
         diContainer.ledgerRepository as any,
@@ -67,18 +67,24 @@ export class AccountingReportsController {
         permissionChecker
       );
       
-      const report = await useCase.execute(companyId, userId, {
+      const result = await useCase.execute(companyId, userId, {
         accountId: accountId as string | undefined,
         fromDate: from as string | undefined,
         toDate: to as string | undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        offset: offset ? parseInt(offset as string, 10) : undefined
       });
 
       (res as any).status(200).json({
         success: true,
-        data: report,
+        data: result.data,
         meta: {
           generatedAt: new Date().toISOString(),
-          filters: { accountId, from, to }
+          filters: { accountId, from, to },
+          pagination: {
+            totalItems: result.metadata.totalItems,
+            openingBalance: result.metadata.openingBalance
+          }
         }
       });
     } catch (error) {

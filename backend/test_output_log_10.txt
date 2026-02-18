@@ -1,0 +1,49 @@
+﻿node.exe : FAIL src/application/accounting/use-cases/AutoCre
+ateRetainedEarnings.test.ts
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL src/appli 
+   c...arnings.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  AutoCreateRetainedEarningsUseCase
+    √ Creates account if it does not exist (5 ms)
+    √ Returns existing account if it exists by name (1 ms)
+    × Returns existing account if it exists by code (2 ms)
+    √ Handles code collision by incrementing (1 ms)
+
+  ● AutoCreateRetainedEarningsUseCase › Returns existing 
+account if it exists by code
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+    [0m [90m 55 |[39m         [36mconst[39m result 
+[33m=[39m [36mawait[39m 
+useCase[33m.[39mexecute([32m'c1'[39m[33m,[39m 
+[32m'u1'[39m)[33m;[39m
+     [90m 56 |[39m
+    [31m[1m>[22m[39m[90m 57 |[39m         expect(resul
+t[33m.[39mcreated)[33m.[39mtoBe([36mfalse[39m)[33m;[
+39m
+     [90m    |[39m                                
+[31m[1m^[22m[39m
+     [90m 58 |[39m         expect(result[33m.[39maccount
+[33m.[39mid)[33m.[39mtoBe([32m'ext-2'[39m)[33m;[39m
+     [90m 59 |[39m     })[33m;[39m
+     [90m 60 |[39m[0m
+
+      at Object.<anonymous> (src/application/accounting/use-
+cases/AutoCreateRetainedEarnings.test.ts:57:32)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 3 passed, 4 total
+Snapshots:   0 total
+Time:        5.018 s
+Ran all test suites matching src/application/accounting/use-
+cases/AutoCreateRetainedEarnings.test.ts.

@@ -20,6 +20,7 @@ export interface VoucherListItem {
   totalCreditVoucher: number;
   voucherAmount: number;
   reference?: string;
+  description?: string;
   voucherNo?: string;
   createdBy?: string;
   createdAt?: string; // ISO String or FireStore timestamp
@@ -34,6 +35,7 @@ export interface VoucherListItem {
   formId?: string;  // Which form was used to create this voucher
   prefix?: string;  // Voucher number prefix
   reversalOfVoucherId?: string; // ID of the voucher this one reverses
+  postingPeriodNo?: number; // Special Period (13-16)
   metadata?: Record<string, any>;
   lines?: any[]; // Snapshot of lines for quick display (e.g. Account names)
 }

@@ -34,7 +34,8 @@ describe('GetBudgetVsActualUseCase', () => {
     findById: jest.fn(),
     findActiveForDate: jest.fn(),
     save: jest.fn(),
-    update: jest.fn()
+    update: jest.fn(),
+    delete: jest.fn()
   };
 
   const ledgerRepo: jest.Mocked<ILedgerRepository> = {

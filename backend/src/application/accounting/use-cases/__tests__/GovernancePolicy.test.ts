@@ -11,7 +11,7 @@ import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEnt
 import { VoucherLineEntity } from '../../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherStatus, VoucherType, PostingLockPolicy } from '../../../../domain/accounting/types/VoucherTypes';
 import { UpdateVoucherUseCase, CancelVoucherUseCase } from '../VoucherUseCases';
-import { BusinessError } from '../../../../errors/AppError';
+import { AppError, BusinessError } from '../../../../errors/AppError';
 import { ErrorCode } from '../../../../errors/ErrorCodes';
 import { makePostedVoucher, makeVoucher } from './testHelpers';
 
@@ -69,10 +69,8 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 updateUseCase.execute('c1', 'u1', 'v-posted-strict', { description: 'Modified' })
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_POSTED_EDIT_FORBIDDEN,
-                    details: expect.objectContaining({ httpStatus: 423 })
-                }
+                code: ErrorCode.VOUCHER_POSTED_EDIT_FORBIDDEN,
+                context: expect.objectContaining({ httpStatus: 423 })
             });
         });
 
@@ -90,10 +88,8 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 cancelUseCase.execute('c1', 'u1', 'v-posted-strict-del')
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN,
-                    details: expect.objectContaining({ httpStatus: 423 })
-                }
+                code: ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN,
+                context: expect.objectContaining({ httpStatus: 423 })
             });
 
             // Ensure ledger was NOT touched
@@ -127,10 +123,8 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 updateUseCase.execute('c1', 'u1', 'v-flex-off-edit', { description: 'Modified' })
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_POSTED_EDIT_FORBIDDEN,
-                    details: expect.objectContaining({ httpStatus: 423 })
-                }
+                code: ErrorCode.VOUCHER_POSTED_EDIT_FORBIDDEN,
+                context: expect.objectContaining({ httpStatus: 423 })
             });
         });
 
@@ -148,9 +142,7 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 cancelUseCase.execute('c1', 'u1', 'v-flex-off-del')
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN
-                }
+                code: ErrorCode.VOUCHER_POSTED_DELETE_FORBIDDEN
             });
         });
     });
@@ -253,13 +245,11 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 updateUseCase.execute('c1', 'u1', 'v-strict-forever-edit', { description: 'Trying to break audit' })
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_STRICT_LOCK_FOREVER,
-                    details: expect.objectContaining({ 
-                        httpStatus: 423,
-                        postingLockPolicy: PostingLockPolicy.STRICT_LOCKED
-                    })
-                }
+                code: ErrorCode.VOUCHER_STRICT_LOCK_FOREVER,
+                context: expect.objectContaining({ 
+                    httpStatus: 423,
+                    postingLockPolicy: PostingLockPolicy.STRICT_LOCKED
+                })
             });
         });
 
@@ -282,13 +272,11 @@ describe('Governance Policy Enforcement - STRICT vs FLEXIBLE Modes', () => {
             await expect(
                 cancelUseCase.execute('c1', 'u1', 'v-strict-forever-del')
             ).rejects.toMatchObject({
-                appError: {
-                    code: ErrorCode.VOUCHER_STRICT_LOCK_FOREVER,
-                    details: expect.objectContaining({ 
-                        httpStatus: 423,
-                        postingLockPolicy: PostingLockPolicy.STRICT_LOCKED
-                    })
-                }
+                code: ErrorCode.VOUCHER_STRICT_LOCK_FOREVER,
+                context: expect.objectContaining({ 
+                    httpStatus: 423,
+                    postingLockPolicy: PostingLockPolicy.STRICT_LOCKED
+                })
             });
 
             // Ensure ledger was NOT touched

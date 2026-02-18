@@ -8,6 +8,7 @@
 import React from 'react';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { VoucherWindow } from './VoucherWindow';
+import { ReportWindow } from './ReportWindow';
 import { VoucherTaskbar } from './VoucherTaskbar';
 
 interface WindowsDesktopProps {
@@ -38,21 +39,33 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
   return (
     <>
       {/* Render all windows */}
-      {windows.map((window) => (
-        <VoucherWindow
-          key={window.id}
-          win={window}
-          onSave={onSaveVoucher}
-          onSubmit={onSubmitVoucher}
-          onApprove={onApproveVoucher ? (id) => onApproveVoucher(window.id, id) : undefined}
-          onReject={onRejectVoucher ? (id) => onRejectVoucher(window.id, id) : undefined}
-          onConfirm={onConfirmVoucher ? (id) => onConfirmVoucher(window.id, id) : undefined}
-          onPost={onPostVoucher}
-          onCancel={onCancelVoucher}
-          onReverse={onReverseVoucher}
-          onPrint={onPrintVoucher}
-        />
-      ))}
+      {windows.map((window) => {
+        if (window.type === 'voucher') {
+          return (
+            <VoucherWindow
+              key={window.id}
+              win={window}
+              onSave={onSaveVoucher}
+              onSubmit={onSubmitVoucher}
+              onApprove={onApproveVoucher ? (id) => onApproveVoucher(window.id, id) : undefined}
+              onReject={onRejectVoucher ? (id) => onRejectVoucher(window.id, id) : undefined}
+              onConfirm={onConfirmVoucher ? (id) => onConfirmVoucher(window.id, id) : undefined}
+              onPost={onPostVoucher}
+              onCancel={onCancelVoucher}
+              onReverse={onReverseVoucher}
+              onPrint={onPrintVoucher}
+            />
+          );
+        } else if (window.type === 'report') {
+          return (
+            <ReportWindow 
+              key={window.id}
+              win={window}
+            />
+          );
+        }
+        return null;
+      })}
 
       {/* Taskbar at bottom */}
       <VoucherTaskbar />

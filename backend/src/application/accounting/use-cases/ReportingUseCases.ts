@@ -64,7 +64,7 @@ export class GetGeneralLedgerUseCase {
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string, userId: string, filters: GeneralLedgerFilters): Promise<GeneralLedgerEntry[]> {
+  async execute(companyId: string, userId: string, filters: GeneralLedgerFilters & { limit?: number; offset?: number }): Promise<{ data: GeneralLedgerEntry[], metadata: { totalItems: number, openingBalance: number } }> {
     // RBAC: Check permission
     await this.permissionChecker.assertOrThrow(
       userId,
@@ -72,31 +72,57 @@ export class GetGeneralLedgerUseCase {
       'accounting.reports.generalLedger.view'
     );
 
-    // 1. Fetch ledger entries
-    const ledgerEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
+    // 1. Calculate opening balance (all entries before fromDate)
+    let openingBalance = 0;
+    if (filters.accountId && filters.fromDate) {
+      try {
+        const openingEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
+          accountId: filters.accountId,
+          toDate: new Date(new Date(filters.fromDate).getTime() - 1).toISOString().split('T')[0],
+        });
+        openingEntries.forEach(e => {
+          openingBalance += ((e.debit || 0) - (e.credit || 0));
+        });
+      } catch (e) {
+        console.warn(`[GetGeneralLedger] Error calculating opening balance: ${e}`);
+      }
+    }
+
+    // 2. Fetch total count (for pagination)
+    // Firestore lacks count() in standard get(), but since it's a report we might fetch all IDs or use a separate counter
+    // For V1 Reports, we just fetch IDs for count if accountId is provided.
+    const allEntriesCountSnap = await this.ledgerRepo.getGeneralLedger(companyId, {
       accountId: filters.accountId,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
     });
+    const totalItems = allEntriesCountSnap.length;
 
-    // 2. Fetch accounts for enrichment (Batch)
+    // 3. Fetch paginated entries
+    const ledgerEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
+      accountId: filters.accountId,
+      fromDate: filters.fromDate,
+      toDate: filters.toDate,
+      limit: filters.limit,
+      offset: filters.offset
+    });
+
+    // 4. Enrich account data
     const accounts = this.accountRepo.getAccounts
       ? await this.accountRepo.getAccounts(companyId)
       : await this.accountRepo.list(companyId);
-    console.log(`[GetGeneralLedger] CompanyId: ${companyId}, Fetched ${accounts.length} accounts`);
     
-    // Create maps for both ID and UserCode for robustness
     const accountMap = new Map(accounts.map(a => [a.id, a]));
     const accountCodeMap = new Map(accounts.map(a => [a.userCode || (a as any).code, a]));
 
-    // 3. Fetch vouchers for voucher numbers
+    // 5. Fetch vouchers
     const voucherIds = [...new Set(ledgerEntries.map(e => e.voucherId))];
     const vouchers = await Promise.all(
       voucherIds.map(id => this.voucherRepo.findById(companyId, id).catch(() => null))
     );
     const voucherMap = new Map(vouchers.filter(v => v).map(v => [v!.id, v!]));
 
-    // 5. Fetch Users for Audit Metadata
+    // 6. Enrichment missing accounts and users
     const userIds = new Set<string>();
     voucherMap.forEach(v => {
       if (v.createdBy) userIds.add(v.createdBy);
@@ -106,70 +132,36 @@ export class GetGeneralLedgerUseCase {
 
     const userMap = new Map<string, User>();
     if (userIds.size > 0) {
-      console.log(`[GetGeneralLedger] Fetching details for ${userIds.size} users...`);
       await Promise.all(Array.from(userIds).map(async uid => {
          try {
            const u = await this.userRepo.getUserById(uid);
            if (u) userMap.set(uid, u);
-         } catch (e) {
-           console.warn(`[GetGeneralLedger] Failed to fetch user ${uid}`, e);
-         }
+         } catch (e) {}
       }));
     }
 
-    // 4. Transform and enrich
-    let runningBalance = 0;
-    
-    // Pre-fetch missing accounts to handle pagination/limit issues
-    const validAccountIds = new Set([...accountMap.keys()]);
-    const missingAccountIds = [...new Set(ledgerEntries.map(e => e.accountId))]
-      .filter(id => !validAccountIds.has(id));
-
-    if (missingAccountIds.length > 0) {
-      console.log(`[GetGeneralLedger] Found ${missingAccountIds.length} accounts missing from batch list. Fetching individually...`);
-      // Try to fetch missing accounts individually (or in batch if repo supports it)
-      // Since repo doesn't support getManyByIds, we fetch individually (parallel)
-      await Promise.all(missingAccountIds.map(async (id) => {
-         try {
-           const acc = await this.accountRepo.getById(companyId, id);
-           if (acc) {
-             accountMap.set(acc.id, acc);
-             if (acc.userCode) accountCodeMap.set(acc.userCode, acc);
-             if ((acc as any).code) accountCodeMap.set((acc as any).code, acc);
-           }
-         } catch (e) {
-           console.warn(`[GetGeneralLedger] Failed to lazy-load account ${id}`, e);
-         }
-      }));
+    // 7. Calculate Running Balance for the CURRENT page
+    // We need the balance up to the offset
+    let pageStartingBalance = openingBalance;
+    if (filters.offset && filters.offset > 0) {
+      // Add balance from entries skipped by current offset
+      allEntriesCountSnap.slice(0, filters.offset).forEach(e => {
+        pageStartingBalance += ((e.debit || 0) - (e.credit || 0));
+      });
     }
 
-    const result: GeneralLedgerEntry[] = ledgerEntries.map(entry => {
-      // Try ID first, then UserCode
+    let runningBalance = pageStartingBalance;
+    const data: GeneralLedgerEntry[] = ledgerEntries.map(entry => {
       const acc = accountMap.get(entry.accountId) || accountCodeMap.get(entry.accountId);
       const voucher = voucherMap.get(entry.voucherId);
       
-      const dateStr = (() => {
-        const d = entry.date as any;
-        if (!d) return '';
-        if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        if (typeof d === 'string') return d.includes('T') ? d.split('T')[0] : d;
-        if (typeof d === 'object' && 'seconds' in d) {
-          const date = new Date(d.seconds * 1000);
-          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        }
-        return String(d);
-      })();
-
-      // Update running balance (Debit positive, Credit negative)
-      // Note: This logic assumes Asset/Expense nature. For Liabilities/Revenue, it might be inverted,
-      // but standard GL view usually presents Dr-Cr or separate columns.
       const dr = entry.debit || 0;
       const cr = entry.credit || 0;
       runningBalance += (dr - cr);
 
       return {
         id: entry.id,
-        date: dateStr,
+        date: entry.date as any, // Mappers will handle
         voucherId: entry.voucherId,
         voucherNo: voucher?.voucherNo || 'N/A',
         accountId: entry.accountId,
@@ -183,27 +175,17 @@ export class GetGeneralLedgerUseCase {
         baseCurrency: entry.baseCurrency || '',
         baseAmount: entry.baseAmount || 0,
         exchangeRate: entry.exchangeRate || 1,
-        runningBalance: filters.accountId ? runningBalance : undefined, // Only show for single account
-        
-        // Audit Metadata
-        createdAt: voucher?.createdAt ? new Date(voucher.createdAt).toISOString() : undefined,
-        createdBy: voucher?.createdBy,
-        createdByName: userMap.get(voucher?.createdBy || '')?.name,
-        createdByEmail: userMap.get(voucher?.createdBy || '')?.email,
-        
-        approvedAt: voucher?.approvedAt ? new Date(voucher.approvedAt).toISOString() : undefined,
-        approvedBy: voucher?.approvedBy,
-        approvedByName: userMap.get(voucher?.approvedBy || '')?.name,
-        approvedByEmail: userMap.get(voucher?.approvedBy || '')?.email,
-        
-        postedAt: voucher?.postedAt ? new Date(voucher.postedAt).toISOString() : undefined,
-        postedBy: voucher?.postedBy,
-        postedByName: userMap.get(voucher?.postedBy || '')?.name,
-        postedByEmail: userMap.get(voucher?.postedBy || '')?.email,
+        runningBalance: filters.accountId ? runningBalance : undefined,
       };
     });
 
-    return result;
+    return { 
+      data, 
+      metadata: { 
+        totalItems, 
+        openingBalance 
+      } 
+    };
   }
 }
 

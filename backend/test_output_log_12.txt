@@ -1,0 +1,23 @@
+﻿node.exe : PASS src/application/accounting/use-cases/DeleteF
+iscalYearUseCase.test.ts
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/appli 
+   c...UseCase.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  DeleteFiscalYearUseCase
+    √ Deletes fiscal year if no vouchers exist and not 
+closed (4 ms)
+    √ Throws if fiscal year has vouchers (12 ms)
+    √ Throws if fiscal year is CLOSED (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        4.949 s
+Ran all test suites matching src/application/accounting/use-
+cases/DeleteFiscalYearUseCase.test.ts.

@@ -8,25 +8,24 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 
-export interface VoucherWindow {
+export type UIWindowType = 'voucher' | 'report';
+
+export interface UIWindow {
   id: string;
-  voucherType: VoucherFormConfig;
+  type: UIWindowType;
   title: string;
   isMinimized: boolean;
   isMaximized: boolean;
   isFocused: boolean;
   position: { x: number; y: number };
   size: { width: number; height: number };
-  data?: {
-    voucherConfig?: VoucherFormConfig;
-    [key: string]: any;
-  };
+  data?: any;
 }
 
 interface WindowContextType {
-  windows: VoucherWindow[];
+  windows: UIWindow[];
   activeWindowId: string | null;
-  openWindow: (voucherConfig: VoucherFormConfig, data?: any) => void;
+  openWindow: (config: { type: UIWindowType, title: string, data?: any, size?: { width: number, height: number } }) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   maximizeWindow: (id: string) => void;
@@ -39,20 +38,15 @@ interface WindowContextType {
 const WindowManagerContext = createContext<WindowContextType | undefined>(undefined);
 
 export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [windows, setWindows] = useState<VoucherWindow[]>([]);
+  const [windows, setWindows] = useState<UIWindow[]>([]);
 
-  const openWindow = useCallback((voucherType: VoucherFormConfig, data?: any) => {
-    const id = `voucher-${Date.now()}`;
+  const openWindow = useCallback((config: { type: UIWindowType, title: string, data?: any, size?: { width: number, height: number } }) => {
+    const id = `${config.type}-${Date.now()}`;
     
-    // Determine if this is a new voucher or editing existing
-    const isExisting = data?.id || data?.voucherNumber || data?.voucherId;
-    const titlePrefix = isExisting ? 'Edit' : 'New';
-    const titleSuffix = isExisting && data?.voucherNumber ? ` - ${data.voucherNumber}` : '';
-    
-    const newWindow: VoucherWindow = {
+    const newWindow: UIWindow = {
       id,
-      voucherType,
-      title: `${titlePrefix} ${voucherType.name}${titleSuffix}`,
+      type: config.type,
+      title: config.title,
       isMinimized: false,
       isMaximized: false,
       isFocused: true,
@@ -60,8 +54,8 @@ export const WindowManagerProvider: React.FC<{ children: React.ReactNode }> = ({
         x: 100 + (windows.length * 30), // Cascade effect
         y: 50 + (windows.length * 30) 
       },
-      size: { width: 900, height: 600 },
-      data
+      size: config.size || { width: 900, height: 600 },
+      data: config.data
     };
 
     setWindows(prev => [

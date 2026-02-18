@@ -1,0 +1,74 @@
+﻿  console.log
+    [JournalEntryStrategy] Processing voucher: {
+      headerCurrency: 'USD',
+      baseCurrency: 'USD',
+      isHeaderInBaseCurrency: true,
+      providedExchangeRate: undefined,
+      effectiveHeaderRate: 1,
+      lineCount: 2
+    }
+
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:27:13)
+
+  console.log
+    [JournalEntryStrategy] Line 1: {
+      side: 'Debit',
+      amount: 100,
+      lineCurrency: 'USD',
+      lineParity: 1,
+      absoluteRate: 1,
+      baseAmount: 100,
+      baseCurrency: 'USD'
+    }
+
+      at src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:83:15
+          at Array.forEach (<anonymous>)
+
+  console.log
+    [JournalEntryStrategy] Line 2: {
+      side: 'Credit',
+      amount: 100,
+      lineCurrency: 'USD',
+      lineParity: 1,
+      absoluteRate: 1,
+      baseAmount: 100,
+      baseCurrency: 'USD'
+    }
+
+      at src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:83:15
+          at Array.forEach (<anonymous>)
+
+  console.log
+    [JournalEntryStrategy] Balance check: {
+      totalDebitBase: 100,
+      totalCreditBase: 100,
+      baseDiff: 0,
+      totalDebitHeader: 100,
+      totalCreditHeader: 100,
+      headerDiff: 0
+    }
+
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:147:13)
+
+node.exe : PASS src/application/accounting/use-cases/Voucher
+Persistence.test.ts
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/appli 
+   c...istence.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Voucher Persistence Tests
+    √ CreateVoucherUseCase persists postingPeriodNo (39 ms)
+    √ UpdateVoucherUseCase preserves/updates 
+postingPeriodNo (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        4.824 s
+Ran all test suites matching src/application/accounting/use-
+cases/VoucherPersistence.test.ts.

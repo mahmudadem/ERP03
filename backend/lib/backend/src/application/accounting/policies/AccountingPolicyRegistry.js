@@ -66,10 +66,10 @@ class AccountingPolicyRegistry {
         }
         if (config.periodLockEnabled) {
             const fiscalResolver = this.fiscalYearRepo
-                ? async (companyId, date) => {
+                ? async (cId, date, postingPeriodNo) => {
                     var _a;
-                    const fy = await this.fiscalYearRepo.findActiveForDate(companyId, date);
-                    const period = fy === null || fy === void 0 ? void 0 : fy.getPeriodForDate(date);
+                    const fy = await this.fiscalYearRepo.findActiveForDate(cId, date);
+                    const period = fy === null || fy === void 0 ? void 0 : fy.getPeriodForDate(date, postingPeriodNo);
                     return (_a = period === null || period === void 0 ? void 0 : period.status) !== null && _a !== void 0 ? _a : null;
                 }
                 : undefined;

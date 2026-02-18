@@ -104,11 +104,15 @@ router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permiss
 router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), SettingsController_1.SettingsController.getSettings);
 router.put('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), SettingsController_1.SettingsController.updateSettings);
 // Fiscal Year Management
+router.post('/fiscal-years/:id/reopen-year', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.reopenYear);
 router.get('/fiscal-years', (0, permissionGuard_1.permissionGuard)('accounting.settings.read'), FiscalYearController_1.FiscalYearController.list);
 router.post('/fiscal-years', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.create);
 router.post('/fiscal-years/:id/close-period', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.closePeriod);
 router.post('/fiscal-years/:id/reopen-period', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.reopenPeriod);
+router.post('/fiscal-years/:id/enable-special-periods', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.enableSpecialPeriods);
 router.post('/fiscal-years/:id/close-year', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.closeYear);
+router.delete('/fiscal-years/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.delete);
+router.post('/fiscal-years/auto-create-retained-earnings', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.autoCreateRetainedEarnings);
 // Cost Centers
 router.get('/cost-centers', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CostCenterController_1.CostCenterController.list);
 router.get('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CostCenterController_1.CostCenterController.getById);

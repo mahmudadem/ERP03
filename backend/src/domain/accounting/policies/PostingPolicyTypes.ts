@@ -32,6 +32,7 @@ export interface PostingPolicyContext {
   
   // Header metadata (for policy-specific checks)
   metadata: Record<string, any>;
+  postingPeriodNo?: number;
 }
 
 /**

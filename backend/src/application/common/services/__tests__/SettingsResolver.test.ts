@@ -24,17 +24,21 @@ describe('SettingsResolver', () => {
   });
 
   describe('Shared Tier (Inter-Module)', () => {
-    test('getCurrenciesCollection should point to companies/{id}/Settings/shared/currencies', () => {
+    test('getCurrenciesCollection should point to companies/{id}/shared/Settings/currencies', () => {
       resolver.getCurrenciesCollection(companyId);
       expect(mockDb.collection).toHaveBeenCalledWith('companies');
       expect(mockDb.doc).toHaveBeenCalledWith(companyId);
-      expect(mockDb.collection).toHaveBeenCalledWith('Settings');
-      expect(mockDb.doc).toHaveBeenCalledWith('shared');
+      expect(mockDb.collection).toHaveBeenCalledWith('shared');
+      expect(mockDb.doc).toHaveBeenCalledWith('Settings');
       expect(mockDb.collection).toHaveBeenCalledWith('currencies');
     });
 
-    test('getSharedCollectionRef should point to custom shared collection', () => {
-      resolver.getSharedCollectionRef(companyId, 'tax_categories');
+    test('getSharedSettingsCollection should point to companies/{id}/shared/Settings/{collection}', () => {
+      resolver.getSharedSettingsCollection(companyId, 'tax_categories');
+      expect(mockDb.collection).toHaveBeenCalledWith('companies');
+      expect(mockDb.doc).toHaveBeenCalledWith(companyId);
+      expect(mockDb.collection).toHaveBeenCalledWith('shared');
+      expect(mockDb.doc).toHaveBeenCalledWith('Settings');
       expect(mockDb.collection).toHaveBeenCalledWith('tax_categories');
     });
   });

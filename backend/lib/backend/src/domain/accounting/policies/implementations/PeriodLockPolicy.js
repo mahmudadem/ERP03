@@ -31,7 +31,8 @@ class PeriodLockPolicy {
             const voucherDate = (0, DateNormalization_1.normalizeAccountingDate)(ctx.voucherDate);
             // Fiscal period check (if resolver provided)
             if (this.resolveFiscalPeriodStatus) {
-                const status = await this.resolveFiscalPeriodStatus(ctx.companyId, voucherDate);
+                const postingPeriodNo = ctx.postingPeriodNo;
+                const status = await this.resolveFiscalPeriodStatus(ctx.companyId, voucherDate, postingPeriodNo);
                 if (status === FiscalYear_1.PeriodStatus.LOCKED || status === FiscalYear_1.PeriodStatus.CLOSED) {
                     return {
                         ok: false,

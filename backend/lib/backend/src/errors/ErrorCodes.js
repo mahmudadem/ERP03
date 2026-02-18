@@ -47,6 +47,9 @@ var ErrorCode;
     ErrorCode["ACC_INVALID_ACCOUNT_TYPE"] = "ACC_005";
     ErrorCode["LEDGER_NOT_FOUND_FOR_POSTED_VOUCHER"] = "ACC_006";
     ErrorCode["CRITICAL_CONFIG_MISSING"] = "ACC_007";
+    ErrorCode["INVALID_SPECIAL_PERIOD_USAGE"] = "ACC_008";
+    ErrorCode["FISCAL_YEAR_NOT_FOUND"] = "ACC_009";
+    ErrorCode["ACC_FISCAL_YEAR_DELETE_FORBIDDEN"] = "ACC_010";
     // ========== INFRASTRUCTURE ==========
     ErrorCode["INFRA_DATABASE_ERROR"] = "INFRA_001";
     ErrorCode["INFRA_NETWORK_ERROR"] = "INFRA_002";

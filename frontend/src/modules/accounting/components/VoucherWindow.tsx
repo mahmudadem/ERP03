@@ -9,7 +9,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
-import { VoucherWindow as VoucherWindowType } from '../../../context/WindowManagerContext';
+import { UIWindow as UIWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
@@ -30,7 +30,7 @@ import { getCompanyToday } from '../../../utils/dateUtils';
 import { isActionAvailable, VoucherActionContext } from '../utils/voucherActions';
 
 interface VoucherWindowProps {
-  win: VoucherWindowType;
+  win: UIWindowType;
   onSave: (id: string, data: any) => Promise<void>;
   onSubmit: (id: string, data: any) => Promise<void>;
   onApprove?: (id: string) => Promise<void>;
@@ -336,7 +336,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
     
     const formData = rendererRef.current.getData();
-    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || 'SYP';
+    const baseCurrency = (win.data?.voucherConfig as any)?.defaultCurrency || settings?.baseCurrency || 'SYP';
     const voucherCurrency = formData.currency || baseCurrency;
     const headerRate = parseFloat(formData.exchangeRate) || 1;
     
@@ -477,7 +477,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!rendererRef.current) return;
     
     const formData = rendererRef.current.getData();
-    const baseCurrency = (win.voucherType as any)?.defaultCurrency || settings?.baseCurrency || '';
+    const baseCurrency = (win.data?.voucherConfig as any)?.defaultCurrency || settings?.baseCurrency || '';
     
     // FX Rate Validation: Block submit if any FX line is missing exchange rate
     const lines = formData.lines || [];
@@ -594,9 +594,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     // Build a completely CLEAN data object — no spreading of old voucher data
     // Only preserve the form definition so the renderer knows which template to use
     const cleanData: Record<string, any> = {
-      voucherConfig: win.data?.voucherConfig || win.voucherType,
-      formId: win.voucherType?.id,
-      type: win.voucherType?.code || win.voucherType?.id,
+      voucherConfig: win.data?.voucherConfig,
+      formId: win.data?.voucherConfig?.id,
+      type: win.data?.voucherConfig?.code || win.data?.voucherConfig?.id,
       status: 'Draft',
       date: getCompanyToday(settings),
       currency: settings?.baseCurrency || '',
@@ -719,8 +719,8 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-sm text-[var(--color-text-primary)]">
             {win.data?.id
-              ? t('voucherEditor.existingTitle', { name: win.voucherType?.name || win.title, id: win.data?.voucherNumber || win.data?.voucherNo || win.data?.id || '' })
-              : t('voucherEditor.newTitle', { name: win.voucherType?.name || win.title })}
+              ? t('voucherEditor.existingTitle', { name: win.data?.voucherConfig?.name || win.title, id: win.data?.voucherNumber || win.data?.voucherNo || win.data?.id || '' })
+              : t('voucherEditor.newTitle', { name: win.data?.voucherConfig?.name || win.title })}
           </h3>
           {win.data?.status && (
             <div className="flex items-center gap-1.5">
@@ -947,7 +947,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-auto custom-scroll transition-colors">
         <GenericVoucherRenderer
           ref={rendererRef}
-          definition={win.voucherType as any}
+          definition={win.data?.voucherConfig as any}
           mode="windows"
           initialData={win.data}
           readOnly={isVoucherReadOnly}

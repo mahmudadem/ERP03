@@ -69,11 +69,7 @@ const AccountStatementPage: React.FC = () => {
   const showBaseColumns = data && baseCurrency && accountCurrency && baseCurrency !== accountCurrency;
   const columnCount = showBaseColumns ? 10 : 7;
 
-  const fetchReport = async () => {
-    if (!selectedAccountId) {
-      setError(t('accountStatement.selectPrompt'));
-      return;
-    }
+
   const fetchReport = async () => {
     if (!selectedAccountId) {
       setError(t('accountStatement.selectPrompt'));

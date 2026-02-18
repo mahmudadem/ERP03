@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
-import { FiscalYear, FiscalYearStatus, FiscalPeriod, PeriodStatus } from '../../../../domain/accounting/entities/FiscalYear';
+
+import { FiscalYear, FiscalYearStatus, FiscalPeriod, PeriodStatus, PeriodScheme } from '../../../../domain/accounting/entities/FiscalYear';
 import { IFiscalYearRepository } from '../../../../repository/interfaces/accounting/IFiscalYearRepository';
 
 const toDomain = (id: string, data: any): FiscalYear => {
@@ -13,7 +14,17 @@ const toDomain = (id: string, data: any): FiscalYear => {
     closedBy: p.closedBy,
     lockedAt: p.lockedAt ? p.lockedAt.toDate?.() || new Date(p.lockedAt) : undefined,
     lockedBy: p.lockedBy,
+    metadata: p.metadata || {},
+    periodNo: p.periodNo || 0,
+    isSpecial: p.isSpecial || false
   }));
+
+  // Backward Compatibility: Default to MONTHLY if missing
+  // Strict Allow-List check
+  let scheme = data.periodScheme;
+  if (!Object.values(PeriodScheme).includes(scheme)) {
+      scheme = PeriodScheme.MONTHLY;
+  }
 
   return new FiscalYear(
     id,
@@ -25,7 +36,9 @@ const toDomain = (id: string, data: any): FiscalYear => {
     periods,
     data.closingVoucherId,
     data.createdAt ? data.createdAt.toDate?.() || new Date(data.createdAt) : undefined,
-    data.createdBy
+    data.createdBy,
+    scheme,
+    data.specialPeriodsCount || 0
   );
 };
 
@@ -36,13 +49,24 @@ const toPersistence = (f: FiscalYear) => ({
   endDate: f.endDate,
   status: f.status,
   periods: f.periods.map((p) => ({
-    ...p,
-    closedAt: p.closedAt ? admin.firestore.Timestamp.fromDate(p.closedAt) : undefined,
-    lockedAt: p.lockedAt ? admin.firestore.Timestamp.fromDate(p.lockedAt) : undefined,
+    id: p.id,
+    name: p.name,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    status: p.status,
+    closedAt: p.closedAt || null,
+    closedBy: p.closedBy || null,
+    lockedAt: p.lockedAt || null,
+    lockedBy: p.lockedBy || null,
+    metadata: p.metadata || null,
+    periodNo: p.periodNo,
+    isSpecial: p.isSpecial
   })),
   closingVoucherId: f.closingVoucherId || null,
-  createdAt: f.createdAt ? admin.firestore.Timestamp.fromDate(f.createdAt) : admin.firestore.FieldValue.serverTimestamp(),
+  createdAt: f.createdAt || admin.firestore.FieldValue.serverTimestamp(),
   createdBy: f.createdBy || null,
+  periodScheme: f.periodScheme,
+  specialPeriodsCount: f.specialPeriodsCount || 0
 });
 
 export class FirestoreFiscalYearRepository implements IFiscalYearRepository {
@@ -90,4 +114,9 @@ export class FirestoreFiscalYearRepository implements IFiscalYearRepository {
   async update(fiscalYear: FiscalYear): Promise<void> {
     await this.collection(fiscalYear.companyId).doc(fiscalYear.id).set(toPersistence(fiscalYear), { merge: true });
   }
+
+  async delete(companyId: string, id: string): Promise<void> {
+    await this.collection(companyId).doc(id).delete();
+  }
+
 }

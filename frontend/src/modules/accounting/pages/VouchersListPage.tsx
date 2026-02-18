@@ -128,7 +128,11 @@ const VouchersListPage: React.FC = () => {
     
     if (isWindowsMode) {
       // Windows Mode: Open in MDI window
-      openWindow(currentVoucherType, { status: 'draft' });
+      openWindow({
+        type: 'voucher',
+        title: `New ${currentVoucherType.name}`,
+        data: { status: 'draft', voucherConfig: currentVoucherType }
+      });
     } else {
       // Classic/Web Mode: Open Modal
       setModalType(currentVoucherType);
@@ -185,10 +189,18 @@ const VouchersListPage: React.FC = () => {
     if (isWindowsMode) {
       try {
         const fullVoucher = await accountingApi.getVoucher(id);
-        openWindow(formDefinition, fullVoucher);
+        openWindow({
+          type: 'voucher',
+          title: `Edit ${formDefinition.name} - ${(fullVoucher as any).voucherNumber || fullVoucher.voucherNo || ''}`,
+          data: { ...fullVoucher, voucherConfig: formDefinition }
+        });
       } catch (error) {
         console.error('Failed to fetch full voucher details:', error);
-        openWindow(formDefinition, summary);
+        openWindow({
+          type: 'voucher',
+          title: `Edit ${formDefinition.name} - ${summary.voucherNo || ''}`,
+          data: { ...summary, voucherConfig: formDefinition }
+        });
       }
     } else {
       // Classic/Web View Mode: Open Modal

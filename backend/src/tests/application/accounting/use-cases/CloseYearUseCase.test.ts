@@ -18,7 +18,7 @@ describe('CloseYearUseCase', () => {
       '2026-01-01',
       '2026-12-31',
       FiscalYearStatus.OPEN,
-      [{ id: '2026-01', name: 'Jan', startDate: '2026-01-01', endDate: '2026-12-31', status: PeriodStatus.OPEN }]
+      [{ id: '2026-01', name: 'Jan', startDate: '2026-01-01', endDate: '2026-12-31', status: PeriodStatus.OPEN, periodNo: 1, isSpecial: false }]
     );
     const fiscalYearRepo = makeRepo(fy);
     const ledgerRepo = {

@@ -136,6 +136,8 @@ export interface FiscalPeriodDTO {
   startDate: string;
   endDate: string;
   status: 'OPEN' | 'CLOSED' | 'LOCKED';
+  periodNo: number;
+  isSpecial: boolean;
 }
 
 export interface FiscalYearDTO {
@@ -146,6 +148,15 @@ export interface FiscalYearDTO {
   status: 'OPEN' | 'CLOSED' | 'LOCKED';
   periods: FiscalPeriodDTO[];
   closingVoucherId?: string;
+  periodScheme?: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL';
+  specialPeriodsCount: number;
+}
+
+export interface CreateFiscalYearDTO {
+  year: number;
+  startMonth: number;
+  name?: string;
+  periodScheme?: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL';
 }
 
 
@@ -367,11 +378,13 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/balance-sheet${qs ? `?${qs}` : ''}`);
   },
 
-  getGeneralLedger: (accountId?: string, from?: string, to?: string): Promise<GeneralLedgerEntry[]> => {
+  getGeneralLedger: (accountId?: string, from?: string, to?: string, limit?: number, offset?: number): Promise<any> => {
     const params = new URLSearchParams();
     if (accountId) params.append('accountId', accountId);
     if (from) params.append('from', from);
     if (to) params.append('to', to);
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
     const queryString = params.toString();
     return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
   },
@@ -400,7 +413,7 @@ export const accountingApi = {
     return client.get('/tenant/accounting/fiscal-years').then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
-  createFiscalYear: (payload: { year: number; startMonth: number; name?: string }): Promise<FiscalYearDTO> => {
+  createFiscalYear: (payload: CreateFiscalYearDTO): Promise<FiscalYearDTO> => {
     return client.post('/tenant/accounting/fiscal-years', payload).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
@@ -412,8 +425,24 @@ export const accountingApi = {
     return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/reopen-period`, { periodId }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
+  enableSpecialPeriods: (fiscalYearId: string, definitions: { name: string }[]): Promise<FiscalYearDTO> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/enable-special-periods`, { definitions }).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  autoCreateRetainedEarnings: (): Promise<{ account: any; created: boolean; message: string }> => {
+    return client.post('/tenant/accounting/fiscal-years/auto-create-retained-earnings').then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
   closeFiscalYear: (fiscalYearId: string, retainedEarningsAccountId: string): Promise<{ success: boolean; data: any }> => {
     return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-year`, { retainedEarningsAccountId }).then((r: any) => (r?.data ?? r));
+  },
+
+  reopenFiscalYear: (fiscalYearId: string): Promise<FiscalYearDTO> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/reopen-year`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+
+  deleteFiscalYear: (fiscalYearId: string): Promise<{ success: boolean }> => {
+    return client.delete(`/tenant/accounting/fiscal-years/${fiscalYearId}`).then((r: any) => (r?.data ?? r));
   },
 
   // --- COST CENTERS ---

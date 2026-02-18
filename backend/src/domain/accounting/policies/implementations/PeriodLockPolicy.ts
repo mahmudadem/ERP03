@@ -25,7 +25,7 @@ export class PeriodLockPolicy implements IPostingPolicy {
 
   constructor(
     private readonly lockedThroughDate?: string,
-    private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string) => Promise<PeriodStatus | null> | undefined
+    private readonly resolveFiscalPeriodStatus?: (companyId: string, date: string, postingPeriodNo?: number) => Promise<PeriodStatus | null> | undefined
   ) {}
 
   async validate(ctx: PostingPolicyContext): Promise<PolicyResult> {
@@ -34,7 +34,8 @@ export class PeriodLockPolicy implements IPostingPolicy {
 
       // Fiscal period check (if resolver provided)
       if (this.resolveFiscalPeriodStatus) {
-        const status = await this.resolveFiscalPeriodStatus(ctx.companyId, voucherDate);
+        const postingPeriodNo = ctx.postingPeriodNo;
+        const status = await this.resolveFiscalPeriodStatus(ctx.companyId, voucherDate, postingPeriodNo);
         if (status === PeriodStatus.LOCKED || status === PeriodStatus.CLOSED) {
           return {
             ok: false,

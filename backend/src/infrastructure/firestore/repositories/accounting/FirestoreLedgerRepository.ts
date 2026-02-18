@@ -111,6 +111,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
           reconciliationId: null,
           bankStatementLineId: null,
           createdAt: serverTimestamp(),
+          postingPeriodNo: voucher.postingPeriodNo || null,
+          isSpecial: (voucher.postingPeriodNo || 0) >= 13
         };
 
         if (transaction) {
@@ -167,7 +169,7 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
     }
   }
 
-  async getTrialBalance(companyId: string, asOfDate: string): Promise<TrialBalanceRow[]> {
+  async getTrialBalance(companyId: string, asOfDate: string, excludeSpecialPeriods?: boolean): Promise<TrialBalanceRow[]> {
     try {
       const end = toTimestampBoundary(asOfDate, true);
       const snap = await this.col(companyId)
@@ -177,6 +179,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const map: Record<string, TrialBalanceRow> = {};
       snap.docs.forEach((d) => {
         const entry = d.data() as any;
+        if (excludeSpecialPeriods && (entry.postingPeriodNo || 0) >= 13) return;
+
         if (!map[entry.accountId]) {
           map[entry.accountId] = {
             accountId: entry.accountId,
@@ -340,7 +344,20 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       end.setHours(23, 59, 59, 999);
       ref = ref.where('date', '<=', Timestamp.fromDate(end));
     }
-    return ref.orderBy('date', 'asc').get();
+    
+    let query = ref.orderBy('date', 'asc');
+    
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    if (filters.offset) {
+      // Note: Firestore doesn't have offset. For real pagination we need startAfter(doc).
+      // For simplicity in this V1 skip logic, we use offset if repo doesn't support cursors yet.
+      query = query.offset(filters.offset);
+    }
+    
+    return query.get();
   }
 
   async getUnreconciledEntries(

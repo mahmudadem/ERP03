@@ -197,7 +197,21 @@ export class CreateVoucherUseCase {
         VoucherStatus.DRAFT,
         { ...voucherMetadata, creationMode }, // Inject creationMode here
         userId,
-        new Date()
+        new Date(),
+        undefined, // approvedBy
+        undefined, // approvedAt
+        undefined, // rejectedBy
+        undefined, // rejectedAt
+        undefined, // rejectionReason
+        undefined, // lockedBy
+        undefined, // lockedAt
+        undefined, // postedBy
+        undefined, // postedAt
+        undefined, // postingLockPolicy
+        undefined, // reversalOfVoucherId
+        undefined, // reference
+        undefined, // updatedAt
+        payload.postingPeriodNo // Special/Adjustment period override
       );
 
       // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
@@ -406,7 +420,8 @@ export class UpdateVoucherUseCase {
       voucher.postingLockPolicy,
       voucher.reversalOfVoucherId,
       payload.reference || voucher.reference,
-      new Date()
+      new Date(),
+      payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo
     );
 
     // If PENDING, mark as edited (Audit badge)
@@ -837,8 +852,21 @@ export class ListVouchersUseCase {
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string, userId: string, limit?: number): Promise<VoucherEntity[]> {
+  async execute(
+    companyId: string, 
+    userId: string, 
+    limit?: number,
+    filters?: {
+      from?: string;
+      to?: string;
+      type?: string;
+      status?: string;
+      search?: string;
+      formId?: string;
+    },
+    offset?: number
+  ): Promise<VoucherEntity[]> {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.view');
-    return this.voucherRepo.findByCompany(companyId, limit);
+    return this.voucherRepo.findByCompany(companyId, limit, filters, offset);
   }
 }

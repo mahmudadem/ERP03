@@ -26,8 +26,30 @@ export class VoucherController {
       const companyId = (req as any).user.companyId;
       const userId = (req as any).user.uid;
       const useCase = new ListVouchersUseCase(diContainer.voucherRepository as any, permissionChecker);
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-      const vouchers = await useCase.execute(companyId, userId, limit);
+      const { from, to, type, status, search, limit, page, pageSize, formId } = req.query;
+      const filters = {
+        from: from as string,
+        to: to as string,
+        type: type as string,
+        status: status as string,
+        search: search as string,
+        formId: formId as string
+      };
+      
+      // Determine limits and offsets
+      // Prioritize pageSize over limit if both present (pageSize creates offset)
+      let limitVal = limit ? parseInt(limit as string, 10) : 50;
+      if (pageSize) limitVal = parseInt(pageSize as string, 10);
+      
+      let offset = 0;
+      if (page) {
+        const pageNum = parseInt(page as string, 10);
+        if (pageNum > 1) {
+          offset = (pageNum - 1) * limitVal;
+        }
+      }
+
+      const vouchers = await useCase.execute(companyId, userId, limitVal, filters, offset);
       res.json({ success: true, data: vouchers });
     } catch (err) {
       next(err);

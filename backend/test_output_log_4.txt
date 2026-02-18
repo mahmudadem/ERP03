@@ -1,0 +1,58 @@
+  console.log
+    [JournalEntryStrategy] Processing voucher: {
+      headerCurrency: 'USD',
+      baseCurrency: 'USD',
+      isHeaderInBaseCurrency: true,
+      providedExchangeRate: undefined,
+      effectiveHeaderRate: 1,
+      lineCount: 2
+    }
+
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:27:13)
+
+FAIL src/application/accounting/use-cases/VoucherPersistence.test.ts
+  Voucher Persistence Tests
+    × CreateVoucherUseCase persists postingPeriodNo (37 ms)
+    × UpdateVoucherUseCase preserves/updates postingPeriodNo (1 ms)
+
+  ● Voucher Persistence Tests › CreateVoucherUseCase persists postingPeriodNo
+
+    Line 1: Missing required V2 fields: side, amount
+
+    [0m [90m 47 |[39m       [90m// Strict V2 format: side and amount are required[39m
+     [90m 48 |[39m       [36mif[39m ([33m![39minputLine[33m.[39mside [33m||[39m inputLine[33m.[39mamount [33m===[39m undefined) {
+    [31m[1m>[22m[39m[90m 49 |[39m         [36mthrow[39m [36mnew[39m [33mError[39m([32m`Line ${idx + 1}: Missing required V2 fields: side, amount`[39m)[33m;[39m
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 50 |[39m       }
+     [90m 51 |[39m
+     [90m 52 |[39m       [36mconst[39m side [33m=[39m inputLine[33m.[39mside[33m;[39m[0m
+
+      at src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:49:15
+          at Array.forEach (<anonymous>)
+      at JournalEntryStrategy.generateLines (src/domain/accounting/strategies/implementations/JournalEntryStrategy.ts:42:18)
+      at src/application/accounting/use-cases/VoucherUseCases.ts:106:32
+      at Object.<anonymous> (src/application/accounting/use-cases/VoucherPersistence.test.ts:94:9)
+
+  ● Voucher Persistence Tests › UpdateVoucherUseCase preserves/updates postingPeriodNo
+
+    Account "undefined" invalid: Account "undefined - undefined" is a HEADER account and cannot be used for posting. Select a POSTING account.
+
+    [0m [90m 194 |[39m     [36mif[39m (errors[33m.[39mlength [33m>[39m [35m0[39m) {
+     [90m 195 |[39m       [36mconst[39m reasons [33m=[39m errors[33m.[39mmap(e [33m=>[39m e[33m.[39mreason)[33m.[39mjoin([32m'; '[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 196 |[39m       [36mthrow[39m [36mnew[39m [33mError[39m([32m`Account "${account.userCode}" invalid: ${reasons}`[39m)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 197 |[39m     }
+     [90m 198 |[39m
+     [90m 199 |[39m     [36mreturn[39m account[33m;[39m[0m
+
+      at AccountValidationService.validateAccountById (src/application/accounting/services/AccountValidationService.ts:196:13)
+      at src/application/accounting/use-cases/VoucherUseCases.ts:356:23
+          at async Promise.all (index 0)
+      at UpdateVoucherUseCase.execute (src/application/accounting/use-cases/VoucherUseCases.ts:351:19)
+      at Object.<anonymous> (src/application/accounting/use-cases/VoucherPersistence.test.ts:123:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        3.505 s, estimated 6 s
+Ran all test suites matching src/application/accounting/use-cases/VoucherPersistence.test.ts.

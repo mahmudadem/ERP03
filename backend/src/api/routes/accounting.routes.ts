@@ -112,11 +112,15 @@ router.get('/policy-config', permissionGuard('accounting.vouchers.view'), Settin
 router.put('/policy-config', permissionGuard('accounting.settings.write'), SettingsController.updateSettings);
 
 // Fiscal Year Management
+router.post('/fiscal-years/:id/reopen-year', permissionGuard('accounting.settings.write'), FiscalYearController.reopenYear);
 router.get('/fiscal-years', permissionGuard('accounting.settings.read'), FiscalYearController.list);
 router.post('/fiscal-years', permissionGuard('accounting.settings.write'), FiscalYearController.create);
 router.post('/fiscal-years/:id/close-period', permissionGuard('accounting.settings.write'), FiscalYearController.closePeriod);
 router.post('/fiscal-years/:id/reopen-period', permissionGuard('accounting.settings.write'), FiscalYearController.reopenPeriod);
+router.post('/fiscal-years/:id/enable-special-periods', permissionGuard('accounting.settings.write'), FiscalYearController.enableSpecialPeriods);
 router.post('/fiscal-years/:id/close-year', permissionGuard('accounting.settings.write'), FiscalYearController.closeYear);
+router.delete('/fiscal-years/:id', permissionGuard('accounting.settings.write'), FiscalYearController.delete);
+router.post('/fiscal-years/auto-create-retained-earnings', permissionGuard('accounting.settings.write'), FiscalYearController.autoCreateRetainedEarnings);
 
 // Cost Centers
 router.get('/cost-centers', permissionGuard('accounting.accounts.view'), CostCenterController.list);

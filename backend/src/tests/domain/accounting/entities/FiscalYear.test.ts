@@ -9,8 +9,8 @@ const buildYear = () =>
     '2026-12-31',
     FiscalYearStatus.OPEN,
     [
-      { id: '2026-01', name: 'Jan', startDate: '2026-01-01', endDate: '2026-01-31', status: PeriodStatus.OPEN },
-      { id: '2026-02', name: 'Feb', startDate: '2026-02-01', endDate: '2026-02-28', status: PeriodStatus.OPEN },
+      { id: '2026-01', name: 'Jan', startDate: '2026-01-01', endDate: '2026-01-31', status: PeriodStatus.OPEN, periodNo: 1, isSpecial: false },
+      { id: '2026-02', name: 'Feb', startDate: '2026-02-01', endDate: '2026-02-28', status: PeriodStatus.OPEN, periodNo: 2, isSpecial: false },
     ]
   );
 

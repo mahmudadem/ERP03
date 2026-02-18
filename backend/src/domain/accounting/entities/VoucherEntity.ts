@@ -69,7 +69,8 @@ export class VoucherEntity {
     public readonly reversalOfVoucherId?: string | null,
     
     public readonly reference?: string | null,     // External reference (invoice #, check #, etc.)
-    public readonly updatedAt?: Date | null        // Last modification timestamp
+    public readonly updatedAt?: Date | null,       // Last modification timestamp
+    public readonly postingPeriodNo?: number | null // Special/Adjustment period override
   ) {
     // Calculated totals in voucher currency (sum of line.amount)
     this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
@@ -347,7 +348,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date() // UpdatedAt
+      new Date(), // UpdatedAt
+      this.postingPeriodNo
     );
   }
 
@@ -415,7 +417,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      this.updatedAt
+      this.updatedAt,
+      this.postingPeriodNo
     );
   }
 
@@ -455,7 +458,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date()
+      new Date(),
+      this.postingPeriodNo
     );
   }
 
@@ -509,7 +513,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date()
+      new Date(),
+      this.postingPeriodNo
     );
   }
 
@@ -554,7 +559,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      this.updatedAt
+      this.updatedAt,
+      this.postingPeriodNo
     );
   }
 
@@ -596,7 +602,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date() // updatedAt
+      new Date(), // updatedAt
+      this.postingPeriodNo
     );
   }
 
@@ -638,7 +645,8 @@ export class VoucherEntity {
       lockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      this.updatedAt
+      this.updatedAt,
+      this.postingPeriodNo
     );
   }
 
@@ -676,7 +684,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date() // UpdatedAt
+      new Date(), // UpdatedAt
+      this.postingPeriodNo
     );
   }
 
@@ -716,7 +725,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date()
+      new Date(),
+      this.postingPeriodNo
     );
   }
 
@@ -760,7 +770,8 @@ export class VoucherEntity {
       this.postingLockPolicy,
       this.reversalOfVoucherId,
       this.reference,
-      new Date()
+      new Date(),
+      this.postingPeriodNo
     );
   }
 
@@ -857,7 +868,10 @@ export class VoucherEntity {
       undefined, // postingLockPolicy
       this.id,   // reversalOfVoucherId (STRUCTURAL)
       undefined, // reference
-      new Date() // updatedAt
+      new Date(), // updatedAt
+      // For reversals, we typically use standard period determination based on date.
+      // If P13 is needed, it must be updated later or passed in (future improvement).
+      undefined 
     );
   }
 
@@ -925,7 +939,8 @@ export class VoucherEntity {
       // Metadata convenience fields (also in metadata object)
       sourceModule: this.sourceModule || null,
       formId: this.formId || null,
-      prefix: this.prefix || null
+      prefix: this.prefix || null,
+      postingPeriodNo: this.postingPeriodNo || null
     };
   }
 
@@ -971,7 +986,8 @@ export class VoucherEntity {
       reversalOfVoucherId,
       // Additional legacy fields
       data.reference,
-      data.updatedAt ? new Date(data.updatedAt) : undefined
+      data.updatedAt ? new Date(data.updatedAt) : undefined,
+      data.postingPeriodNo
     );
   }
 }

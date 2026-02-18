@@ -7,6 +7,10 @@ import {
   ClosePeriodUseCase,
   ReopenPeriodUseCase,
   CloseYearUseCase,
+  ReopenYearUseCase,
+  DeleteFiscalYearUseCase,
+  EnableSpecialPeriodsUseCase,
+  AutoCreateRetainedEarningsUseCase,
 } from '../../../application/accounting/use-cases/FiscalYearUseCases';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 
@@ -33,18 +37,21 @@ export class FiscalYearController {
 
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const companyId = (req as any).companyId || (req as any).user?.companyId;
-      const userId = (req as any).user?.uid;
-      const { year, startMonth, name } = req.body;
+      const { year, startMonth, name, periodScheme, includeAdjustmentPeriod, specialPeriodsCount } = req.body;
       const useCase = new CreateFiscalYearUseCase(
         diContainer.fiscalYearRepository,
         diContainer.companyRepository,
         permissionChecker
       );
-      const data = await useCase.execute(companyId, userId, { year: Number(year), startMonth: Number(startMonth), name });
-      (res as any).status(201).json({ success: true, data });
-    } catch (err) {
-      next(err);
+      const fy = await useCase.execute(req.user!.companyId, req.user!.uid, { 
+        year, 
+        startMonth, 
+        name, 
+        periodScheme
+      });
+      res.status(201).json(fy);
+    } catch (error) {
+      next(error);
     }
   }
 
@@ -76,6 +83,21 @@ export class FiscalYearController {
     }
   }
 
+  static async enableSpecialPeriods(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      const { definitions } = req.body;
+      
+      const useCase = new EnableSpecialPeriodsUseCase(diContainer.fiscalYearRepository, permissionChecker);
+      const data = await useCase.execute(companyId, userId, id, definitions);
+      (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async closeYear(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = (req as any).companyId || (req as any).user?.companyId;
@@ -93,6 +115,47 @@ export class FiscalYearController {
       );
       const data = await useCase.execute(companyId, userId, id, { retainedEarningsAccountId });
       (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async reopenYear(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      const useCase = new ReopenYearUseCase(diContainer.fiscalYearRepository, permissionChecker);
+      const data = await useCase.execute(companyId, userId, id);
+      (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      
+      const useCase = new DeleteFiscalYearUseCase(diContainer.fiscalYearRepository, diContainer.voucherRepository, permissionChecker);
+      await useCase.execute(companyId, userId, id);
+      
+      (res as any).status(200).json({ success: true, message: 'Fiscal year deleted successfully' });
+    } catch (err) {
+      next(err);
+    }
+  }
+  static async autoCreateRetainedEarnings(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      
+      const useCase = new AutoCreateRetainedEarningsUseCase(diContainer.accountRepository, permissionChecker);
+      const result = await useCase.execute(companyId, userId);
+      
+      (res as any).status(200).json({ success: true, data: result });
     } catch (err) {
       next(err);
     }

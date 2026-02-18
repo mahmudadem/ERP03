@@ -508,16 +508,59 @@
       "fiscalYear": "Mali Yıl",
       "retainedEarnings": "Geçmiş yıllar kârı hesabı",
       "retainedPlaceholder": "Geçmiş kâr hesabı ID'si",
-      "createYear": "Yıl oluştur",
+      "createYear": "Yıl Oluştur",
+      "includeAdjustmentPeriod": "13. Düzeltme Dönemini Dahil Et (P13)",
+      "isAdjustment": "Düzeltme Dönemi Fişi (P13)",
+      "isAdjustmentDesc": "Opsiyonel 13. döneme (P13) dahil edilmesi gereken yıl sonu düzeltme kayıtları için bunu işaretleyin.",
       "fiscalYears": "Mali Yıllar",
       "none": "Henüz tanımlı mali yıl yok.",
       "closeYear": "Yılı kapat",
       "close": "Kapat",
       "reopen": "Yeniden aç",
+      "periodLocking": "Dönem Kilitleme (Kontrol)",
+      "periodLockingHelp": "Geçmişe dönük değişiklikleri önlemek için belirli bir tarihten önceki tüm muhasebe verilerini dondurun.",
+      "periodLockingHint": "Belirli bir tarihten önceki geriye dönük kayıtları engelleyin.",
+      "lockedThroughDate": "Kilit Başlangıç Tarihi",
+      "lockedThroughDateDesc": "Bu tarihte veya bu tarihten önce hiçbir fiş işlenemez veya düzenlenemez.",
+      "dateRequired": "Dönem kilitleme etkinken tarih seçilmesi zorunludur.",
       "status": {
         "open": "Açık",
         "closed": "Kapalı",
         "locked": "Kilitli"
+      },
+      "confirmations": {
+        "closePeriod": {
+          "title": "Muhasebe Dönemini Kapat",
+          "question": "{{period}} dönemini kapatmak istediğinizden emin misiniz?",
+          "description": "Bu, bu aydaki fişlerde daha fazla değişiklik yapılmasını engelleyecektir.",
+          "confirm": "Dönemi Kapat"
+        },
+        "reopenPeriod": {
+          "title": "Muhasebe Dönemini Yeniden Aç",
+          "question": "{{period}} dönemini yeniden açmak istediğinizden emin misiniz?",
+          "description": "Bu, bu aya yeni fişler eklemenize veya düzenlemenize olanak tanır. Raporların veri bütünlüğü etkilenebilir.",
+          "confirm": "Dönemi Yeniden Aç"
+        },
+        "closeYear": {
+          "title": "Mali Yılı Kesinleştir",
+          "question": "{{year}} yılını kesinleştirmek istediğinizden emin misiniz?",
+          "description": "Kapatma kalıcı bir işlemdir. Bu yıl içindeki tüm 12 aylık dönemler kilitlenecek ve bir kapanış fişi oluşturulacaktır.",
+          "descLock": "Tüm 12 aylık dönemler otomatik olarak kapatılacak ve kilitlenecektir.",
+          "descClear": "P&L bakiyeleri, seçilen Geçmiş Yıllar Kârı hesabına bir kapanış fişi ile devredilecektir.",
+          "confirm": "Yılı Kesinleştir"
+        },
+        "reopenYear": {
+          "title": "Mali Yılı Yeniden Aç",
+          "question": "{{year}} yılını yeniden açmak istediğinizden emin misiniz?",
+          "description": "Yeniden açma yılın durumunu açacaktır. Not: Mevcut kapanış fişi otomatik olarak silinmeyecek veya ters kaydedilmeyecektir. Kapanış fişini manuel olarak düzenlemelisiniz.",
+          "confirm": "Yılı Yeniden Aç"
+        },
+        "deleteYear": {
+          "title": "Mali Yılı Sil",
+          "question": "{{year}} mali yılını kalıcı olarak silmek istediğinizden emin misiniz?",
+          "description": "Bu işlem geri alınamaz ve tüm ilişkili dönemleri ve geçmiş yapılandırmaları kaldıracaktır.",
+          "confirm": "Yılı Sil"
+        }
       }
     },
     "numbering": {
@@ -544,6 +587,10 @@
       "periodReopened": "Dönem yeniden açıldı",
       "retainedRequired": "Geçmiş kâr hesabı zorunlu",
       "fiscalYearClosed": "Mali yıl kapatıldı",
+      "fiscalYearReopened": "Mali yıl başarıyla yeniden açıldı",
+      "fiscalYearDeleted": "Mali yıl başarıyla silindi",
+      "retainedEarningsExists": "Geçmiş yıllar kârı hesabı zaten mevcut. Seçildi.",
+      "fiscalYearClosedError": "Mali yıl kapalı olduğu için dönem değiştirilemez. Aylık dönemlerin durumunu değiştirebilmek için önce mali yılı yeniden açmalısınız.",
       "prefixRequired": "Ön ek ve sonraki numara gerekli",
       "nextNumberUpdated": "Sonraki numara güncellendi"
     },

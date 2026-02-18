@@ -12,9 +12,16 @@ export function setupErrorInterceptor() {
   client.interceptors.response.use(
     (response) => {
       // Restore response unwrapping: Unwrap common { success, data } envelopes
-      return (response.data && response.data.data !== undefined)
-        ? response.data.data
-        : response.data;
+      if (response.data && response.data.data !== undefined) {
+        if (response.data.meta || response.data.metadata) {
+          return {
+            data: response.data.data,
+            meta: response.data.meta || response.data.metadata
+          };
+        }
+        return response.data.data;
+      }
+      return response.data;
     },
     async (error: AxiosError) => {
       // Handle authentication errors FIRST before showing any UI

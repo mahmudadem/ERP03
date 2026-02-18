@@ -365,25 +365,29 @@ export const VoucherTable: React.FC<Props> = ({
     const from = filters.dateFrom || dateRange?.from;
     const to = filters.dateTo || dateRange?.to;
     
-    if (from && item.date < from) return false;
-    if (to && item.date > to) return false;
+    // Normalize dates for safe string comparison (YYYY-MM-DD)
+    const itemDate = item.date?.split('T')[0];
+    const fromDate = from?.split('T')[0];
+    const toDate = to?.split('T')[0];
+    
+    /*
+    // Backend handles date filtering, so we can skip this to avoid timezone discrepancies
+    if (fromDate && itemDate && itemDate < fromDate) {
+      return false;
+    }
+    if (toDate && itemDate && itemDate > toDate) {
+      return false;
+    }
+    */
     
     // 2. Check Status (Using Derived Status)
     const statusFilter = filters.statuses || (externalFilters.status && externalFilters.status !== 'ALL' ? [externalFilters.status] : null);
     if (statusFilter && statusFilter.length > 0) {
       const derivedStatus = getDerivedStatus(item);
-      // DEBUG: Log match attempt for analysis
-      if (statusFilter.some(s => s.toLowerCase() === 'posted')) {
-         console.log('DEBUG_STATUS_CHECK', { 
-           id: item.id,
-           rawStatus: item.status,
-           derived: derivedStatus, 
-           filters: statusFilter,
-           matchResult: statusFilter.some(s => s.toLowerCase() === derivedStatus.toLowerCase())
-         });
-      }
       const match = statusFilter.some(s => s.toLowerCase() === derivedStatus.toLowerCase());
-      if (!match) return false;
+      if (!match) {
+        return false;
+      }
     }
     
     // 3. Check Type (Origin-Aware & Optimized)
@@ -405,14 +409,23 @@ export const VoucherTable: React.FC<Props> = ({
          }
       }
       
-      if (!isDirectMatch && !isReversalMatch) return false;
+      if (!isDirectMatch && !isReversalMatch) {
+         return false;
+      }
     }
 
-    // 4. Check Search (Local and Global)
+    // 4. Check Search (Local and Global) - Include description and ID
     const searchTerm = (filters.searchNumber || externalFilters.search || '').toLowerCase();
     if (searchTerm) {
-      const searchableValue = (item.voucherNo || item.id || '').toLowerCase();
-      if (!searchableValue.includes(searchTerm)) return false;
+      const searchableValue = (
+        (item.voucherNo || '') + ' ' + 
+        (item.description || '') + ' ' + 
+        (item.id || '')
+      ).toLowerCase();
+      
+      if (!searchableValue.includes(searchTerm)) {
+        return false;
+      }
     }
 
     return true;
@@ -882,6 +895,11 @@ export const VoucherTable: React.FC<Props> = ({
                       <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)]", isNested && "pl-12", fontSize)}>
                         <div className="flex flex-col">
                           <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
+                          {voucher.postingPeriodNo && voucher.postingPeriodNo > 12 && (
+                             <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-1 rounded-sm w-fit mt-0.5 font-bold" title={t('voucherTable.tooltips.specialPeriod', { period: voucher.postingPeriodNo })}>
+                                 P{voucher.postingPeriodNo}
+                             </span>
+                          )}
                           <span className={clsx("text-[var(--color-text-secondary)] opacity-70", fontSize === 'text-xs' ? 'text-[10px]' : 'text-xs')}>
                             {formatCompanyTime(voucher.createdAt || voucher.date, settings)}
                           </span>

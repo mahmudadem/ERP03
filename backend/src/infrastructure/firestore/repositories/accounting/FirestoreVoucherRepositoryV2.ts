@@ -93,14 +93,72 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
 
   async findByCompany(
     companyId: string,
-    limit: number = 100
+    limit: number = 100,
+    filters?: { from?: string; to?: string; type?: string; status?: string; search?: string; formId?: string },
+    offset: number = 0
   ): Promise<VoucherEntity[]> {
-    const snapshot = await this.getCollection(companyId)
-      .orderBy('date', 'desc')
-      .limit(limit)
-      .get();
+    // MODULAR TRANSITION: Try both paths and merge
     
-    return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+    // 1. Build Modular Query
+    let modularQuery: any = this.getCollection(companyId).orderBy('date', 'desc');
+    
+    if (filters?.from) modularQuery = modularQuery.where('date', '>=', filters.from);
+    if (filters?.to) modularQuery = modularQuery.where('date', '<=', filters.to);
+    
+    // Note: Applying type/status filters here might require compound indices in Production.
+    // However, for the Emulator or with proper indices, this is the correct place.
+    if (filters?.type && filters.type !== 'ALL') modularQuery = modularQuery.where('type', '==', filters.type);
+    if (filters?.status && filters.status !== 'ALL') modularQuery = modularQuery.where('status', '==', filters.status);
+    if (filters?.formId) modularQuery = modularQuery.where('metadata.formId', '==', filters.formId); // Filter by form ID
+
+    // Fetch OFFSET + LIMIT to support slicing in memory (due to merge logic)
+    // This is inefficient for deep paging but necessary for merged collections
+    const fetchLimit = offset + limit;
+    const modularSnap = await modularQuery.limit(fetchLimit).get();
+      
+    // 2. Build Legacy Query
+    let legacyQuery: any = this.db.collection('companies').doc(companyId).collection('vouchers').orderBy('date', 'desc');
+    
+    if (filters?.from) legacyQuery = legacyQuery.where('date', '>=', filters.from);
+    if (filters?.to) legacyQuery = legacyQuery.where('date', '<=', filters.to);
+    if (filters?.type && filters.type !== 'ALL') legacyQuery = legacyQuery.where('type', '==', filters.type);
+    if (filters?.status && filters.status !== 'ALL') legacyQuery = legacyQuery.where('status', '==', filters.status);
+    if (filters?.formId) legacyQuery = legacyQuery.where('metadata.formId', '==', filters.formId);
+
+    const legacySnap = await legacyQuery.limit(fetchLimit).get();
+
+    // Map and merge
+    const modularVouchers = modularSnap.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+    const legacyVouchers = legacySnap.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+
+    // Deduplicate by ID
+    const voucherMap = new Map<string, VoucherEntity>();
+    legacyVouchers.forEach(v => voucherMap.set(v.id, v));
+    modularVouchers.forEach(v => voucherMap.set(v.id, v));
+
+    // Client-side search (if provided) - used for fields not easily queryable in Firestore 
+    // like partial text matches across multiple fields without external index
+    const allUnique = Array.from(voucherMap.values());
+    let filtered = allUnique;
+    
+    if (filters?.search) {
+      const s = filters.search.toLowerCase();
+      filtered = allUnique.filter(v => 
+        v.voucherNo?.toLowerCase().includes(s) || 
+        v.description?.toLowerCase().includes(s) ||
+        v.id.toLowerCase().includes(s)
+      );
+    }
+
+    // Sort and Slice for Pagination
+    return filtered
+      .sort((a, b) => {
+        const dateDiff = (b.date || '').localeCompare(a.date || '');
+        if (dateDiff !== 0) return dateDiff;
+        // Secondary sort by ID for stability (prevents duplicates across pages)
+        return b.id.localeCompare(a.id);
+      })
+      .slice(offset, offset + limit);
   }
 
   async delete(companyId: string, voucherId: string): Promise<boolean> {

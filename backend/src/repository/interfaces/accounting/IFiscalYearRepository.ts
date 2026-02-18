@@ -6,4 +6,5 @@ export interface IFiscalYearRepository {
   findActiveForDate(companyId: string, date: string): Promise<FiscalYear | null>;
   save(fiscalYear: FiscalYear): Promise<void>;
   update(fiscalYear: FiscalYear): Promise<void>;
+  delete(companyId: string, id: string): Promise<void>;
 }

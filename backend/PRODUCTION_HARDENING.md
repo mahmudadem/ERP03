@@ -171,6 +171,71 @@ grep -r "recordForVoucher" backend/src/application
 
 ---
 
+## ITEM 3: Special Accounting Periods (P13-P16) & Fiscal Year Refinements ✅
+
+### Problem Prevented
+1. **Data Orphaning**: Deleting a fiscal year while vouchers exist in special periods could leave them in an inconsistent state.
+2. **Invalid Usage**: Users applying special periods to dates other than the fiscal year end date.
+3. **Concurrency/Safety**: Auto-creating Retained Earnings account on the frontend could lead to duplicates or race conditions.
+
+### Implementation
+
+#### Files Changed:
+1. **[MODIFIED] FiscalYear.ts**
+   - Enforced special period constraints: Can only be used on the fiscal year's end date.
+   - Throws `BusinessError` with code `ACC_INVALID_SPECIAL_PERIOD_USAGE`.
+2. **[MODIFIED] VoucherEntity.ts & VoucherUseCases.ts**
+   - Added persistence for `postingPeriodNo`.
+   - Verified that both `CreateVoucherUseCase` and `UpdateVoucherUseCase` preserve/update this field correctly.
+3. **[MODIFIED] FirestoreLedgerRepository.ts**
+   - Persists `postingPeriodNo` and `isSpecial` flag to the ledger.
+   - Updated `getTrialBalance` to optionally exclude special periods.
+4. **[MODIFIED] FiscalYearUseCases.ts & FiscalYearController.ts**
+   - Added `AutoCreateRetainedEarningsUseCase` to the backend for idempotent and safe account creation.
+   - Updated `DeleteFiscalYearUseCase` to block deletion if vouchers exist in the fiscal year range.
+
+#### Tests Created:
+- `FiscalYear.spec.ts` - Verifies period resolution and special period enforcement.
+- `VoucherPersistence.test.ts` - Verifies `postingPeriodNo` is correctly stored by use cases.
+- `AutoCreateRetainedEarnings.test.ts` - Verifies idempotency and code collision logic.
+- `DeleteFiscalYearUseCase.test.ts` - Verifies deletion blocks when vouchers are present.
+
+### Special Period Guarantees:
+- ✅ **Validity**: Special periods are strictly tied to the fiscal year end date.
+- ✅ **Persistence**: `postingPeriodNo` is preserved across all voucher states and reflected in the ledger.
+- ✅ **Integrity**: Fiscal years cannot be deleted if they contain vouchers, protecting special period mappings.
+- ✅ **Stability**: Retained Earnings account creation is now a safe backend operation.
+
+---
+
+## Files Changed Summary (Cumulative)
+
+### New Files (7)
+- `backend/src/domain/accounting/utils/DateNormalization.ts`
+- `backend/src/tests/domain/accounting/utils/DateNormalization.test.ts`
+- `backend/src/seeder/verifyProductionHardening.ts`
+- `backend/src/domain/accounting/entities/FiscalYear.spec.ts`
+- `backend/src/application/accounting/use-cases/VoucherPersistence.test.ts`
+- `backend/src/application/accounting/use-cases/AutoCreateRetainedEarnings.test.ts`
+- `backend/src/application/accounting/use-cases/DeleteFiscalYearUseCase.test.ts`
+
+### Modified Files (12)
+- `backend/src/api/controllers/accounting/VoucherController.ts`
+- `backend/src/api/routes/accounting.routes.ts`
+- `backend/src/domain/accounting/policies/implementations/PeriodLockPolicy.ts`
+- `backend/src/infrastructure/di/bindRepositories.ts`
+- `backend/src/domain/accounting/entities/FiscalYear.ts`
+- `backend/src/application/accounting/use-cases/FiscalYearUseCases.ts`
+- `backend/src/api/controllers/accounting/FiscalYearController.ts`
+- `backend/src/domain/accounting/entities/VoucherEntity.ts`
+- `backend/src/application/accounting/use-cases/VoucherUseCases.ts`
+- `backend/src/infrastructure/firestore/repositories/accounting/FirestoreLedgerRepository.ts`
+- `frontend/src/api/accountingApi.ts`
+- `frontend/src/modules/accounting/pages/AccountingSettingsPage.tsx`
+
+---
+
 **Status**: 🚀 **PRODUCTION READY**
 
-All hardening items implemented, tested, and verified. System secure and correct for production use.
+All hardening items, including special period refinements and fiscal year safety, implemented and verified.
+(Refined on 2026-02-15)
