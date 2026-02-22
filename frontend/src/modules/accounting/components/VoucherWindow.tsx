@@ -31,8 +31,8 @@ import { isActionAvailable, VoucherActionContext } from '../utils/voucherActions
 
 interface VoucherWindowProps {
   win: UIWindowType;
-  onSave: (id: string, data: any) => Promise<void>;
-  onSubmit: (id: string, data: any) => Promise<void>;
+  onSave: (id: string, data: any) => Promise<any>;
+  onSubmit: (id: string, data: any) => Promise<any>;
   onApprove?: (id: string) => Promise<void>;
   onReject?: (id: string) => Promise<void>;
   onConfirm?: (id: string) => Promise<void>;
@@ -155,7 +155,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!win.data?.id) return;
     try {
       const updated = await accountingApi.getVoucher(win.data.id);
-      updateWindowData(win.id, updated);
+      // PRESERVE voucherConfig: It's NOT returned by the backend but is REQUIRED for rendering.
+      updateWindowData(win.id, { 
+        ...updated, 
+        voucherConfig: win.data?.voucherConfig 
+      });
       if (updated.lines) setLiveLines(updated.lines);
     } catch (error) {
       console.error('Failed to refresh voucher:', error);
@@ -413,7 +417,16 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
         creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
       };
 
-      await onSave(win.id, formData);
+      const result = await onSave(win.id, formData);
+      
+      // Sync saved state (ID, Status, Numbers)
+      if (result) {
+        // CRITICAL: Preserve the template config so the screen doesn't go white
+        updateWindowData(win.id, { 
+          ...result, 
+          voucherConfig: win.data?.voucherConfig 
+        });
+      }
 
       // Success! Reset dirty state
       setIsDirty(false);
@@ -517,17 +530,45 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     
     try {
       // Inject creation mode for audit transparency
-      formData.metadata = {
-        ...formData.metadata,
-        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+      const submissionData = {
+        ...formData,
+        metadata: {
+          ...formData.metadata,
+          creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+        }
       };
 
-      await onSubmit(win.id, formData);
+      const result = await onSubmit(win.id, submissionData);
+      
+      // On Success: Sync saved state (including ID/Status)
+      if (result) {
+        // CRITICAL: Preserve the template config so the screen doesn't go white
+        updateWindowData(win.id, { 
+          ...result, 
+          voucherConfig: win.data?.voucherConfig 
+        });
+      }
       
       setIsDirty(false);
       setSuccessAction('SUBMIT');
       setShowSuccessModal(true);
     } catch (error: any) {
+      // HANDLE PARTIAL SUCCESS: If save succeeded but submit failed
+      if (error.savedVoucher) {
+        // Sync the ID so further clicks UPDATE instead of CREATE
+        // CRITICAL: Preserve the template config so the screen doesn't go white
+        updateWindowData(win.id, { 
+          ...error.savedVoucher, 
+          voucherConfig: win.data?.voucherConfig 
+        });
+        
+        setIsDirty(false); // It's saved on server now, no longer technically "dirty"
+        
+        // Enhance error message to explain the state
+        const originalMsg = error.message || 'Unknown error';
+        error.message = `Voucher saved as draft, but couldn't be submitted: ${originalMsg}`;
+      }
+      
       errorHandler.showError(error);
     } finally {
       setIsSubmitting(false);

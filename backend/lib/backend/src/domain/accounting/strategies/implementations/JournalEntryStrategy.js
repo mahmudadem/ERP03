@@ -78,12 +78,12 @@ class JournalEntryStrategy {
                 baseAmount,
                 baseCurrency
             });
-            // Validate we have valid amounts
-            if (amount <= 0) {
-                throw new Error(`Line ${idx + 1}: Amount must be positive (got ${amount} ${lineCurrency})`);
+            // Validate we have non-negative amounts
+            if (amount < 0) {
+                throw new Error(`Line ${idx + 1}: Amount must be non-negative (got ${amount} ${lineCurrency})`);
             }
-            if (baseAmount <= 0) {
-                throw new Error(`Line ${idx + 1}: Base amount must be positive. ` +
+            if (baseAmount < 0) {
+                throw new Error(`Line ${idx + 1}: Base amount must be non-negative. ` +
                     `Amount: ${amount} ${lineCurrency}, Rate: ${absoluteRate}, Base: ${baseAmount} ${baseCurrency}. ` +
                     `Check exchange rates for ${lineCurrency}->${baseCurrency} conversion.`);
             }

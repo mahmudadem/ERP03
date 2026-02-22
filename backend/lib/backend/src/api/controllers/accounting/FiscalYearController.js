@@ -102,7 +102,7 @@ class FiscalYearController {
             const companyId = req.companyId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId);
             const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
             const { id } = req.params;
-            const useCase = new FiscalYearUseCases_1.ReopenYearUseCase(bindRepositories_1.diContainer.fiscalYearRepository, permissionChecker);
+            const useCase = new FiscalYearUseCases_1.ReopenYearUseCase(bindRepositories_1.diContainer.fiscalYearRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager, permissionChecker);
             const data = await useCase.execute(companyId, userId, id);
             res.status(200).json({ success: true, data });
         }

@@ -21,13 +21,17 @@ const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
  * HARD POLICY: Gate requirements are frozen at submit time.
  */
 class SubmitVoucherUseCase {
-    constructor(voucherRepository, policyConfigProvider, approvalPolicyService, getAccountMetadata, notificationService, getApproverUserIds) {
+    constructor(voucherRepository, policyConfigProvider, approvalPolicyService, getAccountMetadata, notificationService, getApproverUserIds, policyRegistry, // AccountingPolicyRegistry
+    validationService = null // VoucherValidationService
+    ) {
         this.voucherRepository = voucherRepository;
         this.policyConfigProvider = policyConfigProvider;
         this.approvalPolicyService = approvalPolicyService;
         this.getAccountMetadata = getAccountMetadata;
         this.notificationService = notificationService;
         this.getApproverUserIds = getApproverUserIds;
+        this.policyRegistry = policyRegistry;
+        this.validationService = validationService;
     }
     /**
      * Submit a voucher for approval
@@ -76,6 +80,39 @@ class SubmitVoucherUseCase {
         if (gateResult.missingCustodianAccounts && gateResult.missingCustodianAccounts.length > 0) {
             throw new Error(`Cannot submit: The following accounts require custody confirmation but have no custodian assigned: ` +
                 gateResult.missingCustodianAccounts.join(', '));
+        }
+        // NEW Step 6.7: Policy Validation Gate
+        // CRITICAL: We check period lock even BEFORE submission. 
+        // This prevents vouchers from being trapped in APPROVED status in a locked period.
+        if (this.policyRegistry && this.validationService) {
+            const targetStatus = this.approvalPolicyService.shouldAutoApprove(gateResult) ? VoucherTypes_1.VoucherStatus.APPROVED : VoucherTypes_1.VoucherStatus.PENDING;
+            // We check policies if:
+            // A) Voucher will be auto-approved (immediate posting risk)
+            // B) Always check during submission to prevent locking them later
+            const policies = await this.policyRegistry.getEnabledPolicies(companyId);
+            // Filter out 'approval-required' policy for submission
+            // This policy blocks non-approved vouchers, but submission is what MOVES them towards approval.
+            const filteredPolicies = policies.filter(p => p.id !== 'approval-required');
+            if (filteredPolicies.length > 0) {
+                const context = {
+                    companyId: voucher.companyId,
+                    voucherId: voucher.id,
+                    userId: submitterId,
+                    voucherType: voucher.type,
+                    voucherDate: voucher.date,
+                    voucherNo: voucher.voucherNo,
+                    baseCurrency: voucher.baseCurrency,
+                    totalDebit: voucher.totalDebit,
+                    totalCredit: voucher.totalCredit,
+                    status: targetStatus,
+                    isApproved: targetStatus === VoucherTypes_1.VoucherStatus.APPROVED,
+                    lines: voucher.lines,
+                    metadata: voucher.metadata,
+                    postingPeriodNo: voucher.postingPeriodNo
+                };
+                // Mode: FAIL_FAST for submission
+                await this.validationService.validatePolicies(context, filteredPolicies, 'FAIL_FAST');
+            }
         }
         // Step 7: Create updated voucher with gate requirements frozen in metadata
         const submittedVoucher = this.createSubmittedVoucher(voucher, submitterId, gateResult);
@@ -154,8 +191,8 @@ class SubmitVoucherUseCase {
         undefined, // postedAt - V1: NEVER set here, only after ledger write
         voucher.postingLockPolicy, // postingLockPolicy (preserve existing)
         voucher.reversalOfVoucherId, // reversalOfVoucherId (preserve existing)
-        voucher.reference, now // updatedAt
-        );
+        voucher.reference, now, // updatedAt
+        voucher.postingPeriodNo);
     }
 }
 exports.SubmitVoucherUseCase = SubmitVoucherUseCase;

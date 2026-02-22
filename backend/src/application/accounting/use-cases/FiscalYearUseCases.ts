@@ -229,36 +229,55 @@ export class CloseYearUseCase {
     });
 
     const netIncome = revenueTotal - expenseTotal; // positive = profit
+    const summary = {
+      revenueTotal,
+      expenseTotal,
+      netIncome,
+      baseCurrency
+    };
+
     const retainedSide = netIncome >= 0 ? 'Credit' : 'Debit';
     const retainedAmount = Math.abs(netIncome);
-    if (retainedAmount > 0) {
-      const retainedAccount = accountMap.get(params.retainedEarningsAccountId);
-      if (!retainedAccount) throw new Error('Retained earnings account not found');
+    
+    // Always add the Retained Earnings line, even if it's 0.00, to anchor the voucher
+    const retainedAccount = accountMap.get(params.retainedEarningsAccountId);
+    if (!retainedAccount) throw new Error('Retained earnings account not found');
+    
+    lines.push(
+      new VoucherLineEntity(
+        lines.length + 1,
+        params.retainedEarningsAccountId,
+        retainedSide,
+        retainedAmount,
+        baseCurrency,
+        retainedAmount,
+        baseCurrency,
+        1
+      )
+    );
+
+    // If we only have the retained earnings line and it's 0, we need at least one more 0 line to balance/exist
+    // Or actually, if Profit/Loss were non-zero, the P&L lines would balance it.
+    // If Profit/Loss IS zero, and Revenue/Expense were non-zero but balanced perfectly, they would have been added.
+    // If EVERYTHING is zero, we'll have 1 line of 0.00. We should add a symmetrical 0.00 line to balance.
+    if (lines.length === 1 && retainedAmount === 0) {
       lines.push(
         new VoucherLineEntity(
           lines.length + 1,
           params.retainedEarningsAccountId,
-          retainedSide,
-          retainedAmount,
+          'Debit',
+          0,
           baseCurrency,
-          retainedAmount,
+          0,
           baseCurrency,
           1
         )
       );
     }
 
-    // If no P&L balances exist, we don't need a closing voucher
-    if (lines.length === 0) {
-      await this.transactionManager.runTransaction(async (tx) => {
-        const closed = fy.closeYear(userId, 'NO_VOUCHER_NEEDED');
-        await this.fiscalYearRepo.update(closed);
-      });
-      return { voucherId: null, message: 'Fiscal year closed. No closing voucher was needed as all Revenue and Expense accounts have zero balances.' };
-    }
-
     const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
     const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
+    
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       throw new Error('Closing entry not balanced');
     }
@@ -294,13 +313,19 @@ export class CloseYearUseCase {
       await this.fiscalYearRepo.update(closed);
     });
 
-    return { voucherId: posted.id };
+    return { 
+      voucherId: posted.id,
+      ...summary
+    };
   }
 }
 
 export class ReopenYearUseCase {
   constructor(
     private readonly fiscalYearRepo: IFiscalYearRepository,
+    private readonly voucherRepo: IVoucherRepository,
+    private readonly ledgerRepo: ILedgerRepository,
+    private readonly transactionManager: ITransactionManager,
     private readonly permissionChecker: PermissionChecker
   ) {}
 
@@ -309,8 +334,44 @@ export class ReopenYearUseCase {
     const fy = await this.fiscalYearRepo.findById(companyId, fiscalYearId);
     if (!fy) throw new Error('Fiscal year not found');
 
+    // Audit Correction: If there is a closing voucher, we must reverse it
+    let reversalVoucher: VoucherEntity | null = null;
+    let originalVoucher: VoucherEntity | null = null;
+
+    if (fy.closingVoucherId) {
+      originalVoucher = await this.voucherRepo.findById(companyId, fy.closingVoucherId);
+      if (originalVoucher && originalVoucher.isPosted) {
+        const ledgerLines = await this.ledgerRepo.getGeneralLedger(companyId, { voucherId: originalVoucher.id });
+        
+        reversalVoucher = originalVoucher.createReversal(
+          randomUUID(),
+          iso(new Date()), // Today
+          randomUUID(),
+          userId,
+          ledgerLines,
+          `Invalidating closure of ${fy.name} for adjustments.`
+        );
+
+        // Link and mark as reversed for audit trail
+        originalVoucher = originalVoucher.markAsReversed(reversalVoucher.id);
+
+        // Auto-approve and post the reversal (system event)
+        reversalVoucher = reversalVoucher.approve(userId, new Date());
+        reversalVoucher = reversalVoucher.post(userId, new Date(), PostingLockPolicy.STRICT_LOCKED);
+      }
+    }
+
     const updated = fy.reopenYear();
-    await this.fiscalYearRepo.update(updated);
+
+    await this.transactionManager.runTransaction(async (tx) => {
+      if (reversalVoucher && originalVoucher) {
+        await this.voucherRepo.save(originalVoucher); // Save with isReversed flag from createReversal
+        await this.voucherRepo.save(reversalVoucher);
+        await this.ledgerRepo.recordForVoucher(reversalVoucher, tx as any);
+      }
+      await this.fiscalYearRepo.update(updated);
+    });
+
     return updated;
   }
 }

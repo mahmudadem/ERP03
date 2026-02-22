@@ -18,6 +18,14 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 **Persistence & Integrity:**
 - **Deletion Block**: A fiscal year cannot be deleted if it contains ANY vouchers (regular or special).
 - **Auto-Account Creation**: The backend can safely auto-create the "Retained Earnings" account if it doesn't exist during the closing process.
+- **Mandatory Audit Trail**: Closing a year now ALWAYS generates a closing voucher, providing a permanent record of the closing event.
+- **Zero-Balance Support**: The system supports closing years with no transactions (zero income) by creating a "Zero Audit Voucher" (0.00 entries).
+
+**Year-End Closing Wizard:**
+A guided 3-step process for finalizing the fiscal year:
+1. **Step 1: Account Selection**: Select or auto-create the Retained Earnings account.
+2. **Step 2: Final Review**: Review the impact (P&L calculation and permanent locking) before committing.
+3. **Step 3: Success & Summary**: View the financial results (Revenue, Expense, Net Income) and access the generated audit voucher.
 
 **How it works:**
 1. Admin creates a Fiscal Year and selects a "Period Scheme" (P13 is NOT created by default).
@@ -126,8 +134,8 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 6. Try to select **P13** or submit with P13 selected.
 
 **Expected:**
-- [ ] Voucher at Dec 31 posts successfully to P13.
-- [ ] Voucher at Dec 30 is **BLOCKED**. Error: "Special Period can only be used on the fiscal year end date."
+- [x] Voucher at Dec 31 posts successfully to P13.
+- [x] Voucher at Dec 30 is **BLOCKED**. Error: "Special Period can only be used on the fiscal year end date."
 
 ---
 
@@ -141,8 +149,8 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 5. Verify the "+ Pxx" button disappears after P16 is reached.
 
 **Expected:**
-- [ ] Multiple ad-hoc periods exist with their unique names.
-- [ ] Limit of 4 special periods (P13-P16) is enforced in UI.
+- [x] Multiple ad-hoc periods exist with their unique names.
+- [x] Limit of 4 special periods (P13-P16) is enforced in UI.
 
 ---
 
@@ -154,8 +162,8 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 3. Confirm the deletion.
 
 **Expected:**
-- [ ] Deletion is **REJECTED**.
-- [ ] Toast/Error message: "Cannot delete Fiscal Year. It contains vouchers."
+- [x] Deletion is **REJECTED**.
+- [x] Toast/Error message: "Cannot delete Fiscal Year. It contains vouchers."
 
 ---
 
@@ -168,9 +176,9 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 4. Save the account creation.
 
 **Expected:**
-- [ ] Account "Retained Earnings" is created with code 30200 (or next).
-- [ ] The selector is automatically populated with the new account.
-- [ ] No manual COA navigation required.
+- [x] Account "Retained Earnings" is created with code 30200 (or next).
+- [x] The selector is automatically populated with the new account.
+- [x] No manual COA navigation required.
 
 ---
 
@@ -181,8 +189,27 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 2. Verify it is still functional and defaults to Monthly scheme in UI.
 
 **Expected:**
-- [ ] Existing data remains intact.
-- [ ] You can add new special periods to legacy fiscal years.
+- [x] Existing data remains intact.
+- [x] You can add new special periods to legacy fiscal years.
+
+---
+
+### TC-03.11 — Year-End Closing Wizard & Audit Trail
+
+**Steps:**
+1. Identify an Open Fiscal Year (e.g., FY2027).
+2. Click the **Close Year** (Lock icon) to launch the **Wizard**.
+3. **Step 1**: Select the Retained Earnings account and click **Next**.
+4. **Step 2**: Review the P&L summary and disclaimer, then click **Finalize & Lock Year**.
+5. **Step 3**: Verify the success screen appears with correct Revenue/Expense/Net Income totals.
+6. Click **View Entry** to navigate to the generated voucher.
+7. Repeat for a year with **zero balances**.
+
+**Expected:**
+- [x] Wizard follows the 3-step flow (Select → Review → Success).
+- [x] Financial summary correctly calculates Net Income (Revenue - Expense).
+- [x] Closing voucher (ID: `CLOSE-XXXX`) is created and linked.
+- [x] **Zero-Balance Scenario**: Wizard completes successfully and generates a voucher with balancing `0.00` lines.
 
 ---
 
@@ -199,4 +226,5 @@ Users can now add up to 4 ad-hoc special periods for year-end adjustments, tax f
 | TC-03.7 | ⬜ | Multi Special Periods |
 | TC-03.8 | ⬜ | Deletion Block |
 | TC-03.9 | ⬜ | Auto-Create Account |
-| TC-03.10 | ⬜ | Compatibility |
+| TC-03.10| ⬜ | Compatibility |
+| TC-03.11| ⬜ | Closing Wizard & Audit |

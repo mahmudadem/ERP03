@@ -20,6 +20,8 @@ export interface PaymentVoucherInput {
   // Optional fields
   notes?: string;
   costCenterId?: string;
+  postingPeriodNo?: number;
+  reference?: string;
 }
 
 /**

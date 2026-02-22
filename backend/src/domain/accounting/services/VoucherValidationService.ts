@@ -73,11 +73,11 @@ export class VoucherValidationService {
         );
       }
       
-      // Ensure positive amounts (debit vs credit is handled by the 'side' property)
-      if (line.amount <= 0 || line.baseAmount <= 0) {
+      // Ensure non-negative amounts (debit vs credit is handled by the 'side' property)
+      if (line.amount < 0 || line.baseAmount < 0) {
         throw createPostingError(
           'INVALID_AMOUNT',
-          `Line ${line.id}: Amounts must be positive. Got: ${line.amount}`,
+          `Line ${line.id}: Amounts must be non-negative. Got: ${line.amount}`,
           ErrorCategory.CORE_INVARIANT,
           [`lines[${line.id - 1}].amount`],
           undefined,

@@ -73,8 +73,15 @@ class SaveJournalEntryUseCase {
         companyId, voucherNo, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, input.date, input.description, currency, baseCurrency, exchangeRate, lines, // Readonly array
         totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, // Always starts as DRAFT
         {}, // metadata
-        userId, new Date() // Created at
-        );
+        userId, new Date(), // Created at
+        undefined, undefined, // approved: approvedBy, approvedAt
+        undefined, undefined, undefined, // rejected: rejectedBy, rejectedAt, reason
+        undefined, undefined, // locked
+        undefined, undefined, // posted
+        undefined, // lockPolicy
+        undefined, // reversalOf
+        input.reference || null, new Date(), // updatedAt
+        input.postingPeriodNo);
         // Step 8: Save to repository
         const savedVoucher = await this.voucherRepository.save(voucher);
         return savedVoucher;

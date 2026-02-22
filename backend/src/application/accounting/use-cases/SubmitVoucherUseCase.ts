@@ -29,7 +29,9 @@ export class SubmitVoucherUseCase {
     private readonly approvalPolicyService: ApprovalPolicyService,
     private readonly getAccountMetadata: (companyId: string, accountIds: string[]) => Promise<AccountApprovalMetadata[]>,
     private readonly notificationService?: NotificationService,
-    private readonly getApproverUserIds?: (companyId: string) => Promise<string[]>
+    private readonly getApproverUserIds?: (companyId: string) => Promise<string[]>,
+    private readonly policyRegistry?: any, // AccountingPolicyRegistry
+    private readonly validationService: any = null // VoucherValidationService
   ) {}
 
   /**
@@ -99,6 +101,43 @@ export class SubmitVoucherUseCase {
         `Cannot submit: The following accounts require custody confirmation but have no custodian assigned: ` +
         gateResult.missingCustodianAccounts.join(', ')
       );
+    }
+
+    // NEW Step 6.7: Policy Validation Gate
+    // CRITICAL: We check period lock even BEFORE submission. 
+    // This prevents vouchers from being trapped in APPROVED status in a locked period.
+    if (this.policyRegistry && this.validationService) {
+      const targetStatus = this.approvalPolicyService.shouldAutoApprove(gateResult) ? VoucherStatus.APPROVED : VoucherStatus.PENDING;
+      
+      // We check policies if:
+      // A) Voucher will be auto-approved (immediate posting risk)
+      // B) Always check during submission to prevent locking them later
+      const policies = await this.policyRegistry.getEnabledPolicies(companyId);
+      // Filter out 'approval-required' policy for submission
+      // This policy blocks non-approved vouchers, but submission is what MOVES them towards approval.
+      const filteredPolicies = policies.filter(p => p.id !== 'approval-required');
+      
+      if (filteredPolicies.length > 0) {
+        const context = {
+          companyId: voucher.companyId,
+          voucherId: voucher.id,
+          userId: submitterId,
+          voucherType: voucher.type,
+          voucherDate: voucher.date,
+          voucherNo: voucher.voucherNo,
+          baseCurrency: voucher.baseCurrency,
+          totalDebit: voucher.totalDebit,
+          totalCredit: voucher.totalCredit,
+          status: targetStatus,
+          isApproved: targetStatus === VoucherStatus.APPROVED,
+          lines: voucher.lines,
+          metadata: voucher.metadata,
+          postingPeriodNo: voucher.postingPeriodNo
+        };
+        
+        // Mode: FAIL_FAST for submission
+        await this.validationService.validatePolicies(context, filteredPolicies, 'FAIL_FAST');
+      }
     }
     
     // Step 7: Create updated voucher with gate requirements frozen in metadata
@@ -241,7 +280,8 @@ export class SubmitVoucherUseCase {
       voucher.postingLockPolicy, // postingLockPolicy (preserve existing)
       voucher.reversalOfVoucherId, // reversalOfVoucherId (preserve existing)
       voucher.reference,
-      now // updatedAt
+      now, // updatedAt
+      voucher.postingPeriodNo
     );
   }
 }

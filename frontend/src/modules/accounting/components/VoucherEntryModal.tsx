@@ -31,7 +31,7 @@ interface VoucherEntryModalProps {
   onClose: () => void;
   voucherType: VoucherFormConfig;
   uiMode: UIMode;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: any) => Promise<any>;
   initialData?: any;
   onApprove?: (id: string) => Promise<void>;
   onReject?: (id: string) => Promise<void>;
@@ -74,18 +74,21 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [correctionMode, setCorrectionMode] = useState<CorrectionMode>('REVERSE_ONLY');
   const [isNewMode, setIsNewMode] = useState(false); // Tracks when user clicked "New" to reset form
+  const [localVoucherOverride, setLocalVoucherOverride] = useState<any>(null);
   
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
   const { t } = useTranslation('accounting');
 
-  // When initialData changes (user opens a different voucher), reset new mode
+  // When initialData changes (user opens a different voucher), reset new mode and overrides
   React.useEffect(() => {
     setIsNewMode(false);
+    setLocalVoucherOverride(null);
   }, [initialData?.id]);
 
   // Effective voucher data for action button visibility
-  // When isNewMode is true, use a clean draft state instead of stale initialData
+  // Priority: localOverride > isNewMode > initialData
   const effectiveData = React.useMemo(() => {
+    if (localVoucherOverride) return localVoucherOverride;
     if (isNewMode) {
       return {
         status: 'draft',
@@ -98,7 +101,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       };
     }
     return initialData;
-  }, [isNewMode, initialData, voucherType]);
+  }, [localVoucherOverride, isNewMode, initialData, voucherType]);
 
   const isReversal = React.useMemo(() => {
     return !!effectiveData?.reversalOfVoucherId || effectiveData?.type?.toLowerCase() === 'reversal';
@@ -175,13 +178,32 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       else setIsSaving(true);
       setError(null);
 
-      await onSave(voucherData);
+      const result = await onSave(voucherData);
+      
+      // Sync local state to capture ID/Status
+      if (result) {
+        setLocalVoucherOverride({
+          ...result,
+          // Capture human-readable type info for display consistency
+          type: result.type || voucherType.code || voucherType.id
+        });
+      }
       
       setIsDirty(false);
       setSuccessAction(isSubmit ? 'SUBMIT' : 'SAVE');
       setShowSuccessModal(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to save voucher');
+       // Partial success check (if save worked but submit failed)
+       if (err.savedVoucher) {
+         setLocalVoucherOverride({
+           ...err.savedVoucher,
+           type: err.savedVoucher.type || voucherType.code || voucherType.id
+         });
+         setIsDirty(false);
+         setError(`Voucher saved as draft, but couldn't be submitted: ${err.message || 'Unknown error'}`);
+       } else {
+         setError(err.message || 'Failed to save voucher');
+       }
     } finally {
       setIsSaving(false);
       setIsSubmitting(false);

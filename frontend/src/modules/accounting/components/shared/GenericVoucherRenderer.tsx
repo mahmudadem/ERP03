@@ -49,6 +49,9 @@ export interface GenericVoucherRendererRef {
 }
 
 export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
+  // GUARD: definition must be present
+  if (!definition) return null;
+
   // GUARD: Validate canonical (only if schemaVersion is present)
   if (definition.schemaVersion && definition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
@@ -80,26 +83,27 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }).catch(err => console.error('Failed to load fiscal years', err));
   }, []);
 
-  // Sync state with initialData updates (e.g. after fetch completes)
+  // Sync state with initialData updates (e.g. after fetch completes or partial submit)
   useEffect(() => {
     if (initialData) {
+      // 1. Sync Form Metadata (ID, VoucherNo, Status)
       setFormData((prev: any) => {
-        // Only update if ID changed or we were empty (basic equality check logic is complex, 
-        // but for now we trust parent passes canonical data updates)
-        // Actually, preventing overwrite of dirty state is hard.
-        // But usually initialData goes null -> value.
-        // We will simple overwrite if the ID changes or we have no ID.
+        // If the ID has changed (e.g. from undefined to a real ID after save)
+        // we MUST update the state so subsequent saves use UPDATE instead of CREATE.
         if (prev?.id !== initialData.id || !prev?.id) {
-           return initialData;
+           return {
+             ...prev, // Keep current field values
+             ...initialData // Layer in real ID, status, voucherNo from server
+           };
         }
         return prev;
       });
       
+      // 2. Sync Rows (Lines)
       if (initialData.lines) {
          setRows((prev) => {
-             // Only if lines are significantly different or we are switching records
-             if (!initialData.lines) return prev;
-             // If we have no rows or different voucher ID, take it.
+             // If we are switching to a COMPLETELY different voucher (ID changed)
+             // then we must discard local line edits and take the new ones.
              if (initialData.id !== formData.id) {
                  return initialData.lines.map((l: any, i: number) => {
                      const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
@@ -111,7 +115,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
          });
       }
     }
-  }, [initialData?.id]); // Only re-sync if the ID changes largely.
+  }, [initialData?.id, initialData?.status, initialData?.voucherNo]);
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 

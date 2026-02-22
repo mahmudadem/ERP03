@@ -150,6 +150,10 @@ const AccountingSettingsPageContent: React.FC = () => {
     newName: ''
   });
   const [closingFyId, setClosingFyId] = useState<string | null>(null);
+  const [closingStep, setClosingStep] = useState<'PREVIEW' | 'REVIEW' | 'SUCCESS'>('PREVIEW');
+  const [closingSummary, setClosingSummary] = useState<any>(null);
+  const [lastClosingVoucher, setLastClosingVoucher] = useState<any>(null);
+  const [reopenVoucherDetails, setReopenVoucherDetails] = useState<any>(null);
   const [sequences, setSequences] = useState<any[]>([]);
   const [seqPrefix, setSeqPrefix] = useState<string>('JE');
   const [seqYear, setSeqYear] = useState<number | ''>('');
@@ -430,24 +434,55 @@ const AccountingSettingsPageContent: React.FC = () => {
     }
   };
 
-  const confirmCloseYear = async () => {
+  const handlePrepareClosing = async () => {
     if (!closingFyId) return;
     if (!retainedEarningsAccountId) {
       errorHandler.showError(t('settings.messages.retainedRequired'));
       return;
     }
+    
+    setFiscalLoading(true);
+    try {
+      // Fetch a "Trial Balance" or "Closing Preview" from backend
+      // For now, we'll simulate or fetch if there's an endpoint. 
+      // Actually, let's just use the existing Trial Balance logic if possible or move directly to REVIEW if the user is certain.
+      // But to be a real wizard, let's skip a specialized preview API and just rely on the Post result if we want to be fast, 
+      // OR fetch the TB for the FY end.
+      
+      const fy = fiscalYears.find(f => f.id === closingFyId);
+      if (fy) {
+        // Simple call to get summary without posting? 
+        // We can just set the step to REVIEW and tell them we are about to post.
+        setClosingStep('REVIEW');
+      }
+    } catch (e) {
+      errorHandler.showError('Preparation failed');
+    } finally {
+      setFiscalLoading(false);
+    }
+  };
+
+  const confirmCloseYear = async () => {
+    if (!closingFyId) return;
     try {
       setFiscalLoading(true);
-      await accountingApi.closeFiscalYear(closingFyId, retainedEarningsAccountId);
+      const result = await accountingApi.closeFiscalYear(closingFyId, retainedEarningsAccountId);
+      setClosingSummary(result);
+      setClosingStep('SUCCESS');
       await loadFiscalYears();
-      errorHandler.showSuccess(t('settings.messages.fiscalYearClosed'));
-      setClosingFyId(null);
-      setRetainedEarningsAccountId('');
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to close fiscal year');
     } finally {
       setFiscalLoading(false);
     }
+  };
+
+  const handleCloseModalReset = () => {
+    setClosingFyId(null);
+    setClosingStep('PREVIEW');
+    setClosingSummary(null);
+    setLastClosingVoucher(null);
+    setRetainedEarningsAccountId('');
   };
 
   const handleReopenYear = async (fyId: string) => {
@@ -458,6 +493,18 @@ const AccountingSettingsPageContent: React.FC = () => {
       fyId,
       label: fy?.name || ''
     });
+
+    if (fy?.closingVoucherId) {
+      try {
+        const v = await accountingApi.getVoucher(fy.closingVoucherId);
+        setReopenVoucherDetails(v);
+      } catch (e) {
+        console.error('Failed to fetch closing voucher for reopen', e);
+        setReopenVoucherDetails(null);
+      }
+    } else {
+      setReopenVoucherDetails(null);
+    }
   };
 
   const confirmReopenYear = async () => {
@@ -466,7 +513,7 @@ const AccountingSettingsPageContent: React.FC = () => {
       setFiscalLoading(true);
       await accountingApi.reopenFiscalYear(fyId);
       await loadFiscalYears();
-      errorHandler.showSuccess(t('settings.messages.fiscalYearReopened'));
+      errorHandler.showSuccess(t('settings.messages.fiscalYearReopened', 'Fiscal year reopened and audit voucher reversed.'));
       setGenericConfirm(prev => ({ ...prev, isOpen: false }));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to reopen fiscal year');
@@ -474,6 +521,25 @@ const AccountingSettingsPageContent: React.FC = () => {
       setFiscalLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchLastVoucher = async () => {
+      const fy = fiscalYears.find(f => f.id === closingFyId);
+      if (fy?.closingVoucherId) {
+        try {
+          const v = await accountingApi.getVoucher(fy.closingVoucherId);
+          setLastClosingVoucher(v);
+        } catch (e) {
+          console.error('Failed to fetch closing voucher', e);
+        }
+      } else {
+        setLastClosingVoucher(null);
+      }
+    };
+    if (closingFyId && closingStep === 'PREVIEW') {
+      fetchLastVoucher();
+    }
+  }, [closingFyId, closingStep, fiscalYears]);
 
   const handleDeleteFiscalYear = async (fyId: string) => {
     const fy = fiscalYears.find(f => f.id === fyId);
@@ -1729,6 +1795,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                   <button
                                     onClick={() => {
                                       setClosingFyId(fy.id);
+                                      setClosingStep('PREVIEW');
                                       setRetainedEarningsAccountId(''); 
                                     }}
                                     disabled={fiscalLoading}
@@ -1806,79 +1873,229 @@ const AccountingSettingsPageContent: React.FC = () => {
                   {closingFyId && createPortal(
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
                       <div className="bg-white dark:bg-[var(--color-bg-primary)] rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 dark:border-[var(--color-border)] transform transition-all">
-                        {/* Modal Header */}
-                        <div className="bg-amber-50 dark:bg-amber-900/20 px-6 py-4 border-b border-amber-100 dark:border-amber-900/30 flex items-center gap-3">
-                          <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
-                             <AlertTriangle size={24} />
-                          </div>
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-                            {t('settings.fiscal.confirmations.closeYear.title')}
-                          </h3>
-                        </div>
-
-                        <div className="p-6">
-                          {/* Confirmation Message */}
-                          <div className="text-sm text-gray-600 dark:text-[var(--color-text-secondary)] mb-8 leading-relaxed">
-                            <span className="block text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
-                              {t('settings.fiscal.confirmations.closeYear.question', { 
-                                year: fiscalYears.find(f => f.id === closingFyId)?.name
-                              })}
-                            </span>
-                            <div className="p-3 bg-gray-50 dark:bg-[var(--color-bg-secondary)] border-l-4 border-amber-400 rounded-r-lg italic">
-                              {t('settings.fiscal.confirmations.closeYear.description', { 
-                                account: accounts.find(a => a.id === retainedEarningsAccountId)?.code || 'Retained Earnings'
-                              })}
+                        {closingStep === 'PREVIEW' ? (
+                          <>
+                            {/* Modal Header */}
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-4 border-b border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                   <Building2 size={24} />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                                  {t('settings.fiscal.closingWizard.step1', 'Step 1: Account Selection')}
+                                </h3>
+                              </div>
+                              <button onClick={handleCloseModalReset} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
                             </div>
-                          </div>
-                          
-                          {/* Account Selection Box */}
-                          <div className="bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-5 mb-8">
-                            <label className="block text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-3 flex items-center gap-2">
-                              <Building2 size={16} />
-                              {t('settings.fiscal.retainedEarnings')} <span className="text-red-500">*</span>
-                            </label>
-                            <AccountSelector
-                              value={retainedEarningsAccountId}
-                              onChange={(account) => setRetainedEarningsAccountId(account?.id || '')}
-                              placeholder={t('settings.fiscal.retainedPlaceholder')}
-                              className="w-full shadow-sm"
-                            />
-                            <div className="mt-3 text-right">
+
+                            <div className="p-6">
+                              <p className="text-sm text-gray-600 dark:text-[var(--color-text-secondary)] mb-6 leading-relaxed">
+                                {t('settings.fiscal.closingWizard.step1Desc', 'Welcome to the Year-End Closing Wizard. To begin, please select the target Retained Earnings account where net income will be transferred.')}
+                              </p>
+                              
+                              <div className="bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-5 mb-8">
+                                <label className="block text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-3">
+                                  {t('settings.fiscal.retainedEarnings')} <span className="text-red-500">*</span>
+                                </label>
+                                <AccountSelector
+                                  value={retainedEarningsAccountId}
+                                  onChange={(account) => setRetainedEarningsAccountId(account?.id || '')}
+                                  placeholder={t('settings.fiscal.retainedPlaceholder')}
+                                  className="w-full shadow-sm"
+                                />
+                                <div className="mt-3 text-right">
+                                   <button
+                                     onClick={handleAutoCreateRetainedEarnings}
+                                     className="text-xs font-semibold text-indigo-600 hover:underline"
+                                     disabled={fiscalLoading}
+                                   >
+                                     + {t('settings.fiscal.autoCreateAccount')}
+                                   </button>
+                                </div>
+                              </div>
+
+                              {/* Re-closing Awareness Alert */}
+                              {fiscalYears.find(f => f.id === closingFyId)?.closingVoucherId && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-5 mb-8 animate-in fade-in slide-in-from-top-2">
+                                  <div className="flex items-start gap-3">
+                                    <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+                                    <div className="flex-1">
+                                      <h4 className="font-bold text-amber-900 dark:text-amber-300 text-sm">
+                                        {t('settings.fiscal.reclosingDetected', 'Previous Closing Detected')}
+                                      </h4>
+                                      <p className="text-amber-800 dark:text-amber-400 text-xs mt-1 leading-relaxed">
+                                        {t('settings.fiscal.reclosingHint', 'This year was previously closed. To ensure accurate financial reporting, the previous closing voucher must be invalidated and reversed first.')}
+                                      </p>
+                                      
+                                      <div className="mt-4 flex flex-col gap-2">
+                                        <div className="flex items-center justify-between text-[10px] font-bold text-amber-700/60 uppercase tracking-widest">
+                                          <span>Last Closing Voucher</span>
+                                          <span className="font-mono">{lastClosingVoucher?.voucherNo || fiscalYears.find(f => f.id === closingFyId)?.closingVoucherId?.substring(0,8)}</span>
+                                        </div>
+                                        {lastClosingVoucher && (
+                                          <div className="flex items-center gap-4 text-[11px] text-amber-800 font-medium">
+                                            <span>{lastClosingVoucher.date}</span>
+                                            <span className="opacity-40">|</span>
+                                            <span>{lastClosingVoucher.currency} {lastClosingVoucher.totalDebit?.toLocaleString()}</span>
+                                          </div>
+                                        )}
+                                        <button 
+                                          onClick={async () => {
+                                            if (closingFyId) {
+                                              try {
+                                                setFiscalLoading(true);
+                                                await accountingApi.reopenFiscalYear(closingFyId);
+                                                await loadFiscalYears();
+                                                setLastClosingVoucher(null);
+                                                errorHandler.showSuccess(t('settings.messages.previousClosingReversed', 'Previous closing invalidated successfully.'));
+                                              } catch (err: any) {
+                                                errorHandler.showError(err?.response?.data?.error?.message || 'Failed to invalidate previous closing');
+                                              } finally {
+                                                setFiscalLoading(false);
+                                              }
+                                            }
+                                          }}
+                                          disabled={fiscalLoading}
+                                          className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm mt-1"
+                                        >
+                                          {fiscalLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RotateCcw size={14} />}
+                                          {t('settings.fiscal.invalidateAndReverse', 'Invalidate & Reverse Previous Closing')}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex justify-end gap-3">
+                                <button onClick={handleCloseModalReset} className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">{t('settings.common.cancel')}</button>
+                                <button
+                                  onClick={handlePrepareClosing}
+                                  disabled={!retainedEarningsAccountId || fiscalLoading}
+                                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg font-bold shadow-lg hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                  {t('settings.common.next', 'Next: Review')}
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        ) : closingStep === 'REVIEW' ? (
+                          <>
+                            <div className="bg-amber-50 dark:bg-amber-900/20 px-6 py-4 border-b border-amber-100 dark:border-amber-900/30 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
+                                   <AlertTriangle size={24} />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                                  {t('settings.fiscal.closingWizard.step2', 'Step 2: Final Review')}
+                                </h3>
+                              </div>
+                              <button onClick={handleCloseModalReset} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                            </div>
+
+                            <div className="p-6">
+                              <div className="text-sm text-gray-600 mb-6 space-y-3">
+                                <p className="font-bold text-gray-900">
+                                  {t('settings.fiscal.confirmations.closeYear.question', { 
+                                    year: fiscalYears.find(f => f.id === closingFyId)?.name
+                                  })}
+                                </p>
+                                <p>
+                                  {t('settings.fiscal.closingWizard.reviewDisclaimer', 'The system will now calculate all Revenue and Expense balances as of the fiscal year end date and generate a permanent closing voucher.')}
+                                </p>
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                   <div className="flex justify-between text-xs font-bold uppercase text-gray-400 mb-2">
+                                      <span>Closing Target</span>
+                                      <span>Account Code</span>
+                                   </div>
+                                   <div className="flex justify-between font-bold text-indigo-600">
+                                      <span>{t('settings.fiscal.retainedEarnings')}</span>
+                                      <span>{accounts.find(a => a.id === retainedEarningsAccountId)?.code || t('settings.common.none')}</span>
+                                   </div>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-end gap-3">
+                                <button onClick={() => setClosingStep('PREVIEW')} className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">{t('settings.common.back', 'Back')}</button>
+                                <button
+                                  onClick={() => confirmCloseYear()}
+                                  disabled={fiscalLoading}
+                                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-lg font-bold shadow-lg hover:bg-indigo-700 flex items-center gap-2"
+                                >
+                                  {fiscalLoading ? <RefreshCw size={18} className="animate-spin" /> : <Check size={18} />}
+                                  {t('settings.fiscal.confirmations.closeYear.confirm', 'Finalize & Lock Year')}
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Success Step */}
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-6 border-b border-emerald-100 dark:border-emerald-900/30 text-center">
+                              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/40 rounded-full text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4">
+                                 <CheckCircle2 size={40} />
+                              </div>
+                              <h3 className="text-2xl font-bold text-emerald-900 dark:text-emerald-300">
+                                {t('settings.fiscal.messages.yearClosedSuccess', 'Year Successfully Closed!')}
+                              </h3>
+                              <p className="text-emerald-700 dark:text-emerald-400 text-sm mt-1">
+                                {t('settings.fiscal.closingWizard.lockedMessage', { year: fiscalYears.find(f => f.id === closingFyId)?.name })}
+                              </p>
+                            </div>
+
+                            <div className="p-8">
+                               <div className="bg-gray-50 dark:bg-[var(--color-bg-secondary)] rounded-2xl p-6 border border-gray-100 dark:border-gray-800 mb-8 space-y-4">
+                                  <div className="flex items-center justify-between text-sm">
+                                     <span className="text-gray-500">{t('settings.fiscal.summary.revenue', 'Revenue Total')}</span>
+                                     <span className="font-bold text-gray-900 dark:text-white">{(closingSummary?.revenueTotal || 0).toLocaleString()} {closingSummary?.baseCurrency}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-sm">
+                                     <span className="text-gray-500">{t('settings.fiscal.summary.expense', 'Expense Total')}</span>
+                                     <span className="font-bold text-gray-900 dark:text-white">{(closingSummary?.expenseTotal || 0).toLocaleString()} {closingSummary?.baseCurrency}</span>
+                                  </div>
+                                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex items-center justify-between">
+                                     <span className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.fiscal.summary.netIncome', 'Net Income (Profit)')}</span>
+                                     <span className={`text-lg font-black ${(closingSummary?.netIncome || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                       {(closingSummary?.netIncome || 0).toLocaleString()} {closingSummary?.baseCurrency}
+                                     </span>
+                                  </div>
+                               </div>
+
+                               <div className="bg-indigo-50 dark:bg-indigo-900/10 rounded-xl p-4 flex items-center justify-between border border-indigo-100 dark:border-indigo-900/30">
+                                  <div className="flex items-center gap-3">
+                                     <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded text-indigo-600">
+                                        <Hash size={20} />
+                                     </div>
+                                     <div>
+                                        <div className="text-xs text-indigo-600 font-bold uppercase">{t('settings.fiscal.closingVoucher', 'Audit Trail Voucher')}</div>
+                                        <div className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
+                                          {closingSummary?.voucherId ? `CLOSE-${closingFyId?.substring(0,8)}` : 'N/A'}
+                                        </div>
+                                     </div>
+                                  </div>
+                                  {closingSummary?.voucherId && (
+                                    <button 
+                                      className="px-4 py-2 bg-white dark:bg-[var(--color-bg-tertiary)] border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-all flex items-center gap-2"
+                                      onClick={() => {
+                                        window.location.hash = `#/accounting/vouchers?q=CLOSE-${closingFyId}`;
+                                        handleCloseModalReset();
+                                      }}
+                                    >
+                                       <RefreshCw size={14} />
+                                       {t('settings.fiscal.viewVoucher', 'View Entry')}
+                                    </button>
+                                  )}
+                               </div>
+
                                <button
-                                 onClick={handleAutoCreateRetainedEarnings}
-                                 className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors flex items-center gap-1 justify-end ml-auto"
-                                 disabled={fiscalLoading}
+                                 onClick={handleCloseModalReset}
+                                 className="w-full mt-8 py-3 bg-gray-900 dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold hover:opacity-90 active:scale-95 transition-all"
                                >
-                                 <Plus size={12} />
-                                 {t('settings.fiscal.autoCreateAccount')}
+                                 {t('settings.common.done', 'Complete Wizard')}
                                </button>
                             </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex justify-end gap-3">
-                            <button
-                              onClick={() => setClosingFyId(null)}
-                              className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 active:scale-95 transition-all dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)] dark:hover:bg-[var(--color-bg-secondary)]"
-                            >
-                              {t('settings.common.cancel')}
-                            </button>
-                            <button
-                              onClick={() => confirmCloseYear()}
-                              disabled={!retainedEarningsAccountId || fiscalLoading}
-                              className="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 active:scale-95 transition-all shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                              {fiscalLoading ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <>
-                                  <Check size={18} />
-                                  {t('settings.fiscal.confirmations.closeYear.confirm')}
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </div>
                     </div>,
                     document.body
@@ -1916,13 +2133,47 @@ const AccountingSettingsPageContent: React.FC = () => {
                                 genericConfirm.type === 'REOPEN_YEAR' ? 'reopenYear' :
                                 'deleteYear'
                               }.description`, { period: genericConfirm.label, year: genericConfirm.label })}
+                              
+                              {genericConfirm.type === 'REOPEN_YEAR' && reopenVoucherDetails && (
+                                <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <AlertTriangle className="text-amber-600 w-4 h-4" />
+                                    <span className="font-bold text-amber-900 dark:text-amber-300">
+                                      {t('settings.fiscal.reopenWarningTitle', 'Closing Voucher Will Be Reversed')}
+                                    </span>
+                                  </div>
+                                  <p className="text-amber-800 dark:text-amber-400 text-xs mb-3">
+                                    {t('settings.fiscal.reopenWarningDesc', 'Reopening this year will automatically reverse the following closing voucher to cancel its financial effect.')}
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs bg-white dark:bg-[var(--color-bg-primary)] p-2 rounded border border-amber-100 dark:border-amber-800/30">
+                                    <div>
+                                      <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{reopenVoucherDetails.voucherNo}</div>
+                                      <div className="text-gray-500">{reopenVoucherDetails.date}</div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{reopenVoucherDetails.currency} {reopenVoucherDetails.totalDebit?.toLocaleString()}</div>
+                                      <a 
+                                        href={`#/accounting/vouchers?q=${reopenVoucherDetails.voucherNo}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-indigo-600 hover:underline"
+                                      >
+                                        {t('settings.fiscal.viewVoucher', 'View Entry')}
+                                      </a>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex justify-end gap-3 mt-6">
                           <button
-                            onClick={() => setGenericConfirm(prev => ({ ...prev, isOpen: false }))}
+                            onClick={() => {
+                              setGenericConfirm(prev => ({ ...prev, isOpen: false }));
+                              setReopenVoucherDetails(null);
+                            }}
                             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)]"
                           >
                             {t('settings.common.cancel')}

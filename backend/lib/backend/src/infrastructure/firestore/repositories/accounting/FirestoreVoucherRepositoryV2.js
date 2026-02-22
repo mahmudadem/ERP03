@@ -72,10 +72,15 @@ class FirestoreVoucherRepositoryV2 {
             modularQuery = modularQuery.where('date', '>=', filters.from);
         if (filters === null || filters === void 0 ? void 0 : filters.to)
             modularQuery = modularQuery.where('date', '<=', filters.to);
-        // Note: Applying type/status filters here might require compound indices in Production.
-        // However, for the Emulator or with proper indices, this is the correct place.
-        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL')
-            modularQuery = modularQuery.where('type', '==', filters.type);
+        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL') {
+            const t = filters.type.toLowerCase();
+            if (t === 'journal_entry' || t === 'jv') {
+                modularQuery = modularQuery.where('type', 'in', ['journal_entry', 'jv']);
+            }
+            else {
+                modularQuery = modularQuery.where('type', '==', filters.type);
+            }
+        }
         if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
             modularQuery = modularQuery.where('status', '==', filters.status);
         // Support filtering by formId (top-level as of modern toJSON, fallback to metadata for older records)
@@ -92,8 +97,15 @@ class FirestoreVoucherRepositoryV2 {
             legacyQuery = legacyQuery.where('date', '>=', filters.from);
         if (filters === null || filters === void 0 ? void 0 : filters.to)
             legacyQuery = legacyQuery.where('date', '<=', filters.to);
-        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL')
-            legacyQuery = legacyQuery.where('type', '==', filters.type);
+        if ((filters === null || filters === void 0 ? void 0 : filters.type) && filters.type !== 'ALL') {
+            const t = filters.type.toLowerCase();
+            if (t === 'journal_entry' || t === 'jv') {
+                legacyQuery = legacyQuery.where('type', 'in', ['journal_entry', 'jv']);
+            }
+            else {
+                legacyQuery = legacyQuery.where('type', '==', filters.type);
+            }
+        }
         if ((filters === null || filters === void 0 ? void 0 : filters.status) && filters.status !== 'ALL')
             legacyQuery = legacyQuery.where('status', '==', filters.status);
         if (filters === null || filters === void 0 ? void 0 : filters.formId)

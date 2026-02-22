@@ -103,7 +103,16 @@ export class SaveReceiptVoucherUseCase {
       VoucherStatus.DRAFT,  // Always starts as DRAFT
       {}, // metadata
       userId,
-      new Date()  // Created at
+      new Date(),  // Created at
+      undefined, undefined, // approved: approvedBy, approvedAt
+      undefined, undefined, undefined, // rejected: rejectedBy, rejectedAt, reason
+      undefined, undefined, // locked
+      undefined, undefined, // posted
+      undefined, // lockPolicy
+      undefined, // reversalOf
+      input.reference || null,
+      new Date(), // updatedAt
+      input.postingPeriodNo
     );
 
     // Step 8: Save to repository

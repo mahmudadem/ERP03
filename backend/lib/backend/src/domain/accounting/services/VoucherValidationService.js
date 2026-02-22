@@ -34,9 +34,9 @@ class VoucherValidationService {
             if (!line.accountId || line.accountId.trim() === '') {
                 throw (0, AppError_1.createPostingError)('MISSING_ACCOUNT', `Line ${line.id}: Account ID is required`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].accountId`], undefined, correlationId);
             }
-            // Ensure positive amounts (debit vs credit is handled by the 'side' property)
-            if (line.amount <= 0 || line.baseAmount <= 0) {
-                throw (0, AppError_1.createPostingError)('INVALID_AMOUNT', `Line ${line.id}: Amounts must be positive. Got: ${line.amount}`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].amount`], undefined, correlationId);
+            // Ensure non-negative amounts (debit vs credit is handled by the 'side' property)
+            if (line.amount < 0 || line.baseAmount < 0) {
+                throw (0, AppError_1.createPostingError)('INVALID_AMOUNT', `Line ${line.id}: Amounts must be non-negative. Got: ${line.amount}`, AppError_1.ErrorCategory.CORE_INVARIANT, [`lines[${line.id - 1}].amount`], undefined, correlationId);
             }
             // 4.1 Exchange Rate Sanity Check (The "Bomb" Defuser)
             // If currency is different from base currency, exchange rate should not be exactly 1.0

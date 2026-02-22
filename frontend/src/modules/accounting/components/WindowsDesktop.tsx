@@ -12,8 +12,8 @@ import { ReportWindow } from './ReportWindow';
 import { VoucherTaskbar } from './VoucherTaskbar';
 
 interface WindowsDesktopProps {
-  onSaveVoucher: (windowId: string, data: any) => Promise<void>;
-  onSubmitVoucher: (windowId: string, data: any) => Promise<void>;
+  onSaveVoucher: (windowId: string, data: any) => Promise<any>;
+  onSubmitVoucher: (windowId: string, data: any) => Promise<any>;
   onApproveVoucher?: (windowId: string, id: string) => Promise<void>;
   onRejectVoucher?: (windowId: string, id: string) => Promise<void>;
   onConfirmVoucher?: (windowId: string, id: string) => Promise<void>;

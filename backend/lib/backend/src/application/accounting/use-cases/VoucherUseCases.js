@@ -206,6 +206,30 @@ class CreateVoucherUseCase {
                 }
                 // 3. Post the approved voucher directly (don't re-fetch)
                 const postedVoucher = approvedVoucher.post(userId, new Date(), lockPolicy);
+                // NEW 3.5: Policy Validation before auto-post
+                if (registry) {
+                    const policies = await registry.getEnabledPolicies(companyId);
+                    if (policies.length > 0) {
+                        const context = {
+                            companyId: postedVoucher.companyId,
+                            voucherId: postedVoucher.id,
+                            userId: userId,
+                            voucherType: postedVoucher.type,
+                            voucherDate: postedVoucher.date,
+                            voucherNo: postedVoucher.voucherNo,
+                            baseCurrency: postedVoucher.baseCurrency,
+                            totalDebit: postedVoucher.totalDebit,
+                            totalCredit: postedVoucher.totalCredit,
+                            status: postedVoucher.status,
+                            isApproved: postedVoucher.isApproved,
+                            lines: postedVoucher.lines,
+                            metadata: postedVoucher.metadata,
+                            postingPeriodNo: postedVoucher.postingPeriodNo
+                        };
+                        const valService = this.validationService || new VoucherValidationService_1.VoucherValidationService();
+                        await valService.validatePolicies(context, policies, 'FAIL_FAST');
+                    }
+                }
                 // 4. Record to ledger using captured repo
                 await ledgerRepo.recordForVoucher(postedVoucher, transaction);
                 // 5. Persist the posted voucher
@@ -223,13 +247,15 @@ exports.CreateVoucherUseCase = CreateVoucherUseCase;
  * Updates a voucher while in DRAFT/REJECTED status.
  */
 class UpdateVoucherUseCase {
-    constructor(voucherRepo, accountRepo, permissionChecker, transactionManager, policyConfigProvider, ledgerRepo) {
+    constructor(voucherRepo, accountRepo, permissionChecker, transactionManager, policyConfigProvider, ledgerRepo, policyRegistry, validationService = null) {
         this.voucherRepo = voucherRepo;
         this.accountRepo = accountRepo;
         this.permissionChecker = permissionChecker;
         this.transactionManager = transactionManager;
         this.policyConfigProvider = policyConfigProvider;
         this.ledgerRepo = ledgerRepo;
+        this.policyRegistry = policyRegistry;
+        this.validationService = validationService;
     }
     async execute(companyId, userId, voucherId, payload) {
         var _a, _b, _c;
@@ -313,6 +339,36 @@ class UpdateVoucherUseCase {
         let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_c = payload.description) !== null && _c !== void 0 ? _c : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
         this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo);
+        // NEW Step: Policy Validation if auto-approving
+        // If the update transitions the voucher to APPROVED, check the date!
+        if (updatedVoucher.isApproved && this.ledgerRepo && !voucher.isApproved) {
+            // This check is mainly for Flexible Mode auto-approval during update
+            // If the voucher was already approved, we rely on the state guard in assertCanEdit
+        }
+        // Actually, if status is moving to APPROVED, we check policies.
+        if (updatedVoucher.isApproved && !voucher.isApproved && this.policyRegistry) {
+            const policies = await this.policyRegistry.getEnabledPolicies(companyId);
+            if (policies.length > 0) {
+                const context = {
+                    companyId: updatedVoucher.companyId,
+                    voucherId: updatedVoucher.id,
+                    userId: userId,
+                    voucherType: updatedVoucher.type,
+                    voucherDate: updatedVoucher.date,
+                    voucherNo: updatedVoucher.voucherNo,
+                    baseCurrency: updatedVoucher.baseCurrency,
+                    totalDebit: updatedVoucher.totalDebit,
+                    totalCredit: updatedVoucher.totalCredit,
+                    status: updatedVoucher.status,
+                    isApproved: updatedVoucher.isApproved,
+                    lines: updatedVoucher.lines,
+                    metadata: updatedVoucher.metadata,
+                    postingPeriodNo: updatedVoucher.postingPeriodNo
+                };
+                const valService = this.validationService || new VoucherValidationService_1.VoucherValidationService();
+                await valService.validatePolicies(context, policies, 'FAIL_FAST');
+            }
+        }
         // If PENDING, mark as edited (Audit badge)
         if (updatedVoucher.isPending) {
             updatedVoucher = updatedVoucher.markAsEdited();
@@ -365,9 +421,13 @@ exports.UpdateVoucherUseCase = UpdateVoucherUseCase;
  * If no other gates (like CC) are pending, transitions status to APPROVED.
  */
 class ApproveVoucherUseCase {
-    constructor(voucherRepo, permissionChecker) {
+    constructor(voucherRepo, permissionChecker, policyRegistry, // AccountingPolicyRegistry
+    validationService = null // VoucherValidationService
+    ) {
         this.voucherRepo = voucherRepo;
         this.permissionChecker = permissionChecker;
+        this.policyRegistry = policyRegistry;
+        this.validationService = validationService;
     }
     async execute(companyId, userId, voucherId) {
         var _a, _b, _c;
@@ -389,6 +449,30 @@ class ApproveVoucherUseCase {
         // CC is satisfied if the list is empty
         const pendingCC = ((_c = voucher.metadata) === null || _c === void 0 ? void 0 : _c.pendingCustodyConfirmations) || [];
         const isFullySatisfied = pendingCC.length === 0;
+        // NEW 2.5: Policy Validation Gate
+        // If this satisfies all gates and will move to APPROVED, check if the period is locked!
+        if (isFullySatisfied && this.policyRegistry && this.validationService) {
+            const policies = await this.policyRegistry.getEnabledPolicies(companyId);
+            if (policies.length > 0) {
+                const context = {
+                    companyId: voucher.companyId,
+                    voucherId: voucher.id,
+                    userId: userId,
+                    voucherType: voucher.type,
+                    voucherDate: voucher.date,
+                    voucherNo: voucher.voucherNo,
+                    baseCurrency: voucher.baseCurrency,
+                    totalDebit: voucher.totalDebit,
+                    totalCredit: voucher.totalCredit,
+                    status: VoucherTypes_1.VoucherStatus.APPROVED,
+                    isApproved: true,
+                    lines: voucher.lines,
+                    metadata: voucher.metadata,
+                    postingPeriodNo: voucher.postingPeriodNo
+                };
+                await this.validationService.validatePolicies(context, policies, 'FAIL_FAST');
+            }
+        }
         // 3. Transition
         const approvedVoucher = voucher.satisfyFinancialApproval(userId, new Date(), isFullySatisfied);
         await this.voucherRepo.save(approvedVoucher);
@@ -503,7 +587,8 @@ class PostVoucherUseCase {
                             status: voucher.status,
                             isApproved: voucher.isApproved,
                             lines: voucher.lines,
-                            metadata: voucher.metadata
+                            metadata: voucher.metadata,
+                            postingPeriodNo: voucher.postingPeriodNo
                         };
                         // Run policy validation with mode
                         try {

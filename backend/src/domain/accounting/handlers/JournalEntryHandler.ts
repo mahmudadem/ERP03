@@ -27,6 +27,8 @@ export interface JournalEntryInput {
 
   // Currency (optional, defaults to base currency)
   currency?: string;
+  postingPeriodNo?: number;
+  reference?: string;
 }
 
 /**

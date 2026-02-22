@@ -301,17 +301,22 @@ const VouchersListPage: React.FC = () => {
 
   const performSave = async (data: any) => {
     try {
+      let savedVoucher;
       if (editingVoucher) {
         // Edit Mode
         await accountingApi.updateVoucher(editingVoucher.id, data);
+        savedVoucher = { ...data, id: editingVoucher.id };
         errorHandler.showSuccess('Voucher updated successfully');
       } else {
         // Create Mode
-        await accountingApi.createVoucher(data);
+        const res = await accountingApi.createVoucher(data);
+        savedVoucher = res;
         errorHandler.showSuccess('Voucher created successfully');
       }
       invalidateVouchers();
       setIsModalOpen(false);
+      setEditingVoucher(savedVoucher);
+      return savedVoucher;
     } catch (error: any) {
       console.error('Save failed:', error);
       throw error;

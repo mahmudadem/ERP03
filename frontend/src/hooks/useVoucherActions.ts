@@ -29,7 +29,7 @@ export interface VoucherActionHandlers {
   /** Save a voucher (create or update) */
   save: (windowId: string, data: any) => Promise<any>;
   /** Save and submit for approval */
-  submit: (windowId: string, data: any) => Promise<void>;
+  submit: (windowId: string, data: any) => Promise<any>;
   /** Approve/verify a pending voucher */
   approve: (id: string) => Promise<void>;
   /** Reject a pending voucher */
@@ -56,8 +56,8 @@ export interface VoucherActionHandlers {
 
 // Legacy-compatible types for WindowsDesktop props
 export interface LegacyVoucherHandlers {
-  handleSaveVoucher: (windowId: string, data: any) => Promise<void>;
-  handleSubmitVoucher: (windowId: string, data: any) => Promise<void>;
+  handleSaveVoucher: (windowId: string, data: any) => Promise<any>;
+  handleSubmitVoucher: (windowId: string, data: any) => Promise<any>;
   handleApproveVoucher: (windowId: string, id: string) => Promise<void>;
   handleRejectVoucher: (windowId: string, id: string, reason?: string) => Promise<void>;
   handleConfirmVoucher: (windowId: string, id: string) => Promise<void>;
@@ -151,14 +151,20 @@ export const useVoucherActions = (): VoucherActionHandlers & LegacyVoucherHandle
     return await saveVoucherInternal(data);
   };
 
-  const submit = async (windowId: string, data: any): Promise<void> => {
+  const submit = async (windowId: string, data: any): Promise<any> => {
     const saved = await saveVoucherInternal(data);
-    if (saved?.id) {
+    if (!saved?.id) throw new Error('Could not retrieve Voucher ID after save.');
+    
+    try {
       await accountingApi.sendVoucherToApproval(saved.id);
       errorHandler.showSuccess('Voucher submitted for approval');
       dispatchUpdate();
-    } else {
-      throw new Error('Could not retrieve Voucher ID after save.');
+      return saved;
+    } catch (error: any) {
+      // CRITICAL: Attach the saved voucher to the error so the UI can capture the ID
+      // and prevent further duplication on retry.
+      error.savedVoucher = saved;
+      throw error;
     }
   };
 
@@ -261,13 +267,14 @@ export const useVoucherActions = (): VoucherActionHandlers & LegacyVoucherHandle
 
   // ── Legacy-compatible handlers (for WindowsDesktop) ──────────
 
-  const handleSaveVoucher = async (windowId: string, data: any): Promise<void> => {
-    await save(windowId, data);
+  const handleSaveVoucher = async (windowId: string, data: any): Promise<any> => {
+    const result = await save(windowId, data);
     errorHandler.showSuccess('SAVE');
+    return result;
   };
 
-  const handleSubmitVoucher = async (windowId: string, data: any): Promise<void> => {
-    await submit(windowId, data);
+  const handleSubmitVoucher = async (windowId: string, data: any): Promise<any> => {
+    return await submit(windowId, data);
   };
 
   const handleApproveVoucher = async (windowId: string, id: string): Promise<void> => {

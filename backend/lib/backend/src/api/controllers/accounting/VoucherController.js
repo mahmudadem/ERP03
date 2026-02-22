@@ -29,6 +29,8 @@ const VoucherUseCases_1 = require("../../../application/accounting/use-cases/Vou
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
 const GetCurrentUserPermissionsForCompanyUseCase_1 = require("../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase");
 const AccountValidationService_1 = require("../../../application/accounting/services/AccountValidationService");
+const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
+const AppError_1 = require("../../../domain/shared/errors/AppError");
 const permissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
 class VoucherController {
     static async list(req, res, next) {
@@ -85,6 +87,9 @@ class VoucherController {
             res.json({ success: true, data: voucher });
         }
         catch (err) {
+            if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
+                return res.status(400).json(err.toJSON());
+            }
             next(err);
         }
     }
@@ -92,11 +97,14 @@ class VoucherController {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
-            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.accountingPolicyConfigProvider, bindRepositories_1.diContainer.ledgerRepository);
+            const useCase = new VoucherUseCases_1.UpdateVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.accountingPolicyConfigProvider, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.policyRegistry, new VoucherValidationService_1.VoucherValidationService());
             await useCase.execute(companyId, userId, req.params.id, req.body);
             res.json({ success: true });
         }
         catch (err) {
+            if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
+                return res.status(400).json(err.toJSON());
+            }
             next(err);
         }
     }
@@ -126,7 +134,9 @@ class VoucherController {
                     custodianUserId: acc.custodianUserId || undefined
                 }));
             };
-            const submitUseCase = new SubmitVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, new ApprovalPolicyService(), getAccountMetadata);
+            const submitUseCase = new SubmitVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, new ApprovalPolicyService(), getAccountMetadata, undefined, // notificationService
+            undefined, // getApproverUserIds
+            bindRepositories_1.diContainer.policyRegistry, new VoucherValidationService_1.VoucherValidationService());
             let voucher = await submitUseCase.execute(companyId, req.params.id, userId);
             // V1: AUTO-POST only if voucher is APPROVED AND autoPostEnabled=true
             if (voucher.status === VoucherStatus.APPROVED) {
@@ -166,6 +176,9 @@ class VoucherController {
             res.json({ success: true, data: voucher.toJSON(), message: 'Voucher submitted for approval' });
         }
         catch (err) {
+            if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
+                return res.status(400).json(err.toJSON());
+            }
             next(err);
         }
     }
@@ -179,7 +192,7 @@ class VoucherController {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
             // 1. Approve the voucher (Pending → Approved OR stays PENDING if more gates exist)
-            const useCase = new VoucherUseCases_1.ApproveVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker);
+            const useCase = new VoucherUseCases_1.ApproveVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker, bindRepositories_1.diContainer.policyRegistry, new VoucherValidationService_1.VoucherValidationService());
             await useCase.execute(companyId, userId, req.params.id);
             // 2. Load updated state
             let voucher = await bindRepositories_1.diContainer.voucherRepository.findById(companyId, req.params.id);
@@ -213,6 +226,9 @@ class VoucherController {
             });
         }
         catch (err) {
+            if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
+                return res.status(400).json(err.toJSON());
+            }
             next(err);
         }
     }

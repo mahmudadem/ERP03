@@ -11,6 +11,8 @@ import {
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 import { AccountValidationService } from '../../../application/accounting/services/AccountValidationService';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { PostingError } from '../../../domain/shared/errors/AppError';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -87,7 +89,10 @@ export class VoucherController {
       );
       const voucher = await useCase.execute(companyId, userId, req.body);
       res.json({ success: true, data: voucher });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'PostingError' || err instanceof PostingError) {
+        return res.status(400).json(err.toJSON());
+      }
       next(err);
     }
   }
@@ -102,11 +107,16 @@ export class VoucherController {
         permissionChecker,
         diContainer.transactionManager as any,
         diContainer.accountingPolicyConfigProvider as any,
-        diContainer.ledgerRepository as any
+        diContainer.ledgerRepository as any,
+        diContainer.policyRegistry as any,
+        new VoucherValidationService()
       );
       await useCase.execute(companyId, userId, req.params.id, req.body);
       res.json({ success: true });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'PostingError' || err instanceof PostingError) {
+        return res.status(400).json(err.toJSON());
+      }
       next(err);
     }
   }
@@ -145,7 +155,11 @@ export class VoucherController {
         diContainer.voucherRepository as any,
         diContainer.accountingPolicyConfigProvider as any,
         new ApprovalPolicyService(),
-        getAccountMetadata
+        getAccountMetadata,
+        undefined, // notificationService
+        undefined, // getApproverUserIds
+        diContainer.policyRegistry as any,
+        new VoucherValidationService()
       );
       
       let voucher = await submitUseCase.execute(companyId, req.params.id, userId);
@@ -195,7 +209,10 @@ export class VoucherController {
       }
       
       res.json({ success: true, data: voucher.toJSON(), message: 'Voucher submitted for approval' });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'PostingError' || err instanceof PostingError) {
+        return res.status(400).json(err.toJSON());
+      }
       next(err);
     }
   }
@@ -210,7 +227,12 @@ export class VoucherController {
       const userId = (req as any).user.uid;
       
       // 1. Approve the voucher (Pending → Approved OR stays PENDING if more gates exist)
-      const useCase = new ApproveVoucherUseCase(diContainer.voucherRepository as any, permissionChecker);
+      const useCase = new ApproveVoucherUseCase(
+        diContainer.voucherRepository as any, 
+        permissionChecker,
+        diContainer.policyRegistry as any,
+        new VoucherValidationService()
+      );
       await useCase.execute(companyId, userId, req.params.id);
       
       // 2. Load updated state
@@ -251,7 +273,10 @@ export class VoucherController {
           ? (voucher.isPosted ? 'Voucher approved and posted' : 'Voucher approved')
           : 'Financial approval recorded (awaiting custody confirmation)' 
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'PostingError' || err instanceof PostingError) {
+        return res.status(400).json(err.toJSON());
+      }
       next(err);
     }
   }

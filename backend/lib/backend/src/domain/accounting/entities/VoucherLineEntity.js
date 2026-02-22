@@ -77,13 +77,13 @@ class VoucherLineEntity {
         if (!currency || currency.trim() === '') {
             throw new Error('VoucherLine currency is required');
         }
-        // Invariant: baseAmount must be valid and positive
-        if (isNaN(baseAmount) || baseAmount <= 0) {
-            throw new Error(`VoucherLine baseAmount must be positive, got: ${baseAmount}`);
+        // Invariant: baseAmount must be valid and non-negative
+        if (isNaN(baseAmount) || baseAmount < 0) {
+            throw new Error(`VoucherLine baseAmount must be non-negative, got: ${baseAmount}`);
         }
-        // Invariant: amount must be valid and positive
-        if (isNaN(amount) || amount <= 0) {
-            throw new Error(`VoucherLine amount must be positive, got: ${amount}`);
+        // Invariant: amount must be valid and non-negative
+        if (isNaN(amount) || amount < 0) {
+            throw new Error(`VoucherLine amount must be non-negative, got: ${amount}`);
         }
         // ========== FX-SPECIFIC INVARIANTS ==========
         if (currency === baseCurrency) {
@@ -185,10 +185,7 @@ class VoucherLineEntity {
             // Logic: In V2, baseCurrency is required. 
             baseCurrency = fallbackBaseCurrency;
         }
-        // Default amount to 0.01 if it's somehow 0 in old data (to avoid invariant crash)
-        const safeAmount = Math.max(0.01, amount);
-        const safeBaseAmount = Math.max(0.01, baseAmount);
-        return new VoucherLineEntity(data.id || 1, data.accountId || 'legacy-account', side, safeBaseAmount, baseCurrency, safeAmount, currency, data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
+        return new VoucherLineEntity(data.id || 1, data.accountId || 'legacy-account', side, baseAmount, baseCurrency, amount, currency, data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
     }
     /**
      * Create a new line with updated notes (immutable update)
