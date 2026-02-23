@@ -24,11 +24,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializeAccountingUseCase = void 0;
+const FiscalYear_1 = require("../../../domain/accounting/entities/FiscalYear");
+const FiscalPeriodGenerator_1 = require("../../../domain/accounting/services/FiscalPeriodGenerator");
 const admin = __importStar(require("firebase-admin"));
 const firestore_1 = require("firebase-admin/firestore");
 const crypto_1 = require("crypto");
 class InitializeAccountingUseCase {
-    constructor(companyModuleRepo, accountRepo, systemMetadataRepo, settingsRepo, companySettingsRepo, currencyRepo, companyRepo) {
+    constructor(companyModuleRepo, accountRepo, systemMetadataRepo, settingsRepo, companySettingsRepo, currencyRepo, companyRepo, fiscalYearRepo) {
         this.companyModuleRepo = companyModuleRepo;
         this.accountRepo = accountRepo;
         this.systemMetadataRepo = systemMetadataRepo;
@@ -36,6 +38,7 @@ class InitializeAccountingUseCase {
         this.companySettingsRepo = companySettingsRepo;
         this.currencyRepo = currencyRepo;
         this.companyRepo = companyRepo;
+        this.fiscalYearRepo = fiscalYearRepo;
     }
     async execute(request) {
         const { companyId, config } = request;
@@ -136,12 +139,34 @@ class InitializeAccountingUseCase {
             fiscalYearEnd: config.fiscalYearEnd,
             strictApprovalMode: false // Explicitly set to Flexible
         });
-        // Mirror fiscal periods to main company document
+        // Mirror fiscal periods and base currency to main company document
         await this.companyRepo.update(companyId, {
-            fiscalYearStart: config.fiscalYearStart ? new Date(config.fiscalYearStart) : undefined,
-            fiscalYearEnd: config.fiscalYearEnd ? new Date(config.fiscalYearEnd) : undefined,
+            baseCurrency: config.baseCurrency,
+            fiscalYearStart: config.fiscalYearStart ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearStart.split('-')[0]) - 1, parseInt(config.fiscalYearStart.split('-')[1])) : undefined,
+            fiscalYearEnd: config.fiscalYearEnd ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearEnd.split('-')[0]) - 1, parseInt(config.fiscalYearEnd.split('-')[1])) : undefined,
         });
         console.log(`[InitializeAccountingUseCase] Promoted base currency ${config.baseCurrency} and fiscal periods to Global Tier`);
+        // 4.5 Create actual Fiscal Year aggregate with periods (Tier 3 Reporting)
+        try {
+            const currentYear = new Date().getFullYear();
+            const startMonth = parseInt(config.fiscalYearStart.split('-')[0]) || 1;
+            const scheme = config.periodScheme || FiscalYear_1.PeriodScheme.MONTHLY;
+            const startDate = new Date(currentYear, startMonth - 1, 1);
+            const endDate = new Date(currentYear, startMonth - 1 + 12, 0);
+            const iso = (d) => d.toISOString().split('T')[0];
+            // Check if any fiscal year already exists to be idempotent
+            const existingYears = await this.fiscalYearRepo.findByCompany(companyId);
+            if (existingYears.length === 0) {
+                const periods = FiscalPeriodGenerator_1.FiscalPeriodGenerator.generate(startDate, endDate, scheme, 0);
+                const fyId = `FY${endDate.getFullYear()}`;
+                const fiscalYear = new FiscalYear_1.FiscalYear(fyId, companyId, `Fiscal Year ${endDate.getFullYear()}`, iso(startDate), iso(endDate), FiscalYear_1.FiscalYearStatus.OPEN, periods, undefined, new Date(), 'SYSTEM', scheme, 0);
+                await this.fiscalYearRepo.save(fiscalYear);
+                console.log(`[InitializeAccountingUseCase] Created initial fiscal year ${fyId} with ${scheme} periods`);
+            }
+        }
+        catch (err) {
+            console.warn(`[InitializeAccountingUseCase] Failed to create initial fiscal year:`, err);
+        }
         // 5. Promote Base Currency to Shared Tier (Tier 2) - Minimal Seeding
         // We only seed the Base Currency to keep the shared list clean.
         // The frontend can still fetch the full list from system_metadata for "Add Currency".

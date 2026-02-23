@@ -72,7 +72,8 @@ export class CompanyModulesController {
           diContainer.companyModuleSettingsRepository,
           diContainer.companySettingsRepository,
           diContainer.currencyRepository,
-          diContainer.companyRepository
+          diContainer.companyRepository,
+          diContainer.fiscalYearRepository
         );
 
         console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));

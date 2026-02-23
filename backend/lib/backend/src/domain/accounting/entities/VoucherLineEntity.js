@@ -165,6 +165,7 @@ class VoucherLineEntity {
      * Legacy data migration should be done via separate migration script.
      */
     static fromJSON(data, fallbackBaseCurrency) {
+        var _a;
         // Determine side and amounts (Handle Legacy V1 format)
         let side = data.side;
         let amount = data.amount;
@@ -185,7 +186,7 @@ class VoucherLineEntity {
             // Logic: In V2, baseCurrency is required. 
             baseCurrency = fallbackBaseCurrency;
         }
-        return new VoucherLineEntity(data.id || 1, data.accountId || 'legacy-account', side, baseAmount, baseCurrency, amount, currency, data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
+        return new VoucherLineEntity((_a = data.id) !== null && _a !== void 0 ? _a : 1, data.accountId || 'legacy-account', side, baseAmount, baseCurrency, amount, currency, data.exchangeRate || 1, data.notes || data.description, data.costCenterId, data.metadata || {});
     }
     /**
      * Create a new line with updated notes (immutable update)

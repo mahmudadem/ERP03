@@ -76,7 +76,7 @@ export class FirestoreFiscalYearRepository implements IFiscalYearRepository {
     return this.db
       .collection('companies')
       .doc(companyId)
-      .collection('accounting')
+      .collection('shared')
       .doc('Data')
       .collection('fiscalYears');
   }

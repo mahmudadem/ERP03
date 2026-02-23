@@ -5,6 +5,9 @@ import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 import { ICurrencyRepository } from '../../../repository/interfaces/company-wizard/ICurrencyRepository';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { IFiscalYearRepository } from '../../../repository/interfaces/accounting/IFiscalYearRepository';
+import { FiscalYear, FiscalYearStatus, PeriodScheme } from '../../../domain/accounting/entities/FiscalYear';
+import { FiscalPeriodGenerator } from '../../../domain/accounting/services/FiscalPeriodGenerator';
 
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -18,6 +21,7 @@ interface InitializeAccountingRequest {
     baseCurrency: string;
     coaTemplate: string;
     selectedVoucherTypes?: string[]; // Optional: IDs of voucher types to copy
+    periodScheme: string;
   };
 }
 
@@ -29,7 +33,8 @@ export class InitializeAccountingUseCase {
     private settingsRepo: ICompanyModuleSettingsRepository,
     private companySettingsRepo: ICompanySettingsRepository,
     private currencyRepo: ICurrencyRepository,
-    private companyRepo: ICompanyRepository
+    private companyRepo: ICompanyRepository,
+    private fiscalYearRepo: IFiscalYearRepository
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
@@ -154,13 +159,53 @@ export class InitializeAccountingUseCase {
       strictApprovalMode: false // Explicitly set to Flexible
     });
 
-    // Mirror fiscal periods to main company document
+    // Mirror fiscal periods and base currency to main company document
     await this.companyRepo.update(companyId, {
-      fiscalYearStart: config.fiscalYearStart ? new Date(config.fiscalYearStart) : undefined,
-      fiscalYearEnd: config.fiscalYearEnd ? new Date(config.fiscalYearEnd) : undefined,
+      baseCurrency: config.baseCurrency,
+      fiscalYearStart: config.fiscalYearStart ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearStart.split('-')[0]) - 1, parseInt(config.fiscalYearStart.split('-')[1])) : undefined,
+      fiscalYearEnd: config.fiscalYearEnd ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearEnd.split('-')[0]) - 1, parseInt(config.fiscalYearEnd.split('-')[1])) : undefined,
     });
 
     console.log(`[InitializeAccountingUseCase] Promoted base currency ${config.baseCurrency} and fiscal periods to Global Tier`);
+
+    // 4.5 Create actual Fiscal Year aggregate with periods (Tier 3 Reporting)
+    try {
+      const currentYear = new Date().getFullYear();
+      const startMonth = parseInt(config.fiscalYearStart.split('-')[0]) || 1;
+      const scheme = (config.periodScheme as PeriodScheme) || PeriodScheme.MONTHLY;
+      
+      const startDate = new Date(currentYear, startMonth - 1, 1);
+      const endDate = new Date(currentYear, startMonth - 1 + 12, 0);
+      
+      const iso = (d: Date) => d.toISOString().split('T')[0];
+      
+      // Check if any fiscal year already exists to be idempotent
+      const existingYears = await this.fiscalYearRepo.findByCompany(companyId);
+      if (existingYears.length === 0) {
+        const periods = FiscalPeriodGenerator.generate(startDate, endDate, scheme, 0);
+        const fyId = `FY${endDate.getFullYear()}`;
+        
+        const fiscalYear = new FiscalYear(
+          fyId,
+          companyId,
+          `Fiscal Year ${endDate.getFullYear()}`,
+          iso(startDate),
+          iso(endDate),
+          FiscalYearStatus.OPEN,
+          periods,
+          undefined,
+          new Date(),
+          'SYSTEM',
+          scheme,
+          0
+        );
+        
+        await this.fiscalYearRepo.save(fiscalYear);
+        console.log(`[InitializeAccountingUseCase] Created initial fiscal year ${fyId} with ${scheme} periods`);
+      }
+    } catch (err) {
+      console.warn(`[InitializeAccountingUseCase] Failed to create initial fiscal year:`, err);
+    }
 
     // 5. Promote Base Currency to Shared Tier (Tier 2) - Minimal Seeding
     // We only seed the Base Currency to keep the shared list clean.

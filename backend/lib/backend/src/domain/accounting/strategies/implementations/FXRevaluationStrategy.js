@@ -44,7 +44,8 @@ class FXRevaluationStrategy {
             // All FX Revaluation lines are expressed in baseCurrency.
             // amount = baseAmount, currency = baseCurrency, exchangeRate = 1.0
             // This passes VoucherLineEntity's same-currency invariant (amount == baseAmount).
-            lines.push(new VoucherLineEntity_1.VoucherLineEntity(0, inputLine.accountId, isDebit ? 'Debit' : 'Credit', amountBase, // baseAmount
+            lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, // Unique sequential ID for each line
+            inputLine.accountId, isDebit ? 'Debit' : 'Credit', amountBase, // baseAmount
             baseCurrency, // baseCurrency
             amountBase, // amount = baseAmount (same-currency line)
             baseCurrency, // currency = baseCurrency
@@ -59,7 +60,8 @@ class FXRevaluationStrategy {
         // Generate the offset line for the Unrealized Gain/Loss Account
         const isTargetDebit = netDeltaBase < 0;
         const targetAmountBase = (0, VoucherLineEntity_1.roundMoney)(Math.abs(netDeltaBase));
-        lines.push(new VoucherLineEntity_1.VoucherLineEntity(0, header.targetAccountId, isTargetDebit ? 'Debit' : 'Credit', targetAmountBase, // baseAmount
+        lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, // Unique sequential ID for the offset line
+        header.targetAccountId, isTargetDebit ? 'Debit' : 'Credit', targetAmountBase, // baseAmount
         baseCurrency, // baseCurrency
         targetAmountBase, // amount = baseAmount
         baseCurrency, // currency = baseCurrency

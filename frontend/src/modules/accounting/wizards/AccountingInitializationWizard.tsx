@@ -27,6 +27,7 @@ interface AccountingSetupData {
   baseCurrency: string;
   coaTemplate: string; // Changed to string to support API
   selectedVoucherTypes?: string[]; // IDs of voucher types to include
+  periodScheme: 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL';
 }
 
 interface Currency {
@@ -77,6 +78,7 @@ export const AccountingInitializationWizard: React.FC = () => {
     baseCurrency: '',
     coaTemplate: 'standard',
     selectedVoucherTypes: [], // Start with none selected
+    periodScheme: 'MONTHLY',
   });
 
   // Search functionality for COA templates
@@ -266,6 +268,22 @@ export const AccountingInitializationWizard: React.FC = () => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
               <p className="text-xs text-gray-500 mt-1">Format: MM-DD (e.g., 12-31 for December 31st)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reporting Period Scheme
+              </label>
+              <select
+                value={setupData.periodScheme}
+                onChange={(e) => setSetupData({ ...setupData, periodScheme: e.target.value as any })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="MONTHLY">Monthly (12 periods)</option>
+                <option value="QUARTERLY">Quarterly (4 periods)</option>
+                <option value="SEMI_ANNUAL">Semi-Annual (2 periods)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Defines how your accounting periods will be generated</p>
             </div>
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -642,8 +660,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <div className="flex items-start">
                   <Calendar className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Fiscal Year Period</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <p className="text-sm text-gray-600">Start Date</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearStart}</p>
@@ -652,6 +669,13 @@ export const AccountingInitializationWizard: React.FC = () => {
                         <p className="text-sm text-gray-600">End Date</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearEnd}</p>
                       </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Period Scheme</p>
+                      <p className="text-base font-medium text-gray-900">
+                        {setupData.periodScheme === 'MONTHLY' ? 'Monthly' : 
+                         setupData.periodScheme === 'QUARTERLY' ? 'Quarterly' : 'Semi-Annual'}
+                      </p>
                     </div>
                   </div>
                 </div>
