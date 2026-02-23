@@ -38,6 +38,7 @@ const baseCurrency = header.baseCurrency || settings?.baseCurrency;
 - `PaymentVoucherStrategy.ts` - Payment vouchers
 - `ReceiptVoucherStrategy.ts` - Receipt vouchers
 - `OpeningBalanceStrategy.ts` - Opening balances
+- `FXRevaluationStrategy.ts` - Foreign currency revaluation (base-currency-only adjustments)
 
 ## See Also
 

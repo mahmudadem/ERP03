@@ -25,6 +25,7 @@ companies/{companyId}/sales/Data/sales_orders       → Sales Orders (SO)
 companies/{companyId}/sales/Data/delivery_notes     → Delivery Notes
 companies/{companyId}/sales/Data/sales_invoices     → Sales Invoices
 companies/{companyId}/sales/Data/credit_notes       → Credit Notes (returns)
+companies/{companyId}/sales/Data/payment_allocations → Links receipts to SIs
 ```
 
 ### AD-2: Document Flow
@@ -71,7 +72,8 @@ Each customer links to an AR sub-account in the COA, providing subledger functio
 | 03 | Sales Orders | [03-sales-orders.md](./features/03-sales-orders.md) | 3-4 days |
 | 04 | Delivery Notes | [04-delivery-notes.md](./features/04-delivery-notes.md) | 2-3 days |
 | 05 | Sales Invoices & AR Posting | [05-sales-invoices.md](./features/05-sales-invoices.md) | 4-5 days |
-| 06 | Credit Notes & Sales Reports | [06-credit-notes-reports.md](./features/06-credit-notes-reports.md) | 3-4 days |
+| 06 | Payment Allocations | Not separate file (embed in SIs & Reports) | 1-2 days |
+| 07 | Credit Notes & Sales Reports | [06-credit-notes-reports.md](./features/06-credit-notes-reports.md) | 3-4 days |
 
 ## Execution Order
 
@@ -85,3 +87,37 @@ Each customer links to an AR sub-account in the COA, providing subledger functio
 ## Agent Instructions
 
 Same rules as Purchases module. Mirror the Purchases patterns (Supplier↔Customer, PO↔SO, GRN↔DN, PI↔SI). Study `PurchaseInvoiceStrategy` when building `SalesInvoiceStrategy` — it's the reverse: Debit AR instead of Credit AP.
+
+## Cross-Cutting Concerns
+
+### DI Bindings (AR-01)
+Update `backend/src/infrastructure/di/bindRepositories.ts` to register:
+- `ICustomerRepository` → `FirestoreCustomerRepository`
+- `IQuotationRepository` → `FirestoreQuotationRepository`
+- `ISalesOrderRepository` → `FirestoreSalesOrderRepository`
+- `IDeliveryNoteRepository` → `FirestoreDeliveryNoteRepository`
+- `ISalesInvoiceRepository` → `FirestoreSalesInvoiceRepository`
+
+### Permissions (AR-02)
+Add to `SalesModule.permissions`:
+```
+sales.customers.view, .create, .edit, .delete
+sales.quotations.view, .create, .convertToSO
+sales.orders.view, .create, .approve, .cancel
+sales.delivery.view, .create, .post
+sales.invoices.view, .create, .post, .cancel
+sales.creditNotes.view, .create, .post
+sales.reports.view
+```
+
+### Error Codes (AR-03)
+Add to `ErrorCodes.ts`:
+```
+SALES_CUSTOMER_NOT_FOUND, SALES_CUSTOMER_HAS_OPEN_INVOICES
+SALES_SO_NOT_FOUND, SALES_SO_ALREADY_DELIVERED
+SALES_INVOICE_NOT_FOUND, SALES_INVOICE_ALREADY_POSTED
+SALES_INSUFFICIENT_STOCK, SALES_DELIVERY_FAILED
+```
+
+### Prisma Schema (PC-04)
+Add models to `backend/prisma/schema.prisma`: `Customer`, `Quotation`, `QuotationLine`, `SalesOrder`, `SalesOrderLine`, `DeliveryNote`, `DeliveryNoteLine`, `SalesInvoice`, `SalesInvoiceLine`, `CreditNote`, `PaymentAllocation`. Follow existing model patterns.

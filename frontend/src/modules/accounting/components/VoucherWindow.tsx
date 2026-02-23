@@ -606,10 +606,6 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     setShowSuccessModal(false);
   };
 
-  const handleDataChange = (newData: any) => {
-    updateWindowData(win.id, newData);
-  };
-
   const handleNew = () => {
     if (isDirty) {
       setIsPendingNew(true);

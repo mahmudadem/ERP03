@@ -3,6 +3,7 @@ import { PaymentVoucherStrategy } from '../strategies/implementations/PaymentVou
 import { ReceiptVoucherStrategy } from '../strategies/implementations/ReceiptVoucherStrategy';
 import { JournalEntryStrategy } from '../strategies/implementations/JournalEntryStrategy';
 import { OpeningBalanceStrategy } from '../strategies/implementations/OpeningBalanceStrategy';
+import { FXRevaluationStrategy } from '../strategies/implementations/FXRevaluationStrategy';
 
 /**
  * VoucherPostingStrategyFactory
@@ -26,9 +27,11 @@ export class VoucherPostingStrategyFactory {
         return new JournalEntryStrategy();
       case 'opening_balance':
         return new OpeningBalanceStrategy();
+      case 'fx_revaluation':
+        return new FXRevaluationStrategy();
       default:
         throw new Error(
-          `Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance`
+          `Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance, fx_revaluation`
         );
     }
   }

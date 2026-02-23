@@ -433,8 +433,12 @@ export const accountingApi = {
     return client.post('/tenant/accounting/fiscal-years/auto-create-retained-earnings').then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 
-  closeFiscalYear: (fiscalYearId: string, retainedEarningsAccountId: string): Promise<{ success: boolean; data: any }> => {
-    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-year`, { retainedEarningsAccountId }).then((r: any) => (r?.data ?? r));
+  closeFiscalYear: (fiscalYearId: string, retainedEarningsAccountId: string, pandLClearingAccountId?: string): Promise<any> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/close-year`, { retainedEarningsAccountId, pandLClearingAccountId }).then((r: any) => (r?.data ?? r));
+  },
+
+  commitFiscalYearClose: (fiscalYearId: string): Promise<any> => {
+    return client.post(`/tenant/accounting/fiscal-years/${fiscalYearId}/commit-year-close`).then((r: any) => (r?.data ?? r));
   },
 
   reopenFiscalYear: (fiscalYearId: string): Promise<FiscalYearDTO> => {
@@ -637,6 +641,20 @@ export const accountingApi = {
   },
   generateRecurringVouchers: (asOfDate?: string): Promise<any[]> => {
     return client.post('/tenant/accounting/recurring-vouchers/generate', { asOfDate: asOfDate || new Date().toISOString().slice(0, 10) })
+      .then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+
+  // --- FX REVALUATION ---
+  fxDetectCurrencies: (asOfDate: string, targetAccountIds?: string[]): Promise<any> => {
+    return client.post('/tenant/accounting/fx-revaluation/detect-currencies', { asOfDate, targetAccountIds })
+      .then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  fxCalculate: (asOfDate: string, exchangeRates: Record<string, number>, targetAccountIds?: string[]): Promise<any> => {
+    return client.post('/tenant/accounting/fx-revaluation/calculate', { asOfDate, targetAccountIds, exchangeRates })
+      .then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  fxGenerateVoucher: (calculationResult: any, targetGainLossAccountId: string): Promise<any> => {
+    return client.post('/tenant/accounting/fx-revaluation/generate-voucher', { calculationResult, targetGainLossAccountId })
       .then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
 };

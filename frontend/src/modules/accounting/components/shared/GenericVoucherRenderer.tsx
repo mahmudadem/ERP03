@@ -29,17 +29,18 @@ interface GenericVoucherRendererProps {
   readOnly?: boolean;
 }
 
-const INITIAL_ROWS: JournalRow[] = Array.from({ length: 50 }).map((_, i) => ({
-  id: i + 1,
-  accountId: '',
+// Helper to get initial rows with unique IDs
+const getInitialRows = () => Array.from({ length: 5 }, (_, i) => ({
+  id: -(Date.now() + i), // Negative IDs for local draft rows
   account: '',
   notes: '',
   debit: 0,
   credit: 0,
-  currency: '', // Start blank, populate on account selection
+  currency: '',
   parity: 1.0,
   equivalent: 0,
-  category: ''
+  category: '',
+  metadata: {}
 }));
 
 export interface GenericVoucherRendererRef {
@@ -65,9 +66,89 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Language support
   const { t, i18n } = useTranslation('accounting');
   const isRTL = (i18n.language || '').startsWith('ar');
+
+  // Helper: Detect format and get table columns
+  const getTableColumns = (): any[] => {
+    const rawColumns = (definition as any).tableColumns;
+    
+    // Only return defaults if property is missing entirely
+    if (rawColumns === undefined || rawColumns === null) {
+      const baseColumns = [
+        { id: 'account', label: t('voucherRenderer.columns.account', { defaultValue: 'Account' }), width: '25%' },
+        { id: 'debit', label: t('voucherRenderer.columns.debit', { defaultValue: 'Debit' }), width: '15%' },
+        { id: 'credit', label: t('voucherRenderer.columns.credit', { defaultValue: 'Credit' }), width: '15%' }
+      ];
+      
+      // Safety Net: If it's a Journal Entry or FX Revaluation, include multi-currency columns in the default view
+      const isJE = definition.code?.toLowerCase().includes('journal') || 
+                   (definition as any).baseType?.toLowerCase().includes('journal-entry');
+      const isReval = definition.code?.toLowerCase().includes('revaluation') || (definition as any)._typeId?.toLowerCase().includes('revaluation');
+                   
+      if (isJE || isReval) {
+        baseColumns.push(
+          { id: 'currency', label: t('voucherRenderer.columns.currency', { defaultValue: 'Currency' }), width: '80px' },
+          { id: 'parity', label: t('voucherRenderer.columns.parity', { defaultValue: 'Parity' }), width: '80px' },
+          { id: 'equivalent', label: t('voucherRenderer.columns.equivalent', { defaultValue: 'Equivalent' }), width: '100px' }
+        );
+      }
+      
+      baseColumns.push({ id: 'notes', label: t('voucherRenderer.columns.notes', { defaultValue: 'Notes' }), width: 'auto' });
+      return baseColumns;
+    }
+
+    if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
+      return [];
+    }
+
+    return rawColumns.map((col: any) => {
+      // Handle legacy string array
+      if (typeof col === 'string') {
+        const fallbackLabel = col.charAt(0).toUpperCase() + col.slice(1);
+        return { 
+          id: col, 
+          label: t(`voucherRenderer.columns.${col}`, { defaultValue: fallbackLabel }),
+          width: 'auto'
+        };
+      }
+      
+      // Handle structured object array (Schema V2)
+      const colId = col.id || col.fieldId;
+      // If we have no ID at all, then "Column" is the last resort fallback
+      const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
+      
+      const currentLabel = col.labelOverride || col.label || '';
+      const normalizedCurrent = currentLabel.replace(/\s+/g, '').toLowerCase();
+      const normalizedFallback = (fallbackLabel || '').replace(/\s+/g, '').toLowerCase();
+      const shouldTranslate = !currentLabel || normalizedCurrent === (colId || '').toLowerCase() || normalizedCurrent === normalizedFallback;
+
+      return {
+        ...col,
+        id: colId,
+        label: shouldTranslate ? t(`voucherRenderer.fields.${colId}`, { defaultValue: fallbackLabel }) : (col.labelOverride || col.label || fallbackLabel),
+        width: col.width || 'auto'
+      };
+    });
+  };
+
+  // Helper: Safely get value from row for a colId (supports nested metadata.prop paths)
+  const getRowValue = (row: JournalRow, colId: string): any => {
+    if (colId.includes('.')) {
+      const parts = colId.split('.');
+      let current: any = row;
+      for (const part of parts) {
+        if (current === undefined || current === null) return '';
+        current = current[part];
+      }
+      return current ?? '';
+    }
+    return (row as any)[colId] || '';
+  };
+  
+  // Cache the result of getTableColumns
+  const columns = useMemo(() => getTableColumns(), [definition.tableColumns, definition.id, t]);
   
   const [formData, setFormData] = useState<any>(initialData || {});
-  const [rows, setRows] = useState<JournalRow[]>(INITIAL_ROWS);
+  const [rows, setRows] = useState<JournalRow[]>(getInitialRows());
   const [attachments, setAttachments] = useState<File[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [rateDeviations, setRateDeviations] = useState<Record<number, any>>({});
@@ -86,15 +167,24 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Sync state with initialData updates (e.g. after fetch completes or partial submit)
   useEffect(() => {
     if (initialData) {
-      // 1. Sync Form Metadata (ID, VoucherNo, Status)
+      // 1. Sync Form Metadata
       setFormData((prev: any) => {
-        // If the ID has changed (e.g. from undefined to a real ID after save)
-        // we MUST update the state so subsequent saves use UPDATE instead of CREATE.
+        // If it's a completely different voucher, or we don't have an ID yet, overwrite.
         if (prev?.id !== initialData.id || !prev?.id) {
            return {
-             ...prev, // Keep current field values
-             ...initialData // Layer in real ID, status, voucherNo from server
+             ...prev,
+             ...initialData,
+             date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
            };
+        }
+        
+        // Minor sync for status/voucherNo
+        if (prev.status !== initialData.status || prev.voucherNo !== initialData.voucherNo) {
+          return {
+            ...prev,
+            status: initialData.status,
+            voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id
+          };
         }
         return prev;
       });
@@ -102,20 +192,65 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // 2. Sync Rows (Lines)
       if (initialData.lines) {
          setRows((prev) => {
-             // If we are switching to a COMPLETELY different voucher (ID changed)
-             // then we must discard local line edits and take the new ones.
-             if (initialData.id !== formData.id) {
-                 return initialData.lines.map((l: any, i: number) => {
+             const isNewVoucher = initialData.id !== (formData.id || initialData.id);
+             const isEmptyRows = prev.length === 0 || (prev.length <= 5 && prev.every(r => !r.account));
+
+             // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
+             // or if the current state is completely empty/uninitialized.
+             if (isNewVoucher || (isEmptyRows && initialData.lines.length > 0)) {
+                 const mappedLines = initialData.lines.map((l: any, i: number) => {
                      const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
                      const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
-                     return { ...l, debit, credit, id: l.id || i + 1, _rowId: i + 1 };
+                     
+                     let accountCode = l.account || '';
+                     if (!accountCode && l.accountId) {
+                       const acc = getAccountById(l.accountId);
+                       if (acc) accountCode = acc.code;
+                       else accountCode = l.accountId;
+                     }
+
+                     return { 
+                       ...l, 
+                       debit, 
+                       credit, 
+                       id: l.id ?? -(Date.now() + i), 
+                       _rowId: i + 1,
+                       account: accountCode,
+                       accountId: l.accountId || l.account,
+                       notes: l.notes || l.description || '',
+                       currency: l.currency || l.lineCurrency || '',
+                       parity: l.exchangeRate || l.parity || 1.0,
+                       equivalent: l.baseAmount || l.equivalent || 0,
+                       metadata: l.metadata || {}
+                     };
                  });
+                 
+                 // SAFETY: Ensure all row IDs are unique to prevent React key collisions
+                 // and row operation corruption (e.g., editing/deleting one row affects all)
+                 const seenIds = new Set<number>();
+                 for (let i = 0; i < mappedLines.length; i++) {
+                   if (seenIds.has(mappedLines[i].id)) {
+                     mappedLines[i] = { ...mappedLines[i], id: -(Date.now() + i + 1000) };
+                   }
+                   seenIds.add(mappedLines[i].id);
+                 }
+                 
+                 // Trigger change ONLY if we actually replaced the rows from external data
+                 if (isNewVoucher) {
+                   onChangeRef.current?.({ 
+                     ...formData, 
+                     ...initialData,
+                     lines: mappedLines 
+                   });
+                 }
+
+                 return mappedLines;
              }
              return prev;
          });
       }
     }
-  }, [initialData?.id, initialData?.status, initialData?.voucherNo]);
+  }, [initialData?.id, initialData?.status, initialData?.voucherNo, getAccountById, settings]);
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 
@@ -202,8 +337,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }
 
       if (hasChanges) {
-        setRows(updatedRows);
-        onChangeRef.current?.({ ...formData, lines: updatedRows });
+        // DEFENSIVE CHECK: Ensure we aren't overwriting a newer state that was updated during our async fetches
+        setRows(prevCurrent => {
+            const merged = prevCurrent.map((r) => {
+                // Find matching row by ID (stable reference)
+                const matchingUpdate = updatedRows.find(ur => ur.id === r.id);
+                if (matchingUpdate) {
+                    return { 
+                      ...r, 
+                      parity: matchingUpdate.parity, 
+                      equivalent: matchingUpdate.equivalent 
+                    };
+                }
+                return r;
+            });
+            onChangeRef.current?.({ ...formData, lines: merged });
+            return merged;
+        });
       }
     };
     
@@ -372,7 +522,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
     
     // Standard navigation
-    handleCellKeyDown(e, idx, colIdx, (definition as any).tableColumns?.length || 8);
+    handleCellKeyDown(e, idx, colIdx, columns.length);
   };
   // Column resize state (for Classic table)
   const storageKey = `columnWidths_${definition.id}`;
@@ -440,9 +590,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   
   const handleInsertLine = (rowId: number) => {
     const rowIndex = rows.findIndex(r => r.id === rowId);
+    const nextId = rows.length > 0 ? Math.max(...rows.map(r => Math.abs(r.id))) + 1 : Date.now();
     const newRow: JournalRow = {
-      id: Date.now(), // Unique ID
-      account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: ''
+      id: -nextId, // Unique negative ID
+      account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: '', metadata: {}
     };
     setRows((prev: JournalRow[]) => {
       const next = [
@@ -609,79 +760,30 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }, [resizing]);
   
   // Initialize form data: merge initialData with defaults
+  // This effect is now mostly for setting up HEADER defaults on mount.
+  // Line sync is handled by the first effect to avoid conflicts.
   useEffect(() => {
-    const today = getCompanyToday(settings);
-    
-    // System field defaults - show proper fallbacks for unsaved vouchers
-    const systemDefaults = {
-      voucherNumber: 'Auto-generated',
-      status: 'Draft',
-      createdBy: 'Current User',
-      createdAt: 'On Save',
-      updatedAt: 'On Save',
-      updatedBy: 'Current User'
-    };
-    
-    // User input field defaults
-    const inputDefaults = {
-      date: today,
-      currency: company?.baseCurrency || '',
-      exchangeRate: 1,
-      paymentMethod: 'Bank Transfer',
-      reference: '',
-      description: '',
-      notes: ''
-    };
-    
-    const defaults = { ...systemDefaults, ...inputDefaults };
-    
-    // Convert dates from ISO to yyyy-MM-dd format for HTML date inputs
-    const processedInitialData = initialData ? {
-      ...initialData,
-      // Only transform if it exists, don't set to undefined here
-      ...(initialData.date ? { date: formatForInput(initialData.date) } : {}),
-      // Keep system values if they exist, but don't overwrite if they don't
-      voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id,
-      status: initialData.status,
-      createdBy: initialData.createdBy,
-      createdAt: initialData.createdAt, // Keep original timestamp for proper date+time display
-      updatedBy: initialData.updatedBy,
-      updatedAt: initialData.updatedAt
-    } : {};
-    
-    // Remove undefined keys to prevent them from overwriting defaults in the next spread
-    Object.keys(processedInitialData).forEach(key => {
-      if (processedInitialData[key] === undefined) {
-        delete processedInitialData[key];
-      }
-    });
-    
-    // Merge: initialData takes precedence over defaults
-    const mergedData = { ...defaults, ...processedInitialData };
-    setFormData(mergedData);
-    
-    // If initialData has lines, populate rows
-    if (initialData?.lines && Array.isArray(initialData.lines)) {
-      const loadedRows = initialData.lines.map((line: any, index: number) => {
-        // Strict V2 format: use side to determine debit/credit
-        const amt = Math.abs(Number(line.amount) || 0);
-        const acc = line.accountId ? getAccountById(line.accountId) : null;
-        return {
-          id: index + 1,
-          accountId: line.accountId || '',
-          account: acc ? acc.code : (line.accountId || line.account || ''),
-          notes: line.notes || line.description || '',
-          debit: line.side === 'Debit' ? amt : 0,
-          credit: line.side === 'Credit' ? amt : 0,
-          currency: line.currency || line.lineCurrency || '',
-          parity: line.exchangeRate || line.parity || 1.0,
-          equivalent: line.baseAmount || line.equivalent || 0,
-          category: line.costCenterId || line.category || ''
-        };
-      });
-      setRows(loadedRows);
+    if (!initialData) {
+      const today = getCompanyToday(settings);
+      
+      // System field defaults for new vouchers
+      const systemDefaults = {
+        voucherNumber: 'Auto-generated',
+        status: 'Draft',
+        createdBy: 'Current User'
+      };
+      
+      // User input field defaults
+      const inputDefaults = {
+        date: today,
+        currency: company?.baseCurrency || '',
+        exchangeRate: 1,
+        paymentMethod: 'Bank Transfer'
+      };
+      
+      setFormData({ ...systemDefaults, ...inputDefaults });
     }
-  }, [initialData, settings]); // Re-run when settings arrive to refresh 'Today' date
+  }, [!initialData, settings]);
   
   // Expose getData method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -693,7 +795,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         'PAYMENT': 'payment',
         'RECEIPT': 'receipt',
         'OPENING_BALANCE': 'opening_balance',
-        'OPENING': 'opening_balance'
+        'OPENING': 'opening_balance',
+        'FX_REVALUATION': 'fx_revaluation'
       };
       
       // Try to resolve backend type from multiple sources
@@ -738,22 +841,19 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       // Map rows to backend VoucherLine format
       // IMPORTANT: Frontend sends RAW values only. Backend calculates all derived values.
       const backendLines = rows
-        .filter(row => row.account && (row.debit > 0 || row.credit > 0))
+        .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0))
         .map(row => {
-          const isDebit = (row.debit || 0) > 0;
+          const isDebit = (Number(row.debit) || 0) > 0;
           const amt = isDebit ? row.debit : row.credit;
           
           return {
             accountId: row.accountId || row.account,
             description: row.notes || '',
             side: isDebit ? 'Debit' : 'Credit',
-            // RAW user input:
             amount: Math.abs(Number(amt) || 0),
             lineCurrency: (row.currency || formData.currency || '').toUpperCase(),
-            // Parity is the Line→Doc rate shown in the UI (1.0 for same currency, inverse for base, etc.)
-            // Backend will multiply by headerRate to get the absolute rate
-            exchangeRate: row.parity || 1
-            // NOTE: baseAmount is NOT sent - backend calculates it as: amount * exchangeRate * headerRate
+            exchangeRate: Number(row.parity) || 1,
+            metadata: row.metadata || {}
           };
         });
       
@@ -772,7 +872,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     resetData: () => {
       const today = getCompanyToday(settings);
       
-      setRows(INITIAL_ROWS);
+      setRows(getInitialRows());
       setFormData({
         date: today,
         currency: company?.baseCurrency || '',
@@ -781,11 +881,24 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         voucherNumber: 'Auto-generated'
       });
     }
-  }));
+  }), [definition, company, settings, rows, formData]);
   
   const handleInputChange = (fieldId: string, value: any) => {
     setFormData((prev: any) => {
-      const next = { ...prev, [fieldId]: value };
+      let next: any;
+      if (fieldId.startsWith('metadata.')) {
+        const metaProp = fieldId.split('.')[1];
+        next = {
+          ...prev,
+          metadata: {
+            ...(prev.metadata || {}),
+            [metaProp]: value
+          }
+        };
+      } else {
+        next = { ...prev, [fieldId]: value };
+      }
+      
       onChangeRef.current?.({ ...next, lines: rows });
       return next;
     });
@@ -862,7 +975,20 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     setRows((prev: JournalRow[]) => {
       const next = prev.map(row => {
         if (row.id === id) {
-          const updated = { ...row, [field]: value };
+          let updated: JournalRow;
+          
+          if ((field as string).startsWith('metadata.')) {
+            const metaProp = (field as string).split('.')[1];
+            updated = {
+              ...row,
+              metadata: {
+                ...(row.metadata || {}),
+                [metaProp]: value
+              }
+            };
+          } else {
+            updated = { ...row, [field]: value };
+          }
           
           // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
           if (field === 'account') {
@@ -1037,9 +1163,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
   const addRow = () => {
     setRows(prev => {
+      const nextId = prev.length > 0 ? Math.max(...prev.map(r => Math.abs(r.id))) + 1 : Date.now();
       const next = [...prev, {
-        id: prev.length + 1,
-        account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: ''
+        id: -nextId, // Negative ID for draft rows
+        account: '', notes: '', debit: 0, credit: 0, currency: '', parity: 1, equivalent: 0, category: '', metadata: {}
       }];
       onChangeRef.current?.({ ...formData, lines: next });
       return next;
@@ -1051,72 +1178,20 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     return definition.code?.substring(0, 3) || 'VOC';
   };
 
-  // Helper: Detect format and get table columns
-  const getTableColumns = (): any[] => {
-    const rawColumns = (definition as any).tableColumns;
-    
-    // Only return defaults if property is missing entirely
-    if (rawColumns === undefined || rawColumns === null) {
-      const baseColumns = [
-        { id: 'account', label: t('voucherRenderer.columns.account', { defaultValue: 'Account' }), width: '25%' },
-        { id: 'debit', label: t('voucherRenderer.columns.debit', { defaultValue: 'Debit' }), width: '15%' },
-        { id: 'credit', label: t('voucherRenderer.columns.credit', { defaultValue: 'Credit' }), width: '15%' }
-      ];
-      
-      // Safety Net: If it's a Journal Entry, include multi-currency columns in the default view
-      const isJE = definition.code?.toLowerCase().includes('journal') || 
-                   (definition as any).baseType?.toLowerCase().includes('journal-entry');
-                   
-      if (isJE) {
-        baseColumns.push(
-          { id: 'currency', label: t('voucherRenderer.columns.currency', { defaultValue: 'Currency' }), width: '80px' },
-          { id: 'parity', label: t('voucherRenderer.columns.parity', { defaultValue: 'Parity' }), width: '80px' },
-          { id: 'equivalent', label: t('voucherRenderer.columns.equivalent', { defaultValue: 'Equivalent' }), width: '100px' }
-        );
-      }
-      
-      baseColumns.push({ id: 'notes', label: t('voucherRenderer.columns.notes', { defaultValue: 'Notes' }), width: 'auto' });
-      return baseColumns;
-    }
-
-    if (!Array.isArray(rawColumns) || rawColumns.length === 0) {
-      return [];
-    }
-
-    return rawColumns.map((col: any) => {
-      // Handle legacy string array
-      if (typeof col === 'string') {
-        const fallbackLabel = col.charAt(0).toUpperCase() + col.slice(1);
-        return { 
-          id: col, 
-          label: t(`voucherRenderer.columns.${col}`, { defaultValue: fallbackLabel }),
-          width: 'auto'
-        };
-      }
-      
-      // Handle structured object array (Schema V2)
-      const colId = col.id || col.fieldId;
-      // If we have no ID at all, then "Column" is the last resort fallback
-      const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
-      
-      const currentLabel = col.labelOverride || col.label || '';
-      const normalizedCurrent = currentLabel.replace(/\s+/g, '').toLowerCase();
-      const normalizedFallback = (fallbackLabel || '').replace(/\s+/g, '').toLowerCase();
-      const shouldTranslate = !currentLabel || normalizedCurrent === (colId || '').toLowerCase() || normalizedCurrent === normalizedFallback;
-
-      return {
-        id: colId,
-        label: shouldTranslate ? t(`voucherRenderer.columns.${colId}`, { defaultValue: fallbackLabel }) : currentLabel,
-        width: col.width || 'auto'
-      };
-    });
-  };
-
   // --- Field Renderers ---
 
   const renderField = (fieldId: string, labelOverride?: string, typeOverride?: string) => {
     // Helper to get field value with case-insensitive lookup
     const getFieldValue = (fid: string) => {
+      if (fid.includes('.')) {
+        const parts = fid.split('.');
+        let current: any = formData;
+        for (const part of parts) {
+          if (current === undefined || current === null) return '';
+          current = current[part];
+        }
+        return current ?? '';
+      }
       const lower = fid.toLowerCase();
       return formData[fid] ?? formData[lower] ?? '';
     };
@@ -1177,8 +1252,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             disabled={readOnly}
             onChange={(val: any) => {
                // Adaptation for AccountSelector which returns an account object
-               if ((fieldId === 'account' || fieldId === 'accountSelector') && val?.code) {
-                  handleInputChange(fieldId, val.code);
+               if (val && typeof val === 'object' && (val.id || val.code)) {
+                  // For fields explicitly named 'account', store code. For others (likely ...Id), store ID.
+                  handleInputChange(fieldId, fieldId === 'account' ? val.code : (val.id || val.code));
                } else {
                   handleInputChange(fieldId, val);
                }
@@ -1325,7 +1401,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                className="p-0 border-r border-[var(--color-border)]"
                                                style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
                                              >
-                                                 {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
+                                                 {(colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
                                                      <div className="p-0.5">
                                                         <AccountSelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
@@ -1339,22 +1415,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                         />
                                                     </div>
 
-                                                 ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' ? (
-                                                     <AmountInput
-                                                         ref={(el) => registerCellRef(index, colIndex, el)}
-                                                         value={(row[colId as keyof JournalRow] as number) || 0}
-                                                         disabled={readOnly}
-                                                         onChange={(val) => handleRowChange(row.id, colId as keyof JournalRow, val)}
-                                                         onKeyDown={(e) => {
-                                                             if (colId === 'debit' || colId === 'credit') {
-                                                                 handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIndex);
-                                                             } else {
-                                                                 handleCellKeyDown(e, index, colIndex, totalCols);
-                                                             }
-                                                         }}
-                                                         onBlur={() => onBlurRef.current?.()}
-                                                         placeholder=""
-                                                      />
+                                                  ) : (colId === 'debit' || colId === 'credit' || colId === 'equivalent' || col.type === 'number' || col.type === 'amount') ? (
+                                                      <AmountInput
+                                                          ref={(el) => registerCellRef(index, colIndex, el)}
+                                                          value={parseFloat(getRowValue(row, colId) as any) || 0}
+                                                          disabled={readOnly || col.readOnly}
+                                                          onChange={(val) => handleRowChange(row.id, colId as any, val)}
+                                                          onKeyDown={(e) => {
+                                                              if (colId === 'debit' || colId === 'credit') {
+                                                                  handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIndex);
+                                                              } else {
+                                                                  handleCellKeyDown(e, index, colIndex, totalCols);
+                                                              }
+                                                          }}
+                                                          onBlur={() => onBlurRef.current?.()}
+                                                          placeholder=""
+                                                       />
                                                  ) : colId === 'parity' ? (
                                                      <div className="relative group/parity">
                                                        <AmountInput
@@ -1411,26 +1487,32 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                          </div>
                                                        )}
                                                      </div>
-                                                 ) : (
-                                                     <input
-                                                       ref={(el) => registerCellRef(index, colIndex, el)}
-                                                       type="text" 
-                                                       value={(row as any)[colId] || ''}
-                                                       disabled={readOnly}
-                                                       onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                                       onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
-                                                       onBlur={() => onBlurRef.current?.()}
-                                                       className={`w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors ${readOnly ? 'cursor-not-allowed opacity-70' : ''}`} 
-                                                     />
-                                                 )}
+                                                  ) : (
+                                                      <input
+                                                        ref={(el) => registerCellRef(index, colIndex, el)}
+                                                        type="text" 
+                                                        value={getRowValue(row, colId)}
+                                                        disabled={readOnly || col.readOnly} 
+                                                        onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                        onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                        onBlur={() => onBlurRef.current?.()}
+                                                        className={`w-full h-9 p-2 border-none bg-transparent text-xs focus:ring-2 focus:ring-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] transition-colors ${readOnly || col.readOnly ? 'cursor-not-allowed opacity-70' : ''}`} 
+                                                       />
+                                                  )}
                                          </td>
                                      );
                                  })}
                                 <td className="p-1 text-center w-8">
                                     {!readOnly && (
                                       <button 
-                                        onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
-                                        className="p-1.5 text-[var(--color-text-muted)] hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded transition-all"
+                                        onClick={() => {
+                                          setRows(prev => {
+                                            const next = prev.filter(r => r.id !== row.id);
+                                            onChangeRef.current?.({ ...formData, lines: next });
+                                            return next;
+                                          });
+                                        }}
+                                        className="p-1.5 text-[var(--color-text-muted)] hover:text-danger-50 hover:bg-danger-50 dark:hover:bg-danger-900/20 rounded transition-all"
                                       >
                                           <Trash2 size={14} />
                                       </button>
@@ -1550,7 +1632,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                        className="p-1"
                                        style={col.width ? { width: col.width } : {}}
                                      >
-                                         {(colId === 'account' || colId === 'accountSelector' || col.type === 'account-selector') ? (
+                                         {(colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
                                              <AccountSelector 
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={row.account} 
@@ -1580,12 +1662,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                  </div>
                                                )}
                                              </div>
-                                         ) : colId === 'debit' || colId === 'credit' || colId === 'equivalent' ? (
+                                         ) : (colId === 'debit' || colId === 'credit' || colId === 'equivalent' || col.type === 'number' || col.type === 'amount') ? (
                                             <AmountInput
                                                ref={(el) => registerCellRef(index, colIdx, el)}
-                                               value={parseFloat(row[colId as keyof JournalRow] as any) || 0}
+                                               value={parseFloat(getRowValue(row, colId) as any) || 0}
                                                onChange={(val) => handleRowChange(row.id, colId as any, val)}
-                                               disabled={readOnly}
+                                               disabled={readOnly || col.readOnly}
                                                placeholder=""
                                                onKeyDown={(e) => {
                                                   handleCellKeyDown(e, index, colIdx, columns.length);
@@ -1594,33 +1676,33 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                   }
                                                }}
                                                onBlur={() => onBlurRef.current?.()}
-                                               className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                               className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                                             />
                                          ) : colId === 'parity' ? (
                                               <AmountInput
                                                 ref={(el) => registerCellRef(index, colIdx, el)}
                                                 value={parseFloat(row.parity as any) || 1}
                                                 onChange={(val) => handleRowChange(row.id, 'parity', val)}
-                                                disabled={readOnly}
+                                                disabled={readOnly || col.readOnly}
                                                 placeholder=""
                                                 onKeyDown={(e) => {
                                                    handleCellKeyDown(e, index, colIdx, columns.length);
                                                    handleAmountKeyDown(e, row.id, 'parity', index, colIdx);
                                                 }}
                                                 onBlur={() => onBlurRef.current?.()}
-                                                className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                                className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs text-end focus:ring-1 focus:ring-primary-500 outline-none font-mono bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                                               />
                                          ) : (
-                                             <input 
-                                               ref={(el) => registerCellRef(index, colIdx, el)}
-                                               type="text" 
-                                               value={(row as any)[colId] || ''}
-                                               disabled={readOnly}
-                                               onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
-                                               onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
-                                               onBlur={() => onBlurRef.current?.()}
-                                               className={`w-full p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
-                                               />
+                                              <input 
+                                                ref={(el) => registerCellRef(index, colIdx, el)}
+                                                type="text" 
+                                                value={getRowValue(row, colId)}
+                                                disabled={readOnly || col.readOnly}
+                                                onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                onBlur={() => onBlurRef.current?.()}
+                                                className={`w-full h-8 p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                              />
                                          )}
                                      </td>
                                  );
@@ -1628,7 +1710,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                             <td className="p-2 text-center w-8">
                                 {!readOnly && (
                                   <button 
-                                    onClick={() => setRows(prev => prev.filter(r => r.id !== row.id))}
+                                    onClick={() => {
+                                      setRows(prev => {
+                                        const next = prev.filter(r => r.id !== row.id);
+                                        onChangeRef.current?.({ ...formData, lines: next });
+                                        return next;
+                                      });
+                                    }}
                                      className="text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
                                   >
                                       <Trash2 size={14} />

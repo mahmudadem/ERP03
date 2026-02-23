@@ -18,6 +18,7 @@ import { BankReconciliationController } from '../controllers/accounting/BankReco
 import { BudgetController } from '../controllers/accounting/BudgetController';
 import { ConsolidationController } from '../controllers/accounting/ConsolidationController';
 import { RecurringVoucherController } from '../controllers/accounting/RecurringVoucherController';
+import { FXRevaluationController } from '../controllers/accounting/FXRevaluationController';
 import { AttachmentController } from '../controllers/accounting/AttachmentController';
 import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
@@ -119,6 +120,7 @@ router.post('/fiscal-years/:id/close-period', permissionGuard('accounting.settin
 router.post('/fiscal-years/:id/reopen-period', permissionGuard('accounting.settings.write'), FiscalYearController.reopenPeriod);
 router.post('/fiscal-years/:id/enable-special-periods', permissionGuard('accounting.settings.write'), FiscalYearController.enableSpecialPeriods);
 router.post('/fiscal-years/:id/close-year', permissionGuard('accounting.settings.write'), FiscalYearController.closeYear);
+router.post('/fiscal-years/:id/commit-year-close', permissionGuard('accounting.settings.write'), FiscalYearController.commitYearClose);
 router.delete('/fiscal-years/:id', permissionGuard('accounting.settings.write'), FiscalYearController.delete);
 router.post('/fiscal-years/auto-create-retained-earnings', permissionGuard('accounting.settings.write'), FiscalYearController.autoCreateRetainedEarnings);
 
@@ -155,5 +157,10 @@ router.get('/exchange-rates/matrix', permissionGuard('accounting.accounts.view')
 router.get('/exchange-rates/suggested', permissionGuard('accounting.vouchers.create'), CurrencyController.getSuggestedRate);
 router.post('/exchange-rates', permissionGuard('accounting.vouchers.create'), CurrencyController.saveRate);
 router.post('/exchange-rates/check-deviation', permissionGuard('accounting.vouchers.create'), CurrencyController.checkRateDeviation);
+
+// FX Revaluation
+router.post('/fx-revaluation/detect-currencies', permissionGuard('accounting.settings.write'), FXRevaluationController.detectCurrencies);
+router.post('/fx-revaluation/calculate', permissionGuard('accounting.settings.write'), FXRevaluationController.calculate);
+router.post('/fx-revaluation/generate-voucher', permissionGuard('accounting.settings.write'), FXRevaluationController.generateVoucher);
 
 export default router;

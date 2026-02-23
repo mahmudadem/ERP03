@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AutoCreateRetainedEarningsUseCase = exports.EnableSpecialPeriodsUseCase = exports.DeleteFiscalYearUseCase = exports.ReopenYearUseCase = exports.CloseYearUseCase = exports.ReopenPeriodUseCase = exports.ClosePeriodUseCase = exports.ListFiscalYearsUseCase = exports.CreateFiscalYearUseCase = void 0;
+exports.AutoCreateRetainedEarningsUseCase = exports.EnableSpecialPeriodsUseCase = exports.DeleteFiscalYearUseCase = exports.ReopenYearUseCase = exports.CommitYearCloseUseCase = exports.CloseYearUseCase = exports.ReopenPeriodUseCase = exports.ClosePeriodUseCase = exports.ListFiscalYearsUseCase = exports.CreateFiscalYearUseCase = void 0;
 const crypto_1 = require("crypto");
 const FiscalYear_1 = require("../../../domain/accounting/entities/FiscalYear");
 const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
@@ -126,6 +126,16 @@ class CloseYearUseCase {
         const fy = await this.fiscalYearRepo.findById(companyId, fiscalYearId);
         if (!fy)
             throw new Error('Fiscal year not found');
+        // If there is already a DRAFT closing voucher for this year, we delete it before regenerating
+        if (fy.closingVoucherId) {
+            const existingDraft = await this.voucherRepo.findById(companyId, fy.closingVoucherId);
+            if (existingDraft && !existingDraft.isPosted) {
+                await this.voucherRepo.delete(companyId, fy.closingVoucherId);
+            }
+            else if (existingDraft && existingDraft.isPosted) {
+                throw new Error('This year is already closed and has a posted closing voucher.');
+            }
+        }
         const asOfDate = fy.endDate;
         const company = await this.companyRepo.findById(companyId).catch(() => null);
         const baseCurrency = (company === null || company === void 0 ? void 0 : company.baseCurrency) || 'USD';
@@ -136,6 +146,9 @@ class CloseYearUseCase {
         let revenueTotal = 0;
         let expenseTotal = 0;
         const lines = [];
+        // We will accumulate exactly how much hitting the P&L Clearing Account
+        let clearingNetCredit = 0; // Positive = we are crediting clearing (Net Profit)
+        const useClearing = !!params.pandLClearingAccountId;
         accounts.forEach((acc) => {
             const tb = tbMap.get(acc.id);
             if (!tb)
@@ -145,14 +158,31 @@ class CloseYearUseCase {
                 const amount = Math.abs(net);
                 revenueTotal += amount;
                 if (amount > 0) {
-                    lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, acc.id, 'Debit', amount, baseCurrency, amount, baseCurrency, 1));
+                    // Normal Revenue is Credit. To close it, we Debit it.
+                    // If the net is DEBIT (abnormal), we Credit it to close it.
+                    const sideToClose = net > 0 ? 'Credit' : 'Debit';
+                    lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, acc.id, sideToClose, amount, baseCurrency, amount, baseCurrency, 1));
+                    if (useClearing) {
+                        // Offset goes to P&L Clearing
+                        const clearingSide = sideToClose === 'Debit' ? 'Credit' : 'Debit';
+                        lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.pandLClearingAccountId, clearingSide, amount, baseCurrency, amount, baseCurrency, 1));
+                        clearingNetCredit += (clearingSide === 'Credit' ? amount : -amount);
+                    }
                 }
             }
             else if (acc.classification === 'EXPENSE') {
                 const amount = Math.abs(net);
                 expenseTotal += amount;
                 if (amount > 0) {
-                    lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, acc.id, 'Credit', amount, baseCurrency, amount, baseCurrency, 1));
+                    // Normal Expense is Debit. To close it, we Credit it.
+                    // If the net is CREDIT (abnormal), we Debit it to close it.
+                    const sideToClose = net > 0 ? 'Credit' : 'Debit';
+                    lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, acc.id, sideToClose, amount, baseCurrency, amount, baseCurrency, 1));
+                    if (useClearing) {
+                        const clearingSide = sideToClose === 'Debit' ? 'Credit' : 'Debit';
+                        lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.pandLClearingAccountId, clearingSide, amount, baseCurrency, amount, baseCurrency, 1));
+                        clearingNetCredit += (clearingSide === 'Credit' ? amount : -amount);
+                    }
                 }
             }
         });
@@ -163,38 +193,94 @@ class CloseYearUseCase {
             netIncome,
             baseCurrency
         };
-        const retainedSide = netIncome >= 0 ? 'Credit' : 'Debit';
-        const retainedAmount = Math.abs(netIncome);
-        // Always add the Retained Earnings line, even if it's 0.00, to anchor the voucher
         const retainedAccount = accountMap.get(params.retainedEarningsAccountId);
         if (!retainedAccount)
             throw new Error('Retained earnings account not found');
-        lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, retainedSide, retainedAmount, baseCurrency, retainedAmount, baseCurrency, 1));
-        // If we only have the retained earnings line and it's 0, we need at least one more 0 line to balance/exist
-        // Or actually, if Profit/Loss were non-zero, the P&L lines would balance it.
-        // If Profit/Loss IS zero, and Revenue/Expense were non-zero but balanced perfectly, they would have been added.
-        // If EVERYTHING is zero, we'll have 1 line of 0.00. We should add a symmetrical 0.00 line to balance.
-        if (lines.length === 1 && retainedAmount === 0) {
-            lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, 'Debit', 0, baseCurrency, 0, baseCurrency, 1));
+        if (useClearing) {
+            // We must clear the P&L Clearing account to Retained Earnings
+            // clearingNetCredit is the net balance sitting in P&L Clearing right now (Credit = Profit)
+            // To close it out, if it's Credit, we Debit the Clearing Account and Credit Retained Earnings
+            if (clearingNetCredit !== 0) {
+                const sideToCloseClearing = clearingNetCredit > 0 ? 'Debit' : 'Credit';
+                const sideForRetained = clearingNetCredit > 0 ? 'Credit' : 'Debit';
+                const amount = Math.abs(clearingNetCredit);
+                lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.pandLClearingAccountId, sideToCloseClearing, amount, baseCurrency, amount, baseCurrency, 1));
+                lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, sideForRetained, amount, baseCurrency, amount, baseCurrency, 1));
+            }
+            else {
+                // Both zero, just anchor Retained Earnings to make the voucher valid
+                lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, 'Credit', 0, baseCurrency, 0, baseCurrency, 1));
+                lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, 'Debit', 0, baseCurrency, 0, baseCurrency, 1));
+            }
+        }
+        else {
+            // Direct routing (NO P&L Clearing)
+            const retainedSide = netIncome >= 0 ? 'Credit' : 'Debit';
+            const retainedAmount = Math.abs(netIncome);
+            lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, retainedSide, retainedAmount, baseCurrency, retainedAmount, baseCurrency, 1));
+            if (lines.length === 1 && retainedAmount === 0) {
+                lines.push(new VoucherLineEntity_1.VoucherLineEntity(lines.length + 1, params.retainedEarningsAccountId, 'Debit', 0, baseCurrency, 0, baseCurrency, 1));
+            }
         }
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
         if (Math.abs(totalDebit - totalCredit) > 0.01) {
-            throw new Error('Closing entry not balanced');
+            throw new Error(`Closing entry not balanced (Debit: ${totalDebit}, Credit: ${totalCredit}). Check account classifications.`);
         }
         const voucherId = (0, crypto_1.randomUUID)();
-        const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, `CLOSE-${fy.id}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, asOfDate, `Year-end closing for ${fy.name}`, baseCurrency, baseCurrency, 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, { systemGenerated: true, closingFiscalYear: fy.id }, userId, new Date(), userId, new Date());
-        const posted = voucher.post(userId, new Date(), VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED);
+        const voucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, `CLOSE-${fy.id.substring(0, 8).toUpperCase()}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, asOfDate, `Year-end closing for ${fy.name}`, baseCurrency, baseCurrency, 1, lines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.DRAFT, // IMPORTANT: Now saved as DRAFT
+        { systemGenerated: true, closingFiscalYear: fy.id, clearingAccountUsed: useClearing }, userId, new Date(), undefined, // not approved yet
+        undefined);
+        // Link the DRAFT voucher to the FY without actually "Closing" the FY yet
+        const updatedFy = new FiscalYear_1.FiscalYear(fy.id, fy.companyId, fy.name, fy.startDate, fy.endDate, fy.status, fy.periods, voucher.id, // Set the closingVoucherId to our new Draft
+        fy.createdAt, fy.createdBy, fy.periodScheme, fy.specialPeriodsCount);
         await this.transactionManager.runTransaction(async (tx) => {
-            await this.ledgerRepo.recordForVoucher(posted, tx);
-            await this.voucherRepo.save(posted);
-            const closed = fy.closeYear(userId, posted.id);
-            await this.fiscalYearRepo.update(closed);
+            await this.voucherRepo.save(voucher);
+            await this.fiscalYearRepo.update(updatedFy);
         });
-        return Object.assign({ voucherId: posted.id }, summary);
+        return Object.assign({ voucherId: voucher.id }, summary);
     }
 }
 exports.CloseYearUseCase = CloseYearUseCase;
+class CommitYearCloseUseCase {
+    constructor(fiscalYearRepo, voucherRepo, ledgerRepo, transactionManager, permissionChecker) {
+        this.fiscalYearRepo = fiscalYearRepo;
+        this.voucherRepo = voucherRepo;
+        this.ledgerRepo = ledgerRepo;
+        this.transactionManager = transactionManager;
+        this.permissionChecker = permissionChecker;
+    }
+    async execute(companyId, userId, fiscalYearId) {
+        await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.settings.write');
+        const fy = await this.fiscalYearRepo.findById(companyId, fiscalYearId);
+        if (!fy)
+            throw new Error('Fiscal year not found');
+        if (!fy.closingVoucherId) {
+            throw new Error('No draft closing voucher found for this fiscal year. Please generate one first.');
+        }
+        const draftVoucher = await this.voucherRepo.findById(companyId, fy.closingVoucherId);
+        if (!draftVoucher)
+            throw new Error('Draft closing voucher not found');
+        if (draftVoucher.isPosted) {
+            throw new Error('Closing voucher is already posted.');
+        }
+        // Approve and Post the draft voucher
+        const approved = draftVoucher.approve(userId, new Date());
+        const posted = approved.post(userId, new Date(), VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED);
+        // Finally, close the Fiscal Year strictly
+        const closedFy = fy.closeYear(userId, posted.id);
+        await this.transactionManager.runTransaction(async (tx) => {
+            await this.voucherRepo.save(posted);
+            await this.ledgerRepo.recordForVoucher(posted, tx);
+            await this.fiscalYearRepo.update(closedFy);
+        });
+        return {
+            voucherId: posted.id,
+            success: true
+        };
+    }
+}
+exports.CommitYearCloseUseCase = CommitYearCloseUseCase;
 class ReopenYearUseCase {
     constructor(fiscalYearRepo, voucherRepo, ledgerRepo, transactionManager, permissionChecker) {
         this.fiscalYearRepo = fiscalYearRepo;

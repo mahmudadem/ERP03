@@ -51,10 +51,11 @@ export interface DeliveryNoteLine {
      - Type: `sales_delivery`
      - Reference: Delivery Note ID
 3. If linked to SO, update SO's `deliveredQuantities`
-4. Optionally generate COGS journal entry:
-   - Debit: COGS Account
-   - Credit: Inventory Asset Account
+4. Generate COGS journal entry (MANDATORY for perpetual inventory):
+   - Debit: COGS Account (from Item Category or Company Settings)
+   - Credit: Inventory Asset Account (from Item Category or Company Settings)
    - Amount: quantity × average cost (from stock level)
+   - Call CreateVoucherUseCase to post this entry.
 5. Set DN status to `posted`
 
 ### 3. API Routes
@@ -83,4 +84,4 @@ export interface DeliveryNoteLine {
 2. Post DN → stock decreases in warehouse
 3. Post DN → SO deliveredQuantities updated
 4. Try to post DN when stock insufficient → verify error
-5. Verify COGS journal entry created (if accounting integration enabled)
+5. Verify COGS journal entry created (Debit COGS, Credit Inventory) with correct average cost amount.

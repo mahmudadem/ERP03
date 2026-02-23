@@ -307,6 +307,93 @@ const templates = [
       ]
     },
     workflow: { approvalRequired: true }
+  },
+  {
+    name: "FX Revaluation",
+    code: "fx_revaluation",
+    module: "ACCOUNTING",
+    headerFields: [
+      { 
+        id: "date", 
+        label: "Date", 
+        type: "DATE", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      { 
+        id: "currency", 
+        label: "Currency", 
+        type: "CURRENCY_SELECT", 
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY,
+        readOnly: true
+      },
+      { 
+        id: "exchangeRate", 
+        label: "Exchange Rate", 
+        type: "NUMBER", 
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE,
+        readOnly: true
+      },
+      { 
+        id: "description", 
+        label: "Description", 
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    lineFields: [
+      {
+        id: "accountId",
+        label: "Account",
+        type: "ACCOUNT_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.ACCOUNT
+      },
+      {
+        id: "debit",
+        label: "Debit",
+        type: "NUMBER",
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "credit",
+        label: "Credit",
+        type: "NUMBER",
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "notes",
+        label: "Notes",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "accountId", width: "250px" },
+      { fieldId: "metadata.originalCurrency", label: "Orig. Cur", width: "80px" },
+      { fieldId: "metadata.foreignBalance", label: "Balance", width: "100px" },
+      { fieldId: "metadata.newRate", label: "Reval. Rate", width: "100px" },
+      { fieldId: "debit", width: "100px" },
+      { fieldId: "credit", width: "100px" },
+      { fieldId: "notes", width: "auto" }
+    ],
+    layout: {
+      sections: [
+        { id: "header", title: "Revaluation Details", fieldIds: ["date", "currency", "exchangeRate", "description"] },
+        { id: "lines", title: "Adjustments", fieldIds: ["lineItems"] }
+      ]
+    },
+    workflow: { approvalRequired: true }
   }
 ];
 

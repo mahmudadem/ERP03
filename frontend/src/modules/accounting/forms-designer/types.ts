@@ -44,6 +44,7 @@ export interface JournalRow {
   parity: number;
   equivalent: number;
   category: string;
+  metadata: Record<string, any>;
 }
 
 export enum Currency {

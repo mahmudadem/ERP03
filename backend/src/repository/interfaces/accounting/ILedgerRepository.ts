@@ -10,6 +10,13 @@ export interface TrialBalanceRow {
   balance: number;
 }
 
+export interface ForeignBalanceRow {
+  accountId: string;
+  currency: string;
+  foreignBalance: number;
+  baseBalance: number; // Historical base balance
+}
+
 export interface GLFilters {
   accountId?: string;
   voucherId?: string;
@@ -81,4 +88,10 @@ export interface ILedgerRepository {
     reconciliationId: string,
     bankStatementLineId: string
   ): Promise<void>;
+  
+  getForeignBalances(
+    companyId: string, 
+    asOfDate: Date, 
+    accountIds?: string[]
+  ): Promise<ForeignBalanceRow[]>;
 }

@@ -23,6 +23,8 @@ export class Customer {
     public readonly address?: string,
     public readonly shippingAddress?: string,
     public readonly taxNumber?: string,
+    public readonly withholdingTaxSubject?: boolean,
+    public readonly withholdingTaxRate?: number,
     public readonly accountId?: string,         // AR sub-account in COA
     public readonly paymentTerms?: string,
     public readonly creditLimit?: number,

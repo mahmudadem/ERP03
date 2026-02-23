@@ -170,28 +170,33 @@ const VouchersListPage: React.FC = () => {
     const summary = vouchers.find(v => v.id === id);
     if (!summary) return;
     
-    // Try to find form by formId (if saved), otherwise fallback to matching by base type
-    let formDefinition = summary.formId 
-      ? voucherTypes.find(t => t.id === summary.formId)
-      : voucherTypes.find(t => {
-          const typeKeywords: Record<string, string[]> = {
-            'journal_entry': ['journal', 'journal_entry'],
-            'payment': ['payment'],
-            'receipt': ['receipt'],
-            'opening_balance': ['opening', 'balance']
-          };
-          
-          const keywords = typeKeywords[summary.type] || [];
-          const formIdLower = (t.id || '').toLowerCase();
-          const formNameLower = (t.name || '').toLowerCase();
-          const formCodeLower = (t.code || '').toLowerCase();
-          
-          return keywords.some(kw => 
-            formIdLower.includes(kw) || 
-            formNameLower.includes(kw) ||
-            formCodeLower.includes(kw)
-          );
-        });
+    // Try to find form by formId/typeId (if saved), otherwise fallback to matching by keywords
+    let formDefinition = voucherTypes.find(t => 
+      summary.formId && (t.id === summary.formId || (t as any)._typeId === summary.formId)
+    );
+
+    if (!formDefinition) {
+      formDefinition = voucherTypes.find(t => {
+        const typeKeywords: Record<string, string[]> = {
+          'journal_entry': ['journal', 'journal_entry'],
+          'payment': ['payment'],
+          'receipt': ['receipt'],
+          'opening_balance': ['opening', 'balance'],
+          'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
+        };
+        
+        const keywords = typeKeywords[summary.type] || [];
+        const formIdLower = (t.id || '').toLowerCase();
+        const formNameLower = (t.name || '').toLowerCase();
+        const formCodeLower = (t.code || '').toLowerCase();
+        
+        return keywords.some(kw => 
+          formIdLower.includes(kw) || 
+          formNameLower.includes(kw) ||
+          formCodeLower.includes(kw)
+        );
+      });
+    }
 
     if (!formDefinition) {
       errorHandler.showError({
@@ -240,23 +245,32 @@ const VouchersListPage: React.FC = () => {
   const handleViewPrint = (id: string) => {
     const summary = vouchers.find(v => v.id === id);
     if (!summary) return;
-    
-    // Find form definition (same logic as handleRowClick)
-    const formDefinition = summary.formId 
-      ? voucherTypes.find(t => t.id === summary.formId)
-      : voucherTypes.find(t => {
-          const typeKeywords: Record<string, string[]> = {
-            'journal_entry': ['journal', 'journal_entry'],
-            'payment': ['payment'],
-            'receipt': ['receipt'],
-            'opening_balance': ['opening', 'balance']
-          };
-          const keywords = typeKeywords[summary.type] || [];
-          const formIdLower = (t.id || '').toLowerCase();
-          const formNameLower = (t.name || '').toLowerCase();
-          const formCodeLower = (t.code || '').toLowerCase();
-          return keywords.some(kw => formIdLower.includes(kw) || formNameLower.includes(kw) || formCodeLower.includes(kw));
-        });
+          // Try to find form by formId/typeId (if saved), otherwise fallback to matching by keywords
+          let formDefinition = voucherTypes.find(t => 
+            summary.formId && (t.id === summary.formId || (t as any)._typeId === summary.formId)
+          );
+
+          if (!formDefinition) {
+            formDefinition = voucherTypes.find(t => {
+              const typeKeywords: Record<string, string[]> = {
+                'journal_entry': ['journal', 'journal_entry'],
+                'payment': ['payment'],
+                'receipt': ['receipt'],
+                'opening_balance': ['opening', 'balance'],
+                'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
+              };
+              const keywords = typeKeywords[summary.type] || [];
+              const formIdLower = (t.id || '').toLowerCase();
+              const formNameLower = (t.name || '').toLowerCase();
+              const formCodeLower = (t.code || '').toLowerCase();
+              
+              return keywords.some(kw => 
+                formIdLower.includes(kw) || 
+                formNameLower.includes(kw) ||
+                formCodeLower.includes(kw)
+              );
+            });
+          }
 
     window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id, formType: formDefinition } }));
   };

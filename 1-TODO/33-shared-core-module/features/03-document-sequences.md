@@ -35,8 +35,15 @@ A concurrency-safe, prefix-based auto-numbering system for all ERP documents (PO
 - **Settings → Document Sequences:** Manage prefixes and padding for all modules.
 
 ## Architecture Note
-This replaces the Accounting module's `VoucherSequence` handling. The accounting module should be refactored later to use this shared service.
+
+> [!IMPORTANT]
+> **Phase 1 (This Module):** Build `DocumentSequenceService` for NEW modules only (POs, Invoices, DNs, GRNs, Quotations, SOs). The existing `IVoucherSequenceRepository` continues to serve the Accounting module unchanged.
+>
+> **Phase 2 (Future Refactor):** Migrate `IVoucherSequenceRepository` to use `DocumentSequenceService` as its backing implementation. This avoids breaking existing voucher numbering while unifying the system.
+
+The agent MUST NOT modify `IVoucherSequenceRepository`, `CreateVoucherUseCase`, or any existing accounting sequence logic as part of this feature.
 
 ## Verification
 - [ ] Concurrent requests for the same sequence type yield unique, sequential numbers.
 - [ ] If `includeYear` is true, switching from Dec 31 to Jan 1 resets the `currentNumber` to 1.
+- [ ] Existing voucher numbering in accounting module continues to work unchanged.

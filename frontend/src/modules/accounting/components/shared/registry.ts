@@ -21,7 +21,18 @@ export interface CustomComponentProps {
 
 export const CustomComponentRegistry: Record<string, React.ComponentType<CustomComponentProps>> = {
   accountSelector: AccountSelector as any,
-  account: AccountSelector as any, // Add alias for standardized account fields
+  account: AccountSelector as any, 
+  accountId: AccountSelector as any,
+  account_id: AccountSelector as any,
+  accountID: AccountSelector as any,
+  payToAccountId: AccountSelector as any,
+  payFromAccountId: AccountSelector as any,
+  depositToAccountId: AccountSelector as any,
+  receiveFromAccountId: AccountSelector as any,
+  buyAccountId: AccountSelector as any,
+  sellAccountId: AccountSelector as any,
+  fromAccountId: AccountSelector as any,
+  toAccountId: AccountSelector as any,
   currencyExchange: CurrencyExchangeWidget as any,
 };
 

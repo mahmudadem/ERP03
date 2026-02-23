@@ -68,8 +68,10 @@ export interface SalesInvoiceLine {
   unitPrice: number;
   discountPercent?: number;
   discountAmount?: number;
-  taxRate?: number;
-  taxAmount?: number;
+  taxCategoryId?: string;    // Links to TaxCategory for auto-calculation
+  taxAccountId?: string;     // Resolved by TaxCalculationEngine (Output Tax account)
+  taxRate?: number;          // Resolved by TaxCalculationEngine
+  taxAmount?: number;        // Resolved by TaxCalculationEngine
   lineTotal: number;
 }
 
@@ -106,7 +108,9 @@ export class SalesInvoiceStrategy implements IVoucherPostingStrategy {
       header.total,
       header.currency || baseCurrency,
       header.exchangeRate || 1,
-      `AR - ${header.customerName || ''}`
+      `AR - ${header.customerName || ''}`,
+      undefined, // costCenterId
+      {}         // metadata
     ));
     
     // Credit lines (one per invoice line — revenue)
@@ -123,22 +127,26 @@ export class SalesInvoiceStrategy implements IVoucherPostingStrategy {
         amount,
         header.currency || baseCurrency,
         header.exchangeRate || 1,
-        invoiceLine.description || invoiceLine.itemName
+        invoiceLine.description || invoiceLine.itemName,
+        undefined, // costCenterId
+        {}         // metadata
       ));
       
-      // Tax line
-      if (invoiceLine.taxAmount && invoiceLine.taxAmount > 0 && header.taxAccountId) {
+      // Tax line — uses PER-LINE taxAccountId from TaxCalculationEngine
+      if (invoiceLine.taxAmount && invoiceLine.taxAmount > 0 && invoiceLine.taxAccountId) {
         const taxBase = roundMoney(invoiceLine.taxAmount * (header.exchangeRate || 1));
         lines.push(new VoucherLineEntity(
           lineCounter++,
-          header.taxAccountId,
+          invoiceLine.taxAccountId,  // Per-line: resolved by TaxCalculationEngine
           'Credit',
           taxBase,
           baseCurrency,
           invoiceLine.taxAmount,
           header.currency || baseCurrency,
           header.exchangeRate || 1,
-          `Tax - ${invoiceLine.itemName || ''}`
+          `Tax - ${invoiceLine.itemName || ''}`,
+          undefined, // costCenterId
+          {}         // metadata
         ));
       }
     }
@@ -149,11 +157,14 @@ export class SalesInvoiceStrategy implements IVoucherPostingStrategy {
 ```
 
 ### 3. Register Strategy
-Add to `VoucherPostingStrategyFactory`:
+Add to `VoucherPostingStrategyFactory` **before** the `default` throw:
 ```typescript
 case 'sales_invoice':
   return new SalesInvoiceStrategy();
 ```
+
+> [!WARNING]
+> Same as PurchaseInvoice — the `default` case throws. Add this case before testing.
 
 Add to `VoucherType` enum:
 ```typescript
@@ -171,6 +182,16 @@ SALES_INVOICE = 'sales_invoice',
 
 **`PostSalesInvoiceUseCase` Flow:**
 Same as PurchaseInvoice but reversed sides (Debit AR, Credit Revenue).
+1. Validate invoice status is 'draft'
+2. For each line with `taxCategoryId`: call `TaxCalculationEngine` → resolve tax fields
+3. Wrap steps 4-7 in `transactionManager.runTransaction()`
+4. Prepare voucher payload with type `'sales_invoice'`
+5. Call `CreateVoucherUseCase.execute()`
+6. Call `PostVoucherUseCase.execute()` → ledger entries created
+7. Update invoice: `voucherId`, `status = 'posted'`
+
+> [!NOTE]
+> Sales Invoices do **NOT** have three-way matching (by design). Matching is a purchases-only concern.
 
 ### 5. API Routes
 

@@ -22,6 +22,7 @@ const BankReconciliationController_1 = require("../controllers/accounting/BankRe
 const BudgetController_1 = require("../controllers/accounting/BudgetController");
 const ConsolidationController_1 = require("../controllers/accounting/ConsolidationController");
 const RecurringVoucherController_1 = require("../controllers/accounting/RecurringVoucherController");
+const FXRevaluationController_1 = require("../controllers/accounting/FXRevaluationController");
 const AttachmentController_1 = require("../controllers/accounting/AttachmentController");
 const multer_1 = __importDefault(require("multer"));
 const authMiddleware_1 = require("../middlewares/authMiddleware");
@@ -111,6 +112,7 @@ router.post('/fiscal-years/:id/close-period', (0, permissionGuard_1.permissionGu
 router.post('/fiscal-years/:id/reopen-period', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.reopenPeriod);
 router.post('/fiscal-years/:id/enable-special-periods', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.enableSpecialPeriods);
 router.post('/fiscal-years/:id/close-year', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.closeYear);
+router.post('/fiscal-years/:id/commit-year-close', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.commitYearClose);
 router.delete('/fiscal-years/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.delete);
 router.post('/fiscal-years/auto-create-retained-earnings', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FiscalYearController_1.FiscalYearController.autoCreateRetainedEarnings);
 // Cost Centers
@@ -142,5 +144,9 @@ router.get('/exchange-rates/matrix', (0, permissionGuard_1.permissionGuard)('acc
 router.get('/exchange-rates/suggested', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.getSuggestedRate);
 router.post('/exchange-rates', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.saveRate);
 router.post('/exchange-rates/check-deviation', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.checkRateDeviation);
+// FX Revaluation
+router.post('/fx-revaluation/detect-currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FXRevaluationController_1.FXRevaluationController.detectCurrencies);
+router.post('/fx-revaluation/calculate', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FXRevaluationController_1.FXRevaluationController.calculate);
+router.post('/fx-revaluation/generate-voucher', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FXRevaluationController_1.FXRevaluationController.generateVoucher);
 exports.default = router;
 //# sourceMappingURL=accounting.routes.js.map

@@ -24,6 +24,7 @@ companies/{companyId}/purchases/Data/purchase_orders → Purchase Orders
 companies/{companyId}/purchases/Data/goods_receipts  → Goods Receipt Notes
 companies/{companyId}/purchases/Data/purchase_invoices → Purchase Invoices
 companies/{companyId}/purchases/Data/debit_notes     → Debit Notes (returns)
+companies/{companyId}/purchases/Data/payment_allocations → Links payments to PIs
 ```
 
 ### AD-2: Document Flow
@@ -71,7 +72,8 @@ Suppliers are stored in the purchases module (not shared). They have an `account
 | 03 | Goods Receipt Notes | [03-goods-receipt.md](./features/03-goods-receipt.md) | 2-3 days |
 | 04 | Purchase Invoices & AP Posting | [04-purchase-invoices.md](./features/04-purchase-invoices.md) | 4-5 days |
 | 05 | Debit Notes (Returns) | [05-debit-notes.md](./features/05-debit-notes.md) | 2-3 days |
-| 06 | Purchase Reports & Dashboard | [06-purchase-reports.md](./features/06-purchase-reports.md) | 2-3 days |
+| 06 | Payment Allocations | Not separate file (embed in PIs & Reports) | 1-2 days |
+| 07 | Purchase Reports & Dashboard | [06-purchase-reports.md](./features/06-purchase-reports.md) | 2-3 days |
 
 ## Execution Order
 
@@ -89,3 +91,36 @@ Same rules as Inventory module. Additionally:
 - The invoice → voucher flow must use `CreateVoucherUseCase` (production path, not handlers)
 - Supplier accounts should be child accounts under the main AP control account
 - All monetary values follow the existing `roundMoney()` utility
+
+## Cross-Cutting Concerns
+
+### DI Bindings (AR-01)
+Update `backend/src/infrastructure/di/bindRepositories.ts` to register:
+- `ISupplierRepository` → `FirestoreSupplierRepository`
+- `IPurchaseOrderRepository` → `FirestorePurchaseOrderRepository`
+- `IGoodsReceiptRepository` → `FirestoreGoodsReceiptRepository`
+- `IPurchaseInvoiceRepository` → `FirestorePurchaseInvoiceRepository`
+
+### Permissions (AR-02)
+Add to `PurchasesModule.permissions`:
+```
+purchases.suppliers.view, .create, .edit, .delete
+purchases.requisitions.view, .create, .submit, .approve, .reject
+purchases.orders.view, .create, .approve, .cancel
+purchases.receipts.view, .create, .post
+purchases.invoices.view, .create, .post, .cancel, .matchOverride
+purchases.debitNotes.view, .create, .post
+purchases.reports.view
+```
+
+### Error Codes (AR-03)
+Add to `ErrorCodes.ts`:
+```
+PURCHASES_SUPPLIER_NOT_FOUND, PURCHASES_SUPPLIER_HAS_OPEN_INVOICES
+PURCHASES_PO_NOT_FOUND, PURCHASES_PO_ALREADY_RECEIVED
+PURCHASES_MATCHING_FAILED, PURCHASES_MATCHING_TOLERANCE_EXCEEDED
+PURCHASES_INVOICE_NOT_FOUND, PURCHASES_INVOICE_ALREADY_POSTED
+```
+
+### Prisma Schema (PC-04)
+Add models to `backend/prisma/schema.prisma`: `Supplier`, `PurchaseOrder`, `PurchaseOrderLine`, `GoodsReceipt`, `GoodsReceiptLine`, `PurchaseInvoice`, `PurchaseInvoiceLine`, `DebitNote`, `PaymentAllocation`. Follow existing model patterns (id, companyId, timestamps, etc.).

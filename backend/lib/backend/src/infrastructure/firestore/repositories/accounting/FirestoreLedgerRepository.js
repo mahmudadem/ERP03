@@ -37,7 +37,7 @@ const dateToIso = (val) => {
     return String(val);
 };
 const getAmountsBySide = (entry, targetAccountCurrency, baseCurrency) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const side = entry.side || 'Debit';
     const entryCurrency = (entry.currency || '').toUpperCase();
     const baseCur = (baseCurrency || '').toUpperCase();
@@ -45,9 +45,16 @@ const getAmountsBySide = (entry, targetAccountCurrency, baseCurrency) => {
     // Use stored amounts
     let accountAmount = (_b = (_a = entry.amount) !== null && _a !== void 0 ? _a : entry.fxAmount) !== null && _b !== void 0 ? _b : 0;
     let baseAmount = (_c = entry.baseAmount) !== null && _c !== void 0 ? _c : 0;
-    // If the ledger stored amount in a different currency than the account (e.g., base),
-    // convert from baseAmount using exchangeRate when possible.
-    if (targetCurrency && entryCurrency && entryCurrency !== targetCurrency) {
+    // REVALUATION FIX: If this is a revaluation adjustment (base currency entry hitting non-base account)
+    // we must ensure it doesn't affect the account's primary currency balance.
+    const isReval = ((_d = entry.metadata) === null || _d === void 0 ? void 0 : _d.isRevaluation) === true ||
+        (entryCurrency === baseCur && targetCurrency !== '' && targetCurrency !== baseCur);
+    if (isReval) {
+        accountAmount = 0;
+    }
+    else if (targetCurrency && entryCurrency && entryCurrency !== targetCurrency) {
+        // If the ledger stored amount in a different currency than the account (e.g., base),
+        // convert from baseAmount using exchangeRate when possible.
         if (baseAmount && entry.exchangeRate) {
             accountAmount = baseAmount / entry.exchangeRate;
         }
@@ -355,6 +362,59 @@ class FirestoreLedgerRepository {
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Failed to mark ledger entry as reconciled', error);
+        }
+    }
+    async getForeignBalances(companyId, asOfDate, accountIds) {
+        var _a;
+        try {
+            const end = toTimestampBoundary(asOfDate, true);
+            const companyDoc = await this.db.collection('companies').doc(companyId).get();
+            const baseCurrency = (companyDoc.exists ? (_a = companyDoc.data()) === null || _a === void 0 ? void 0 : _a.baseCurrency : '') || '';
+            let query = this.col(companyId)
+                .where('date', '<=', end);
+            if (accountIds && accountIds.length > 0) {
+                query = query.where('accountId', 'in', accountIds);
+            }
+            const snap = await query.get();
+            const aggregates = {};
+            snap.docs.forEach((d) => {
+                const entry = d.data();
+                const entryCurrency = (entry.currency || '').toUpperCase();
+                const entryMetadata = entry.metadata || {};
+                const isReval = entryMetadata.isRevaluation === true || (entryCurrency === baseCurrency.toUpperCase() && !!entryMetadata.originalCurrency);
+                // Skip base currency entries UNLESS they are revaluation adjustments for a foreign account
+                if (entryCurrency === baseCurrency.toUpperCase() && !isReval)
+                    return;
+                // For revaluation lines, the "real" currency we are revaluing is in metadata
+                const currencyToBucket = isReval ? (entryMetadata.originalCurrency || '').toUpperCase() : entryCurrency;
+                // If we still end up with base currency (e.g. reval offset line on Gain/Loss account), skip it
+                if (!currencyToBucket || currencyToBucket === baseCurrency.toUpperCase())
+                    return;
+                const key = `${entry.accountId}_${currencyToBucket}`;
+                const side = entry.side || 'Debit';
+                // Revaluation entries have 0 impact on foreign currency balance (they only adjust base equivalent)
+                const amount = isReval ? 0 : (entry.amount || 0);
+                const baseAmount = entry.baseAmount || 0;
+                if (!aggregates[key]) {
+                    aggregates[key] = { foreignBalance: 0, baseBalance: 0 };
+                }
+                const signedAmount = side === 'Debit' ? amount : -amount;
+                const signedBase = side === 'Debit' ? baseAmount : -baseAmount;
+                aggregates[key].foreignBalance += signedAmount;
+                aggregates[key].baseBalance += signedBase;
+            });
+            return Object.entries(aggregates).map(([key, bal]) => {
+                const [accountId, currency] = key.split('_');
+                return {
+                    accountId,
+                    currency,
+                    foreignBalance: bal.foreignBalance,
+                    baseBalance: bal.baseBalance
+                };
+            });
+        }
+        catch (error) {
+            throw new InfrastructureError_1.InfrastructureError('Failed to get foreign balances', error);
         }
     }
 }

@@ -5,6 +5,7 @@ const PaymentVoucherStrategy_1 = require("../strategies/implementations/PaymentV
 const ReceiptVoucherStrategy_1 = require("../strategies/implementations/ReceiptVoucherStrategy");
 const JournalEntryStrategy_1 = require("../strategies/implementations/JournalEntryStrategy");
 const OpeningBalanceStrategy_1 = require("../strategies/implementations/OpeningBalanceStrategy");
+const FXRevaluationStrategy_1 = require("../strategies/implementations/FXRevaluationStrategy");
 /**
  * VoucherPostingStrategyFactory
  *
@@ -27,8 +28,10 @@ class VoucherPostingStrategyFactory {
                 return new JournalEntryStrategy_1.JournalEntryStrategy();
             case 'opening_balance':
                 return new OpeningBalanceStrategy_1.OpeningBalanceStrategy();
+            case 'fx_revaluation':
+                return new FXRevaluationStrategy_1.FXRevaluationStrategy();
             default:
-                throw new Error(`Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance`);
+                throw new Error(`Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance, fx_revaluation`);
         }
     }
 }

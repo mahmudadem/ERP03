@@ -698,7 +698,7 @@ class CancelVoucherUseCase {
         if (voucher.isPosted) {
             await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
         }
-        const cancelledVoucher = voucher.cancel(userId, new Date(), 'Deleted by user');
+        const cancelledVoucher = voucher.cancel(userId, new Date(), 'Deleted by user', voucher.isPosted);
         await this.voucherRepo.save(cancelledVoucher);
     }
 }

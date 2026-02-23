@@ -36,3 +36,28 @@ The ERP system requires foundational services that cross-cut all business module
    - API Routes & Controllers
    - Frontend UI (Settings pages)
 4. Ensure all tests pass before moving to the next feature.
+
+## Cross-Cutting Concerns
+
+### DI Bindings
+Update `backend/src/infrastructure/di/bindRepositories.ts` to register:
+- `ITaxCategoryRepository` → `FirestoreTaxCategoryRepository`
+- `ITaxRateRepository` → `FirestoreTaxRateRepository`
+- `IUnitOfMeasureRepository` → `FirestoreUnitOfMeasureRepository`
+- `IDocumentSequenceRepository` → `FirestoreDocumentSequenceRepository`
+- `IAuditLogRepository` → `FirestoreAuditLogRepository`
+- `IPrintTemplateRepository` → `FirestorePrintTemplateRepository`
+
+### Prisma Schema
+Add models to `backend/prisma/schema.prisma`: `TaxCategory`, `TaxRate`, `UnitOfMeasure`, `UoMConversion`, `DocumentSequence`, `AuditLogEntry`, `PrintTemplate`. Follow existing patterns.
+
+### Permissions
+Shared module settings are typically admin-only:
+```
+shared.tax.view, .manage
+shared.uom.view, .manage
+shared.sequences.view, .manage
+shared.auditLogs.view
+shared.printTemplates.view, .manage
+```
+

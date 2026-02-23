@@ -85,31 +85,37 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async getVoucherType(companyId: string, id: string): Promise<VoucherTypeDefinition | null> {
-    let doc = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
-      ? await this.getSystemCollection().doc(id).get()
-      : await this.getCollection(companyId).doc(id).get();
+    const doc = await this.getCollection(companyId).doc(id).get();
     
-    if (!doc.exists) return null;
-    
-    const definition = this.toDomain(doc.data());
-    
-    // STEP 3 ENFORCEMENT: Validate after load
-    try {
-      VoucherTypeDefinitionValidator.validate(definition);
-      return definition;
-    } catch (error: any) {
-      console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load voucher definition`, {
-        id,
-        companyId,
-        name: definition.name,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-      return null;
+    if (doc.exists) {
+      const definition = this.toDomain(doc.data());
+      try {
+        VoucherTypeDefinitionValidator.validate(definition);
+        return definition;
+      } catch (error: any) {
+        console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load company voucher definition`, { id, companyId, error: error.message });
+      }
     }
+    
+    // Fallback to SYSTEM
+    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      const systemDoc = await this.getSystemCollection().doc(id).get();
+      if (systemDoc.exists) {
+        const systemDef = this.toDomain(systemDoc.data());
+        try {
+          VoucherTypeDefinitionValidator.validate(systemDef);
+          return systemDef;
+        } catch (error: any) {
+          console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load system fallback definition`, { id, error: error.message });
+        }
+      }
+    }
+    
+    return null;
   }
 
   async getVoucherTypesForModule(companyId: string, module: string): Promise<VoucherTypeDefinition[]> {
+    // ... (keep existing implementation for now, or consider merging system templates here too)
     // For System, we must filter because they are all in one list
     if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
         const snap = await this.getSystemCollection().where('module', '==', module).get();
@@ -126,7 +132,7 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
     
     // STEP 3 ENFORCEMENT: Filter out invalid definitions AND (optimally) filter by module if present,
     // but if module is missing, we assume it belongs (since it's in the accounting folder).
-    return definitions.filter(def => {
+    const companyDefs = definitions.filter(def => {
       try {
         VoucherTypeDefinitionValidator.validate(def);
         // Loose check: If def.module exists, it must match. If missing, assume match.
@@ -143,6 +149,18 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
         return false;
       }
     });
+
+    // Merge with System templates if not already present
+    const systemTemplates = await this.getSystemTemplates();
+    const companyCodes = new Set(companyDefs.map(d => d.code));
+    
+    for (const sysDef of systemTemplates) {
+      if (sysDef.module === module && !companyCodes.has(sysDef.code)) {
+        companyDefs.push(sysDef);
+      }
+    }
+
+    return companyDefs;
   }
 
   async getByCompanyId(companyId: string): Promise<VoucherTypeDefinition[]> {
@@ -153,7 +171,7 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
     const definitions = snap.docs.map(d => this.toDomain(d.data()));
     
     // STEP 3 ENFORCEMENT: Filter out invalid definitions
-    return definitions.filter(def => {
+    const companyDefs = definitions.filter(def => {
       try {
         VoucherTypeDefinitionValidator.validate(def);
         return true;
@@ -167,30 +185,48 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
         return false;
       }
     });
+
+    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      const systemTemplates = await this.getSystemTemplates();
+      const companyCodes = new Set(companyDefs.map(d => d.code));
+      for (const sysDef of systemTemplates) {
+        if (!companyCodes.has(sysDef.code)) {
+          companyDefs.push(sysDef);
+        }
+      }
+    }
+
+    return companyDefs;
   }
 
   async getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null> {
-    const snap = companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID
-      ? await this.getSystemCollection().where('code', '==', code).limit(1).get()
-      : await this.getCollection(companyId).where('code', '==', code).limit(1).get();
+    const snap = await this.getCollection(companyId).where('code', '==', code).limit(1).get();
 
-    if (snap.empty) return null;
-    
-    const definition = this.toDomain(snap.docs[0].data());
-    
-    // STEP 3 ENFORCEMENT: Validate after load
-    try {
-      VoucherTypeDefinitionValidator.validate(definition);
-      return definition;
-    } catch (error: any) {
-      console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load voucher definition by code`, {
-        code,
-        companyId,
-        name: definition.name,
-        error: error.message
-      });
-      return null;
+    if (!snap.empty) {
+      const definition = this.toDomain(snap.docs[0].data());
+      try {
+        VoucherTypeDefinitionValidator.validate(definition);
+        return definition;
+      } catch (error: any) {
+        console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load company voucher definition by code`, { code, companyId, error: error.message });
+      }
     }
+    
+    // Fallback to SYSTEM
+    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      const systemSnap = await this.getSystemCollection().where('code', '==', code).limit(1).get();
+      if (!systemSnap.empty) {
+        const sysDef = this.toDomain(systemSnap.docs[0].data());
+        try {
+          VoucherTypeDefinitionValidator.validate(sysDef);
+          return sysDef;
+        } catch (error: any) {
+          console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load system fallback definition by code`, { code, error: error.message });
+        }
+      }
+    }
+
+    return null;
   }
 
   async updateLayout(companyId: string, code: string, layout: any): Promise<void> {

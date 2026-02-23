@@ -120,28 +120,33 @@ const AccountStatementPage: React.FC = () => {
     try {
       const fullVoucher = await accountingApi.getVoucher(voucherId);
       
-      // Find form definition
-      let formDefinition = fullVoucher.formId 
-        ? voucherTypes.find(t => t.id === fullVoucher.formId)
-        : voucherTypes.find(t => {
-            const typeKeywords: Record<string, string[]> = {
-              'journal_entry': ['journal', 'journal_entry'],
-              'payment': ['payment'],
-              'receipt': ['receipt'],
-              'opening_balance': ['opening', 'balance']
-            };
-            
-            const keywords = typeKeywords[fullVoucher.type] || [];
-            const formIdLower = (t.id || '').toLowerCase();
-            const formNameLower = (t.name || '').toLowerCase();
-            const formCodeLower = (t.code || '').toLowerCase();
-            
-            return keywords.some(kw => 
-              formIdLower.includes(kw) || 
-              formNameLower.includes(kw) ||
-              formCodeLower.includes(kw)
-            );
+      // Find form definition: 1. Try by ID/_typeId, 2. Fallback to keywords
+      let formDefinition = voucherTypes.find(t => 
+        fullVoucher.formId && (t.id === fullVoucher.formId || (t as any)._typeId === fullVoucher.formId)
+      );
+
+      if (!formDefinition) {
+        formDefinition = voucherTypes.find(t => {
+          const typeKeywords: Record<string, string[]> = {
+            'journal_entry': ['journal', 'journal_entry'],
+            'payment': ['payment'],
+            'receipt': ['receipt'],
+            'opening_balance': ['opening', 'balance'],
+            'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
+          };
+          
+          const keywords = typeKeywords[fullVoucher.type] || [];
+          const formIdLower = (t.id || '').toLowerCase();
+          const formNameLower = (t.name || '').toLowerCase();
+          const formCodeLower = (t.code || '').toLowerCase();
+          
+          return keywords.some(kw => 
+            formIdLower.includes(kw) || 
+            formNameLower.includes(kw) ||
+            formCodeLower.includes(kw)
+          );
         });
+      }
 
       if (formDefinition) {
         if (isWindowsMode) {

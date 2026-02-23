@@ -248,7 +248,7 @@ export class VoucherLineEntity {
     }
 
     return new VoucherLineEntity(
-      data.id || 1,
+      data.id ?? 1,
       data.accountId || 'legacy-account',
       side as TransactionSide,
       baseAmount,

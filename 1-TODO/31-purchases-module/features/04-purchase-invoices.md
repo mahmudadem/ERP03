@@ -70,8 +70,10 @@ export interface PurchaseInvoiceLine {
   unitPrice: number;
   discountPercent?: number;
   discountAmount?: number;
-  taxRate?: number;
-  taxAmount?: number;
+  taxCategoryId?: string;   // Links to TaxCategory for auto-calculation
+  taxAccountId?: string;    // Resolved by TaxCalculationEngine (Input Tax account)
+  taxRate?: number;         // Resolved by TaxCalculationEngine
+  taxAmount?: number;       // Resolved by TaxCalculationEngine
   lineTotal: number;
 }
 
@@ -117,22 +119,26 @@ export class PurchaseInvoiceStrategy implements IVoucherPostingStrategy {
         amount,
         header.currency || baseCurrency,
         header.exchangeRate || 1,
-        invoiceLine.description || invoiceLine.itemName
+        invoiceLine.description || invoiceLine.itemName,
+        undefined, // costCenterId
+        {}         // metadata
       ));
       
-      // Tax line (if applicable)
-      if (invoiceLine.taxAmount && invoiceLine.taxAmount > 0 && header.taxAccountId) {
+      // Tax line (if applicable) — uses PER-LINE taxAccountId from TaxCalculationEngine
+      if (invoiceLine.taxAmount && invoiceLine.taxAmount > 0 && invoiceLine.taxAccountId) {
         const taxBase = roundMoney(invoiceLine.taxAmount * (header.exchangeRate || 1));
         lines.push(new VoucherLineEntity(
           lineCounter++,
-          header.taxAccountId,
+          invoiceLine.taxAccountId,  // Per-line: resolved by TaxCalculationEngine
           'Debit',
           taxBase,
           baseCurrency,
           invoiceLine.taxAmount,
           header.currency || baseCurrency,
           header.exchangeRate || 1,
-          `Tax - ${invoiceLine.itemName || ''}`
+          `Tax - ${invoiceLine.itemName || ''}`,
+          undefined, // costCenterId
+          {}         // metadata
         ));
       }
     }
@@ -148,7 +154,9 @@ export class PurchaseInvoiceStrategy implements IVoucherPostingStrategy {
       header.total,
       header.currency || baseCurrency,
       header.exchangeRate || 1,
-      `AP - ${header.supplierName || ''}`
+      `AP - ${header.supplierName || ''}`,
+      undefined, // costCenterId
+      {}         // metadata
     ));
     
     return lines;
@@ -159,11 +167,14 @@ export class PurchaseInvoiceStrategy implements IVoucherPostingStrategy {
 ### 3. Register Strategy in Factory
 **File:** `backend/src/domain/accounting/factories/VoucherPostingStrategyFactory.ts`
 
-Add case:
+Add case **before** the `default` throw:
 ```typescript
 case 'purchase_invoice':
   return new PurchaseInvoiceStrategy();
 ```
+
+> [!WARNING]
+> The existing `default` case **throws an error** for unknown types. The new cases MUST be added before testing, or change `default` to `return null` and update the return type to `IVoucherPostingStrategy | null`.
 
 ### 4. Add VoucherType
 **File:** `backend/src/domain/accounting/types/VoucherTypes.ts`
@@ -187,15 +198,18 @@ PURCHASE_INVOICE = 'purchase_invoice',
    - Compares invoice lines against linked PO and GRN.
    - If mismatch (qty/price out of tolerance), block posting unless `override` permission exists.
    - Set `matchingStatus`.
-3. Prepare voucher payload:
+3. For each line with taxCategoryId:
+   - Call TaxCalculationEngine.calculateLineTax() → resolves taxRate, taxAmount, taxAccountId
+4. Wrap steps 5-8 in transactionManager.runTransaction():
+5. Prepare voucher payload:
    - type: 'purchase_invoice'
    - sourceModule: 'purchases'
-   - lines from invoice
+   - lines from invoice (with resolved tax fields)
    - apAccountId from supplier
-4. Call CreateVoucherUseCase.execute()
-5. Auto-approve the voucher (skip approval workflow for system-generated)
-6. Call PostVoucherUseCase.execute() → ledger entries created
-7. Update invoice: voucherId = generated voucher ID, status = 'posted'
+6. Call CreateVoucherUseCase.execute()
+7. Auto-approve the voucher (skip approval workflow for system-generated)
+8. Call PostVoucherUseCase.execute() → ledger entries created
+9. Update invoice: voucherId = generated voucher ID, status = 'posted'
 ```
 
 | `UpdatePurchaseInvoiceUseCase` | Only if draft |

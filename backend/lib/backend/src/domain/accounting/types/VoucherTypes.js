@@ -44,6 +44,12 @@ var VoucherType;
      * Posting: Inverse of the original voucher referenced.
      */
     VoucherType["REVERSAL"] = "reversal";
+    /**
+     * FX Revaluation Voucher
+     * Used for: Adjusting the base currency value of foreign currency balances at year/month end.
+     * Posting: Debits/Credits the base amount only, offsetting to Unrealized Gain/Loss account.
+     */
+    VoucherType["FX_REVALUATION"] = "fx_revaluation";
 })(VoucherType = exports.VoucherType || (exports.VoucherType = {}));
 /**
  * Posting Lock Policy

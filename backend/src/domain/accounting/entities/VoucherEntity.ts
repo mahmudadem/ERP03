@@ -568,8 +568,8 @@ export class VoucherEntity {
    * Create cancelled version (immutable update)
    * Terminal state for Drafts or Approved vouchers that should not be processed.
    */
-  cancel(cancelledBy: string, cancelledAt: Date, reason: string = 'Cancelled by user'): VoucherEntity {
-    if (this.isPosted) {
+  cancel(cancelledBy: string, cancelledAt: Date, reason: string = 'Cancelled by user', force: boolean = false): VoucherEntity {
+    if (this.isPosted && !force) {
       throw new Error('Cannot cancel a posted voucher. Use reversal instead.');
     }
 

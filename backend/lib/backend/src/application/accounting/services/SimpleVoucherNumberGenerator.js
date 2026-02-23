@@ -28,7 +28,8 @@ class SimpleVoucherNumberGenerator {
             [VoucherTypes_1.VoucherType.RECEIPT]: 'REC',
             [VoucherTypes_1.VoucherType.JOURNAL_ENTRY]: 'JV',
             [VoucherTypes_1.VoucherType.OPENING_BALANCE]: 'OB',
-            [VoucherTypes_1.VoucherType.REVERSAL]: 'REV'
+            [VoucherTypes_1.VoucherType.REVERSAL]: 'REV',
+            [VoucherTypes_1.VoucherType.FX_REVALUATION]: 'FXR'
         };
         return prefixes[type];
     }

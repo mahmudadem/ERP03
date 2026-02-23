@@ -81,6 +81,11 @@ class FirestoreVoucherFormRepository {
             createdBy: form.createdBy || null
         };
     }
+    getSystemCollection() {
+        return this.db.collection(FirestoreVoucherFormRepository.SYSTEM_METADATA_COLLECTION)
+            .doc(FirestoreVoucherFormRepository.SYSTEM_COLLECTION_NAME)
+            .collection('items');
+    }
     async create(form) {
         try {
             const data = this.toPersistence(form);
@@ -94,9 +99,18 @@ class FirestoreVoucherFormRepository {
     async getById(companyId, formId) {
         try {
             let doc = await this.getCollection(companyId).doc(formId).get();
-            if (!doc.exists)
-                return null;
-            return this.toDomain(doc.data());
+            if (doc.exists) {
+                return this.toDomain(doc.data());
+            }
+            // Fallback to SYSTEM templates if not found in company collection
+            // Many system templates use their code/id interchangeably (e.g. fx_revaluation)
+            const systemDoc = await this.getSystemCollection().doc(formId).get();
+            if (systemDoc.exists) {
+                const sysData = systemDoc.data();
+                // Map VoucherTypeDefinition to VoucherFormDefinition
+                return this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isSystemGenerated: true }));
+            }
+            return null;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting voucher form by ID', error);
@@ -107,7 +121,18 @@ class FirestoreVoucherFormRepository {
             const snapshot = await this.getCollection(companyId)
                 .where('typeId', '==', typeId)
                 .get();
-            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+            const forms = snapshot.docs.map(doc => this.toDomain(doc.data()));
+            // If no company forms found for this type, check system
+            if (forms.length === 0) {
+                const systemSnapshot = await this.getSystemCollection()
+                    .where('code', '==', typeId)
+                    .get();
+                systemSnapshot.docs.forEach(doc => {
+                    const sysData = doc.data();
+                    forms.push(this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isSystemGenerated: true })));
+                });
+            }
+            return forms;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting voucher forms by type', error);
@@ -120,9 +145,18 @@ class FirestoreVoucherFormRepository {
                 .where('isDefault', '==', true)
                 .limit(1)
                 .get();
-            if (snapshot.empty)
-                return null;
-            return this.toDomain(snapshot.docs[0].data());
+            if (!snapshot.empty)
+                return this.toDomain(snapshot.docs[0].data());
+            // Fallback to system default
+            const systemSnapshot = await this.getSystemCollection()
+                .where('code', '==', typeId)
+                .limit(1)
+                .get();
+            if (!systemSnapshot.empty) {
+                const sysData = systemSnapshot.docs[0].data();
+                return this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isDefault: true, isSystemGenerated: true }));
+            }
+            return null;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting default voucher form', error);
@@ -131,7 +165,17 @@ class FirestoreVoucherFormRepository {
     async getAllByCompany(companyId) {
         try {
             const snapshot = await this.getCollection(companyId).get();
-            return snapshot.docs.map(doc => this.toDomain(doc.data()));
+            const companyForms = snapshot.docs.map(doc => this.toDomain(doc.data()));
+            // Merge with system templates
+            const systemSnapshot = await this.getSystemCollection().get();
+            const companyCodes = new Set(companyForms.map(f => f.code));
+            for (const doc of systemSnapshot.docs) {
+                const sysData = doc.data();
+                if (!companyCodes.has(sysData.code)) {
+                    companyForms.push(this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isSystemGenerated: true })));
+                }
+            }
+            return companyForms;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting all voucher forms', error);
@@ -165,4 +209,7 @@ class FirestoreVoucherFormRepository {
     }
 }
 exports.FirestoreVoucherFormRepository = FirestoreVoucherFormRepository;
+FirestoreVoucherFormRepository.SYSTEM_COMPANY_ID = 'SYSTEM';
+FirestoreVoucherFormRepository.SYSTEM_COLLECTION_NAME = 'voucher_types';
+FirestoreVoucherFormRepository.SYSTEM_METADATA_COLLECTION = 'system_metadata';
 //# sourceMappingURL=FirestoreVoucherFormRepository.js.map

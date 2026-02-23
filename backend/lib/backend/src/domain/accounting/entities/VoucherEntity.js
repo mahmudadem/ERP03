@@ -384,8 +384,8 @@ class VoucherEntity {
      * Create cancelled version (immutable update)
      * Terminal state for Drafts or Approved vouchers that should not be processed.
      */
-    cancel(cancelledBy, cancelledAt, reason = 'Cancelled by user') {
-        if (this.isPosted) {
+    cancel(cancelledBy, cancelledAt, reason = 'Cancelled by user', force = false) {
+        if (this.isPosted && !force) {
             throw new Error('Cannot cancel a posted voucher. Use reversal instead.');
         }
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.CANCELLED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, cancelledBy, cancelledAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), // updatedAt

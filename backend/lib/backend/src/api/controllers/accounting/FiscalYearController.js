@@ -87,9 +87,23 @@ class FiscalYearController {
             const companyId = req.companyId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId);
             const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
             const { id } = req.params;
-            const { retainedEarningsAccountId } = req.body;
+            const { retainedEarningsAccountId, pandLClearingAccountId } = req.body;
             const useCase = new FiscalYearUseCases_1.CloseYearUseCase(bindRepositories_1.diContainer.fiscalYearRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.transactionManager, permissionChecker);
-            const data = await useCase.execute(companyId, userId, id, { retainedEarningsAccountId });
+            const data = await useCase.execute(companyId, userId, id, { retainedEarningsAccountId, pandLClearingAccountId });
+            res.status(200).json({ success: true, data });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    static async commitYearClose(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = req.companyId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId);
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            const { id } = req.params;
+            const useCase = new FiscalYearUseCases_1.CommitYearCloseUseCase(bindRepositories_1.diContainer.fiscalYearRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager, permissionChecker);
+            const data = await useCase.execute(companyId, userId, id);
             res.status(200).json({ success: true, data });
         }
         catch (err) {

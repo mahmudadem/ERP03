@@ -7,6 +7,7 @@ import {
   ClosePeriodUseCase,
   ReopenPeriodUseCase,
   CloseYearUseCase,
+  CommitYearCloseUseCase,
   ReopenYearUseCase,
   DeleteFiscalYearUseCase,
   EnableSpecialPeriodsUseCase,
@@ -103,7 +104,7 @@ export class FiscalYearController {
       const companyId = (req as any).companyId || (req as any).user?.companyId;
       const userId = (req as any).user?.uid;
       const { id } = req.params;
-      const { retainedEarningsAccountId } = req.body;
+      const { retainedEarningsAccountId, pandLClearingAccountId } = req.body;
       const useCase = new CloseYearUseCase(
         diContainer.fiscalYearRepository,
         diContainer.ledgerRepository,
@@ -113,7 +114,26 @@ export class FiscalYearController {
         diContainer.transactionManager,
         permissionChecker
       );
-      const data = await useCase.execute(companyId, userId, id, { retainedEarningsAccountId });
+      const data = await useCase.execute(companyId, userId, id, { retainedEarningsAccountId, pandLClearingAccountId });
+      (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async commitYearClose(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      const useCase = new CommitYearCloseUseCase(
+        diContainer.fiscalYearRepository,
+        diContainer.voucherRepository,
+        diContainer.ledgerRepository,
+        diContainer.transactionManager,
+        permissionChecker
+      );
+      const data = await useCase.execute(companyId, userId, id);
       (res as any).status(200).json({ success: true, data });
     } catch (err) {
       next(err);

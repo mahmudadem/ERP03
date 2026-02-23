@@ -53,7 +53,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
     } else {
       setInputValue('');
     }
-  }, [value, getAccountByCode]);
+  }, [value, getAccountByCode, getAccountById]);
 
   // Focus modal input when modal opens
   useEffect(() => {

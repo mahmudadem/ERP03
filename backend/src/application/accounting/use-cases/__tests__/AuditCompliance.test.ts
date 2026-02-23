@@ -15,7 +15,7 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
     let mockPolicyProvider: any;
 
     beforeEach(() => {
-        mockVoucherRepo = { findById: jest.fn(), save: jest.fn() };
+        mockVoucherRepo = { findById: jest.fn(), save: jest.fn(), findByReversalOfVoucherId: jest.fn() };
         mockLedgerRepo = { getGeneralLedger: jest.fn(), deleteForVoucher: jest.fn(), recordForVoucher: jest.fn() };
         mockPermissionChecker = { assertOrThrow: jest.fn() };
         mockPolicyProvider = { getConfig: jest.fn().mockResolvedValue({}) };
@@ -107,7 +107,14 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
         mockLedgerRepo.getGeneralLedger.mockResolvedValue(ledgerLines);
         mockVoucherRepo.save.mockImplementation(v => v);
 
-        const reversalUseCase = new ReverseAndReplaceVoucherUseCase(mockVoucherRepo, mockLedgerRepo, mockPermissionChecker, { runTransaction: (fn: any) => fn() } as any);
+        const reversalUseCase = new ReverseAndReplaceVoucherUseCase(
+            mockVoucherRepo, 
+            mockLedgerRepo, 
+            mockPermissionChecker, 
+            { runTransaction: (fn: any) => fn() } as any,
+            undefined, undefined, undefined,
+            mockPolicyProvider
+        );
         await reversalUseCase.execute('c1', 'u1', 'v456', CorrectionMode.REVERSE_ONLY, undefined, { reason: 'Correction' });
 
         // 1. Verify Verification Query: Must use voucherId AND isPosted filter
@@ -143,16 +150,23 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
              'v789', 'c1', 'V-003', VoucherType.JOURNAL_ENTRY, '2026-01-01', 'Draft',
              'USD', 'USD', 1, 
              [
-                { id: 1, accountId: 'a1', baseAmount: 100, side: 'Debit' } as any,
-                { id: 2, accountId: 'a2', baseAmount: 100, side: 'Credit' } as any
+                { id: 1, accountId: 'a1', baseAmount: 100, debitAmount: 100, creditAmount: 0, amount: 100, exchangeRate: 1, currency: 'USD', baseCurrency: 'USD', side: 'Debit' } as any,
+                { id: 2, accountId: 'a2', baseAmount: 100, debitAmount: 0, creditAmount: 100, amount: 100, exchangeRate: 1, currency: 'USD', baseCurrency: 'USD', side: 'Credit' } as any
              ], 
              100, 100, VoucherStatus.DRAFT, {}, 'u1', new Date()
         );
         mockVoucherRepo.findById.mockResolvedValue(draftVoucher);
 
-        const reversalUseCase = new ReverseAndReplaceVoucherUseCase(mockVoucherRepo, mockLedgerRepo, mockPermissionChecker, {} as any);
+        const reversalUseCase = new ReverseAndReplaceVoucherUseCase(
+            mockVoucherRepo, 
+            mockLedgerRepo, 
+            mockPermissionChecker, 
+            { runTransaction: (fn: any) => fn() } as any,
+            undefined, undefined, undefined,
+            mockPolicyProvider
+        );
         await expect(reversalUseCase.execute('c1', 'u1', 'v789', CorrectionMode.REVERSE_ONLY))
-            .rejects.toThrow(/Only POSTED vouchers can be reversed/);
+            .rejects.toThrow(/Cannot reverse voucher in status/);
     });
 
     /**
@@ -178,7 +192,9 @@ describe('Audit Compliance (V2) - Concrete Evidence Suite', () => {
             mockVoucherRepo, 
             mockLedgerRepo, 
             mockPermissionChecker, 
-            { runTransaction: (fn: any) => fn() } as any
+            { runTransaction: (fn: any) => fn() } as any,
+            undefined, undefined, undefined,
+            mockPolicyProvider
         );
 
         // Act & Assert: Verify rejection with proper error structure
