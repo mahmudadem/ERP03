@@ -147,6 +147,7 @@ export class FirestoreAccountRepository implements IAccountRepository {
         status: 'ACTIVE',
         isProtected: data.isProtected ?? false,
         replacedByAccountId: null,
+        cashFlowCategory: data.cashFlowCategory ?? null,
         createdAt: now,
         createdBy: data.createdBy,
         updatedAt: now,
@@ -206,6 +207,7 @@ export class FirestoreAccountRepository implements IAccountRepository {
       if (data.currencyPolicy !== undefined) updateData.currencyPolicy = data.currencyPolicy;
       if (data.fixedCurrencyCode !== undefined) updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
       if (data.allowedCurrencyCodes !== undefined) updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
+      if (data.cashFlowCategory !== undefined) updateData.cashFlowCategory = data.cashFlowCategory;
       
       if (data.requiresApproval !== undefined) updateData.requiresApproval = data.requiresApproval;
       if (data.requiresCustodyConfirmation !== undefined) updateData.requiresCustodyConfirmation = data.requiresCustodyConfirmation;

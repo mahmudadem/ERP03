@@ -40,6 +40,7 @@ export const useSidebarConfig = () => {
     'Balance Sheet': 'sidebar.balanceSheet',
     'General Ledger': 'sidebar.generalLedger',
     'Profit & Loss': 'sidebar.profitLoss',
+    'Cash Flow': 'sidebar.cashFlow',
     'Cost Center Summary': 'sidebar.costCenterSummary',
     Settings: 'sidebar.settings',
     Items: 'sidebar.items',

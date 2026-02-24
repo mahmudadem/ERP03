@@ -12,6 +12,7 @@ exports.AccountingDTOMapper = void 0;
 // ============================================================================
 class AccountingDTOMapper {
     static toAccountDTO(account) {
+        var _a;
         return {
             // Identity
             id: account.id,
@@ -34,6 +35,7 @@ class AccountingDTOMapper {
             status: account.status,
             isProtected: account.isProtected,
             replacedByAccountId: account.replacedByAccountId,
+            cashFlowCategory: (_a = account.cashFlowCategory) !== null && _a !== void 0 ? _a : null,
             // Audit
             createdAt: account.createdAt.toISOString(),
             createdBy: account.createdBy,

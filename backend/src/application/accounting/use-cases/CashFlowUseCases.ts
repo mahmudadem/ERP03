@@ -28,6 +28,91 @@ export interface CashFlowData {
 }
 
 const iso = (d: Date) => d.toISOString().split('T')[0];
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const isNonZero = (value: number) => Math.abs(value) >= 0.005;
+
+type CashFlowCategory = 'OPERATING' | 'INVESTING' | 'FINANCING';
+
+const INVESTING_HINTS = [
+  'property',
+  'plant',
+  'equipment',
+  'ppe',
+  'building',
+  'land',
+  'vehicle',
+  'machinery',
+  'intangible',
+  'investment',
+  'capital work',
+  'capex',
+];
+
+const FINANCING_HINTS = [
+  'loan',
+  'debt',
+  'borrow',
+  'bond',
+  'mortgage',
+  'lease liability',
+  'notes payable',
+  'capital',
+  'share',
+  'equity',
+  'owner',
+  'partner',
+  'dividend',
+];
+
+const RETAINED_EARNINGS_HINTS = ['retained earnings', 'retained earning', 'current year earnings'];
+const NON_CASH_PNL_HINTS = ['depreciation', 'amortization', 'impairment', 'provision', 'unrealized', 'accrual'];
+
+const normalizeText = (account: any) =>
+  `${account?.name || ''} ${account?.userCode || ''} ${account?.systemCode || ''}`.toLowerCase();
+
+const inferCashFlowCategory = (account: any): CashFlowCategory => {
+  const explicit = String(account?.cashFlowCategory || '').toUpperCase();
+  if (explicit === 'OPERATING' || explicit === 'INVESTING' || explicit === 'FINANCING') {
+    return explicit as CashFlowCategory;
+  }
+
+  const classification = String(account?.classification || '').toUpperCase();
+  const text = normalizeText(account);
+
+  if (classification === 'ASSET') {
+    if (INVESTING_HINTS.some((hint) => text.includes(hint))) return 'INVESTING';
+    return 'OPERATING';
+  }
+
+  if (classification === 'LIABILITY') {
+    if (FINANCING_HINTS.some((hint) => text.includes(hint))) return 'FINANCING';
+    return 'OPERATING';
+  }
+
+  if (classification === 'EQUITY') {
+    if (RETAINED_EARNINGS_HINTS.some((hint) => text.includes(hint))) return 'OPERATING';
+    return 'FINANCING';
+  }
+
+  return 'OPERATING';
+};
+
+const isLikelyNonCashPnl = (account: any) => {
+  const text = normalizeText(account);
+  return NON_CASH_PNL_HINTS.some((hint) => text.includes(hint));
+};
+
+const cashEffectFromDelta = (classification: string, delta: number): number => {
+  const cls = String(classification || '').toUpperCase();
+  if (cls === 'ASSET' || cls === 'EXPENSE') return -delta;
+  return delta;
+};
+
+const accountLabel = (account: any) => {
+  const code = (account?.userCode || account?.systemCode || '').trim();
+  const name = (account?.name || 'Account').trim();
+  return code ? `${code} - ${name}` : name;
+};
 
 export class GetCashFlowStatementUseCase {
   constructor(
@@ -64,7 +149,7 @@ export class GetCashFlowStatementUseCase {
     const openMap = tbMap(openingTB);
     const closeMap = tbMap(closingTB);
 
-    const cashIds = accounts.filter((acc: any) => isCashLikeAccount(acc)).map((a: any) => a.id);
+    const cashIds = new Set(accounts.filter((acc: any) => isCashLikeAccount(acc)).map((a: any) => a.id));
 
     const balanceOf = (map: Map<string, { debit: number; credit: number }>, accId: string, cls: string) => {
       const v = map.get(accId);
@@ -72,11 +157,11 @@ export class GetCashFlowStatementUseCase {
       return ['ASSET', 'EXPENSE'].includes(cls) ? (v.debit - v.credit) : (v.credit - v.debit);
     };
 
-    const openingCashBalance = cashIds.reduce((s, id) => {
+    const openingCashBalance = Array.from(cashIds).reduce((s, id) => {
       const acc = accountMap.get(id);
       return s + balanceOf(openMap, id, acc?.classification || 'ASSET');
     }, 0);
-    const closingCashBalance = cashIds.reduce((s, id) => {
+    const closingCashBalance = Array.from(cashIds).reduce((s, id) => {
       const acc = accountMap.get(id);
       return s + balanceOf(closeMap, id, acc?.classification || 'ASSET');
     }, 0);
@@ -91,41 +176,82 @@ export class GetCashFlowStatementUseCase {
       }
     });
 
-    // Working capital change (current assets/liabilities excluding cash/bank)
-    let workingCapitalChange = 0;
-    accounts.forEach((acc: any) => {
-      if (cashIds.includes(acc.id)) return;
-      const delta = balanceOf(closeMap, acc.id, acc.classification) - balanceOf(openMap, acc.id, acc.classification);
-      if (['ASSET'].includes(acc.classification)) {
-        workingCapitalChange -= delta; // increase in asset reduces cash
-      } else if (['LIABILITY'].includes(acc.classification)) {
-        workingCapitalChange += delta; // increase in liability increases cash
-      }
-    });
+    const movementRows = accounts
+      .filter((acc: any) => !cashIds.has(acc.id))
+      .map((acc: any) => {
+        const delta =
+          balanceOf(closeMap, acc.id, acc.classification) - balanceOf(openMap, acc.id, acc.classification);
+        return {
+          account: acc,
+          delta,
+          cashEffect: cashEffectFromDelta(acc.classification, delta),
+          category: inferCashFlowCategory(acc),
+        };
+      })
+      .filter((row) => isNonZero(row.delta) || isNonZero(row.cashEffect));
 
-    const operatingTotal = netIncome + workingCapitalChange;
-
-    const operating: CashFlowSection = {
-      items: [
-        { name: 'Net Income', amount: netIncome },
-        { name: 'Working Capital Changes', amount: workingCapitalChange }
-      ],
-      total: operatingTotal
+    const sectionFromCategory = (category: CashFlowCategory): CashFlowSection => {
+      const rows = movementRows.filter((row) => row.category === category && isNonZero(row.cashEffect));
+      const total = rows.reduce((sum, row) => sum + row.cashEffect, 0);
+      const items = rows
+        .sort((a, b) => Math.abs(b.cashEffect) - Math.abs(a.cashEffect))
+        .map((row) => ({
+          name: accountLabel(row.account),
+          amount: round2(row.cashEffect),
+          accountId: row.account.id,
+        }));
+      return { items, total: round2(total) };
     };
 
-    const investing: CashFlowSection = { items: [], total: 0 };
-    const financing: CashFlowSection = { items: [], total: 0 };
+    const investing = sectionFromCategory('INVESTING');
+    const financing = sectionFromCategory('FINANCING');
+
+    const roundedNetCashChange = round2(netCashChange);
+    const operatingTarget = round2(roundedNetCashChange - investing.total - financing.total);
+    const operatingRows = movementRows.filter((row) => row.category === 'OPERATING');
+
+    const workingCapitalChange = operatingRows
+      .filter((row) => ['ASSET', 'LIABILITY'].includes(String(row.account.classification || '').toUpperCase()))
+      .reduce((sum, row) => sum + row.cashEffect, 0);
+
+    const nonCashAdjustments = operatingRows
+      .filter(
+        (row) =>
+          ['REVENUE', 'EXPENSE'].includes(String(row.account.classification || '').toUpperCase()) &&
+          isLikelyNonCashPnl(row.account)
+      )
+      .reduce((sum, row) => sum - row.cashEffect, 0);
+
+    const operatingItems: CashFlowItem[] = [{ name: 'Net Income', amount: round2(netIncome) }];
+    if (isNonZero(nonCashAdjustments)) {
+      operatingItems.push({ name: 'Non-Cash Adjustments', amount: round2(nonCashAdjustments) });
+    }
+    operatingItems.push({ name: 'Working Capital Changes', amount: round2(workingCapitalChange) });
+
+    const derivedOperating =
+      (operatingItems[0]?.amount || 0) +
+      (operatingItems.find((i) => i.name === 'Non-Cash Adjustments')?.amount || 0) +
+      (operatingItems.find((i) => i.name === 'Working Capital Changes')?.amount || 0);
+    const otherOperating = operatingTarget - derivedOperating;
+    if (isNonZero(otherOperating)) {
+      operatingItems.push({ name: 'Other Operating Movements', amount: round2(otherOperating) });
+    }
+
+    const operating: CashFlowSection = {
+      items: operatingItems,
+      total: round2(operatingTarget),
+    };
 
     return {
       period: { from: effectiveFrom, to: effectiveTo },
       baseCurrency,
-      netIncome,
+      netIncome: round2(netIncome),
       operating,
       investing,
       financing,
-      netCashChange,
-      openingCashBalance,
-      closingCashBalance
+      netCashChange: roundedNetCashChange,
+      openingCashBalance: round2(openingCashBalance),
+      closingCashBalance: round2(closingCashBalance),
     };
   }
 }

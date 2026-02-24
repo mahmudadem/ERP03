@@ -30,6 +30,7 @@ export const moduleMenuMap: Record<
           { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet', permission: 'accounting.reports.balanceSheet.view', icon: 'BookMinus' },
           { label: 'General Ledger', path: '/accounting/reports/general-ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
           { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
+          { label: 'Cash Flow', path: '/accounting/reports/cash-flow', permission: 'accounting.reports.cashFlow.view', icon: 'Waves' },
           { label: 'Cost Center Summary', path: '/accounting/reports/cost-center-summary', permission: 'accounting.reports.generalLedger.view', icon: 'Target' },
         ]
       },

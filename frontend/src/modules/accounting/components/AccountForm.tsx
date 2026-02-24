@@ -7,7 +7,8 @@ import {
     BalanceNature, 
     BalanceEnforcement, 
     CurrencyPolicy,
-    AccountStatus
+    AccountStatus,
+    CashFlowCategory
 } from '../../../api/accounting';
 import { CurrencySelector } from './shared/CurrencySelector';
 import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdmin';
@@ -54,6 +55,13 @@ const CURRENCY_POLICIES: { value: CurrencyPolicy; label: string }[] = [
     // { value: 'RESTRICTED', label: 'Restricted (Select permitted)' }, // MVP: Restricted UI not fully implemented
 ];
 
+const CASH_FLOW_CATEGORIES: { value: CashFlowCategory | ''; label: string }[] = [
+    { value: '', label: 'Auto (By Account Type)' },
+    { value: 'OPERATING', label: 'Operating' },
+    { value: 'INVESTING', label: 'Investing' },
+    { value: 'FINANCING', label: 'Financing' },
+];
+
 export const AccountForm: React.FC<AccountFormProps> = ({
     mode,
     initialValues,
@@ -84,6 +92,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     
     const [currencyPolicy, setCurrencyPolicy] = useState<CurrencyPolicy>(initialValues?.currencyPolicy || 'INHERIT');
     const [fixedCurrencyCode, setFixedCurrencyCode] = useState(initialValues?.fixedCurrencyCode || initialValues?.currency || '');
+    const [cashFlowCategory, setCashFlowCategory] = useState<CashFlowCategory | ''>(initialValues?.cashFlowCategory || '');
 
     // Fetch base currency from accounting module config
     const { getModuleStatus } = useCompanyModules();
@@ -152,6 +161,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                 parentId: parentId || null,
                 currencyPolicy,
                 fixedCurrencyCode: currencyPolicy === 'FIXED' ? fixedCurrencyCode : null,
+                cashFlowCategory: cashFlowCategory || null,
                 requiresApproval,
                 requiresCustodyConfirmation,
                 custodianUserId: requiresCustodyConfirmation ? custodianUserId : null,
@@ -285,6 +295,18 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                             </select>
                         </div>
                     )}
+                 </div>
+
+                 <div className="mt-4">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Cash Flow Category</label>
+                    <select
+                        value={cashFlowCategory}
+                        onChange={(e) => setCashFlowCategory(e.target.value as CashFlowCategory | '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                        {CASH_FLOW_CATEGORIES.map(c => <option key={c.value || 'AUTO'} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Optional override used by Cash Flow report classification.</p>
                  </div>
             </div>
 

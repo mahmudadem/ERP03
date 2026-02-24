@@ -7,6 +7,8 @@
 
 import { Account, AccountClassification, AccountRole, AccountStatus, BalanceNature, BalanceEnforcement, CurrencyPolicy } from '../../../domain/accounting/models/Account';
 
+export type CashFlowCategory = 'OPERATING' | 'INVESTING' | 'FINANCING';
+
 // ============================================================================
 // INPUT TYPES
 // ============================================================================
@@ -31,6 +33,7 @@ export interface NewAccountInput {
   fixedCurrencyCode?: string | null;
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;               // Default: false
+  cashFlowCategory?: CashFlowCategory | null;
   
   // Approval Policy
   requiresApproval?: boolean;
@@ -65,6 +68,7 @@ export interface UpdateAccountInput {
   
   // System
   isProtected?: boolean;
+  cashFlowCategory?: CashFlowCategory | null;
   
   // Approval Policy
   requiresApproval?: boolean;

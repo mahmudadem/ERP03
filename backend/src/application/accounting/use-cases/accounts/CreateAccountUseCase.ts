@@ -36,6 +36,7 @@ export interface CreateAccountCommand {
   fixedCurrencyCode?: string | null;
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Legacy compat
   code?: string;
@@ -191,7 +192,8 @@ export class CreateAccountUseCase {
       currencyPolicy,
       fixedCurrencyCode: data.fixedCurrencyCode || data.currency,
       allowedCurrencyCodes: data.allowedCurrencyCodes || [],
-      isProtected: data.isProtected ?? false
+      isProtected: data.isProtected ?? false,
+      cashFlowCategory: data.cashFlowCategory ?? null,
     };
 
     // 9. Create account (repository handles systemCode generation)

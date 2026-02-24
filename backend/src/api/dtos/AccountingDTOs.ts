@@ -39,6 +39,7 @@ export interface AccountDTO {
   status: string;
   isProtected: boolean;
   replacedByAccountId?: string | null;
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Audit
   createdAt: string;
@@ -76,6 +77,7 @@ export interface CreateAccountRequest {
   fixedCurrencyCode?: string;
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Approval
   requiresApproval?: boolean;
@@ -109,6 +111,7 @@ export interface UpdateAccountRequest {
   
   // System
   isProtected?: boolean;
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Approval
   requiresApproval?: boolean;
@@ -236,6 +239,7 @@ export class AccountingDTOMapper {
       status: account.status,
       isProtected: account.isProtected,
       replacedByAccountId: account.replacedByAccountId,
+      cashFlowCategory: account.cashFlowCategory ?? null,
       
       // Audit
       createdAt: account.createdAt.toISOString(),

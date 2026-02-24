@@ -97,7 +97,7 @@ class FirestoreAccountRepository {
     // MUTATION METHODS
     // =========================================================================
     async create(companyId, data) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         try {
             const id = data.id || this.db.collection('tmp').doc().id;
             const systemCode = await this.generateNextSystemCode(companyId);
@@ -123,13 +123,14 @@ class FirestoreAccountRepository {
                 status: 'ACTIVE',
                 isProtected: (_c = data.isProtected) !== null && _c !== void 0 ? _c : false,
                 replacedByAccountId: null,
+                cashFlowCategory: (_d = data.cashFlowCategory) !== null && _d !== void 0 ? _d : null,
                 createdAt: now,
                 createdBy: data.createdBy,
                 updatedAt: now,
                 updatedBy: data.createdBy,
                 requiresApproval: data.requiresApproval || false,
                 requiresCustodyConfirmation: data.requiresCustodyConfirmation || false,
-                custodianUserId: (_d = data.custodianUserId) !== null && _d !== void 0 ? _d : null
+                custodianUserId: (_e = data.custodianUserId) !== null && _e !== void 0 ? _e : null
             });
             const errors = account.validate();
             if (errors.length > 0) {
@@ -189,6 +190,8 @@ class FirestoreAccountRepository {
                 updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
             if (data.allowedCurrencyCodes !== undefined)
                 updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
+            if (data.cashFlowCategory !== undefined)
+                updateData.cashFlowCategory = data.cashFlowCategory;
             if (data.requiresApproval !== undefined)
                 updateData.requiresApproval = data.requiresApproval;
             if (data.requiresCustodyConfirmation !== undefined)

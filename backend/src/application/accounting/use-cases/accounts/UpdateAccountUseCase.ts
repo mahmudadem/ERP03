@@ -38,6 +38,7 @@ export interface UpdateAccountCommand {
   currencyPolicy?: string;
   fixedCurrencyCode?: string | null;
   allowedCurrencyCodes?: string[];
+  cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
   
   // Legacy compat
   code?: string;
@@ -289,6 +290,7 @@ export class UpdateAccountUseCase {
     if (data.fixedCurrencyCode !== undefined) updateInput.fixedCurrencyCode = data.fixedCurrencyCode;
     if (data.currency !== undefined) updateInput.fixedCurrencyCode = data.currency;
     if (data.allowedCurrencyCodes !== undefined) updateInput.allowedCurrencyCodes = data.allowedCurrencyCodes;
+    if (data.cashFlowCategory !== undefined) updateInput.cashFlowCategory = data.cashFlowCategory;
     
     // Approval policy fields
     if ((data as any).requiresApproval !== undefined) updateInput.requiresApproval = (data as any).requiresApproval;
