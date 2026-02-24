@@ -41,6 +41,7 @@ export const useSidebarConfig = () => {
     'General Ledger': 'sidebar.generalLedger',
     'Profit & Loss': 'sidebar.profitLoss',
     'Cash Flow': 'sidebar.cashFlow',
+    'Journal': 'sidebar.journal',
     'Cost Center Summary': 'sidebar.costCenterSummary',
     Settings: 'sidebar.settings',
     Items: 'sidebar.items',
