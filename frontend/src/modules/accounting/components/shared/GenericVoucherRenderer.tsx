@@ -869,13 +869,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
+      const resultNumberFormat = (definition as any).numberFormat || undefined;
       
       return {
         ...formData,
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
         formId: resultFormId, // Which form was used for rendering
-        prefix: resultPrefix // Voucher number prefix
+        prefix: resultPrefix, // Voucher number prefix
+        numberFormat: resultNumberFormat // Custom number format template
       };
     },
     getRows: () => rows,

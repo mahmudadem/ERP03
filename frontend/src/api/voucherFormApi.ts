@@ -14,6 +14,7 @@ export interface VoucherFormResponse {
   code: string;
   description?: string;
   prefix?: string;
+  numberFormat?: string;
   isDefault: boolean;
   isSystemGenerated: boolean;
   isLocked: boolean;

@@ -91,6 +91,7 @@ export interface VoucherFormConfig {
   name: string;
   code?: string; // Short code (e.g., "JOURNAL", "PAYMENT")
   prefix: string; // e.g., "JV-"
+  numberFormat?: string; // e.g., "{PREFIX}-{YYYY}-{COUNTER:4}"
   module?: string; // Module (e.g., "ACCOUNTING")
   startNumber: number;
   

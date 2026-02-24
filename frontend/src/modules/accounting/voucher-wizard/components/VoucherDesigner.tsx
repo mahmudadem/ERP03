@@ -1318,6 +1318,43 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                     )}
                   </label>
                 </div>
+
+                {/* Number Format */}
+                <div className="mt-4">
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Number Format <span className="text-gray-400 font-normal">(optional)</span></span>
+                    <input 
+                      type="text" 
+                      value={config.numberFormat || ''} 
+                      onChange={e => setConfig({...config, numberFormat: e.target.value || undefined})}
+                      placeholder="{PREFIX}-{COUNTER:4}"
+                      className="mt-1 block w-full rounded-md shadow-sm p-2 border border-gray-300 bg-white text-slate-900"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Leave blank for default format. Placeholders: <code className="bg-gray-100 px-1 rounded">{'{PREFIX}'}</code> <code className="bg-gray-100 px-1 rounded">{'{YYYY}'}</code> <code className="bg-gray-100 px-1 rounded">{'{COUNTER:4}'}</code>
+                    </p>
+                  </label>
+                  {/* Live Preview */}
+                  <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Preview</span>
+                    <span className="font-mono text-sm font-bold text-indigo-700">
+                      {(() => {
+                        const prefix = (config.prefix || 'V-').replace(/-$/, '');
+                        const year = new Date().getFullYear();
+                        const counter = '0042';
+                        const fmt = config.numberFormat;
+                        if (fmt) {
+                          return fmt
+                            .replace('{PREFIX}', prefix)
+                            .replace('{YYYY}', String(year))
+                            .replace('{COUNTER:4}', counter)
+                            .replace('{COUNTER}', counter);
+                        }
+                        return `${prefix}-${counter}`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
                 
                 <div onClick={() => setConfig({...config, isMultiLine: !config.isMultiLine})} className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${config.isMultiLine ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
                    <div>

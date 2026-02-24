@@ -19,6 +19,7 @@ export interface VoucherFormDefinition {
   code: string;                  // Short code (e.g., "VENDOR_PAY")
   description?: string;
   prefix?: string;               // Voucher number prefix (e.g., "VP")
+  numberFormat?: string;           // Custom format template (e.g., "{PREFIX}-{YYYY}-{COUNTER:4}")
   
   // Flags
   isDefault: boolean;            // Is this the default form for the type?
