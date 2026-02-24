@@ -8,6 +8,7 @@ import { CalendarDays } from 'lucide-react';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { exportToExcel } from '../../../utils/exportUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface CashFlowParams {
   fromDate: string;
@@ -37,14 +38,32 @@ interface CashFlowResponse {
   closingCashBalance: number;
 }
 
+interface RowContextMenuState {
+  x: number;
+  y: number;
+  rowKey: string;
+  item: CashFlowItem;
+}
+
 const numberFmt = (n: number, currency?: string) =>
   `${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}${currency ? ` ${currency}` : ''}`;
 
-const Section: React.FC<{ title: string; total: number; items: CashFlowItem[]; currency: string }> = ({
+const Section: React.FC<{
+  title: string;
+  sectionKey: string;
+  total: number;
+  items: CashFlowItem[];
+  currency: string;
+  highlightedRows: Set<string>;
+  onRowContextMenu: (e: React.MouseEvent, item: CashFlowItem, rowKey: string) => void;
+}> = ({
   title,
+  sectionKey,
   total,
   items,
   currency,
+  highlightedRows,
+  onRowContextMenu,
 }) => (
   <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
     <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
@@ -65,12 +84,22 @@ const Section: React.FC<{ title: string; total: number; items: CashFlowItem[]; c
               <td className="px-4 py-3 text-slate-400" colSpan={2}>—</td>
             </tr>
           ) : (
-            items.map((i, idx) => (
-              <tr key={`${i.accountId || 'item'}-${idx}`} className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors">
-                <td className="px-4 py-2 text-slate-700">{i.name}</td>
-                <td className="px-4 py-2 text-right font-mono text-slate-800">{numberFmt(i.amount, currency)}</td>
-              </tr>
-            ))
+            items.map((i, idx) => {
+              const rowKey = `${sectionKey}:${i.accountId || i.name}:${idx}`;
+              const isHighlighted = highlightedRows.has(rowKey);
+              return (
+                <tr
+                  key={rowKey}
+                  className={`border-t border-slate-100 hover:bg-blue-50/40 transition-colors ${
+                    isHighlighted ? 'bg-amber-100/70' : ''
+                  }`}
+                  onContextMenu={(e) => onRowContextMenu(e, i, rowKey)}
+                >
+                  <td className="px-4 py-2 text-slate-700">{i.name}</td>
+                  <td className="px-4 py-2 text-right font-mono text-slate-800">{numberFmt(i.amount, currency)}</td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
@@ -120,11 +149,14 @@ const CashFlowInitiator: React.FC<{
 };
 
 const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params }) => {
+  const navigate = useNavigate();
   const { settings } = useCompanySettings();
   const { t } = useTranslation('accounting');
   const [data, setData] = useState<CashFlowResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<RowContextMenuState | null>(null);
+  const [highlightedRows, setHighlightedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const load = async () => {
@@ -151,6 +183,43 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
     from: formatCompanyDate(effectiveFrom, settings),
     to: formatCompanyDate(effectiveTo, settings),
   });
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const closeMenu = () => setContextMenu(null);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMenu();
+    };
+    window.addEventListener('click', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+    window.addEventListener('resize', closeMenu);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('click', closeMenu);
+      window.removeEventListener('scroll', closeMenu, true);
+      window.removeEventListener('resize', closeMenu);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [contextMenu]);
+
+  const openAccountStatement = (accountId?: string) => {
+    if (!accountId) return;
+    navigate(`/accounting/reports/account-statement?accountId=${encodeURIComponent(accountId)}`);
+  };
+
+  const openAccountCard = (accountId?: string) => {
+    if (!accountId) return;
+    navigate(`/accounting/accounts?editId=${encodeURIComponent(accountId)}`);
+  };
+
+  const toggleRowHighlight = (rowKey: string) => {
+    setHighlightedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowKey)) next.delete(rowKey);
+      else next.add(rowKey);
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -217,21 +286,39 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
 
             <Section
               title={t('cashFlow.operating')}
+              sectionKey="operating"
               total={data.operating.total}
               items={data.operating.items}
               currency={currency}
+              highlightedRows={highlightedRows}
+              onRowContextMenu={(e, item, rowKey) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, item, rowKey });
+              }}
             />
             <Section
               title={t('cashFlow.investing')}
+              sectionKey="investing"
               total={data.investing.total}
               items={data.investing.items}
               currency={currency}
+              highlightedRows={highlightedRows}
+              onRowContextMenu={(e, item, rowKey) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, item, rowKey });
+              }}
             />
             <Section
               title={t('cashFlow.financing')}
+              sectionKey="financing"
               total={data.financing.total}
               items={data.financing.items}
               currency={currency}
+              highlightedRows={highlightedRows}
+              onRowContextMenu={(e, item, rowKey) => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, item, rowKey });
+              }}
             />
 
             <div className="bg-white border rounded-xl p-4 shadow-sm">
@@ -252,6 +339,54 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
           </div>
         )}
       </div>
+
+      {contextMenu && (
+        <div
+          className="fixed z-[1200] bg-white border border-slate-200 rounded-lg shadow-xl py-1 w-52"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 220),
+            top: Math.min(contextMenu.y, window.innerHeight - 170),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={`w-full text-left px-3 py-2 text-sm ${
+              contextMenu.item.accountId ? 'hover:bg-slate-50 text-slate-800' : 'text-slate-300 cursor-not-allowed'
+            }`}
+            onClick={() => {
+              openAccountStatement(contextMenu.item.accountId);
+              setContextMenu(null);
+            }}
+            disabled={!contextMenu.item.accountId}
+          >
+            Account Statement
+          </button>
+          <button
+            type="button"
+            className={`w-full text-left px-3 py-2 text-sm ${
+              contextMenu.item.accountId ? 'hover:bg-slate-50 text-slate-800' : 'text-slate-300 cursor-not-allowed'
+            }`}
+            onClick={() => {
+              openAccountCard(contextMenu.item.accountId);
+              setContextMenu(null);
+            }}
+            disabled={!contextMenu.item.accountId}
+          >
+            Account Card
+          </button>
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 text-slate-800"
+            onClick={() => {
+              toggleRowHighlight(contextMenu.rowKey);
+              setContextMenu(null);
+            }}
+          >
+            {highlightedRows.has(contextMenu.rowKey) ? 'Unhighlight Line' : 'Highlight Line'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

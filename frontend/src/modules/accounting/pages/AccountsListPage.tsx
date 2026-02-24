@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPolicy } from '../../../api/accounting';
 import { AccountForm } from '../components/AccountForm';
@@ -8,6 +9,7 @@ import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circl
 
 export default function AccountsListPage() {
     const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
     const [prePopulatedData, setPrePopulatedData] = useState<Partial<Account> | null>(null);
@@ -47,6 +49,19 @@ export default function AccountsListPage() {
     const { profile: companyProfile } = useCompanyProfile();
     const baseCurrency = companyProfile?.currency || '';
 
+    const clearEditQueryParam = () => {
+        const editId = searchParams.get('editId');
+        if (!editId) return;
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('editId');
+        setSearchParams(nextParams, { replace: true });
+    };
+
+    const closeEditModal = () => {
+        setEditingAccount(null);
+        clearEditQueryParam();
+    };
+
     const createMutation = useMutation({
         mutationFn: accountingApi.createAccount,
         onSuccess: () => {
@@ -61,7 +76,7 @@ export default function AccountsListPage() {
         mutationFn: ({ id, data }: { id: string; data: any }) => accountingApi.updateAccount(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            setEditingAccount(null);
+            closeEditModal();
             errorHandler.showSuccess('Account updated successfully');
         },
         onError: (err) => errorHandler.showError(err)
@@ -112,6 +127,18 @@ export default function AccountsListPage() {
     };
 
     const safeAccounts = Array.isArray(accounts) ? accounts : [];
+    
+    // Support deep-linking from reports: /accounting/accounts?editId=<accountId>
+    useEffect(() => {
+        const editId = searchParams.get('editId');
+        if (!editId || safeAccounts.length === 0) return;
+        if (editingAccount?.id === editId) return;
+        const accountToEdit = safeAccounts.find((a) => a.id === editId);
+        if (accountToEdit) {
+            setEditingAccount(accountToEdit);
+        }
+    }, [searchParams, safeAccounts, editingAccount?.id]);
+    
     // Sort logic before tree build? Usually code sort is good
     const sortedAccounts = [...safeAccounts].sort((a, b) => a.userCode.localeCompare(b.userCode));
     
@@ -491,7 +518,7 @@ export default function AccountsListPage() {
                     <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 pb-2 border-b flex justify-between items-center">
                              <h2 className="text-xl font-bold text-gray-800">Edit Account: {editingAccount.name}</h2>
-                             <button onClick={() => setEditingAccount(null)} className="text-gray-400 hover:text-gray-600">
+                             <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600">
                                  <span className="text-2xl">&times;</span>
                              </button>
                         </div>
@@ -500,7 +527,7 @@ export default function AccountsListPage() {
                             initialValues={editingAccount}
                             accounts={safeAccounts}
                             onSubmit={(data) => updateMutation.mutateAsync({ id: editingAccount.id, data })}
-                            onCancel={() => setEditingAccount(null)}
+                            onCancel={closeEditModal}
                         />
                     </div>
                 </div>

@@ -42,6 +42,7 @@ export const useSidebarConfig = () => {
     'Profit & Loss': 'sidebar.profitLoss',
     'Cash Flow': 'sidebar.cashFlow',
     'Journal': 'sidebar.journal',
+    'Bank Reconciliation': 'sidebar.bankReconciliation',
     'Cost Center Summary': 'sidebar.costCenterSummary',
     Settings: 'sidebar.settings',
     Items: 'sidebar.items',
