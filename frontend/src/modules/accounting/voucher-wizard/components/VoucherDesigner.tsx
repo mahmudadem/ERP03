@@ -425,6 +425,12 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         initialConfig?.id // Exclude self when editing
       );
       
+      // Also check prefix doesn't contain placeholder characters
+      if (/[{}]/.test(config.prefix)) {
+        result.errors.prefix = 'Prefix must not contain { or } characters. Use the Number Format field below for templates.';
+        result.isValid = false;
+      }
+
       setValidationErrors(result.errors);
       setIsValidating(false);
       
@@ -1304,7 +1310,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                       type="text" 
                       value={config.prefix} 
                       onChange={e => {
-                        setConfig({...config, prefix: e.target.value});
+                        const val = e.target.value.replace(/[{}]/g, '');
+                        setConfig({...config, prefix: val});
                         if (validationErrors.prefix) {
                           setValidationErrors(prev => ({...prev, prefix: undefined}));
                         }
@@ -1313,6 +1320,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         validationErrors.prefix ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
+                    <p className="mt-1 text-xs text-gray-500">Short code only (e.g. JE-, PV-). For format templates, use the Number Format field below.</p>
                     {validationErrors.prefix && (
                       <p className="mt-1 text-sm text-red-600">❌ {validationErrors.prefix}</p>
                     )}
