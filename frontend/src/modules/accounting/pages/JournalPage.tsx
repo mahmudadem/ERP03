@@ -9,6 +9,7 @@ import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { CalendarDays } from 'lucide-react';
+import { useCompanyCurrencies } from '../hooks/useCompanyCurrencies';
 
 /* ── Types ────────────────────────────────────────────── */
 
@@ -82,6 +83,7 @@ const JournalInitiator: React.FC<{
   const [currency, setCurrency] = useState(initialParams?.currency || '');
   const [status, setStatus] = useState(initialParams?.status || '');
   const [forms, setForms] = useState<Array<{ id: string; name: string }>>([]);
+  const { data: companyCurrencies = [] } = useCompanyCurrencies();
 
   useEffect(() => {
     (async () => {
@@ -148,13 +150,10 @@ const JournalInitiator: React.FC<{
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
             Currency
           </label>
-          <input
-            type="text"
-            value={currency}
-            onChange={e => setCurrency(e.target.value.toUpperCase())}
-            placeholder="e.g. USD, SYP"
-            className={selectClass}
-          />
+          <select value={currency} onChange={e => setCurrency(e.target.value)} className={selectClass}>
+            <option value="">All Currencies</option>
+            {companyCurrencies.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+          </select>
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">

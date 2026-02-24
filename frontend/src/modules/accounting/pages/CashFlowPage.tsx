@@ -46,22 +46,34 @@ const Section: React.FC<{ title: string; total: number; items: CashFlowItem[]; c
   items,
   currency,
 }) => (
-  <div className="bg-white border rounded-xl p-4 shadow-sm">
-    <div className="flex items-center justify-between mb-2">
+  <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
       <h3 className="text-lg font-bold text-slate-800">{title}</h3>
       <span className="text-sm font-semibold text-slate-700">{numberFmt(total, currency)}</span>
     </div>
-    <div className="space-y-1">
-      {items.length === 0 ? (
-        <div className="text-sm text-slate-400">—</div>
-      ) : (
-        items.map((i, idx) => (
-          <div key={`${i.accountId || 'item'}-${idx}`} className="flex justify-between text-sm text-slate-700">
-            <span>{i.name}</span>
-            <span className="font-mono">{numberFmt(i.amount, currency)}</span>
-          </div>
-        ))
-      )}
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-100/70 text-slate-600 uppercase text-[11px] tracking-wide">
+          <tr>
+            <th className="text-left px-4 py-2 font-semibold">Item</th>
+            <th className="text-right px-4 py-2 font-semibold">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 ? (
+            <tr>
+              <td className="px-4 py-3 text-slate-400" colSpan={2}>—</td>
+            </tr>
+          ) : (
+            items.map((i, idx) => (
+              <tr key={`${i.accountId || 'item'}-${idx}`} className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors">
+                <td className="px-4 py-2 text-slate-700">{i.name}</td>
+                <td className="px-4 py-2 text-right font-mono text-slate-800">{numberFmt(i.amount, currency)}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   </div>
 );
@@ -173,18 +185,33 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
           </div>
         ) : data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.netIncome')}</div>
-                <div className="text-2xl font-bold">{numberFmt(data.netIncome, currency)}</div>
+            <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Summary</h3>
               </div>
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.openingCash')}</div>
-                <div className="text-2xl font-bold">{numberFmt(data.openingCashBalance, currency)}</div>
-              </div>
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('cashFlow.closingCash')}</div>
-                <div className="text-2xl font-bold">{numberFmt(data.closingCashBalance, currency)}</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100/70 text-slate-600 uppercase text-[11px] tracking-wide">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-semibold">Metric</th>
+                      <th className="text-right px-4 py-2 font-semibold">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors">
+                      <td className="px-4 py-2 text-slate-700">{t('cashFlow.netIncome')}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-900">{numberFmt(data.netIncome, currency)}</td>
+                    </tr>
+                    <tr className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors">
+                      <td className="px-4 py-2 text-slate-700">{t('cashFlow.openingCash')}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-900">{numberFmt(data.openingCashBalance, currency)}</td>
+                    </tr>
+                    <tr className="border-t border-slate-100 hover:bg-blue-50/40 transition-colors">
+                      <td className="px-4 py-2 text-slate-700">{t('cashFlow.closingCash')}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-900">{numberFmt(data.closingCashBalance, currency)}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
