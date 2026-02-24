@@ -4,7 +4,7 @@ import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useTranslation } from 'react-i18next';
 import { DatePicker } from '../components/shared/DatePicker';
-import { CalendarDays, RefreshCw } from 'lucide-react';
+import { CalendarDays } from 'lucide-react';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { exportToExcel } from '../../../utils/exportUtils';
@@ -163,9 +163,13 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
         )}
 
         {loading && !data ? (
-          <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center gap-3 text-slate-500">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            <span>{t('cashFlow.load')}</span>
+          <div className="bg-white border rounded-xl p-6 shadow-sm">
+            <div className="flex items-center justify-center min-h-[180px]">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+              </div>
+            </div>
           </div>
         ) : data ? (
           <>
@@ -211,7 +215,14 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
             </div>
           </>
         ) : (
-          <div className="bg-white border rounded-xl p-6 shadow-sm text-slate-500">{t('cashFlow.load')}</div>
+          <div className="bg-white border rounded-xl p-6 shadow-sm">
+            <div className="flex items-center justify-center min-h-[180px]">
+              <div className="text-center">
+                <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
