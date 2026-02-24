@@ -49,10 +49,12 @@ export const formatCompanyDate = (
 
   // Apply the requested format
   switch (format) {
-    case 'DD/MM/YYYY':
-      return `${day}/${month}/${year}`;
-    case 'MM/DD/YYYY':
-      return `${month}/${day}/${year}`;
+    case 'DD/MM/YYYY': return `${day}/${month}/${year}`;
+    case 'DD.MM.YYYY': return `${day}.${month}.${year}`;
+    case 'DD-MM-YYYY': return `${day}-${month}-${year}`;
+    case 'MM/DD/YYYY': return `${month}/${day}/${year}`;
+    case 'YYYY/MM/DD': return `${year}/${month}/${day}`;
+    case 'YYYY.MM.DD': return `${year}.${month}.${day}`;
     case 'YYYY-MM-DD':
     default:
       return `${year}-${month}-${day}`;
@@ -151,12 +153,14 @@ export const parseCompanyDate = (
   let day, month, year;
 
   try {
-    if (format === 'DD/MM/YYYY') {
+    if (format === 'DD/MM/YYYY' || format === 'DD.MM.YYYY' || format === 'DD-MM-YYYY') {
       [day, month, year] = parts;
     } else if (format === 'MM/DD/YYYY') {
       [month, day, year] = parts;
+    } else if (format === 'YYYY/MM/DD' || format === 'YYYY.MM.DD' || format === 'YYYY-MM-DD') {
+      [year, month, day] = parts;
     } else {
-      // YYYY-MM-DD or default
+      // default
       [year, month, day] = parts;
     }
 

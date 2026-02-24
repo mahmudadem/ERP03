@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, startOfYear, endOfYear } from 'date-fns';
 import { accountingApi, AccountStatementData } from '../../../api/accountingApi';
 import { Button } from '../../../components/ui/Button';
+import { Select } from '../../../components/ui/Select';
+import { DatePicker } from '../components/shared/DatePicker';
 import { AccountSelector } from '../components/shared/AccountSelector';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
@@ -264,20 +266,18 @@ const AccountStatementPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.from')}</label>
-            <input
-              type="date"
+            <DatePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={setFromDate}
+              className="w-full text-base"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.to')}</label>
-            <input
-              type="date"
+            <DatePicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={setToDate}
+              className="w-full text-base"
             />
           </div>
           <div className="flex gap-2 items-center">

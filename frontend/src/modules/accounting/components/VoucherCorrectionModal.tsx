@@ -3,6 +3,7 @@ import { X, AlertCircle, RotateCcw, RefreshCw } from 'lucide-react';
 import { accountingApi, CorrectionMode, CorrectionRequest } from '../../../api/accountingApi';
 import { useAuth } from '../../../context/AuthContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { DatePicker } from './shared/DatePicker';
 
 interface VoucherCorrectionModalProps {
   isOpen: boolean;
@@ -222,11 +223,10 @@ export function VoucherCorrectionModal({
                   />
                   <span className="text-sm">Custom date:</span>
                   {dateStrategy === 'custom' && (
-                    <input
-                      type="date"
+                    <DatePicker
                       value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
-                      className="ml-2 px-2 py-1 border border-[var(--color-border)] rounded text-sm"
+                      onChange={setCustomDate}
+                      className="ml-2 px-2 py-1 w-36"
                     />
                   )}
                 </label>
@@ -246,11 +246,10 @@ export function VoucherCorrectionModal({
                       <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
                         Date
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={replacementDate}
-                        onChange={(e) => setReplacementDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-[var(--color-border)] rounded text-sm"
+                        onChange={setReplacementDate}
+                        className="w-full text-sm"
                       />
                     </div>
                     <div>

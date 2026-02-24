@@ -10,6 +10,7 @@ const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories"
 const ApiError_1 = require("../../errors/ApiError");
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
 const GetCurrentUserPermissionsForCompanyUseCase_1 = require("../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase");
+const cashAccountMatcher_1 = require("../../../application/accounting/utils/cashAccountMatcher");
 const permissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
 class AccountingReportsController {
     static async getTrialBalance(req, res, next) {
@@ -145,7 +146,7 @@ class AccountingReportsController {
                 bindRepositories_1.diContainer.accountRepository.list(companyId),
                 bindRepositories_1.diContainer.fiscalYearRepository.findActiveForDate(companyId, monthEnd).catch(() => null)
             ]);
-            const cashAccounts = new Set(accounts.filter((a) => ['CASH', 'BANK'].includes((a.accountRole || '').toUpperCase())).map((a) => a.id));
+            const cashAccounts = new Set(accounts.filter((a) => (0, cashAccountMatcher_1.isCashLikeAccount)(a)).map((a) => a.id));
             const cashPosition = trialBalance
                 .filter((r) => cashAccounts.has(r.accountId))
                 .reduce((sum, r) => sum + (r.debit || 0) - (r.credit || 0), 0);

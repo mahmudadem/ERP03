@@ -2,6 +2,7 @@ import { PermissionChecker } from '../../rbac/PermissionChecker';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
+import { isCashLikeAccount } from '../utils/cashAccountMatcher';
 
 interface CashFlowItem {
   name: string;
@@ -63,8 +64,7 @@ export class GetCashFlowStatementUseCase {
     const openMap = tbMap(openingTB);
     const closeMap = tbMap(closingTB);
 
-    const isCash = (acc: any) => ['CASH', 'BANK'].includes((acc?.accountRole || '').toUpperCase());
-    const cashIds = accounts.filter(isCash).map((a: any) => a.id);
+    const cashIds = accounts.filter((acc: any) => isCashLikeAccount(acc)).map((a: any) => a.id);
 
     const balanceOf = (map: Map<string, { debit: number; credit: number }>, accId: string, cls: string) => {
       const v = map.get(accId);

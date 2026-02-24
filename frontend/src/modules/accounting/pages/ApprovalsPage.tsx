@@ -16,6 +16,8 @@ import { Shield, UserCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
 import { errorHandler } from '../../../services/errorHandler';
 import { AccountsProvider } from '../../../context/AccountsContext';
+import { Tab } from '@headlessui/react';
+import { clsx } from 'clsx';
 
 import { RejectionModal } from '../components/RejectionModal';
 
@@ -106,75 +108,107 @@ const ApprovalsPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            
-            {/* Section 1: Financial Approvals */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 px-1">
-                 <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                    <Shield size={18} />
-                 </div>
-                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('approvals.awaitingApproval')}</h2>
-                 <span className="ml-auto text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded-full">
-                   {pendingApprovals.length}
-                 </span>
-              </div>
-              
-              <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden min-h-[300px]">
-                <VoucherTable 
-                  vouchers={pendingApprovals}
-                  voucherTypes={voucherTypes}
-                  isLoading={loadingApprovals}
-                  onRowClick={handleRowClick}
-                  onApprove={async (id) => {
-                    await handleApproveVoucher('approvals-page', id);
-                    handleRefresh();
-                  }}
-                  onReject={(id) => setRejectionTarget(id)}
-                />
-                {pendingApprovals.length === 0 && !loadingApprovals && (
-                   <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
-                      <Shield size={48} className="opacity-10 mb-2" />
-                      <p className="text-sm font-medium">{t('approvals.noneApproval')}</p>
-                   </div>
-                )}
-              </div>
-            </div>
+            {/* Tabs for Financial Approvals and Custody Confirmations */}
+            <Tab.Group>
+              <Tab.List className="flex space-x-1 rounded-xl bg-[var(--color-bg-tertiary)] p-1 mb-6 max-w-2xl">
+                <Tab
+                  className={({ selected }) =>
+                    clsx(
+                      'w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
+                      selected
+                        ? 'bg-[var(--color-bg-primary)] text-indigo-700 shadow dark:text-indigo-400'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)]/50 hover:text-[var(--color-text-primary)]'
+                    )
+                  }
+                >
+                  <Shield size={18} />
+                  {t('approvals.awaitingApproval')}
+                  <span className={clsx(
+                    "ml-2 text-xs font-bold px-2 py-0.5 rounded-full",
+                    pendingApprovals.length > 0 ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]"
+                  )}>
+                    {pendingApprovals.length}
+                  </span>
+                </Tab>
+                <Tab
+                  className={({ selected }) =>
+                    clsx(
+                      'w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium leading-5 transition-all',
+                      'focus:outline-none focus:ring-2 focus:ring-primary-500/50',
+                      selected
+                        ? 'bg-[var(--color-bg-primary)] text-purple-700 shadow dark:text-purple-400'
+                        : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-primary)]/50 hover:text-[var(--color-text-primary)]'
+                    )
+                  }
+                >
+                  <UserCheck size={18} />
+                  {t('approvals.awaitingCustody')}
+                  <span className={clsx(
+                    "ml-2 text-xs font-bold px-2 py-0.5 rounded-full",
+                    pendingCustody.length > 0 ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]"
+                  )}>
+                    {pendingCustody.length}
+                  </span>
+                </Tab>
+              </Tab.List>
 
-            {/* Section 2: Custody Confirmations */}
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 px-1">
-                 <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
-                    <UserCheck size={18} />
-                 </div>
-                 <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t('approvals.awaitingCustody')}</h2>
-                 <span className="ml-auto text-xs font-bold text-[var(--color-text-muted)] bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded-full">
-                   {pendingCustody.length}
-                 </span>
-              </div>
+              <Tab.Panels className="mt-2">
+                {/* Financial Approvals Panel */}
+                <Tab.Panel
+                  className={clsx(
+                    'rounded-2xl bg-[var(--color-bg-primary)] shadow-sm border border-[var(--color-border)] overflow-hidden min-h-[400px]',
+                    'focus:outline-none'
+                  )}
+                >
+                  {!loadingApprovals && pendingApprovals.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[400px] text-[var(--color-text-muted)]">
+                      <Shield size={64} className="opacity-10 mb-4" />
+                      <p className="text-lg font-medium">{t('approvals.noneApproval')}</p>
+                    </div>
+                  ) : (
+                    <VoucherTable 
+                      vouchers={pendingApprovals}
+                      voucherTypes={voucherTypes}
+                      isLoading={loadingApprovals}
+                      onRowClick={handleRowClick}
+                      onApprove={async (id) => {
+                        await handleApproveVoucher('approvals-page', id);
+                        handleRefresh();
+                      }}
+                      onReject={(id) => setRejectionTarget(id)}
+                    />
+                  )}
+                </Tab.Panel>
 
-              <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-sm border border-[var(--color-border)] overflow-hidden min-h-[300px]">
-                <VoucherTable 
-                  vouchers={pendingCustody}
-                  voucherTypes={voucherTypes}
-                  isLoading={loadingCustody}
-                  onRowClick={handleRowClick}
-                  onConfirm={async (id) => {
-                    await handleConfirmVoucher('approvals-page', id);
-                    handleRefresh();
-                  }}
-                  onReject={(id) => setRejectionTarget(id)}
-                />
-                {pendingCustody.length === 0 && !loadingCustody && (
-                   <div className="flex flex-col items-center justify-center h-full py-12 text-[var(--color-text-muted)]">
-                      <UserCheck size={48} className="opacity-10 mb-2" />
-                      <p className="text-sm font-medium">{t('approvals.noneCustody')}</p>
-                   </div>
-                )}
-              </div>
-            </div>
-
-          </div>
+                {/* Custody Confirmations Panel */}
+                <Tab.Panel
+                  className={clsx(
+                    'rounded-2xl bg-[var(--color-bg-primary)] shadow-sm border border-[var(--color-border)] overflow-hidden min-h-[400px]',
+                    'focus:outline-none'
+                  )}
+                >
+                  {!loadingCustody && pendingCustody.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[400px] text-[var(--color-text-muted)]">
+                      <UserCheck size={64} className="opacity-10 mb-4" />
+                      <p className="text-lg font-medium">{t('approvals.noneCustody')}</p>
+                    </div>
+                  ) : (
+                     <VoucherTable 
+                        vouchers={pendingCustody}
+                        voucherTypes={voucherTypes}
+                        isLoading={loadingCustody}
+                        onRowClick={handleRowClick}
+                        onConfirm={async (id) => {
+                          await handleConfirmVoucher('approvals-page', id);
+                          handleRefresh();
+                        }}
+                        onReject={(id) => setRejectionTarget(id)}
+                      />
+                  )}
+                </Tab.Panel>
+              </Tab.Panels>
+            </Tab.Group>
         </div>
 
         <RejectionModal 

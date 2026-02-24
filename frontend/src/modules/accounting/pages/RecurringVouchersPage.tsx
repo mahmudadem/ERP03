@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { accountingApi, RecurringVoucherTemplateDTO } from '../../../api/accountingApi';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const RecurringVouchersPage: React.FC = () => {
   const { t } = useTranslation('accounting');
@@ -60,8 +61,8 @@ const RecurringVouchersPage: React.FC = () => {
             <option value="ANNUALLY">{t('recurring.frequencies.ANNUALLY')}</option>
           </select>
           <input className="border rounded px-2 py-1" type="number" min={1} max={31} value={form.dayOfMonth} onChange={(e) => setForm({ ...form, dayOfMonth: Number(e.target.value) })} placeholder={t('recurring.dayOfMonth')} />
-          <input className="border rounded px-2 py-1" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} aria-label={t('recurring.startDate')} />
-          <input className="border rounded px-2 py-1" type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value || undefined })} aria-label={t('recurring.endDate')} />
+          <DatePicker value={form.startDate || ''} onChange={(date) => setForm({ ...form, startDate: date })} className="w-full text-sm" />
+          <DatePicker value={form.endDate || ''} onChange={(date) => setForm({ ...form, endDate: date || undefined })} className="w-full text-sm" />
           <input className="border rounded px-2 py-1" type="number" min={1} value={form.maxOccurrences || ''} placeholder={t('recurring.maxOccurrences')} onChange={(e) => setForm({ ...form, maxOccurrences: e.target.value ? Number(e.target.value) : undefined })} />
         </div>
         <button className="btn btn-primary" onClick={create}>{t('recurring.createTemplate')}</button>

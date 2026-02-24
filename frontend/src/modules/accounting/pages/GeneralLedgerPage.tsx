@@ -10,6 +10,7 @@ import { Search, RefreshCw, Printer, Filter, X, Settings2 } from 'lucide-react';
 import { AccountSelector } from '../components/shared/AccountSelector';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const GeneralLedgerPage: React.FC = () => {
   const { settings } = useCompanySettings();
@@ -296,20 +297,18 @@ const GeneralLedgerPage: React.FC = () => {
           {/* Date Filters */}
           <div className="w-40">
             <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.fromDate')}</label>
-            <input
-              type="date"
+            <DatePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={setFromDate}
+              className="w-full text-base"
             />
           </div>
           <div className="w-40">
             <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.toDate')}</label>
-            <input
-              type="date"
+            <DatePicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-md text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={setToDate}
+              className="w-full text-base"
             />
           </div>
 

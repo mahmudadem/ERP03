@@ -7,6 +7,7 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate, getCompanyToday } from '../../../utils/dateUtils';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const CLASSIFICATION_ORDER = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'] as const;
 
@@ -285,12 +286,10 @@ const TrialBalancePage: React.FC = () => {
           <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-600" htmlFor="tb-asOfDate">{t('trialBalance.asOfDate', 'As of Date')}:</label>
-              <input
-                id="tb-asOfDate"
-                type="date"
+              <DatePicker
                 value={asOfDate}
-                onChange={e => setAsOfDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={setAsOfDate}
+                className="w-40"
               />
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { CostCenterSelector } from '../components/shared/CostCenterSelector';
+import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 
@@ -89,11 +90,11 @@ const CCSummaryInitiator: React.FC<{
         </div>
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">From Date</label>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none" />
+          <DatePicker value={fromDate} onChange={setFromDate} className="w-full text-base" />
         </div>
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">To Date</label>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none" />
+          <DatePicker value={toDate} onChange={setToDate} className="w-full text-base" />
         </div>
       </div>
       <div className="flex justify-start pt-6 border-t border-slate-100">

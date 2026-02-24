@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { accountingApi, AgingReportData } from '../../../api/accountingApi';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const bucketColors = ['text-green-700', 'text-green-600', 'text-amber-600', 'text-amber-700', 'text-orange-700', 'text-red-700'];
 
@@ -31,7 +32,7 @@ const AgingReportPage: React.FC = () => {
           <option value="AR">{t('aging.accountsReceivable')}</option>
           <option value="AP">{t('aging.accountsPayable')}</option>
         </select>
-        <input type="date" className="border rounded px-3 py-2" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} />
+        <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-36" />
         <button className="btn btn-primary" onClick={load}>{t('aging.load')}</button>
       </div>
 

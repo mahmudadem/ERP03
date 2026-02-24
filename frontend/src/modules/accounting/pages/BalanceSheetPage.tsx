@@ -7,6 +7,7 @@ import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Printer, RefreshCw } from 'lucide-react';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const formatAmount = (value: number, currency: string) => {
   if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -197,13 +198,11 @@ const BalanceSheetPage: React.FC = () => {
           )}
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg px-3 py-2">
-            <CalendarDays className="w-4 h-4 text-[var(--color-text-muted)]" />
-            <input
-              type="date"
+          <div className="flex items-center gap-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg px-2 py-1">
+            <DatePicker
               value={asOfDate}
-              onChange={(e) => setAsOfDate(e.target.value)}
-              className="bg-transparent border-none text-sm text-[var(--color-text-primary)] focus:outline-none"
+              onChange={setAsOfDate}
+              className="w-36 border-none shadow-none focus:ring-0"
             />
           </div>
           <Button

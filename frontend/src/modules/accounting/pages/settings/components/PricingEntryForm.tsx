@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Save, Loader2, TrendingUp, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { errorHandler } from '../../../../../services/errorHandler';
+import { DatePicker } from '../../../components/shared/DatePicker';
 
 interface PricingEntryFormProps {
   enabledCurrencies: string[];
@@ -211,11 +212,10 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
             <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
               Effective Date
             </label>
-            <input 
-              type="date" 
+            <DatePicker 
               value={date} 
-              onChange={e => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-secondary)] rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              onChange={setDate}
+              className="w-full text-base"
             />
           </div>
 

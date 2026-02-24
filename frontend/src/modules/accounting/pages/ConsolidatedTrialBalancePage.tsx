@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { accountingApi, CompanyGroupDTO, ConsolidatedTrialBalanceDTO } from '../../../api/accountingApi';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const ConsolidatedTrialBalancePage: React.FC = () => {
   const { t } = useTranslation('accounting');
@@ -28,7 +29,7 @@ const ConsolidatedTrialBalancePage: React.FC = () => {
             <option key={g.id} value={g.id}>{g.name} ({g.reportingCurrency})</option>
           ))}
         </select>
-        <input type="date" className="border rounded px-3 py-2" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} />
+        <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-36" />
         <button className="btn btn-primary" onClick={load}>{t('consolidated.load')}</button>
       </div>
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw, Calculator, FileText, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { accountingApi } from '../../../../api/accountingApi';
 import AccountSelector from '../../components/shared/AccountSelector';
+import { DatePicker } from '../../components/shared/DatePicker';
 
 interface FXRevaluationTabProps {
   // No props needed — AccountSelector fetches accounts from context
@@ -198,11 +199,10 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">As Of Date</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={asOfDate}
-                  onChange={(e) => setAsOfDate(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  onChange={setAsOfDate}
+                  className="w-full text-base"
                 />
               </div>
               <div>

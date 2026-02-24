@@ -4,6 +4,7 @@ import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const numberFmt = (n: number, currency?: string) =>
   `${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}${currency ? ` ${currency}` : ''}`;
@@ -69,8 +70,8 @@ const CashFlowPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1 text-sm" />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+          <DatePicker value={from} onChange={setFrom} className="w-36" />
+          <DatePicker value={to} onChange={setTo} className="w-36" />
           <button onClick={load} className="flex items-center gap-2 px-3 py-2 border rounded text-sm" disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t('cashFlow.apply')}
           </button>

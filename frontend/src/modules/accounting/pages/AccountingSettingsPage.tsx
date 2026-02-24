@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import FXRevaluationTab from './settings/FXRevaluationTab';
-import AccountSelector from '../components/shared/AccountSelector';
+import { AccountSelector } from '../components/shared/AccountSelector';
+import { DatePicker } from '../components/shared/DatePicker';
 import client from '../../../api/client';
 import { AccountsProvider } from '../../../context/AccountsContext';
 
@@ -1699,11 +1700,10 @@ const AccountingSettingsPageContent: React.FC = () => {
                              </p>
                           </div>
                           <div className="shrink-0">
-                            <input 
-                               type="date"
+                            <DatePicker
                                value={config.lockedThroughDate || ''}
-                               onChange={(e) => setConfig({ ...config, lockedThroughDate: e.target.value })}
-                               className={`w-full sm:w-auto border rounded-lg px-4 py-2 text-sm dark:bg-[var(--color-bg-secondary)] dark:text-[var(--color-text-primary)] focus:ring-2 transition-all outline-none ${
+                               onChange={(date) => setConfig({ ...config, lockedThroughDate: date })}
+                               className={`w-full sm:w-auto ${
                                  !config.lockedThroughDate 
                                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500 shadow-sm shadow-red-100' 
                                    : 'border-gray-300 dark:border-[var(--color-border)] focus:ring-indigo-500 focus:border-indigo-500'

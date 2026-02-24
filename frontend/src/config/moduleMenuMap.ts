@@ -16,6 +16,7 @@ export const moduleMenuMap: Record<
     label: 'Accounting',
     icon: 'Calculator',
     items: [
+      { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
       { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },

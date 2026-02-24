@@ -6,6 +6,7 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { RefreshCw, Printer, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { exportToExcel, exportElementToPDF } from '../../../utils/exportUtils';
+import { DatePicker } from '../components/shared/DatePicker';
 
 const JournalPage: React.FC = () => {
   const { t } = useTranslation('accounting');
@@ -101,11 +102,11 @@ const JournalPage: React.FC = () => {
       <div className="flex flex-wrap gap-2 items-end bg-white border rounded-xl p-4 shadow-sm">
         <div>
           <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.from')}</label>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+          <DatePicker value={fromDate} onChange={setFromDate} className="w-36" />
         </div>
         <div>
           <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.to')}</label>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+          <DatePicker value={toDate} onChange={setToDate} className="w-36" />
         </div>
         <div>
           <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('journal.voucherType')}</label>

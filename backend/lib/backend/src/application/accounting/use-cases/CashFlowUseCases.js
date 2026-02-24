@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetCashFlowStatementUseCase = void 0;
+const cashAccountMatcher_1 = require("../utils/cashAccountMatcher");
 const iso = (d) => d.toISOString().split('T')[0];
 class GetCashFlowStatementUseCase {
     constructor(ledgerRepo, accountRepo, companyRepo, permissionChecker) {
@@ -32,8 +33,7 @@ class GetCashFlowStatementUseCase {
         };
         const openMap = tbMap(openingTB);
         const closeMap = tbMap(closingTB);
-        const isCash = (acc) => ['CASH', 'BANK'].includes(((acc === null || acc === void 0 ? void 0 : acc.accountRole) || '').toUpperCase());
-        const cashIds = accounts.filter(isCash).map((a) => a.id);
+        const cashIds = accounts.filter((acc) => (0, cashAccountMatcher_1.isCashLikeAccount)(acc)).map((a) => a.id);
         const balanceOf = (map, accId, cls) => {
             const v = map.get(accId);
             if (!v)

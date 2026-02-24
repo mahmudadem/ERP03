@@ -10,6 +10,7 @@ import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { isCashLikeAccount } from '../../../application/accounting/utils/cashAccountMatcher';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -179,9 +180,7 @@ export class AccountingReportsController {
         diContainer.fiscalYearRepository.findActiveForDate(companyId, monthEnd).catch(() => null)
       ]);
 
-      const cashAccounts = new Set(
-        accounts.filter((a: any) => ['CASH', 'BANK'].includes((a.accountRole || '').toUpperCase())).map((a: any) => a.id)
-      );
+      const cashAccounts = new Set(accounts.filter((a: any) => isCashLikeAccount(a)).map((a: any) => a.id));
       const cashPosition = trialBalance
         .filter((r: any) => cashAccounts.has(r.accountId))
         .reduce((sum, r) => sum + (r.debit || 0) - (r.credit || 0), 0);
