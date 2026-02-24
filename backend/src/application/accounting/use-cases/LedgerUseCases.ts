@@ -394,6 +394,7 @@ export class GetJournalUseCase {
         voucherNo: v.voucherNo || v.id,
         date: v.date,
         type: v.type,
+        formId: v.formId,
         description: v.description,
         status: v.status,
         currency: v.currency,
