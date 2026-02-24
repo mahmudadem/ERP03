@@ -207,7 +207,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
             <div 
               className={clsx(
                 "fixed z-[100] rounded-xl shadow-lg py-2 min-w-[240px] border transition-colors duration-300",
-                "backdrop-blur-md bg-[var(--color-bg-primary)]/95 border-[var(--color-border)]",
+                "bg-white dark:bg-slate-900 border-[var(--color-border)]",
                 "animate-in fade-in duration-200"
               )}
               style={{ 
@@ -234,7 +234,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
                     path={child.path}
                     label={child.label}
                     isOpen={true}
-                    onClick={onClick}
+                    onClick={() => { setShowFlyout(false); if (onClick) onClick(); }}
                     children={child.children}
                     isFlyout={true}
                     iconName={child.icon}

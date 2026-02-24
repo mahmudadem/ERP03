@@ -20,7 +20,8 @@ const INITIAL_ROWS: JournalRow[] = Array.from({ length: 15 }).map((_, i) => ({
   currency: 'USD',
   parity: 1.0,
   equivalent: 0,
-  category: ''
+  category: '',
+  metadata: {}
 }));
 
 interface LegacyJournalVoucherProps {
@@ -63,7 +64,8 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
         currency: 'USD',
         parity: 1.0,
         equivalent: 0,
-        category: ''
+        category: '',
+        metadata: {}
       }
     ]);
   };
@@ -75,7 +77,7 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
       while (newRows.length < data.length) {
          newRows.push({
             id: newRows.length + 1,
-            account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+            account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: '', metadata: {}
          });
       }
 

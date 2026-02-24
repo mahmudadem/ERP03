@@ -5,6 +5,7 @@ import { JournalRow } from '../../forms-designer/types';
 import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
+import { CostCenterSelector } from './CostCenterSelector';
 import { CurrencySelector } from './CurrencySelector';
 import { AmountInput } from './AmountInput';
 import { CustomComponentRegistry } from './registry';
@@ -130,7 +131,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     });
   };
 
-  // Helper: Safely get value from row for a colId (supports nested metadata.prop paths)
   const getRowValue = (row: JournalRow, colId: string): any => {
     if (colId.includes('.')) {
       const parts = colId.split('.');
@@ -141,7 +141,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }
       return current ?? '';
     }
-    return (row as any)[colId] || '';
+
+    const val = (row as any)[colId] ?? (row as any).metadata?.[colId];
+    if (val !== undefined && val !== null) return val;
+    
+    // Alias Fallback: costCenter <-> costCenterId
+    if (colId === 'costCenter') return (row as any).costCenterId ?? (row as any).metadata?.costCenterId ?? '';
+    if (colId === 'costCenterId') return (row as any).costCenter ?? (row as any).metadata?.costCenter ?? '';
+    
+    return '';
   };
   
   // Cache the result of getTableColumns
@@ -853,6 +861,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             amount: Math.abs(Number(amt) || 0),
             lineCurrency: (row.currency || formData.currency || '').toUpperCase(),
             exchangeRate: Number(row.parity) || 1,
+            costCenterId: (row as any).costCenterId || (row as any).costCenter || null,
+            costCenter: (row as any).costCenter || (row as any).costCenterId || null,
             metadata: row.metadata || {}
           };
         });
@@ -968,7 +978,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
   };
 
-  const handleRowChange = async (id: number, field: keyof JournalRow, value: any) => {
+  const handleRowChange = async (id: number, field: keyof JournalRow | string | Record<string, any>, value?: any) => {
     // 1. Update state synchronously for snappiness
     let targetRow: JournalRow | undefined;
 
@@ -977,7 +987,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         if (row.id === id) {
           let updated: JournalRow;
           
-          if ((field as string).startsWith('metadata.')) {
+          if (typeof field === 'object' && field !== null) {
+            updated = { ...row, ...field };
+          } else if ((field as string).startsWith('metadata.')) {
             const metaProp = (field as string).split('.')[1];
             updated = {
               ...row,
@@ -987,7 +999,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
               }
             };
           } else {
-            updated = { ...row, [field]: value };
+            updated = { ...row, [field as string]: value };
+            
+            // Sync costCenter / costCenterId
+            if (field === 'costCenterId') updated.costCenter = updated.costCenter || '';
+            if (field === 'costCenter') updated.costCenterId = updated.costCenterId || '';
           }
           
           // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
@@ -1193,7 +1209,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return current ?? '';
       }
       const lower = fid.toLowerCase();
-      return formData[fid] ?? formData[lower] ?? '';
+      return formData[fid] ?? formData[lower] ?? formData.metadata?.[fid] ?? formData.metadata?.[lower] ?? '';
     };
 
     // SAFETY: Strip any legacy debug labels if they come from the database/override
@@ -1414,6 +1430,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                             onBlur={() => onBlurRef.current?.()}
                                                         />
                                                     </div>
+
+                                                  ) : (colId === 'costCenterId' || colId === 'costCenter' || colId.toLowerCase().includes('costcenter') || col.type === 'cost-center-selector') ? (
+                                                      <div className="p-0.5">
+                                                         <CostCenterSelector 
+                                                             ref={(el) => registerCellRef(index, colIndex, el)}
+                                                             value={(row as any).costCenterId || (row as any).costCenter} 
+                                                             onChange={(val) => {
+                                                               handleRowChange(row.id, { costCenterId: val ? val.id : undefined, costCenter: val ? val.code : '' } as any);
+                                                             }} 
+                                                             noBorder={true}
+                                                             disabled={readOnly}
+                                                             placeholder={t('costCenterSelector.placeholder', { defaultValue: '...Cost center' })}
+                                                             onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                             onBlur={() => onBlurRef.current?.()}
+                                                         />
+                                                     </div>
 
                                                   ) : (colId === 'debit' || colId === 'credit' || colId === 'equivalent' || col.type === 'number' || col.type === 'amount') ? (
                                                       <AmountInput

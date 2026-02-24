@@ -1,5 +1,6 @@
 
 import { IAccountRepository } from '../../../repository/interfaces/accounting';
+import { ICostCenterRepository } from '../../../repository/interfaces/accounting/ICostCenterRepository';
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
@@ -18,6 +19,7 @@ export interface GeneralLedgerFilters {
   accountId?: string;
   fromDate?: string;
   toDate?: string;
+  costCenterId?: string;
 }
 
 export interface GeneralLedgerEntry {
@@ -37,6 +39,9 @@ export interface GeneralLedgerEntry {
   baseAmount: number;
   exchangeRate: number;
   runningBalance?: number;
+  costCenterId?: string;
+  costCenterCode?: string;
+  costCenterName?: string;
 
   // Audit Metadata
   createdAt?: string;
@@ -61,7 +66,8 @@ export class GetGeneralLedgerUseCase {
     private accountRepo: IAccountRepository,
     private voucherRepo: IVoucherRepository,
     private userRepo: IUserRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private costCenterRepo?: ICostCenterRepository
   ) {}
 
   async execute(companyId: string, userId: string, filters: GeneralLedgerFilters & { limit?: number; offset?: number }): Promise<{ data: GeneralLedgerEntry[], metadata: { totalItems: number, openingBalance: number } }> {
@@ -79,6 +85,7 @@ export class GetGeneralLedgerUseCase {
         const openingEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
           accountId: filters.accountId,
           toDate: new Date(new Date(filters.fromDate).getTime() - 1).toISOString().split('T')[0],
+          costCenterId: filters.costCenterId,
         });
         openingEntries.forEach(e => {
           openingBalance += ((e.debit || 0) - (e.credit || 0));
@@ -95,6 +102,7 @@ export class GetGeneralLedgerUseCase {
       accountId: filters.accountId,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
+      costCenterId: filters.costCenterId,
     });
     const totalItems = allEntriesCountSnap.length;
 
@@ -103,6 +111,7 @@ export class GetGeneralLedgerUseCase {
       accountId: filters.accountId,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
+      costCenterId: filters.costCenterId,
       limit: filters.limit,
       offset: filters.offset
     });
@@ -138,6 +147,18 @@ export class GetGeneralLedgerUseCase {
            if (u) userMap.set(uid, u);
          } catch (e) {}
       }));
+    }
+
+    // 6b. Enrich cost center data
+    const costCenterIds = new Set(ledgerEntries.map(e => e.costCenterId).filter(Boolean) as string[]);
+    const costCenterMap = new Map<string, { code: string; name: string }>();
+    if (costCenterIds.size > 0 && this.costCenterRepo) {
+      try {
+        const allCCs = await this.costCenterRepo.findAll(companyId);
+        allCCs.forEach(cc => costCenterMap.set(cc.id, { code: cc.code, name: cc.name }));
+      } catch (e) {
+        console.warn('[GetGeneralLedger] Error loading cost centers:', e);
+      }
     }
 
     // 7. Calculate Running Balance for the CURRENT page
@@ -176,6 +197,9 @@ export class GetGeneralLedgerUseCase {
         baseAmount: entry.baseAmount || 0,
         exchangeRate: entry.exchangeRate || 1,
         runningBalance: filters.accountId ? runningBalance : undefined,
+        costCenterId: entry.costCenterId || undefined,
+        costCenterCode: entry.costCenterId ? costCenterMap.get(entry.costCenterId)?.code : undefined,
+        costCenterName: entry.costCenterId ? costCenterMap.get(entry.costCenterId)?.name : undefined,
       };
     });
 

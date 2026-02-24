@@ -5,6 +5,7 @@ import { TopBar } from './TopBar';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { WindowsDesktop } from '../modules/accounting/components/WindowsDesktop';
 import { AccountsProvider } from '../context/AccountsContext';
+import { CostCentersProvider } from '../context/CostCentersContext';
 import { useVoucherActions } from '../hooks/useVoucherActions';
 import { clsx } from 'clsx';
 import React from 'react'; // Added React import for React.useEffect
@@ -81,6 +82,7 @@ export const AppShell: React.FC = () => {
 
   return (
     <AccountsProvider>
+      <CostCentersProvider>
       <div className="min-h-screen flex bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] font-sans overflow-hidden">
         <PageTitleManager />
         {/* Sidebar */}
@@ -110,7 +112,7 @@ export const AppShell: React.FC = () => {
           <TopBar onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
 
           <main className="flex-1 relative overflow-hidden bg-[rgba(var(--color-bg-tertiary-rgb),0.5)] print:!overflow-visible print:!static">
-            <div className="h-full overflow-y-auto p-4 md:p-6 custom-scroll print:!h-auto print:!overflow-visible">
+            <div className="h-full overflow-y-auto custom-scroll print:!h-auto print:!overflow-visible">
               <Outlet />
             </div>
           </main>
@@ -142,6 +144,7 @@ export const AppShell: React.FC = () => {
           />
         )}
       </div>
+      </CostCentersProvider>
     </AccountsProvider>
   );
 };

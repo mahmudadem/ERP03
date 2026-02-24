@@ -150,7 +150,11 @@ const AccountStatementPage: React.FC = () => {
 
       if (formDefinition) {
         if (isWindowsMode) {
-          openWindow(formDefinition, fullVoucher);
+          openWindow({
+            type: 'voucher',
+            title: `View ${formDefinition.name} - ${fullVoucher.voucherNo || ''}`,
+            data: { ...fullVoucher, voucherConfig: formDefinition }
+          });
         } else {
           setModalType(formDefinition);
           setEditingVoucher(fullVoucher);

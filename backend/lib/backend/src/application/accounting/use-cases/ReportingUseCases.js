@@ -2,12 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GetGeneralLedgerUseCase = void 0;
 class GetGeneralLedgerUseCase {
-    constructor(ledgerRepo, accountRepo, voucherRepo, userRepo, permissionChecker) {
+    constructor(ledgerRepo, accountRepo, voucherRepo, userRepo, permissionChecker, costCenterRepo) {
         this.ledgerRepo = ledgerRepo;
         this.accountRepo = accountRepo;
         this.voucherRepo = voucherRepo;
         this.userRepo = userRepo;
         this.permissionChecker = permissionChecker;
+        this.costCenterRepo = costCenterRepo;
     }
     async execute(companyId, userId, filters) {
         // RBAC: Check permission
@@ -19,6 +20,7 @@ class GetGeneralLedgerUseCase {
                 const openingEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
                     accountId: filters.accountId,
                     toDate: new Date(new Date(filters.fromDate).getTime() - 1).toISOString().split('T')[0],
+                    costCenterId: filters.costCenterId,
                 });
                 openingEntries.forEach(e => {
                     openingBalance += ((e.debit || 0) - (e.credit || 0));
@@ -35,6 +37,7 @@ class GetGeneralLedgerUseCase {
             accountId: filters.accountId,
             fromDate: filters.fromDate,
             toDate: filters.toDate,
+            costCenterId: filters.costCenterId,
         });
         const totalItems = allEntriesCountSnap.length;
         // 3. Fetch paginated entries
@@ -42,6 +45,7 @@ class GetGeneralLedgerUseCase {
             accountId: filters.accountId,
             fromDate: filters.fromDate,
             toDate: filters.toDate,
+            costCenterId: filters.costCenterId,
             limit: filters.limit,
             offset: filters.offset
         });
@@ -76,6 +80,18 @@ class GetGeneralLedgerUseCase {
                 catch (e) { }
             }));
         }
+        // 6b. Enrich cost center data
+        const costCenterIds = new Set(ledgerEntries.map(e => e.costCenterId).filter(Boolean));
+        const costCenterMap = new Map();
+        if (costCenterIds.size > 0 && this.costCenterRepo) {
+            try {
+                const allCCs = await this.costCenterRepo.findAll(companyId);
+                allCCs.forEach(cc => costCenterMap.set(cc.id, { code: cc.code, name: cc.name }));
+            }
+            catch (e) {
+                console.warn('[GetGeneralLedger] Error loading cost centers:', e);
+            }
+        }
         // 7. Calculate Running Balance for the CURRENT page
         // We need the balance up to the offset
         let pageStartingBalance = openingBalance;
@@ -87,6 +103,7 @@ class GetGeneralLedgerUseCase {
         }
         let runningBalance = pageStartingBalance;
         const data = ledgerEntries.map(entry => {
+            var _a, _b;
             const acc = accountMap.get(entry.accountId) || accountCodeMap.get(entry.accountId);
             const voucher = voucherMap.get(entry.voucherId);
             const dr = entry.debit || 0;
@@ -109,6 +126,9 @@ class GetGeneralLedgerUseCase {
                 baseAmount: entry.baseAmount || 0,
                 exchangeRate: entry.exchangeRate || 1,
                 runningBalance: filters.accountId ? runningBalance : undefined,
+                costCenterId: entry.costCenterId || undefined,
+                costCenterCode: entry.costCenterId ? (_a = costCenterMap.get(entry.costCenterId)) === null || _a === void 0 ? void 0 : _a.code : undefined,
+                costCenterName: entry.costCenterId ? (_b = costCenterMap.get(entry.costCenterId)) === null || _b === void 0 ? void 0 : _b.name : undefined,
             };
         });
         return {

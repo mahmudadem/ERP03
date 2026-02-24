@@ -51,7 +51,7 @@ class PaymentVoucherStrategy {
             baseCurrency, // baseCurrency
             amountFx, // amount
             lineCurrency, // currency
-            exchangeRate, allocation.notes || allocation.description || 'Payment allocation', allocation.costCenterId, allocation.metadata || {});
+            exchangeRate, allocation.notes || allocation.description || 'Payment allocation', allocation.costCenterId || allocation.costCenter, allocation.metadata || {});
             lines.push(debitLine);
         }
         // 2. Generate single CREDIT line for source account

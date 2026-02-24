@@ -47,6 +47,7 @@ export function uiToCanonical(
       case 'checkbox': return 'CHECKBOX';
       case 'select': return 'SELECT';
       case 'account-selector': return 'account-selector';
+      case 'cost-center-selector': return 'cost-center-selector';
       case 'textarea': return 'TEXTAREA';
       case 'relation': return 'RELATION';
       default: return 'TEXT';

@@ -68,7 +68,7 @@ export class PaymentVoucherStrategy implements IVoucherPostingStrategy {
 
 
             allocation.notes || allocation.description || 'Payment allocation',
-            allocation.costCenterId,
+            allocation.costCenterId || allocation.costCenter,
             allocation.metadata || {}
         );
         lines.push(debitLine);

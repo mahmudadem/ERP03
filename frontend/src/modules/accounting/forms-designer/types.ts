@@ -44,6 +44,8 @@ export interface JournalRow {
   parity: number;
   equivalent: number;
   category: string;
+  costCenterId?: string;
+  costCenter?: string;
   metadata: Record<string, any>;
 }
 

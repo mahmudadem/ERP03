@@ -63,7 +63,7 @@ export interface VoucherRule {
 export interface AvailableField {
   id: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector';
+  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector';
   sectionHint?: SectionType;
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields

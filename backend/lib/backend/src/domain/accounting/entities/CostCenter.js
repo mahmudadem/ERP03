@@ -38,6 +38,11 @@ class CostCenter {
         this.updatedBy = updatedBy;
         this.updatedAt = new Date();
     }
+    activate(updatedBy) {
+        this.status = CostCenterStatus.ACTIVE;
+        this.updatedBy = updatedBy;
+        this.updatedAt = new Date();
+    }
 }
 exports.CostCenter = CostCenter;
 //# sourceMappingURL=CostCenter.js.map

@@ -26,9 +26,9 @@
 
 ## Prerequisites
 
-- [ ] Company with accounting initialized
-- [ ] User has `accounting.accounts.view` and `accounting.settings.write` permissions
-- [ ] At least some accounts in the Chart of Accounts (for testing voucher integration)
+- [x] Company with accounting initialized
+- [X] User has `accounting.accounts.view` and `accounting.settings.write` permissions
+- [x] At least some accounts in the Chart of Accounts (for testing voucher integration)
 
 ---
 
@@ -41,9 +41,9 @@
 2. Observe the page
 
 **Expected:**
-- [ ] Cost Centers page loads
-- [ ] An empty list or existing cost centers are shown
-- [ ] A "Create" or "Add" button is available
+- [X] Cost Centers page loads
+- [X] An empty list or existing cost centers are shown
+- [X] A "Create" or "Add" button is available
 
 ---
 
@@ -56,10 +56,10 @@
 4. Save
 
 **Expected:**
-- [ ] Cost center is created successfully
-- [ ] It appears in the list with code "OPS" and name "Operations"
-- [ ] Status shows **ACTIVE**
-- [ ] No parent indicated
+- [X] Cost center is created successfully
+- [X] It appears in the list with code "OPS" and name "Operations"
+- [X] Status shows **ACTIVE**
+- [X] No parent indicated
 
 ---
 
@@ -72,10 +72,10 @@
    - Code: **OPS-IT**, Name: **IT Department**, Parent: **Operations (OPS)**
 
 **Expected:**
-- [ ] Both children are created under the "Operations" parent
-- [ ] The tree view shows hierarchy: Operations → Marketing, IT Department
-- [ ] Children are indented under the parent
-- [ ] The parent has an expand/collapse chevron
+- [x] Both children are created under the "Operations" parent
+- [x] The tree view shows hierarchy: Operations → Marketing, IT Department
+- [x] Children are indented under the parent
+- [x] The parent has an expand/collapse chevron
 
 ---
 
@@ -88,10 +88,10 @@
 4. Try creating a cost center with a **duplicate code** (same as existing) → Save
 
 **Expected:**
-- [ ] Empty code: validation error "Code is required"
-- [ ] Empty name: validation error "Name is required"
-- [ ] Code too long: validation error about max length
-- [ ] Duplicate code: error (unique constraint)
+- [x] Empty code: validation error "Code is required"
+- [x] Empty name: validation error "Name is required"
+- [x] Code too long: validation error about max length
+- [x] Duplicate code: error (unique constraint)
 
 ---
 
@@ -103,9 +103,9 @@
 3. Save
 
 **Expected:**
-- [ ] Changes persist after save
-- [ ] The list updates to reflect the new values
-- [ ] Code changes are validated (no duplicates, not empty)
+- [x] Changes persist after save
+- [x] The list updates to reflect the new values
+- [x] Code changes are validated (no duplicates, not empty)
 
 ---
 
@@ -131,11 +131,11 @@
 3. Check if a **Cost Center** column exists
 
 **Expected:**
-- [ ] A "Cost Center" column (or dropdown) is visible in the voucher lines
-- [ ] Clicking it opens a searchable dropdown showing active cost centers
-- [ ] Cost centers display their code + name
-- [ ] Only ACTIVE cost centers appear in the selector
-- [ ] Selecting a cost center assigns it to that line
+- [x] A "Cost Center" column (or dropdown) is visible in the voucher lines
+- [x] Clicking it opens a searchable dropdown showing active cost centers
+- [x] Cost centers display their code + name
+- [x] Only ACTIVE cost centers appear in the selector
+- [x] Selecting a cost center assigns it to that line
 
 ---
 
@@ -148,9 +148,9 @@
 4. Reopen the voucher
 
 **Expected:**
-- [ ] Cost center assignments persist after save
-- [ ] Cost center assignments persist after posting
-- [ ] When reopening, the correct cost centers are shown per line
+- [x] Cost center assignments persist after save
+- [x] Cost center assignments persist after posting
+- [x] When reopening, the correct cost centers are shown per line
 
 ---
 
@@ -161,8 +161,8 @@
 2. Open the **General Ledger** report
 
 **Expected:**
-- [ ] Ledger entries show the cost center (code/name) inline or in a column
-- [ ] Entries can be identified by their cost center assignment
+- [x] Ledger entries show the cost center (code/name) inline or in a column
+- [x] Entries can be identified by their cost center assignment
 
 ---
 
@@ -173,8 +173,8 @@
 2. Save and post
 
 **Expected:**
-- [ ] Voucher saves successfully (cost center is optional by default)
-- [ ] No validation errors unless cost center policy is enabled
+- [x] Voucher saves successfully (cost center is optional by default)
+- [x] No validation errors unless cost center policy is enabled
 
 ---
 

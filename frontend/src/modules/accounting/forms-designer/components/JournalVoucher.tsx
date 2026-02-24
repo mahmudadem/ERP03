@@ -23,7 +23,8 @@ const INITIAL_ROWS: JournalRow[] = Array.from({ length: 8 }).map((_, i) => ({
   currency: 'USD',
   parity: 1.0,
   equivalent: 0,
-  category: ''
+  category: '',
+  metadata: {}
 }));
 
 interface JournalVoucherProps {
@@ -66,7 +67,8 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
         currency: 'USD',
         parity: 1.0,
         equivalent: 0,
-        category: ''
+        category: '',
+        metadata: {}
       }
     ]);
   };
@@ -78,7 +80,7 @@ export const JournalVoucher: React.FC<JournalVoucherProps> = React.memo(({ title
       while (newRows.length < data.length) {
          newRows.push({
             id: newRows.length + 1,
-            account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: ''
+            account: '', notes: '', debit: 0, credit: 0, currency: 'USD', parity: 1, equivalent: 0, category: '', metadata: {}
          });
       }
 

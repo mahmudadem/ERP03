@@ -5,7 +5,9 @@ import {
   ListCostCentersUseCase,
   CreateCostCenterUseCase,
   UpdateCostCenterUseCase,
-  DeactivateCostCenterUseCase
+  DeactivateCostCenterUseCase,
+  ActivateCostCenterUseCase,
+  DeleteCostCenterUseCase
 } from '../../../application/accounting/use-cases/CostCenterUseCases';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 
@@ -73,6 +75,32 @@ export class CostCenterController {
       const userId = (req as any).user?.uid;
       const { id } = req.params;
       const useCase = new DeactivateCostCenterUseCase(diContainer.costCenterRepository, permissionChecker);
+      const data = await useCase.execute(companyId, userId, id);
+      (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async activate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      const useCase = new ActivateCostCenterUseCase(diContainer.costCenterRepository, permissionChecker);
+      const data = await useCase.execute(companyId, userId, id);
+      (res as any).status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).companyId || (req as any).user?.companyId;
+      const userId = (req as any).user?.uid;
+      const { id } = req.params;
+      const useCase = new DeleteCostCenterUseCase(diContainer.costCenterRepository, permissionChecker);
       const data = await useCase.execute(companyId, userId, id);
       (res as any).status(200).json({ success: true, data });
     } catch (err) {

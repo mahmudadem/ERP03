@@ -70,6 +70,7 @@ router.get('/reports/journal', permissionGuard('accounting.reports.generalLedger
 router.get('/reports/dashboard-summary', permissionGuard('accounting.vouchers.view'), AccountingReportsController.getDashboardSummary);
 router.get('/reports/cash-flow', permissionGuard('accounting.reports.cashFlow.view'), AccountingReportsController.getCashFlow);
 router.get('/reports/aging', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getAgingReport);
+router.get('/reports/cost-center-summary', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getCostCenterSummary);
 router.get('/reports/budget-vs-actual', permissionGuard('accounting.reports.trialBalance.view'), BudgetController.budgetVsActual);
 // Bank Reconciliation
 router.post('/bank-statements/import', permissionGuard('accounting.reports.generalLedger.view'), BankReconciliationController.import);
@@ -129,7 +130,9 @@ router.get('/cost-centers', permissionGuard('accounting.accounts.view'), CostCen
 router.get('/cost-centers/:id', permissionGuard('accounting.accounts.view'), CostCenterController.getById);
 router.post('/cost-centers', permissionGuard('accounting.settings.write'), CostCenterController.create);
 router.put('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.update);
-router.delete('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.deactivate);
+router.put('/cost-centers/:id/activate', permissionGuard('accounting.settings.write'), CostCenterController.activate);
+router.put('/cost-centers/:id/deactivate', permissionGuard('accounting.settings.write'), CostCenterController.deactivate);
+router.delete('/cost-centers/:id', permissionGuard('accounting.settings.write'), CostCenterController.delete);
 
 // Voucher Sequences
 router.get('/voucher-sequences', permissionGuard('accounting.settings.write'), VoucherSequenceController.list);

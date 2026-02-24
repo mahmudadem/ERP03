@@ -45,6 +45,15 @@ export class PostingFieldExtractor {
       }
     }
     
+    // ALWAYS pass through structural fields needed by all strategies
+    // These are not "posting fields" in the designer sense, but are required for line generation
+    const structuralFields = ['lines', 'currency', 'exchangeRate', 'baseCurrency', 'date', 'type', 'metadata'];
+    for (const sf of structuralFields) {
+      if (sf in header && !(sf in postingFields)) {
+        postingFields[sf] = header[sf];
+      }
+    }
+    
     return postingFields;
   }
 
@@ -61,7 +70,8 @@ export class PostingFieldExtractor {
       const filtered: any = {};
       // V2 Posting Fields (canonical for all line-based vouchers)
       const postingFieldKeys = ['accountId', 'side', 'amount', 'baseAmount', 
-                                'currency', 'lineCurrency', 'exchangeRate', 'description', 'notes'];
+                                'currency', 'lineCurrency', 'exchangeRate', 'description', 'notes',
+                                'costCenterId', 'costCenter'];
       
       for (const key of postingFieldKeys) {
         if (key in line) {

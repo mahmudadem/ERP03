@@ -378,15 +378,24 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/balance-sheet${qs ? `?${qs}` : ''}`);
   },
 
-  getGeneralLedger: (accountId?: string, from?: string, to?: string, limit?: number, offset?: number): Promise<any> => {
+  getGeneralLedger: (accountId?: string, from?: string, to?: string, limit?: number, offset?: number, costCenterId?: string): Promise<any> => {
     const params = new URLSearchParams();
     if (accountId) params.append('accountId', accountId);
     if (from) params.append('from', from);
     if (to) params.append('to', to);
     if (limit) params.append('limit', limit.toString());
     if (offset) params.append('offset', offset.toString());
+    if (costCenterId) params.append('costCenterId', costCenterId);
     const queryString = params.toString();
     return client.get(`/tenant/accounting/reports/general-ledger${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getCostCenterSummary: (costCenterId: string, from?: string, to?: string): Promise<any> => {
+    const params = new URLSearchParams();
+    params.append('costCenterId', costCenterId);
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    return client.get(`/tenant/accounting/reports/cost-center-summary?${params.toString()}`);
   },
 
   getAccountStatement: (accountId: string, fromDate?: string, toDate?: string, includeUnposted?: boolean): Promise<AccountStatementData> => {
@@ -463,6 +472,12 @@ export const accountingApi = {
     return client.put(`/tenant/accounting/cost-centers/${id}`, payload).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
   deactivateCostCenter: (id: string): Promise<any> => {
+    return client.put(`/tenant/accounting/cost-centers/${id}/deactivate`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  activateCostCenter: (id: string): Promise<any> => {
+    return client.put(`/tenant/accounting/cost-centers/${id}/activate`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
+  },
+  deleteCostCenter: (id: string): Promise<any> => {
     return client.delete(`/tenant/accounting/cost-centers/${id}`).then((r: any) => (r?.data?.data ?? r?.data ?? r));
   },
 

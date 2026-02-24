@@ -5,6 +5,7 @@ import { accountingApi } from '../../../api/accountingApi';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AccountSelector } from '../components/shared/AccountSelector';
+import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { 
   ArrowRight, 
   ExternalLink,
@@ -30,6 +31,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   date: 140,
   voucherNo: 180,
   description: 300,
+  costCenter: 120,
   debit: 140,
   credit: 140,
   balance: 160,
@@ -40,6 +42,7 @@ const ALL_COLUMNS = [
   { id: 'date', label: 'Date', sortable: true, filterable: true },
   { id: 'voucherNo', label: 'Reference', sortable: true, filterable: true },
   { id: 'description', label: 'Particulars', sortable: true, filterable: true },
+  { id: 'costCenter', label: 'Cost Center', sortable: true, filterable: true },
   { id: 'debit', label: 'Total Dr.', sortable: true },
   { id: 'credit', label: 'Total Cr.', sortable: true },
   { id: 'balance', label: 'Resulting Bal.', permanent: true },
@@ -50,6 +53,8 @@ interface LedgerParams {
   accountName: string;
   fromDate: string;
   toDate: string;
+  costCenterId?: string;
+  costCenterLabel?: string;
 }
 
 const LedgerInitiator: React.FC<{ 
@@ -59,6 +64,8 @@ const LedgerInitiator: React.FC<{
 }> = ({ onSubmit, initialParams }) => {
   const [accountId, setAccountId] = useState(initialParams?.accountId || '');
   const [accountName, setAccountName] = useState(initialParams?.accountName || ''); 
+  const [costCenterId, setCostCenterId] = useState(initialParams?.costCenterId || '');
+  const [costCenterLabel, setCostCenterLabel] = useState(initialParams?.costCenterLabel || '');
   const [fromDate, setFromDate] = useState(() => {
     if (initialParams?.fromDate) return initialParams.fromDate;
     const d = new Date(); d.setDate(1); return d.toISOString().split('T')[0];
@@ -68,7 +75,7 @@ const LedgerInitiator: React.FC<{
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!accountId) return;
-    onSubmit({ accountId, accountName, fromDate, toDate });
+    onSubmit({ accountId, accountName, fromDate, toDate, costCenterId: costCenterId || undefined, costCenterLabel: costCenterLabel || undefined });
   };
 
   return (
@@ -86,6 +93,21 @@ const LedgerInitiator: React.FC<{
                 else { setAccountId(''); setAccountName(''); }
               }}
               placeholder="Select account to analyze..."
+            />
+          </div>
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+            Cost Center <span className="text-[8px] text-slate-400 normal-case">(optional)</span>
+          </label>
+          <div onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}>
+            <CostCenterSelector
+              value={costCenterId}
+              onChange={(cc) => {
+                if (cc) { setCostCenterId(cc.id); setCostCenterLabel(`${cc.code} - ${cc.name}`); }
+                else { setCostCenterId(''); setCostCenterLabel(''); }
+              }}
+              placeholder="All cost centers..."
             />
           </div>
         </div>
@@ -108,7 +130,7 @@ const LedgerInitiator: React.FC<{
 };
 
 interface LedgerEntry {
-  id: string; date: string; voucherNo: string; description: string; debit: number; credit: number; runningBalance?: number;
+  id: string; date: string; voucherNo: string; description: string; debit: number; credit: number; runningBalance?: number; costCenterId?: string; costCenterCode?: string; costCenterName?: string;
 }
 
 const LedgerReportContent: React.FC<{ 
@@ -158,7 +180,7 @@ const LedgerReportContent: React.FC<{
       setLoading(true);
       try {
         const offset = pagination ? (pagination.page - 1) * pagination.pageSize : 0;
-        const response = await accountingApi.getGeneralLedger(params.accountId, params.fromDate, params.toDate, pagination?.pageSize || 100, offset);
+        const response = await accountingApi.getGeneralLedger(params.accountId, params.fromDate, params.toDate, pagination?.pageSize || 100, offset, params.costCenterId);
         setEntries(response.data || []);
         if (setTotalItems && response.meta) {
           setTotalItems(response.meta.totalItems);
@@ -177,7 +199,8 @@ const LedgerReportContent: React.FC<{
       const term = localFilter.toLowerCase();
       result = result.filter(e => 
         e.voucherNo.toLowerCase().includes(term) || 
-        (e.description || '').toLowerCase().includes(term)
+        (e.description || '').toLowerCase().includes(term) ||
+        (e.costCenterCode || '').toLowerCase().includes(term)
       );
     }
 
@@ -390,6 +413,7 @@ const LedgerReportContent: React.FC<{
                   {visibleColumns.includes('date') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} font-mono text-slate-500 border-r border-slate-100`}>{formatCompanyDate(entry.date, settings)}</td>}
                   {visibleColumns.includes('voucherNo') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} font-bold tabular-nums border-r border-slate-100 truncate`}><button className="hover:text-blue-700 outline-none">{entry.voucherNo}</button></td>}
                   {visibleColumns.includes('description') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} text-slate-500 truncate border-r border-slate-100`} title={entry.description}>{entry.description || '--'}</td>}
+                  {visibleColumns.includes('costCenter') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} text-slate-600 font-mono text-[10px] truncate border-r border-slate-100`} title={entry.costCenterName || ''}>{entry.costCenterCode ? `${entry.costCenterCode} - ${entry.costCenterName || ''}` : ''}</td>}
                   {visibleColumns.includes('debit') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} text-right font-mono font-bold border-r border-slate-100`}>{entry.debit > 0 ? entry.debit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ''}</td>}
                   {visibleColumns.includes('credit') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} text-right font-mono font-bold text-rose-700 border-r border-slate-100`}>{entry.credit > 0 ? entry.credit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ''}</td>}
                   {visibleColumns.includes('balance') && <td className={`px-3 ${isCompact ? 'py-0.5' : 'py-1'} text-right font-mono font-black text-slate-900 bg-slate-100/20`}>{(entry.runningBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>}

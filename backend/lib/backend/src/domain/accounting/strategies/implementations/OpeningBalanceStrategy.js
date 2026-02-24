@@ -46,7 +46,7 @@ class OpeningBalanceStrategy {
             baseCurrency, // baseCurrency
             amount, // amount (FX currency)
             currency, // currency
-            exchangeRate, 'Opening Balance', balance.costCenterId, balance.metadata || {});
+            exchangeRate, 'Opening Balance', balance.costCenterId || balance.costCenter, balance.metadata || {});
             totalDebitBase += line.debitAmount;
             totalCreditBase += line.creditAmount;
             lines.push(line);
@@ -85,7 +85,7 @@ class OpeningBalanceStrategy {
                 }
                 if (newBaseAmount > 0) {
                     const newAbsoluteRate = newBaseAmount / lastLine.amount;
-                    lines[lastIndex] = new VoucherLineEntity_1.VoucherLineEntity(lastLine.id, lastLine.accountId, lastLine.side, newBaseAmount, baseCurrency, lastLine.amount, lastLine.currency, newAbsoluteRate, lastLine.notes, lastLine.costCenterId, lastLine.metadata);
+                    lines[lastIndex] = new VoucherLineEntity_1.VoucherLineEntity(lastLine.id, lastLine.accountId, lastLine.side, newBaseAmount, baseCurrency, lastLine.amount, lastLine.currency, newAbsoluteRate, lastLine.notes, lastLine.costCenterId || lastLine.costCenter, lastLine.metadata);
                     if (lastLine.side === 'Debit') {
                         totalDebitBase = (0, VoucherLineEntity_1.roundMoney)(totalDebitBase - baseDiff);
                     }

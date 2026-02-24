@@ -243,6 +243,11 @@ const STANDARD_TABLE_FIELDS: Record<string, Partial<FieldDefinition>> = {
     type: 'TEXT',
     required: false
   },
+  costCenterId: {
+    label: 'Cost Center',
+    type: 'cost-center-selector',
+    required: false
+  },
   notes: {
     label: 'Notes',
     type: 'TEXTAREA',

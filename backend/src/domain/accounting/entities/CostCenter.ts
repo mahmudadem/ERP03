@@ -36,4 +36,10 @@ export class CostCenter {
     this.updatedBy = updatedBy;
     this.updatedAt = new Date();
   }
+
+  activate(updatedBy: string): void {
+    this.status = CostCenterStatus.ACTIVE;
+    this.updatedBy = updatedBy;
+    this.updatedAt = new Date();
+  }
 }

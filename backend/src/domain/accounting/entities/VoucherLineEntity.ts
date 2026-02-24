@@ -257,7 +257,7 @@ export class VoucherLineEntity {
       currency,
       data.exchangeRate || 1,
       data.notes || data.description,
-      data.costCenterId,
+      data.costCenterId || data.costCenter,
       data.metadata || {}
     );
   }

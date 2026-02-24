@@ -8,7 +8,7 @@ import { queryClient } from './queryClient';
 import './i18n/config'; // Initialize i18n
 import { ErrorModal } from './components/ErrorModal';
 import { setupErrorInterceptor } from './api/errorInterceptor';
-import { CostCentersProvider } from './context/CostCentersContext';
+
 
 // Setup error handling for API calls
 setupErrorInterceptor();
@@ -21,9 +21,7 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <CostCentersProvider>
         <App />
-      </CostCentersProvider>
       <Toaster 
         position="top-right"
         toastOptions={{

@@ -5,6 +5,7 @@ const ReportingUseCases_1 = require("../../../application/accounting/use-cases/R
 const LedgerUseCases_1 = require("../../../application/accounting/use-cases/LedgerUseCases");
 const CashFlowUseCases_1 = require("../../../application/accounting/use-cases/CashFlowUseCases");
 const AgingReportUseCase_1 = require("../../../application/accounting/use-cases/AgingReportUseCase");
+const CostCenterSummaryUseCase_1 = require("../../../application/accounting/use-cases/CostCenterSummaryUseCase");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const ApiError_1 = require("../../errors/ApiError");
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
@@ -45,12 +46,13 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
-            const { accountId, from, to, limit, offset } = req.query;
-            const useCase = new ReportingUseCases_1.GetGeneralLedgerUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.userRepository, permissionChecker);
+            const { accountId, from, to, limit, offset, costCenterId } = req.query;
+            const useCase = new ReportingUseCases_1.GetGeneralLedgerUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.userRepository, permissionChecker, bindRepositories_1.diContainer.costCenterRepository);
             const result = await useCase.execute(companyId, userId, {
                 accountId: accountId,
                 fromDate: from,
                 toDate: to,
+                costCenterId: costCenterId,
                 limit: limit ? parseInt(limit, 10) : undefined,
                 offset: offset ? parseInt(offset, 10) : undefined
             });
@@ -201,6 +203,34 @@ class AccountingReportsController {
             const useCase = new AgingReportUseCase_1.AgingReportUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
             const data = await useCase.execute(companyId, userId, type || 'AR', asOfDate || new Date().toISOString().slice(0, 10), accountId);
             res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getCostCenterSummary(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId) || req.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            if (!companyId)
+                throw ApiError_1.ApiError.badRequest('Company Context Missing');
+            if (!userId)
+                throw ApiError_1.ApiError.unauthorized('User missing');
+            const { costCenterId, from, to } = req.query;
+            if (!costCenterId)
+                throw ApiError_1.ApiError.badRequest('costCenterId is required');
+            const useCase = new CostCenterSummaryUseCase_1.GetCostCenterSummaryUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.costCenterRepository, permissionChecker);
+            const result = await useCase.execute(companyId, userId, {
+                costCenterId: costCenterId,
+                fromDate: from,
+                toDate: to,
+            });
+            res.status(200).json({
+                success: true,
+                data: result.rows,
+                meta: result.meta
+            });
         }
         catch (error) {
             next(error);

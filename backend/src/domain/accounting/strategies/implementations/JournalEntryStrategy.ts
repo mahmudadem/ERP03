@@ -113,7 +113,7 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
         lineCurrency,            // currency
         absoluteRate,            // rate used for conversion
         inputLine.notes || inputLine.description || undefined,
-        inputLine.costCenterId,
+        inputLine.costCenterId || inputLine.costCenter,
         inputLine.metadata || {}
       );
 
@@ -185,7 +185,7 @@ export class JournalEntryStrategy implements IVoucherPostingStrategy {
             lastLine.currency,
             newAbsoluteRate,
             lastLine.notes,
-            lastLine.costCenterId,
+            lastLine.costCenterId || (lastLine as any).costCenter,
             lastLine.metadata
           );
 

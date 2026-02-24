@@ -324,6 +324,9 @@ class FirestoreLedgerRepository {
             end.setHours(23, 59, 59, 999);
             ref = ref.where('date', '<=', firestore_1.Timestamp.fromDate(end));
         }
+        if (filters.costCenterId) {
+            ref = ref.where('costCenterId', '==', filters.costCenterId);
+        }
         let query = ref.orderBy('date', 'asc');
         if (filters.limit) {
             query = query.limit(filters.limit);

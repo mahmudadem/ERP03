@@ -4,6 +4,7 @@ import { GetGeneralLedgerUseCase } from '../../../application/accounting/use-cas
 import { GetTrialBalanceUseCase, GetBalanceSheetUseCase, GetAccountStatementUseCase } from '../../../application/accounting/use-cases/LedgerUseCases';
 import { GetCashFlowStatementUseCase } from '../../../application/accounting/use-cases/CashFlowUseCases';
 import { AgingReportUseCase } from '../../../application/accounting/use-cases/AgingReportUseCase';
+import { GetCostCenterSummaryUseCase } from '../../../application/accounting/use-cases/CostCenterSummaryUseCase';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { ApiError } from '../../errors/ApiError';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
@@ -57,20 +58,22 @@ export class AccountingReportsController {
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
 
-      const { accountId, from, to, limit, offset } = req.query;
+      const { accountId, from, to, limit, offset, costCenterId } = req.query;
 
       const useCase = new GetGeneralLedgerUseCase(
         diContainer.ledgerRepository as any,
         diContainer.accountRepository,
         diContainer.voucherRepository,
         diContainer.userRepository,
-        permissionChecker
+        permissionChecker,
+        diContainer.costCenterRepository
       );
       
       const result = await useCase.execute(companyId, userId, {
         accountId: accountId as string | undefined,
         fromDate: from as string | undefined,
         toDate: to as string | undefined,
+        costCenterId: costCenterId as string | undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
         offset: offset ? parseInt(offset as string, 10) : undefined
       });
@@ -238,6 +241,39 @@ export class AccountingReportsController {
       const useCase = new AgingReportUseCase(diContainer.ledgerRepository, diContainer.accountRepository, permissionChecker);
       const data = await useCase.execute(companyId, userId, (type as any) || 'AR', (asOfDate as string) || new Date().toISOString().slice(0, 10), accountId as string | undefined);
       (res as any).status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCostCenterSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user?.companyId || (req as any).companyId;
+      const userId = (req as any).user?.uid;
+      if (!companyId) throw ApiError.badRequest('Company Context Missing');
+      if (!userId) throw ApiError.unauthorized('User missing');
+
+      const { costCenterId, from, to } = req.query;
+      if (!costCenterId) throw ApiError.badRequest('costCenterId is required');
+
+      const useCase = new GetCostCenterSummaryUseCase(
+        diContainer.ledgerRepository as any,
+        diContainer.accountRepository,
+        diContainer.costCenterRepository,
+        permissionChecker
+      );
+
+      const result = await useCase.execute(companyId, userId, {
+        costCenterId: costCenterId as string,
+        fromDate: from as string | undefined,
+        toDate: to as string | undefined,
+      });
+
+      (res as any).status(200).json({
+        success: true,
+        data: result.rows,
+        meta: result.meta
+      });
     } catch (error) {
       next(error);
     }

@@ -66,6 +66,7 @@ router.get('/reports/journal', (0, permissionGuard_1.permissionGuard)('accountin
 router.get('/reports/dashboard-summary', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), AccountingReportsController_1.AccountingReportsController.getDashboardSummary);
 router.get('/reports/cash-flow', (0, permissionGuard_1.permissionGuard)('accounting.reports.cashFlow.view'), AccountingReportsController_1.AccountingReportsController.getCashFlow);
 router.get('/reports/aging', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getAgingReport);
+router.get('/reports/cost-center-summary', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getCostCenterSummary);
 router.get('/reports/budget-vs-actual', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), BudgetController_1.BudgetController.budgetVsActual);
 // Bank Reconciliation
 router.post('/bank-statements/import', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), BankReconciliationController_1.BankReconciliationController.import);
@@ -120,7 +121,9 @@ router.get('/cost-centers', (0, permissionGuard_1.permissionGuard)('accounting.a
 router.get('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CostCenterController_1.CostCenterController.getById);
 router.post('/cost-centers', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.create);
 router.put('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.update);
-router.delete('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.deactivate);
+router.put('/cost-centers/:id/activate', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.activate);
+router.put('/cost-centers/:id/deactivate', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.deactivate);
+router.delete('/cost-centers/:id', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CostCenterController_1.CostCenterController.delete);
 // Voucher Sequences
 router.get('/voucher-sequences', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), VoucherSequenceController_1.VoucherSequenceController.list);
 router.post('/voucher-sequences/next', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), VoucherSequenceController_1.VoucherSequenceController.setNext);

@@ -67,7 +67,7 @@ export class ReceiptVoucherStrategy implements IVoucherPostingStrategy {
             creditCurrency,    // currency
             exchangeRate,
             source.notes || source.description || 'Receipt source',
-            source.costCenterId,
+            source.costCenterId || source.costCenter,
             source.metadata || {}
         );
         tempLines.push(creditLine);

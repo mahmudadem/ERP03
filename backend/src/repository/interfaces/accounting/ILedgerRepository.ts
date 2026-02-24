@@ -23,6 +23,7 @@ export interface GLFilters {
   fromDate?: string;
   toDate?: string;
   voucherType?: string;
+  costCenterId?: string;
   limit?: number;
   offset?: number;
 }

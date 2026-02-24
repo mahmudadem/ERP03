@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight } from 'lucide-react';
+import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import FXRevaluationTab from './settings/FXRevaluationTab';
 import AccountSelector from '../components/shared/AccountSelector';
 import client from '../../../api/client';
 import { AccountsProvider } from '../../../context/AccountsContext';
+
+import { CostCentersPage } from './CostCentersPage';
 import { useAuth } from '../../../hooks/useAuth';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
@@ -101,7 +103,7 @@ const SectionHeader: React.FC<{
 
 const AccountingSettingsPageContent: React.FC = () => {
   const { t, i18n } = useTranslation('accounting');
-  const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'error-mode' | 'fiscal' | 'numbering' | 'fx-revaluation'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'cost-centers-manage' | 'error-mode' | 'fiscal' | 'numbering' | 'fx-revaluation'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
@@ -176,14 +178,15 @@ const AccountingSettingsPageContent: React.FC = () => {
 
   // Granular tabs as per implementation plan
   const tabs = [
-    { id: 'general', label: t('settings.tabs.general'), icon: Globe },
-    { id: 'currencies', label: t('settings.tabs.currencies'), icon: Coins },
-    { id: 'policies', label: t('settings.tabs.policies'), icon: Shield },
-    { id: 'payment-methods', label: t('settings.tabs.paymentMethods'), icon: CreditCard },
-    { id: 'cost-center', label: t('settings.tabs.costCenter'), icon: DollarSign },
-    { id: 'error-mode', label: t('settings.tabs.errorMode'), icon: AlertTriangle },
-    { id: 'fiscal', label: t('settings.tabs.fiscal'), icon: Building2 },
-    { id: 'numbering', label: t('settings.tabs.numbering'), icon: Hash },
+    { id: 'general', label: 'General Settings', icon: Globe },
+    { id: 'currencies', label: 'Currencies', icon: Coins },
+    { id: 'policies', label: 'Approval Workflow', icon: Shield },
+    { id: 'payment-methods', label: 'Payment Methods', icon: CreditCard },
+    { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
+    { id: 'cost-centers-manage', label: 'Cost Centers', icon: Layers },
+    { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
+    { id: 'fiscal', label: 'Accounting Periods', icon: Building2 },
+    { id: 'numbering', label: 'Voucher Numbering', icon: Hash },
     { id: 'fx-revaluation', label: 'FX Revaluation', icon: ArrowLeftRight },
   ];
 
@@ -1524,6 +1527,13 @@ const AccountingSettingsPageContent: React.FC = () => {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Cost Centers Manage Tab */}
+            {(activeTab as string) === 'cost-centers-manage' && (
+                <div className="w-full min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900">
+                   <CostCentersPage />
+                </div>
             )}
 
             {/* Policy Error Mode Tab */}

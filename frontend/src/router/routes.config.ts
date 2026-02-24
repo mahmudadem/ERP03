@@ -6,7 +6,7 @@ const DashboardPage = lazy(() => import('../modules/core/pages/DashboardPage'));
 const CompaniesPage = lazy(() => import('../modules/core/pages/CompaniesPage'));
 
 // Accounting
-const AccountingHomePage = lazy(() => import('../modules/accounting/pages/AccountingHomePage'));
+const AccountingDashboard = lazy(() => import('../modules/accounting/AccountingDashboard'));
 const ApprovalsPage = lazy(() => import('../modules/accounting/pages/ApprovalsPage'));
 const AccountsListPage = lazy(() => import('../modules/accounting/pages/AccountsListPage'));
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
@@ -26,6 +26,7 @@ const ConsolidatedTrialBalancePage = lazy(() => import('../modules/accounting/pa
 const RecurringVouchersPage = lazy(() => import('../modules/accounting/pages/RecurringVouchersPage'));
 const BankReconciliationPage = lazy(() => import('../modules/accounting/pages/BankReconciliationPage'));
 const LedgerReportPage = lazy(() => import('../modules/accounting/pages/LedgerReportPage'));
+const CostCenterSummaryPage = lazy(() => import('../modules/accounting/pages/CostCenterSummaryPage'));
 
 // Initialization Wizards
 const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
@@ -109,7 +110,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/companyAdmin/setup', label: 'Company Admin Setup', component: CompanyAdminInitializationWizard, section: 'SETUP', hideInMenu: true },
 
   // ACCOUNTING
-  { path: '/accounting', label: 'Overview', component: AccountingHomePage, section: 'ACCOUNTING', requiredModule: 'accounting' },
+  { path: '/accounting', label: 'Overview', component: AccountingDashboard, section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/approvals', label: 'Approval Center', component: ApprovalsPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/accounts', label: 'Chart of Accounts', component: AccountsListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
@@ -127,8 +128,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/budget-vs-actual', label: 'Budget vs Actual', component: BudgetVsActualPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/aging', label: 'Aging', component: AgingReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/consolidated-trial-balance', label: 'Consolidated TB', component: ConsolidatedTrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/cost-center-summary', label: 'Cost Center Summary', component: CostCenterSummaryPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/recurring-vouchers', label: 'Recurring Vouchers', component: RecurringVouchersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
-  { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
+  { path: '/accounting/cost-centers', label: 'Cost Centers', component: CostCentersPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/forms-designer', label: 'Forms Designer', component: lazy(() => import('../modules/accounting/pages/FormsDesignerPage')), section: 'ACCOUNTING', requiredPermission: 'accounting.designer.view', requiredModule: 'accounting' },
   { path: '/accounting/settings', label: 'Settings', component: lazy(() => import('../modules/accounting/pages/AccountingSettingsPage').then(m => ({ default: m.AccountingSettingsPage }))), section: 'ACCOUNTING', requiredPermission: 'accounting.settings.view', requiredModule: 'accounting' },
   { path: '/accounting/window-config-test', label: '🎨 Window Config Test', component: lazy(() => import('../modules/accounting/pages/WindowConfigTestPage').then(m => ({ default: m.WindowConfigTestPage }))), section: 'ACCOUNTING', requiredModule: 'accounting' },

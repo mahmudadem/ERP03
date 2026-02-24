@@ -61,7 +61,7 @@ export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
         currency,          // currency
         exchangeRate,
         'Opening Balance',
-        balance.costCenterId,
+        balance.costCenterId || balance.costCenter,
         balance.metadata || {}
       );
 
@@ -120,7 +120,7 @@ export class OpeningBalanceStrategy implements IVoucherPostingStrategy {
             lastLine.currency,
             newAbsoluteRate,
             lastLine.notes,
-            lastLine.costCenterId,
+            lastLine.costCenterId || (lastLine as any).costCenter,
             lastLine.metadata
           );
 

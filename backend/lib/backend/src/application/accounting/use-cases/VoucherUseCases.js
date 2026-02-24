@@ -134,13 +134,21 @@ class CreateVoucherUseCase {
                     amount, // amount (FX)
                     lineCurrency, // currency (FX)
                     effectiveExchangeRate, // exchangeRate (Line → Base, for storage)
-                    l.notes || l.description, l.costCenterId, l.metadata || {});
+                    l.notes || l.description, l.costCenterId || l.costCenter, l.metadata || {});
                 }));
             }
             const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
             const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
             // Build metadata including source tracking fields
-            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign({}, payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
+            // and capturing any unrecognized top-level fields to avoid data loss
+            const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+            const extraMetadata = {};
+            Object.keys(payload).forEach(key => {
+                if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
+                    extraMetadata[key] = payload[key];
+                }
+            });
+            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
             // Check if Approval is OFF -> Auto-Post
             let approvalRequired = true;
             if (this.policyConfigProvider) {
@@ -314,7 +322,7 @@ class UpdateVoucherUseCase {
         const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
         const rawLines = payload.lines || voucher.lines;
         const lines = await Promise.all(rawLines.map(async (l, idx) => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
             const originalLine = voucher.lines[idx];
             // 1. Resolve Account ID (UUID)
             const inputAccountId = (_a = l.accountId) !== null && _a !== void 0 ? _a : originalLine === null || originalLine === void 0 ? void 0 : originalLine.accountId;
@@ -332,13 +340,21 @@ class UpdateVoucherUseCase {
             const effectiveExchangeRate = (0, VoucherLineEntity_1.roundMoney)(parity * headerRate);
             // CRITICAL: baseAmount calculated using triangulation
             const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * parity * headerRate);
-            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, side, baseAmount, baseCurrency, amount, currency, effectiveExchangeRate, (_o = l.notes) !== null && _o !== void 0 ? _o : originalLine === null || originalLine === void 0 ? void 0 : originalLine.notes, (_p = l.costCenterId) !== null && _p !== void 0 ? _p : originalLine === null || originalLine === void 0 ? void 0 : originalLine.costCenterId, Object.assign(Object.assign({}, originalLine === null || originalLine === void 0 ? void 0 : originalLine.metadata), l.metadata));
+            return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, side, baseAmount, baseCurrency, amount, currency, effectiveExchangeRate, (_o = l.notes) !== null && _o !== void 0 ? _o : originalLine === null || originalLine === void 0 ? void 0 : originalLine.notes, (_q = (_p = l.costCenterId) !== null && _p !== void 0 ? _p : l.costCenter) !== null && _q !== void 0 ? _q : originalLine === null || originalLine === void 0 ? void 0 : originalLine.costCenterId, Object.assign(Object.assign({}, originalLine === null || originalLine === void 0 ? void 0 : originalLine.metadata), l.metadata));
         }));
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
+        // Capture any unrecognized top-level fields into metadata to avoid data loss
+        const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+        const extraMetadata = {};
+        Object.keys(payload).forEach(key => {
+            if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
+                extraMetadata[key] = payload[key];
+            }
+        });
         let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_c = payload.description) !== null && _c !== void 0 ? _c : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
-        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign({}, voucher.metadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo);
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo);
         // NEW Step: Policy Validation if auto-approving
         // If the update transitions the voucher to APPROVED, check the date!
         if (updatedVoucher.isApproved && this.ledgerRepo && !voucher.isApproved) {

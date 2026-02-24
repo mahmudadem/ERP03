@@ -352,6 +352,10 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       ref = ref.where('date', '<=', Timestamp.fromDate(end));
     }
     
+    if (filters.costCenterId) {
+      ref = ref.where('costCenterId', '==', filters.costCenterId);
+    }
+    
     let query = ref.orderBy('date', 'asc');
     
     if (filters.limit) {

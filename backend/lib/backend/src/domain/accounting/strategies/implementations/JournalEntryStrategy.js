@@ -92,7 +92,7 @@ class JournalEntryStrategy {
             amount, // amount
             lineCurrency, // currency
             absoluteRate, // rate used for conversion
-            inputLine.notes || inputLine.description || undefined, inputLine.costCenterId, inputLine.metadata || {});
+            inputLine.notes || inputLine.description || undefined, inputLine.costCenterId || inputLine.costCenter, inputLine.metadata || {});
             totalDebitBase += line.debitAmount;
             totalCreditBase += line.creditAmount;
             lines.push(line);
@@ -142,7 +142,7 @@ class JournalEntryStrategy {
                     // Recalculate effective rate for this line
                     const newAbsoluteRate = newBaseAmount / lastLine.amount;
                     // Replace the last line with adjusted values
-                    lines[lastIndex] = new VoucherLineEntity_1.VoucherLineEntity(lastLine.id, lastLine.accountId, lastLine.side, newBaseAmount, baseCurrency, lastLine.amount, lastLine.currency, newAbsoluteRate, lastLine.notes, lastLine.costCenterId, lastLine.metadata);
+                    lines[lastIndex] = new VoucherLineEntity_1.VoucherLineEntity(lastLine.id, lastLine.accountId, lastLine.side, newBaseAmount, baseCurrency, lastLine.amount, lastLine.currency, newAbsoluteRate, lastLine.notes, lastLine.costCenterId || lastLine.costCenter, lastLine.metadata);
                     // Update final totals
                     if (lastLine.side === 'Debit') {
                         totalDebitBase = (0, VoucherLineEntity_1.roundMoney)(totalDebitBase - baseDiff);

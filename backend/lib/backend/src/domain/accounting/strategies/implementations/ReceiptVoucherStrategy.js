@@ -53,7 +53,7 @@ class ReceiptVoucherStrategy {
             baseCurrency, // baseCurrency
             amountFx, // amount
             creditCurrency, // currency
-            exchangeRate, source.notes || source.description || 'Receipt source', source.costCenterId, source.metadata || {});
+            exchangeRate, source.notes || source.description || 'Receipt source', source.costCenterId || source.costCenter, source.metadata || {});
             tempLines.push(creditLine);
         }
         // 2. Generate single DEBIT line for destination account using SUM OF CREDITS

@@ -75,6 +75,34 @@ class CostCenterController {
             next(err);
         }
     }
+    static async activate(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = req.companyId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId);
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            const { id } = req.params;
+            const useCase = new CostCenterUseCases_1.ActivateCostCenterUseCase(bindRepositories_1.diContainer.costCenterRepository, permissionChecker);
+            const data = await useCase.execute(companyId, userId, id);
+            res.status(200).json({ success: true, data });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    static async delete(req, res, next) {
+        var _a, _b;
+        try {
+            const companyId = req.companyId || ((_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId);
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            const { id } = req.params;
+            const useCase = new CostCenterUseCases_1.DeleteCostCenterUseCase(bindRepositories_1.diContainer.costCenterRepository, permissionChecker);
+            const data = await useCase.execute(companyId, userId, id);
+            res.status(200).json({ success: true, data });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
 }
 exports.CostCenterController = CostCenterController;
 //# sourceMappingURL=CostCenterController.js.map

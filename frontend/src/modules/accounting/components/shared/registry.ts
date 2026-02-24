@@ -1,5 +1,6 @@
 import React from 'react';
 import { AccountSelector } from './AccountSelector';
+import { CostCenterSelector } from './CostCenterSelector';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 
 /**
@@ -33,9 +34,14 @@ export const CustomComponentRegistry: Record<string, React.ComponentType<CustomC
   sellAccountId: AccountSelector as any,
   fromAccountId: AccountSelector as any,
   toAccountId: AccountSelector as any,
+  costCenterSelector: CostCenterSelector as any,
+  costCenter: CostCenterSelector as any,
+  costCenterId: CostCenterSelector as any,
+  cost_center_id: CostCenterSelector as any,
   currencyExchange: CurrencyExchangeWidget as any,
 };
 
 export type CustomComponentType = keyof typeof CustomComponentRegistry;
 
 export default CustomComponentRegistry;
+

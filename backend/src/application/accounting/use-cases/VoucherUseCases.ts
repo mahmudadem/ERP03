@@ -147,7 +147,7 @@ export class CreateVoucherUseCase {
             lineCurrency,      // currency (FX)
             effectiveExchangeRate,  // exchangeRate (Line → Base, for storage)
             l.notes || l.description,
-            l.costCenterId,
+            l.costCenterId || l.costCenter,
             l.metadata || {}
           );
         }));
@@ -158,7 +158,17 @@ export class CreateVoucherUseCase {
       const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
 
       // Build metadata including source tracking fields
+      // and capturing any unrecognized top-level fields to avoid data loss
+      const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+      const extraMetadata: Record<string, any> = {};
+      Object.keys(payload).forEach(key => {
+        if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
+          extraMetadata[key] = payload[key];
+        }
+      });
+
       const voucherMetadata = {
+        ...extraMetadata,
         ...payload.metadata,
         ...(payload.sourceModule && { sourceModule: payload.sourceModule }),
         ...(payload.formId && { formId: payload.formId }),
@@ -410,13 +420,22 @@ export class UpdateVoucherUseCase {
         currency,
         effectiveExchangeRate,
         l.notes ?? originalLine?.notes,
-        l.costCenterId ?? originalLine?.costCenterId,
+        l.costCenterId ?? l.costCenter ?? originalLine?.costCenterId,
         { ...originalLine?.metadata, ...l.metadata }
       );
     }));
 
     const totalDebit = lines.reduce((s: number, l: any) => s + l.debitAmount, 0);
     const totalCredit = lines.reduce((s: number, l: any) => s + l.creditAmount, 0);
+
+    // Capture any unrecognized top-level fields into metadata to avoid data loss
+    const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+    const extraMetadata: Record<string, any> = {};
+    Object.keys(payload).forEach(key => {
+      if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
+        extraMetadata[key] = payload[key];
+      }
+    });
 
     let updatedVoucher = new VoucherEntity(
       voucherId,
@@ -433,7 +452,7 @@ export class UpdateVoucherUseCase {
       totalCredit,
       // Allow status update only for valid transitions (respects approvalRequired setting)
       this.resolveStatus(voucher.status, payload.status, approvalRequired),
-      { ...voucher.metadata, ...payload.metadata },
+      { ...voucher.metadata, ...extraMetadata, ...payload.metadata },
       voucher.createdBy,
       voucher.createdAt,
       voucher.approvedBy,
