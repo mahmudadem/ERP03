@@ -6,9 +6,10 @@
 
 **How it works:**
 - Uses the **Indirect Method**: starts with Net Income from P&L, then adjusts for non-cash items and working capital changes
-- Automatically categorizes account changes based on account classification (ASSET → Investing, LIABILITY → Operating/Financing, etc.)
+- Automatically categorizes account changes using account classification + name/code heuristics
+- Supports explicit account override via `cashFlowCategory` on Chart of Accounts
 - Shows opening cash balance, net change, and closing cash balance — which must reconcile
-- Date range filter to generate for any period
+- Date range filter with Apply action
 
 **Workflow impact:**
 - Enables cash flow analysis which is critical for business health assessment
@@ -26,32 +27,63 @@
 
 - [ ] Company with accounting initialized
 - [ ] **Multiple types of transactions** for comprehensive testing:
-  - Revenue/Expense vouchers (Operating)
-  - Fixed asset purchases (Investing — if applicable)
-  - Loan/equity transactions (Financing — if applicable)
+  - Revenue/Expense vouchers
+  - Working capital movement (AR/AP/inventory where available)
+  - Fixed asset or long-term asset movement (for Investing)
+  - Loan/equity movement (for Financing)
 - [ ] Cash/bank accounts with transactions
+- [ ] At least one account editable from Chart of Accounts to test `cashFlowCategory` override
 - [ ] Permission `accounting.reports.cashFlow.view`
 
 ---
 
 ## Test Cases
 
-### TC-06.1 — Basic Page Load
+### TC-06.1 — Sidebar Navigation and Route Access
 
 **Steps:**
 1. Navigate to **Accounting → Reports → Cash Flow**
-2. Observe the page layout
+2. Confirm URL path is `/accounting/reports/cash-flow`
+3. Hard refresh and open directly via URL
 
 **Expected:**
-- [ ] Page title shows "Cash Flow Statement"
-- [ ] Date range inputs (From / To) are visible
-- [ ] Three sections are visible: **Operating**, **Investing**, **Financing**
-- [ ] Net Income is shown at the top
-- [ ] Net Change in Cash, Opening Balance, and Closing Balance are shown at the bottom
+- [ ] Sidebar contains **Cash Flow** under Reports
+- [ ] Route opens successfully from sidebar and direct URL
+- [ ] No 404 / permission error for authorized user
 
 ---
 
-### TC-06.2 — Net Income Matches P&L
+### TC-06.2 — Basic Page Layout and Defaults
+
+**Steps:**
+1. Open Cash Flow page
+2. Observe initial layout before and after loading
+
+**Expected:**
+- [ ] Page title is visible
+- [ ] Date range inputs (`from`, `to`) and **Apply** button are visible
+- [ ] KPI cards are shown for Net Income, Opening Cash, Closing Cash
+- [ ] Three sections are shown: Operating, Investing, Financing
+- [ ] Net Change in Cash row is visible
+- [ ] No UI crash when sections have zero items
+
+---
+
+### TC-06.3 — Date Range Filter Behavior
+
+**Steps:**
+1. Set a narrow range (example: one month) and click **Apply**
+2. Note values
+3. Set wider range (example: six months) and click **Apply**
+
+**Expected:**
+- [ ] Values update after Apply click
+- [ ] Wider range includes more data and can change all section totals
+- [ ] Period label reflects selected dates
+
+---
+
+### TC-06.4 — Net Income Matches P&L
 
 **Steps:**
 1. Set the date range to match a period where you know the P&L
@@ -63,110 +95,108 @@
 
 ---
 
-### TC-06.3 — Operating Activities Section
+### TC-06.5 — Operating Section Semantics
 
 **Steps:**
 1. Review the Operating Activities section
 
 **Expected:**
-- [ ] Contains adjustments for non-cash items (depreciation if applicable)
-- [ ] Shows working capital changes:
-  - Changes in Accounts Receivable (increase = cash used, decrease = cash gained)
-  - Changes in Accounts Payable (increase = cash gained, decrease = cash used)
-  - Changes in Inventory (if applicable)
-- [ ] Operating section total = Net Income + adjustments + working capital changes
+- [ ] Includes `Net Income` item
+- [ ] Includes `Working Capital Changes` item when applicable
+- [ ] Includes `Non-Cash Adjustments` when depreciation/amortization-like accounts exist
+- [ ] May include `Other Operating Movements` for reconciliation balancing
+- [ ] Operating total is numeric and consistent with section items
 
 ---
 
-### TC-06.4 — Investing Activities Section
+### TC-06.6 — Investing Section Semantics
 
 **Steps:**
-1. Review the Investing section (may be empty if no fixed asset transactions)
+1. Review Investing section for period with long-term asset movement
 
 **Expected:**
-- [ ] Shows changes in fixed assets, long-term investments
-- [ ] Asset purchases show as negative (cash outflow)
-- [ ] Asset sales show as positive (cash inflow)
-- [ ] If no investing transactions, section shows 0 total or "No items"
+- [ ] Section shows account-level items for investing accounts
+- [ ] Asset increase appears as cash outflow (negative)
+- [ ] Asset decrease appears as cash inflow (positive)
+- [ ] If none, section total is `0` and list can be empty
 
 ---
 
-### TC-06.5 — Financing Activities Section
+### TC-06.7 — Financing Section Semantics
 
 **Steps:**
-1. Review the Financing section
+1. Review Financing section for period with loan/equity movement
 
 **Expected:**
-- [ ] Shows changes in loans, equity (capital contributions, dividends)
-- [ ] Loan proceeds show as positive (cash inflow)
-- [ ] Loan repayments show as negative (cash outflow)
-- [ ] If no financing transactions, section shows 0 total
+- [ ] Section shows account-level items for financing accounts
+- [ ] Loan/liability increase appears as cash inflow (positive)
+- [ ] Loan/liability decrease appears as cash outflow (negative)
+- [ ] If none, section total is `0`
 
 ---
 
-### TC-06.6 — Cash Reconciliation
+### TC-06.8 — Reconciliation Integrity
 
 **Steps:**
-1. Look at the footer/summary area
-2. Verify: Opening Cash Balance + Net Change in Cash = Closing Cash Balance
+1. Record Operating, Investing, Financing totals
+2. Record Opening Cash, Net Change, Closing Cash
+3. Verify both reconciliation equations
 
 **Expected:**
-- [ ] Opening Cash Balance = cash/bank account balances at start of period
-- [ ] Net Change in Cash = Operating + Investing + Financing totals
-- [ ] Closing Cash Balance = Opening + Net Change
-- [ ] Closing Balance matches cash/bank account balances from the Balance Sheet at end of period
+- [ ] `Operating + Investing + Financing = Net Change in Cash`
+- [ ] `Opening Cash + Net Change in Cash = Closing Cash`
 
 ---
 
-### TC-06.7 — Date Range Filter
+### TC-06.9 — Cross-Validation with Balance Sheet
 
 **Steps:**
-1. Change the date range to a narrow period (e.g., one month)
-2. Note the values
-3. Widen the range to 6 months
-4. Compare
+1. Generate Cash Flow for period ending on date `X`
+2. Open Balance Sheet as-of date `X`
+3. Sum balances of cash/bank accounts
 
 **Expected:**
-- [ ] Values change based on date range
-- [ ] A wider range includes more transactions and potentially different net cash change
+- [ ] Cash Flow Closing Cash equals Balance Sheet cash/bank total
 
 ---
 
-### TC-06.8 — Empty Period (No Transactions)
+### TC-06.10 — `cashFlowCategory` Override (Critical)
 
 **Steps:**
-1. Set a date range where no transactions exist (e.g., future dates)
+1. Open **Chart of Accounts**
+2. Edit an account that normally appears in Operating by heuristic
+3. Set **Cash Flow Category = INVESTING** (or FINANCING), save
+4. Reload Cash Flow for a period where this account changed
+
+**Expected:**
+- [ ] Account appears under the explicit section you set
+- [ ] Section totals update accordingly
+- [ ] Reconciliation equations remain valid
+
+---
+
+### TC-06.11 — Empty/Low-Activity Period
+
+**Steps:**
+1. Set a date range where there is no movement (or near-zero movement)
 
 **Expected:**
 - [ ] Page loads without errors
-- [ ] Net Income = 0
-- [ ] All sections show 0 or empty
-- [ ] Cash balances still show the carry-forward amounts
+- [ ] Sections can be empty with zero totals
+- [ ] Net change should be 0 when no movement exists
+- [ ] Opening/Closing cash still display valid values
 
 ---
 
-### TC-06.9 — Print/Export
+### TC-06.12 — Permission Guard
 
 **Steps:**
-1. Load the Cash Flow with data
-2. Click Print (or Export if available)
+1. Test with a user missing `accounting.reports.cashFlow.view`
+2. Try opening Cash Flow via sidebar and direct URL
 
 **Expected:**
-- [ ] Print layout is clean and professional
-- [ ] All three sections and the reconciliation footer are visible
-- [ ] Numbers are properly formatted
-
----
-
-### TC-06.10 — Cross-Validation with Balance Sheet
-
-**Steps:**
-1. Generate Cash Flow for a period ending at date X
-2. Open Balance Sheet as of date X
-3. Sum all cash/bank account balances from the BS
-
-**Expected:**
-- [ ] Cash Flow's Closing Cash Balance matches the BS's total cash/bank accounts
+- [ ] Access is blocked (no unauthorized data leak)
+- [ ] Sidebar item is hidden/blocked based on permission model
 
 ---
 
@@ -184,3 +214,5 @@
 | TC-06.8 | ⬜ | |
 | TC-06.9 | ⬜ | |
 | TC-06.10 | ⬜ | |
+| TC-06.11 | ⬜ | |
+| TC-06.12 | ⬜ | |

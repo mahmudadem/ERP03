@@ -153,6 +153,7 @@
   "cashFlow": {
     "title": "Cash Flow Statement (Indirect)",
     "period": "Period: {{from}} → {{to}}",
+    "periodLabel": "Report Period",
     "apply": "Apply",
     "load": "Load",
     "netIncome": "Net Income",

@@ -28,10 +28,18 @@ export class ReportingController {
         user: (req as any).user
       });
       
-      const fromDate = req.query.from ? new Date(req.query.from as string) : new Date(new Date().getFullYear(), 0, 1);
-      const toDate = req.query.to ? new Date(req.query.to as string) : new Date();
+      const fromDate = typeof req.query.from === 'string'
+        ? req.query.from
+        : `${new Date().getFullYear()}-01-01`;
+      const toDate = typeof req.query.to === 'string'
+        ? req.query.to
+        : new Date().toISOString().slice(0, 10);
 
-      const useCase = new GetProfitAndLossUseCase(diContainer.voucherRepository, permissionChecker);
+      const useCase = new GetProfitAndLossUseCase(
+        diContainer.voucherRepository,
+        diContainer.accountRepository,
+        permissionChecker
+      );
       const data = await useCase.execute({
         companyId,
         userId,

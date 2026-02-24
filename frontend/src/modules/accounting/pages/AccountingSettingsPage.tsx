@@ -161,9 +161,8 @@ const AccountingSettingsPageContent: React.FC = () => {
   const [lastClosingVoucher, setLastClosingVoucher] = useState<any>(null);
   const [reopenVoucherDetails, setReopenVoucherDetails] = useState<any>(null);
   const [sequences, setSequences] = useState<any[]>([]);
-  const [seqPrefix, setSeqPrefix] = useState<string>('JE');
-  const [seqYear, setSeqYear] = useState<number | ''>('');
-  const [seqNext, setSeqNext] = useState<number>(1);
+  const [voucherForms, setVoucherForms] = useState<any[]>([]);
+  const [editingSeq, setEditingSeq] = useState<{ prefix: string; year?: number; nextNumber: number } | null>(null);
   const [genericConfirm, setGenericConfirm] = useState<{
     isOpen: boolean;
     type: 'CLOSE_PERIOD' | 'REOPEN_PERIOD' | 'REOPEN_YEAR' | 'DELETE_YEAR' | null;
@@ -217,6 +216,7 @@ const AccountingSettingsPageContent: React.FC = () => {
     }
     if (activeTab === 'numbering') {
       loadSequences();
+      loadVoucherForms();
     }
   }, [activeTab]);
 
@@ -638,15 +638,26 @@ const AccountingSettingsPageContent: React.FC = () => {
     }
   };
 
-  const handleSetNextNumber = async () => {
-    if (!seqPrefix || !seqNext) {
+  const loadVoucherForms = async () => {
+    try {
+      const { voucherFormApi } = await import('../../../api/voucherFormApi');
+      const forms = await voucherFormApi.list();
+      setVoucherForms(forms || []);
+    } catch (error: any) {
+      console.error('Failed to load voucher forms for numbering tab', error);
+    }
+  };
+
+  const handleSetNextNumber = async (prefix: string, nextNumber: number, year?: number) => {
+    if (!prefix || !nextNumber) {
       errorHandler.showError(t('settings.messages.prefixRequired'));
       return;
     }
     try {
       setSaving(true);
-      await accountingApi.setNextVoucherNumber(seqPrefix, seqNext, seqYear === '' ? undefined : Number(seqYear));
+      await accountingApi.setNextVoucherNumber(prefix, nextNumber, year);
       await loadSequences();
+      setEditingSeq(null);
       errorHandler.showSuccess(t('settings.messages.nextNumberUpdated'));
     } catch (error: any) {
       errorHandler.showError(error?.response?.data?.error?.message || 'Failed to update sequence');
@@ -2340,54 +2351,181 @@ const AccountingSettingsPageContent: React.FC = () => {
             {/* Voucher Numbering Tab */}
             {(activeTab as string) === 'numbering' && (
               <div className="max-w-4xl mx-auto space-y-6">
-                <SectionHeader 
-                  title={t('settings.numbering.title')} 
-                  description={t('settings.numbering.description')}
-                  onSave={() => handleSave('numbering')}
-                  disabled={saving}
-                  saving={saving}
-                />
-
-                <div className="bg-white border rounded-xl p-4 shadow-sm space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.prefix')}</label>
-                      <input className="w-full border rounded px-3 py-2 text-sm" value={seqPrefix} onChange={(e) => setSeqPrefix(e.target.value.toUpperCase())} />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.yearOptional')}</label>
-                      <input className="w-full border rounded px-3 py-2 text-sm" value={seqYear} onChange={(e) => setSeqYear(e.target.value === '' ? '' : Number(e.target.value))} />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-[var(--color-text-muted)]">{t('settings.numbering.nextNumber')}</label>
-                      <input type="number" className="w-full border rounded px-3 py-2 text-sm" value={seqNext} onChange={(e) => setSeqNext(Number(e.target.value))} />
-                    </div>
-                    <div className="flex items-end">
-                      <button onClick={handleSetNextNumber} className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2" disabled={saving}>
-                        <Save size={16} />
-                        {t('settings.numbering.saveNext')}
-                      </button>
-                    </div>
+                <div className="flex flex-col gap-4 mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{t('settings.numbering.title')}</h2>
+                    <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">Monitor active voucher sequences and override numbering for migration or corrections.</p>
                   </div>
                 </div>
 
-                <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-800 mb-3">{t('settings.numbering.sequences')}</h3>
-                  {sequences.length === 0 ? (
-                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.numbering.noSequences')}</p>
-                  ) : (
-                    <div className="divide-y">
-                      {sequences.map((s) => (
-                        <div key={s.id} className="py-2 flex justify-between items-center">
-                          <div>
-                            <div className="font-semibold">{s.prefix}{s.year ? `-${s.year}` : ''}</div>
-                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.numbering.last', { value: s.lastNumber })}</div>
-                          </div>
-                          <div className="text-xs text-[var(--color-text-muted)]">{s.updatedAt}</div>
+                {/* How It Works */}
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl p-4">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2">How Numbering Works</h4>
+                  <ul className="text-sm text-indigo-900 dark:text-indigo-100 space-y-1 list-disc list-inside">
+                    <li>Each voucher form has its own <strong>prefix</strong> (set in the Voucher Designer).</li>
+                    <li>The system maintains an <strong>independent sequence counter</strong> per prefix.</li>
+                    <li>If "Reset Annually" is enabled in General settings, counters reset per fiscal year.</li>
+                    <li>Format: <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded text-xs">PREFIX-0001</code> or <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded text-xs">PREFIX-2026-0001</code></li>
+                  </ul>
+                </div>
+
+                {/* Active Sequences Dashboard */}
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-[var(--color-border)] flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)]">Active Sequences</h3>
+                    <button 
+                      onClick={() => { loadSequences(); loadVoucherForms(); }}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
+                    >
+                      <RefreshCw size={12} /> Refresh
+                    </button>
+                  </div>
+
+                  {(() => {
+                    // Merge forms with their sequences
+                    const seqMap = new Map(sequences.map((s: any) => [s.prefix?.replace(/-$/, ''), s]));
+                    const enabledForms = voucherForms.filter((f: any) => f.enabled !== false);
+                    
+                    // Build merged rows: forms that have sequences + orphan sequences without forms
+                    const rows: Array<{ formName: string; prefix: string; lastNumber: number; year?: number; updatedAt?: string; formId?: string }> = [];
+                    const usedPrefixes = new Set<string>();
+                    
+                    for (const form of enabledForms) {
+                      const cleanPrefix = (form.prefix || form.code?.slice(0, 3) || 'V').replace(/-$/, '');
+                      const seq = seqMap.get(cleanPrefix);
+                      usedPrefixes.add(cleanPrefix);
+                      rows.push({
+                        formName: form.name,
+                        prefix: form.prefix || cleanPrefix + '-',
+                        lastNumber: seq?.lastNumber || 0,
+                        year: seq?.year,
+                        updatedAt: seq?.updatedAt ? new Date(seq.updatedAt).toLocaleDateString() : '—',
+                        formId: form.id
+                      });
+                    }
+                    
+                    // Orphan sequences (sequences without matching forms)
+                    for (const s of sequences) {
+                      const cleanPrefix = s.prefix?.replace(/-$/, '');
+                      if (!usedPrefixes.has(cleanPrefix)) {
+                        rows.push({
+                          formName: `(No form — ${s.prefix})`,
+                          prefix: s.prefix,
+                          lastNumber: s.lastNumber || 0,
+                          year: s.year,
+                          updatedAt: s.updatedAt ? new Date(s.updatedAt).toLocaleDateString() : '—'
+                        });
+                      }
+                    }
+
+                    if (rows.length === 0) {
+                      return (
+                        <div className="px-4 py-8 text-center text-sm text-slate-400">
+                          No voucher forms or sequences found. Create voucher forms in the Voucher Designer first.
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    }
+
+                    return (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-100 dark:border-[var(--color-border)] bg-slate-50 dark:bg-[var(--color-bg-secondary)]">
+                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Voucher Form</th>
+                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Prefix</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Last #</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Next Will Be</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Year</th>
+                            <th className="text-right px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-[var(--color-border)]">
+                          {rows.map((row, idx) => {
+                            const cleanP = row.prefix.replace(/-$/, '');
+                            const nextNum = row.lastNumber + 1;
+                            const nextPreview = row.year 
+                              ? `${row.prefix}${row.year}-${String(nextNum).padStart(4, '0')}` 
+                              : `${row.prefix}${String(nextNum).padStart(4, '0')}`;
+                            const isEditing = editingSeq?.prefix === cleanP && editingSeq?.year === row.year;
+
+                            return (
+                              <tr key={`${cleanP}-${row.year || 'all'}-${idx}`} className="hover:bg-slate-50 dark:hover:bg-[var(--color-bg-secondary)] transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="font-semibold text-slate-800 dark:text-[var(--color-text-primary)]">{row.formName}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <code className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded text-xs font-mono font-bold">{row.prefix}</code>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                                  {row.lastNumber || '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="text-xs font-mono bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">{nextPreview}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center text-slate-500">
+                                  {row.year || '—'}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  {isEditing ? (
+                                    <div className="flex items-center justify-end gap-2">
+                                      <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editingSeq.nextNumber}
+                                        onChange={(e) => setEditingSeq({ ...editingSeq, nextNumber: Number(e.target.value) })}
+                                        className="w-20 border rounded px-2 py-1 text-sm text-center font-mono"
+                                        autoFocus
+                                      />
+                                      <button 
+                                        onClick={() => handleSetNextNumber(cleanP, editingSeq.nextNumber, editingSeq.year)}
+                                        disabled={saving}
+                                        className="px-2 py-1 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
+                                      >
+                                        {saving ? '...' : 'Save'}
+                                      </button>
+                                      <button 
+                                        onClick={() => setEditingSeq(null)}
+                                        className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs font-bold hover:bg-slate-300"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      onClick={() => setEditingSeq({ prefix: cleanP, year: row.year, nextNumber: row.lastNumber + 1 })}
+                                      className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold hover:underline"
+                                    >
+                                      Set Next #
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+
+                {/* Format Reference */}
+                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)] mb-3">Format Template Reference</h3>
+                  <p className="text-xs text-slate-500 mb-3">Custom formats can be set per form in the Voucher Designer. Available placeholders:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {[
+                      { token: '{PREFIX}', desc: 'Voucher form prefix (e.g. JE, PV, RV)' },
+                      { token: '{YYYY}', desc: 'Fiscal year (e.g. 2026)' },
+                      { token: '{COUNTER:4}', desc: 'Zero-padded sequence (e.g. 0001)' },
+                    ].map(({ token, desc }) => (
+                      <div key={token} className="flex items-center gap-2 text-sm">
+                        <code className="bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded text-xs font-mono font-bold whitespace-nowrap">{token}</code>
+                        <span className="text-slate-600 dark:text-slate-400 text-xs">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[var(--color-border)]">
+                    <p className="text-xs text-slate-500">Example: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>JE-2026-0042</strong></p>
+                  </div>
                 </div>
               </div>
             )}

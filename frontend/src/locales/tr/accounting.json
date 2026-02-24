@@ -153,6 +153,7 @@
   "cashFlow": {
     "title": "Nakit Akış Tablosu (Dolaylı)",
     "period": "Dönem: {{from}} → {{to}}",
+    "periodLabel": "Rapor Dönemi",
     "apply": "Uygula",
     "load": "Yükle",
     "netIncome": "Net Gelir",

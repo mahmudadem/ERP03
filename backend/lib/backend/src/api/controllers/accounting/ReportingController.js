@@ -20,9 +20,13 @@ class ReportingController {
                 to: req.query.to,
                 user: req.user
             });
-            const fromDate = req.query.from ? new Date(req.query.from) : new Date(new Date().getFullYear(), 0, 1);
-            const toDate = req.query.to ? new Date(req.query.to) : new Date();
-            const useCase = new GetProfitAndLossUseCase_1.GetProfitAndLossUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker);
+            const fromDate = typeof req.query.from === 'string'
+                ? req.query.from
+                : `${new Date().getFullYear()}-01-01`;
+            const toDate = typeof req.query.to === 'string'
+                ? req.query.to
+                : new Date().toISOString().slice(0, 10);
+            const useCase = new GetProfitAndLossUseCase_1.GetProfitAndLossUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
             const data = await useCase.execute({
                 companyId,
                 userId,
