@@ -9,6 +9,7 @@ export interface CompanySettings {
   uiMode?: UIMode;
   timezone?: string; // e.g., 'UTC', 'Europe/Istanbul'
   dateFormat?: string; // e.g., 'YYYY-MM-DD', 'DD/MM/YYYY'
+  disabledNotificationCategories?: string[];
 
 }
 

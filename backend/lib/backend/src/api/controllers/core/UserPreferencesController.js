@@ -12,6 +12,8 @@ const mapDto = (prefs) => {
         theme: (prefs === null || prefs === void 0 ? void 0 : prefs.theme) || 'light',
         sidebarMode: (prefs === null || prefs === void 0 ? void 0 : prefs.sidebarMode) || 'classic',
         sidebarPinned: (_a = prefs === null || prefs === void 0 ? void 0 : prefs.sidebarPinned) !== null && _a !== void 0 ? _a : true,
+        disabledNotificationCategories: (prefs === null || prefs === void 0 ? void 0 : prefs.disabledNotificationCategories) || [],
+        notificationCategoryOverrides: (prefs === null || prefs === void 0 ? void 0 : prefs.notificationCategoryOverrides) || {},
         updatedAt: prefs === null || prefs === void 0 ? void 0 : prefs.updatedAt,
         createdAt: prefs === null || prefs === void 0 ? void 0 : prefs.createdAt,
     });
@@ -25,7 +27,7 @@ class UserPreferencesController {
                 throw ApiError_1.ApiError.unauthorized('Missing user');
             const useCase = new UserPreferencesUseCases_1.GetUserPreferencesUseCase(bindRepositories_1.diContainer.userPreferencesRepository);
             const prefs = await useCase.execute(userId);
-            res.status(200).json({ success: true, data: mapDto(prefs) });
+            res.status(200).json({ success: true, preferences: mapDto(prefs) });
         }
         catch (error) {
             next(error);
@@ -37,10 +39,18 @@ class UserPreferencesController {
             const userId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.uid) || req.userId;
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('Missing user');
-            const { language, uiMode, theme, sidebarMode, sidebarPinned } = req.body || {};
+            const { language, uiMode, theme, sidebarMode, sidebarPinned, disabledNotificationCategories, notificationCategoryOverrides } = req.body || {};
             const useCase = new UserPreferencesUseCases_1.UpsertUserPreferencesUseCase(bindRepositories_1.diContainer.userPreferencesRepository);
-            const prefs = await useCase.execute(userId, { language, uiMode, theme, sidebarMode, sidebarPinned });
-            res.status(200).json({ success: true, data: mapDto(prefs) });
+            const prefs = await useCase.execute(userId, {
+                language,
+                uiMode,
+                theme,
+                sidebarMode,
+                sidebarPinned,
+                disabledNotificationCategories,
+                notificationCategoryOverrides
+            });
+            res.status(200).json({ success: true, preferences: mapDto(prefs) });
         }
         catch (error) {
             next(error);

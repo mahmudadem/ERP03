@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Bell, X, ExternalLink } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { client } from '../api/client';
-import { getDatabase, ref, onValue, off } from 'firebase/database';
+import { useNavigate } from 'react-router-dom';
+import { ref, onValue, off } from 'firebase/database';
+import { rtdb } from '../config/firebase';
 import { useTranslation } from 'react-i18next';
 import { clsx } from 'clsx';
 
@@ -17,6 +19,15 @@ interface NotificationItem {
   createdAt: string;
   readBy: string[];
 }
+
+const resolveNotificationActionUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  // Backward compatibility: old notifications stored edit route without /view suffix.
+  if (/^\/accounting\/vouchers\/[^/]+$/.test(url)) {
+    return `${url}/view`;
+  }
+  return url;
+};
 
 /**
  * NotificationBell Component
@@ -32,29 +43,45 @@ export const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
+  const sortedNotifications = useMemo(
+    () =>
+      [...notifications].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    [notifications]
+  );
 
-  // Listen to Firebase Realtime DB for real-time updates
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.uid || !companyId) return;
+    try {
+      const [listResponse, countResponse] = await Promise.all([
+        client.get('/tenant/notifications?limit=10'),
+        client.get('/tenant/notifications/count')
+      ]);
+
+      const listPayload = (listResponse as any)?.data ?? listResponse;
+      const countPayload = (countResponse as any)?.data ?? countResponse;
+
+      setNotifications(listPayload?.notifications || []);
+      setUnreadCount(Number(countPayload?.count || 0));
+    } catch (error) {
+      console.error('[NotificationBell] API fetch error:', error);
+    }
+  }, [user?.uid, companyId]);
+
+  // Listen to Firebase Realtime DB only as a refresh trigger
   useEffect(() => {
     if (!user?.uid || !companyId) return;
 
+    fetchNotifications();
     try {
-      const db = getDatabase();
-      const notificationsRef = ref(db, `notifications/${companyId}/${user.uid}`);
-      
-      const unsubscribe = onValue(notificationsRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const items: NotificationItem[] = Object.values(data);
-          // Sort by createdAt descending
-          items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          setNotifications(items.slice(0, 10));
-          
-          // Count unread
-          const unread = items.filter(n => !n.readBy?.includes(user.uid)).length;
-          setUnreadCount(unread);
-        }
+      const notificationsRef = ref(rtdb, `notifications/${companyId}/${user.uid}`);
+
+      onValue(notificationsRef, () => {
+        fetchNotifications();
       });
 
       return () => {
@@ -62,24 +89,16 @@ export const NotificationBell: React.FC = () => {
       };
     } catch (error) {
       console.error('[NotificationBell] Firebase RTDB error:', error);
-      // Fallback to polling
       fetchNotifications();
     }
-  }, [user?.uid, companyId]);
+  }, [user?.uid, companyId, fetchNotifications]);
 
-  // Fallback: Fetch via API
-  const fetchNotifications = async () => {
-    if (!user?.uid || !companyId) return;
-    try {
-      const response = await client.get('/notifications/unread');
-      if (response.data?.notifications) {
-        setNotifications(response.data.notifications);
-        setUnreadCount(response.data.total || 0);
-      }
-    } catch (error) {
-      console.error('[NotificationBell] API fetch error:', error);
-    }
-  };
+  // Cross-page refresh hook (e.g. inbox read/read-all actions)
+  useEffect(() => {
+    const refresh = () => fetchNotifications();
+    window.addEventListener('notifications:refresh', refresh);
+    return () => window.removeEventListener('notifications:refresh', refresh);
+  }, [fetchNotifications]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -96,7 +115,7 @@ export const NotificationBell: React.FC = () => {
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await client.post(`/notifications/${notificationId}/read`);
+      await client.post(`/tenant/notifications/${notificationId}/read`);
       setNotifications(prev => 
         prev.map(n => 
           n.id === notificationId 
@@ -105,6 +124,7 @@ export const NotificationBell: React.FC = () => {
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
+      window.dispatchEvent(new CustomEvent('notifications:refresh'));
     } catch (error) {
       console.error('[NotificationBell] Mark as read error:', error);
     }
@@ -115,8 +135,9 @@ export const NotificationBell: React.FC = () => {
     if (!notification.readBy?.includes(user?.uid || '')) {
       handleMarkAsRead(notification.id);
     }
-    if (notification.actionUrl) {
-      window.location.href = notification.actionUrl;
+    const actionUrl = resolveNotificationActionUrl(notification.actionUrl);
+    if (actionUrl) {
+      navigate(actionUrl);
     }
     setIsOpen(false);
   };
@@ -156,7 +177,7 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <div
           className={clsx(
-            "absolute mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50",
+            "absolute mt-2 w-96 max-w-[calc(100vw-1rem)] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50",
             isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right"
           )}
         >
@@ -172,20 +193,20 @@ export const NotificationBell: React.FC = () => {
           </div>
 
           {/* Notification List */}
-          {notifications.length === 0 ? (
+          {sortedNotifications.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {notifications.map(notification => {
+            <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[18rem] overflow-y-auto">
+              {sortedNotifications.map(notification => {
                 const isRead = notification.readBy?.includes(user?.uid || '');
                 return (
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${
+                    className={`p-3 min-h-[6rem] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors ${
                       !isRead ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
                     }`}
                   >
@@ -219,6 +240,19 @@ export const NotificationBell: React.FC = () => {
               })}
             </div>
           )}
+          
+          {/* View All Footer */}
+          <div className="border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/notifications');
+              }}
+              className="w-full p-3 text-sm text-center font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+            >
+              View all notifications
+            </button>
+          </div>
         </div>
       )}
     </div>

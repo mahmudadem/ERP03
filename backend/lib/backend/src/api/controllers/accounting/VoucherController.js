@@ -32,6 +32,31 @@ const AccountValidationService_1 = require("../../../application/accounting/serv
 const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
 const AppError_1 = require("../../../domain/shared/errors/AppError");
 const permissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
+const hasApprovalPermission = (role) => {
+    const permissions = new Set([
+        ...((role === null || role === void 0 ? void 0 : role.permissions) || []),
+        ...((role === null || role === void 0 ? void 0 : role.explicitPermissions) || []),
+        ...((role === null || role === void 0 ? void 0 : role.resolvedPermissions) || []),
+    ]);
+    return (permissions.has('*') ||
+        permissions.has('accounting') ||
+        permissions.has('accounting.*') ||
+        permissions.has('accounting.vouchers') ||
+        permissions.has('accounting.vouchers.*') ||
+        permissions.has('accounting.vouchers.edit') ||
+        permissions.has('accounting.vouchers.approve'));
+};
+const getApproverUserIdsForCompany = async (companyId) => {
+    const members = await bindRepositories_1.diContainer.rbacCompanyUserRepository.getByCompany(companyId);
+    if (!members || members.length === 0)
+        return [];
+    const roleIds = Array.from(new Set(members.map((m) => m.roleId).filter((id) => !!id)));
+    const roles = await Promise.all(roleIds.map((roleId) => bindRepositories_1.diContainer.companyRoleRepository.getById(companyId, roleId)));
+    const approverRoleIds = new Set(roles.filter((role) => hasApprovalPermission(role)).map((role) => role.id));
+    return Array.from(new Set(members
+        .filter((m) => !m.isDisabled && (m.isOwner || approverRoleIds.has(m.roleId)))
+        .map((m) => m.userId)));
+};
 class VoucherController {
     static async list(req, res, next) {
         try {
@@ -134,9 +159,7 @@ class VoucherController {
                     custodianUserId: acc.custodianUserId || undefined
                 }));
             };
-            const submitUseCase = new SubmitVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, new ApprovalPolicyService(), getAccountMetadata, undefined, // notificationService
-            undefined, // getApproverUserIds
-            bindRepositories_1.diContainer.policyRegistry, new VoucherValidationService_1.VoucherValidationService());
+            const submitUseCase = new SubmitVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountingPolicyConfigProvider, new ApprovalPolicyService(), getAccountMetadata, bindRepositories_1.diContainer.notificationService, getApproverUserIdsForCompany, bindRepositories_1.diContainer.policyRegistry, new VoucherValidationService_1.VoucherValidationService());
             let voucher = await submitUseCase.execute(companyId, req.params.id, userId);
             // V1: AUTO-POST only if voucher is APPROVED AND autoPostEnabled=true
             if (voucher.status === VoucherStatus.APPROVED) {
@@ -244,7 +267,7 @@ class VoucherController {
             const userEmail = req.user.email;
             const { ConfirmCustodyUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/accounting/use-cases/ConfirmCustodyUseCase')));
             const { ApprovalPolicyService } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/policies/ApprovalPolicyService')));
-            const useCase = new ConfirmCustodyUseCase(bindRepositories_1.diContainer.voucherRepository, new ApprovalPolicyService());
+            const useCase = new ConfirmCustodyUseCase(bindRepositories_1.diContainer.voucherRepository, new ApprovalPolicyService(), bindRepositories_1.diContainer.notificationService);
             let voucher = await useCase.execute(companyId, req.params.id, userId, userEmail);
             // If this confirmation satisfied ALL gates, it is now APPROVED.
             // We should check for auto-post here as well for seamless UX.

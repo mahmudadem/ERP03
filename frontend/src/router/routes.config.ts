@@ -4,6 +4,7 @@ import { lazy, ComponentType } from 'react';
 // Core
 const DashboardPage = lazy(() => import('../modules/core/pages/DashboardPage'));
 const CompaniesPage = lazy(() => import('../modules/core/pages/CompaniesPage'));
+const NotificationInboxPage = lazy(() => import('../modules/core/pages/NotificationInboxPage'));
 
 // Accounting
 const AccountingDashboard = lazy(() => import('../modules/accounting/AccountingDashboard'));
@@ -11,9 +12,9 @@ const ApprovalsPage = lazy(() => import('../modules/accounting/pages/ApprovalsPa
 const AccountsListPage = lazy(() => import('../modules/accounting/pages/AccountsListPage'));
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
+const VoucherViewPage = lazy(() => import('../modules/accounting/pages/VoucherViewPage'));
 const BalanceSheetPage = lazy(() => import('../modules/accounting/pages/BalanceSheetPage'));
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
-const GeneralLedgerPage = lazy(() => import('../modules/accounting/pages/GeneralLedgerPage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
 const AccountStatementPage = lazy(() => import('../modules/accounting/pages/AccountStatementPage'));
 const CostCentersPage = lazy(() => import('../modules/accounting/pages/CostCentersPage'));
@@ -48,6 +49,7 @@ const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHo
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
+const NotificationSettingsPage = lazy(() => import('../modules/settings/pages/NotificationSettingsPage'));
 
 // Designer
 
@@ -104,6 +106,7 @@ export const routesConfig: AppRoute[] = [
   // CORE
   { path: '/', label: 'Dashboard', component: DashboardPage, section: 'CORE' },
   { path: '/companies', label: 'Companies', component: CompaniesPage, section: 'CORE' },
+  { path: '/notifications', label: 'Notifications', component: NotificationInboxPage, section: 'CORE', hideInMenu: true },
 
   // MODULE INITIALIZATION WIZARDS (No module/permission requirements)
   { path: '/accounting/setup', label: 'Accounting Setup', component: AccountingInitializationWizard, section: 'SETUP', hideInMenu: true },
@@ -114,11 +117,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/approvals', label: 'Approval Center', component: ApprovalsPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/accounts', label: 'Chart of Accounts', component: AccountsListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
+  { path: '/accounting/vouchers/:id/view', label: 'View Voucher', component: VoucherViewPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },
   { path: '/accounting/reports/trial-balance', label: 'Trial Balance', component: TrialBalancePage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/account-statement', label: 'Account Statement', component: AccountStatementPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/balance-sheet', label: 'Balance Sheet', component: BalanceSheetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.balanceSheet.view', requiredModule: 'accounting' },
-  { path: '/accounting/reports/general-ledger', label: 'General Ledger', component: GeneralLedgerPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/journal', label: 'Journal', component: JournalPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/bank-reconciliation', label: 'Bank Reconciliation', component: BankReconciliationPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/ledger', label: 'Ledger Report', component: LedgerReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
@@ -137,6 +140,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/wizard-test', label: '🧪 Wizard Test', component: lazy(() => import('../modules/accounting/pages/VoucherWizardTestPage')), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/demo', label: '🆕 New Forms Demo', component: lazy(() => import('../modules/accounting/pages/NewVoucherFormsDemo')), section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/error-test', label: '🧪 Error Handling Test', component: lazy(() => import('../pages/ErrorTestPage').then(m => ({ default: m.ErrorTestPage }))), section: 'SETTINGS', hideInMenu: false },
+  { path: '/test-notification', label: '🔔 Test Notification', component: lazy(() => import('../pages/TestNotificationPage').then(m => ({ default: m.TestNotificationPage }))), section: 'SETTINGS', hideInMenu: false },
 
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY', requiredModule: 'inventory' },
@@ -153,6 +157,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings', label: 'General', component: SettingsHomePage, section: 'SETTINGS' },
   { path: '/settings/appearance', label: 'Appearance', component: AppearanceSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
+  { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
 
   // RBAC

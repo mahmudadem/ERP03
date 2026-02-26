@@ -126,16 +126,140 @@ class GetGeneralLedgerUseCase {
 }
 exports.GetGeneralLedgerUseCase = GetGeneralLedgerUseCase;
 class GetAccountStatementUseCase {
-    constructor(ledgerRepo, permissionChecker) {
+    constructor(ledgerRepo, permissionChecker, accountRepo, companyRepo) {
         this.ledgerRepo = ledgerRepo;
         this.permissionChecker = permissionChecker;
+        this.accountRepo = accountRepo;
+        this.companyRepo = companyRepo;
     }
     async execute(companyId, userId, accountId, fromDate, toDate, options) {
         if (!accountId) {
             throw new Error('accountId is required');
         }
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
-        return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+        // Backward-compatible path when account hierarchy context is unavailable.
+        if (!this.accountRepo) {
+            return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+        }
+        const accounts = this.accountRepo.getAccounts
+            ? await this.accountRepo.getAccounts(companyId)
+            : await this.accountRepo.list(companyId);
+        const selected = accounts.find((a) => a.id === accountId);
+        if (!selected) {
+            return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+        }
+        const scopedPostingIds = this.resolvePostingScope(accountId, accounts);
+        const isGroupSelection = this.isHeaderLike(selected, accounts);
+        if (!isGroupSelection) {
+            return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+        }
+        const startDate = fromDate || '1900-01-01';
+        const endDate = toDate || new Date().toISOString().split('T')[0];
+        const baseCurrency = await this.resolveBaseCurrency(companyId);
+        const statements = await Promise.all(scopedPostingIds.map((id) => this.ledgerRepo
+            .getAccountStatement(companyId, id, startDate, endDate, options)
+            .catch(() => null)));
+        const validStatements = statements.filter((s) => !!s);
+        const openingBalance = validStatements.reduce((sum, s) => { var _a, _b; return sum + ((_b = (_a = s.openingBalanceBase) !== null && _a !== void 0 ? _a : s.openingBalance) !== null && _b !== void 0 ? _b : 0); }, 0);
+        const flatEntries = validStatements.flatMap((s) => (s.entries || []).map((entry) => {
+            var _a, _b, _c, _d;
+            return ({
+                id: entry.id,
+                date: entry.date,
+                voucherId: entry.voucherId,
+                voucherNo: entry.voucherNo || entry.voucherId || '',
+                description: entry.description || '',
+                debit: Number((_b = (_a = entry.baseDebit) !== null && _a !== void 0 ? _a : entry.debit) !== null && _b !== void 0 ? _b : 0),
+                credit: Number((_d = (_c = entry.baseCredit) !== null && _c !== void 0 ? _c : entry.credit) !== null && _d !== void 0 ? _d : 0),
+                exchangeRate: entry.exchangeRate,
+            });
+        }));
+        flatEntries.sort((a, b) => {
+            if (a.date === b.date) {
+                if (a.voucherNo === b.voucherNo)
+                    return a.id.localeCompare(b.id);
+                return String(a.voucherNo).localeCompare(String(b.voucherNo));
+            }
+            return String(a.date).localeCompare(String(b.date));
+        });
+        let running = openingBalance;
+        let totalDebit = 0;
+        let totalCredit = 0;
+        const entries = flatEntries.map((entry) => {
+            totalDebit += entry.debit;
+            totalCredit += entry.credit;
+            running += entry.debit - entry.credit;
+            return Object.assign(Object.assign({}, entry), { balance: running, baseDebit: entry.debit, baseCredit: entry.credit, baseBalance: running, currency: baseCurrency });
+        });
+        const selectedCode = selected.userCode || selected.code || '';
+        return {
+            accountId,
+            accountCode: selectedCode,
+            accountName: selected.name || 'Unknown Account',
+            accountCurrency: baseCurrency,
+            baseCurrency,
+            fromDate: startDate,
+            toDate: endDate,
+            openingBalance,
+            openingBalanceBase: openingBalance,
+            entries,
+            closingBalance: running,
+            closingBalanceBase: running,
+            totalDebit,
+            totalCredit,
+            totalBaseDebit: totalDebit,
+            totalBaseCredit: totalCredit
+        };
+    }
+    isHeaderLike(account, accounts) {
+        const role = String((account === null || account === void 0 ? void 0 : account.accountRole) || '').toUpperCase();
+        if (role === 'HEADER')
+            return true;
+        if ((account === null || account === void 0 ? void 0 : account.hasChildren) === true)
+            return true;
+        return accounts.some((candidate) => (candidate === null || candidate === void 0 ? void 0 : candidate.parentId) === account.id);
+    }
+    resolvePostingScope(accountId, accounts) {
+        const byId = new Map(accounts.map((a) => [a.id, a]));
+        const childrenMap = new Map();
+        for (const account of accounts) {
+            const key = (account === null || account === void 0 ? void 0 : account.parentId) || null;
+            const bucket = childrenMap.get(key) || [];
+            bucket.push(account);
+            childrenMap.set(key, bucket);
+        }
+        const scoped = [];
+        const visited = new Set();
+        const queue = [accountId];
+        while (queue.length > 0) {
+            const id = queue.shift();
+            if (visited.has(id))
+                continue;
+            visited.add(id);
+            const account = byId.get(id);
+            if (!account)
+                continue;
+            const children = childrenMap.get(id) || [];
+            const role = String((account === null || account === void 0 ? void 0 : account.accountRole) || '').toUpperCase();
+            const isHeader = role === 'HEADER' || (account === null || account === void 0 ? void 0 : account.hasChildren) === true || children.length > 0;
+            if (!isHeader)
+                scoped.push(id);
+            children.forEach((child) => {
+                if ((child === null || child === void 0 ? void 0 : child.id) && !visited.has(child.id))
+                    queue.push(child.id);
+            });
+        }
+        return scoped;
+    }
+    async resolveBaseCurrency(companyId) {
+        var _a;
+        try {
+            const company = await ((_a = this.companyRepo) === null || _a === void 0 ? void 0 : _a.findById(companyId));
+            return ((company === null || company === void 0 ? void 0 : company.baseCurrency) || '').toUpperCase();
+        }
+        catch (_b) {
+            return '';
+        }
     }
 }
 exports.GetAccountStatementUseCase = GetAccountStatementUseCase;
@@ -288,6 +412,7 @@ class GetJournalUseCase {
                 voucherNo: v.voucherNo || v.id,
                 date: v.date,
                 type: v.type,
+                formId: v.formId,
                 description: v.description,
                 status: v.status,
                 currency: v.currency,

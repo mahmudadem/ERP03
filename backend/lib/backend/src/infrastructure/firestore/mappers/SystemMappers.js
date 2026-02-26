@@ -71,6 +71,8 @@ class NotificationMapper {
         data.readBy || (data.read ? [data.userId] : []), data.actionUrl, data.sourceModule, data.sourceEntityType, data.sourceEntityId, ((_d = (_c = data.expiresAt) === null || _c === void 0 ? void 0 : _c.toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || (data.expiresAt ? new Date(data.expiresAt) : undefined));
     }
     static toPersistence(entity) {
+        var _a;
+        const Timestamp = (_a = admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp;
         return {
             id: entity.id,
             companyId: entity.companyId,
@@ -78,14 +80,14 @@ class NotificationMapper {
             category: entity.category,
             title: entity.title,
             message: entity.message,
-            createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
+            createdAt: Timestamp ? Timestamp.fromDate(entity.createdAt) : entity.createdAt,
             recipientUserIds: entity.recipientUserIds,
             readBy: entity.readBy,
             actionUrl: entity.actionUrl || null,
             sourceModule: entity.sourceModule || null,
             sourceEntityType: entity.sourceEntityType || null,
             sourceEntityId: entity.sourceEntityId || null,
-            expiresAt: entity.expiresAt ? admin.firestore.Timestamp.fromDate(entity.expiresAt) : null
+            expiresAt: entity.expiresAt ? (Timestamp ? Timestamp.fromDate(entity.expiresAt) : entity.expiresAt) : null
         };
     }
 }
@@ -96,13 +98,15 @@ class AuditLogMapper {
         return new AuditLog_1.AuditLog(data.id, data.action, data.entityType, data.entityId, data.userId, ((_b = (_a = data.timestamp) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date(data.timestamp), data.meta);
     }
     static toPersistence(entity) {
+        var _a;
+        const Timestamp = (_a = admin.firestore) === null || _a === void 0 ? void 0 : _a.Timestamp;
         return {
             id: entity.id,
             action: entity.action,
             entityType: entity.entityType,
             entityId: entity.entityId,
             userId: entity.userId,
-            timestamp: admin.firestore.Timestamp.fromDate(entity.timestamp),
+            timestamp: Timestamp ? Timestamp.fromDate(entity.timestamp) : entity.timestamp,
             meta: entity.meta || null
         };
     }

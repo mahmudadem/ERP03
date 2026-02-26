@@ -137,6 +137,59 @@ const VouchersListPage: React.FC = () => {
   
   const isLoading = vouchersLoading || typesLoading;
 
+  const resolveVoucherForm = React.useCallback((voucherLike: any) => {
+    const matchByFormId = (formId?: string | null) =>
+      voucherTypes.find(t => formId && (t.id === formId || (t as any)._typeId === formId));
+
+    let formDefinition = matchByFormId(voucherLike?.formId);
+
+    if (!formDefinition && voucherLike?.reversalOfVoucherId) {
+      const parentVoucher = vouchers.find(v => v.id === voucherLike.reversalOfVoucherId);
+      formDefinition = matchByFormId(parentVoucher?.formId);
+    }
+
+    if (!formDefinition) {
+      const rawType = (voucherLike?.type || '').toLowerCase();
+      const originType = (voucherLike?.metadata?.originType || '').toLowerCase();
+      const candidateTypes = [rawType, originType].filter(Boolean);
+
+      const typeKeywords: Record<string, string[]> = {
+        journal_entry: ['journal', 'journal_entry', 'jv'],
+        jv: ['journal', 'journal_entry', 'jv'],
+        payment: ['payment', 'pv'],
+        payment_voucher: ['payment', 'pv'],
+        receipt: ['receipt', 'rv'],
+        receipt_voucher: ['receipt', 'rv'],
+        opening_balance: ['opening', 'balance'],
+        fx_revaluation: ['fx_revaluation', 'revaluation', 'journal'],
+        reversal: ['reversal', 'reverse', 'rv']
+      };
+
+      const keywords = Array.from(
+        new Set(
+          candidateTypes.reduce<string[]>((acc, type) => {
+            acc.push(...(typeKeywords[type] || []));
+            return acc;
+          }, [])
+        )
+      );
+
+      formDefinition = voucherTypes.find(t => {
+        const formIdLower = (t.id || '').toLowerCase();
+        const formNameLower = (t.name || '').toLowerCase();
+        const formCodeLower = (t.code || '').toLowerCase();
+
+        return keywords.some(kw =>
+          formIdLower.includes(kw) ||
+          formNameLower.includes(kw) ||
+          formCodeLower.includes(kw)
+        );
+      });
+    }
+
+    return formDefinition;
+  }, [voucherTypes, vouchers]);
+
   const handleCreate = () => {
     if (!selectedType || !currentVoucherType) {
       console.error('❌ Cannot create: missing selectedType or currentVoucherType', { selectedType, voucherTypes });
@@ -170,33 +223,7 @@ const VouchersListPage: React.FC = () => {
     const summary = vouchers.find(v => v.id === id);
     if (!summary) return;
     
-    // Try to find form by formId/typeId (if saved), otherwise fallback to matching by keywords
-    let formDefinition = voucherTypes.find(t => 
-      summary.formId && (t.id === summary.formId || (t as any)._typeId === summary.formId)
-    );
-
-    if (!formDefinition) {
-      formDefinition = voucherTypes.find(t => {
-        const typeKeywords: Record<string, string[]> = {
-          'journal_entry': ['journal', 'journal_entry'],
-          'payment': ['payment'],
-          'receipt': ['receipt'],
-          'opening_balance': ['opening', 'balance'],
-          'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
-        };
-        
-        const keywords = typeKeywords[summary.type] || [];
-        const formIdLower = (t.id || '').toLowerCase();
-        const formNameLower = (t.name || '').toLowerCase();
-        const formCodeLower = (t.code || '').toLowerCase();
-        
-        return keywords.some(kw => 
-          formIdLower.includes(kw) || 
-          formNameLower.includes(kw) ||
-          formCodeLower.includes(kw)
-        );
-      });
-    }
+    const formDefinition = resolveVoucherForm(summary);
 
     if (!formDefinition) {
       errorHandler.showError({
@@ -245,32 +272,7 @@ const VouchersListPage: React.FC = () => {
   const handleViewPrint = (id: string) => {
     const summary = vouchers.find(v => v.id === id);
     if (!summary) return;
-          // Try to find form by formId/typeId (if saved), otherwise fallback to matching by keywords
-          let formDefinition = voucherTypes.find(t => 
-            summary.formId && (t.id === summary.formId || (t as any)._typeId === summary.formId)
-          );
-
-          if (!formDefinition) {
-            formDefinition = voucherTypes.find(t => {
-              const typeKeywords: Record<string, string[]> = {
-                'journal_entry': ['journal', 'journal_entry'],
-                'payment': ['payment'],
-                'receipt': ['receipt'],
-                'opening_balance': ['opening', 'balance'],
-                'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
-              };
-              const keywords = typeKeywords[summary.type] || [];
-              const formIdLower = (t.id || '').toLowerCase();
-              const formNameLower = (t.name || '').toLowerCase();
-              const formCodeLower = (t.code || '').toLowerCase();
-              
-              return keywords.some(kw => 
-                formIdLower.includes(kw) || 
-                formNameLower.includes(kw) ||
-                formCodeLower.includes(kw)
-              );
-            });
-          }
+    const formDefinition = resolveVoucherForm(summary);
 
     window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id, formType: formDefinition } }));
   };

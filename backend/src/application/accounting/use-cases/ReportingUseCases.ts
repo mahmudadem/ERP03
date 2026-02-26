@@ -78,60 +78,65 @@ export class GetGeneralLedgerUseCase {
       'accounting.reports.generalLedger.view'
     );
 
+    // Prepare account scope (supports selecting header/group accounts for reporting)
+    const accounts = this.accountRepo.getAccounts
+      ? await this.accountRepo.getAccounts(companyId)
+      : await this.accountRepo.list(companyId);
+    const scopedAccountIds = this.resolveScopedAccountIds(filters.accountId, accounts);
+
     // 1. Calculate opening balance (all entries before fromDate)
     let openingBalance = 0;
-    if (filters.accountId && filters.fromDate) {
+    if (filters.fromDate) {
       try {
-        const openingEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
-          accountId: filters.accountId,
+        const openingQuery: any = {
           toDate: new Date(new Date(filters.fromDate).getTime() - 1).toISOString().split('T')[0],
           costCenterId: filters.costCenterId,
-        });
+        };
+        if (!scopedAccountIds && filters.accountId) {
+          openingQuery.accountId = filters.accountId;
+        }
+        const openingEntries = await this.ledgerRepo.getGeneralLedger(companyId, openingQuery);
         openingEntries.forEach(e => {
-          openingBalance += ((e.debit || 0) - (e.credit || 0));
+          if (this.belongsToScope(e.accountId, scopedAccountIds)) {
+            openingBalance += ((e.debit || 0) - (e.credit || 0));
+          }
         });
       } catch (e) {
         console.warn(`[GetGeneralLedger] Error calculating opening balance: ${e}`);
       }
     }
 
-    // 2. Fetch total count (for pagination)
-    // Firestore lacks count() in standard get(), but since it's a report we might fetch all IDs or use a separate counter
-    // For V1 Reports, we just fetch IDs for count if accountId is provided.
-    const allEntriesCountSnap = await this.ledgerRepo.getGeneralLedger(companyId, {
-      accountId: filters.accountId,
+    // 2. Fetch entries (for count + pagination)
+    const baseQuery: any = {
       fromDate: filters.fromDate,
       toDate: filters.toDate,
       costCenterId: filters.costCenterId,
-    });
-    const totalItems = allEntriesCountSnap.length;
+    };
+    if (!scopedAccountIds && filters.accountId) {
+      baseQuery.accountId = filters.accountId;
+    }
+    const allEntries = await this.ledgerRepo.getGeneralLedger(companyId, baseQuery);
+    const scopedEntries = scopedAccountIds
+      ? allEntries.filter(e => this.belongsToScope(e.accountId, scopedAccountIds))
+      : allEntries;
+    const totalItems = scopedEntries.length;
+    const offset = Math.max(0, filters.offset || 0);
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : totalItems || 100;
+    const ledgerEntries = scopedEntries.slice(offset, offset + limit);
 
-    // 3. Fetch paginated entries
-    const ledgerEntries = await this.ledgerRepo.getGeneralLedger(companyId, {
-      accountId: filters.accountId,
-      fromDate: filters.fromDate,
-      toDate: filters.toDate,
-      costCenterId: filters.costCenterId,
-      limit: filters.limit,
-      offset: filters.offset
-    });
-
-    // 4. Enrich account data
-    const accounts = this.accountRepo.getAccounts
-      ? await this.accountRepo.getAccounts(companyId)
-      : await this.accountRepo.list(companyId);
+    // 3. Enrich account data
     
     const accountMap = new Map(accounts.map(a => [a.id, a]));
     const accountCodeMap = new Map(accounts.map(a => [a.userCode || (a as any).code, a]));
 
-    // 5. Fetch vouchers
+    // 4. Fetch vouchers
     const voucherIds = [...new Set(ledgerEntries.map(e => e.voucherId))];
     const vouchers = await Promise.all(
       voucherIds.map(id => this.voucherRepo.findById(companyId, id).catch(() => null))
     );
     const voucherMap = new Map(vouchers.filter(v => v).map(v => [v!.id, v!]));
 
-    // 6. Enrichment missing accounts and users
+    // 5. Enrichment missing accounts and users
     const userIds = new Set<string>();
     voucherMap.forEach(v => {
       if (v.createdBy) userIds.add(v.createdBy);
@@ -149,7 +154,7 @@ export class GetGeneralLedgerUseCase {
       }));
     }
 
-    // 6b. Enrich cost center data
+    // 5b. Enrich cost center data
     const costCenterIds = new Set(ledgerEntries.map(e => e.costCenterId).filter(Boolean) as string[]);
     const costCenterMap = new Map<string, { code: string; name: string }>();
     if (costCenterIds.size > 0 && this.costCenterRepo) {
@@ -161,12 +166,12 @@ export class GetGeneralLedgerUseCase {
       }
     }
 
-    // 7. Calculate Running Balance for the CURRENT page
+    // 6. Calculate Running Balance for the CURRENT page
     // We need the balance up to the offset
     let pageStartingBalance = openingBalance;
-    if (filters.offset && filters.offset > 0) {
+    if (offset > 0) {
       // Add balance from entries skipped by current offset
-      allEntriesCountSnap.slice(0, filters.offset).forEach(e => {
+      scopedEntries.slice(0, offset).forEach(e => {
         pageStartingBalance += ((e.debit || 0) - (e.credit || 0));
       });
     }
@@ -210,6 +215,48 @@ export class GetGeneralLedgerUseCase {
         openingBalance 
       } 
     };
+  }
+
+  private resolveScopedAccountIds(accountId: string | undefined, accounts: any[]): Set<string> | null {
+    if (!accountId) return null;
+
+    const byId = new Map(accounts.map((a: any) => [a.id, a]));
+    const childrenMap = new Map<string | null, any[]>();
+    for (const account of accounts) {
+      const key = (account?.parentId as string | null) || null;
+      const bucket = childrenMap.get(key) || [];
+      bucket.push(account);
+      childrenMap.set(key, bucket);
+    }
+
+    const scoped = new Set<string>();
+    const visited = new Set<string>();
+    const queue: string[] = [accountId];
+
+    while (queue.length > 0) {
+      const id = queue.shift() as string;
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      const account = byId.get(id);
+      if (!account) continue;
+
+      const role = String(account?.accountRole || '').toUpperCase();
+      const isHeader = role === 'HEADER' || account?.hasChildren === true;
+      if (!isHeader) scoped.add(id);
+
+      const children = childrenMap.get(id) || [];
+      children.forEach((child: any) => {
+        if (child?.id && !visited.has(child.id)) queue.push(child.id);
+      });
+    }
+
+    return scoped;
+  }
+
+  private belongsToScope(accountId: string, scopedAccountIds: Set<string> | null): boolean {
+    if (!scopedAccountIds) return true;
+    return scopedAccountIds.has(accountId);
   }
 }
 

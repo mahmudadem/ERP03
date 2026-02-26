@@ -176,7 +176,9 @@ export class GetGeneralLedgerUseCase {
 export class GetAccountStatementUseCase {
   constructor(
     private ledgerRepo: ILedgerRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private accountRepo?: IAccountRepository,
+    private companyRepo?: ICompanyRepository
   ) {}
 
   async execute(companyId: string, userId: string, accountId: string, fromDate: string, toDate: string, options?: { includeUnposted?: boolean }) {
@@ -184,7 +186,154 @@ export class GetAccountStatementUseCase {
       throw new Error('accountId is required');
     }
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.generalLedger.view');
-    return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+
+    // Backward-compatible path when account hierarchy context is unavailable.
+    if (!this.accountRepo) {
+      return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+    }
+
+    const accounts = this.accountRepo.getAccounts
+      ? await this.accountRepo.getAccounts(companyId)
+      : await this.accountRepo.list(companyId);
+    const selected = accounts.find((a: any) => a.id === accountId);
+    if (!selected) {
+      return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+    }
+
+    const scopedPostingIds = this.resolvePostingScope(accountId, accounts);
+    const isGroupSelection = this.isHeaderLike(selected, accounts);
+    if (!isGroupSelection) {
+      return this.ledgerRepo.getAccountStatement(companyId, accountId, fromDate, toDate, options);
+    }
+
+    const startDate = fromDate || '1900-01-01';
+    const endDate = toDate || new Date().toISOString().split('T')[0];
+    const baseCurrency = await this.resolveBaseCurrency(companyId);
+
+    const statements = await Promise.all(
+      scopedPostingIds.map((id) =>
+        this.ledgerRepo
+          .getAccountStatement(companyId, id, startDate, endDate, options)
+          .catch(() => null)
+      )
+    );
+    const validStatements = statements.filter((s): s is any => !!s);
+
+    const openingBalance = validStatements.reduce(
+      (sum, s) => sum + (s.openingBalanceBase ?? s.openingBalance ?? 0),
+      0
+    );
+
+    const flatEntries = validStatements.flatMap((s) =>
+      (s.entries || []).map((entry: any) => ({
+        id: entry.id,
+        date: entry.date,
+        voucherId: entry.voucherId,
+        voucherNo: entry.voucherNo || entry.voucherId || '',
+        description: entry.description || '',
+        debit: Number(entry.baseDebit ?? entry.debit ?? 0),
+        credit: Number(entry.baseCredit ?? entry.credit ?? 0),
+        exchangeRate: entry.exchangeRate,
+      }))
+    );
+
+    flatEntries.sort((a, b) => {
+      if (a.date === b.date) {
+        if (a.voucherNo === b.voucherNo) return a.id.localeCompare(b.id);
+        return String(a.voucherNo).localeCompare(String(b.voucherNo));
+      }
+      return String(a.date).localeCompare(String(b.date));
+    });
+
+    let running = openingBalance;
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    const entries = flatEntries.map((entry) => {
+      totalDebit += entry.debit;
+      totalCredit += entry.credit;
+      running += entry.debit - entry.credit;
+      return {
+        ...entry,
+        balance: running,
+        baseDebit: entry.debit,
+        baseCredit: entry.credit,
+        baseBalance: running,
+        currency: baseCurrency
+      };
+    });
+
+    const selectedCode = (selected as any).userCode || (selected as any).code || '';
+    return {
+      accountId,
+      accountCode: selectedCode,
+      accountName: (selected as any).name || 'Unknown Account',
+      accountCurrency: baseCurrency,
+      baseCurrency,
+      fromDate: startDate,
+      toDate: endDate,
+      openingBalance,
+      openingBalanceBase: openingBalance,
+      entries,
+      closingBalance: running,
+      closingBalanceBase: running,
+      totalDebit,
+      totalCredit,
+      totalBaseDebit: totalDebit,
+      totalBaseCredit: totalCredit
+    };
+  }
+
+  private isHeaderLike(account: any, accounts: any[]): boolean {
+    const role = String(account?.accountRole || '').toUpperCase();
+    if (role === 'HEADER') return true;
+    if (account?.hasChildren === true) return true;
+    return accounts.some((candidate: any) => candidate?.parentId === account.id);
+  }
+
+  private resolvePostingScope(accountId: string, accounts: any[]): string[] {
+    const byId = new Map(accounts.map((a: any) => [a.id, a]));
+    const childrenMap = new Map<string | null, any[]>();
+
+    for (const account of accounts) {
+      const key = (account?.parentId as string | null) || null;
+      const bucket = childrenMap.get(key) || [];
+      bucket.push(account);
+      childrenMap.set(key, bucket);
+    }
+
+    const scoped: string[] = [];
+    const visited = new Set<string>();
+    const queue: string[] = [accountId];
+
+    while (queue.length > 0) {
+      const id = queue.shift() as string;
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      const account = byId.get(id);
+      if (!account) continue;
+
+      const children = childrenMap.get(id) || [];
+      const role = String(account?.accountRole || '').toUpperCase();
+      const isHeader = role === 'HEADER' || account?.hasChildren === true || children.length > 0;
+
+      if (!isHeader) scoped.push(id);
+      children.forEach((child: any) => {
+        if (child?.id && !visited.has(child.id)) queue.push(child.id);
+      });
+    }
+
+    return scoped;
+  }
+
+  private async resolveBaseCurrency(companyId: string): Promise<string> {
+    try {
+      const company = await this.companyRepo?.findById(companyId);
+      return ((company as any)?.baseCurrency || '').toUpperCase();
+    } catch {
+      return '';
+    }
   }
 }
 

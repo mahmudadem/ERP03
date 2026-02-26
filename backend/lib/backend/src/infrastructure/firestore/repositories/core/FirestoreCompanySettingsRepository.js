@@ -12,7 +12,7 @@ class FirestoreCompanySettingsRepository {
     }
     toDomain(data) {
         var _a;
-        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : false, data.uiMode, data.timezone, data.dateFormat, data.language || 'en', data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd);
+        return new CompanySettings_1.CompanySettings(data.companyId, (_a = data.strictApprovalMode) !== null && _a !== void 0 ? _a : false, data.uiMode, data.timezone, data.dateFormat, data.language || 'en', data.baseCurrency, data.fiscalYearStart, data.fiscalYearEnd, data.disabledNotificationCategories || []);
     }
     toPersistence(entity) {
         return {
@@ -24,7 +24,8 @@ class FirestoreCompanySettingsRepository {
             language: entity.language,
             baseCurrency: entity.baseCurrency,
             fiscalYearStart: entity.fiscalYearStart,
-            fiscalYearEnd: entity.fiscalYearEnd
+            fiscalYearEnd: entity.fiscalYearEnd,
+            disabledNotificationCategories: entity.disabledNotificationCategories || []
         };
     }
     async getSettings(companyId) {

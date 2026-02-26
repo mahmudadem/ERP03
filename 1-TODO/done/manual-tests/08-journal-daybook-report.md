@@ -41,10 +41,10 @@
 2. Observe the page layout
 
 **Expected:**
-- [ ] Page title shows "Journal" or "Day Book"
-- [ ] Date range inputs (From / To) are visible
-- [ ] A voucher type filter is available (All, JE, PV, RV, etc.)
-- [ ] Load/Refresh button or auto-load on parameters change
+- [x] Page title shows "Journal" or "Day Book"
+- [x] Date range inputs (From / To) are visible
+- [x] A voucher type filter is available (All, JE, PV, RV, etc.)
+- [x] Load/Refresh button or auto-load on parameters change
 
 ---
 
@@ -55,10 +55,10 @@
 2. Examine how vouchers are displayed
 
 **Expected:**
-- [ ] Each voucher appears as a **distinct block/card**
-- [ ] Each block shows: **Voucher No**, **Date**, **Type**, **Description**
-- [ ] Inside each block: a table with lines showing **Account**, **Description**, **Debit**, **Credit**
-- [ ] Lines are properly formatted (amounts right-aligned, accounts left-aligned)
+- [x] Each voucher appears as a **distinct block/card**
+- [x] Each block shows: **Voucher No**, **Date**, **Type**, **Description**
+- [x] Inside each block: a table with lines showing **Account**, **Description**, **Debit**, **Credit**
+- [x] Lines are properly formatted (amounts right-aligned, accounts left-aligned)
 
 ---
 
@@ -69,8 +69,8 @@
 2. Check the order of vouchers
 
 **Expected:**
-- [ ] Vouchers appear in **date order** (oldest first)
-- [ ] Within the same date, vouchers are ordered by voucher number or creation time
+- [x] Vouchers appear in **date order** (oldest first)
+- [x] Within the same date, vouchers are ordered by voucher number or creation time
 
 ---
 
@@ -82,9 +82,9 @@
 3. Verify
 
 **Expected:**
-- [ ] Only vouchers within the selected date range appear
-- [ ] Narrowing the range reduces the number of vouchers shown
-- [ ] Boundaries are inclusive (vouchers on the from/to dates are shown)
+- [x] Only vouchers within the selected date range appear
+- [x] Narrowing the range reduces the number of vouchers shown
+- [x] Boundaries are inclusive (vouchers on the from/to dates are shown)
 
 ---
 
@@ -96,10 +96,10 @@
 3. Switch to "PV" (Payment Voucher) only
 
 **Expected:**
-- [ ] "All" shows all voucher types
-- [ ] Filtering by JE shows only Journal Entry vouchers
-- [ ] Filtering by PV shows only Payment Vouchers
-- [ ] Counts reduce appropriately
+- [x] "All" shows all voucher types
+- [x] Filtering by JE shows only Journal Entry vouchers
+- [x] Filtering by PV shows only Payment Vouchers
+- [x] Counts reduce appropriately
 
 ---
 
@@ -110,9 +110,9 @@
 2. Look at the grand totals footer
 
 **Expected:**
-- [ ] **Total Debits** and **Total Credits** are shown
-- [ ] Total Debits = Total Credits (double-entry check)
-- [ ] A "Balanced" indicator may be shown
+- [x] **Total Debits** and **Total Credits** are shown
+- [x] Total Debits = Total Credits (double-entry check)
+- [x] A "Balanced" indicator may be shown
 
 ---
 

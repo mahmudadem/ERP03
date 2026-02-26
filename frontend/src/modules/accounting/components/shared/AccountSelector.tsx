@@ -21,6 +21,7 @@ interface AccountSelectorProps {
   noBorder?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onBlur?: () => void;
+  scope?: 'valid' | 'all';
 }
 
 export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps>(({
@@ -31,16 +32,18 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   className = '',
   noBorder = false,
   onKeyDown: externalKeyDown,
-  onBlur: externalBlur
+  onBlur: externalBlur,
+  scope = 'valid'
 }, ref) => {
   const { t } = useTranslation('accounting');
-  const { validAccounts, isLoading, getAccountByCode, getAccountById } = useAccounts();
+  const { accounts, validAccounts, isLoading, getAccountByCode, getAccountById } = useAccounts();
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
+  const selectableAccounts = scope === 'all' ? accounts : validAccounts;
 
   // Forward the ref
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
@@ -69,11 +72,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
     if (!search) return null;
     
     // Try exact code match first
-    const codeMatch = validAccounts.find((a: Account) => a.code.toLowerCase() === search);
+    const codeMatch = selectableAccounts.find((a: Account) => a.code.toLowerCase() === search);
     if (codeMatch) return codeMatch;
     
     // Try exact name match
-    const nameMatch = validAccounts.find((a: Account) => a.name.toLowerCase() === search);
+    const nameMatch = selectableAccounts.find((a: Account) => a.name.toLowerCase() === search);
     if (nameMatch) return nameMatch;
     
     return null;
@@ -82,9 +85,9 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
   // Find closest matches for modal
   const getFilteredAccounts = (searchText: string): Account[] => {
     const search = searchText.trim().toLowerCase();
-    if (!search) return validAccounts.slice(0, 20); // Show first 20 if no search
+    if (!search) return selectableAccounts.slice(0, 20); // Show first 20 if no search
     
-    return validAccounts
+    return selectableAccounts
       .filter((a: Account) => 
         a.code.toLowerCase().includes(search) || 
         a.name.toLowerCase().includes(search)

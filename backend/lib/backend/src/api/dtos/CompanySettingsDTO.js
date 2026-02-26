@@ -12,7 +12,8 @@ class CompanySettingsDTOMapper {
             language: settings.language,
             baseCurrency: settings.baseCurrency,
             fiscalYearStart: settings.fiscalYearStart,
-            fiscalYearEnd: settings.fiscalYearEnd
+            fiscalYearEnd: settings.fiscalYearEnd,
+            disabledNotificationCategories: settings.disabledNotificationCategories || []
         };
     }
 }

@@ -151,12 +151,6 @@ export const useSidebarConfig = () => {
               permission: 'accounting.settings.manage',
               icon: 'DraftingCompass'
             },
-            {
-              label: translateLabel('Ledger Report'),
-              path: '/accounting/reports/ledger',
-              permission: 'accounting.reports.view', 
-              icon: 'BookOpen'
-            },
             ...items.slice(coaIndex + 1)
           ];
         } else {

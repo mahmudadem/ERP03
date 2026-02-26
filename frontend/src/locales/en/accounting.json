@@ -395,7 +395,7 @@
     "moreModules": "More modules",
     "comingSoon": "Coming Soon",
     "financialReports": "Financial Reports",
-    "financialReportsDesc": "Balance Sheet, Trial Balance, and Profit & Loss",
+    "financialReportsDesc": "Balance Sheet, Trial Balance, Profit & Loss, and Aging Report",
     "positionTag": "Position",
     "balanceSheet": "Balance Sheet",
     "balanceSheetDesc": "View Assets, Liabilities, and Equity with retained earnings in one snapshot.",
@@ -403,7 +403,10 @@
     "trialBalanceDesc": "Quickly verify that debits and credits are balanced across the chart.",
     "performanceTag": "Performance",
     "profitLoss": "Profit & Loss",
-    "profitLossDesc": "Analyze revenue and expenses for the selected period with one click."
+    "profitLossDesc": "Analyze revenue and expenses for the selected period with one click.",
+    "agingTag": "Analysis",
+    "agingReport": "Aging Report",
+    "agingReportDesc": "Track outstanding receivables and payables by age buckets"
   },
   "approvals": {
     "title": "Approval Center",

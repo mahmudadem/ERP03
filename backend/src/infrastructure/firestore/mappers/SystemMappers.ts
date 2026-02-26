@@ -67,6 +67,8 @@ export class NotificationMapper {
     );
   }
   static toPersistence(entity: Notification): any {
+    const Timestamp = admin.firestore?.Timestamp;
+    
     return {
       id: entity.id,
       companyId: entity.companyId,
@@ -74,14 +76,14 @@ export class NotificationMapper {
       category: entity.category,
       title: entity.title,
       message: entity.message,
-      createdAt: admin.firestore.Timestamp.fromDate(entity.createdAt),
+      createdAt: Timestamp ? Timestamp.fromDate(entity.createdAt) : entity.createdAt,
       recipientUserIds: entity.recipientUserIds,
       readBy: entity.readBy,
       actionUrl: entity.actionUrl || null,
       sourceModule: entity.sourceModule || null,
       sourceEntityType: entity.sourceEntityType || null,
       sourceEntityId: entity.sourceEntityId || null,
-      expiresAt: entity.expiresAt ? admin.firestore.Timestamp.fromDate(entity.expiresAt) : null
+      expiresAt: entity.expiresAt ? (Timestamp ? Timestamp.fromDate(entity.expiresAt) : entity.expiresAt) : null
     };
   }
 }
@@ -99,13 +101,15 @@ export class AuditLogMapper {
     );
   }
   static toPersistence(entity: AuditLog): any {
+    const Timestamp = admin.firestore?.Timestamp;
+    
     return {
       id: entity.id,
       action: entity.action,
       entityType: entity.entityType,
       entityId: entity.entityId,
       userId: entity.userId,
-      timestamp: admin.firestore.Timestamp.fromDate(entity.timestamp),
+      timestamp: Timestamp ? Timestamp.fromDate(entity.timestamp) : entity.timestamp,
       meta: entity.meta || null
     };
   }

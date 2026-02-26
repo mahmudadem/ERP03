@@ -76,6 +76,7 @@
     "modules": "Modules",
     "features": "Features",
     "bundles": "Bundles",
+    "notifications": "Notifications",
     "generalSettings": "General Settings",
     "companySettings": "Company Settings"
   }

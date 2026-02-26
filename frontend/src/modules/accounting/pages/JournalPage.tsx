@@ -288,12 +288,7 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
                     <div className="h-4 w-px bg-slate-300" />
                     <button
                       className="text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
-                      onClick={() => {
-                        const qs = new URLSearchParams();
-                        if (v.type) qs.set('type', v.type);
-                        if (v.formId) qs.set('formId', v.formId);
-                        navigate(`/accounting/vouchers/${v.voucherId}?${qs.toString()}`);
-                      }}
+                      onClick={() => navigate(`/accounting/vouchers/${v.voucherId}/view`)}
                     >
                       {v.voucherNo}
                     </button>

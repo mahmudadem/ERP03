@@ -13,10 +13,10 @@ class NotificationController {
      * Get notifications for the current user
      */
     static async getUserNotifications(req, res) {
-        var _a;
+        var _a, _b;
         try {
-            const companyId = req.companyId;
-            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
+            const companyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
             const limit = parseInt(req.query.limit) || 20;
             if (!userId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -38,10 +38,10 @@ class NotificationController {
      * Get unread notifications for the current user
      */
     static async getUnreadNotifications(req, res) {
-        var _a;
+        var _a, _b;
         try {
-            const companyId = req.companyId;
-            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
+            const companyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
             if (!userId) {
                 res.status(401).json({ error: 'Unauthorized' });
                 return;
@@ -62,10 +62,10 @@ class NotificationController {
      * Get unread count for the current user
      */
     static async getUnreadCount(req, res) {
-        var _a;
+        var _a, _b;
         try {
-            const companyId = req.companyId;
-            const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.uid;
+            const companyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
             if (!userId) {
                 res.status(401).json({ error: 'Unauthorized' });
                 return;
@@ -97,6 +97,57 @@ class NotificationController {
         catch (error) {
             console.error('[NotificationController] markAsRead error:', error);
             res.status(500).json({ error: error.message || 'Failed to mark notification as read' });
+        }
+    }
+    /**
+     * POST /notifications/read-all
+     * Mark all notifications as read for current user
+     */
+    static async markAllAsRead(req, res) {
+        var _a, _b;
+        try {
+            const companyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+            await bindRepositories_1.diContainer.notificationService.markAllAsRead(companyId, userId);
+            res.json({ success: true });
+        }
+        catch (error) {
+            console.error('[NotificationController] markAllAsRead error:', error);
+            res.status(500).json({ error: error.message || 'Failed to mark all notifications as read' });
+        }
+    }
+    /**
+     * POST /notifications/test
+     * Create a test notification for the current user
+     */
+    static async createTest(req, res) {
+        var _a, _b;
+        try {
+            const companyId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.companyId;
+            const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.uid;
+            const { title, message, type = 'INFO', category = 'SYSTEM' } = req.body;
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+            const notification = await bindRepositories_1.diContainer.notificationService.notify({
+                companyId,
+                recipientUserIds: [userId],
+                type,
+                category,
+                title: title || 'Test Notification',
+                message: message || 'This is a test notification generated from the UI.',
+                expiresInDays: 7
+            });
+            res.json({ success: true, notification: notification === null || notification === void 0 ? void 0 : notification.toJSON() });
+        }
+        catch (error) {
+            console.error('[NotificationController] createTest error:', error);
+            res.status(500).json({ error: error.message || 'Failed to create test notification' });
         }
     }
 }

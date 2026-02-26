@@ -9,11 +9,12 @@ export class CompanySettings {
     public language: string = 'en',
     public baseCurrency?: string,
     public fiscalYearStart?: string, // Month-Day string (e.g. "01-01")
-    public fiscalYearEnd?: string    // Month-Day string (e.g. "12-31")
+    public fiscalYearEnd?: string,   // Month-Day string (e.g. "12-31")
+    public disabledNotificationCategories: string[] = []
   ) {}
 
   // Factory method for default settings
   static default(companyId: string): CompanySettings {
-    return new CompanySettings(companyId, false, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31');
+    return new CompanySettings(companyId, false, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31', []);
   }
 }

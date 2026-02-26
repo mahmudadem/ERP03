@@ -12,7 +12,8 @@ import {
   ArrowLeft, 
   Settings, 
   Maximize2,
-  Minimize2
+  Minimize2,
+  RefreshCcw
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -84,6 +85,7 @@ export function ReportContainer<TParams>({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [density, setDensity] = useState<'compact' | 'comfortable'>(config.density || 'comfortable');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (config.availableColumns && (visibleColumnIds.length === 0)) {
@@ -119,16 +121,17 @@ export function ReportContainer<TParams>({
   const handleEditFilters = () => setIsFilterModalOpen(true);
   const handleReset = () => setIsGenerated(false);
   const handlePrint = () => window.print();
+  const handleRefresh = () => setRefreshKey(prev => prev + 1);
 
   if (!isGenerated) {
     return (
-      <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
-        <div className="max-w-5xl mx-auto">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto bg-slate-50 p-8 min-h-full">
+        <div className="w-full max-w-5xl pb-[20vh]">
           <div className="mb-8 pl-4 border-l-4 border-slate-900">
             <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">{title}</h1>
             <p className="text-slate-500 text-sm mt-1">{subtitle}</p>
           </div>
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-8">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 max-w-5xl w-full">
             <Initiator onSubmit={handleRunReport} initialParams={null} />
           </div>
         </div>
@@ -163,6 +166,9 @@ export function ReportContainer<TParams>({
              </button>
           </div>
           <div className="h-6 w-px bg-slate-200 mx-2" />
+          <Button variant="ghost" size="sm" onClick={handleRefresh} className="text-slate-600 hover:bg-slate-50 font-semibold gap-2">
+            <RefreshCcw size={16} /> <span className="hidden lg:inline">Refresh</span>
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleEditFilters} className="text-slate-600 hover:bg-slate-50 font-semibold gap-2">
             <Filter size={16} /> <span className="hidden lg:inline">Filters</span>
           </Button>
@@ -204,6 +210,7 @@ export function ReportContainer<TParams>({
       <div className="flex-1 min-h-0 flex flex-col bg-slate-50" id="report-content">
         {params && (
           <ReportContent 
+            key={refreshKey}
             params={params} 
             pagination={config.paginated ? {
               page,

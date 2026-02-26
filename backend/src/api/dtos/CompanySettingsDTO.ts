@@ -11,6 +11,7 @@ export interface CompanySettingsDTO {
   baseCurrency?: string;
   fiscalYearStart?: string;
   fiscalYearEnd?: string;
+  disabledNotificationCategories?: string[];
 }
 
 export class CompanySettingsDTOMapper {
@@ -24,7 +25,8 @@ export class CompanySettingsDTOMapper {
       language: settings.language,
       baseCurrency: settings.baseCurrency,
       fiscalYearStart: settings.fiscalYearStart,
-      fiscalYearEnd: settings.fiscalYearEnd
+      fiscalYearEnd: settings.fiscalYearEnd,
+      disabledNotificationCategories: settings.disabledNotificationCategories || []
     };
   }
 }

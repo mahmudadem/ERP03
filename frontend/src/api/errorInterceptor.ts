@@ -64,9 +64,15 @@ export function setupErrorInterceptor() {
       // Check if response has structured error
       const errorResponse = error.response?.data as ApiErrorResponse | undefined;
       
+      const isSilent = 
+        error.config?.headers?.['X-Silent-Error'] === 'true' || 
+        error.config?.headers?.['x-silent-error'] === 'true';
+
       if (errorResponse && !errorResponse.success && errorResponse.error) {
         // Show error using centralized handler
-        errorHandler.showError(errorResponse.error);
+        if (!isSilent) {
+          errorHandler.showError(errorResponse.error);
+        }
       } else {
         // Handle non-structured errors (network errors, etc.)
         if (!error.response) {

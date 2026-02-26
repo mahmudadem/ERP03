@@ -89,6 +89,7 @@ const LedgerInitiator: React.FC<{
           <div onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}>
             <AccountSelector 
               value={accountId}
+              scope="all"
               onChange={(account) => {
                 if (account) { setAccountId(account.id); setAccountName(account.name); }
                 else { setAccountId(''); setAccountName(''); }

@@ -115,6 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
             { label: t('sidebar.modules'), path: '/company-admin/modules', icon: 'Package' },
             { label: t('sidebar.features'), path: '/company-admin/features', icon: 'Zap' },
             { label: t('sidebar.bundles'), path: '/company-admin/bundles', icon: 'Layers' },
+            { label: t('sidebar.notifications'), path: '/settings/notifications', icon: 'Bell' },
             { label: t('sidebar.generalSettings'), path: '/company-admin/settings', icon: 'Settings' }
           ]}
         />

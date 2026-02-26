@@ -21,9 +21,14 @@ const VoucherEditorPage: React.FC = () => {
   const navigate = useNavigate();
   
   const { settings: companySettings } = useCompanySettings();
-  const typeCode = searchParams.get('type') || 'INV';
-  const formId = searchParams.get('formId') || typeCode; // Use formId if provided, otherwise fall back to typeCode
-  const { definition, loading: defLoading, error: defError } = useVoucherTypeDefinition(formId, companySettings?.companyId);
+  const typeCode = searchParams.get('type') || '';
+  const formId = searchParams.get('formId') || '';
+  // Only look up a definition if we have a code to look up
+  const lookupCode = formId || typeCode;
+  const { definition: fetchedDefinition, loading: defLoading, error: defError } = useVoucherTypeDefinition(
+    lookupCode || 'journal_entry', // fallback so the hook doesn't skip
+    companySettings?.companyId
+  );
   
   const [initialValues, setInitialValues] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -154,12 +159,63 @@ const VoucherEditorPage: React.FC = () => {
     }
   };
 
+  // Build an effective definition: use fetched one, or build a fallback from voucher data for viewing
+  const definition = React.useMemo(() => {
+    if (fetchedDefinition) return fetchedDefinition;
+    // For existing vouchers, build a basic fallback so the page can render
+    if (id && id !== 'new' && currentVoucher) {
+      return {
+        id: currentVoucher.formId || currentVoucher.type || 'unknown',
+        code: currentVoucher.type || 'journal_entry',
+        name: currentVoucher.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Voucher',
+        module: 'accounting',
+        baseType: currentVoucher.type || 'journal_entry',
+        headerFields: [
+          { id: 'date', label: 'Date', type: 'date' },
+          { id: 'currency', label: 'Currency', type: 'text' },
+          { id: 'description', label: 'Description', type: 'text' },
+        ],
+        tableColumns: [
+          { id: 'accountId', fieldId: 'accountId', label: 'Account' },
+          { id: 'description', fieldId: 'description', label: 'Description' },
+          { id: 'debit', fieldId: 'debit', label: 'Debit' },
+          { id: 'credit', fieldId: 'credit', label: 'Credit' },
+        ],
+        isMultiLine: true,
+      } as any;
+    }
+    return null;
+  }, [fetchedDefinition, id, currentVoucher]);
+
+  const isReadOnly = React.useMemo(() => {
+    if (!currentVoucher?.status) return false;
+    const status = currentVoucher.status.toLowerCase();
+    
+    // In STRICT mode, many statuses are read-only
+    if (companySettings?.strictApprovalMode === true) {
+      return ['posted', 'approved', 'locked'].includes(status);
+    }
+    
+    // In FLEXIBLE mode (default), only locked is read-only
+    return status === 'locked';
+  }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
+
+  const customComponents = {
+    'account-selector': AccountSelectorCombobox,
+    'cost-center-selector': CostCenterSelector
+  };
+
   if (defLoading || dataLoading || !initialValues || !companySettings) {
     return <div className="p-8 text-center text-gray-500">{t('voucherEditor.loading')}</div>;
   }
 
-  if (defError || !definition) {
+  // Only block on definition error for NEW vouchers — existing vouchers can use fallback
+  if (!definition && id === 'new') {
     return <div className="p-8 text-center text-red-500">{t('voucherEditor.loadError', { error: defError || t('voucherEditor.definitionMissing') })}</div>;
+  }
+
+  if (!definition) {
+    return <div className="p-8 text-center text-gray-500">{t('voucherEditor.loading')}</div>;
   }
 
   const renderStatusBadge = () => {
@@ -223,32 +279,15 @@ const VoucherEditorPage: React.FC = () => {
     );
   };
 
-  const isReadOnly = React.useMemo(() => {
-    if (!currentVoucher?.status) return false;
-    const status = currentVoucher.status.toLowerCase();
-    
-    // In STRICT mode, many statuses are read-only
-    if (companySettings?.strictApprovalMode === true) {
-      return ['posted', 'approved', 'locked'].includes(status);
-    }
-    
-    // In FLEXIBLE mode (default), only locked is read-only
-    return status === 'locked';
-  }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
 
-  const customComponents = {
-    'account-selector': AccountSelectorCombobox,
-    'cost-center-selector': CostCenterSelector
-  };
-
-  const loadAttachments = async (voucherId: string) => {
+  async function loadAttachments(voucherId: string) {
     try {
       const files = await attachmentsApi.list(voucherId);
       setAttachments(files);
     } catch (err: any) {
       // silent
     }
-  };
+  }
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!id || id === 'new') return;

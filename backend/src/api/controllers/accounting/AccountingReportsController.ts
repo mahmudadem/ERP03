@@ -138,7 +138,12 @@ export class AccountingReportsController {
         return res.status(400).json({ error: 'accountId is required' });
       }
 
-      const useCase = new GetAccountStatementUseCase(diContainer.ledgerRepository, permissionChecker);
+      const useCase = new GetAccountStatementUseCase(
+        diContainer.ledgerRepository,
+        permissionChecker,
+        diContainer.accountRepository,
+        diContainer.companyRepository
+      );
       const report = await useCase.execute(
         companyId,
         userId,
@@ -236,9 +241,16 @@ export class AccountingReportsController {
       const userId = (req as any).user?.uid;
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
-      const { type = 'AR', asOfDate, accountId } = req.query;
+      const { type = 'AR', asOfDate, accountId, includeZeroBalance } = req.query;
       const useCase = new AgingReportUseCase(diContainer.ledgerRepository, diContainer.accountRepository, permissionChecker);
-      const data = await useCase.execute(companyId, userId, (type as any) || 'AR', (asOfDate as string) || new Date().toISOString().slice(0, 10), accountId as string | undefined);
+      const data = await useCase.execute(
+        companyId,
+        userId,
+        (type as any) || 'AR',
+        (asOfDate as string) || new Date().toISOString().slice(0, 10),
+        accountId as string | undefined,
+        includeZeroBalance === 'true'
+      );
       (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);

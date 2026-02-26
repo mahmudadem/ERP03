@@ -18,6 +18,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
+      { label: 'Budgets', path: '/accounting/budgets', permission: 'accounting.settings.read', icon: 'PiggyBank' },
       { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
       { label: 'Forms Designer', path: '/accounting/forms-designer', permission: 'accounting.designer.view', icon: 'Layout' },
@@ -28,12 +29,14 @@ export const moduleMenuMap: Record<
           { label: 'Trial Balance', path: '/accounting/reports/trial-balance', permission: 'accounting.reports.trialBalance.view', icon: 'BarChart3' },
           { label: 'Account Statement', path: '/accounting/reports/account-statement', permission: 'accounting.reports.generalLedger.view', icon: 'ScrollText' },
           { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet', permission: 'accounting.reports.balanceSheet.view', icon: 'BookMinus' },
-          { label: 'General Ledger', path: '/accounting/reports/general-ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
+          { label: 'General Ledger', path: '/accounting/reports/ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
           { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
           { label: 'Cash Flow', path: '/accounting/reports/cash-flow', permission: 'accounting.reports.cashFlow.view', icon: 'Waves' },
           { label: 'Journal', path: '/accounting/reports/journal', permission: 'accounting.reports.generalLedger.view', icon: 'BookMarked' },
+          { label: 'Aging', path: '/accounting/reports/aging', permission: 'accounting.reports.generalLedger.view', icon: 'Clock3' },
           { label: 'Bank Reconciliation', path: '/accounting/reports/bank-reconciliation', permission: 'accounting.reports.generalLedger.view', icon: 'Landmark' },
           { label: 'Cost Center Summary', path: '/accounting/reports/cost-center-summary', permission: 'accounting.reports.generalLedger.view', icon: 'Target' },
+          { label: 'Budget vs Actual', path: '/accounting/reports/budget-vs-actual', permission: 'accounting.reports.trialBalance.view', icon: 'Scale' },
         ]
       },
       { label: 'Settings', path: '/accounting/settings', permission: 'accounting.settings.view', icon: 'Settings' }

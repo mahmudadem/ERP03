@@ -1,27 +1,35 @@
 import React, { Fragment, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
-import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
-import { useCompanySettings } from '../hooks/useCompanySettings';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
-import { Menu, Transition } from '@headlessui/react';
+import { 
+  Menu, 
+  Moon, 
+  Sun, 
+  LogOut, 
+  User, 
+  Building2,
+  Settings2
+} from 'lucide-react';
+import { Menu as HeadlessMenu, Transition } from '@headlessui/react';
 import { NotificationBell } from '../components/NotificationBell';
 import { useTranslation } from 'react-i18next';
+import { DraggableWidgetSpace } from '../components/topbar/DraggableWidgetSpace';
+import { useWidgetStore } from '../store/widgetStore';
 
 interface TopBarProps {
   onMenuClick?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
-  const { company } = useCompanyAccess();
-  const { settings, isLoading: settingsLoading } = useCompanySettings();
   const { uiMode, setUiMode, theme, toggleTheme } = useUserPreferences();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation('common');
   const isRtl = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const { widgets, toggleWidget } = useWidgetStore();
 
   const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U');
 
@@ -35,94 +43,76 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           onClick={onMenuClick}
           className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded lg:hidden"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Menu className="w-5 h-5" />
         </button>
-        
-        <div className="flex items-center gap-3">
-          {/* Company Logo in Header */}
-          <div className="h-9 w-9 rounded-lg border border-[var(--color-border)] bg-white flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-            {company?.logoUrl && company.logoUrl.trim() !== '' ? (
-              <img src={company.logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
-            ) : (
-              <div className="h-full w-full bg-primary-600 text-white flex items-center justify-center font-bold text-lg">
-                {company?.name?.charAt(0) || '?'}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col">
-            <span className="font-bold text-[var(--color-text-primary)] leading-tight">{company?.name || 'No Company'}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] md:text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-tight">
-                {company?.baseCurrency || 'Currency: None'} • {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'FY: Unset'}
-              </span>
-              {!settingsLoading && settings && (
-                <span className={clsx(
-                  "px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider border shadow-sm transition-all",
-                  settings.strictApprovalMode 
-                    ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800" 
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
-                )}>
-                  {settings.strictApprovalMode ? '🔒 Strict' : '⚡ Flexible'}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
+
+      <DraggableWidgetSpace />
 
       <div className="flex items-center gap-2">
         <div className="hidden md:flex items-center gap-3 px-4">
-           {/* UI Mode Toggle */}
-           <div className="flex bg-[var(--color-bg-tertiary)] p-1 rounded-lg">
-             <button
-               onClick={() => setUiMode('windows')}
-               className={clsx(
-                 "px-3 py-1 text-xs font-medium rounded-md transition-all",
-                 uiMode === 'windows' 
-                  ? "bg-[var(--color-bg-primary)] text-primary-600 shadow-sm" 
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-               )}
-             >
-               🖥️ Windows
-             </button>
-             <button
-               onClick={() => setUiMode('classic')}
-               className={clsx(
-                 "px-3 py-1 text-xs font-medium rounded-md transition-all",
-                 uiMode === 'classic' 
-                  ? "bg-[var(--color-bg-primary)] text-primary-600 shadow-sm" 
-                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-               )}
-             >
-               🌐 Web
-             </button>
-           </div>
 
-           {/* Theme Toggle (Simplified) */}
+           {/* Theme Toggle */}
            <Button 
             variant="ghost" 
             size="sm" 
             onClick={toggleTheme} 
-            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] p-2 rounded-lg"
            >
-             {theme === 'light' ? '🌙' : '☀️'}
+             {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
            </Button>
+
+           {/* Widget Manager */}
+           <HeadlessMenu as="div" className="relative">
+             <HeadlessMenu.Button className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors">
+               <Settings2 className="w-4 h-4" />
+             </HeadlessMenu.Button>
+             <Transition
+               as={Fragment}
+               enter="transition ease-out duration-100"
+               enterFrom="transform opacity-0 scale-95"
+               enterTo="transform opacity-100 scale-100"
+               leave="transition ease-in duration-75"
+               leaveFrom="transform opacity-100 scale-100"
+               leaveTo="transform opacity-0 scale-95"
+             >
+               <HeadlessMenu.Items className="absolute right-0 z-50 mt-2 w-48 rounded-xl bg-[var(--color-bg-primary)] shadow-lg shadow-slate-900/10 border border-[var(--color-border)] focus:outline-none p-2 pointer-events-auto">
+                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 mt-1">Workspace Widgets</div>
+                 {widgets.map(w => (
+                   <HeadlessMenu.Item key={w.id}>
+                     {({ active }) => (
+                       <button
+                         onClick={(e) => {
+                           e.preventDefault();
+                           toggleWidget(w.id);
+                         }}
+                         className={clsx(
+                           "flex items-center justify-between w-full px-2 py-2 text-xs rounded-lg transition-colors font-bold tracking-tight uppercase",
+                           active ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
+                         )}
+                       >
+                         <span>{w.type}</span>
+                         <div className={clsx("w-2.5 h-2.5 rounded-full border shadow-inner", w.visible ? "bg-emerald-500 border-emerald-600" : "bg-slate-100 border-slate-300")} />
+                       </button>
+                     )}
+                   </HeadlessMenu.Item>
+                 ))}
+               </HeadlessMenu.Items>
+             </Transition>
+           </HeadlessMenu>
 
            {/* Notification Bell */}
            <NotificationBell />
         </div>
 
-        <Menu as="div" className="relative ml-3">
+        <HeadlessMenu as="div" className="relative ml-2">
           <div>
-            <Menu.Button className="flex max-w-xs items-center rounded-full bg-[var(--color-bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+            <HeadlessMenu.Button className="flex items-center rounded-full bg-[var(--color-bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:ring-2 hover:ring-indigo-100 transition-all p-0.5 border border-transparent hover:border-indigo-100">
               <span className="sr-only">Open user menu</span>
-              <div className="h-8 w-8 bg-primary-600 rounded-full text-white flex items-center justify-center font-bold text-sm hover:bg-primary-700 transition-colors">
+              <div className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm ring-1 ring-white">
                 {userInitial}
               </div>
-            </Menu.Button>
+            </HeadlessMenu.Button>
           </div>
           <Transition
             as={Fragment}
@@ -133,64 +123,69 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <HeadlessMenu.Items
               className={clsx(
-                "absolute z-10 mt-2 w-48 rounded-md bg-[var(--color-bg-primary)] py-1 shadow-lg border border-[var(--color-border)] focus:outline-none",
+                "absolute z-10 mt-3 w-56 rounded-xl bg-[var(--color-bg-primary)] shadow-lg shadow-slate-900/10 ring-1 ring-black/5 focus:outline-none overflow-hidden",
                 isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right"
               )}
             >
-              <div className="px-4 py-2 border-b border-[var(--color-border)]">
-                <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{user?.displayName || 'User'}</p>
-                <p className="text-xs text-[var(--color-text-secondary)] truncate">{user?.email}</p>
+              <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+                <p className="text-sm font-bold text-[var(--color-text-primary)] truncate">{user?.displayName || 'User'}</p>
+                <p className="text-xs text-[var(--color-text-secondary)] font-medium truncate mt-0.5">{user?.email}</p>
               </div>
               
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => navigate('/profile')}
-                    className={clsx(
-                      "block w-full px-4 py-2 text-left text-sm transition-colors",
-                      active ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
-                    )}
-                  >
-                    Your Profile
-                  </button>
-                )}
-              </Menu.Item>
+              <div className="p-1">
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className={clsx(
+                        "flex items-center gap-2.5 w-full px-3 py-2 text-left text-sm font-medium rounded-lg transition-colors mt-1",
+                        active ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      )}
+                    >
+                      <User className="w-4 h-4" />
+                      Your Profile
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
 
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => {
-                        setUiMode('classic');
-                        navigate('/company-selector');
-                    }}
-                    className={clsx(
-                      "block w-full px-4 py-2 text-left text-sm transition-colors",
-                      active ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"
-                    )}
-                  >
-                    Switch Company
-                  </button>
-                )}
-              </Menu.Item>
-              
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={logout}
-                    className={clsx(
-                      "block w-full px-4 py-2 text-left text-sm transition-colors",
-                      active ? "bg-[var(--color-bg-tertiary)] text-danger-600" : "text-danger-500"
-                    )}
-                  >
-                    Sign out
-                  </button>
-                )}
-              </Menu.Item>
-            </Menu.Items>
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => {
+                          setUiMode('classic');
+                          navigate('/company-selector');
+                      }}
+                      className={clsx(
+                        "flex items-center gap-2.5 w-full px-3 py-2 text-left text-sm font-medium rounded-lg transition-colors mb-1 border-b border-[var(--color-border)] pb-3 rounded-b-none",
+                        active ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      )}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      Switch Company
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
+                
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={logout}
+                      className={clsx(
+                        "flex items-center gap-2.5 w-full px-3 py-2 text-left text-sm font-medium rounded-lg transition-colors mt-1",
+                        active ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "text-red-600 dark:text-red-500 hover:bg-red-50 hover:text-red-700"
+                      )}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign out
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
+              </div>
+            </HeadlessMenu.Items>
           </Transition>
-        </Menu>
+        </HeadlessMenu>
       </div>
     </header>
   );

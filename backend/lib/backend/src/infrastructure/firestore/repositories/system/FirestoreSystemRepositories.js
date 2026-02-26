@@ -1,33 +1,9 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreAuditLogRepository = exports.FirestoreNotificationRepository = exports.FirestorePermissionRepository = exports.FirestoreRoleRepository = exports.FirestoreModuleRepository = void 0;
 const BaseFirestoreRepository_1 = require("../BaseFirestoreRepository");
 const SystemMappers_1 = require("../../mappers/SystemMappers");
-const admin = __importStar(require("firebase-admin"));
-void admin;
+const firestore_1 = require("firebase-admin/firestore");
 class FirestoreModuleRepository extends BaseFirestoreRepository_1.BaseFirestoreRepository {
     constructor() {
         super(...arguments);
@@ -143,8 +119,30 @@ class FirestoreNotificationRepository extends BaseFirestoreRepository_1.BaseFire
     async markAsReadByUser(notificationId, userId) {
         const docRef = this.db.collection(this.collectionName).doc(notificationId);
         await docRef.update({
-            readBy: admin.firestore.FieldValue.arrayUnion(userId)
+            readBy: firestore_1.FieldValue.arrayUnion(userId)
         });
+    }
+    /**
+     * Mark all notifications as read for a specific user
+     */
+    async markAllAsReadByUser(companyId, userId) {
+        const unread = await this.getUnreadForUser(companyId, userId);
+        if (unread.length === 0)
+            return;
+        // Process in batches of 500 (Firestore limit is 500 per batch)
+        const batches = [];
+        for (let i = 0; i < unread.length; i += 500) {
+            const batch = this.db.batch();
+            const chunk = unread.slice(i, i + 500);
+            for (const notification of chunk) {
+                const docRef = this.db.collection(this.collectionName).doc(notification.id);
+                batch.update(docRef, {
+                    readBy: firestore_1.FieldValue.arrayUnion(userId)
+                });
+            }
+            batches.push(batch.commit());
+        }
+        await Promise.all(batches);
     }
     /**
      * Legacy method - backward compat
@@ -163,7 +161,7 @@ class FirestoreNotificationRepository extends BaseFirestoreRepository_1.BaseFire
      * Delete expired notifications (cleanup job)
      */
     async deleteExpired(companyId) {
-        const now = admin.firestore.Timestamp.now();
+        const now = firestore_1.Timestamp.now();
         const snapshot = await this.db.collection(this.collectionName)
             .where('companyId', '==', companyId)
             .where('expiresAt', '<', now)

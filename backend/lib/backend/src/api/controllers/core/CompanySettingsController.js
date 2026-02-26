@@ -27,7 +27,7 @@ class CompanySettingsController {
             const companyId = req.companyId || req.query.companyId || ((_a = req.body) === null || _a === void 0 ? void 0 : _a.companyId);
             if (!companyId)
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
-            const { strictApprovalMode, uiMode, timezone, dateFormat, language, baseCurrency, fiscalYearStart, fiscalYearEnd } = req.body;
+            const { strictApprovalMode, uiMode, timezone, dateFormat, language, baseCurrency, fiscalYearStart, fiscalYearEnd, disabledNotificationCategories } = req.body;
             await bindRepositories_1.diContainer.companySettingsRepository.updateSettings(companyId, {
                 strictApprovalMode,
                 uiMode,
@@ -36,7 +36,8 @@ class CompanySettingsController {
                 language,
                 baseCurrency,
                 fiscalYearStart,
-                fiscalYearEnd
+                fiscalYearEnd,
+                disabledNotificationCategories
             });
             res.status(200).json({
                 success: true,

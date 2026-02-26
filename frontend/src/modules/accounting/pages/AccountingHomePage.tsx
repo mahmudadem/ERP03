@@ -96,7 +96,7 @@ const AccountingHomePage: React.FC = () => {
            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('home.financialReports')}</h2>
            <p className="text-sm text-[var(--color-text-muted)]">{t('home.financialReportsDesc')}</p>
          </div>
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
            <Card
              className="p-5 border border-gray-200 hover:border-emerald-200 hover:shadow-lg transition-all cursor-pointer"
              onClick={() => navigate('/accounting/reports/balance-sheet')}
@@ -148,6 +148,24 @@ const AccountingHomePage: React.FC = () => {
              </div>
             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
                {t('home.profitLossDesc')}
+             </p>
+           </Card>
+
+           <Card
+             className="p-5 border border-gray-200 hover:border-red-200 hover:shadow-lg transition-all cursor-pointer"
+             onClick={() => navigate('/accounting/reports/aging')}
+           >
+             <div className="flex items-center gap-3 mb-3">
+               <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                 <FileText size={20} />
+               </div>
+               <div>
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-red-700">{t('home.agingTag', { defaultValue: 'ANALYSIS' })}</p>
+                 <p className="text-lg font-bold text-[var(--color-text-primary)]">{t('home.agingReport', { defaultValue: 'Aging Report' })}</p>
+               </div>
+             </div>
+            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+               {t('home.agingReportDesc', { defaultValue: 'Track outstanding receivables and payables by age buckets' })}
              </p>
            </Card>
          </div>

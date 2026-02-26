@@ -16,6 +16,8 @@ export class FirestoreUserPreferencesRepository
       data.theme || 'light',
       data.sidebarMode || 'classic',
       data.sidebarPinned !== undefined ? data.sidebarPinned : true,
+      data.disabledNotificationCategories || [],
+      data.notificationCategoryOverrides || {},
       data.createdAt ? data.createdAt.toDate?.() || data.createdAt : new Date(),
       data.updatedAt ? data.updatedAt.toDate?.() || data.updatedAt : new Date()
     );
@@ -29,6 +31,8 @@ export class FirestoreUserPreferencesRepository
       theme: entity.theme,
       sidebarMode: entity.sidebarMode,
       sidebarPinned: entity.sidebarPinned,
+      disabledNotificationCategories: entity.disabledNotificationCategories,
+      notificationCategoryOverrides: entity.notificationCategoryOverrides,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt
     };
@@ -43,12 +47,35 @@ export class FirestoreUserPreferencesRepository
   async upsert(userId: string, prefs: Partial<UserPreferences>): Promise<UserPreferences> {
     try {
       const now = new Date();
-      const payload = {
-        ...prefs,
+      const payload: Record<string, any> = {
         updatedAt: now,
-        createdAt: prefs && (prefs as any).createdAt ? (prefs as any).createdAt : now,
         userId,
       };
+
+      // Firestore rejects undefined values unless ignoreUndefinedProperties is enabled.
+      // Keep only explicitly provided preference keys.
+      const allowedKeys: Array<keyof UserPreferences> = [
+        'language',
+        'uiMode',
+        'theme',
+        'sidebarMode',
+        'sidebarPinned',
+        'disabledNotificationCategories',
+        'notificationCategoryOverrides',
+        'createdAt',
+      ];
+
+      for (const key of allowedKeys) {
+        const value = (prefs as any)?.[key];
+        if (value !== undefined) {
+          payload[key] = value;
+        }
+      }
+
+      if (!payload.createdAt) {
+        payload.createdAt = now;
+      }
+
       await this.db.collection(this.collectionName).doc(userId).set(payload, { merge: true });
       const saved = await this.getByUserId(userId);
       if (!saved) throw new InfrastructureError('Failed to load saved preferences');
@@ -58,4 +85,3 @@ export class FirestoreUserPreferencesRepository
     }
   }
 }
-

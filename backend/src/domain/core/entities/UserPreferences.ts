@@ -10,6 +10,8 @@ export class UserPreferences {
     public theme: Theme = 'light',
     public sidebarMode: SidebarMode = 'classic',
     public sidebarPinned: boolean = true,
+    public disabledNotificationCategories: string[] = [],
+    public notificationCategoryOverrides: Record<string, boolean> = {},
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
   ) {}

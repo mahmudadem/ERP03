@@ -179,6 +179,8 @@ export class SubmitVoucherUseCase {
             voucher.id,
             'APPROVAL'
           );
+        } else {
+          console.warn('[SubmitVoucherUseCase] FA required but no approver users were resolved');
         }
       } catch (e) {
         console.error('[SubmitVoucherUseCase] Failed to notify approvers:', e);

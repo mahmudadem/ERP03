@@ -604,9 +604,15 @@ export const accountingApi = {
     return client.get('/tenant/accounting/reports/budget-vs-actual', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
 
-  getAgingReport: (type: 'AR' | 'AP', asOfDate: string, accountId?: string): Promise<AgingReportData> => {
+  getAgingReport: (
+    type: 'AR' | 'AP',
+    asOfDate: string,
+    accountId?: string,
+    includeZeroBalance?: boolean
+  ): Promise<AgingReportData> => {
     const params: any = { type, asOfDate };
     if (accountId) params.accountId = accountId;
+    if (includeZeroBalance) params.includeZeroBalance = 'true';
     return client.get('/tenant/accounting/reports/aging', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
 

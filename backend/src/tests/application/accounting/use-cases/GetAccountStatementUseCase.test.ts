@@ -9,7 +9,8 @@ const baseMockRepo = (): jest.Mocked<ILedgerRepository> => ({
   getGeneralLedger: jest.fn(),
   getAccountStatement: jest.fn(),
   getUnreconciledEntries: jest.fn(),
-  markReconciled: jest.fn()
+  markReconciled: jest.fn(),
+  getForeignBalances: jest.fn()
 });
 
 describe('GetAccountStatementUseCase', () => {
@@ -132,5 +133,110 @@ describe('GetAccountStatementUseCase', () => {
     expect(result.entries.length).toBe(0);
     expect(result.closingBalance).toBe(0);
     expect(permissionChecker.assertOrThrow).toHaveBeenCalled();
+  });
+
+  it('aggregates descendant posting accounts when selected account is a header/group', async () => {
+    const ledgerRepo = baseMockRepo();
+    ledgerRepo.getAccountStatement.mockImplementation(async (_companyId, accountId) => {
+      if (accountId === 'ar-1') {
+        return {
+          accountId: 'ar-1',
+          accountCode: 'AR1',
+          accountName: 'AR Child 1',
+          accountCurrency: 'USD',
+          baseCurrency: 'USD',
+          fromDate: '2026-01-01',
+          toDate: '2026-01-31',
+          openingBalance: 100,
+          openingBalanceBase: 100,
+          entries: [
+            { id: 'e1', date: '2026-01-02', voucherId: 'v1', voucherNo: 'V-001', description: 'Debit', debit: 50, credit: 0, balance: 150, baseDebit: 50, baseCredit: 0, baseBalance: 150 },
+            { id: 'e2', date: '2026-01-05', voucherId: 'v2', voucherNo: 'V-002', description: 'Credit', debit: 0, credit: 20, balance: 130, baseDebit: 0, baseCredit: 20, baseBalance: 130 }
+          ],
+          closingBalance: 130,
+          closingBalanceBase: 130,
+          totalDebit: 50,
+          totalCredit: 20,
+          totalBaseDebit: 50,
+          totalBaseCredit: 20
+        } as any;
+      }
+
+      return {
+        accountId: 'ar-2',
+        accountCode: 'AR2',
+        accountName: 'AR Child 2',
+        accountCurrency: 'USD',
+        baseCurrency: 'USD',
+        fromDate: '2026-01-01',
+        toDate: '2026-01-31',
+        openingBalance: -40,
+        openingBalanceBase: -40,
+        entries: [
+          { id: 'e3', date: '2026-01-03', voucherId: 'v3', voucherNo: 'V-003', description: 'Credit', debit: 0, credit: 30, balance: -70, baseDebit: 0, baseCredit: 30, baseBalance: -70 },
+          { id: 'e4', date: '2026-01-06', voucherId: 'v4', voucherNo: 'V-004', description: 'Debit', debit: 10, credit: 0, balance: -60, baseDebit: 10, baseCredit: 0, baseBalance: -60 }
+        ],
+        closingBalance: -60,
+        closingBalanceBase: -60,
+        totalDebit: 10,
+        totalCredit: 30,
+        totalBaseDebit: 10,
+        totalBaseCredit: 30
+      } as any;
+    });
+
+    const accountRepo = {
+      list: jest.fn().mockResolvedValue([
+        { id: 'grp-ar', userCode: '1100', code: '1100', name: 'Accounts Receivable', accountRole: 'HEADER', parentId: null, hasChildren: true },
+        { id: 'ar-1', userCode: '1101', code: '1101', name: 'AR Child 1', accountRole: 'POSTING', parentId: 'grp-ar', hasChildren: false },
+        { id: 'ar-2', userCode: '1102', code: '1102', name: 'AR Child 2', accountRole: 'POSTING', parentId: 'grp-ar', hasChildren: false },
+      ])
+    } as any;
+
+    const companyRepo = {
+      findById: jest.fn().mockResolvedValue({ baseCurrency: 'USD' })
+    } as any;
+
+    const useCase = new GetAccountStatementUseCase(ledgerRepo, permissionChecker, accountRepo, companyRepo);
+    const result = await useCase.execute(
+      'c1',
+      'u1',
+      'grp-ar',
+      '2026-01-01',
+      '2026-01-31',
+      { includeUnposted: true }
+    );
+
+    expect(ledgerRepo.getAccountStatement).toHaveBeenCalledWith(
+      'c1',
+      'ar-1',
+      '2026-01-01',
+      '2026-01-31',
+      { includeUnposted: true }
+    );
+    expect(ledgerRepo.getAccountStatement).toHaveBeenCalledWith(
+      'c1',
+      'ar-2',
+      '2026-01-01',
+      '2026-01-31',
+      { includeUnposted: true }
+    );
+    expect(ledgerRepo.getAccountStatement).not.toHaveBeenCalledWith(
+      'c1',
+      'grp-ar',
+      '2026-01-01',
+      '2026-01-31',
+      { includeUnposted: true }
+    );
+
+    expect(result.accountId).toBe('grp-ar');
+    expect(result.accountCode).toBe('1100');
+    expect(result.accountName).toBe('Accounts Receivable');
+    expect(result.accountCurrency).toBe('USD');
+    expect(result.openingBalance).toBe(60);
+    expect(result.totalDebit).toBe(60);
+    expect(result.totalCredit).toBe(50);
+    expect(result.closingBalance).toBe(70);
+    expect(result.entries.map((e: any) => e.balance)).toEqual([110, 80, 60, 70]);
   });
 });

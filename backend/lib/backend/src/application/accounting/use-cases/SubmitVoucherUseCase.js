@@ -139,6 +139,9 @@ class SubmitVoucherUseCase {
                 if (approverIds.length > 0) {
                     await this.notificationService.notifyVoucherAction(companyId, approverIds, voucherNo, voucher.id, 'APPROVAL');
                 }
+                else {
+                    console.warn('[SubmitVoucherUseCase] FA required but no approver users were resolved');
+                }
             }
             catch (e) {
                 console.error('[SubmitVoucherUseCase] Failed to notify approvers:', e);

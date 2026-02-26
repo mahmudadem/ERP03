@@ -118,36 +118,66 @@ const AccountStatementPage: React.FC = () => {
     window.print();
   };
 
+  const resolveVoucherForm = (voucherLike: any) => {
+    const matchByFormId = (formId?: string | null) =>
+      voucherTypes.find(t => formId && (t.id === formId || (t as any)._typeId === formId));
+
+    let formDefinition = matchByFormId(voucherLike?.formId);
+
+    if (!formDefinition) {
+      const rawType = (voucherLike?.type || '').toLowerCase();
+      const originType = (voucherLike?.metadata?.originType || '').toLowerCase();
+      const candidateTypes = [rawType, originType].filter(Boolean);
+
+      const typeKeywords: Record<string, string[]> = {
+        journal_entry: ['journal', 'journal_entry', 'jv'],
+        jv: ['journal', 'journal_entry', 'jv'],
+        payment: ['payment', 'pv'],
+        payment_voucher: ['payment', 'pv'],
+        receipt: ['receipt', 'rv'],
+        receipt_voucher: ['receipt', 'rv'],
+        opening_balance: ['opening', 'balance'],
+        fx_revaluation: ['fx_revaluation', 'revaluation', 'journal'],
+        reversal: ['reversal', 'reverse', 'rv']
+      };
+
+      const keywords = Array.from(
+        new Set(
+          candidateTypes.reduce<string[]>((acc, type) => {
+            acc.push(...(typeKeywords[type] || []));
+            return acc;
+          }, [])
+        )
+      );
+
+      formDefinition = voucherTypes.find(t => {
+        const formIdLower = (t.id || '').toLowerCase();
+        const formNameLower = (t.name || '').toLowerCase();
+        const formCodeLower = (t.code || '').toLowerCase();
+
+        return keywords.some(kw =>
+          formIdLower.includes(kw) ||
+          formNameLower.includes(kw) ||
+          formCodeLower.includes(kw)
+        );
+      });
+    }
+
+    return formDefinition;
+  };
+
   const handleOpenVoucher = async (voucherId: string) => {
     try {
       const fullVoucher = await accountingApi.getVoucher(voucherId);
-      
-      // Find form definition: 1. Try by ID/_typeId, 2. Fallback to keywords
-      let formDefinition = voucherTypes.find(t => 
-        fullVoucher.formId && (t.id === fullVoucher.formId || (t as any)._typeId === fullVoucher.formId)
-      );
+      let formDefinition = resolveVoucherForm(fullVoucher);
 
-      if (!formDefinition) {
-        formDefinition = voucherTypes.find(t => {
-          const typeKeywords: Record<string, string[]> = {
-            'journal_entry': ['journal', 'journal_entry'],
-            'payment': ['payment'],
-            'receipt': ['receipt'],
-            'opening_balance': ['opening', 'balance'],
-            'fx_revaluation': ['fx_revaluation', 'revaluation', 'journal']
-          };
-          
-          const keywords = typeKeywords[fullVoucher.type] || [];
-          const formIdLower = (t.id || '').toLowerCase();
-          const formNameLower = (t.name || '').toLowerCase();
-          const formCodeLower = (t.code || '').toLowerCase();
-          
-          return keywords.some(kw => 
-            formIdLower.includes(kw) || 
-            formNameLower.includes(kw) ||
-            formCodeLower.includes(kw)
-          );
-        });
+      if (!formDefinition && fullVoucher?.reversalOfVoucherId) {
+        try {
+          const parentVoucher = await accountingApi.getVoucher(fullVoucher.reversalOfVoucherId);
+          formDefinition = resolveVoucherForm(parentVoucher);
+        } catch (lookupError) {
+          console.warn('Failed to resolve parent voucher form for reversal:', lookupError);
+        }
       }
 
       if (formDefinition) {
@@ -258,6 +288,7 @@ const AccountStatementPage: React.FC = () => {
             <label className="block text-xs font-semibold text-[var(--color-text-muted)] mb-1">{t('accountStatement.account')}</label>
             <AccountSelector
               value={selectedAccountId}
+              scope="all"
               onChange={(account) => {
                 setSelectedAccountId(account ? account.id : '');
               }}

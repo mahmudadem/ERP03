@@ -85,6 +85,19 @@ class AccountController {
             await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.manage');
             const useCase = new CreateAccountUseCase_1.CreateAccountUseCase(bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
             const account = await useCase.execute(companyId, Object.assign(Object.assign({}, req.body), { createdBy: userId }));
+            // Broaden Triggers: Send a notification when an account is created
+            await bindRepositories_1.diContainer.notificationService.notify({
+                companyId,
+                recipientUserIds: [userId],
+                type: 'INFO',
+                category: 'SYSTEM',
+                title: 'Account Created',
+                message: `Account ${account.userCode || account.systemCode} (${account.name}) was successfully created.`,
+                sourceModule: 'ACCOUNTING',
+                sourceEntityType: 'Account',
+                sourceEntityId: account.id,
+                actionUrl: `/accounting/accounts`
+            }).catch(err => console.error('Failed to dispatch account creation notification:', err));
             return res.json({ success: true, data: account });
         }
         catch (err) {

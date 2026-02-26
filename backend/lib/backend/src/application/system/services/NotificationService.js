@@ -10,22 +10,69 @@ const Notification_1 = require("../../../domain/system/entities/Notification");
  * Uses repository for persistence and realtime dispatcher for push delivery.
  */
 class NotificationService {
-    constructor(notificationRepository, realtimeDispatcher) {
+    constructor(notificationRepository, realtimeDispatcher, userPreferencesRepository, companySettingsRepository) {
         this.notificationRepository = notificationRepository;
         this.realtimeDispatcher = realtimeDispatcher;
+        this.userPreferencesRepository = userPreferencesRepository;
+        this.companySettingsRepository = companySettingsRepository;
     }
     /**
      * Create and dispatch a notification to multiple users
      */
     async notify(options) {
-        const notification = new Notification_1.Notification((0, uuid_1.v4)(), options.companyId, options.type, options.category, options.title, options.message, new Date(), options.recipientUserIds, [], // readBy starts empty
+        var _a, _b;
+        // Filter recipients based on company defaults + user overrides.
+        let finalRecipients = options.recipientUserIds;
+        if (this.userPreferencesRepository || this.companySettingsRepository) {
+            let companyDisabledCategories = new Set();
+            if (this.companySettingsRepository) {
+                try {
+                    const companySettings = await this.companySettingsRepository.getSettings(options.companyId);
+                    companyDisabledCategories = new Set((companySettings === null || companySettings === void 0 ? void 0 : companySettings.disabledNotificationCategories) || []);
+                }
+                catch (error) {
+                    // Ignore and fallback to fully enabled company defaults
+                }
+            }
+            const filtered = [];
+            for (const userId of options.recipientUserIds) {
+                // Base state from company-level default
+                let isEnabled = !companyDisabledCategories.has(options.category);
+                try {
+                    const prefs = this.userPreferencesRepository
+                        ? await this.userPreferencesRepository.getByUserId(userId)
+                        : null;
+                    const explicitOverride = (_a = prefs === null || prefs === void 0 ? void 0 : prefs.notificationCategoryOverrides) === null || _a === void 0 ? void 0 : _a[options.category];
+                    if (typeof explicitOverride === 'boolean') {
+                        // User override has highest priority (true = force enable, false = force disable)
+                        isEnabled = explicitOverride;
+                    }
+                    else if ((_b = prefs === null || prefs === void 0 ? void 0 : prefs.disabledNotificationCategories) === null || _b === void 0 ? void 0 : _b.includes(options.category)) {
+                        // Backward compatibility: legacy per-user opt-out list
+                        isEnabled = false;
+                    }
+                }
+                catch (error) {
+                    // ignore error, keep current state
+                }
+                if (!isEnabled) {
+                    continue;
+                }
+                filtered.push(userId);
+            }
+            finalRecipients = filtered;
+        }
+        if (finalRecipients.length === 0) {
+            return null;
+        }
+        const notification = new Notification_1.Notification((0, uuid_1.v4)(), options.companyId, options.type, options.category, options.title, options.message, new Date(), finalRecipients, [], // readBy starts empty
         options.actionUrl, options.sourceModule, options.sourceEntityType, options.sourceEntityId, options.expiresInDays
             ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000)
             : undefined);
         // 1. Persist to Firestore
         await this.notificationRepository.create(notification);
         // 2. Push via Realtime DB for instant delivery
-        await this.realtimeDispatcher.pushToMany(options.companyId, options.recipientUserIds, notification);
+        await this.realtimeDispatcher.pushToMany(options.companyId, finalRecipients, notification);
         return notification;
     }
     /**
@@ -60,7 +107,7 @@ class NotificationService {
             category: action === 'CUSTODY' ? 'CUSTODY' : action === 'INFO' ? 'SYSTEM' : 'APPROVAL',
             title: titles[action],
             message: messages[action],
-            actionUrl: `/accounting/vouchers/${voucherId}`,
+            actionUrl: `/accounting/vouchers/${voucherId}/view`,
             sourceModule: 'accounting',
             sourceEntityType: 'voucher',
             sourceEntityId: voucherId,
@@ -84,6 +131,12 @@ class NotificationService {
      */
     async markAsRead(notificationId, userId) {
         return this.notificationRepository.markAsReadByUser(notificationId, userId);
+    }
+    /**
+     * Mark all notifications as read by user
+     */
+    async markAllAsRead(companyId, userId) {
+        return this.notificationRepository.markAllAsReadByUser(companyId, userId);
     }
     /**
      * Get unread count for user

@@ -81,14 +81,45 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     endDate: string,
     limit: number = 100
   ): Promise<VoucherEntity[]> {
-    const snapshot = await this.getCollection(companyId)
+    // MODULAR TRANSITION: pull from both modular and legacy paths, then merge.
+    const modularQuery = this.getCollection(companyId)
       .where('date', '>=', startDate)
       .where('date', '<=', endDate)
       .orderBy('date', 'desc')
       .limit(limit)
       .get();
-    
-    return snapshot.docs.map(doc => VoucherEntity.fromJSON(doc.data()));
+
+    const legacyQuery = this.db
+      .collection('companies')
+      .doc(companyId)
+      .collection('vouchers')
+      .where('date', '>=', startDate)
+      .where('date', '<=', endDate)
+      .orderBy('date', 'desc')
+      .limit(limit)
+      .get();
+
+    const [modularSnap, legacySnap] = await Promise.all([modularQuery, legacyQuery]);
+
+    const voucherMap = new Map<string, VoucherEntity>();
+    legacySnap.docs.forEach((doc) => {
+      const raw = doc.data();
+      const voucher = VoucherEntity.fromJSON(raw?.id ? raw : { ...raw, id: doc.id });
+      voucherMap.set(voucher.id, voucher);
+    });
+    modularSnap.docs.forEach((doc) => {
+      const raw = doc.data();
+      const voucher = VoucherEntity.fromJSON(raw?.id ? raw : { ...raw, id: doc.id });
+      voucherMap.set(voucher.id, voucher);
+    });
+
+    return Array.from(voucherMap.values())
+      .sort((a, b) => {
+        const dateDiff = (b.date || '').localeCompare(a.date || '');
+        if (dateDiff !== 0) return dateDiff;
+        return b.id.localeCompare(a.id);
+      })
+      .slice(0, limit);
   }
 
   async findByCompany(

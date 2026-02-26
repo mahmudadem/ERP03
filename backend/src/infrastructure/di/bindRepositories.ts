@@ -259,7 +259,12 @@ export const diContainer = {
   // NOTIFICATION SERVICE
   get notificationService() {
     const { NotificationService } = require('../../application/system/services/NotificationService');
-    return new NotificationService(this.notificationRepository, this.realtimeDispatcher);
+    return new NotificationService(
+      this.notificationRepository,
+      this.realtimeDispatcher,
+      this.userPreferencesRepository,
+      this.companySettingsRepository
+    );
   }
 };
 

@@ -9,6 +9,8 @@ const mapDto = (prefs: any) => ({
   theme: prefs?.theme || 'light',
   sidebarMode: prefs?.sidebarMode || 'classic',
   sidebarPinned: prefs?.sidebarPinned ?? true,
+  disabledNotificationCategories: prefs?.disabledNotificationCategories || [],
+  notificationCategoryOverrides: prefs?.notificationCategoryOverrides || {},
   updatedAt: prefs?.updatedAt,
   createdAt: prefs?.createdAt,
 });
@@ -20,7 +22,7 @@ export class UserPreferencesController {
       if (!userId) throw ApiError.unauthorized('Missing user');
       const useCase = new GetUserPreferencesUseCase(diContainer.userPreferencesRepository);
       const prefs = await useCase.execute(userId);
-      res.status(200).json({ success: true, data: mapDto(prefs) });
+      res.status(200).json({ success: true, preferences: mapDto(prefs) });
     } catch (error) {
       next(error);
     }
@@ -30,13 +32,28 @@ export class UserPreferencesController {
     try {
       const userId = (req as any).user?.uid || (req as any).userId;
       if (!userId) throw ApiError.unauthorized('Missing user');
-      const { language, uiMode, theme, sidebarMode, sidebarPinned } = req.body || {};
+      const {
+        language,
+        uiMode,
+        theme,
+        sidebarMode,
+        sidebarPinned,
+        disabledNotificationCategories,
+        notificationCategoryOverrides
+      } = req.body || {};
       const useCase = new UpsertUserPreferencesUseCase(diContainer.userPreferencesRepository);
-      const prefs = await useCase.execute(userId, { language, uiMode, theme, sidebarMode, sidebarPinned });
-      res.status(200).json({ success: true, data: mapDto(prefs) });
+      const prefs = await useCase.execute(userId, {
+        language,
+        uiMode,
+        theme,
+        sidebarMode,
+        sidebarPinned,
+        disabledNotificationCategories,
+        notificationCategoryOverrides
+      });
+      res.status(200).json({ success: true, preferences: mapDto(prefs) });
     } catch (error) {
       next(error);
     }
   }
 }
-

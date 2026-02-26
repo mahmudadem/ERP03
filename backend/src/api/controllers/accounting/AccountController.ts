@@ -114,6 +114,20 @@ export class AccountController {
         createdBy: userId
       });
 
+      // Broaden Triggers: Send a notification when an account is created
+      await diContainer.notificationService.notify({
+        companyId,
+        recipientUserIds: [userId],
+        type: 'INFO',
+        category: 'SYSTEM',
+        title: 'Account Created',
+        message: `Account ${account.userCode || account.systemCode} (${account.name}) was successfully created.`,
+        sourceModule: 'ACCOUNTING',
+        sourceEntityType: 'Account',
+        sourceEntityId: account.id,
+        actionUrl: `/accounting/accounts`
+      }).catch(err => console.error('Failed to dispatch account creation notification:', err));
+
       return res.json({ success: true, data: account });
     } catch (err) {
       return next(err);

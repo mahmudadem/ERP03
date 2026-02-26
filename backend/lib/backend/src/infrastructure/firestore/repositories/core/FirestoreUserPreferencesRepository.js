@@ -11,7 +11,7 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
     }
     toDomain(data) {
         var _a, _b, _c, _d;
-        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', data.sidebarPinned !== undefined ? data.sidebarPinned : true, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.createdAt : new Date(), data.updatedAt ? ((_d = (_c = data.updatedAt).toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || data.updatedAt : new Date());
+        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', data.sidebarPinned !== undefined ? data.sidebarPinned : true, data.disabledNotificationCategories || [], data.notificationCategoryOverrides || {}, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.createdAt : new Date(), data.updatedAt ? ((_d = (_c = data.updatedAt).toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || data.updatedAt : new Date());
     }
     toPersistence(entity) {
         return {
@@ -21,6 +21,8 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
             theme: entity.theme,
             sidebarMode: entity.sidebarMode,
             sidebarPinned: entity.sidebarPinned,
+            disabledNotificationCategories: entity.disabledNotificationCategories,
+            notificationCategoryOverrides: entity.notificationCategoryOverrides,
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt
         };
@@ -34,7 +36,31 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
     async upsert(userId, prefs) {
         try {
             const now = new Date();
-            const payload = Object.assign(Object.assign({}, prefs), { updatedAt: now, createdAt: prefs && prefs.createdAt ? prefs.createdAt : now, userId });
+            const payload = {
+                updatedAt: now,
+                userId,
+            };
+            // Firestore rejects undefined values unless ignoreUndefinedProperties is enabled.
+            // Keep only explicitly provided preference keys.
+            const allowedKeys = [
+                'language',
+                'uiMode',
+                'theme',
+                'sidebarMode',
+                'sidebarPinned',
+                'disabledNotificationCategories',
+                'notificationCategoryOverrides',
+                'createdAt',
+            ];
+            for (const key of allowedKeys) {
+                const value = prefs === null || prefs === void 0 ? void 0 : prefs[key];
+                if (value !== undefined) {
+                    payload[key] = value;
+                }
+            }
+            if (!payload.createdAt) {
+                payload.createdAt = now;
+            }
             await this.db.collection(this.collectionName).doc(userId).set(payload, { merge: true });
             const saved = await this.getByUserId(userId);
             if (!saved)

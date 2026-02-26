@@ -289,6 +289,7 @@ const GeneralLedgerPage: React.FC = () => {
             <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">{t('generalLedger.account')}</label>
             <AccountSelector
               value={selectedAccountId}
+              scope="all"
               onChange={(account) => setSelectedAccountId(account ? account.id : '')}
               placeholder={t('generalLedger.allAccounts')}
             />

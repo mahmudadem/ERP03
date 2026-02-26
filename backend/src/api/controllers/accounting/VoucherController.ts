@@ -22,6 +22,48 @@ const permissionChecker = new PermissionChecker(
   )
 );
 
+const hasApprovalPermission = (role: any): boolean => {
+  const permissions = new Set<string>([
+    ...(role?.permissions || []),
+    ...(role?.explicitPermissions || []),
+    ...(role?.resolvedPermissions || []),
+  ]);
+
+  return (
+    permissions.has('*') ||
+    permissions.has('accounting') ||
+    permissions.has('accounting.*') ||
+    permissions.has('accounting.vouchers') ||
+    permissions.has('accounting.vouchers.*') ||
+    permissions.has('accounting.vouchers.edit') ||
+    permissions.has('accounting.vouchers.approve')
+  );
+};
+
+const getApproverUserIdsForCompany = async (companyId: string): Promise<string[]> => {
+  const members = await diContainer.rbacCompanyUserRepository.getByCompany(companyId);
+  if (!members || members.length === 0) return [];
+
+  const roleIds = Array.from(
+    new Set(members.map((m: any) => m.roleId).filter((id: string | undefined) => !!id))
+  );
+  const roles = await Promise.all(
+    roleIds.map((roleId) => diContainer.companyRoleRepository.getById(companyId, roleId))
+  );
+
+  const approverRoleIds = new Set(
+    roles.filter((role) => hasApprovalPermission(role)).map((role: any) => role.id)
+  );
+
+  return Array.from(
+    new Set(
+      members
+        .filter((m: any) => !m.isDisabled && (m.isOwner || approverRoleIds.has(m.roleId)))
+        .map((m: any) => m.userId)
+    )
+  );
+};
+
 export class VoucherController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
@@ -156,8 +198,8 @@ export class VoucherController {
         diContainer.accountingPolicyConfigProvider as any,
         new ApprovalPolicyService(),
         getAccountMetadata,
-        undefined, // notificationService
-        undefined, // getApproverUserIds
+        diContainer.notificationService as any,
+        getApproverUserIdsForCompany,
         diContainer.policyRegistry as any,
         new VoucherValidationService()
       );
@@ -296,7 +338,8 @@ export class VoucherController {
       
       const useCase = new ConfirmCustodyUseCase(
         diContainer.voucherRepository as any,
-        new ApprovalPolicyService()
+        new ApprovalPolicyService(),
+        diContainer.notificationService as any
       );
       
       let voucher = await useCase.execute(companyId, req.params.id, userId, userEmail);

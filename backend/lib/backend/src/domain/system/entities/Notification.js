@@ -56,8 +56,7 @@ class Notification {
      * Convert to plain object for persistence
      */
     toJSON() {
-        var _a;
-        return {
+        const data = {
             id: this.id,
             companyId: this.companyId,
             type: this.type,
@@ -67,12 +66,18 @@ class Notification {
             createdAt: this.createdAt.toISOString(),
             recipientUserIds: this.recipientUserIds,
             readBy: this.readBy,
-            actionUrl: this.actionUrl,
-            sourceModule: this.sourceModule,
-            sourceEntityType: this.sourceEntityType,
-            sourceEntityId: this.sourceEntityId,
-            expiresAt: (_a = this.expiresAt) === null || _a === void 0 ? void 0 : _a.toISOString()
         };
+        if (this.actionUrl !== undefined)
+            data.actionUrl = this.actionUrl;
+        if (this.sourceModule !== undefined)
+            data.sourceModule = this.sourceModule;
+        if (this.sourceEntityType !== undefined)
+            data.sourceEntityType = this.sourceEntityType;
+        if (this.sourceEntityId !== undefined)
+            data.sourceEntityId = this.sourceEntityId;
+        if (this.expiresAt !== undefined)
+            data.expiresAt = this.expiresAt.toISOString();
+        return data;
     }
     /**
      * Create from plain object

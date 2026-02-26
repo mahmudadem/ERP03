@@ -112,7 +112,7 @@ class AccountingReportsController {
             if (!accountId) {
                 return res.status(400).json({ error: 'accountId is required' });
             }
-            const useCase = new LedgerUseCases_1.GetAccountStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker);
+            const useCase = new LedgerUseCases_1.GetAccountStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository);
             const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '', { includeUnposted: includeUnposted === 'true' });
             res.status(200).json({
                 success: true,
@@ -200,9 +200,9 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
-            const { type = 'AR', asOfDate, accountId } = req.query;
+            const { type = 'AR', asOfDate, accountId, includeZeroBalance } = req.query;
             const useCase = new AgingReportUseCase_1.AgingReportUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
-            const data = await useCase.execute(companyId, userId, type || 'AR', asOfDate || new Date().toISOString().slice(0, 10), accountId);
+            const data = await useCase.execute(companyId, userId, type || 'AR', asOfDate || new Date().toISOString().slice(0, 10), accountId, includeZeroBalance === 'true');
             res.status(200).json({ success: true, data });
         }
         catch (error) {

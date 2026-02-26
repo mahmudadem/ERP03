@@ -112,7 +112,7 @@ const AccountingDashboard: React.FC = () => {
                 <ArrowRightLeft size={20} className="text-slate-400" />
                 Recent Journal Entries
               </h2>
-              <button className="text-sm font-bold text-primary-600 hover:underline" onClick={() => navigate('/accounting/reports/general-ledger')}>
+              <button className="text-sm font-bold text-primary-600 hover:underline" onClick={() => navigate('/accounting/reports/ledger')}>
                 View Ledger
               </button>
             </div>
@@ -160,6 +160,7 @@ const AccountingDashboard: React.FC = () => {
                   { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet' },
                   { label: 'Profit & Loss', path: '/accounting/reports/profit-loss' },
                   { label: 'Account Statement', path: '/accounting/reports/account-statement' },
+                  { label: 'Aging Report', path: '/accounting/reports/aging' },
                 ].map(report => (
                   <li key={report.label} className="flex items-center justify-between group cursor-pointer hover:text-primary-400 transition-colors" onClick={() => navigate(report.path)}>
                     <span className="font-semibold text-slate-200 group-hover:text-white">{report.label}</span>

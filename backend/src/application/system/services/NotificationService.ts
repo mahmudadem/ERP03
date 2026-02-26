@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Notification, NotificationType, NotificationCategory } from '../../../domain/system/entities/Notification';
 import { INotificationRepository } from '../../../repository/interfaces/system/INotificationRepository';
 import { IRealtimeDispatcher } from '../../../infrastructure/realtime/IRealtimeDispatcher';
+import { IUserPreferencesRepository } from '../../../repository/interfaces/core/IUserPreferencesRepository';
+import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 
 /**
  * Options for creating a notification
@@ -29,13 +31,63 @@ export interface NotifyOptions {
 export class NotificationService {
   constructor(
     private readonly notificationRepository: INotificationRepository,
-    private readonly realtimeDispatcher: IRealtimeDispatcher
+    private readonly realtimeDispatcher: IRealtimeDispatcher,
+    private readonly userPreferencesRepository?: IUserPreferencesRepository,
+    private readonly companySettingsRepository?: ICompanySettingsRepository
   ) {}
 
   /**
    * Create and dispatch a notification to multiple users
    */
-  async notify(options: NotifyOptions): Promise<Notification> {
+  async notify(options: NotifyOptions): Promise<Notification | null> {
+    // Filter recipients based on company defaults + user overrides.
+    let finalRecipients = options.recipientUserIds;
+    if (this.userPreferencesRepository || this.companySettingsRepository) {
+      let companyDisabledCategories = new Set<string>();
+      if (this.companySettingsRepository) {
+        try {
+          const companySettings = await this.companySettingsRepository.getSettings(options.companyId);
+          companyDisabledCategories = new Set(companySettings?.disabledNotificationCategories || []);
+        } catch (error) {
+          // Ignore and fallback to fully enabled company defaults
+        }
+      }
+
+      const filtered = [];
+      for (const userId of options.recipientUserIds) {
+        // Base state from company-level default
+        let isEnabled = !companyDisabledCategories.has(options.category);
+
+        try {
+          const prefs = this.userPreferencesRepository
+            ? await this.userPreferencesRepository.getByUserId(userId)
+            : null;
+
+          const explicitOverride = prefs?.notificationCategoryOverrides?.[options.category];
+          if (typeof explicitOverride === 'boolean') {
+            // User override has highest priority (true = force enable, false = force disable)
+            isEnabled = explicitOverride;
+          } else if (prefs?.disabledNotificationCategories?.includes(options.category)) {
+            // Backward compatibility: legacy per-user opt-out list
+            isEnabled = false;
+          }
+        } catch (error) {
+          // ignore error, keep current state
+        }
+
+        if (!isEnabled) {
+          continue;
+        }
+
+        filtered.push(userId);
+      }
+      finalRecipients = filtered;
+    }
+
+    if (finalRecipients.length === 0) {
+      return null;
+    }
+
     const notification = new Notification(
       uuidv4(),
       options.companyId,
@@ -44,7 +96,7 @@ export class NotificationService {
       options.title,
       options.message,
       new Date(),
-      options.recipientUserIds,
+      finalRecipients,
       [], // readBy starts empty
       options.actionUrl,
       options.sourceModule,
@@ -61,7 +113,7 @@ export class NotificationService {
     // 2. Push via Realtime DB for instant delivery
     await this.realtimeDispatcher.pushToMany(
       options.companyId,
-      options.recipientUserIds,
+      finalRecipients,
       notification
     );
 
@@ -109,7 +161,7 @@ export class NotificationService {
       category: action === 'CUSTODY' ? 'CUSTODY' : action === 'INFO' ? 'SYSTEM' : 'APPROVAL',
       title: titles[action],
       message: messages[action],
-      actionUrl: `/accounting/vouchers/${voucherId}`,
+      actionUrl: `/accounting/vouchers/${voucherId}/view`,
       sourceModule: 'accounting',
       sourceEntityType: 'voucher',
       sourceEntityId: voucherId,
@@ -136,6 +188,13 @@ export class NotificationService {
    */
   async markAsRead(notificationId: string, userId: string): Promise<void> {
     return this.notificationRepository.markAsReadByUser(notificationId, userId);
+  }
+
+  /**
+   * Mark all notifications as read by user
+   */
+  async markAllAsRead(companyId: string, userId: string): Promise<void> {
+    return this.notificationRepository.markAllAsReadByUser(companyId, userId);
   }
 
   /**

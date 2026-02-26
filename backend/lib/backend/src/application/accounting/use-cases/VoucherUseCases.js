@@ -83,7 +83,8 @@ class CreateVoucherUseCase {
             if (autoNumbering && this.sequenceRepo) {
                 const prefix = payload.prefix || (payload.type || 'V').toString();
                 const useYear = (settings === null || settings === void 0 ? void 0 : settings.resetVoucherNumbersAnnually) ? new Date(payload.date || Date.now()).getFullYear() : undefined;
-                voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear);
+                const numberFormat = payload.numberFormat || undefined;
+                voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear, numberFormat);
             }
             else if (autoNumbering) {
                 voucherNo = `V-${Date.now()}`;

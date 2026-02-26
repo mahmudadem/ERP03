@@ -7,8 +7,7 @@ import { Permission } from '../../../../domain/system/entities/Permission';
 import { Notification } from '../../../../domain/system/entities/Notification';
 import { AuditLog } from '../../../../domain/system/entities/AuditLog';
 import { ModuleMapper, RoleMapper, PermissionMapper, NotificationMapper, AuditLogMapper } from '../../mappers/SystemMappers';
-import * as admin from 'firebase-admin';
-void admin;
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export class FirestoreModuleRepository extends BaseFirestoreRepository<Module> implements IModuleRepository {
   protected collectionName = 'modules';
@@ -124,8 +123,33 @@ export class FirestoreNotificationRepository extends BaseFirestoreRepository<Not
   async markAsReadByUser(notificationId: string, userId: string): Promise<void> {
     const docRef = this.db.collection(this.collectionName).doc(notificationId);
     await docRef.update({
-      readBy: admin.firestore.FieldValue.arrayUnion(userId)
+      readBy: FieldValue.arrayUnion(userId)
     });
+  }
+
+  /**
+   * Mark all notifications as read for a specific user
+   */
+  async markAllAsReadByUser(companyId: string, userId: string): Promise<void> {
+    const unread = await this.getUnreadForUser(companyId, userId);
+    if (unread.length === 0) return;
+    
+    // Process in batches of 500 (Firestore limit is 500 per batch)
+    const batches = [];
+    for (let i = 0; i < unread.length; i += 500) {
+      const batch = this.db.batch();
+      const chunk = unread.slice(i, i + 500);
+      
+      for (const notification of chunk) {
+        const docRef = this.db.collection(this.collectionName).doc(notification.id);
+        batch.update(docRef, {
+          readBy: FieldValue.arrayUnion(userId)
+        });
+      }
+      batches.push(batch.commit());
+    }
+    
+    await Promise.all(batches);
   }
 
   /**
@@ -147,7 +171,7 @@ export class FirestoreNotificationRepository extends BaseFirestoreRepository<Not
    * Delete expired notifications (cleanup job)
    */
   async deleteExpired(companyId: string): Promise<number> {
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
     const snapshot = await this.db.collection(this.collectionName)
       .where('companyId', '==', companyId)
       .where('expiresAt', '<', now)

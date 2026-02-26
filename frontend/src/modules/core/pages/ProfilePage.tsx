@@ -1,17 +1,32 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useUserPreferences, SidebarMode, UiMode } from '../../../hooks/useUserPreferences';
+import { userPreferencesApi } from '../../../api/userPreferencesApi';
 import { useTranslation } from 'react-i18next';
+
+const notificationCategories = [
+  { id: 'APPROVAL', name: 'Financial Approvals', desc: 'Approval required notifications for accounting workflow.' },
+  { id: 'CUSTODY', name: 'Custody Confirmations', desc: 'Custody confirmation requests assigned to you.' },
+  { id: 'SYSTEM', name: 'System Info', desc: 'General information and non-critical system updates.' },
+  { id: 'WARNING', name: 'System Warnings', desc: 'Warnings and alert-style notifications.' }
+];
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { company } = useCompanyAccess();
+  const { settings: companySettings } = useCompanySettings();
   const { sidebarMode, setSidebarMode, uiMode, setUiMode, language, setLanguage, savePreferences, loadingFromServer } = useUserPreferences();
   const { t } = useTranslation('common');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
+  const [notificationOverrides, setNotificationOverrides] = useState<Record<string, boolean>>({});
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
+  const [notificationsMsg, setNotificationsMsg] = useState<string | null>(null);
+  const [notificationsStatus, setNotificationsStatus] = useState<'success' | 'error' | null>(null);
 
   // Auto-clear status message after a few seconds
   React.useEffect(() => {
@@ -22,6 +37,109 @@ const ProfilePage: React.FC = () => {
     }, 4000);
     return () => clearTimeout(timer);
   }, [saveStatus]);
+
+  React.useEffect(() => {
+    if (!notificationsStatus) return;
+    const timer = setTimeout(() => {
+      setNotificationsMsg(null);
+      setNotificationsStatus(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [notificationsStatus]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (!user?.uid) return;
+
+    const loadNotificationOverrides = async () => {
+      setNotificationsLoading(true);
+      try {
+        const prefs = await userPreferencesApi.get();
+        if (cancelled) return;
+
+        const explicitOverrides = prefs.notificationCategoryOverrides || {};
+        if (Object.keys(explicitOverrides).length > 0) {
+          setNotificationOverrides(explicitOverrides);
+          return;
+        }
+
+        // Backward compatibility with legacy disabled list.
+        const legacyDisabled = prefs.disabledNotificationCategories || [];
+        if (legacyDisabled.length > 0) {
+          const mapped = legacyDisabled.reduce((acc, categoryId) => {
+            acc[categoryId] = false;
+            return acc;
+          }, {} as Record<string, boolean>);
+          setNotificationOverrides(mapped);
+        } else {
+          setNotificationOverrides({});
+        }
+      } catch {
+        if (!cancelled) {
+          setNotificationOverrides({});
+        }
+      } finally {
+        if (!cancelled) {
+          setNotificationsLoading(false);
+        }
+      }
+    };
+
+    loadNotificationOverrides();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  const companyDisabledCategories = new Set(companySettings?.disabledNotificationCategories || []);
+
+  const getOverrideMode = (categoryId: string): 'inherit' | 'on' | 'off' => {
+    const value = notificationOverrides[categoryId];
+    if (typeof value !== 'boolean') return 'inherit';
+    return value ? 'on' : 'off';
+  };
+
+  const setOverrideMode = (categoryId: string, mode: 'inherit' | 'on' | 'off') => {
+    setNotificationOverrides((prev) => {
+      const next = { ...prev };
+      if (mode === 'inherit') {
+        delete next[categoryId];
+      } else {
+        next[categoryId] = mode === 'on';
+      }
+      return next;
+    });
+  };
+
+  const getEffectiveCategoryState = (categoryId: string): boolean => {
+    const override = notificationOverrides[categoryId];
+    if (typeof override === 'boolean') return override;
+    return !companyDisabledCategories.has(categoryId);
+  };
+
+  const saveNotificationOverrides = async () => {
+    setNotificationsSaving(true);
+    setNotificationsMsg(null);
+    setNotificationsStatus(null);
+    try {
+      await userPreferencesApi.upsert({
+        notificationCategoryOverrides: notificationOverrides,
+        // Clear legacy list to avoid conflict with explicit override logic.
+        disabledNotificationCategories: []
+      });
+      setNotificationsMsg('Notification overrides saved.');
+      setNotificationsStatus('success');
+    } catch (err: any) {
+      const apiMessage =
+        err?.response?.data?.error?.message ||
+        err?.message ||
+        'Could not save notification overrides.';
+      setNotificationsMsg(apiMessage);
+      setNotificationsStatus('error');
+    } finally {
+      setNotificationsSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -162,6 +280,85 @@ const ProfilePage: React.FC = () => {
                 </span>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Notification Overrides */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+          <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Notification Overrides</h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Company defaults are applied first. You can override each category for your own account.
+            </p>
+          </div>
+          <div className="px-4 py-5 sm:px-6 space-y-4">
+            {notificationsLoading ? (
+              <div className="text-sm text-gray-500">Loading notification preferences...</div>
+            ) : (
+              <>
+                {notificationCategories.map((category) => {
+                  const mode = getOverrideMode(category.id);
+                  const effectiveEnabled = getEffectiveCategoryState(category.id);
+                  return (
+                    <div key={category.id} className="rounded-lg border border-gray-200 p-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{category.name}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{category.desc}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Company default: {companyDisabledCategories.has(category.id) ? 'Off' : 'On'} | Effective for you: {effectiveEnabled ? 'On' : 'Off'}
+                          </div>
+                        </div>
+                        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setOverrideMode(category.id, 'inherit')}
+                            className={`px-3 py-1.5 text-xs font-semibold border-r border-gray-200 ${
+                              mode === 'inherit' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            Inherit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOverrideMode(category.id, 'on')}
+                            className={`px-3 py-1.5 text-xs font-semibold border-r border-gray-200 ${
+                              mode === 'on' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            On
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOverrideMode(category.id, 'off')}
+                            className={`px-3 py-1.5 text-xs font-semibold ${
+                              mode === 'off' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            Off
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={saveNotificationOverrides}
+                    disabled={notificationsSaving}
+                    className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {notificationsSaving ? 'Saving...' : 'Save Notification Overrides'}
+                  </button>
+                  {notificationsMsg && (
+                    <span className={`text-xs ${notificationsStatus === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                      {notificationsMsg}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

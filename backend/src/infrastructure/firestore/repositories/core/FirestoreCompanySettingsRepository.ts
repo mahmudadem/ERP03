@@ -20,7 +20,8 @@ export class FirestoreCompanySettingsRepository implements ICompanySettingsRepos
       data.language || 'en',
       data.baseCurrency,
       data.fiscalYearStart,
-      data.fiscalYearEnd
+      data.fiscalYearEnd,
+      data.disabledNotificationCategories || []
     );
   }
 
@@ -34,7 +35,8 @@ export class FirestoreCompanySettingsRepository implements ICompanySettingsRepos
       language: entity.language,
       baseCurrency: entity.baseCurrency,
       fiscalYearStart: entity.fiscalYearStart,
-      fiscalYearEnd: entity.fiscalYearEnd
+      fiscalYearEnd: entity.fiscalYearEnd,
+      disabledNotificationCategories: entity.disabledNotificationCategories || []
     };
   }
 

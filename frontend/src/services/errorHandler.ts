@@ -73,10 +73,12 @@ class ErrorHandlerService {
    * Normalize any error-like object into an ApiError
    */
   normalizeError(error: any): ApiError {
-    if (error?.code && error?.message && error?.severity) {
+    if (error?.code && error?.message) {
       return {
         ...error,
-        code: String(error.code).toUpperCase() as any
+        code: String(error.code).toUpperCase() as any,
+        severity: error.severity || ErrorSeverity.ERROR,
+        timestamp: error.timestamp || new Date().toISOString(),
       };
     }
 
