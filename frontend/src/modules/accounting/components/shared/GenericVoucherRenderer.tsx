@@ -198,6 +198,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const [savingRate, setSavingRate] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isFirstRender = useRef(true);
+  const hasUserTouchedHeaderFxRef = useRef(false);
   const [fiscalYears, setFiscalYears] = useState<any[]>([]); // Cache fiscal years for period checking
 
   // Load fiscal years on mount
@@ -279,6 +280,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           : {})
       }
     };
+    // Canonical persisted header FX fields must win over snapshots on reopen.
+    (['currency', 'baseCurrency', 'exchangeRate'] as const).forEach((key) => {
+      const canonicalValue = (initialData as any)?.[key];
+      if (canonicalValue !== undefined && canonicalValue !== null && canonicalValue !== '') {
+        (mergedInitialData as any)[key] = canonicalValue;
+      }
+    });
     // Always prefer real voucher lifecycle fields from backend document.
     SYSTEM_MANAGED_FIELDS.forEach((key) => {
       if ((initialData as any)?.[key] !== undefined) {
@@ -424,6 +432,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         hasStringDiff('depositToAccountId') ||
         hasStringDiff('payFromAccountId') ||
         hasStringDiff('currency') ||
+        hasStringDiff('baseCurrency') ||
         hasStringDiff('description') ||
         hasStringDiff('date') ||
         hasNumberDiff('exchangeRate');
@@ -544,15 +553,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return prev;
       });
     }
+    // New initialData loaded: reset user-driven FX sync guard.
+    hasUserTouchedHeaderFxRef.current = false;
   }, [initialData, getAccountById, getAccountByCode, settings, definition]);
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 
   // Individual line parity changes (including Alt+B) are handled in handleRowChange.
   useEffect(() => {
-    // 1. Skip for read-only vouchers or if this is the first render of an EXISTING voucher
-    // We trust the saved database values on initial load.
-    if (readOnly || (isFirstRender.current && formData.id)) {
+    // 1. Skip for read-only vouchers.
+    if (readOnly) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // 2. Existing vouchers: do not auto-rewrite persisted parities/rates on reopen.
+    // Only recalc after user explicitly changes header FX fields.
+    if (formData.id && !hasUserTouchedHeaderFxRef.current) {
       isFirstRender.current = false;
       return;
     }
@@ -653,7 +670,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     syncParitiesWithHeader();
     isFirstRender.current = false;
-  }, [readOnly, formData.exchangeRate, formData.currency]); // STRIPPED: No more rows-based dependencies! 
+  }, [readOnly, formData.id, formData.exchangeRate, formData.currency]); // STRIPPED: No more rows-based dependencies! 
 
 
   // --- Math & Auto-Balance Logic ---
@@ -1292,6 +1309,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const today = getCompanyToday(settings);
       
       setRows(getInitialRows());
+      hasUserTouchedHeaderFxRef.current = false;
       setFormData({
         date: today,
         currency: company?.baseCurrency || '',
@@ -1303,6 +1321,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   }), [definition, company, settings, rows, formData]);
   
   const handleInputChange = (fieldId: string, value: any) => {
+    if (fieldId === 'currency' || fieldId === 'exchangeRate') {
+      hasUserTouchedHeaderFxRef.current = true;
+    }
     setFormData((prev: any) => {
       let next: any;
       if (fieldId.startsWith('metadata.')) {
@@ -1672,9 +1693,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{displayLabel}</label>
           <CurrencyComp
-            currency={formData.currency || 'USD'}
+            currency={formData.currency || formData.baseCurrency || company?.baseCurrency || 'USD'}
             value={formData.exchangeRate}
-            baseCurrency={company?.baseCurrency || 'USD'}
+            baseCurrency={formData.baseCurrency || company?.baseCurrency || 'USD'}
             voucherDate={formData.date}
             disabled={readOnly}
             onChange={(rate: number) => {
