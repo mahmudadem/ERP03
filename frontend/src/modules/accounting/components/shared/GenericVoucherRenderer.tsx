@@ -307,7 +307,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     if (semanticHeaderAccount) {
       const accountById = getAccountById(semanticHeaderAccount);
       const accountByCode = accountById ? undefined : getAccountByCode(semanticHeaderAccount);
-      semanticHeaderAccountId = accountById?.id || accountByCode?.id || (accountById ? semanticHeaderAccount : undefined);
+      // Keep raw semantic account ref when lookup is not ready yet (accounts may load async).
+      semanticHeaderAccountId = accountById?.id || accountByCode?.id || semanticHeaderAccount;
       headerAccountCode = accountById?.code || accountByCode?.code || (accountByCode ? semanticHeaderAccount : undefined);
     }
     if (!semanticHeaderAccountId && typeof cleanInitialData.accountId === 'string' && cleanInitialData.accountId) {
@@ -344,6 +345,23 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           ...prev,
           status: initialData.status,
           voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id
+        };
+      }
+
+      // Repair partial hydration for same voucher id (e.g., async account lookup/source payload refresh).
+      const needsRepair =
+        (!prev.account && !!hydratedInitialData.account) ||
+        (!prev.accountId && !!hydratedInitialData.accountId) ||
+        (!prev.depositToAccountId && !!hydratedInitialData.depositToAccountId) ||
+        (!prev.payFromAccountId && !!hydratedInitialData.payFromAccountId) ||
+        (!prev.currency && !!hydratedInitialData.currency) ||
+        ((!prev.exchangeRate || Number(prev.exchangeRate) === 1) && Number(hydratedInitialData.exchangeRate) > 1);
+
+      if (needsRepair) {
+        return {
+          ...prev,
+          ...hydratedInitialData,
+          date: hydratedInitialData.date ? formatForInput(hydratedInitialData.date) : (prev.date || getCompanyToday(settings))
         };
       }
       return prev;

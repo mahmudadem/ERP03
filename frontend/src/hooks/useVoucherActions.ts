@@ -80,6 +80,7 @@ const UI_ONLY_TOP_LEVEL_FIELDS = new Set([
   'actions',
   'rules',
   '_isForm',
+  '_rowId',
 ]);
 
 const UI_ONLY_METADATA_FIELDS = new Set([
@@ -91,6 +92,43 @@ const UI_ONLY_METADATA_FIELDS = new Set([
   'actions',
   'rules',
 ]);
+
+const LEGACY_SOURCE_KEYS = new Set([
+  'sourceVoucher',
+  'sourcePayload'
+]);
+
+const isPlainObject = (value: any): value is Record<string, any> => {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+};
+
+const sanitizeSourceSnapshot = (value: any): any => {
+  if (value === undefined || value === null) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => sanitizeSourceSnapshot(entry))
+      .filter((entry) => entry !== undefined);
+  }
+  if (!isPlainObject(value)) return value;
+
+  const out: Record<string, any> = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    if (!key) return;
+    if (UI_ONLY_TOP_LEVEL_FIELDS.has(key)) return;
+    if (LEGACY_SOURCE_KEYS.has(key)) return;
+    if (key === 'metadata' && isPlainObject(entry)) {
+      const cleanedMeta = sanitizeMetadata(entry);
+      if (cleanedMeta && Object.keys(cleanedMeta).length > 0) {
+        out[key] = cleanedMeta;
+      }
+      return;
+    }
+    const cleaned = sanitizeSourceSnapshot(entry);
+    if (cleaned === undefined) return;
+    out[key] = cleaned;
+  });
+  return out;
+};
 
 const toAccountRef = (value: any): string | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -148,6 +186,9 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   const baseCurrency = String(data.baseCurrency || '').toUpperCase();
   const exchangeRate = Number(data.exchangeRate) || 1;
   const metadata = sanitizeMetadata(data.metadata);
+  const sourcePayload = sanitizeSourceSnapshot(
+    (data && isPlainObject(data.sourcePayload)) ? data.sourcePayload : data
+  );
 
   const semanticLines = (data.lines || [])
     .map((line: any) => {
@@ -203,6 +244,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     currency: headerCurrency || undefined,
     baseCurrency: baseCurrency || undefined,
     exchangeRate,
+    sourcePayload: sourcePayload || undefined,
     ...(metadata ? { metadata } : {}),
     ...(isReceipt
       ? {
@@ -258,7 +300,8 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   let savedVoucher;
   if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
     await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
-    savedVoucher = { ...cleanPayload, id: cleanPayload.id };
+    // Update endpoint returns ack only; fetch full server state for reliable reopen.
+    savedVoucher = await accountingApi.getVoucher(cleanPayload.id);
   } else {
     const res = await accountingApi.createVoucher(cleanPayload);
     savedVoucher = res;
