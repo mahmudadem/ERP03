@@ -18,6 +18,82 @@ import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accou
 import { AccountValidationService } from '../services/AccountValidationService';
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 
+const UI_ONLY_VOUCHER_KEYS = new Set([
+  'voucherConfig',
+  'headerFields',
+  'tableColumns',
+  'uiModeOverrides',
+  'tableStyle',
+  'actions',
+  'rules',
+  '_isForm'
+]);
+
+const cleanObject = (value: any): any => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const out: Record<string, any> = {};
+  Object.entries(value).forEach(([key, entry]) => {
+    if (entry === undefined || entry === null || key === '') return;
+    if (UI_ONLY_VOUCHER_KEYS.has(key)) return;
+    out[key] = entry;
+  });
+  return out;
+};
+
+const normalizeSourceLines = (lines: any): any[] => {
+  if (!Array.isArray(lines)) return [];
+  return lines.map((line) => cleanObject(line));
+};
+
+const removeLegacySourceKeys = (metadata: any): Record<string, any> => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
+  const out: Record<string, any> = {};
+  Object.entries(metadata).forEach(([key, entry]) => {
+    if (key === 'sourceVoucher' || key === 'sourcePayload') return;
+    if (entry === undefined || entry === null) return;
+    out[key] = entry;
+  });
+  return out;
+};
+
+const buildSourcePayload = (payload: any, existing?: any): Record<string, any> | undefined => {
+  const source = cleanObject(payload) || {};
+  const previous = cleanObject(existing) || {};
+  const sourceLines = Array.isArray(source.lines) ? normalizeSourceLines(source.lines) : normalizeSourceLines(previous.lines);
+  const sourceMetadata = cleanObject(source.metadata || previous.metadata || {});
+
+  const snapshot: Record<string, any> = {
+    type: source.type ?? previous.type,
+    formId: source.formId ?? previous.formId,
+    typeId: source.typeId ?? previous.typeId,
+    prefix: source.prefix ?? previous.prefix,
+    numberFormat: source.numberFormat ?? previous.numberFormat,
+    date: source.date ?? previous.date,
+    description: source.description ?? previous.description,
+    reference: source.reference ?? previous.reference,
+    status: source.status ?? previous.status,
+    currency: source.currency ?? previous.currency,
+    baseCurrency: source.baseCurrency ?? previous.baseCurrency,
+    exchangeRate: source.exchangeRate ?? previous.exchangeRate,
+    account: source.account ?? previous.account,
+    accountId: source.accountId ?? previous.accountId,
+    depositToAccountId: source.depositToAccountId ?? previous.depositToAccountId,
+    payFromAccountId: source.payFromAccountId ?? previous.payFromAccountId,
+    postingPeriodNo: source.postingPeriodNo ?? previous.postingPeriodNo,
+    lines: sourceLines
+  };
+
+  if (sourceMetadata && Object.keys(sourceMetadata).length > 0) {
+    snapshot.metadata = sourceMetadata;
+  }
+
+  const cleanedSnapshot = cleanObject(snapshot);
+  if (!cleanedSnapshot || Object.keys(cleanedSnapshot).length === 0) {
+    return undefined;
+  }
+  return cleanedSnapshot;
+};
+
 export class CreateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
@@ -198,9 +274,12 @@ export class CreateVoucherUseCase {
         }
       });
 
+      const sourcePayload = buildSourcePayload(payload);
+      const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+
       const voucherMetadata = {
         ...extraMetadata,
-        ...payload.metadata,
+        ...cleanedPayloadMetadata,
         ...(payload.sourceModule && { sourceModule: payload.sourceModule }),
         ...(payload.formId && { formId: payload.formId }),
         ...(payload.prefix && { prefix: payload.prefix }),
@@ -252,7 +331,8 @@ export class CreateVoucherUseCase {
         undefined, // reversalOfVoucherId
         undefined, // reference
         undefined, // updatedAt
-        payload.postingPeriodNo // Special/Adjustment period override
+        payload.postingPeriodNo, // Special/Adjustment period override
+        sourcePayload || null
       );
 
       // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
@@ -468,6 +548,12 @@ export class UpdateVoucherUseCase {
       }
     });
 
+    const sourcePayload = buildSourcePayload(
+      payload,
+      (voucher as any).sourcePayload || voucher.metadata?.sourceVoucher
+    );
+    const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+
     let updatedVoucher = new VoucherEntity(
       voucherId,
       companyId,
@@ -483,7 +569,7 @@ export class UpdateVoucherUseCase {
       totalCredit,
       // Allow status update only for valid transitions (respects approvalRequired setting)
       this.resolveStatus(voucher.status, payload.status, approvalRequired),
-      { ...voucher.metadata, ...extraMetadata, ...payload.metadata },
+      { ...voucher.metadata, ...extraMetadata, ...cleanedPayloadMetadata },
       voucher.createdBy,
       voucher.createdAt,
       voucher.approvedBy,
@@ -499,7 +585,8 @@ export class UpdateVoucherUseCase {
       voucher.reversalOfVoucherId,
       payload.reference || voucher.reference,
       new Date(),
-      payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo
+      payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo,
+      sourcePayload || (voucher as any).sourcePayload || null
     );
 
     // NEW Step: Policy Validation if auto-approving

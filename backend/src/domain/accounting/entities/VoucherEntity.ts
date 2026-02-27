@@ -70,7 +70,8 @@ export class VoucherEntity {
     
     public readonly reference?: string | null,     // External reference (invoice #, check #, etc.)
     public readonly updatedAt?: Date | null,       // Last modification timestamp
-    public readonly postingPeriodNo?: number | null // Special/Adjustment period override
+    public readonly postingPeriodNo?: number | null, // Special/Adjustment period override
+    public readonly sourcePayload?: Record<string, any> | null
   ) {
     // Calculated totals in voucher currency (sum of line.amount)
     this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
@@ -349,7 +350,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(), // UpdatedAt
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -418,7 +420,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       this.updatedAt,
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -459,7 +462,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(),
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -514,7 +518,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(),
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -560,7 +565,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       this.updatedAt,
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -603,7 +609,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(), // updatedAt
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -646,7 +653,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       this.updatedAt,
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -685,7 +693,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(), // UpdatedAt
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -726,7 +735,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(),
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -771,7 +781,8 @@ export class VoucherEntity {
       this.reversalOfVoucherId,
       this.reference,
       new Date(),
-      this.postingPeriodNo
+      this.postingPeriodNo,
+      this.sourcePayload
     );
   }
 
@@ -940,7 +951,8 @@ export class VoucherEntity {
       sourceModule: this.sourceModule || null,
       formId: this.formId || null,
       prefix: this.prefix || null,
-      postingPeriodNo: this.postingPeriodNo || null
+      postingPeriodNo: this.postingPeriodNo || null,
+      sourcePayload: this.sourcePayload || null
     };
   }
 
@@ -955,6 +967,9 @@ export class VoucherEntity {
     const id = data.id || data.voucherId;
     const voucherNo = data.voucherNo || data.voucherNumber || '';
     const reversalOfVoucherId = data.reversalOfVoucherId || data.metadata?.reversalOfVoucherId || null;
+    const sourcePayload = data.sourcePayload || data.metadata?.sourceVoucher || null;
+    const normalizedMetadata = { ...(data.metadata || {}) };
+    delete (normalizedMetadata as any).sourceVoucher;
 
     return new VoucherEntity(
       id,
@@ -970,7 +985,7 @@ export class VoucherEntity {
       data.totalDebit,
       data.totalCredit,
       data.status as VoucherStatus,
-      data.metadata || {},
+      normalizedMetadata,
       data.createdBy,
       new Date(data.createdAt),
       data.approvedBy,
@@ -987,7 +1002,8 @@ export class VoucherEntity {
       // Additional legacy fields
       data.reference,
       data.updatedAt ? new Date(data.updatedAt) : undefined,
-      data.postingPeriodNo
+      data.postingPeriodNo,
+      sourcePayload
     );
   }
 }

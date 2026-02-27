@@ -174,102 +174,273 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
   // Sync state with initialData updates (e.g. after fetch completes or partial submit)
   useEffect(() => {
-    if (initialData) {
-      const rawLines = Array.isArray(initialData.lines) ? initialData.lines : [];
-      const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
-      const cleanInitialData = Object.entries(initialData).reduce((acc, [key, value]) => {
-        // Never persist or replay UI designer config as voucher business data.
-        if (key === 'voucherConfig') return acc;
-        acc[key] = value;
-        return acc;
-      }, {} as any);
+    if (!initialData) return;
 
-      // 1. Sync Form Metadata
-      setFormData((prev: any) => {
-        // If it's a completely different voucher, or we don't have an ID yet, overwrite.
-        if (prev?.id !== initialData.id || !prev?.id) {
-           return {
-             ...prev,
-             ...cleanInitialData,
-             date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
-           };
-        }
-        
-        // Minor sync for status/voucherNo
-        if (prev.status !== initialData.status || prev.voucherNo !== initialData.voucherNo) {
-          return {
-            ...prev,
-            status: initialData.status,
-            voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id
-          };
+    const resolveBackendType = (): string => {
+      const defAny = definition as any;
+      const payloadType = String(initialData?.type || '').toLowerCase();
+      if (payloadType === 'reversal' || initialData?.reversalOfVoucherId) return 'reversal';
+      if (payloadType.includes('receipt')) return 'receipt';
+      if (payloadType.includes('payment')) return 'payment';
+      if (payloadType.includes('opening')) return 'opening_balance';
+      if (payloadType.includes('journal') || payloadType === 'jv') return 'journal_entry';
+
+      const typeMap: Record<string, string> = {
+        JOURNAL_ENTRY: 'journal_entry',
+        PAYMENT: 'payment',
+        RECEIPT: 'receipt',
+        OPENING_BALANCE: 'opening_balance',
+        REVERSAL: 'reversal'
+      };
+
+      if (defAny._typeId && typeMap[String(defAny._typeId).toUpperCase()]) {
+        return typeMap[String(defAny._typeId).toUpperCase()];
+      }
+      if (defAny.baseType && typeMap[String(defAny.baseType).toUpperCase()]) {
+        return typeMap[String(defAny.baseType).toUpperCase()];
+      }
+      if (definition.code && typeMap[String(definition.code).toUpperCase()]) {
+        return typeMap[String(definition.code).toUpperCase()];
+      }
+
+      const nameLower = String(definition.name || '').toLowerCase();
+      const codeLower = String(definition.code || '').toLowerCase();
+      if (nameLower.includes('receipt') || codeLower.includes('receipt')) return 'receipt';
+      if (nameLower.includes('payment') || codeLower.includes('payment')) return 'payment';
+      if (nameLower.includes('opening') || codeLower.includes('opening')) return 'opening_balance';
+      return 'journal_entry';
+    };
+
+    const backendType = resolveBackendType();
+    const isReceipt = backendType === 'receipt';
+    const isPayment = backendType === 'payment';
+    const semanticLineKey = isReceipt ? 'receiveFromAccountId' : (isPayment ? 'payToAccountId' : null);
+    const semanticHeaderKey = isReceipt ? 'depositToAccountId' : (isPayment ? 'payFromAccountId' : null);
+
+    const initialMetadata = initialData.metadata && typeof initialData.metadata === 'object' ? initialData.metadata : {};
+    const sourceVoucher =
+      (initialData.sourcePayload && typeof initialData.sourcePayload === 'object')
+        ? initialData.sourcePayload
+        : (initialMetadata.sourceVoucher && typeof initialMetadata.sourceVoucher === 'object'
+          ? initialMetadata.sourceVoucher
+          : null);
+
+    const sourceLines = Array.isArray((sourceVoucher as any)?.lines) ? (sourceVoucher as any).lines : [];
+    const rawLines = sourceLines.length > 0
+      ? sourceLines
+      : (Array.isArray(initialData.lines) ? initialData.lines : []);
+    const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
+
+    const mergedInitialData = {
+      ...(sourceVoucher || {}),
+      ...initialData,
+      metadata: {
+        ...(((sourceVoucher as any)?.metadata && typeof (sourceVoucher as any).metadata === 'object')
+          ? (sourceVoucher as any).metadata
+          : {}),
+        ...(initialMetadata || {})
+      }
+    };
+
+    const cleanInitialData = Object.entries(mergedInitialData).reduce((acc, [key, value]) => {
+      // Never persist or replay UI designer config as voucher business data.
+      if (key === 'voucherConfig') return acc;
+      acc[key] = value;
+      return acc;
+    }, {} as any);
+
+    const resolveFieldCI = (obj: any, key: string): any => {
+      if (!obj || !key) return undefined;
+      if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+      const lowered = key.toLowerCase();
+      const found = Object.keys(obj).find(k => k.toLowerCase() === lowered);
+      if (found && obj[found] !== undefined && obj[found] !== null && obj[found] !== '') {
+        return obj[found];
+      }
+      return undefined;
+    };
+
+    const resolveAccountRef = (value: any): string | undefined => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object') {
+        if (typeof value.id === 'string' && value.id) return value.id;
+        if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
+        if (typeof value.code === 'string' && value.code) return value.code;
+        if (typeof value.account === 'string' && value.account) return value.account;
+      }
+      return undefined;
+    };
+
+    let semanticHeaderAccount = semanticHeaderKey
+      ? (
+        resolveAccountRef(resolveFieldCI(cleanInitialData, semanticHeaderKey)) ||
+        resolveAccountRef(cleanInitialData.accountId) ||
+        resolveAccountRef(cleanInitialData.account) ||
+        resolveAccountRef(resolveFieldCI(cleanInitialData.metadata, semanticHeaderKey)) ||
+        resolveAccountRef(cleanInitialData.metadata?.accountId) ||
+        resolveAccountRef(cleanInitialData.metadata?.account)
+      )
+      : undefined;
+
+    if (!semanticHeaderAccount && semanticHeaderKey && rawLines.length > 0) {
+      const expectedHeaderSide = isReceipt ? 'Debit' : (isPayment ? 'Credit' : '');
+      const headerAnchor = rawLines.find((line: any) =>
+        String(line?.side || '').toLowerCase() === expectedHeaderSide.toLowerCase()
+      );
+      semanticHeaderAccount = resolveAccountRef(headerAnchor?.accountId || headerAnchor?.account);
+    }
+
+    // Fallback to canonical persisted lines when sourcePayload is partial/missing header account.
+    if (!semanticHeaderAccount && semanticHeaderKey && Array.isArray(initialData.lines) && initialData.lines.length > 0) {
+      const expectedHeaderSide = isReceipt ? 'Debit' : (isPayment ? 'Credit' : '');
+      const canonicalHeaderAnchor = initialData.lines.find((line: any) =>
+        String(line?.side || '').toLowerCase() === expectedHeaderSide.toLowerCase()
+      );
+      semanticHeaderAccount = resolveAccountRef(canonicalHeaderAnchor?.accountId || canonicalHeaderAnchor?.account);
+    }
+
+    const headerAccountCode = semanticHeaderAccount
+      ? (getAccountById(semanticHeaderAccount)?.code || semanticHeaderAccount)
+      : undefined;
+
+    const hydratedInitialData = {
+      ...cleanInitialData,
+      ...(semanticHeaderKey && semanticHeaderAccount ? { [semanticHeaderKey]: semanticHeaderAccount } : {}),
+      // Normalize header account shape for controls: always keep scalar accountId/account code.
+      ...(semanticHeaderAccount ? { accountId: semanticHeaderAccount } : {}),
+      ...(semanticHeaderAccount ? { account: headerAccountCode } : {})
+    };
+
+    // 1. Sync Form Metadata
+    setFormData((prev: any) => {
+      // If it's a completely different voucher, or we don't have an ID yet, overwrite.
+      if (prev?.id !== initialData.id || !prev?.id) {
+        return {
+          ...prev,
+          ...hydratedInitialData,
+          date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
+        };
+      }
+
+      // Minor sync for status/voucherNo
+      if (prev.status !== initialData.status || prev.voucherNo !== initialData.voucherNo) {
+        return {
+          ...prev,
+          status: initialData.status,
+          voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id
+        };
+      }
+      return prev;
+    });
+
+    // 2. Sync Rows (Lines)
+    if (rawLines.length > 0) {
+      setRows((prev) => {
+        const isNewVoucher = initialData.id !== (formData.id || initialData.id);
+        const isEmptyRows = prev.length === 0 || (prev.length <= 5 && prev.every(r => !r.account));
+
+        // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
+        // or if the current state is completely empty/uninitialized.
+        if (isNewVoucher || isEmptyRows) {
+          let mappedLines: any[] = [];
+
+          if (semanticLineKey) {
+            const hasSemanticShape = rawLines.some((line: any) =>
+              !!resolveAccountRef(resolveFieldCI(line, semanticLineKey))
+            );
+            const expectedLineSide = isReceipt ? 'Credit' : 'Debit';
+            const sideFilteredLines = rawLines.filter((line: any) =>
+              String(line?.side || '').toLowerCase() === expectedLineSide.toLowerCase()
+            );
+            const semanticSourceLines = hasSemanticShape
+              ? rawLines
+              : (sideFilteredLines.length > 0 ? sideFilteredLines : rawLines);
+
+            mappedLines = semanticSourceLines
+              .map((l: any, i: number) => {
+                const semanticAccountId =
+                  resolveAccountRef(resolveFieldCI(l, semanticLineKey)) ||
+                  resolveAccountRef(l.accountId) ||
+                  resolveAccountRef(l.account);
+                const amount = amountOf(l);
+                const accountObj = semanticAccountId ? getAccountById(semanticAccountId) : undefined;
+                const accountCode = accountObj?.code || (typeof l.account === 'string' ? l.account : (semanticAccountId || ''));
+
+                return {
+                  ...l,
+                  id: l.id ?? -(Date.now() + i),
+                  _rowId: i + 1,
+                  [semanticLineKey]: semanticAccountId,
+                  accountId: semanticAccountId,
+                  account: accountCode,
+                  amount,
+                  debit: amount,
+                  credit: 0,
+                  notes: l.notes || l.description || '',
+                  currency: l.currency || l.lineCurrency || hydratedInitialData.currency || '',
+                  parity: Number(l.exchangeRate || l.parity || 1) || 1.0,
+                  equivalent: l.baseAmount || l.equivalent || 0,
+                  metadata: l.metadata || {}
+                };
+              })
+              .filter((line: any) => line.accountId && line.amount > 0);
+          } else {
+            mappedLines = rawLines.map((l: any, i: number) => {
+              const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
+              const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
+              const semanticAccountId = l.accountId || l.account || l.receiveFromAccountId || l.payToAccountId;
+
+              let accountCode = l.account || '';
+              if (!accountCode && semanticAccountId) {
+                const acc = getAccountById(semanticAccountId);
+                if (acc) accountCode = acc.code;
+                else accountCode = semanticAccountId;
+              }
+
+              return {
+                ...l,
+                debit,
+                credit,
+                amount: amountOf(l),
+                id: l.id ?? -(Date.now() + i),
+                _rowId: i + 1,
+                account: accountCode,
+                accountId: semanticAccountId,
+                notes: l.notes || l.description || '',
+                currency: l.currency || l.lineCurrency || '',
+                parity: l.exchangeRate || l.parity || 1.0,
+                equivalent: l.baseAmount || l.equivalent || 0,
+                metadata: l.metadata || {}
+              };
+            });
+          }
+
+          // SAFETY: Ensure all row IDs are unique to prevent React key collisions
+          // and row operation corruption (e.g., editing/deleting one row affects all)
+          const seenIds = new Set<number>();
+          for (let i = 0; i < mappedLines.length; i++) {
+            if (seenIds.has(mappedLines[i].id)) {
+              mappedLines[i] = { ...mappedLines[i], id: -(Date.now() + i + 1000) };
+            }
+            seenIds.add(mappedLines[i].id);
+          }
+
+          // Trigger change ONLY if we actually replaced the rows from external data
+          if (isNewVoucher) {
+            onChangeRef.current?.({
+              ...formData,
+              ...hydratedInitialData,
+              lines: mappedLines
+            });
+          }
+
+          return mappedLines;
         }
         return prev;
       });
-      
-      // 2. Sync Rows (Lines)
-      if (initialData.lines) {
-         setRows((prev) => {
-             const isNewVoucher = initialData.id !== (formData.id || initialData.id);
-             const isEmptyRows = prev.length === 0 || (prev.length <= 5 && prev.every(r => !r.account));
-
-             // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
-             // or if the current state is completely empty/uninitialized.
-             if (isNewVoucher || (isEmptyRows && initialData.lines.length > 0)) {
-                 const mappedLines = rawLines.map((l: any, i: number) => {
-                     const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
-                     const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
-                     const semanticAccountId = l.accountId || l.account || l.receiveFromAccountId || l.payToAccountId;
-                     
-                     let accountCode = l.account || '';
-                     if (!accountCode && semanticAccountId) {
-                       const acc = getAccountById(semanticAccountId);
-                       if (acc) accountCode = acc.code;
-                       else accountCode = semanticAccountId;
-                     }
-
-                     return { 
-                       ...l, 
-                       debit, 
-                       credit, 
-                       amount: amountOf(l),
-                       id: l.id ?? -(Date.now() + i), 
-                       _rowId: i + 1,
-                       account: accountCode,
-                       accountId: semanticAccountId,
-                       notes: l.notes || l.description || '',
-                       currency: l.currency || l.lineCurrency || '',
-                       parity: l.exchangeRate || l.parity || 1.0,
-                       equivalent: l.baseAmount || l.equivalent || 0,
-                       metadata: l.metadata || {}
-                     };
-                 });
-                 
-                 // SAFETY: Ensure all row IDs are unique to prevent React key collisions
-                 // and row operation corruption (e.g., editing/deleting one row affects all)
-                 const seenIds = new Set<number>();
-                 for (let i = 0; i < mappedLines.length; i++) {
-                   if (seenIds.has(mappedLines[i].id)) {
-                     mappedLines[i] = { ...mappedLines[i], id: -(Date.now() + i + 1000) };
-                   }
-                   seenIds.add(mappedLines[i].id);
-                 }
-                 
-                 // Trigger change ONLY if we actually replaced the rows from external data
-                 if (isNewVoucher) {
-                   onChangeRef.current?.({ 
-                     ...formData, 
-                     ...cleanInitialData,
-                     lines: mappedLines 
-                   });
-                 }
-
-                 return mappedLines;
-             }
-             return prev;
-         });
-      }
     }
-  }, [initialData?.id, initialData?.status, initialData?.voucherNo, getAccountById, settings]);
+  }, [initialData?.id, initialData?.status, initialData?.voucherNo, getAccountById, settings, definition]);
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 

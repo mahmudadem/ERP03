@@ -34,6 +34,82 @@ const VoucherValidationService_1 = require("../../../domain/accounting/services/
 const AppError_1 = require("../../../errors/AppError");
 const ErrorCodes_1 = require("../../../errors/ErrorCodes");
 const AccountValidationService_1 = require("../services/AccountValidationService");
+const UI_ONLY_VOUCHER_KEYS = new Set([
+    'voucherConfig',
+    'headerFields',
+    'tableColumns',
+    'uiModeOverrides',
+    'tableStyle',
+    'actions',
+    'rules',
+    '_isForm'
+]);
+const cleanObject = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return value;
+    const out = {};
+    Object.entries(value).forEach(([key, entry]) => {
+        if (entry === undefined || entry === null || key === '')
+            return;
+        if (UI_ONLY_VOUCHER_KEYS.has(key))
+            return;
+        out[key] = entry;
+    });
+    return out;
+};
+const normalizeSourceLines = (lines) => {
+    if (!Array.isArray(lines))
+        return [];
+    return lines.map((line) => cleanObject(line));
+};
+const removeLegacySourceKeys = (metadata) => {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata))
+        return {};
+    const out = {};
+    Object.entries(metadata).forEach(([key, entry]) => {
+        if (key === 'sourceVoucher' || key === 'sourcePayload')
+            return;
+        if (entry === undefined || entry === null)
+            return;
+        out[key] = entry;
+    });
+    return out;
+};
+const buildSourcePayload = (payload, existing) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    const source = cleanObject(payload) || {};
+    const previous = cleanObject(existing) || {};
+    const sourceLines = Array.isArray(source.lines) ? normalizeSourceLines(source.lines) : normalizeSourceLines(previous.lines);
+    const sourceMetadata = cleanObject(source.metadata || previous.metadata || {});
+    const snapshot = {
+        type: (_a = source.type) !== null && _a !== void 0 ? _a : previous.type,
+        formId: (_b = source.formId) !== null && _b !== void 0 ? _b : previous.formId,
+        typeId: (_c = source.typeId) !== null && _c !== void 0 ? _c : previous.typeId,
+        prefix: (_d = source.prefix) !== null && _d !== void 0 ? _d : previous.prefix,
+        numberFormat: (_e = source.numberFormat) !== null && _e !== void 0 ? _e : previous.numberFormat,
+        date: (_f = source.date) !== null && _f !== void 0 ? _f : previous.date,
+        description: (_g = source.description) !== null && _g !== void 0 ? _g : previous.description,
+        reference: (_h = source.reference) !== null && _h !== void 0 ? _h : previous.reference,
+        status: (_j = source.status) !== null && _j !== void 0 ? _j : previous.status,
+        currency: (_k = source.currency) !== null && _k !== void 0 ? _k : previous.currency,
+        baseCurrency: (_l = source.baseCurrency) !== null && _l !== void 0 ? _l : previous.baseCurrency,
+        exchangeRate: (_m = source.exchangeRate) !== null && _m !== void 0 ? _m : previous.exchangeRate,
+        account: (_o = source.account) !== null && _o !== void 0 ? _o : previous.account,
+        accountId: (_p = source.accountId) !== null && _p !== void 0 ? _p : previous.accountId,
+        depositToAccountId: (_q = source.depositToAccountId) !== null && _q !== void 0 ? _q : previous.depositToAccountId,
+        payFromAccountId: (_r = source.payFromAccountId) !== null && _r !== void 0 ? _r : previous.payFromAccountId,
+        postingPeriodNo: (_s = source.postingPeriodNo) !== null && _s !== void 0 ? _s : previous.postingPeriodNo,
+        lines: sourceLines
+    };
+    if (sourceMetadata && Object.keys(sourceMetadata).length > 0) {
+        snapshot.metadata = sourceMetadata;
+    }
+    const cleanedSnapshot = cleanObject(snapshot);
+    if (!cleanedSnapshot || Object.keys(cleanedSnapshot).length === 0) {
+        return undefined;
+    }
+    return cleanedSnapshot;
+};
 class CreateVoucherUseCase {
     constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post
     policyRegistry, // Needed for auto-post
@@ -159,7 +235,9 @@ class CreateVoucherUseCase {
                     extraMetadata[key] = payload[key];
                 }
             });
-            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), payload.metadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
+            const sourcePayload = buildSourcePayload(payload);
+            const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), cleanedPayloadMetadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
             // Check if Approval is OFF -> Auto-Post
             let approvalRequired = true;
             if (this.policyConfigProvider) {
@@ -189,8 +267,8 @@ class CreateVoucherUseCase {
             undefined, // reversalOfVoucherId
             undefined, // reference
             undefined, // updatedAt
-            payload.postingPeriodNo // Special/Adjustment period override
-            );
+            payload.postingPeriodNo, // Special/Adjustment period override
+            sourcePayload || null);
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
             this.validationService.validateCore(voucher);
@@ -277,7 +355,7 @@ class UpdateVoucherUseCase {
         this.validationService = validationService;
     }
     async execute(companyId, userId, voucherId, payload) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
@@ -363,9 +441,11 @@ class UpdateVoucherUseCase {
                 extraMetadata[key] = payload[key];
             }
         });
-        let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_c = payload.description) !== null && _c !== void 0 ? _c : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
+        const sourcePayload = buildSourcePayload(payload, voucher.sourcePayload || ((_c = voucher.metadata) === null || _c === void 0 ? void 0 : _c.sourceVoucher));
+        const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+        let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, payload.type || voucher.type, payload.date || voucher.date, (_d = payload.description) !== null && _d !== void 0 ? _d : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
-        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), payload.metadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo);
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), cleanedPayloadMetadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo, sourcePayload || voucher.sourcePayload || null);
         // NEW Step: Policy Validation if auto-approving
         // If the update transitions the voucher to APPROVED, check the date!
         if (updatedVoucher.isApproved && this.ledgerRepo && !voucher.isApproved) {
