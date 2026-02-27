@@ -134,15 +134,155 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                    effectiveData?.status === 'approved' || 
                    !!effectiveData?.metadata?.isPosted;
 
+  const normalizedTypeKey = React.useMemo(() => {
+    const rawType = (
+      (voucherType as any)?.baseType ||
+      voucherType?.code ||
+      voucherType?.id ||
+      headerData?.type ||
+      effectiveData?.type ||
+      ''
+    ).toString().toLowerCase();
+    return rawType;
+  }, [voucherType, headerData?.type, effectiveData?.type]);
+
+  const isReceiptType = normalizedTypeKey.includes('receipt');
+  const isPaymentType = normalizedTypeKey.includes('payment');
+  const isSemanticAmountType = isReceiptType || isPaymentType;
+
+  const semanticLineAccountKey = isReceiptType ? 'receiveFromAccountId' : (isPaymentType ? 'payToAccountId' : null);
+  const semanticHeaderAccountKey = isReceiptType ? 'depositToAccountId' : (isPaymentType ? 'payFromAccountId' : null);
+
   const { 
     totalDebitVoucher: totalDebit, 
     totalCreditVoucher: totalCredit, 
     isBalanced, 
     differenceVoucher: diff
-  } = useVoucherTotals(calculationLines, headerRate, isPosted);
+  } = useVoucherTotals(calculationLines, headerRate, isPosted, isSemanticAmountType ? 'semantic' : 'journal');
 
   const hasValues = totalDebit > 0 || totalCredit > 0;
-  const hasMinLines = calculationLines.filter((r: any) => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+  const semanticLinesCount = React.useMemo(() => {
+    if (!isSemanticAmountType || !semanticLineAccountKey) return 0;
+    return calculationLines.filter((r: any) => {
+      const accountVal = r?.[semanticLineAccountKey] || r?.accountId || r?.account;
+      const amountVal = Number(r?.amount) || 0;
+      return !!accountVal && amountVal > 0;
+    }).length;
+  }, [isSemanticAmountType, semanticLineAccountKey, calculationLines]);
+
+  const semanticHeaderHasAccount = React.useMemo(() => {
+    if (!isSemanticAmountType || !semanticHeaderAccountKey) return false;
+    const headerAccount =
+      headerData?.[semanticHeaderAccountKey] ??
+      headerData?.metadata?.[semanticHeaderAccountKey] ??
+      effectiveData?.[semanticHeaderAccountKey] ??
+      effectiveData?.metadata?.[semanticHeaderAccountKey] ??
+      headerData?.accountId ??
+      headerData?.metadata?.accountId ??
+      headerData?.account ??
+      effectiveData?.accountId ??
+      effectiveData?.metadata?.accountId ??
+      effectiveData?.account;
+    return !!headerAccount;
+  }, [isSemanticAmountType, semanticHeaderAccountKey, headerData, effectiveData]);
+
+  const hasMinLines = isSemanticAmountType
+    ? (semanticLinesCount >= 1 && semanticHeaderHasAccount)
+    : (calculationLines.filter((r: any) => (r.accountId || r.account) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2);
+
+  const normalizeSemanticPayload = (rawData: any): any => {
+    if (!isSemanticAmountType || !semanticLineAccountKey || !semanticHeaderAccountKey) {
+      return rawData;
+    }
+
+    const toAccountRef = (value: any): string | undefined => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object') {
+        if (typeof value.id === 'string' && value.id) return value.id;
+        if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
+        if (typeof value.code === 'string' && value.code) return value.code;
+        if (typeof value.account === 'string' && value.account) return value.account;
+      }
+      return undefined;
+    };
+
+    const rows = rendererRef.current?.getRows() || calculationLines || [];
+
+    const resolvedHeaderAccount =
+      toAccountRef(rawData?.[semanticHeaderAccountKey]) ||
+      toAccountRef(rawData?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(rawData?.accountId) ||
+      toAccountRef(rawData?.metadata?.accountId) ||
+      toAccountRef(rawData?.account) ||
+      toAccountRef(rawData?.metadata?.account) ||
+      toAccountRef(headerData?.[semanticHeaderAccountKey]) ||
+      toAccountRef(headerData?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(headerData?.accountId) ||
+      toAccountRef(headerData?.metadata?.accountId) ||
+      toAccountRef(headerData?.account) ||
+      toAccountRef(headerData?.metadata?.account) ||
+      toAccountRef(effectiveData?.[semanticHeaderAccountKey]) ||
+      toAccountRef(effectiveData?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(effectiveData?.accountId) ||
+      toAccountRef(effectiveData?.metadata?.accountId) ||
+      toAccountRef(effectiveData?.account);
+
+    const semanticLines = (rows || [])
+      .map((row: any) => {
+        const dynamicAccountKey = Object.keys(row || {}).find(k => k.toLowerCase().includes('account'));
+        const accountRef =
+          toAccountRef(row?.[semanticLineAccountKey]) ||
+          toAccountRef(row?.accountId) ||
+          toAccountRef(row?.account) ||
+          toAccountRef(dynamicAccountKey ? row?.[dynamicAccountKey] : undefined) ||
+          toAccountRef(row?.metadata?.[semanticLineAccountKey]) ||
+          toAccountRef(row?.metadata?.accountId) ||
+          toAccountRef(row?.metadata?.account);
+
+        const amount = Math.abs(Number(row?.amount ?? row?.debit ?? row?.credit ?? 0));
+        const notes = row?.notes || row?.description || '';
+        const costCenterId = row?.costCenterId || row?.costCenter || null;
+        const metadata = row?.metadata || {};
+        const lineCurrency = String(row?.currency || row?.lineCurrency || '').toUpperCase();
+        const lineParity = Number(row?.parity ?? row?.exchangeRate ?? 1) || 1;
+
+        if (isReceiptType) {
+          return {
+            receiveFromAccountId: accountRef,
+            amount,
+            notes,
+            costCenterId,
+            currency: lineCurrency || undefined,
+            lineCurrency: lineCurrency || undefined,
+            exchangeRate: lineParity,
+            parity: lineParity,
+            metadata
+          };
+        }
+        return {
+          payToAccountId: accountRef,
+          amount,
+          notes,
+          costCenterId,
+          currency: lineCurrency || undefined,
+          lineCurrency: lineCurrency || undefined,
+          exchangeRate: lineParity,
+          parity: lineParity,
+          metadata
+        };
+      })
+      .filter((line: any) => {
+        const accountRef = isReceiptType ? line.receiveFromAccountId : line.payToAccountId;
+        return !!accountRef && Number(line.amount) > 0;
+      });
+
+    return {
+      ...rawData,
+      [semanticHeaderAccountKey]: resolvedHeaderAccount,
+      lines: semanticLines
+    };
+  };
 
   const isVoucherReadOnly = React.useMemo(() => {
     if (!effectiveData?.status) return false;
@@ -214,7 +354,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     if (!rendererRef.current) return;
     
     setError(null);
-    const formData = rendererRef.current.getData();
+    const formData = normalizeSemanticPayload(rendererRef.current.getData());
     const isSubmit = statusOverride === 'submitted';
     
     // FX Rate Validation (Synced from VoucherWindow)
@@ -502,7 +642,15 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     forceStrictMode && initialData?.status && initialData.status.toLowerCase() !== 'draft' && initialData.status.toLowerCase() !== 'pending' && 'hidden'
                   )}
                   disabled={isSaving || settingsLoading || !isBalanced || !hasMinLines}
-                  title={!isBalanced ? "Voucher must be balanced to save" : !hasMinLines ? "Voucher must have at least 2 lines" : ""}
+                  title={
+                    !isBalanced
+                      ? "Voucher must be balanced to save"
+                      : !hasMinLines
+                        ? (isSemanticAmountType
+                          ? "Voucher must have a header account and at least 1 line with amount"
+                          : "Voucher must have at least 2 lines")
+                        : ""
+                  }
                 >
                   {isSaving || settingsLoading ? (
                     <>

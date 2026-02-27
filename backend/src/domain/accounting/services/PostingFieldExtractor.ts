@@ -30,6 +30,14 @@ export class PostingFieldExtractor {
         }
       }
     }
+
+    // Compatibility fallback:
+    // Some cloned/custom forms may not carry posting-role metadata yet.
+    // In that case, do not strip the payload because strategies still need semantic keys
+    // like depositToAccountId / payFromAccountId.
+    if (postingFieldIds.size === 0) {
+      return { ...header };
+    }
     
     // V10: Validate all required posting fields are present
     for (const [fieldId, role] of requiredFields.entries()) {
@@ -47,7 +55,21 @@ export class PostingFieldExtractor {
     
     // ALWAYS pass through structural fields needed by all strategies
     // These are not "posting fields" in the designer sense, but are required for line generation
-    const structuralFields = ['lines', 'currency', 'exchangeRate', 'baseCurrency', 'date', 'type', 'metadata'];
+    const structuralFields = [
+      'lines',
+      'currency',
+      'exchangeRate',
+      'baseCurrency',
+      'date',
+      'type',
+      'metadata',
+      // Semantic header anchors used by payment/receipt strategies
+      'depositToAccountId',
+      'payFromAccountId',
+      // Generic header account aliases used as fallback in strategies
+      'accountId',
+      'account'
+    ];
     for (const sf of structuralFields) {
       if (sf in header && !(sf in postingFields)) {
         postingFields[sf] = header[sf];

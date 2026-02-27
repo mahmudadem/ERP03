@@ -75,43 +75,143 @@ const dispatchPrint = (id: string) => {
  * Internal save logic — transforms UI data to V2 API payload
  */
 const saveVoucherInternal = async (data: any): Promise<any> => {
-  const baseCurrency = data.baseCurrency || data.currency || '';
+  const normalizeType = (value: any): string => {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'journal_entry';
+    if (raw.includes('receipt')) return 'receipt';
+    if (raw.includes('payment')) return 'payment';
+    if (raw.includes('opening')) return 'opening_balance';
+    if (raw.includes('revaluation') || raw.includes('fx')) return 'fx_revaluation';
+    if (raw.includes('journal') || raw === 'jv') return 'journal_entry';
+    return raw;
+  };
+
+  const resolvedType = normalizeType(
+    data.type ||
+    data.voucherConfig?.baseType ||
+    data.voucherConfig?.code
+  );
+  const isReceipt = resolvedType === 'receipt';
+  const isPayment = resolvedType === 'payment';
+
+  const toAccountRef = (value: any): string | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      if (typeof value.id === 'string' && value.id) return value.id;
+      if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
+      if (typeof value.code === 'string' && value.code) return value.code;
+      if (typeof value.account === 'string' && value.account) return value.account;
+    }
+    return undefined;
+  };
+
+  const explicitHeaderCurrency = String(data.currency || '').toUpperCase();
+  const fallbackHeaderCurrency = String(
+    data.baseCurrency ||
+    data.voucherConfig?.defaultCurrency ||
+    ''
+  ).toUpperCase();
+  const semanticInputLines = Array.isArray(data.lines) ? data.lines : [];
+  const semanticCurrencies = semanticInputLines
+    .map((line: any) => String(line?.currency || line?.lineCurrency || '').toUpperCase())
+    .filter((c: string) => !!c);
+  const uniqueSemanticCurrencies = Array.from(new Set(semanticCurrencies));
+  const inferredSemanticCurrency =
+    (isReceipt || isPayment) && uniqueSemanticCurrencies.length === 1
+      ? uniqueSemanticCurrencies[0]
+      : '';
+  // Preserve the user's explicit header currency when provided.
+  // Only infer from semantic lines when header currency is missing.
+  const headerCurrency = explicitHeaderCurrency || inferredSemanticCurrency || fallbackHeaderCurrency;
+  const baseCurrency = String(data.baseCurrency || '').toUpperCase();
   const exchangeRate = Number(data.exchangeRate) || 1;
+
+  const semanticLines = (data.lines || [])
+    .map((line: any) => {
+      const accountRef = isReceipt
+        ? toAccountRef(line.receiveFromAccountId || line.accountId || line.account)
+        : toAccountRef(line.payToAccountId || line.accountId || line.account);
+      const amount = Math.abs(Number(line.amount || line.debit || line.credit || 0));
+      const lineCurrency = String(line.currency || line.lineCurrency || '').toUpperCase();
+      const lineParity = Number(line.exchangeRate || line.parity || 1) || 1;
+      return isReceipt
+        ? {
+            receiveFromAccountId: accountRef,
+            amount,
+            notes: line.description || line.notes || '',
+            costCenterId: line.costCenterId || line.category || null,
+            currency: lineCurrency || undefined,
+            lineCurrency: lineCurrency || undefined,
+            exchangeRate: lineParity,
+            parity: lineParity,
+            metadata: line.metadata || {}
+          }
+        : {
+            payToAccountId: accountRef,
+            amount,
+            notes: line.description || line.notes || '',
+            costCenterId: line.costCenterId || line.category || null,
+            currency: lineCurrency || undefined,
+            lineCurrency: lineCurrency || undefined,
+            exchangeRate: lineParity,
+            parity: lineParity,
+            metadata: line.metadata || {}
+          };
+    })
+    .filter((line: any) => {
+      const accountRef = isReceipt ? line.receiveFromAccountId : line.payToAccountId;
+      return !!accountRef && Number(line.amount) > 0;
+    });
   
   const payload = {
     ...data,
+    type: resolvedType,
     voucherNo: data.voucherNumber || data.voucherNo,
     description: data.description || data.notes, 
     formId: data.formId, 
     prefix: data.prefix,
     sourceModule: data.sourceModule || 'accounting',
+    currency: headerCurrency || undefined,
     baseCurrency,
     exchangeRate,
-    lines: (data.lines || []).map((line: any) => {
-      const side = line.side || (Number(line.debit || 0) > 0 ? 'Debit' : 'Credit');
-      const fxAmount = Math.abs(Number(line.amount || line.debit || line.credit || 0));
-      
-      let baseAmount = Math.abs(Number(line.baseAmount || 0));
-      if (baseAmount === 0) {
-        baseAmount = fxAmount * exchangeRate;
-      }
-      
-      const lineCurrency = line.currency || line.lineCurrency || data.currency || baseCurrency;
-      
-      return {
-        id: line.id && typeof line.id === 'string' ? line.id : undefined,
-        accountId: line.accountId || line.account,
-        side,
-        amount: fxAmount,
-        currency: lineCurrency,
-        baseAmount,
-        baseCurrency,
-        exchangeRate: Number(line.exchangeRate || line.parity || exchangeRate),
-        notes: line.description || line.notes,
-        costCenterId: line.costCenterId || line.category || null,
-        metadata: line.metadata || {}
-      };
-    })
+    ...(isReceipt
+      ? {
+          depositToAccountId: toAccountRef(data.depositToAccountId || data.accountId || data.account),
+          lines: semanticLines
+        }
+      : isPayment
+        ? {
+            payFromAccountId: toAccountRef(data.payFromAccountId || data.accountId || data.account),
+            lines: semanticLines
+          }
+        : {
+            lines: (data.lines || []).map((line: any) => {
+              const side = line.side || (Number(line.debit || 0) > 0 ? 'Debit' : 'Credit');
+              const fxAmount = Math.abs(Number(line.amount || line.debit || line.credit || 0));
+
+              let baseAmount = Math.abs(Number(line.baseAmount || 0));
+              if (baseAmount === 0) {
+                baseAmount = fxAmount * exchangeRate;
+              }
+
+              const lineCurrency = line.currency || line.lineCurrency || data.currency || baseCurrency;
+
+              return {
+                id: line.id && typeof line.id === 'string' ? line.id : undefined,
+                accountId: line.accountId || line.account,
+                side,
+                amount: fxAmount,
+                currency: lineCurrency,
+                baseAmount,
+                baseCurrency,
+                exchangeRate: Number(line.exchangeRate || line.parity || exchangeRate),
+                notes: line.description || line.notes,
+                costCenterId: line.costCenterId || line.category || null,
+                metadata: line.metadata || {}
+              };
+            })
+          })
   };
   
   if (payload.id && payload.id.toString().startsWith('voucher-')) {

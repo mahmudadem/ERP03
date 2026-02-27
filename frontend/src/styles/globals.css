@@ -86,3 +86,17 @@ html[dir="rtl"] .ltr {
     box-shadow: none !important;
   }
 }
+
+.topbar-grid-bg {
+  background-image: linear-gradient(to right, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+  background-size: calc(100% / 20) 100%;
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

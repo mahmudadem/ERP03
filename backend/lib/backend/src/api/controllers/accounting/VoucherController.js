@@ -104,6 +104,7 @@ class VoucherController {
         }
     }
     static async create(req, res, next) {
+        var _a, _b, _c, _d, _e;
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
@@ -115,10 +116,31 @@ class VoucherController {
             if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
                 return res.status(400).json(err.toJSON());
             }
-            next(err);
+            const errorMessage = (err === null || err === void 0 ? void 0 : err.message) || 'Failed to create voucher';
+            console.error('[VoucherController.create] Failed', {
+                companyId: (_a = req === null || req === void 0 ? void 0 : req.user) === null || _a === void 0 ? void 0 : _a.companyId,
+                userId: (_b = req === null || req === void 0 ? void 0 : req.user) === null || _b === void 0 ? void 0 : _b.uid,
+                voucherType: (_c = req.body) === null || _c === void 0 ? void 0 : _c.type,
+                formId: (_d = req.body) === null || _d === void 0 ? void 0 : _d.formId,
+                status: (_e = req.body) === null || _e === void 0 ? void 0 : _e.status,
+                errorName: err === null || err === void 0 ? void 0 : err.name,
+                errorMessage,
+                stack: err === null || err === void 0 ? void 0 : err.stack
+            });
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'INFRA_999',
+                    message: errorMessage,
+                    severity: 'error',
+                    timestamp: new Date().toISOString(),
+                    context: { origin: 'VoucherController.create' }
+                }
+            });
         }
     }
     static async update(req, res, next) {
+        var _a, _b, _c, _d, _e, _f;
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
@@ -130,7 +152,28 @@ class VoucherController {
             if (err.name === 'PostingError' || err instanceof AppError_1.PostingError) {
                 return res.status(400).json(err.toJSON());
             }
-            next(err);
+            const errorMessage = (err === null || err === void 0 ? void 0 : err.message) || 'Failed to update voucher';
+            console.error('[VoucherController.update] Failed', {
+                companyId: (_a = req === null || req === void 0 ? void 0 : req.user) === null || _a === void 0 ? void 0 : _a.companyId,
+                userId: (_b = req === null || req === void 0 ? void 0 : req.user) === null || _b === void 0 ? void 0 : _b.uid,
+                voucherId: (_c = req.params) === null || _c === void 0 ? void 0 : _c.id,
+                voucherType: (_d = req.body) === null || _d === void 0 ? void 0 : _d.type,
+                formId: (_e = req.body) === null || _e === void 0 ? void 0 : _e.formId,
+                status: (_f = req.body) === null || _f === void 0 ? void 0 : _f.status,
+                errorName: err === null || err === void 0 ? void 0 : err.name,
+                errorMessage,
+                stack: err === null || err === void 0 ? void 0 : err.stack
+            });
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'INFRA_999',
+                    message: errorMessage,
+                    severity: 'error',
+                    timestamp: new Date().toISOString(),
+                    context: { origin: 'VoucherController.update' }
+                }
+            });
         }
     }
     /**

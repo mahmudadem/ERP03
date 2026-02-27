@@ -8,12 +8,25 @@ interface VoucherRow {
   side?: 'Debit' | 'Credit';
 }
 
+type VoucherTotalsMode = 'journal' | 'semantic';
+
 export const useVoucherTotals = (
   rows: VoucherRow[], 
   headerRate: number = 1,
-  convertFromBase: boolean = false
+  convertFromBase: boolean = false,
+  mode: VoucherTotalsMode = 'journal'
 ) => {
   const { totalDebitVoucher, totalCreditVoucher, isBalanced, differenceVoucher } = useMemo(() => {
+    if (mode === 'semantic') {
+      const totalAmount = rows.reduce((sum, row) => sum + (parseFloat(row.amount as string) || 0), 0);
+      return {
+        totalDebitVoucher: totalAmount,
+        totalCreditVoucher: totalAmount,
+        isBalanced: totalAmount > 0,
+        differenceVoucher: 0
+      };
+    }
+
     let debitEqSum = 0;
     let creditEqSum = 0;
     let debitAmountSum = 0;
@@ -66,7 +79,7 @@ export const useVoucherTotals = (
       isBalanced,
       differenceVoucher
     };
-  }, [rows, headerRate, convertFromBase]);
+  }, [rows, headerRate, convertFromBase, mode]);
 
   return { totalDebitVoucher, totalCreditVoucher, isBalanced, differenceVoucher };
 };

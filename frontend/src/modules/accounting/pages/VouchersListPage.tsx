@@ -138,53 +138,39 @@ const VouchersListPage: React.FC = () => {
   const isLoading = vouchersLoading || typesLoading;
 
   const resolveVoucherForm = React.useCallback((voucherLike: any) => {
+    const getVoucherFormId = (v: any): string | undefined => {
+      return v?.formId || v?.metadata?.formId;
+    };
+
     const matchByFormId = (formId?: string | null) =>
       voucherTypes.find(t => formId && (t.id === formId || (t as any)._typeId === formId));
 
-    let formDefinition = matchByFormId(voucherLike?.formId);
+    const getJournalFallbackForm = () =>
+      voucherTypes.find(t => {
+        const baseType = String((t as any)?.baseType || '').toLowerCase();
+        const code = String(t?.code || '').toLowerCase();
+        const id = String(t?.id || '').toLowerCase();
+        const name = String(t?.name || '').toLowerCase();
+        return (
+          baseType.includes('journal') ||
+          code.includes('journal') ||
+          code === 'jv' ||
+          id.includes('journal') ||
+          id.includes('jv') ||
+          name.includes('journal')
+        );
+      });
+
+    let formDefinition = matchByFormId(getVoucherFormId(voucherLike));
 
     if (!formDefinition && voucherLike?.reversalOfVoucherId) {
       const parentVoucher = vouchers.find(v => v.id === voucherLike.reversalOfVoucherId);
-      formDefinition = matchByFormId(parentVoucher?.formId);
+      formDefinition = matchByFormId(getVoucherFormId(parentVoucher));
     }
 
+    // Deterministic fallback: if source form is missing, open in JV form (no heuristic guessing by type/keywords).
     if (!formDefinition) {
-      const rawType = (voucherLike?.type || '').toLowerCase();
-      const originType = (voucherLike?.metadata?.originType || '').toLowerCase();
-      const candidateTypes = [rawType, originType].filter(Boolean);
-
-      const typeKeywords: Record<string, string[]> = {
-        journal_entry: ['journal', 'journal_entry', 'jv'],
-        jv: ['journal', 'journal_entry', 'jv'],
-        payment: ['payment', 'pv'],
-        payment_voucher: ['payment', 'pv'],
-        receipt: ['receipt', 'rv'],
-        receipt_voucher: ['receipt', 'rv'],
-        opening_balance: ['opening', 'balance'],
-        fx_revaluation: ['fx_revaluation', 'revaluation', 'journal'],
-        reversal: ['reversal', 'reverse', 'rv']
-      };
-
-      const keywords = Array.from(
-        new Set(
-          candidateTypes.reduce<string[]>((acc, type) => {
-            acc.push(...(typeKeywords[type] || []));
-            return acc;
-          }, [])
-        )
-      );
-
-      formDefinition = voucherTypes.find(t => {
-        const formIdLower = (t.id || '').toLowerCase();
-        const formNameLower = (t.name || '').toLowerCase();
-        const formCodeLower = (t.code || '').toLowerCase();
-
-        return keywords.some(kw =>
-          formIdLower.includes(kw) ||
-          formNameLower.includes(kw) ||
-          formCodeLower.includes(kw)
-        );
-      });
+      formDefinition = getJournalFallbackForm();
     }
 
     return formDefinition;
@@ -317,18 +303,15 @@ const VouchersListPage: React.FC = () => {
 
   const performSave = async (data: any) => {
     try {
-      let savedVoucher;
-      if (editingVoucher) {
-        // Edit Mode
-        await accountingApi.updateVoucher(editingVoucher.id, data);
-        savedVoucher = { ...data, id: editingVoucher.id };
-        errorHandler.showSuccess('Voucher updated successfully');
-      } else {
-        // Create Mode
-        const res = await accountingApi.createVoucher(data);
-        savedVoucher = res;
-        errorHandler.showSuccess('Voucher created successfully');
-      }
+      const normalizedPayload = editingVoucher?.id
+        ? { ...data, id: data?.id || editingVoucher.id }
+        : data;
+
+      // Always route through the centralized save path so semantic forms
+      // (receipt/payment clones) are normalized consistently.
+      const savedVoucher = await voucherActions.save('web-modal', normalizedPayload);
+      errorHandler.showSuccess(editingVoucher ? 'Voucher updated successfully' : 'Voucher created successfully');
+
       invalidateVouchers();
       setIsModalOpen(false);
       setEditingVoucher(savedVoucher);

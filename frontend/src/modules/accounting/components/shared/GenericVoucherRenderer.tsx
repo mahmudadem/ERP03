@@ -175,6 +175,88 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Sync state with initialData updates (e.g. after fetch completes or partial submit)
   useEffect(() => {
     if (initialData) {
+      const normalizeType = (value: any): string => {
+        const raw = String(value || '').trim().toLowerCase();
+        if (!raw) return 'journal_entry';
+        if (raw.includes('receipt')) return 'receipt';
+        if (raw.includes('payment')) return 'payment';
+        if (raw.includes('opening')) return 'opening_balance';
+        if (raw.includes('revaluation') || raw.includes('fx')) return 'fx_revaluation';
+        if (raw.includes('journal') || raw === 'jv') return 'journal_entry';
+        return raw;
+      };
+
+      const resolvedType = normalizeType(
+        initialData.type ||
+        (definition as any)?.baseType ||
+        (definition as any)?._typeId ||
+        definition.code ||
+        definition.name
+      );
+      const isReceiptType = resolvedType === 'receipt';
+      const isPaymentType = resolvedType === 'payment';
+
+      const rawLines = Array.isArray(initialData.lines) ? initialData.lines : [];
+      const sideOf = (line: any): 'debit' | 'credit' => {
+        const explicit = String(line?.side || '').toLowerCase();
+        if (explicit === 'debit' || explicit === 'credit') return explicit;
+        const debit = Number(line?.debit || 0);
+        const credit = Number(line?.credit || 0);
+        return debit >= credit ? 'debit' : 'credit';
+      };
+      const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
+
+      const hasSemanticKeys = isReceiptType
+        ? rawLines.some((l: any) => !!(l?.receiveFromAccountId || l?.metadata?.receiveFromAccountId))
+        : isPaymentType
+          ? rawLines.some((l: any) => !!(l?.payToAccountId || l?.metadata?.payToAccountId))
+          : false;
+
+      const debitLines = rawLines.filter((l: any) => sideOf(l) === 'debit' && amountOf(l) > 0);
+      const creditLines = rawLines.filter((l: any) => sideOf(l) === 'credit' && amountOf(l) > 0);
+
+      const derivedHeaderAccount = isReceiptType
+        ? (
+            initialData.depositToAccountId ||
+            initialData.metadata?.depositToAccountId ||
+            initialData.accountId ||
+            initialData.metadata?.accountId ||
+            initialData.account ||
+            initialData.metadata?.account ||
+            debitLines[0]?.accountId ||
+            debitLines[0]?.account
+          )
+        : isPaymentType
+          ? (
+              initialData.payFromAccountId ||
+              initialData.metadata?.payFromAccountId ||
+              initialData.accountId ||
+              initialData.metadata?.accountId ||
+              initialData.account ||
+              initialData.metadata?.account ||
+              creditLines[0]?.accountId ||
+              creditLines[0]?.account
+            )
+          : undefined;
+
+      const semanticLines = (!hasSemanticKeys && (isReceiptType || isPaymentType))
+        ? (isReceiptType ? (creditLines.length > 0 ? creditLines : rawLines) : (debitLines.length > 0 ? debitLines : rawLines))
+        : rawLines;
+
+      const semanticHeaderPatch = isReceiptType
+        ? {
+            depositToAccountId: initialData.depositToAccountId || initialData.metadata?.depositToAccountId || derivedHeaderAccount,
+            accountId: initialData.accountId || initialData.metadata?.accountId || initialData.account || initialData.metadata?.account || derivedHeaderAccount,
+            account: initialData.account || initialData.metadata?.account || initialData.accountId || initialData.metadata?.accountId || derivedHeaderAccount
+          }
+        : isPaymentType
+          ? {
+              payFromAccountId: initialData.payFromAccountId || initialData.metadata?.payFromAccountId || derivedHeaderAccount,
+              accountId: initialData.accountId || initialData.metadata?.accountId || initialData.account || initialData.metadata?.account || derivedHeaderAccount,
+              account: initialData.account || initialData.metadata?.account || initialData.accountId || initialData.metadata?.accountId || derivedHeaderAccount
+            }
+          : {};
+
       // 1. Sync Form Metadata
       setFormData((prev: any) => {
         // If it's a completely different voucher, or we don't have an ID yet, overwrite.
@@ -182,6 +264,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
            return {
              ...prev,
              ...initialData,
+             ...semanticHeaderPatch,
              date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
            };
         }
@@ -206,25 +289,33 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
              // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
              // or if the current state is completely empty/uninitialized.
              if (isNewVoucher || (isEmptyRows && initialData.lines.length > 0)) {
-                 const mappedLines = initialData.lines.map((l: any, i: number) => {
+                 const mappedLines = semanticLines.map((l: any, i: number) => {
                      const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
                      const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
+                     const semanticAccountId = isReceiptType
+                       ? (l.receiveFromAccountId || l.accountId || l.account)
+                       : isPaymentType
+                         ? (l.payToAccountId || l.accountId || l.account)
+                         : (l.accountId || l.account);
                      
                      let accountCode = l.account || '';
-                     if (!accountCode && l.accountId) {
-                       const acc = getAccountById(l.accountId);
+                     if (!accountCode && semanticAccountId) {
+                       const acc = getAccountById(semanticAccountId);
                        if (acc) accountCode = acc.code;
-                       else accountCode = l.accountId;
+                       else accountCode = semanticAccountId;
                      }
 
                      return { 
                        ...l, 
+                       ...(isReceiptType ? { receiveFromAccountId: semanticAccountId } : {}),
+                       ...(isPaymentType ? { payToAccountId: semanticAccountId } : {}),
                        debit, 
                        credit, 
+                       amount: amountOf(l),
                        id: l.id ?? -(Date.now() + i), 
                        _rowId: i + 1,
                        account: accountCode,
-                       accountId: l.accountId || l.account,
+                       accountId: semanticAccountId,
                        notes: l.notes || l.description || '',
                        currency: l.currency || l.lineCurrency || '',
                        parity: l.exchangeRate || l.parity || 1.0,
@@ -248,6 +339,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                    onChangeRef.current?.({ 
                      ...formData, 
                      ...initialData,
+                     ...semanticHeaderPatch,
                      lines: mappedLines 
                    });
                  }
@@ -846,33 +938,81 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         backendType = 'reversal';
       }
       
-      // Map rows to backend VoucherLine format
+      const resolveRowField = (row: any, key: string): any => {
+        if (!row || !key) return undefined;
+        if (row[key] !== undefined && row[key] !== null && row[key] !== '') return row[key];
+
+        const lowerKey = key.toLowerCase();
+        const foundKey = Object.keys(row).find(k => k.toLowerCase() === lowerKey);
+        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== '') {
+          return row[foundKey];
+        }
+        return undefined;
+      };
+
+      // Map rows to backend payload format based on resolved strategy type.
       // IMPORTANT: Frontend sends RAW values only. Backend calculates all derived values.
-      const backendLines = rows
-        .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0))
-        .map(row => {
-          const isDebit = (Number(row.debit) || 0) > 0;
-          const amt = isDebit ? row.debit : row.credit;
-          
-          return {
-            accountId: row.accountId || row.account,
-            description: row.notes || '',
-            side: isDebit ? 'Debit' : 'Credit',
-            amount: Math.abs(Number(amt) || 0),
-            lineCurrency: (row.currency || formData.currency || '').toUpperCase(),
-            exchangeRate: Number(row.parity) || 1,
-            costCenterId: (row as any).costCenterId || (row as any).costCenter || null,
-            costCenter: (row as any).costCenter || (row as any).costCenterId || null,
-            metadata: row.metadata || {}
-          };
-        });
+      let backendLines: any[] = [];
+      if (backendType === 'receipt') {
+        backendLines = rows
+          .map(row => {
+            const receiveFromAccountId = resolveRowField(row, 'receiveFromAccountId') || row.accountId || row.account;
+            const amount = Math.abs(Number(resolveRowField(row, 'amount') || (row as any).amount || row.debit || row.credit || 0));
+            return {
+              receiveFromAccountId,
+              amount,
+              notes: row.notes || (row as any).description || ''
+            };
+          })
+          .filter(line => line.receiveFromAccountId && line.amount > 0);
+      } else if (backendType === 'payment') {
+        backendLines = rows
+          .map(row => {
+            const payToAccountId = resolveRowField(row, 'payToAccountId') || row.accountId || row.account;
+            const amount = Math.abs(Number(resolveRowField(row, 'amount') || (row as any).amount || row.debit || row.credit || 0));
+            return {
+              payToAccountId,
+              amount,
+              notes: row.notes || (row as any).description || ''
+            };
+          })
+          .filter(line => line.payToAccountId && line.amount > 0);
+      } else {
+        backendLines = rows
+          .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0))
+          .map(row => {
+            const isDebit = (Number(row.debit) || 0) > 0;
+            const amt = isDebit ? row.debit : row.credit;
+            
+            return {
+              accountId: row.accountId || row.account,
+              description: row.notes || '',
+              side: isDebit ? 'Debit' : 'Credit',
+              amount: Math.abs(Number(amt) || 0),
+              lineCurrency: (row.currency || formData.currency || '').toUpperCase(),
+              exchangeRate: Number(row.parity) || 1,
+              costCenterId: (row as any).costCenterId || (row as any).costCenter || null,
+              costCenter: (row as any).costCenter || (row as any).costCenterId || null,
+              metadata: row.metadata || {}
+            };
+          });
+      }
       
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
       const resultNumberFormat = (definition as any).numberFormat || undefined;
+      const semanticHeaderAccountFallback = formData.accountId || formData.account || undefined;
+      const debitAnchorAccount = rows.find(r => (Number((r as any).debit) || 0) > 0)?.accountId || rows.find(r => (Number((r as any).debit) || 0) > 0)?.account;
+      const creditAnchorAccount = rows.find(r => (Number((r as any).credit) || 0) > 0)?.accountId || rows.find(r => (Number((r as any).credit) || 0) > 0)?.account;
+      const semanticHeaderPatch = backendType === 'receipt'
+        ? { depositToAccountId: formData.depositToAccountId || semanticHeaderAccountFallback || debitAnchorAccount }
+        : backendType === 'payment'
+          ? { payFromAccountId: formData.payFromAccountId || semanticHeaderAccountFallback || creditAnchorAccount }
+          : {};
       
       return {
         ...formData,
+        ...semanticHeaderPatch,
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
         formId: resultFormId, // Which form was used for rendering
@@ -1008,38 +1148,50 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             if (field === 'costCenter') updated.costCenterId = updated.costCenterId || '';
           }
           
-          // ACCOUNT-CURRENCY SYNC: If account changes, sync currency
-          if (field === 'account') {
+          // ACCOUNT-CURRENCY SYNC: If any account-like field changes, normalize and sync currency.
+          const fieldName = typeof field === 'string' ? field : '';
+          const isAccountLikeField =
+            fieldName === 'account' ||
+            fieldName === 'accountId' ||
+            fieldName === 'accountSelector' ||
+            fieldName.toLowerCase().includes('accountid');
+
+          if (isAccountLikeField) {
             const accVal = value as Account | null | string;
-            // Default to voucher currency if account doesn't have a specific one
             const defaultCurrency = formData.currency || company?.baseCurrency || '';
-            
+            const normalizedAccountField = fieldName === 'accountSelector' ? 'accountId' : fieldName;
+
             let selectedAccount: Account | undefined;
             if (accVal && typeof accVal === 'object') {
               selectedAccount = accVal;
-              updated.accountId = selectedAccount.id;
-              updated.account = selectedAccount.code;
             } else if (accVal) {
-              updated.account = accVal as string;
-              selectedAccount = getAccountByCode(updated.account);
-              if (selectedAccount) {
-                 updated.accountId = selectedAccount.id;
-              }
+              const rawValue = accVal as string;
+              selectedAccount = getAccountByCode(rawValue) || getAccountById(rawValue);
             }
 
             if (selectedAccount) {
+              // Keep generic aliases in sync for shared logic/compatibility.
+              updated.account = selectedAccount.code;
+              updated.accountId = selectedAccount.id;
+              (updated as any)[normalizedAccountField] = normalizedAccountField.toLowerCase().includes('accountid')
+                ? selectedAccount.id
+                : selectedAccount.code;
+
               // Rule 1.3: Currency Policy Enforcement
               if (selectedAccount.currencyPolicy === 'FIXED' && selectedAccount.fixedCurrencyCode) {
-                // LOCK to fixed currency
                 updated.currency = selectedAccount.fixedCurrencyCode;
                 console.log(`[POLICY] Account ${selectedAccount.code} has FIXED currency policy. Setting line to ${selectedAccount.fixedCurrencyCode}.`);
               } else if (selectedAccount.currency) {
-                // Default suggestion from account (Legacy compat)
                 updated.currency = selectedAccount.currency;
               } else {
                 updated.currency = defaultCurrency;
               }
             } else {
+              // Preserve raw value and keep aliases best-effort when account lookup fails.
+              (updated as any)[normalizedAccountField] = accVal || '';
+              if (normalizedAccountField !== 'account') {
+                updated.account = (typeof accVal === 'string' ? accVal : '') || updated.account || '';
+              }
               updated.currency = defaultCurrency;
             }
           }
@@ -1093,7 +1245,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
     // 2. PARITY SYNC: (Calculates parity when currencies change)
     // Only trigger if currency actually changes AND it's not the initial load of an existing voucher
-    if (((field as string) === 'currency' || (field as string) === 'account' || (field as string) === 'exchangeRate') && targetRow) {
+    const fieldKey = typeof field === 'string' ? field : '';
+    const isAccountLikeField =
+      fieldKey === 'account' ||
+      fieldKey === 'accountId' ||
+      fieldKey === 'accountSelector' ||
+      fieldKey.toLowerCase().includes('accountid');
+
+    if ((fieldKey === 'currency' || isAccountLikeField || fieldKey === 'exchangeRate') && targetRow) {
       const isNewVoucher = !initialData?.id;
       const rowId = id;
       
@@ -1103,7 +1262,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       // If we are loading an existing voucher, don't auto-fetch/overwrite saved parities 
       // unless the user just changed the currency.
-      if (!isNewVoucher && field !== 'currency' && field !== 'account') {
+      if (!isNewVoucher && fieldKey !== 'currency' && !isAccountLikeField) {
         return;
       }
 
@@ -1423,8 +1582,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                                      <div className="p-0.5">
                                                         <AccountSelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
-                                                            value={row.account} 
-                                                            onChange={(val) => handleRowChange(row.id, 'account', val)} 
+                                                            value={(getRowValue(row, colId) || row.accountId || row.account) as string}
+                                                            onChange={(val) => handleRowChange(row.id, colId as any, val)} 
                                                             noBorder={true}
                                                             disabled={readOnly}
                                                             placeholder={t('accountSelector.placeholder', { defaultValue: '...Account code' })}
@@ -1669,9 +1828,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                                          {(colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
                                              <AccountSelector 
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
-                                                 value={row.account} 
+                                                 value={(getRowValue(row, colId) || row.accountId || row.account) as string}
                                                  disabled={readOnly}
-                                                 onChange={(val) => handleRowChange(row.id, 'account', val)} 
+                                                 onChange={(val) => handleRowChange(row.id, colId as any, val)} 
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
                                              />

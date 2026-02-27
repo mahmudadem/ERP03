@@ -11,7 +11,8 @@ import {
   LogOut, 
   User, 
   Building2,
-  Settings2
+  Settings2,
+  LayoutTemplate
 } from 'lucide-react';
 import { Menu as HeadlessMenu, Transition } from '@headlessui/react';
 import { NotificationBell } from '../components/NotificationBell';
@@ -29,23 +30,22 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation('common');
   const isRtl = useMemo(() => i18n.dir() === 'rtl', [i18n]);
-  const { widgets, toggleWidget } = useWidgetStore();
+  const { widgets, toggleWidget, isLayoutMode, setLayoutMode } = useWidgetStore();
 
   const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U');
 
   return (
     <header className={clsx(
-      "h-16 flex items-center justify-between px-4 sticky top-0 z-50 transition-all duration-300 print:hidden",
+      "min-h-[48px] h-auto flex items-center justify-between pl-1 pr-4 sticky top-0 z-50 transition-all duration-300 print:hidden py-1",
       "bg-[rgba(var(--color-bg-primary-rgb),0.8)] backdrop-blur-md border-b border-[var(--color-border)] shadow-sm"
     )}>
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={onMenuClick}
-          className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded lg:hidden"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Mobile Menu Button - takes 0 width on desktop */}
+      <button 
+        onClick={onMenuClick}
+        className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded lg:hidden shrink-0"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
 
       <DraggableWidgetSpace />
 
@@ -61,11 +61,27 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
            >
              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
            </Button>
+ 
+           {/* Layout Mode Toggle */}
+           <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setLayoutMode(!isLayoutMode)} 
+            className={clsx(
+              "p-2 rounded-lg transition-all",
+              isLayoutMode 
+                ? "bg-indigo-600 text-white shadow-lg scale-110" 
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"
+            )}
+           >
+             <Settings2 className={clsx("w-4 h-4", isLayoutMode && "animate-spin-slow")} />
+           </Button>
 
-           {/* Widget Manager */}
+
+            {/* Widget Manager Moved to Dropdown or similar if needed, but for now we keep it focused */}
            <HeadlessMenu as="div" className="relative">
              <HeadlessMenu.Button className="p-2 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] rounded-lg transition-colors">
-               <Settings2 className="w-4 h-4" />
+               <LayoutTemplate className="w-4 h-4" />
              </HeadlessMenu.Button>
              <Transition
                as={Fragment}

@@ -105,6 +105,36 @@ export class CreateVoucherUseCase {
         }
         
         lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
+
+        // Normalize/validate strategy-produced account refs to persisted UUIDs.
+        // Strategies may receive account codes from flexible/cloned forms.
+        const accountValidationService = new AccountValidationService(this.accountRepo);
+        lines = await Promise.all(lines.map(async (line) => {
+          const account = await accountValidationService.validateAccountById(
+            companyId,
+            userId,
+            line.accountId,
+            voucherType
+          );
+
+          if (account.id === line.accountId) {
+            return line;
+          }
+
+          return new VoucherLineEntity(
+            line.id,
+            account.id,
+            line.side,
+            line.baseAmount,
+            line.baseCurrency,
+            line.amount,
+            line.currency,
+            line.exchangeRate,
+            line.notes,
+            line.costCenterId,
+            line.metadata
+          );
+        }));
       } else {
         // Map incoming lines to V2 VoucherLineEntity
         // Strictly V2 format (side, amount, baseAmount)

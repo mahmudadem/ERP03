@@ -134,6 +134,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   // Fallback to win.data if renderer is not ready (initial load)
   const headerRate = parseFloat(renderData?.exchangeRate || win.data?.exchangeRate) || 1;
   const calculationLines = (renderRows && renderRows.length > 0) ? renderRows : liveLines;
+  const normalizedTypeKey = React.useMemo(() => {
+    const rawType = (
+      (win.data?.voucherConfig as any)?.baseType ||
+      (win.data?.voucherConfig as any)?.code ||
+      win.data?.type ||
+      renderData?.type ||
+      ''
+    ).toString().toLowerCase();
+    return rawType;
+  }, [win.data?.voucherConfig, win.data?.type, renderData?.type]);
+  const isReceiptType = normalizedTypeKey.includes('receipt');
+  const isPaymentType = normalizedTypeKey.includes('payment');
+  const isSemanticAmountType = isReceiptType || isPaymentType;
+  const semanticLineAccountKey = isReceiptType ? 'receiveFromAccountId' : (isPaymentType ? 'payToAccountId' : null);
+  const semanticHeaderAccountKey = isReceiptType ? 'depositToAccountId' : (isPaymentType ? 'payFromAccountId' : null);
 
   // Detect if voucher is posted/approved (stored in Base Currency Equivalents)
   const isPosted = win.data?.status === 'posted' || 
@@ -145,7 +160,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     totalCreditVoucher, 
     isBalanced: isBalancedVoucher, 
     differenceVoucher 
-  } = useVoucherTotals(calculationLines, headerRate, isPosted);
+  } = useVoucherTotals(calculationLines, headerRate, isPosted, isSemanticAmountType ? 'semantic' : 'journal');
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;
@@ -334,12 +349,132 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     };
   }, [isDragging, isResizing, dragOffset, resizeType, win.id, win.isMaximized, win.size, win.position, updateWindowPosition, updateWindowSize]);
 
+  const normalizeSemanticPayload = (rawData: any): any => {
+    if (!isSemanticAmountType || !semanticLineAccountKey || !semanticHeaderAccountKey) {
+      return rawData;
+    }
+
+    const toAccountRef = (value: any): string | undefined => {
+      if (value === undefined || value === null || value === '') return undefined;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object') {
+        if (typeof value.id === 'string' && value.id) return value.id;
+        if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
+        if (typeof value.code === 'string' && value.code) return value.code;
+        if (typeof value.account === 'string' && value.account) return value.account;
+      }
+      return undefined;
+    };
+
+    const rows = rendererRef.current?.getRows() || calculationLines || [];
+
+    const resolvedHeaderAccount =
+      toAccountRef(rawData?.[semanticHeaderAccountKey]) ||
+      toAccountRef(rawData?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(rawData?.accountId) ||
+      toAccountRef(rawData?.metadata?.accountId) ||
+      toAccountRef(rawData?.account) ||
+      toAccountRef(rawData?.metadata?.account) ||
+      toAccountRef(renderData?.[semanticHeaderAccountKey]) ||
+      toAccountRef(renderData?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(renderData?.accountId) ||
+      toAccountRef(renderData?.metadata?.accountId) ||
+      toAccountRef(renderData?.account) ||
+      toAccountRef(renderData?.metadata?.account) ||
+      toAccountRef(win.data?.[semanticHeaderAccountKey]) ||
+      toAccountRef(win.data?.metadata?.[semanticHeaderAccountKey]) ||
+      toAccountRef(win.data?.accountId) ||
+      toAccountRef(win.data?.metadata?.accountId) ||
+      toAccountRef(win.data?.account);
+
+    const semanticLines = (rows || [])
+      .map((row: any) => {
+        const dynamicAccountKey = Object.keys(row || {}).find(k => k.toLowerCase().includes('account'));
+        const accountRef =
+          toAccountRef(row?.[semanticLineAccountKey]) ||
+          toAccountRef(row?.accountId) ||
+          toAccountRef(row?.account) ||
+          toAccountRef(dynamicAccountKey ? row?.[dynamicAccountKey] : undefined) ||
+          toAccountRef(row?.metadata?.[semanticLineAccountKey]) ||
+          toAccountRef(row?.metadata?.accountId) ||
+          toAccountRef(row?.metadata?.account);
+
+        const amount = Math.abs(Number(row?.amount ?? row?.debit ?? row?.credit ?? 0));
+        const notes = row?.notes || row?.description || '';
+        const costCenterId = row?.costCenterId || row?.costCenter || null;
+        const metadata = row?.metadata || {};
+        const lineCurrency = String(row?.currency || row?.lineCurrency || '').toUpperCase();
+        const lineParity = Number(row?.parity ?? row?.exchangeRate ?? 1) || 1;
+
+        if (isReceiptType) {
+          return {
+            receiveFromAccountId: accountRef,
+            amount,
+            notes,
+            costCenterId,
+            currency: lineCurrency || undefined,
+            lineCurrency: lineCurrency || undefined,
+            exchangeRate: lineParity,
+            parity: lineParity,
+            metadata
+          };
+        }
+        return {
+          payToAccountId: accountRef,
+          amount,
+          notes,
+          costCenterId,
+          currency: lineCurrency || undefined,
+          lineCurrency: lineCurrency || undefined,
+          exchangeRate: lineParity,
+          parity: lineParity,
+          metadata
+        };
+      })
+      .filter((line: any) => {
+        const accountRef = isReceiptType ? line.receiveFromAccountId : line.payToAccountId;
+        return !!accountRef && Number(line.amount) > 0;
+      });
+
+    return {
+      ...rawData,
+      [semanticHeaderAccountKey]: resolvedHeaderAccount,
+      lines: semanticLines
+    };
+  };
+
+  const buildVoucherPayload = (formData: any, statusOverride?: string): any => {
+    const formId =
+      formData?.formId ||
+      win.data?.formId ||
+      (win.data?.voucherConfig as any)?.id;
+
+    const typeId =
+      formData?.typeId ||
+      (win.data?.voucherConfig as any)?.baseType ||
+      win.data?.voucherConfig?.id;
+
+    return {
+      ...formData,
+      ...(formId ? { formId } : {}),
+      ...(typeId ? { typeId } : {}),
+      metadata: {
+        ...(formData?.metadata || {}),
+        ...(formId ? { formId } : {}),
+        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+      },
+      status: typeof statusOverride === 'string'
+        ? statusOverride
+        : (formData?.status || win.data?.status || 'draft')
+    };
+  };
+
   const handleSave = async () => {
     if (!rendererRef.current) {
       return;
     }
     
-    const formData = rendererRef.current.getData();
+    const formData = normalizeSemanticPayload(rendererRef.current.getData());
     const baseCurrency = (win.data?.voucherConfig as any)?.defaultCurrency || settings?.baseCurrency || 'SYP';
     const voucherCurrency = formData.currency || baseCurrency;
     const headerRate = parseFloat(formData.exchangeRate) || 1;
@@ -411,13 +546,9 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const performSave = async (formData: any) => {
     setIsSaving(true);
     try {
-      // Inject creation mode for audit transparency
-      formData.metadata = {
-        ...formData.metadata,
-        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
-      };
+      const payload = buildVoucherPayload(formData);
 
-      const result = await onSave(win.id, formData);
+      const result = await onSave(win.id, payload);
       
       // Sync saved state (ID, Status, Numbers)
       if (result) {
@@ -489,7 +620,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
   const handleConfirmSubmit = async () => {
     if (!rendererRef.current) return;
     
-    const formData = rendererRef.current.getData();
+    const formData = normalizeSemanticPayload(rendererRef.current.getData());
     const baseCurrency = (win.data?.voucherConfig as any)?.defaultCurrency || settings?.baseCurrency || '';
     
     // FX Rate Validation: Block submit if any FX line is missing exchange rate
@@ -529,14 +660,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Inject creation mode for audit transparency
-      const submissionData = {
-        ...formData,
-        metadata: {
-          ...formData.metadata,
-          creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
-        }
-      };
+      const submissionData = buildVoucherPayload(formData, 'submitted');
 
       const result = await onSubmit(win.id, submissionData);
       
@@ -1111,7 +1235,30 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
             }
 
             const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
-            const hasLines = currentRows.filter(r => r.accountId && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2;
+            const semanticLineCount = isSemanticAmountType && semanticLineAccountKey
+              ? currentRows.filter((r: any) => {
+                  const accountVal = r?.[semanticLineAccountKey] || r?.accountId || r?.account;
+                  const amountVal = Number(r?.amount) || 0;
+                  return !!accountVal && amountVal > 0;
+                }).length
+              : 0;
+            const semanticHeaderHasAccount = isSemanticAmountType && semanticHeaderAccountKey
+              ? !!(
+                renderData?.[semanticHeaderAccountKey] ||
+                renderData?.metadata?.[semanticHeaderAccountKey] ||
+                win.data?.[semanticHeaderAccountKey] ||
+                win.data?.metadata?.[semanticHeaderAccountKey] ||
+                renderData?.accountId ||
+                renderData?.metadata?.accountId ||
+                renderData?.account ||
+                win.data?.accountId ||
+                win.data?.metadata?.accountId ||
+                win.data?.account
+              )
+              : false;
+            const hasLines = isSemanticAmountType
+              ? (semanticLineCount >= 1 && semanticHeaderHasAccount)
+              : (currentRows.filter(r => r.accountId && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2);
             const canSave = isBalancedVoucher && hasLines;
 
             return (
@@ -1128,7 +1275,15 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                   forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
                 )}
                 disabled={isSaving || settingsLoading || policyLoading || !canSave}
-                title={!isBalancedVoucher ? t('voucherWindow.mustBalance', 'Voucher must be balanced') : !hasLines ? t('voucherWindow.mustLines', 'Voucher must have at least 2 lines') : ""}
+                title={
+                  !isBalancedVoucher
+                    ? t('voucherWindow.mustBalance', 'Voucher must be balanced')
+                    : !hasLines
+                      ? (isSemanticAmountType
+                        ? t('voucherWindow.mustSemanticLines', 'Voucher needs header account + at least 1 amount line')
+                        : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines'))
+                      : ""
+                }
               >
                 {isSaving || settingsLoading || policyLoading ? (
                   <>
