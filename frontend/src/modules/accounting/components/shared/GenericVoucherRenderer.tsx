@@ -1154,6 +1154,15 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return acc;
       }, {} as Record<string, any>);
 
+      // Keep snapshot shape stable: include all declared header fields even if untouched.
+      (definition.headerFields || []).forEach((field: any) => {
+        const fid = String(field?.id || '').trim();
+        if (!fid) return;
+        if (sourceFormData[fid] === undefined) {
+          sourceFormData[fid] = '';
+        }
+      });
+
       const sourceRows = rows.map((row: any) => {
         const out: Record<string, any> = {};
         Object.entries(row || {}).forEach(([key, value]) => {

@@ -53,9 +53,14 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
       if (c1 === c2) {
         setSuggestedRate(1);
         setRateSource('SAME_CURRENCY');
-        setManualRate(undefined);
         setLoading(false); // Ensure spinner stops
-        onChange?.(1);
+        const shouldAutoApply =
+          !disabled &&
+          (value === undefined || value === null || Number(value) <= 0);
+        if (shouldAutoApply) {
+          setManualRate(1);
+          onChange?.(1);
+        }
         return;
       }
 
@@ -70,11 +75,23 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
         if (mounted) {
           setSuggestedRate(response.rate);
           setRateSource(response.source);
-          setManualRate(undefined);
           
-          // Always use suggested rate and update parent form
-          if (response.rate !== null) {
-            onChange?.(response.rate);
+          // Do not overwrite persisted voucher rates on reopen.
+          // Auto-apply only when header has no meaningful value (or default 1 in FX case).
+          const resolvedRate = response.rate;
+          const shouldAutoApply =
+            !disabled &&
+            resolvedRate !== null &&
+            (
+              value === undefined ||
+              value === null ||
+              Number(value) <= 0 ||
+              (Number(value) === 1 && c1 !== c2)
+            );
+
+          if (shouldAutoApply) {
+            setManualRate(resolvedRate as number);
+            onChange?.(resolvedRate as number);
           }
         }
       } catch (error) {
@@ -90,7 +107,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
 
     fetchRate();
     return () => { mounted = false; };
-  }, [currency, baseCurrency, voucherDate]);
+  }, [currency, baseCurrency, voucherDate, value, disabled]);
 
   // Check for rate deviation when manual rate changes
   useEffect(() => {

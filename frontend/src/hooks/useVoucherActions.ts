@@ -168,8 +168,29 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     return raw;
   };
 
+  const detectSemanticTypeFromLines = (lines: any[]): string | undefined => {
+    if (!Array.isArray(lines) || lines.length === 0) return undefined;
+    const hasReceiptShape = lines.some((line: any) =>
+      !!toAccountRef(line?.receiveFromAccountId || line?.metadata?.receiveFromAccountId)
+    );
+    if (hasReceiptShape) return 'receipt';
+
+    const hasPaymentShape = lines.some((line: any) =>
+      !!toAccountRef(line?.payToAccountId || line?.metadata?.payToAccountId)
+    );
+    if (hasPaymentShape) return 'payment';
+
+    return undefined;
+  };
+
+  const detectedTypeFromLines = detectSemanticTypeFromLines(data.lines || []);
   const resolvedType = normalizeType(
     data.type ||
+    data.typeId ||
+    data.baseType ||
+    data.metadata?.type ||
+    data.metadata?.typeId ||
+    detectedTypeFromLines ||
     data.voucherConfig?.baseType ||
     data.voucherConfig?.code
   );
