@@ -97,7 +97,7 @@ const removeLegacySourceKeys = (metadata: any): Record<string, any> => {
   const out: Record<string, any> = {};
   Object.entries(metadata).forEach(([key, entry]) => {
     if (LEGACY_SOURCE_KEYS.has(key)) return;
-    if (entry === undefined || entry === null) return;
+    if (entry === undefined) return;
     out[key] = entry;
   });
   return out;

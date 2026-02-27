@@ -349,13 +349,27 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       }
 
       // Repair partial hydration for same voucher id (e.g., async account lookup/source payload refresh).
+      const hasStringDiff = (key: string): boolean => {
+        if (hydratedInitialData[key] === undefined || hydratedInitialData[key] === null) return false;
+        return String(prev?.[key] ?? '') !== String(hydratedInitialData[key] ?? '');
+      };
+      const hasNumberDiff = (key: string): boolean => {
+        if (hydratedInitialData[key] === undefined || hydratedInitialData[key] === null || hydratedInitialData[key] === '') return false;
+        const prevNum = Number(prev?.[key] ?? 0);
+        const nextNum = Number(hydratedInitialData[key] ?? 0);
+        if (!Number.isFinite(nextNum)) return false;
+        return Math.abs(prevNum - nextNum) > 0.000001;
+      };
+
       const needsRepair =
-        (!prev.account && !!hydratedInitialData.account) ||
-        (!prev.accountId && !!hydratedInitialData.accountId) ||
-        (!prev.depositToAccountId && !!hydratedInitialData.depositToAccountId) ||
-        (!prev.payFromAccountId && !!hydratedInitialData.payFromAccountId) ||
-        (!prev.currency && !!hydratedInitialData.currency) ||
-        ((!prev.exchangeRate || Number(prev.exchangeRate) === 1) && Number(hydratedInitialData.exchangeRate) > 1);
+        hasStringDiff('account') ||
+        hasStringDiff('accountId') ||
+        hasStringDiff('depositToAccountId') ||
+        hasStringDiff('payFromAccountId') ||
+        hasStringDiff('currency') ||
+        hasStringDiff('description') ||
+        hasStringDiff('date') ||
+        hasNumberDiff('exchangeRate');
 
       if (needsRepair) {
         return {
@@ -473,7 +487,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return prev;
       });
     }
-  }, [initialData?.id, initialData?.status, initialData?.voucherNo, getAccountById, settings, definition]);
+  }, [initialData, getAccountById, getAccountByCode, settings, definition]);
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 
@@ -1159,7 +1173,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         const fid = String(field?.id || '').trim();
         if (!fid) return;
         if (sourceFormData[fid] === undefined) {
-          sourceFormData[fid] = '';
+          sourceFormData[fid] = null;
         }
       });
 

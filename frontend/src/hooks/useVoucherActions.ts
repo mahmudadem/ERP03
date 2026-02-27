@@ -102,8 +102,22 @@ const isPlainObject = (value: any): value is Record<string, any> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 };
 
+const deepMergeObjects = (base: Record<string, any>, override: Record<string, any>): Record<string, any> => {
+  const merged: Record<string, any> = { ...base };
+  Object.entries(override || {}).forEach(([key, value]) => {
+    const baseValue = merged[key];
+    if (isPlainObject(baseValue) && isPlainObject(value)) {
+      merged[key] = deepMergeObjects(baseValue, value);
+    } else {
+      merged[key] = value;
+    }
+  });
+  return merged;
+};
+
 const sanitizeSourceSnapshot = (value: any): any => {
-  if (value === undefined || value === null) return undefined;
+  if (value === undefined) return undefined;
+  if (value === null) return null;
   if (Array.isArray(value)) {
     return value
       .map((entry) => sanitizeSourceSnapshot(entry))
@@ -146,7 +160,7 @@ const sanitizeMetadata = (metadata: any): Record<string, any> | undefined => {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return undefined;
   const cleaned = Object.entries(metadata).reduce((acc, [key, value]) => {
     if (UI_ONLY_METADATA_FIELDS.has(key)) return acc;
-    if (value === '' || value === undefined || value === null) return acc;
+    if (value === undefined) return acc;
     acc[key] = value;
     return acc;
   }, {} as Record<string, any>);
@@ -207,9 +221,13 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   const baseCurrency = String(data.baseCurrency || '').toUpperCase();
   const exchangeRate = Number(data.exchangeRate) || 1;
   const metadata = sanitizeMetadata(data.metadata);
-  const sourcePayload = sanitizeSourceSnapshot(
-    (data && isPlainObject(data.sourcePayload)) ? data.sourcePayload : data
+  const explicitSnapshot = sanitizeSourceSnapshot(
+    data && isPlainObject(data.sourcePayload) ? data.sourcePayload : undefined
   );
+  const fallbackSnapshot = sanitizeSourceSnapshot(data);
+  const sourcePayload = (isPlainObject(explicitSnapshot) && isPlainObject(fallbackSnapshot))
+    ? deepMergeObjects(fallbackSnapshot, explicitSnapshot)
+    : (explicitSnapshot ?? fallbackSnapshot);
 
   const semanticLines = (data.lines || [])
     .map((line: any) => {

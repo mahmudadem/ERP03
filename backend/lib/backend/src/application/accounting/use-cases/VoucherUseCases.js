@@ -50,8 +50,10 @@ const isPlainObject = (value) => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
 const sanitizeSnapshotValue = (value) => {
-    if (value === undefined || value === null)
+    if (value === undefined)
         return undefined;
+    if (value === null)
+        return null;
     if (Array.isArray(value)) {
         return value
             .map((entry) => sanitizeSnapshotValue(entry))
@@ -71,6 +73,27 @@ const sanitizeSnapshotValue = (value) => {
         out[key] = sanitized;
     });
     return out;
+};
+const normalizeVoucherTypeCode = (rawType, fallback = VoucherTypes_1.VoucherType.JOURNAL_ENTRY) => {
+    const normalized = String(rawType || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+    if (!normalized)
+        return fallback;
+    if (normalized === 'jv' || normalized === 'journal')
+        return VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
+    if (normalized === 'journal_entry')
+        return VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
+    if (normalized === 'receipt')
+        return VoucherTypes_1.VoucherType.RECEIPT;
+    if (normalized === 'payment')
+        return VoucherTypes_1.VoucherType.PAYMENT;
+    if (normalized === 'opening' || normalized === 'opening_balance')
+        return VoucherTypes_1.VoucherType.OPENING_BALANCE;
+    if (normalized === 'fx_revaluation' || normalized === 'revaluation' || normalized === 'fx')
+        return VoucherTypes_1.VoucherType.FX_REVALUATION;
+    return fallback;
 };
 const sanitizeSnapshotObject = (value) => {
     const sanitized = sanitizeSnapshotValue(value);
@@ -98,7 +121,7 @@ const removeLegacySourceKeys = (metadata) => {
     Object.entries(metadata).forEach(([key, entry]) => {
         if (LEGACY_SOURCE_KEYS.has(key))
             return;
-        if (entry === undefined || entry === null)
+        if (entry === undefined)
             return;
         out[key] = entry;
     });
@@ -146,6 +169,7 @@ class CreateVoucherUseCase {
     async execute(companyId, userId, payload) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.create');
         return this.transactionManager.runTransaction(async (transaction) => {
+            var _a, _b;
             // Fetch settings for general config (autoNumbering, etc)
             const settings = await this.settingsRepo.getSettings(companyId, 'accounting');
             // Resolve Base Currency Strategy:
@@ -170,9 +194,10 @@ class CreateVoucherUseCase {
             }
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
+            const resolvedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.baseType || ((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.type) || ((_b = payload.metadata) === null || _b === void 0 ? void 0 : _b.typeId));
             let voucherNo = payload.voucherNo || '';
             if (autoNumbering && this.sequenceRepo) {
-                const prefix = payload.prefix || (payload.type || 'V').toString();
+                const prefix = payload.prefix || (resolvedVoucherType || 'V').toString();
                 const useYear = (settings === null || settings === void 0 ? void 0 : settings.resetVoucherNumbersAnnually) ? new Date(payload.date || Date.now()).getFullYear() : undefined;
                 const numberFormat = payload.numberFormat || undefined;
                 voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear, numberFormat);
@@ -181,7 +206,7 @@ class CreateVoucherUseCase {
                 voucherNo = `V-${Date.now()}`;
             }
             let lines = [];
-            const voucherType = payload.type || VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
+            const voucherType = resolvedVoucherType;
             const strategy = VoucherPostingStrategyFactory_1.VoucherPostingStrategyFactory.getStrategy(voucherType);
             if (strategy) {
                 const voucherTypeDef = await this.voucherTypeRepo.getByCode(companyId, voucherType);
@@ -370,7 +395,7 @@ class UpdateVoucherUseCase {
         this.validationService = validationService;
     }
     async execute(companyId, userId, voucherId, payload) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e, _f;
         const voucher = await this.voucherRepo.findById(companyId, voucherId);
         if (!voucher)
             throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VOUCH_NOT_FOUND, 'Voucher not found');
@@ -424,13 +449,13 @@ class UpdateVoucherUseCase {
         const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
         // CRITICAL: baseCurrency must remain the company's base currency, never from payload
         const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-        const mergedVoucherType = (payload.type || voucher.type);
+        const mergedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.baseType || ((_c = payload.metadata) === null || _c === void 0 ? void 0 : _c.type) || ((_d = payload.metadata) === null || _d === void 0 ? void 0 : _d.typeId), voucher.type);
         let lines = [];
         let strategy = null;
         try {
             strategy = VoucherPostingStrategyFactory_1.VoucherPostingStrategyFactory.getStrategy(mergedVoucherType);
         }
-        catch (_e) {
+        catch (_g) {
             strategy = null;
         }
         if (strategy) {
@@ -478,9 +503,9 @@ class UpdateVoucherUseCase {
                 extraMetadata[key] = payload[key];
             }
         });
-        const sourcePayload = buildSourcePayload(payload, voucher.sourcePayload || ((_c = voucher.metadata) === null || _c === void 0 ? void 0 : _c.sourceVoucher));
+        const sourcePayload = buildSourcePayload(payload, voucher.sourcePayload || ((_e = voucher.metadata) === null || _e === void 0 ? void 0 : _e.sourceVoucher));
         const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
-        let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, mergedVoucherType, payload.date || voucher.date, (_d = payload.description) !== null && _d !== void 0 ? _d : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
+        let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, mergedVoucherType, payload.date || voucher.date, (_f = payload.description) !== null && _f !== void 0 ? _f : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
         this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), cleanedPayloadMetadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo, sourcePayload || voucher.sourcePayload || null);
         // NEW Step: Policy Validation if auto-approving
