@@ -513,46 +513,91 @@ export class UpdateVoucherUseCase {
     
     // CRITICAL: baseCurrency must remain the company's base currency, never from payload
     const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-    const rawLines = payload.lines || voucher.lines;
-    
-    const lines = await Promise.all(rawLines.map(async (l: any, idx: number) => {
-      const originalLine = voucher.lines[idx];
-      
-      // 1. Resolve Account ID (UUID)
-      const inputAccountId = l.accountId ?? originalLine?.accountId;
-      const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
-      
-      // 2. Resolve side and amounts (Handle 0 and field variations correctly)
-      const side = l.side ?? originalLine?.side;
-      const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
-      const amount = Number(l.amount ?? originalLine?.amount ?? 0);
-      
-      // 3. MULTI-CURRENCY FIX: Use triangulation formula
-      // parity = rate from Line Currency → Voucher Currency
-      // headerRate = rate from Voucher Currency → Base Currency  
-      const parity = Number(l.parity ?? l.exchangeRate ?? originalLine?.exchangeRate ?? 1);
-      const headerRate = Number(payload.exchangeRate ?? voucher.exchangeRate ?? 1);
-      
-      // The effective exchange rate for storage (Line → Base)
-      const effectiveExchangeRate = roundMoney(parity * headerRate);
-      
-      // CRITICAL: baseAmount calculated using triangulation
-      const baseAmount = roundMoney(amount * parity * headerRate);
+    const mergedVoucherType = (payload.type || voucher.type) as VoucherType;
 
-      return new VoucherLineEntity(
-        idx + 1,
-        account.id, 
-        side,
-        baseAmount,
-        baseCurrency,
-        amount,
-        currency,
-        effectiveExchangeRate,
-        l.notes ?? originalLine?.notes,
-        l.costCenterId ?? l.costCenter ?? originalLine?.costCenterId,
-        { ...originalLine?.metadata, ...l.metadata }
-      );
-    }));
+    let lines: VoucherLineEntity[] = [];
+    let strategy: any = null;
+    try {
+      strategy = VoucherPostingStrategyFactory.getStrategy(mergedVoucherType);
+    } catch {
+      strategy = null;
+    }
+
+    if (strategy) {
+      const strategyInput = {
+        ...payload,
+        type: mergedVoucherType
+      };
+
+      lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
+
+      // Normalize/validate strategy-produced account refs to persisted UUIDs.
+      lines = await Promise.all(lines.map(async (line, idx) => {
+        const account = await accountValidationService.validateAccountById(
+          companyId,
+          userId,
+          line.accountId,
+          mergedVoucherType
+        );
+
+        if (account.id === line.accountId) return line;
+
+        return new VoucherLineEntity(
+          idx + 1,
+          account.id,
+          line.side,
+          line.baseAmount,
+          line.baseCurrency,
+          line.amount,
+          line.currency,
+          line.exchangeRate,
+          line.notes,
+          line.costCenterId,
+          line.metadata
+        );
+      }));
+    } else {
+      const rawLines = payload.lines || voucher.lines;
+
+      lines = await Promise.all(rawLines.map(async (l: any, idx: number) => {
+        const originalLine = voucher.lines[idx];
+
+        // 1. Resolve Account ID (UUID)
+        const inputAccountId = l.accountId ?? originalLine?.accountId;
+        const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
+
+        // 2. Resolve side and amounts (Handle 0 and field variations correctly)
+        const side = l.side ?? originalLine?.side;
+        const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
+        const amount = Number(l.amount ?? originalLine?.amount ?? 0);
+
+        // 3. MULTI-CURRENCY FIX: Use triangulation formula
+        // parity = rate from Line Currency → Voucher Currency
+        // headerRate = rate from Voucher Currency → Base Currency
+        const parity = Number(l.parity ?? l.exchangeRate ?? originalLine?.exchangeRate ?? 1);
+        const headerRate = Number(payload.exchangeRate ?? voucher.exchangeRate ?? 1);
+
+        // The effective exchange rate for storage (Line → Base)
+        const effectiveExchangeRate = roundMoney(parity * headerRate);
+
+        // CRITICAL: baseAmount calculated using triangulation
+        const baseAmount = roundMoney(amount * parity * headerRate);
+
+        return new VoucherLineEntity(
+          idx + 1,
+          account.id,
+          side,
+          baseAmount,
+          baseCurrency,
+          amount,
+          currency,
+          effectiveExchangeRate,
+          l.notes ?? originalLine?.notes,
+          l.costCenterId ?? l.costCenter ?? originalLine?.costCenterId,
+          { ...originalLine?.metadata, ...l.metadata }
+        );
+      }));
+    }
 
     const totalDebit = lines.reduce((s: number, l: any) => s + l.debitAmount, 0);
     const totalCredit = lines.reduce((s: number, l: any) => s + l.creditAmount, 0);
@@ -576,7 +621,7 @@ export class UpdateVoucherUseCase {
       voucherId,
       companyId,
       payload.voucherNo || voucher.voucherNo,
-      payload.type || voucher.type,
+      mergedVoucherType,
       payload.date || voucher.date,
       payload.description ?? voucher.description,
       payload.currency || voucher.currency,
