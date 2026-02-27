@@ -46,6 +46,23 @@ const UI_ONLY_VOUCHER_KEYS = new Set([
     '_rowId'
 ]);
 const LEGACY_SOURCE_KEYS = new Set(['sourceVoucher', 'sourcePayload']);
+const SYSTEM_MANAGED_SOURCE_FIELDS = new Set([
+    'id',
+    'voucherNo',
+    'voucherNumber',
+    'status',
+    'createdBy',
+    'createdAt',
+    'updatedBy',
+    'updatedAt',
+    'approvedBy',
+    'approvedAt',
+    'rejectedBy',
+    'rejectedAt',
+    'postedBy',
+    'postedAt',
+    'postingLockPolicy'
+]);
 const isPlainObject = (value) => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
@@ -101,6 +118,15 @@ const sanitizeSnapshotObject = (value) => {
         return {};
     return sanitized;
 };
+const stripSystemManagedSourceFields = (snapshot) => {
+    const out = Object.assign({}, (snapshot || {}));
+    SYSTEM_MANAGED_SOURCE_FIELDS.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(out, key)) {
+            delete out[key];
+        }
+    });
+    return out;
+};
 const deepMergeObjects = (base, override) => {
     const merged = Object.assign({}, base);
     Object.entries(override || {}).forEach(([key, value]) => {
@@ -146,7 +172,8 @@ const buildSourcePayload = (payload, existing) => {
     if (Object.keys(cleanedSnapshot).length === 0) {
         return undefined;
     }
-    return cleanedSnapshot;
+    const strippedSnapshot = stripSystemManagedSourceFields(cleanedSnapshot);
+    return Object.keys(strippedSnapshot).length > 0 ? strippedSnapshot : undefined;
 };
 class CreateVoucherUseCase {
     constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post

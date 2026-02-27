@@ -31,6 +31,23 @@ const UI_ONLY_VOUCHER_KEYS = new Set([
 ]);
 
 const LEGACY_SOURCE_KEYS = new Set(['sourceVoucher', 'sourcePayload']);
+const SYSTEM_MANAGED_SOURCE_FIELDS = new Set([
+  'id',
+  'voucherNo',
+  'voucherNumber',
+  'status',
+  'createdBy',
+  'createdAt',
+  'updatedBy',
+  'updatedAt',
+  'approvedBy',
+  'approvedAt',
+  'rejectedBy',
+  'rejectedAt',
+  'postedBy',
+  'postedAt',
+  'postingLockPolicy'
+]);
 
 const isPlainObject = (value: any): value is Record<string, any> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -77,6 +94,16 @@ const sanitizeSnapshotObject = (value: any): Record<string, any> => {
   const sanitized = sanitizeSnapshotValue(value);
   if (!isPlainObject(sanitized)) return {};
   return sanitized;
+};
+
+const stripSystemManagedSourceFields = (snapshot: Record<string, any>): Record<string, any> => {
+  const out: Record<string, any> = { ...(snapshot || {}) };
+  SYSTEM_MANAGED_SOURCE_FIELDS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(out, key)) {
+      delete out[key];
+    }
+  });
+  return out;
 };
 
 const deepMergeObjects = (base: Record<string, any>, override: Record<string, any>): Record<string, any> => {
@@ -126,7 +153,8 @@ const buildSourcePayload = (payload: any, existing?: any): Record<string, any> |
   if (Object.keys(cleanedSnapshot).length === 0) {
     return undefined;
   }
-  return cleanedSnapshot;
+  const strippedSnapshot = stripSystemManagedSourceFields(cleanedSnapshot);
+  return Object.keys(strippedSnapshot).length > 0 ? strippedSnapshot : undefined;
 };
 
 export class CreateVoucherUseCase {

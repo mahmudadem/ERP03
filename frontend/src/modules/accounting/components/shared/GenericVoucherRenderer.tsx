@@ -50,6 +50,25 @@ export interface GenericVoucherRendererRef {
   resetData: () => void;
 }
 
+// Backend-owned fields should always come from voucher document, never from source snapshot.
+const SYSTEM_MANAGED_FIELDS = new Set([
+  'id',
+  'voucherNo',
+  'voucherNumber',
+  'status',
+  'createdBy',
+  'createdAt',
+  'updatedBy',
+  'updatedAt',
+  'approvedBy',
+  'approvedAt',
+  'rejectedBy',
+  'rejectedAt',
+  'postedBy',
+  'postedAt',
+  'postingLockPolicy'
+]);
+
 export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
   // GUARD: definition must be present
   if (!definition) return null;
@@ -243,6 +262,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           : {})
       }
     };
+    // Always prefer real voucher lifecycle fields from backend document.
+    SYSTEM_MANAGED_FIELDS.forEach((key) => {
+      if ((initialData as any)?.[key] !== undefined) {
+        (mergedInitialData as any)[key] = (initialData as any)[key];
+      }
+    });
 
     const cleanInitialData = Object.entries(mergedInitialData).reduce((acc, [key, value]) => {
       // Never persist or replay UI designer config as voucher business data.
@@ -1164,6 +1189,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const resultNumberFormat = (definition as any).numberFormat || undefined;
       const sourceFormData = Object.entries(formData || {}).reduce((acc, [key, value]) => {
         if (key === 'voucherConfig') return acc;
+        if (SYSTEM_MANAGED_FIELDS.has(key)) return acc;
         acc[key] = value;
         return acc;
       }, {} as Record<string, any>);
@@ -1172,6 +1198,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       (definition.headerFields || []).forEach((field: any) => {
         const fid = String(field?.id || '').trim();
         if (!fid) return;
+        if (SYSTEM_MANAGED_FIELDS.has(fid)) return;
         if (sourceFormData[fid] === undefined) {
           sourceFormData[fid] = null;
         }

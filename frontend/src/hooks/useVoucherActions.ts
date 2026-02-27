@@ -98,6 +98,25 @@ const LEGACY_SOURCE_KEYS = new Set([
   'sourcePayload'
 ]);
 
+// These fields are owned by backend lifecycle/state and must never be restored from source snapshots.
+const SYSTEM_MANAGED_SOURCE_FIELDS = new Set([
+  'id',
+  'voucherNo',
+  'voucherNumber',
+  'status',
+  'createdBy',
+  'createdAt',
+  'updatedBy',
+  'updatedAt',
+  'approvedBy',
+  'approvedAt',
+  'rejectedBy',
+  'rejectedAt',
+  'postedBy',
+  'postedAt',
+  'postingLockPolicy'
+]);
+
 const isPlainObject = (value: any): value is Record<string, any> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 };
@@ -113,6 +132,17 @@ const deepMergeObjects = (base: Record<string, any>, override: Record<string, an
     }
   });
   return merged;
+};
+
+const stripSystemManagedSourceFields = (snapshot: any): any => {
+  if (!isPlainObject(snapshot)) return snapshot;
+  const out: Record<string, any> = { ...snapshot };
+  SYSTEM_MANAGED_SOURCE_FIELDS.forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(out, key)) {
+      delete out[key];
+    }
+  });
+  return out;
 };
 
 const sanitizeSourceSnapshot = (value: any): any => {
@@ -225,9 +255,10 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     data && isPlainObject(data.sourcePayload) ? data.sourcePayload : undefined
   );
   const fallbackSnapshot = sanitizeSourceSnapshot(data);
-  const sourcePayload = (isPlainObject(explicitSnapshot) && isPlainObject(fallbackSnapshot))
+  const mergedSnapshot = (isPlainObject(explicitSnapshot) && isPlainObject(fallbackSnapshot))
     ? deepMergeObjects(fallbackSnapshot, explicitSnapshot)
     : (explicitSnapshot ?? fallbackSnapshot);
+  const sourcePayload = stripSystemManagedSourceFields(mergedSnapshot);
 
   const semanticLines = (data.lines || [])
     .map((line: any) => {
