@@ -116,6 +116,9 @@ const SYSTEM_MANAGED_SOURCE_FIELDS = new Set([
   'postedAt',
   'postingLockPolicy'
 ]);
+const SYSTEM_MANAGED_SOURCE_FIELDS_LOWER = new Set(
+  Array.from(SYSTEM_MANAGED_SOURCE_FIELDS).map((key) => key.toLowerCase())
+);
 
 const isPlainObject = (value: any): value is Record<string, any> => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -136,11 +139,12 @@ const deepMergeObjects = (base: Record<string, any>, override: Record<string, an
 
 const stripSystemManagedSourceFields = (snapshot: any): any => {
   if (!isPlainObject(snapshot)) return snapshot;
-  const out: Record<string, any> = { ...snapshot };
-  SYSTEM_MANAGED_SOURCE_FIELDS.forEach((key) => {
-    if (Object.prototype.hasOwnProperty.call(out, key)) {
-      delete out[key];
+  const out: Record<string, any> = {};
+  Object.entries(snapshot).forEach(([key, value]) => {
+    if (SYSTEM_MANAGED_SOURCE_FIELDS_LOWER.has(String(key).toLowerCase())) {
+      return;
     }
+    out[key] = value;
   });
   return out;
 };

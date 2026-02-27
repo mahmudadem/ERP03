@@ -68,6 +68,22 @@ const SYSTEM_MANAGED_FIELDS = new Set([
   'postedAt',
   'postingLockPolicy'
 ]);
+const SYSTEM_MANAGED_FIELDS_LOWER = new Set(
+  Array.from(SYSTEM_MANAGED_FIELDS).map((key) => key.toLowerCase())
+);
+const isSystemManagedField = (key: string): boolean =>
+  !!key && SYSTEM_MANAGED_FIELDS_LOWER.has(String(key).toLowerCase());
+
+const stripSystemManagedSnapshotFields = (snapshot: any): any => {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return snapshot;
+  }
+  return Object.entries(snapshot).reduce((acc, [key, value]) => {
+    if (isSystemManagedField(key)) return acc;
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, any>);
+};
 
 export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
   // GUARD: definition must be present
@@ -237,12 +253,13 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const semanticHeaderKey = isReceipt ? 'depositToAccountId' : (isPayment ? 'payFromAccountId' : null);
 
     const initialMetadata = initialData.metadata && typeof initialData.metadata === 'object' ? initialData.metadata : {};
-    const sourceVoucher =
+    const sourceVoucher = stripSystemManagedSnapshotFields(
       (initialData.sourcePayload && typeof initialData.sourcePayload === 'object')
         ? initialData.sourcePayload
         : (initialMetadata.sourceVoucher && typeof initialMetadata.sourceVoucher === 'object'
           ? initialMetadata.sourceVoucher
-          : null);
+          : null)
+    );
 
     const sourceLines = Array.isArray((sourceVoucher as any)?.lines) ? (sourceVoucher as any).lines : [];
     const rawLines = sourceLines.length > 0
@@ -364,12 +381,27 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         };
       }
 
-      // Minor sync for status/voucherNo
-      if (prev.status !== initialData.status || prev.voucherNo !== initialData.voucherNo) {
+      const systemFieldPatch = Array.from(SYSTEM_MANAGED_FIELDS).reduce((acc, key) => {
+        const nextValue = (initialData as any)?.[key];
+        if (nextValue !== undefined && prev?.[key] !== nextValue) {
+          acc[key] = nextValue;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      const nextVoucherNumber =
+        initialData.voucherNumber ||
+        initialData.voucherNo ||
+        initialData.id ||
+        prev?.voucherNumber;
+      if (nextVoucherNumber !== undefined && prev?.voucherNumber !== nextVoucherNumber) {
+        systemFieldPatch.voucherNumber = nextVoucherNumber;
+      }
+
+      if (Object.keys(systemFieldPatch).length > 0) {
         return {
           ...prev,
-          status: initialData.status,
-          voucherNumber: initialData.voucherNumber || initialData.voucherNo || initialData.id
+          ...systemFieldPatch
         };
       }
 
@@ -1189,7 +1221,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const resultNumberFormat = (definition as any).numberFormat || undefined;
       const sourceFormData = Object.entries(formData || {}).reduce((acc, [key, value]) => {
         if (key === 'voucherConfig') return acc;
-        if (SYSTEM_MANAGED_FIELDS.has(key)) return acc;
+        if (isSystemManagedField(key)) return acc;
         acc[key] = value;
         return acc;
       }, {} as Record<string, any>);
@@ -1198,7 +1230,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       (definition.headerFields || []).forEach((field: any) => {
         const fid = String(field?.id || '').trim();
         if (!fid) return;
-        if (SYSTEM_MANAGED_FIELDS.has(fid)) return;
+        if (isSystemManagedField(fid)) return;
         if (sourceFormData[fid] === undefined) {
           sourceFormData[fid] = null;
         }
@@ -1242,6 +1274,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       
       return {
         ...sourceFormData,
+        ...((formData?.id || initialData?.id) ? { id: formData?.id || initialData?.id } : {}),
         ...(normalizedHeaderAccountId ? { accountId: normalizedHeaderAccountId } : {}),
         ...(normalizedHeaderAccountCode ? { account: normalizedHeaderAccountCode } : {}),
         ...(backendType === 'receipt' ? { depositToAccountId: normalizedHeaderAccountId || receiptHeaderAccountRaw } : {}),

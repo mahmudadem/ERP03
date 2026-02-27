@@ -63,6 +63,7 @@ const SYSTEM_MANAGED_SOURCE_FIELDS = new Set([
     'postedAt',
     'postingLockPolicy'
 ]);
+const SYSTEM_MANAGED_SOURCE_FIELDS_LOWER = new Set(Array.from(SYSTEM_MANAGED_SOURCE_FIELDS).map((key) => key.toLowerCase()));
 const isPlainObject = (value) => {
     return !!value && typeof value === 'object' && !Array.isArray(value);
 };
@@ -119,11 +120,12 @@ const sanitizeSnapshotObject = (value) => {
     return sanitized;
 };
 const stripSystemManagedSourceFields = (snapshot) => {
-    const out = Object.assign({}, (snapshot || {}));
-    SYSTEM_MANAGED_SOURCE_FIELDS.forEach((key) => {
-        if (Object.prototype.hasOwnProperty.call(out, key)) {
-            delete out[key];
+    const out = {};
+    Object.entries(snapshot || {}).forEach(([key, value]) => {
+        if (SYSTEM_MANAGED_SOURCE_FIELDS_LOWER.has(String(key).toLowerCase())) {
+            return;
         }
+        out[key] = value;
     });
     return out;
 };

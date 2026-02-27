@@ -291,6 +291,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
     const voucherData = {
       ...formData,
+      ...((formData?.id || effectiveData?.id || initialData?.id)
+        ? { id: formData?.id || effectiveData?.id || initialData?.id }
+        : {}),
       typeId: (voucherType as any).baseType || voucherType.id,
       metadata: {
         ...(formData.metadata || {}),

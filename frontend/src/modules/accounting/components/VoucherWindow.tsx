@@ -363,9 +363,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       formData?.typeId ||
       (win.data?.voucherConfig as any)?.baseType ||
       win.data?.voucherConfig?.id;
+    const effectiveId = formData?.id || win.data?.id;
 
     return {
       ...formData,
+      ...(effectiveId ? { id: effectiveId } : {}),
       ...(formId ? { formId } : {}),
       ...(typeId ? { typeId } : {}),
       metadata: {
