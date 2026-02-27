@@ -37,7 +37,8 @@ const isPlainObject = (value: any): value is Record<string, any> => {
 };
 
 const sanitizeSnapshotValue = (value: any): any => {
-  if (value === undefined || value === null) return undefined;
+  if (value === undefined) return undefined;
+  if (value === null) return null;
   if (Array.isArray(value)) {
     return value
       .map((entry) => sanitizeSnapshotValue(entry))
@@ -54,6 +55,22 @@ const sanitizeSnapshotValue = (value: any): any => {
     out[key] = sanitized;
   });
   return out;
+};
+
+const normalizeVoucherTypeCode = (rawType: any, fallback: VoucherType = VoucherType.JOURNAL_ENTRY): VoucherType => {
+  const normalized = String(rawType || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  if (!normalized) return fallback;
+  if (normalized === 'jv' || normalized === 'journal') return VoucherType.JOURNAL_ENTRY;
+  if (normalized === 'journal_entry') return VoucherType.JOURNAL_ENTRY;
+  if (normalized === 'receipt') return VoucherType.RECEIPT;
+  if (normalized === 'payment') return VoucherType.PAYMENT;
+  if (normalized === 'opening' || normalized === 'opening_balance') return VoucherType.OPENING_BALANCE;
+  if (normalized === 'fx_revaluation' || normalized === 'revaluation' || normalized === 'fx') return VoucherType.FX_REVALUATION;
+  return fallback;
 };
 
 const sanitizeSnapshotObject = (value: any): Record<string, any> => {
@@ -171,9 +188,12 @@ export class CreateVoucherUseCase {
 
 
       const voucherId = payload.id || randomUUID();
+      const resolvedVoucherType = normalizeVoucherTypeCode(
+        payload.type || payload.typeId || payload.baseType || payload.metadata?.type || payload.metadata?.typeId
+      );
       let voucherNo = payload.voucherNo || '';
       if (autoNumbering && this.sequenceRepo) {
-        const prefix = payload.prefix || (payload.type || 'V').toString();
+        const prefix = payload.prefix || (resolvedVoucherType || 'V').toString();
         const useYear = settings?.resetVoucherNumbersAnnually ? new Date(payload.date || Date.now()).getFullYear() : undefined;
         const numberFormat = payload.numberFormat || undefined;
         voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear, numberFormat);
@@ -182,7 +202,7 @@ export class CreateVoucherUseCase {
       }
 
       let lines: VoucherLineEntity[] = [];
-      const voucherType = (payload.type as VoucherType) || VoucherType.JOURNAL_ENTRY;
+      const voucherType = resolvedVoucherType;
       const strategy = VoucherPostingStrategyFactory.getStrategy(voucherType);
 
       if (strategy) {
@@ -513,7 +533,10 @@ export class UpdateVoucherUseCase {
     
     // CRITICAL: baseCurrency must remain the company's base currency, never from payload
     const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-    const mergedVoucherType = (payload.type || voucher.type) as VoucherType;
+    const mergedVoucherType = normalizeVoucherTypeCode(
+      payload.type || payload.typeId || payload.baseType || payload.metadata?.type || payload.metadata?.typeId,
+      voucher.type as VoucherType
+    );
 
     let lines: VoucherLineEntity[] = [];
     let strategy: any = null;
