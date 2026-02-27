@@ -231,14 +231,16 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       : (Array.isArray(initialData.lines) ? initialData.lines : []);
     const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
 
+    // Source payload must win for business fields during reopen.
+    // Canonical lines/fields are still available as fallback if source is missing.
     const mergedInitialData = {
-      ...(sourceVoucher || {}),
       ...initialData,
+      ...(sourceVoucher || {}),
       metadata: {
+        ...(initialMetadata || {}),
         ...(((sourceVoucher as any)?.metadata && typeof (sourceVoucher as any).metadata === 'object')
           ? (sourceVoucher as any).metadata
-          : {}),
-        ...(initialMetadata || {})
+          : {})
       }
     };
 
@@ -300,16 +302,29 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       semanticHeaderAccount = resolveAccountRef(canonicalHeaderAnchor?.accountId || canonicalHeaderAnchor?.account);
     }
 
-    const headerAccountCode = semanticHeaderAccount
-      ? (getAccountById(semanticHeaderAccount)?.code || semanticHeaderAccount)
-      : undefined;
+    let semanticHeaderAccountId: string | undefined;
+    let headerAccountCode: string | undefined;
+    if (semanticHeaderAccount) {
+      const accountById = getAccountById(semanticHeaderAccount);
+      const accountByCode = accountById ? undefined : getAccountByCode(semanticHeaderAccount);
+      semanticHeaderAccountId = accountById?.id || accountByCode?.id || (accountById ? semanticHeaderAccount : undefined);
+      headerAccountCode = accountById?.code || accountByCode?.code || (accountByCode ? semanticHeaderAccount : undefined);
+    }
+    if (!semanticHeaderAccountId && typeof cleanInitialData.accountId === 'string' && cleanInitialData.accountId) {
+      semanticHeaderAccountId = cleanInitialData.accountId;
+    }
+    if (!headerAccountCode && typeof cleanInitialData.account === 'string' && cleanInitialData.account) {
+      headerAccountCode = cleanInitialData.account;
+    }
 
     const hydratedInitialData = {
       ...cleanInitialData,
-      ...(semanticHeaderKey && semanticHeaderAccount ? { [semanticHeaderKey]: semanticHeaderAccount } : {}),
+      ...(semanticHeaderKey && (semanticHeaderAccountId || semanticHeaderAccount)
+        ? { [semanticHeaderKey]: semanticHeaderAccountId || semanticHeaderAccount }
+        : {}),
       // Normalize header account shape for controls: always keep scalar accountId/account code.
-      ...(semanticHeaderAccount ? { accountId: semanticHeaderAccount } : {}),
-      ...(semanticHeaderAccount ? { account: headerAccountCode } : {})
+      ...(semanticHeaderAccountId ? { accountId: semanticHeaderAccountId } : {}),
+      ...(headerAccountCode ? { account: headerAccountCode } : {})
     };
 
     // 1. Sync Form Metadata
@@ -319,7 +334,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return {
           ...prev,
           ...hydratedInitialData,
-          date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
+          date: hydratedInitialData.date ? formatForInput(hydratedInitialData.date) : (prev.date || getCompanyToday(settings))
         };
       }
 
@@ -1040,13 +1055,35 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return undefined;
       };
 
+      const resolveAccountIdentity = (rawValue: any): { id?: string; code?: string } => {
+        if (!rawValue) return {};
+        if (typeof rawValue === 'object') {
+          const id = typeof rawValue.id === 'string' && rawValue.id ? rawValue.id : undefined;
+          const code = typeof rawValue.code === 'string' && rawValue.code ? rawValue.code : undefined;
+          if (id || code) return { id, code };
+        }
+
+        const ref = String(rawValue);
+        const accountById = getAccountById(ref);
+        if (accountById) {
+          return { id: accountById.id, code: accountById.code };
+        }
+        const accountByCode = getAccountByCode(ref);
+        if (accountByCode) {
+          return { id: accountByCode.id, code: accountByCode.code };
+        }
+        return {};
+      };
+
       // Map rows to backend payload format based on resolved strategy type.
       // IMPORTANT: Frontend sends RAW values only. Backend calculates all derived values.
       let backendLines: any[] = [];
       if (backendType === 'receipt') {
         backendLines = rows
           .map(row => {
-            const receiveFromAccountId = resolveRowField(row, 'receiveFromAccountId') || row.accountId || row.account;
+            const sourceRef = resolveRowField(row, 'receiveFromAccountId') || row.accountId || row.account;
+            const accountIdentity = resolveAccountIdentity(sourceRef);
+            const receiveFromAccountId = accountIdentity.id || sourceRef;
             const amount = Math.abs(Number(resolveRowField(row, 'amount') || (row as any).amount || row.debit || row.credit || 0));
             return {
               receiveFromAccountId,
@@ -1058,7 +1095,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       } else if (backendType === 'payment') {
         backendLines = rows
           .map(row => {
-            const payToAccountId = resolveRowField(row, 'payToAccountId') || row.accountId || row.account;
+            const sourceRef = resolveRowField(row, 'payToAccountId') || row.accountId || row.account;
+            const accountIdentity = resolveAccountIdentity(sourceRef);
+            const payToAccountId = accountIdentity.id || sourceRef;
             const amount = Math.abs(Number(resolveRowField(row, 'amount') || (row as any).amount || row.debit || row.credit || 0));
             return {
               payToAccountId,
@@ -1097,18 +1136,54 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         return acc;
       }, {} as Record<string, any>);
 
-      const receiptHeaderAccount = formData.depositToAccountId || formData.accountId || formData.account || undefined;
-      const paymentHeaderAccount = formData.payFromAccountId || formData.accountId || formData.account || undefined;
+      const sourceRows = rows.map((row: any) => {
+        const out: Record<string, any> = {};
+        Object.entries(row || {}).forEach(([key, value]) => {
+          if (key === '_rowId' || value === undefined) return;
+          out[key] = value;
+        });
+        return out;
+      });
+
+      const receiptHeaderAccountRaw = formData.depositToAccountId || formData.accountId || formData.account || undefined;
+      const paymentHeaderAccountRaw = formData.payFromAccountId || formData.accountId || formData.account || undefined;
+      const semanticHeaderRaw =
+        backendType === 'receipt'
+          ? receiptHeaderAccountRaw
+          : backendType === 'payment'
+            ? paymentHeaderAccountRaw
+            : (formData.accountId || formData.account || undefined);
+      const semanticHeaderIdentity = resolveAccountIdentity(semanticHeaderRaw);
+      const normalizedHeaderAccountId = semanticHeaderIdentity.id || (typeof semanticHeaderRaw === 'string' ? semanticHeaderRaw : undefined);
+      const normalizedHeaderAccountCode = semanticHeaderIdentity.code ||
+        (typeof semanticHeaderRaw === 'string' ? (getAccountByCode(semanticHeaderRaw)?.code || undefined) : undefined) ||
+        (typeof formData.account === 'string' ? formData.account : undefined);
+
+      const sourcePayload = {
+        ...sourceFormData,
+        ...(normalizedHeaderAccountId ? { accountId: normalizedHeaderAccountId } : {}),
+        ...(normalizedHeaderAccountCode ? { account: normalizedHeaderAccountCode } : {}),
+        ...(backendType === 'receipt' && normalizedHeaderAccountId ? { depositToAccountId: normalizedHeaderAccountId } : {}),
+        ...(backendType === 'payment' && normalizedHeaderAccountId ? { payFromAccountId: normalizedHeaderAccountId } : {}),
+        lines: sourceRows,
+        type: backendType,
+        formId: resultFormId,
+        prefix: resultPrefix,
+        numberFormat: resultNumberFormat
+      };
       
       return {
         ...sourceFormData,
-        ...(backendType === 'receipt' ? { depositToAccountId: receiptHeaderAccount } : {}),
-        ...(backendType === 'payment' ? { payFromAccountId: paymentHeaderAccount } : {}),
+        ...(normalizedHeaderAccountId ? { accountId: normalizedHeaderAccountId } : {}),
+        ...(normalizedHeaderAccountCode ? { account: normalizedHeaderAccountCode } : {}),
+        ...(backendType === 'receipt' ? { depositToAccountId: normalizedHeaderAccountId || receiptHeaderAccountRaw } : {}),
+        ...(backendType === 'payment' ? { payFromAccountId: normalizedHeaderAccountId || paymentHeaderAccountRaw } : {}),
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
         formId: resultFormId, // Which form was used for rendering
         prefix: resultPrefix, // Voucher number prefix
-        numberFormat: resultNumberFormat // Custom number format template
+        numberFormat: resultNumberFormat, // Custom number format template
+        sourcePayload
       };
     },
     getRows: () => rows,

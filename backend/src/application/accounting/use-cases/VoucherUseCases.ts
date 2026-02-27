@@ -26,30 +26,60 @@ const UI_ONLY_VOUCHER_KEYS = new Set([
   'tableStyle',
   'actions',
   'rules',
-  '_isForm'
+  '_isForm',
+  '_rowId'
 ]);
 
-const cleanObject = (value: any): any => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+const LEGACY_SOURCE_KEYS = new Set(['sourceVoucher', 'sourcePayload']);
+
+const isPlainObject = (value: any): value is Record<string, any> => {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+};
+
+const sanitizeSnapshotValue = (value: any): any => {
+  if (value === undefined || value === null) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => sanitizeSnapshotValue(entry))
+      .filter((entry) => entry !== undefined);
+  }
+  if (!isPlainObject(value)) return value;
+
   const out: Record<string, any> = {};
   Object.entries(value).forEach(([key, entry]) => {
-    if (entry === undefined || entry === null || key === '') return;
-    if (UI_ONLY_VOUCHER_KEYS.has(key)) return;
-    out[key] = entry;
+    if (!key) return;
+    if (UI_ONLY_VOUCHER_KEYS.has(key) || LEGACY_SOURCE_KEYS.has(key)) return;
+    const sanitized = sanitizeSnapshotValue(entry);
+    if (sanitized === undefined) return;
+    out[key] = sanitized;
   });
   return out;
 };
 
-const normalizeSourceLines = (lines: any): any[] => {
-  if (!Array.isArray(lines)) return [];
-  return lines.map((line) => cleanObject(line));
+const sanitizeSnapshotObject = (value: any): Record<string, any> => {
+  const sanitized = sanitizeSnapshotValue(value);
+  if (!isPlainObject(sanitized)) return {};
+  return sanitized;
+};
+
+const deepMergeObjects = (base: Record<string, any>, override: Record<string, any>): Record<string, any> => {
+  const merged: Record<string, any> = { ...base };
+  Object.entries(override || {}).forEach(([key, value]) => {
+    const baseValue = merged[key];
+    if (isPlainObject(baseValue) && isPlainObject(value)) {
+      merged[key] = deepMergeObjects(baseValue, value);
+    } else {
+      merged[key] = value;
+    }
+  });
+  return merged;
 };
 
 const removeLegacySourceKeys = (metadata: any): Record<string, any> => {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
   const out: Record<string, any> = {};
   Object.entries(metadata).forEach(([key, entry]) => {
-    if (key === 'sourceVoucher' || key === 'sourcePayload') return;
+    if (LEGACY_SOURCE_KEYS.has(key)) return;
     if (entry === undefined || entry === null) return;
     out[key] = entry;
   });
@@ -57,38 +87,26 @@ const removeLegacySourceKeys = (metadata: any): Record<string, any> => {
 };
 
 const buildSourcePayload = (payload: any, existing?: any): Record<string, any> | undefined => {
-  const source = cleanObject(payload) || {};
-  const previous = cleanObject(existing) || {};
-  const sourceLines = Array.isArray(source.lines) ? normalizeSourceLines(source.lines) : normalizeSourceLines(previous.lines);
-  const sourceMetadata = cleanObject(source.metadata || previous.metadata || {});
+  const previousSnapshot = sanitizeSnapshotObject(existing);
+  const explicitSourceSnapshot = sanitizeSnapshotObject(payload?.sourcePayload);
 
-  const snapshot: Record<string, any> = {
-    type: source.type ?? previous.type,
-    formId: source.formId ?? previous.formId,
-    typeId: source.typeId ?? previous.typeId,
-    prefix: source.prefix ?? previous.prefix,
-    numberFormat: source.numberFormat ?? previous.numberFormat,
-    date: source.date ?? previous.date,
-    description: source.description ?? previous.description,
-    reference: source.reference ?? previous.reference,
-    status: source.status ?? previous.status,
-    currency: source.currency ?? previous.currency,
-    baseCurrency: source.baseCurrency ?? previous.baseCurrency,
-    exchangeRate: source.exchangeRate ?? previous.exchangeRate,
-    account: source.account ?? previous.account,
-    accountId: source.accountId ?? previous.accountId,
-    depositToAccountId: source.depositToAccountId ?? previous.depositToAccountId,
-    payFromAccountId: source.payFromAccountId ?? previous.payFromAccountId,
-    postingPeriodNo: source.postingPeriodNo ?? previous.postingPeriodNo,
-    lines: sourceLines
-  };
-
-  if (sourceMetadata && Object.keys(sourceMetadata).length > 0) {
-    snapshot.metadata = sourceMetadata;
+  const fallbackPayloadSnapshot = sanitizeSnapshotObject(payload);
+  delete fallbackPayloadSnapshot.sourcePayload;
+  if (isPlainObject(fallbackPayloadSnapshot.metadata)) {
+    fallbackPayloadSnapshot.metadata = removeLegacySourceKeys(fallbackPayloadSnapshot.metadata);
   }
 
-  const cleanedSnapshot = cleanObject(snapshot);
-  if (!cleanedSnapshot || Object.keys(cleanedSnapshot).length === 0) {
+  const incomingSnapshot = Object.keys(explicitSourceSnapshot).length > 0
+    ? explicitSourceSnapshot
+    : fallbackPayloadSnapshot;
+
+  const mergedSnapshot = deepMergeObjects(previousSnapshot, incomingSnapshot);
+  if (isPlainObject(mergedSnapshot.metadata)) {
+    mergedSnapshot.metadata = removeLegacySourceKeys(mergedSnapshot.metadata);
+  }
+
+  const cleanedSnapshot = sanitizeSnapshotObject(mergedSnapshot);
+  if (Object.keys(cleanedSnapshot).length === 0) {
     return undefined;
   }
   return cleanedSnapshot;
@@ -266,7 +284,7 @@ export class CreateVoucherUseCase {
 
       // Build metadata including source tracking fields
       // and capturing any unrecognized top-level fields to avoid data loss
-      const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+      const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule', 'sourcePayload'];
       const extraMetadata: Record<string, any> = {};
       Object.keys(payload).forEach(key => {
         if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
@@ -540,7 +558,7 @@ export class UpdateVoucherUseCase {
     const totalCredit = lines.reduce((s: number, l: any) => s + l.creditAmount, 0);
 
     // Capture any unrecognized top-level fields into metadata to avoid data loss
-    const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+    const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule', 'sourcePayload'];
     const extraMetadata: Record<string, any> = {};
     Object.keys(payload).forEach(key => {
       if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {

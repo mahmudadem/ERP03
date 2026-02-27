@@ -42,32 +42,61 @@ const UI_ONLY_VOUCHER_KEYS = new Set([
     'tableStyle',
     'actions',
     'rules',
-    '_isForm'
+    '_isForm',
+    '_rowId'
 ]);
-const cleanObject = (value) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value))
+const LEGACY_SOURCE_KEYS = new Set(['sourceVoucher', 'sourcePayload']);
+const isPlainObject = (value) => {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+};
+const sanitizeSnapshotValue = (value) => {
+    if (value === undefined || value === null)
+        return undefined;
+    if (Array.isArray(value)) {
+        return value
+            .map((entry) => sanitizeSnapshotValue(entry))
+            .filter((entry) => entry !== undefined);
+    }
+    if (!isPlainObject(value))
         return value;
     const out = {};
     Object.entries(value).forEach(([key, entry]) => {
-        if (entry === undefined || entry === null || key === '')
+        if (!key)
             return;
-        if (UI_ONLY_VOUCHER_KEYS.has(key))
+        if (UI_ONLY_VOUCHER_KEYS.has(key) || LEGACY_SOURCE_KEYS.has(key))
             return;
-        out[key] = entry;
+        const sanitized = sanitizeSnapshotValue(entry);
+        if (sanitized === undefined)
+            return;
+        out[key] = sanitized;
     });
     return out;
 };
-const normalizeSourceLines = (lines) => {
-    if (!Array.isArray(lines))
-        return [];
-    return lines.map((line) => cleanObject(line));
+const sanitizeSnapshotObject = (value) => {
+    const sanitized = sanitizeSnapshotValue(value);
+    if (!isPlainObject(sanitized))
+        return {};
+    return sanitized;
+};
+const deepMergeObjects = (base, override) => {
+    const merged = Object.assign({}, base);
+    Object.entries(override || {}).forEach(([key, value]) => {
+        const baseValue = merged[key];
+        if (isPlainObject(baseValue) && isPlainObject(value)) {
+            merged[key] = deepMergeObjects(baseValue, value);
+        }
+        else {
+            merged[key] = value;
+        }
+    });
+    return merged;
 };
 const removeLegacySourceKeys = (metadata) => {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata))
         return {};
     const out = {};
     Object.entries(metadata).forEach(([key, entry]) => {
-        if (key === 'sourceVoucher' || key === 'sourcePayload')
+        if (LEGACY_SOURCE_KEYS.has(key))
             return;
         if (entry === undefined || entry === null)
             return;
@@ -76,36 +105,22 @@ const removeLegacySourceKeys = (metadata) => {
     return out;
 };
 const buildSourcePayload = (payload, existing) => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
-    const source = cleanObject(payload) || {};
-    const previous = cleanObject(existing) || {};
-    const sourceLines = Array.isArray(source.lines) ? normalizeSourceLines(source.lines) : normalizeSourceLines(previous.lines);
-    const sourceMetadata = cleanObject(source.metadata || previous.metadata || {});
-    const snapshot = {
-        type: (_a = source.type) !== null && _a !== void 0 ? _a : previous.type,
-        formId: (_b = source.formId) !== null && _b !== void 0 ? _b : previous.formId,
-        typeId: (_c = source.typeId) !== null && _c !== void 0 ? _c : previous.typeId,
-        prefix: (_d = source.prefix) !== null && _d !== void 0 ? _d : previous.prefix,
-        numberFormat: (_e = source.numberFormat) !== null && _e !== void 0 ? _e : previous.numberFormat,
-        date: (_f = source.date) !== null && _f !== void 0 ? _f : previous.date,
-        description: (_g = source.description) !== null && _g !== void 0 ? _g : previous.description,
-        reference: (_h = source.reference) !== null && _h !== void 0 ? _h : previous.reference,
-        status: (_j = source.status) !== null && _j !== void 0 ? _j : previous.status,
-        currency: (_k = source.currency) !== null && _k !== void 0 ? _k : previous.currency,
-        baseCurrency: (_l = source.baseCurrency) !== null && _l !== void 0 ? _l : previous.baseCurrency,
-        exchangeRate: (_m = source.exchangeRate) !== null && _m !== void 0 ? _m : previous.exchangeRate,
-        account: (_o = source.account) !== null && _o !== void 0 ? _o : previous.account,
-        accountId: (_p = source.accountId) !== null && _p !== void 0 ? _p : previous.accountId,
-        depositToAccountId: (_q = source.depositToAccountId) !== null && _q !== void 0 ? _q : previous.depositToAccountId,
-        payFromAccountId: (_r = source.payFromAccountId) !== null && _r !== void 0 ? _r : previous.payFromAccountId,
-        postingPeriodNo: (_s = source.postingPeriodNo) !== null && _s !== void 0 ? _s : previous.postingPeriodNo,
-        lines: sourceLines
-    };
-    if (sourceMetadata && Object.keys(sourceMetadata).length > 0) {
-        snapshot.metadata = sourceMetadata;
+    const previousSnapshot = sanitizeSnapshotObject(existing);
+    const explicitSourceSnapshot = sanitizeSnapshotObject(payload === null || payload === void 0 ? void 0 : payload.sourcePayload);
+    const fallbackPayloadSnapshot = sanitizeSnapshotObject(payload);
+    delete fallbackPayloadSnapshot.sourcePayload;
+    if (isPlainObject(fallbackPayloadSnapshot.metadata)) {
+        fallbackPayloadSnapshot.metadata = removeLegacySourceKeys(fallbackPayloadSnapshot.metadata);
     }
-    const cleanedSnapshot = cleanObject(snapshot);
-    if (!cleanedSnapshot || Object.keys(cleanedSnapshot).length === 0) {
+    const incomingSnapshot = Object.keys(explicitSourceSnapshot).length > 0
+        ? explicitSourceSnapshot
+        : fallbackPayloadSnapshot;
+    const mergedSnapshot = deepMergeObjects(previousSnapshot, incomingSnapshot);
+    if (isPlainObject(mergedSnapshot.metadata)) {
+        mergedSnapshot.metadata = removeLegacySourceKeys(mergedSnapshot.metadata);
+    }
+    const cleanedSnapshot = sanitizeSnapshotObject(mergedSnapshot);
+    if (Object.keys(cleanedSnapshot).length === 0) {
         return undefined;
     }
     return cleanedSnapshot;
@@ -228,7 +243,7 @@ class CreateVoucherUseCase {
             const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
             // Build metadata including source tracking fields
             // and capturing any unrecognized top-level fields to avoid data loss
-            const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+            const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule', 'sourcePayload'];
             const extraMetadata = {};
             Object.keys(payload).forEach(key => {
                 if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
@@ -434,7 +449,7 @@ class UpdateVoucherUseCase {
         const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
         const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
         // Capture any unrecognized top-level fields into metadata to avoid data loss
-        const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule'];
+        const coreFields = ['id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description', 'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status', 'metadata', 'reference', 'postingPeriodNo', 'prefix', 'formId', 'sourceModule', 'sourcePayload'];
         const extraMetadata = {};
         Object.keys(payload).forEach(key => {
             if (!coreFields.includes(key) && payload[key] !== undefined && payload[key] !== null) {
