@@ -71,6 +71,50 @@ const dispatchPrint = (id: string) => {
   window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
 };
 
+const UI_ONLY_TOP_LEVEL_FIELDS = new Set([
+  'voucherConfig',
+  'headerFields',
+  'tableColumns',
+  'uiModeOverrides',
+  'tableStyle',
+  'actions',
+  'rules',
+  '_isForm',
+]);
+
+const UI_ONLY_METADATA_FIELDS = new Set([
+  'voucherConfig',
+  'headerFields',
+  'tableColumns',
+  'uiModeOverrides',
+  'tableStyle',
+  'actions',
+  'rules',
+]);
+
+const toAccountRef = (value: any): string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    if (typeof value.id === 'string' && value.id) return value.id;
+    if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
+    if (typeof value.code === 'string' && value.code) return value.code;
+    if (typeof value.account === 'string' && value.account) return value.account;
+  }
+  return undefined;
+};
+
+const sanitizeMetadata = (metadata: any): Record<string, any> | undefined => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return undefined;
+  const cleaned = Object.entries(metadata).reduce((acc, [key, value]) => {
+    if (UI_ONLY_METADATA_FIELDS.has(key)) return acc;
+    if (value === '' || value === undefined || value === null) return acc;
+    acc[key] = value;
+    return acc;
+  }, {} as Record<string, any>);
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+};
+
 /**
  * Internal save logic — transforms UI data to V2 API payload
  */
@@ -93,39 +137,17 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   );
   const isReceipt = resolvedType === 'receipt';
   const isPayment = resolvedType === 'payment';
-
-  const toAccountRef = (value: any): string | undefined => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (typeof value === 'string') return value;
-    if (typeof value === 'object') {
-      if (typeof value.id === 'string' && value.id) return value.id;
-      if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
-      if (typeof value.code === 'string' && value.code) return value.code;
-      if (typeof value.account === 'string' && value.account) return value.account;
-    }
-    return undefined;
-  };
-
   const explicitHeaderCurrency = String(data.currency || '').toUpperCase();
   const fallbackHeaderCurrency = String(
     data.baseCurrency ||
     data.voucherConfig?.defaultCurrency ||
     ''
   ).toUpperCase();
-  const semanticInputLines = Array.isArray(data.lines) ? data.lines : [];
-  const semanticCurrencies = semanticInputLines
-    .map((line: any) => String(line?.currency || line?.lineCurrency || '').toUpperCase())
-    .filter((c: string) => !!c);
-  const uniqueSemanticCurrencies = Array.from(new Set(semanticCurrencies));
-  const inferredSemanticCurrency =
-    (isReceipt || isPayment) && uniqueSemanticCurrencies.length === 1
-      ? uniqueSemanticCurrencies[0]
-      : '';
-  // Preserve the user's explicit header currency when provided.
-  // Only infer from semantic lines when header currency is missing.
-  const headerCurrency = explicitHeaderCurrency || inferredSemanticCurrency || fallbackHeaderCurrency;
+  // Never infer header currency from lines on save; preserve explicit source state.
+  const headerCurrency = explicitHeaderCurrency || fallbackHeaderCurrency;
   const baseCurrency = String(data.baseCurrency || '').toUpperCase();
   const exchangeRate = Number(data.exchangeRate) || 1;
+  const metadata = sanitizeMetadata(data.metadata);
 
   const semanticLines = (data.lines || [])
     .map((line: any) => {
@@ -145,7 +167,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
             lineCurrency: lineCurrency || undefined,
             exchangeRate: lineParity,
             parity: lineParity,
-            metadata: line.metadata || {}
+            metadata: sanitizeMetadata(line.metadata) || {}
           }
         : {
             payToAccountId: accountRef,
@@ -156,25 +178,32 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
             lineCurrency: lineCurrency || undefined,
             exchangeRate: lineParity,
             parity: lineParity,
-            metadata: line.metadata || {}
+            metadata: sanitizeMetadata(line.metadata) || {}
           };
     })
     .filter((line: any) => {
       const accountRef = isReceipt ? line.receiveFromAccountId : line.payToAccountId;
       return !!accountRef && Number(line.amount) > 0;
     });
-  
-  const payload = {
-    ...data,
+
+  const payload: any = {
     type: resolvedType,
-    voucherNo: data.voucherNumber || data.voucherNo,
+    ...(data.id ? { id: data.id } : {}),
+    voucherNo: data.voucherNumber || data.voucherNo || undefined,
     description: data.description || data.notes, 
-    formId: data.formId, 
-    prefix: data.prefix,
+    formId: data.formId || undefined, 
+    typeId: data.typeId || undefined,
+    prefix: data.prefix || undefined,
+    numberFormat: data.numberFormat || undefined,
+    date: data.date || undefined,
+    reference: data.reference || undefined,
+    postingPeriodNo: data.postingPeriodNo ?? undefined,
+    status: data.status || undefined,
     sourceModule: data.sourceModule || 'accounting',
     currency: headerCurrency || undefined,
-    baseCurrency,
+    baseCurrency: baseCurrency || undefined,
     exchangeRate,
+    ...(metadata ? { metadata } : {}),
     ...(isReceipt
       ? {
           depositToAccountId: toAccountRef(data.depositToAccountId || data.accountId || data.account),
@@ -182,7 +211,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         }
       : isPayment
         ? {
-            payFromAccountId: toAccountRef(data.payFromAccountId || data.accountId || data.account),
+          payFromAccountId: toAccountRef(data.payFromAccountId || data.accountId || data.account),
             lines: semanticLines
           }
         : {
@@ -208,22 +237,23 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
                 exchangeRate: Number(line.exchangeRate || line.parity || exchangeRate),
                 notes: line.description || line.notes,
                 costCenterId: line.costCenterId || line.category || null,
-                metadata: line.metadata || {}
+                metadata: sanitizeMetadata(line.metadata) || {}
               };
             })
           })
   };
-  
-  if (payload.id && payload.id.toString().startsWith('voucher-')) {
-    delete payload.id;
-  }
 
   const cleanPayload = Object.entries(payload).reduce((acc, [key, value]) => {
+    if (UI_ONLY_TOP_LEVEL_FIELDS.has(key)) return acc;
     if (value !== '' && value !== undefined && value !== null) {
       acc[key] = value;
     }
     return acc;
   }, {} as any);
+
+  if (cleanPayload.id && cleanPayload.id.toString().startsWith('voucher-')) {
+    delete cleanPayload.id;
+  }
   
   let savedVoucher;
   if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {

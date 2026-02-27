@@ -175,87 +175,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Sync state with initialData updates (e.g. after fetch completes or partial submit)
   useEffect(() => {
     if (initialData) {
-      const normalizeType = (value: any): string => {
-        const raw = String(value || '').trim().toLowerCase();
-        if (!raw) return 'journal_entry';
-        if (raw.includes('receipt')) return 'receipt';
-        if (raw.includes('payment')) return 'payment';
-        if (raw.includes('opening')) return 'opening_balance';
-        if (raw.includes('revaluation') || raw.includes('fx')) return 'fx_revaluation';
-        if (raw.includes('journal') || raw === 'jv') return 'journal_entry';
-        return raw;
-      };
-
-      const resolvedType = normalizeType(
-        initialData.type ||
-        (definition as any)?.baseType ||
-        (definition as any)?._typeId ||
-        definition.code ||
-        definition.name
-      );
-      const isReceiptType = resolvedType === 'receipt';
-      const isPaymentType = resolvedType === 'payment';
-
       const rawLines = Array.isArray(initialData.lines) ? initialData.lines : [];
-      const sideOf = (line: any): 'debit' | 'credit' => {
-        const explicit = String(line?.side || '').toLowerCase();
-        if (explicit === 'debit' || explicit === 'credit') return explicit;
-        const debit = Number(line?.debit || 0);
-        const credit = Number(line?.credit || 0);
-        return debit >= credit ? 'debit' : 'credit';
-      };
       const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
-
-      const hasSemanticKeys = isReceiptType
-        ? rawLines.some((l: any) => !!(l?.receiveFromAccountId || l?.metadata?.receiveFromAccountId))
-        : isPaymentType
-          ? rawLines.some((l: any) => !!(l?.payToAccountId || l?.metadata?.payToAccountId))
-          : false;
-
-      const debitLines = rawLines.filter((l: any) => sideOf(l) === 'debit' && amountOf(l) > 0);
-      const creditLines = rawLines.filter((l: any) => sideOf(l) === 'credit' && amountOf(l) > 0);
-
-      const derivedHeaderAccount = isReceiptType
-        ? (
-            initialData.depositToAccountId ||
-            initialData.metadata?.depositToAccountId ||
-            initialData.accountId ||
-            initialData.metadata?.accountId ||
-            initialData.account ||
-            initialData.metadata?.account ||
-            debitLines[0]?.accountId ||
-            debitLines[0]?.account
-          )
-        : isPaymentType
-          ? (
-              initialData.payFromAccountId ||
-              initialData.metadata?.payFromAccountId ||
-              initialData.accountId ||
-              initialData.metadata?.accountId ||
-              initialData.account ||
-              initialData.metadata?.account ||
-              creditLines[0]?.accountId ||
-              creditLines[0]?.account
-            )
-          : undefined;
-
-      const semanticLines = (!hasSemanticKeys && (isReceiptType || isPaymentType))
-        ? (isReceiptType ? (creditLines.length > 0 ? creditLines : rawLines) : (debitLines.length > 0 ? debitLines : rawLines))
-        : rawLines;
-
-      const semanticHeaderPatch = isReceiptType
-        ? {
-            depositToAccountId: initialData.depositToAccountId || initialData.metadata?.depositToAccountId || derivedHeaderAccount,
-            accountId: initialData.accountId || initialData.metadata?.accountId || initialData.account || initialData.metadata?.account || derivedHeaderAccount,
-            account: initialData.account || initialData.metadata?.account || initialData.accountId || initialData.metadata?.accountId || derivedHeaderAccount
-          }
-        : isPaymentType
-          ? {
-              payFromAccountId: initialData.payFromAccountId || initialData.metadata?.payFromAccountId || derivedHeaderAccount,
-              accountId: initialData.accountId || initialData.metadata?.accountId || initialData.account || initialData.metadata?.account || derivedHeaderAccount,
-              account: initialData.account || initialData.metadata?.account || initialData.accountId || initialData.metadata?.accountId || derivedHeaderAccount
-            }
-          : {};
+      const cleanInitialData = Object.entries(initialData).reduce((acc, [key, value]) => {
+        // Never persist or replay UI designer config as voucher business data.
+        if (key === 'voucherConfig') return acc;
+        acc[key] = value;
+        return acc;
+      }, {} as any);
 
       // 1. Sync Form Metadata
       setFormData((prev: any) => {
@@ -263,8 +190,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         if (prev?.id !== initialData.id || !prev?.id) {
            return {
              ...prev,
-             ...initialData,
-             ...semanticHeaderPatch,
+             ...cleanInitialData,
              date: initialData.date ? formatForInput(initialData.date) : (prev.date || getCompanyToday(settings))
            };
         }
@@ -289,14 +215,10 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
              // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
              // or if the current state is completely empty/uninitialized.
              if (isNewVoucher || (isEmptyRows && initialData.lines.length > 0)) {
-                 const mappedLines = semanticLines.map((l: any, i: number) => {
+                 const mappedLines = rawLines.map((l: any, i: number) => {
                      const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
                      const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
-                     const semanticAccountId = isReceiptType
-                       ? (l.receiveFromAccountId || l.accountId || l.account)
-                       : isPaymentType
-                         ? (l.payToAccountId || l.accountId || l.account)
-                         : (l.accountId || l.account);
+                     const semanticAccountId = l.accountId || l.account || l.receiveFromAccountId || l.payToAccountId;
                      
                      let accountCode = l.account || '';
                      if (!accountCode && semanticAccountId) {
@@ -307,8 +229,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
                      return { 
                        ...l, 
-                       ...(isReceiptType ? { receiveFromAccountId: semanticAccountId } : {}),
-                       ...(isPaymentType ? { payToAccountId: semanticAccountId } : {}),
                        debit, 
                        credit, 
                        amount: amountOf(l),
@@ -338,8 +258,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                  if (isNewVoucher) {
                    onChangeRef.current?.({ 
                      ...formData, 
-                     ...initialData,
-                     ...semanticHeaderPatch,
+                     ...cleanInitialData,
                      lines: mappedLines 
                    });
                  }
@@ -1001,18 +920,19 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
       const resultNumberFormat = (definition as any).numberFormat || undefined;
-      const semanticHeaderAccountFallback = formData.accountId || formData.account || undefined;
-      const debitAnchorAccount = rows.find(r => (Number((r as any).debit) || 0) > 0)?.accountId || rows.find(r => (Number((r as any).debit) || 0) > 0)?.account;
-      const creditAnchorAccount = rows.find(r => (Number((r as any).credit) || 0) > 0)?.accountId || rows.find(r => (Number((r as any).credit) || 0) > 0)?.account;
-      const semanticHeaderPatch = backendType === 'receipt'
-        ? { depositToAccountId: formData.depositToAccountId || semanticHeaderAccountFallback || debitAnchorAccount }
-        : backendType === 'payment'
-          ? { payFromAccountId: formData.payFromAccountId || semanticHeaderAccountFallback || creditAnchorAccount }
-          : {};
+      const sourceFormData = Object.entries(formData || {}).reduce((acc, [key, value]) => {
+        if (key === 'voucherConfig') return acc;
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, any>);
+
+      const receiptHeaderAccount = formData.depositToAccountId || formData.accountId || formData.account || undefined;
+      const paymentHeaderAccount = formData.payFromAccountId || formData.accountId || formData.account || undefined;
       
       return {
-        ...formData,
-        ...semanticHeaderPatch,
+        ...sourceFormData,
+        ...(backendType === 'receipt' ? { depositToAccountId: receiptHeaderAccount } : {}),
+        ...(backendType === 'payment' ? { payFromAccountId: paymentHeaderAccount } : {}),
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
         formId: resultFormId, // Which form was used for rendering
