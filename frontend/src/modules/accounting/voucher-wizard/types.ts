@@ -31,6 +31,9 @@ export interface FieldLayout {
   rowSpan?: number;
   typeOverride?: string;
   labelOverride?: string;
+  iconOverride?: string;
+  displayMode?: 'standard' | 'compact' | 'badge';
+  isCompact?: boolean;
 }
 
 export interface SectionLayout {
@@ -49,6 +52,7 @@ export interface VoucherAction {
   type: VoucherActionType;
   label: string;
   enabled: boolean;
+  isCompact?: boolean;
 }
 
 // Rules (UI toggles only - no actual validation logic)

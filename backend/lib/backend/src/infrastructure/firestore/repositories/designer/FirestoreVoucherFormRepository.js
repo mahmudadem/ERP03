@@ -168,16 +168,17 @@ class FirestoreVoucherFormRepository {
         try {
             const snapshot = await this.getCollection(companyId).get();
             const companyForms = snapshot.docs.map(doc => this.toDomain(doc.data()));
-            // Merge with system templates
-            const systemSnapshot = await this.getSystemCollection().get();
-            const companyCodes = new Set(companyForms.map(f => f.code));
-            for (const doc of systemSnapshot.docs) {
-                const sysData = doc.data();
-                if (!companyCodes.has(sysData.code)) {
-                    companyForms.push(this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isSystemGenerated: true })));
-                }
+            // If company has explicit forms (created by accounting initialization / designer),
+            // return them as-is. This keeps sidebar aligned with selected voucher types.
+            if (companyForms.length > 0) {
+                return companyForms;
             }
-            return companyForms;
+            // Legacy fallback: if no company forms exist, expose system templates.
+            const systemSnapshot = await this.getSystemCollection().get();
+            return systemSnapshot.docs.map(doc => {
+                const sysData = doc.data();
+                return this.toDomain(Object.assign(Object.assign({}, sysData), { typeId: sysData.code || sysData.id, isSystemGenerated: true }));
+            });
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting all voucher forms', error);

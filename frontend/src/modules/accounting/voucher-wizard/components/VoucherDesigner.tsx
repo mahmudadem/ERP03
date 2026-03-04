@@ -505,17 +505,58 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
     const overrides = { ...config.uiModeOverrides };
     const modeConfig = overrides[previewMode];
-
     const sourceFields = modeConfig.sections[sourceSection as SectionType].fields;
-    const fieldIndex = sourceFields.findIndex((f: FieldLayout) => f.fieldId === fieldId);
-    if (fieldIndex === -1) return;
-    const [fieldToMove] = sourceFields.splice(fieldIndex, 1);
+    
+    // Find the field being dragged
+    const primaryFieldIndex = sourceFields.findIndex((f: FieldLayout) => f.fieldId === fieldId);
+    if (primaryFieldIndex === -1) return;
+    const primaryField = sourceFields[primaryFieldIndex];
 
-    fieldToMove.row = targetRow;
-    fieldToMove.col = targetCol;
+    // Check if it's an action and compact (part of a group)
+    const isAction = primaryField.fieldId.startsWith('action_');
+    const isCompact = isAction && (primaryField.displayMode === 'compact' || primaryField.displayMode === 'badge' || primaryField.isCompact);
+    
+    let fieldsToMove: FieldLayout[] = [];
+    
+    if (isAction && isCompact) {
+       // Identify the entire row's contiguous compact action group
+       const rowFields = sourceFields.filter(f => f.row === primaryField.row && f.fieldId.startsWith('action_') && (f.displayMode === 'compact' || f.displayMode === 'badge' || f.isCompact));
+       rowFields.sort((a, b) => a.col - b.col); // Must be sorted by column
+       
+       // Ensure the primary field is actually in this group
+       const primaryIdxInRow = rowFields.findIndex(f => f.fieldId === fieldId);
+       
+       if (primaryIdxInRow !== -1) {
+           // We'll move the ENTIRE group. 
+           // Extract them from source
+           fieldsToMove = rowFields;
+           
+           // Remove all grouped fields from the source section
+           const fieldIdsToRemove = new Set(fieldsToMove.map(f => f.fieldId));
+           modeConfig.sections[sourceSection as SectionType].fields = sourceFields.filter(f => !fieldIdsToRemove.has(f.fieldId));
+           
+           // Place them in the target section, maintaining relative column offsets
+           let currentColOffset = targetCol;
+           fieldsToMove.forEach(f => {
+              f.row = targetRow;
+              f.col = currentColOffset;
+              currentColOffset += (f.colSpan || 1);
+           });
+       } else {
+           // Fallback if logic fails somehow
+           fieldsToMove = sourceFields.splice(primaryFieldIndex, 1);
+           fieldsToMove[0].row = targetRow;
+           fieldsToMove[0].col = targetCol;
+       }
+    } else {
+       // Single standard field move
+       fieldsToMove = sourceFields.splice(primaryFieldIndex, 1);
+       fieldsToMove[0].row = targetRow;
+       fieldsToMove[0].col = targetCol;
+    }
 
     const targetFields = modeConfig.sections[targetSection as SectionType].fields;
-    targetFields.push(fieldToMove);
+    targetFields.push(...fieldsToMove);
 
     setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
     setSelectedField({ id: fieldId, section: targetSection });
@@ -643,55 +684,142 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               );
            })}
 
-           {layout.fields
-             .filter((f: FieldLayout) => {
+           {(() => {
+             const visibleFields = layout.fields.filter((f: FieldLayout) => {
                 if (SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) return true;
                 if (f.fieldId.startsWith('action_')) {
                   const actionType = f.fieldId.replace('action_', '');
                   return config.actions.find(a => a.type === actionType)?.enabled;
                 }
                 return selectedFieldIds.includes(f.fieldId);
-             })
-             .map((field: FieldLayout, idx: number) => {
-              const meta = [...SYSTEM_FIELDS, ...AVAILABLE_FIELDS].find(f => f.id === field.fieldId) 
-                         || (field.fieldId.startsWith('action_') ? { label: config.actions.find(a => `action_${a.type}` === field.fieldId)?.label || 'Action', type: 'button' } : null);
-              
-              const isSelected = selectedField?.id === field.fieldId;
+             });
+             
+             const elements: React.ReactNode[] = [];
+             let i = 0;
+             
+             while (i < visibleFields.length) {
+                const field = visibleFields[i];
+                const isAction = field.fieldId.startsWith('action_');
+                const isCompact = isAction && (field.displayMode === 'compact' || field.displayMode === 'badge' || field.isCompact);
+                
+                if (isAction && isCompact) {
+                   const group = [field];
+                   let j = i + 1;
+                   while (j < visibleFields.length) {
+                      const nextField = visibleFields[j];
+                      const nextIsAction = nextField.fieldId.startsWith('action_');
+                      const nextIsCompact = nextIsAction && (nextField.displayMode === 'compact' || nextField.displayMode === 'badge' || nextField.isCompact);
+                      
+                      if (nextIsCompact && nextField.row === field.row) {
+                         group.push(nextField);
+                         j++;
+                      } else {
+                         break;
+                      }
+                   }
+                   
+                   if (group.length > 1) {
+                      // Render grouped generic actions block
+                      const totalColSpan = group.reduce((sum, f) => sum + (f.colSpan || 1), 0);
+                      const isAnySelected = group.some(f => f.fieldId === selectedField?.id);
+                      
+                      elements.push(
+                         <div 
+                           key={`group_${field.row}_${field.col}`}
+                           draggable
+                           onDragStart={(e) => {
+                             // Only drag the first field as a proxy for the group drop logic, 
+                             // Though true grouped dragging would require more complex offset logic
+                             handleDragStartField(e, field.fieldId, sectionName);
+                           }}
+                           onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                           className={`
+                             rounded-lg border p-1 flex justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
+                             ${isAnySelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20 bg-indigo-50/50' : 'bg-white border-gray-200 text-gray-700 hover:border-indigo-400 cursor-move'}
+                           `}
+                           style={{
+                             gridColumnStart: group[0].col + 1,
+                             gridColumnEnd: `span ${totalColSpan}`,
+                             gridRowStart: group[0].row + 1,
+                             gridRowEnd: `span ${group[0].rowSpan || 1}`,
+                           }}
+                         >
+                           <div className="flex w-full h-full items-center justify-center divide-x divide-gray-200">
+                             {group.map((gf: any) => {
+                                const actionType = gf.fieldId.replace('action_', '');
+                                const actionDef = config.actions.find(a => a.type === actionType);
+                                const label = gf.labelOverride || actionDef?.label || actionType;
+                                const isSelected = selectedField?.id === gf.fieldId;
+                                
+                                return (
+                                  <div 
+                                    key={gf.fieldId}
+                                    className={`flex-1 h-full flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-50'}`}
+                                    onClick={(e) => { e.stopPropagation(); setSelectedField({ id: gf.fieldId, section: sectionName }); }}
+                                  >
+                                    <span className="font-medium text-[10px] uppercase truncate px-1 text-center">{gf.iconOverride || 'Icon'}</span>
+                                  </div>
+                                );
+                             })}
+                           </div>
+                           
+                           {/* Resize Handle */}
+                           <div 
+                             className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-indigo-400/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center z-30"
+                             onMouseDown={(e) => startResize(e, sectionName, group[group.length-1].fieldId, group[group.length-1].colSpan)}
+                           >
+                              <div className="w-0.5 h-4 bg-gray-400 rounded-full"></div>
+                           </div>
+                         </div>
+                      );
+                      i = j;
+                      continue;
+                   }
+                }
+                
+                // Standard un-grouped field rendering
+                const meta = [...SYSTEM_FIELDS, ...AVAILABLE_FIELDS].find(f => f.id === field.fieldId) 
+                           || (isAction ? { label: config.actions.find(a => `action_${a.type}` === field.fieldId)?.label || 'Action', type: 'button' } : null);
+                
+                const isSelected = selectedField?.id === field.fieldId;
 
-              return (
-                <div 
-                  key={field.fieldId}
-                  draggable
-                  onDragStart={(e) => handleDragStartField(e, field.fieldId, sectionName)}
-                  onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
-                  className={`
-                    rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
-                    ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20' : ''}
-                    ${meta?.type === 'system' ? 'bg-gray-100 border-gray-300 text-gray-500' : ''}
-                    ${meta?.type === 'button' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold items-center' : ''}
-                    ${!meta?.type || (meta.type !== 'system' && meta.type !== 'button') ? 'bg-white border-gray-200 text-gray-700 hover:border-indigo-400 cursor-move' : ''}
-                  `}
-                  style={{
-                    gridColumnStart: field.col + 1,
-                    gridColumnEnd: `span ${field.colSpan}`,
-                    gridRowStart: field.row + 1,
-                    gridRowEnd: `span ${field.rowSpan || 1}`,
-                  }}
-                >
-                  <span className="truncate w-full text-center md:text-start font-medium pointer-events-none">
-                    {field.labelOverride || meta?.label || field.fieldId}
-                  </span>
-                  
-                  {/* Resize Handle */}
+                elements.push(
                   <div 
-                    className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-indigo-400/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center z-30"
-                    onMouseDown={(e) => startResize(e, sectionName, field.fieldId, field.colSpan)}
+                    key={field.fieldId}
+                    draggable
+                    onDragStart={(e) => handleDragStartField(e, field.fieldId, sectionName)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
+                    className={`
+                      rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
+                      ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20' : ''}
+                      ${meta?.type === 'system' ? 'bg-gray-100 border-gray-300 text-gray-500' : ''}
+                      ${meta?.type === 'button' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold items-center' : ''}
+                      ${!meta?.type || (meta.type !== 'system' && meta.type !== 'button') ? 'bg-white border-gray-200 text-gray-700 hover:border-indigo-400 cursor-move' : ''}
+                    `}
+                    style={{
+                      gridColumnStart: field.col + 1,
+                      gridColumnEnd: `span ${field.colSpan}`,
+                      gridRowStart: field.row + 1,
+                      gridRowEnd: `span ${field.rowSpan || 1}`,
+                    }}
                   >
-                     <div className="w-0.5 h-4 bg-gray-400 rounded-full"></div>
+                    <span className="truncate w-full text-center md:text-start font-medium pointer-events-none">
+                      {field.labelOverride || meta?.label || field.fieldId}
+                    </span>
+                    
+                    {/* Resize Handle */}
+                    <div 
+                      className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize hover:bg-indigo-400/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center z-30"
+                      onMouseDown={(e) => startResize(e, sectionName, field.fieldId, field.colSpan)}
+                    >
+                       <div className="w-0.5 h-4 bg-gray-400 rounded-full"></div>
+                    </div>
                   </div>
-                </div>
-              );
-           })}
+                );
+                i++;
+             }
+             return elements;
+           })()}
         </div>
       </div>
     );
@@ -1112,6 +1240,54 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         </select>
                      </div>
 
+                     <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">Display Mode</label>
+                        <select 
+                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.displayMode || 'standard'}
+                           onChange={(e) => updateSelectedField('displayMode', e.target.value)}
+                           className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
+                        >
+                           <option value="standard">{selectedField.id.startsWith('action_') ? 'Standard Button' : 'Standard Input'}</option>
+                           {selectedField.id.startsWith('action_') ? (
+                             <option value="compact">Icon Only</option>
+                           ) : (
+                             <>
+                               <option value="compact">Compact Text</option>
+                               <option value="badge">Badge</option>
+                             </>
+                           )}
+                        </select>
+                        {selectedField.id.startsWith('action_') ? (
+                          <p className="text-[10px] text-gray-400 mt-1">Display this action as a compact icon</p>
+                        ) : (
+                          <p className="text-[10px] text-gray-400 mt-1">Useful to display statuses or compact metadata</p>
+                        )}
+                     </div>
+
+                     {selectedField.id.startsWith('action_') && (
+                       <div className="mt-4">
+                          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Icon</label>
+                          <select 
+                             value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.iconOverride || ''}
+                             onChange={(e) => updateSelectedField('iconOverride', e.target.value)}
+                             className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
+                          >
+                             <option value="">Default Icon</option>
+                             <option value="Printer">Printer</option>
+                             <option value="Save">Save</option>
+                             <option value="Download">Download</option>
+                             <option value="Mail">Mail</option>
+                             <option value="Send">Send</option>
+                             <option value="FileText">Document</option>
+                             <option value="Check">Check</option>
+                             <option value="X">Close (X)</option>
+                             <option value="Upload">Upload</option>
+                             <option value="Image">Image</option>
+                             <option value="Excel">Excel</option>
+                          </select>
+                       </div>
+                     )}
+
                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                        <div>
                          <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Row Index</label>
@@ -1504,9 +1680,34 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         return (
           <div className="max-w-3xl mx-auto grid grid-cols-2 gap-4">
              {config.actions.map(action => (
-               <div key={action.type} onClick={() => setConfig(prev => ({...prev, actions: prev.actions.map(a => a.type === action.type ? { ...a, enabled: !a.enabled } : a)}))} className={`p-4 rounded-lg border cursor-pointer ${action.enabled ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200'}`}>
-                  <h4 className="font-bold text-sm text-slate-900">{action.label}</h4>
-                  <p className="text-xs text-gray-500">{action.enabled ? 'Enabled' : 'Disabled'}</p>
+               <div key={action.type} className={`p-4 rounded-lg border ${action.enabled ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-gray-200'}`}>
+                  <div 
+                    className="flex items-center justify-between cursor-pointer mb-2"
+                    onClick={() => setConfig(prev => ({...prev, actions: prev.actions.map(a => a.type === action.type ? { ...a, enabled: !a.enabled } : a)}))}
+                  >
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-900">{action.label}</h4>
+                      <p className="text-xs text-gray-500">{action.enabled ? 'Enabled' : 'Disabled'}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${action.enabled ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300'}`}>
+                      {action.enabled && <Check size={14} />}
+                    </div>
+                  </div>
+                  
+                  {action.enabled && (
+                    <div className="pt-3 mt-3 border-t border-indigo-100 flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-700">Display as Icon Only (Compact)</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfig(prev => ({...prev, actions: prev.actions.map(a => a.type === action.type ? { ...a, isCompact: !a.isCompact } : a)}));
+                        }}
+                        className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${action.isCompact ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                      >
+                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${action.isCompact ? 'translate-x-4' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  )}
                </div>
              ))}
           </div>

@@ -80,14 +80,94 @@ const DEFAULT_VOUCHER_TYPES = [
     {
         id: 'journal_entry',
         code: 'JOURNAL_ENTRY',
-        name: 'Journal Entry',
+        name: 'Journal Voucher',
         schemaVersion: 2,
-        prefix: 'JE-',
+        prefix: 'JV-',
         nextNumber: 1000,
         enabled: true,
         isRecommended: true,
         isSystemDefault: true,
+        isLocked: true,
         inUse: false,
+        baseType: 'JOURNAL_ENTRY',
+        headerFields: [
+            { id: 'voucherNumber', label: 'voucherNumber', type: 'text', order: 0 },
+            { id: 'status', label: 'status', type: 'text', order: 0 },
+            { id: 'createdBy', label: 'createdBy', type: 'text', order: 0 },
+            { id: 'createdAt', label: 'createdAt', type: 'text', order: 0 },
+            { id: 'date', label: 'date', type: 'text', order: 1 },
+            { id: 'description', label: 'description', type: 'text', order: 2 },
+            { id: 'currency', label: 'currency', type: 'text', order: 3 },
+            { id: 'reference', label: 'reference', type: 'text', order: 4 },
+            { id: 'currencyExchange', label: 'currencyExchange', type: 'text', order: 5 },
+        ],
+        tableColumns: [
+            { id: 'account', fieldId: 'account', label: 'account', labelOverride: 'Account', width: '30%', type: 'text', order: 0 },
+            { id: 'debit', fieldId: 'debit', label: 'debit', labelOverride: 'Debit', width: '10%', type: 'text', order: 0 },
+            { id: 'credit', fieldId: 'credit', label: 'credit', labelOverride: 'Credit', width: '10%', type: 'text', order: 0 },
+            { id: 'currency', fieldId: 'currency', label: 'currency', labelOverride: 'Currency', width: '10%', type: 'text', order: 0 },
+            { id: 'parity', fieldId: 'parity', label: 'parity', labelOverride: 'Parity', width: '10%', type: 'text', order: 0 },
+            { id: 'equivalent', fieldId: 'equivalent', label: 'equivalent', labelOverride: 'Equivalent', width: '10%', type: 'text', order: 0 },
+            { id: 'notes', fieldId: 'notes', label: 'notes', labelOverride: 'Line Description', width: '15%', type: 'text', order: 0 },
+        ],
+        uiModeOverrides: {
+            classic: {
+                sections: {
+                    HEADER: {
+                        order: 1,
+                        fields: [
+                            { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
+                            { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
+                            { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
+                            { fieldId: 'status', row: 2, col: 0, colSpan: 12 },
+                            { fieldId: 'createdBy', row: 3, col: 0, colSpan: 12 },
+                            { fieldId: 'createdAt', row: 4, col: 0, colSpan: 12 },
+                            { fieldId: 'currency', row: 5, col: 0, colSpan: 12 },
+                            { fieldId: 'reference', row: 6, col: 0, colSpan: 12 },
+                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
+                        ],
+                    },
+                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+                    EXTRA: { order: 3, fields: [] },
+                    ACTIONS: {
+                        order: 4,
+                        fields: [
+                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 12 },
+                            { fieldId: 'action_email', row: 1, col: 0, colSpan: 12 },
+                            { fieldId: 'action_download_pdf', row: 2, col: 0, colSpan: 12 },
+                        ],
+                    },
+                },
+            },
+            windows: {
+                sections: {
+                    HEADER: {
+                        order: 1,
+                        fields: [
+                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
+                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
+                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
+                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
+                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
+                            { fieldId: 'currency', row: 1, col: 0, colSpan: 4 },
+                            { fieldId: 'currencyExchange', row: 1, col: 4, colSpan: 3, label: 'currency Exchange Rates' },
+                            { fieldId: 'description', row: 3, col: 0, colSpan: 12 },
+                            { fieldId: 'reference', row: 1, col: 7, colSpan: 4 },
+                        ],
+                    },
+                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
+                    EXTRA: { order: 3, fields: [] },
+                    ACTIONS: {
+                        order: 4,
+                        fields: [
+                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 4 },
+                            { fieldId: 'action_email', row: 0, col: 4, colSpan: 4 },
+                            { fieldId: 'action_download_pdf', row: 0, col: 8, colSpan: 4, label: 'download PDF' },
+                        ],
+                    },
+                },
+            },
+        },
         layout: {
             classic: {
                 sections: {
@@ -97,11 +177,24 @@ const DEFAULT_VOUCHER_TYPES = [
                             { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
                             { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
                             { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
+                            { fieldId: 'status', row: 2, col: 0, colSpan: 12 },
+                            { fieldId: 'createdBy', row: 3, col: 0, colSpan: 12 },
+                            { fieldId: 'createdAt', row: 4, col: 0, colSpan: 12 },
+                            { fieldId: 'currency', row: 5, col: 0, colSpan: 12 },
+                            { fieldId: 'reference', row: 6, col: 0, colSpan: 12 },
+                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
                         ]
                     },
                     BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
+                    EXTRA: { order: 3, fields: [] },
+                    ACTIONS: {
+                        order: 4,
+                        fields: [
+                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 12 },
+                            { fieldId: 'action_email', row: 1, col: 0, colSpan: 12 },
+                            { fieldId: 'action_download_pdf', row: 2, col: 0, colSpan: 12 },
+                        ],
+                    }
                 }
             },
             windows: {
@@ -109,27 +202,47 @@ const DEFAULT_VOUCHER_TYPES = [
                     HEADER: {
                         order: 1,
                         fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
-                            { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
+                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
+                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
+                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
+                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
+                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
+                            { fieldId: 'currency', row: 1, col: 0, colSpan: 4 },
+                            { fieldId: 'currencyExchange', row: 1, col: 4, colSpan: 3, label: 'currency Exchange Rates' },
+                            { fieldId: 'description', row: 3, col: 0, colSpan: 12 },
+                            { fieldId: 'reference', row: 1, col: 7, colSpan: 4 },
                         ]
                     },
                     BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
+                    EXTRA: { order: 3, fields: [] },
+                    ACTIONS: {
+                        order: 4,
+                        fields: [
+                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 4 },
+                            { fieldId: 'action_email', row: 0, col: 4, colSpan: 4 },
+                            { fieldId: 'action_download_pdf', row: 0, col: 8, colSpan: 4, label: 'download PDF' },
+                        ],
+                    }
                 }
             }
         },
         isMultiLine: true,
-        tableColumns: [
-            { fieldId: 'account', width: '30%', labelOverride: 'Account' },
-            { fieldId: 'debit', width: '20%', labelOverride: 'Debit' },
-            { fieldId: 'credit', width: '20%', labelOverride: 'Credit' },
-            { fieldId: 'notes', width: '30%', labelOverride: 'Line Description' }
+        requiresApproval: true,
+        preventNegativeCash: true,
+        allowFutureDates: true,
+        mandatoryAttachments: true,
+        rules: COMMON_RULES,
+        actions: [
+            { type: 'print', label: 'Print Voucher', enabled: true },
+            { type: 'email', label: 'Email PDF', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+            { type: 'download_excel', label: 'Download Excel', enabled: false },
+            { type: 'import_csv', label: 'Import Lines (CSV)', enabled: false },
+            { type: 'export_json', label: 'Export JSON', enabled: false },
         ],
-        requiresApproval: false,
         enabledActions: ['print', 'email', 'download_pdf'],
+        tableStyle: 'classic',
+        defaultCurrency: '',
     },
     {
         id: 'payment_voucher',

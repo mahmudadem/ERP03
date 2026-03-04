@@ -2,7 +2,7 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef, us
 import { useTranslation } from 'react-i18next';
 import { VoucherTypeDefinition } from '../../../../designer-engine/types/VoucherTypeDefinition';
 import { JournalRow } from '../../forms-designer/types';
-import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save } from 'lucide-react';
+import { Plus, Trash2, Calendar, ChevronDown, Download, Image as ImageIcon, Loader2, Printer, Mail, Save, Send, FileText, Check, X, Upload, FileSpreadsheet } from 'lucide-react';
 import { CurrencyExchangeWidget } from './CurrencyExchangeWidget';
 import { AccountSelector } from './AccountSelector';
 import { CostCenterSelector } from './CostCenterSelector';
@@ -1743,7 +1743,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
   // --- Field Renderers ---
 
-  const renderField = (fieldId: string, labelOverride?: string, typeOverride?: string) => {
+  const renderField = (fieldId: string, labelOverride?: string, typeOverride?: string, displayMode: string = 'standard', iconOverride?: string, isGrouped: boolean = false) => {
     // Helper to get field value with case-insensitive lookup
     const getFieldValue = (fid: string) => {
       if (fid.includes('.')) {
@@ -1852,6 +1852,116 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         </div>
       );
     }
+    
+    // 0.8. Action Fields
+    if (fieldId.startsWith('action_')) {
+      const actionKey = fieldId.replace(/^action_/, '');
+      const configDef = definition as any;
+      const actionConfig = configDef.actions?.find((a: any) => a.type === actionKey);
+      // Determine label: override > layout label > config label > default translation
+      const actionLabel = labelOverride || actionConfig?.label || t(`voucherRenderer.actions.${actionKey}`, { defaultValue: labelOverride || actionKey });
+      
+      const DownloadPdfIcon = ({ size = 18, ...props }: any) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90" {...props}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <line x1="8" y1="13" x2="10" y2="13" />
+          <line x1="8" y1="17" x2="10" y2="17" />
+          <line x1="16" y1="12" x2="16" y2="21" />
+          <polyline points="13 18 16 21 19 18" />
+        </svg>
+      );
+
+      const DownloadExcelIcon = ({ size = 18, ...props }: any) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90" {...props}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="M7 13l4 4" />
+          <path d="M11 13l-4 4" />
+          <line x1="16" y1="12" x2="16" y2="21" />
+          <polyline points="13 18 16 21 19 18" />
+        </svg>
+      );
+
+      const ImportCsvIcon = ({ size = 18, ...props }: any) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90" {...props}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <line x1="8" y1="13" x2="10" y2="13" />
+          <line x1="8" y1="17" x2="10" y2="17" />
+          <line x1="16" y1="21" x2="16" y2="12" />
+          <polyline points="13 15 16 12 19 15" />
+        </svg>
+      );
+      
+      const ExportJsonIcon = ({ size = 18, ...props }: any) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90" {...props}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5" />
+          <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+          <path d="M10 13l-2 2 2 2" />
+          <line x1="16" y1="12" x2="16" y2="21" />
+          <polyline points="13 18 16 21 19 18" />
+        </svg>
+      );
+
+      const Icon = iconOverride === 'Printer' ? Printer :
+                   iconOverride === 'Save' ? Save :
+                   iconOverride === 'Download' ? Download :
+                   iconOverride === 'Mail' ? Mail :
+                   iconOverride === 'Send' ? Send :
+                   iconOverride === 'FileText' ? FileText :
+                   iconOverride === 'Check' ? Check :
+                   iconOverride === 'X' ? X :
+                   iconOverride === 'Upload' ? Upload :
+                   iconOverride === 'Image' ? ImageIcon :
+                   iconOverride === 'Excel' ? FileSpreadsheet :
+                   actionKey === 'print' ? Printer :
+                   actionKey === 'save' ? Save :
+                   actionKey === 'download_pdf' ? DownloadPdfIcon :
+                   actionKey === 'download_excel' ? DownloadExcelIcon :
+                   actionKey === 'import_csv' ? ImportCsvIcon :
+                   actionKey === 'export_json' ? ExportJsonIcon :
+                   actionKey === 'email' ? Mail :
+                   null;
+
+      const iconOnly = (actionConfig?.isCompact) || (displayMode === 'compact') || (displayMode === 'badge');
+
+      if (iconOnly && Icon) {
+        const btn = (
+            <button 
+              title={actionLabel}
+              type="button"
+              className={`flex items-center justify-center p-2 transition-all text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98] text-indigo-600 dark:text-indigo-400 aspect-square h-9 w-9 shrink-0 mx-auto ${isGrouped ? 'hover:z-10 relative bg-transparent' : 'bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-full shadow-sm'}`}
+            >
+              <Icon size={18} />
+            </button>
+        );
+        if (isGrouped) return btn;
+        return (
+          <div className="flex items-center justify-center p-1 w-full h-full">
+            {btn}
+          </div>
+        );
+      }
+
+      const stdBtn = (
+          <button 
+            type="button"
+            className={`flex items-center justify-center w-full h-full gap-2 px-4 text-xs font-bold transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98] ${isGrouped ? 'hover:z-10 relative' : 'rounded-lg shadow-sm'}`}
+          >
+            {Icon && <Icon size={16} />}
+            <span className="truncate">{actionLabel}</span>
+          </button>
+      );
+      
+      if (isGrouped) return stdBtn;
+      
+      return (
+        <div className="flex items-end h-full py-1 min-h-[40px]">
+          {stdBtn}
+        </div>
+      );
+    }
 
     
     // 1. System Fields (Read Only)
@@ -1895,6 +2005,32 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
              resolvedValue = formData.voucherNo || formData.voucherNumber || '';
            }
            displayValue = resolvedValue || '-';
+       }
+       
+       if (displayMode === 'badge') {
+         return (
+            <div className="flex items-center gap-2 py-1">
+               <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wide">{finalLabel}:</span>
+               {lowerFid === 'status' ? (
+                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                   displayValue === 'POSTED' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' :
+                   displayValue === 'VOID' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800' :
+                   'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                 }`}>
+                   {displayValue}
+                 </span>
+               ) : (
+                 <span className="text-[11px] font-medium text-[var(--color-text-primary)]">{displayValue}</span>
+               )}
+            </div>
+         );
+       } else if (displayMode === 'compact') {
+         return (
+            <div className="flex flex-col space-y-0.5">
+               <span className="text-[9px] uppercase font-bold text-[var(--color-text-muted)] leading-none tracking-wide">{finalLabel}</span>
+               <span className="text-[11px] font-bold text-[var(--color-text-primary)] leading-none">{displayValue}</span>
+            </div>
+         );
        }
        
        return (
@@ -2558,6 +2694,82 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     );
   };
 
+  // Helper to render a list of fields, grouping adjacent compact actions on the same row
+  const renderFieldList = (fields: any[]) => {
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+            
+    while (i < fields.length) {
+      const field = fields[i];
+              
+      const isAction = field.fieldId.startsWith('action_');
+      const isCompact = isAction && (field.displayMode === 'compact' || field.displayMode === 'badge' || field.isCompact);
+              
+      if (isCompact) {
+        const group = [field];
+        let j = i + 1;
+        while (j < fields.length) {
+          const nextField = fields[j];
+          const nextIsAction = nextField.fieldId.startsWith('action_');
+          const nextIsCompact = nextIsAction && (nextField.displayMode === 'compact' || nextField.displayMode === 'badge' || nextField.isCompact);
+                  
+          if (nextIsCompact && nextField.row === field.row) {
+            group.push(nextField);
+            j++;
+          } else {
+            break;
+          }
+        }
+                
+        if (group.length > 1) {
+          const totalColSpan = group.reduce((sum, f) => sum + (f.colSpan || 4), 0);
+                  
+          elements.push(
+            <div 
+              key={`group_${field.row}_${field.col}`}
+              className={`col-span-${Math.min(12, totalColSpan)}`}
+              style={{ 
+                gridColumnStart: (group[0].col || 0) + 1,
+                gridColumnEnd: `span ${totalColSpan}`,
+                gridRowStart: (group[0].row || 0) + 1,
+                gridRowEnd: `span ${group[0].rowSpan || 1}`
+              }}
+            >
+              <div className="flex items-center justify-end h-full">
+                <div className="flex bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded shadow-sm overflow-hidden h-9 divide-x divide-[var(--color-border)]">
+                   {group.map((gf: any) => (
+                     <div key={gf.fieldId} className="h-full flex items-center justify-center min-w-[36px]">
+                       {renderField(gf.fieldId, gf.labelOverride, gf.typeOverride, gf.isCompact ? 'compact' : gf.displayMode, gf.iconOverride, true)}
+                     </div>
+                   ))}
+                </div>
+              </div>
+            </div>
+          );
+          i = j;
+          continue;
+        }
+      }
+              
+      elements.push(
+        <div 
+          key={field.fieldId || i}
+          className={`col-span-${Math.min(12, field.colSpan || 4)}`}
+          style={{ 
+            gridColumnStart: (field.col || 0) + 1,
+            gridColumnEnd: `span ${field.colSpan || 4}`,
+            gridRowStart: (field.row || 0) + 1,
+            gridRowEnd: `span ${field.rowSpan || 1}`
+          }}
+        >
+          {renderField(field.fieldId, field.labelOverride, field.typeOverride, field.isCompact ? 'compact' : field.displayMode, field.iconOverride)}
+        </div>
+      );
+      i++;
+    }
+    return elements;
+  };
+
   // Render header fields - supports both formats
   const renderHeaderFields = () => {
     const configDef = definition as any;
@@ -2578,20 +2790,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
          return (
            <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
             <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-              {sortedFields.map((field: any) => (
-                <div 
-                  key={field.fieldId} 
-                  className={`col-span-${field.colSpan || 4}`}
-                  style={{ 
-                    gridColumnStart: (field.col || 0) + 1,
-                    gridColumnEnd: `span ${field.colSpan || 4}`,
-                    gridRowStart: (field.row || 0) + 1,
-                    gridRowEnd: `span ${field.rowSpan || 1}`
-                  }}
-                >
-                  {renderField(field.fieldId, field.labelOverride, field.typeOverride)}
-                </div>
-              ))}
+              {renderFieldList(sortedFields)}
             </div>
           </div>
         );
@@ -2662,20 +2861,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
        <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
          {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
         <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-          {sortedFields.map((field: any) => (
-            <div 
-              key={field.fieldId}
-              className={`col-span-${Math.min(12, field.colSpan || 4)}`}
-              style={{ 
-                gridColumnStart: (field.col || 0) + 1,
-                gridColumnEnd: `span ${field.colSpan || 4}`,
-                gridRowStart: (field.row || 0) + 1,
-                gridRowEnd: `span ${field.rowSpan || 1}`
-              }}
-            >
-              {renderField(field.fieldId, field.labelOverride, field.typeOverride)}
-            </div>
-          ))}
+          {renderFieldList(sortedFields)}
         </div>
       </div>
     );
@@ -2732,7 +2918,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         labelOverride: action.label,
         row: 0,
         col: index,
-        colSpan: 4
+        colSpan: 4,
+        isCompact: action.isCompact
       }));
     }
     
@@ -2744,23 +2931,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
          className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] p-3 grid grid-cols-12 gap-3 transition-colors"
          style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
        >
-         {actionFields.map((field: any, index: number) => {
-           const actionKey = (field.fieldId || '').replace(/^action_/, '');
-            const actionLabel = field.labelOverride || t(`voucherRenderer.actions.${actionKey}`, { defaultValue: field.labelOverride || actionKey });
-            return (
-              <button 
-                key={field.fieldId || index}
-                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]"
-                style={{
-                  gridColumnStart: (field.col || 0) + 1,
-                  gridColumnEnd: `span ${field.colSpan || 4}`,
-                  gridRowStart: (field.row || 0) + 1
-                }}
-              >
-                {actionLabel}
-              </button>
-            );
-          })}
+          {renderFieldList(actionFields)}
        </div>
     );
   };
