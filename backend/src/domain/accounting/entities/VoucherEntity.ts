@@ -68,10 +68,25 @@ export class VoucherEntity {
     public readonly postingLockPolicy?: PostingLockPolicy,
     public readonly reversalOfVoucherId?: string | null,
     
-    public readonly reference?: string | null,     // External reference (invoice #, check #, etc.)
-    public readonly updatedAt?: Date | null,       // Last modification timestamp
-    public readonly postingPeriodNo?: number | null, // Special/Adjustment period override
-    public readonly sourcePayload?: Record<string, any> | null
+    public readonly reference?: string | null,        // External reference (invoice #, check #, etc.)
+    public readonly updatedAt?: Date | null,          // Last modification timestamp
+    public readonly postingPeriodNo?: number | null,  // Special/Adjustment period override
+    public readonly sourcePayload?: Record<string, any> | null,
+
+    /**
+     * formData — structured snapshot of the original form submission.
+     * Stores header fields and detail lines exactly as the user saw/entered them.
+     * Used by the frontend to faithfully restore the form on reopen
+     * WITHOUT needing to reverse-engineer the accounting posting strategy.
+     *
+     * Shape (flexible, depends on form definition):
+     * {
+     *   formId: string,
+     *   headerFields: { depositToAccountId?, payFromAccountId?, description?, reference?, ... },
+     *   detailLines: [ { receiveFromAccountId?, payToAccountId?, amount, notes, currency, ... } ]
+     * }
+     */
+    public readonly formData?: Record<string, any> | null
   ) {
     // Calculated totals in voucher currency (sum of line.amount)
     this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
@@ -351,7 +366,8 @@ export class VoucherEntity {
       this.reference,
       new Date(), // UpdatedAt
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -421,7 +437,8 @@ export class VoucherEntity {
       this.reference,
       this.updatedAt,
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -463,7 +480,8 @@ export class VoucherEntity {
       this.reference,
       new Date(),
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -519,7 +537,8 @@ export class VoucherEntity {
       this.reference,
       new Date(),
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -566,7 +585,8 @@ export class VoucherEntity {
       this.reference,
       this.updatedAt,
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -610,7 +630,8 @@ export class VoucherEntity {
       this.reference,
       new Date(), // updatedAt
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -654,7 +675,8 @@ export class VoucherEntity {
       this.reference,
       this.updatedAt,
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -694,7 +716,8 @@ export class VoucherEntity {
       this.reference,
       new Date(), // UpdatedAt
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -736,7 +759,8 @@ export class VoucherEntity {
       this.reference,
       new Date(),
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -782,7 +806,8 @@ export class VoucherEntity {
       this.reference,
       new Date(),
       this.postingPeriodNo,
-      this.sourcePayload
+      this.sourcePayload,
+      this.formData
     );
   }
 
@@ -952,7 +977,8 @@ export class VoucherEntity {
       formId: this.formId || null,
       prefix: this.prefix || null,
       postingPeriodNo: this.postingPeriodNo || null,
-      sourcePayload: this.sourcePayload || null
+      sourcePayload: this.sourcePayload || null,
+      formData: this.formData || null
     };
   }
 
@@ -968,6 +994,7 @@ export class VoucherEntity {
     const voucherNo = data.voucherNo || data.voucherNumber || '';
     const reversalOfVoucherId = data.reversalOfVoucherId || data.metadata?.reversalOfVoucherId || null;
     const sourcePayload = data.sourcePayload || data.metadata?.sourceVoucher || null;
+    const formData = data.formData || null;
     const normalizedMetadata = { ...(data.metadata || {}) };
     delete (normalizedMetadata as any).sourceVoucher;
 
@@ -1003,7 +1030,8 @@ export class VoucherEntity {
       data.reference,
       data.updatedAt ? new Date(data.updatedAt) : undefined,
       data.postingPeriodNo,
-      sourcePayload
+      sourcePayload,
+      formData
     );
   }
 }

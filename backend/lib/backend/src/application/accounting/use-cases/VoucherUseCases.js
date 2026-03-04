@@ -22,6 +22,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVouchersUseCase = exports.GetVoucherUseCase = exports.DeleteVoucherUseCase = exports.CancelVoucherUseCase = exports.PostVoucherUseCase = exports.ApproveVoucherUseCase = exports.UpdateVoucherUseCase = exports.CreateVoucherUseCase = void 0;
 const crypto_1 = require("crypto");
@@ -177,6 +188,64 @@ const buildSourcePayload = (payload, existing) => {
     const strippedSnapshot = stripSystemManagedSourceFields(cleanedSnapshot);
     return Object.keys(strippedSnapshot).length > 0 ? strippedSnapshot : undefined;
 };
+/**
+ * Build structured formData from the incoming payload.
+ * formData is the frontend form's intent — the fields the user actually filled in.
+ * Unlike sourcePayload (a raw opaque dump), formData is explicitly structured:
+ *   { formId, headerFields, detailLines }
+ * This is the authoritative source for reopen, so the frontend never needs
+ * to reverse-engineer accounting lines.
+ */
+const FORM_DATA_EXCLUDED_KEYS = new Set([
+    // Core accounting/system fields — belong to VoucherEntity directly
+    'id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description',
+    'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status',
+    'createdBy', 'createdAt', 'updatedBy', 'updatedAt',
+    'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt',
+    'postedBy', 'postedAt', 'postingLockPolicy',
+    'metadata', 'reference', 'postingPeriodNo', 'prefix',
+    // Legacy snapshot keys — not needed in formData
+    'sourcePayload', 'sourceVoucher', 'formData',
+    // UI-only noise
+    'voucherConfig', 'uiMode', '_rowId',
+]);
+const buildFormData = (payload, existingFormData) => {
+    var _a;
+    if (!payload || typeof payload !== 'object')
+        return existingFormData || null;
+    // Explicit formData in payload takes priority (frontend already shaped it)
+    if (payload.formData && typeof payload.formData === 'object' && !Array.isArray(payload.formData)) {
+        const merged = Object.assign(Object.assign({}, (existingFormData || {})), payload.formData);
+        return sanitizeSnapshotObject(merged) || null;
+    }
+    // Auto-extract: pick all non-core, non-system top-level fields as headerFields
+    // and treat `lines` as detailLines (preserving original form line shapes)
+    const headerFields = {};
+    Object.entries(payload).forEach(([key, value]) => {
+        if (FORM_DATA_EXCLUDED_KEYS.has(key))
+            return;
+        if (value === undefined || value === null)
+            return;
+        headerFields[key] = value;
+    });
+    const detailLines = Array.isArray(payload.lines)
+        ? payload.lines.map((line) => {
+            // Strip internal accounting fields from detail lines — keep business fields
+            const { side, baseAmount, baseCurrency: _bc, debitAmount, creditAmount } = line, rest = __rest(line, ["side", "baseAmount", "baseCurrency", "debitAmount", "creditAmount"]);
+            return sanitizeSnapshotValue(rest);
+        }).filter(Boolean)
+        : [];
+    const result = {
+        formId: payload.formId || ((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.formId) || null,
+        headerFields: sanitizeSnapshotObject(headerFields),
+        detailLines,
+    };
+    // Merge with existing formData so partial updates don't erase prior fields
+    if (existingFormData) {
+        return Object.assign(Object.assign(Object.assign({}, existingFormData), result), { headerFields: Object.assign(Object.assign({}, (existingFormData.headerFields || {})), result.headerFields) });
+    }
+    return result;
+};
 class CreateVoucherUseCase {
     constructor(voucherRepo, accountRepo, settingsRepo, permissionChecker, transactionManager, voucherTypeRepo, policyConfigProvider, ledgerRepo, // Needed for auto-post
     policyRegistry, // Needed for auto-post
@@ -306,6 +375,7 @@ class CreateVoucherUseCase {
             });
             const sourcePayload = buildSourcePayload(payload);
             const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+            const formData = buildFormData(payload);
             const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), cleanedPayloadMetadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
             // Check if Approval is OFF -> Auto-Post
             let approvalRequired = true;
@@ -337,7 +407,7 @@ class CreateVoucherUseCase {
             undefined, // reference
             undefined, // updatedAt
             payload.postingPeriodNo, // Special/Adjustment period override
-            sourcePayload || null);
+            sourcePayload || null, formData || null);
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
             this.validationService.validateCore(voucher);
@@ -533,10 +603,11 @@ class UpdateVoucherUseCase {
             }
         });
         const sourcePayload = buildSourcePayload(payload, voucher.sourcePayload || ((_e = voucher.metadata) === null || _e === void 0 ? void 0 : _e.sourceVoucher));
+        const formData = buildFormData(payload, voucher.formData);
         const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
         let updatedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, payload.voucherNo || voucher.voucherNo, mergedVoucherType, payload.date || voucher.date, (_f = payload.description) !== null && _f !== void 0 ? _f : voucher.description, payload.currency || voucher.currency, baseCurrency, payload.exchangeRate || voucher.exchangeRate, lines, totalDebit, totalCredit, 
         // Allow status update only for valid transitions (respects approvalRequired setting)
-        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), cleanedPayloadMetadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo, sourcePayload || voucher.sourcePayload || null);
+        this.resolveStatus(voucher.status, payload.status, approvalRequired), Object.assign(Object.assign(Object.assign({}, voucher.metadata), extraMetadata), cleanedPayloadMetadata), voucher.createdBy, voucher.createdAt, voucher.approvedBy, voucher.approvedAt, voucher.rejectedBy, voucher.rejectedAt, voucher.rejectionReason, voucher.lockedBy, voucher.lockedAt, voucher.postedBy, voucher.postedAt, voucher.postingLockPolicy, voucher.reversalOfVoucherId, payload.reference || voucher.reference, new Date(), payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo, sourcePayload || voucher.sourcePayload || null, formData || voucher.formData || null);
         // NEW Step: Policy Validation if auto-approving
         // If the update transitions the voucher to APPROVED, check the date!
         if (updatedVoucher.isApproved && this.ledgerRepo && !voucher.isApproved) {

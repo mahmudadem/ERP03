@@ -273,12 +273,19 @@ class InitializeAccountingUseCase {
      * Uses the same ID as the type for simplicity
      */
     async createDefaultFormsForTypes(companyId, types) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         const db = admin.firestore();
         const batch = db.batch();
         for (const type of types) {
             // Use same ID as type for the default form (simpler)
             const formId = type.id;
+            const code = String(type.data.code || type.id || '').toUpperCase();
+            const baseType = String(type.data.baseType || '').toUpperCase() || (code.includes('RECEIPT') ? 'RECEIPT' :
+                code.includes('PAYMENT') ? 'PAYMENT' :
+                    code.includes('JOURNAL') ? 'JOURNAL' :
+                        code.includes('TRANSFER') ? 'TRANSFER' :
+                            code.includes('INVOICE') ? 'INVOICE' :
+                                code);
             const formRef = db
                 .collection('companies')
                 .doc(companyId)
@@ -290,9 +297,10 @@ class InitializeAccountingUseCase {
             const form = {
                 id: formId,
                 companyId,
-                typeId: type.id,
+                typeId: baseType || type.id,
+                baseType: baseType || type.id,
                 name: type.data.name || type.id,
-                code: type.data.code || type.id,
+                code: type.data.code || baseType || type.id,
                 description: `Default form for ${type.data.name || type.id}`,
                 prefix: type.data.prefix || ((_a = type.data.code) === null || _a === void 0 ? void 0 : _a.slice(0, 3).toUpperCase()) || 'V',
                 isDefault: true,
@@ -302,6 +310,12 @@ class InitializeAccountingUseCase {
                 // Copy layout from type definition
                 headerFields: type.data.headerFields || ((_b = type.data.fields) === null || _b === void 0 ? void 0 : _b.filter((f) => f.section === 'header')) || [],
                 tableColumns: type.data.tableColumns || ((_c = type.data.fields) === null || _c === void 0 ? void 0 : _c.filter((f) => f.section === 'table')) || [],
+                uiModeOverrides: type.data.uiModeOverrides || null,
+                rules: type.data.rules || [],
+                actions: type.data.actions || [],
+                isMultiLine: (_d = type.data.isMultiLine) !== null && _d !== void 0 ? _d : true,
+                tableStyle: type.data.tableStyle || 'web',
+                defaultCurrency: type.data.defaultCurrency || '',
                 layout: type.data.layout || {
                     theme: 'default',
                     showTotals: true

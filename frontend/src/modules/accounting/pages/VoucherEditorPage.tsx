@@ -1,394 +1,152 @@
+/**
+ * VoucherEditorPage — redirected to VoucherEntryModal
+ *
+ * This page no longer maintains its own editor. Instead, it:
+ *   1. Loads the voucher & its form definition from the backend.
+ *   2. Opens VoucherEntryModal (which uses GenericVoucherRenderer + formData).
+ *   3. On close → navigates back to the vouchers list.
+ *
+ * For NEW vouchers (id === 'new'), creation happens from the vouchers list.
+ * We redirect immediately.
+ */
+
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
-import { DynamicVoucherRenderer } from '../../../designer-engine/components/DynamicVoucherRenderer';
+import { useVoucherTypeDefinition } from '../../../hooks/useVoucherTypeDefinition';
 import { accountingApi } from '../../../api/accountingApi';
-import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
-import { AccountSelectorCombobox } from '../../../components/accounting/AccountSelectorCombobox';
-import { CostCenterSelector } from '../components/shared/CostCenterSelector';
-import { RequirePermission } from '../../../components/auth/RequirePermission';
+import { VoucherEntryModal } from '../components/VoucherEntryModal';
+import { canonicalToUi } from '../voucher-wizard/mappers/canonicalToUi';
+import { UIMode } from '../../../api/companyApi';
 import { errorHandler } from '../../../services/errorHandler';
-import { getCompanyToday } from '../../../utils/dateUtils';
-import attachmentsApi from '../../../api/attachmentsApi';
 
 const VoucherEditorPage: React.FC = () => {
-  const { t } = useTranslation('accounting');
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  const { settings: companySettings } = useCompanySettings();
-  const typeCode = searchParams.get('type') || '';
-  const formId = searchParams.get('formId') || '';
-  // Only look up a definition if we have a code to look up
-  const lookupCode = formId || typeCode;
-  const { definition: fetchedDefinition, loading: defLoading, error: defError } = useVoucherTypeDefinition(
-    lookupCode || 'journal_entry', // fallback so the hook doesn't skip
-    companySettings?.companyId
+
+  const { settings } = useCompanySettings();
+
+  const [voucher, setVoucher] = useState<any>(null);
+  const [voucherLoading, setVoucherLoading] = useState(true);
+
+  // Derive UIMode from company settings (same as VouchersListPage)
+  const uiMode: UIMode = (settings as any)?.uiMode ?? 'WINDOWS';
+
+  // Determine type code for definition lookup
+  const formId = voucher?.formId || searchParams.get('formId') || '';
+  const typeCode = voucher?.type || searchParams.get('type') || '';
+  const lookupCode = formId || typeCode || 'journal_entry';
+
+  // Use the canonical definition hook (multi-source lookup: designer API → form API → list)
+  const { definition: canonicalDef, loading: defLoading } = useVoucherTypeDefinition(
+    lookupCode,
+    settings?.companyId
   );
-  
-  const [initialValues, setInitialValues] = useState<any>(null);
-  const [dataLoading, setDataLoading] = useState(false);
-  const [currentVoucher, setCurrentVoucher] = useState<any>(null); 
-  const [attachments, setAttachments] = useState<any[]>([]);
-  const [uploading, setUploading] = useState(false);
 
+  // Derive VoucherFormConfig from canonical definition
+  const voucherFormConfig = React.useMemo(() => {
+    if (!canonicalDef) return null;
+    try {
+      return canonicalToUi(canonicalDef as any);
+    } catch {
+      return null;
+    }
+  }, [canonicalDef]);
+
+  // If id is 'new', redirect to the vouchers list where creation originates
   useEffect(() => {
-    if (id && id !== 'new') {
-      loadVoucherData(id);
-    } else {
-      // Re-initialize only if we're in 'new' mode and initialValues haven't been set with settings yet
-      setInitialValues({
-        header: {
-           date: getCompanyToday(companySettings),
-           currency: companySettings?.baseCurrency || ''
-        },
-        lines: [
-          { accountId: '', description: '', debit: 0, credit: 0 },
-          { accountId: '', description: '', debit: 0, credit: 0 }
-        ]
-      });
+    if (id === 'new') {
+      navigate('/accounting/vouchers', { replace: true });
     }
-  }, [id, companySettings]); // Now re-runs when settings arrive
+  }, [id, navigate]);
 
-  const loadVoucherData = async (voucherId: string) => {
-    try {
-      setDataLoading(true);
-      const voucher = await accountingApi.getVoucher(voucherId);
-      setCurrentVoucher(voucher);
-      loadAttachments(voucherId);
-      
-      setInitialValues({
-        header: {
-          ...voucher,
-          date: voucher.date,
-          currency: voucher.currency || companySettings?.baseCurrency || '',
-        },
-        lines: voucher.lines || []
-      });
-    } catch (err: any) {
-      errorHandler.showError(err);
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  const handleSave = async (formData: any, statusOverride?: string) => {
-    try {
-      // For dynamic templates, we pass the formData directly to the backend.
-      // The backend Strategy will handle line generation.
-    const baseCurrency = companySettings?.baseCurrency || '';
-
-
-      const payload = {
-        ...formData, // Spread all dynamic fields (header fields, etc.)
-        companyId: 'current',
-        type: (definition as any).baseType || definition?.code || 'INV',
-        formId: formId, // Store which form layout was used
-        date: formData.header?.date || formData.date || new Date().toISOString(),
-        currency: formData.header?.currency || formData.currency || companySettings?.baseCurrency || '',
-        // Inject creationMode for audit transparency
-        metadata: {
-          ...formData.metadata,
-          creationMode: companySettings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
-        },
-        // If the template uses a lines table, include it. If not, it might be undefined.
-        lines: formData.lines 
-      };
-
-      if (id === 'new') {
-        const payloadWithStatus = {
-          ...payload,
-          status: statusOverride || 'draft'
-        };
-        const created = await accountingApi.createVoucher(payloadWithStatus);
-        
-        if (statusOverride === 'submitted') {
-          await accountingApi.sendVoucherToApproval(created.id);
-        }
-        
-        errorHandler.showSuccess(t('voucherEditor.saved'));
-        navigate(`/accounting/vouchers/${created.id}`);
-      } else {
-        await accountingApi.updateVoucher(id!, payload);
-        
-        if (statusOverride === 'submitted') {
-          await accountingApi.sendVoucherToApproval(id!);
-        }
-        
-        errorHandler.showSuccess(t('voucherEditor.saved'));
-        loadVoucherData(id!);
-      }
-    } catch (err: any) {
-      errorHandler.showError(err);
-    }
-  };
-
-  const handleWorkflowAction = async (action: 'sendToApproval' | 'approve' | 'lock' | 'cancel') => {
+  // Load voucher data
+  useEffect(() => {
     if (!id || id === 'new') return;
-    try {
-      let updatedVoucher;
-      switch (action) {
-        case 'sendToApproval':
-          updatedVoucher = await accountingApi.sendVoucherToApproval(id);
-          errorHandler.showSuccess(t('voucherEditor.sentForApproval'));
-          break;
-        case 'approve':
-          updatedVoucher = await accountingApi.approveVoucher(id);
-          errorHandler.showSuccess(t('voucherEditor.approved'));
-          break;
-        case 'lock':
-          updatedVoucher = await accountingApi.lockVoucher(id);
-          errorHandler.showSuccess(t('voucherEditor.locked'));
-          break;
-        case 'cancel':
-          updatedVoucher = await accountingApi.cancelVoucher(id);
-          errorHandler.showSuccess(t('voucherEditor.cancelled'));
-          break;
+
+    const load = async () => {
+      try {
+        setVoucherLoading(true);
+        const data = await accountingApi.getVoucher(id);
+        setVoucher(data);
+      } catch (err: any) {
+        errorHandler.showError(err);
+        navigate('/accounting/vouchers', { replace: true });
+      } finally {
+        setVoucherLoading(false);
       }
-      
-      if (updatedVoucher) {
-        setCurrentVoucher(updatedVoucher);
-        setInitialValues((prev: any) => ({ ...prev, header: { ...prev.header, status: updatedVoucher.status } }));
-      }
-    } catch (err: any) {
-      errorHandler.showError(err);
-    }
-  };
-
-  // Build an effective definition: use fetched one, or build a fallback from voucher data for viewing
-  const definition = React.useMemo(() => {
-    if (fetchedDefinition) return fetchedDefinition;
-    // For existing vouchers, build a basic fallback so the page can render
-    if (id && id !== 'new' && currentVoucher) {
-      return {
-        id: currentVoucher.formId || currentVoucher.type || 'unknown',
-        code: currentVoucher.type || 'journal_entry',
-        name: currentVoucher.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Voucher',
-        module: 'accounting',
-        baseType: currentVoucher.type || 'journal_entry',
-        headerFields: [
-          { id: 'date', label: 'Date', type: 'date' },
-          { id: 'currency', label: 'Currency', type: 'text' },
-          { id: 'description', label: 'Description', type: 'text' },
-        ],
-        tableColumns: [
-          { id: 'accountId', fieldId: 'accountId', label: 'Account' },
-          { id: 'description', fieldId: 'description', label: 'Description' },
-          { id: 'debit', fieldId: 'debit', label: 'Debit' },
-          { id: 'credit', fieldId: 'credit', label: 'Credit' },
-        ],
-        isMultiLine: true,
-      } as any;
-    }
-    return null;
-  }, [fetchedDefinition, id, currentVoucher]);
-
-  const isReadOnly = React.useMemo(() => {
-    if (!currentVoucher?.status) return false;
-    const status = currentVoucher.status.toLowerCase();
-    
-    // In STRICT mode, many statuses are read-only
-    if (companySettings?.strictApprovalMode === true) {
-      return ['posted', 'approved', 'locked'].includes(status);
-    }
-    
-    // In FLEXIBLE mode (default), only locked is read-only
-    return status === 'locked';
-  }, [currentVoucher?.status, companySettings?.strictApprovalMode]);
-
-  const customComponents = {
-    'account-selector': AccountSelectorCombobox,
-    'cost-center-selector': CostCenterSelector
-  };
-
-  if (defLoading || dataLoading || !initialValues || !companySettings) {
-    return <div className="p-8 text-center text-gray-500">{t('voucherEditor.loading')}</div>;
-  }
-
-  // Only block on definition error for NEW vouchers — existing vouchers can use fallback
-  if (!definition && id === 'new') {
-    return <div className="p-8 text-center text-red-500">{t('voucherEditor.loadError', { error: defError || t('voucherEditor.definitionMissing') })}</div>;
-  }
-
-  if (!definition) {
-    return <div className="p-8 text-center text-gray-500">{t('voucherEditor.loading')}</div>;
-  }
-
-  const renderStatusBadge = () => {
-    if (!currentVoucher) return <Badge variant="info">New</Badge>;
-    const map: Record<string, 'default' | 'warning' | 'success' | 'info' | 'error'> = {
-      draft: 'default',
-      pending: 'warning',
-      approved: 'success',
-      locked: 'info',
-      cancelled: 'error'
     };
-    return <Badge variant={map[currentVoucher.status] || 'default'}>{currentVoucher.status.toUpperCase()}</Badge>;
+
+    load();
+  }, [id]);
+
+  const handleClose = () => {
+    navigate('/accounting/vouchers');
   };
 
-  const renderActionButtons = () => {
-    if (id === 'new' || !currentVoucher || !companySettings) return null;
+  const handleSave = async (data: any) => {
+    if (!id || id === 'new') return;
+    const updated = await accountingApi.updateVoucher(id, data);
+    setVoucher(updated);
+    return updated;
+  };
 
-    const status = currentVoucher.status;
-    const isStrict = companySettings.strictApprovalMode;
+  const handleApprove = async (voucherId: string) => {
+    const updated = await accountingApi.approveVoucher(voucherId);
+    setVoucher(updated);
+  };
 
+  const handleReject = async (voucherId: string) => {
+    const updated = await accountingApi.rejectVoucher(voucherId, 'Rejected');
+    setVoucher(updated);
+  };
+
+  const handlePost = async (voucherId: string) => {
+    await accountingApi.postVoucher(voucherId);
+    const updated = await accountingApi.getVoucher(voucherId);
+    setVoucher(updated);
+  };
+
+  const handleCancel = async (voucherId: string) => {
+    const updated = await accountingApi.cancelVoucher(voucherId);
+    setVoucher(updated);
+  };
+
+  const handleReverse = async (voucherId: string) => {
+    await accountingApi.reverseVoucher(voucherId);
+    navigate('/accounting/vouchers');
+  };
+
+  const handlePrint = (voucherId: string) => {
+    window.open(`/accounting/vouchers/${voucherId}/print`, '_blank');
+  };
+
+  const isLoading = voucherLoading || defLoading || !voucherFormConfig || !voucher;
+
+  if (isLoading) {
     return (
-      <div className="flex gap-2">
-        {status === 'draft' && isStrict && (
-          <RequirePermission permission="accounting.vouchers.edit">
-            <Button onClick={() => handleWorkflowAction('sendToApproval')} variant="secondary" size="sm">
-              Send for Approval
-            </Button>
-          </RequirePermission>
-        )}
-        
-        {status === 'pending' && isStrict && (
-          <>
-            <RequirePermission permission="accounting.vouchers.approve">
-              <Button onClick={() => handleWorkflowAction('approve')} variant="primary" size="sm">
-                Approve
-              </Button>
-            </RequirePermission>
-            <RequirePermission permission="accounting.vouchers.cancel">
-              <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
-                Reject/Cancel
-              </Button>
-            </RequirePermission>
-          </>
-        )}
-
-        {status === 'approved' && (
-          <>
-            <RequirePermission permission="accounting.vouchers.lock">
-              <Button onClick={() => handleWorkflowAction('lock')} variant="secondary" size="sm">
-                Lock
-              </Button>
-            </RequirePermission>
-            <RequirePermission permission="accounting.vouchers.cancel">
-              <Button onClick={() => handleWorkflowAction('cancel')} variant="danger" size="sm">
-                Cancel
-              </Button>
-            </RequirePermission>
-          </>
-        )}
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        Loading voucher…
       </div>
     );
-  };
-
-
-  async function loadAttachments(voucherId: string) {
-    try {
-      const files = await attachmentsApi.list(voucherId);
-      setAttachments(files);
-    } catch (err: any) {
-      // silent
-    }
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!id || id === 'new') return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      await attachmentsApi.upload(id, file);
-      loadAttachments(id);
-    } catch (err: any) {
-      errorHandler.showError(err);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (!id || id === 'new') return;
-    await attachmentsApi.remove(id, attachmentId);
-    loadAttachments(id);
-  };
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
-      <div className="flex justify-between items-center bg-white p-4 rounded border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">
-              {id === 'new' ? t('voucherEditor.newTitle', { name: definition.name }) : t('voucherEditor.existingTitle', { name: definition.name, id })}
-            </h1>
-            <p className="text-xs text-gray-500 mt-1">
-              {id !== 'new' && t('voucherEditor.createdBy', { user: currentVoucher?.createdBy || t('voucherEditor.systemUser') })}
-            </p>
-          </div>
-           {renderStatusBadge()}
-
-           {/* Status Indicator Dot - Visual Clue for Approval Mode */}
-           <div className="group relative">
-              <div 
-                className={`w-2 h-2 rounded-full transition-all cursor-help ${
-                  !companySettings ? 'bg-gray-400 animate-pulse' : 
-                  (companySettings?.strictApprovalMode ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
-                }`} 
-              />
-              <div className="absolute left-0 top-4 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl whitespace-nowrap z-50 border border-gray-700 font-normal">
-                <div className="font-bold mb-1 border-b border-gray-600 pb-1">System Mode</div>
-                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                  <span className="text-gray-400">{t('voucherEditor.policyLabel')}</span>
-                  <span className={companySettings?.strictApprovalMode ? "text-indigo-300" : "text-emerald-300"}>
-                    {companySettings?.strictApprovalMode ? t('voucherEditor.strictMode') : t('voucherEditor.flexibleMode')}
-                  </span>
-                </div>
-              </div>
-           </div>
-        </div>
-        
-        {renderActionButtons()}
-      </div>
-
-      <DynamicVoucherRenderer 
-        definition={definition} 
-        initialValues={initialValues}
-        onSubmit={isReadOnly ? () => {} : handleSave}
-        customComponents={customComponents} 
-      />
-
-      {id && id !== 'new' && (
-        <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-800">Attachments</h3>
-            <label className={`btn btn-secondary ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-              {uploading ? t('voucherEditor.uploading') : t('voucherEditor.upload')}
-              <input type="file" className="hidden" onChange={handleUpload} disabled={uploading || isReadOnly} />
-            </label>
-          </div>
-          {attachments.length === 0 && <div className="text-sm text-gray-500">{t('voucherEditor.noAttachments')}</div>}
-          <ul className="divide-y divide-gray-200">
-            {attachments.map((a) => (
-              <li key={a.id} className="flex items-center justify-between py-2">
-                <div>
-                  <div className="text-sm font-medium">{a.name}</div>
-                  <div className="text-xs text-gray-500">{Math.round(a.size / 1024)} KB • {a.type}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <a className="text-blue-600 text-sm" href={`/tenant/accounting/vouchers/${id}/attachments/${a.id}`} target="_blank" rel="noreferrer">{t('voucherEditor.download')}</a>
-                  {!isReadOnly && (
-                    <button className="text-red-600 text-sm" onClick={() => handleDeleteAttachment(a.id)}>{t('voucherEditor.delete')}</button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {isReadOnly && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm">
-          {t('voucherEditor.readOnly', { status: currentVoucher.status })}
-        </div>
-      )}
-    </div>
+    <VoucherEntryModal
+      isOpen={true}
+      onClose={handleClose}
+      voucherType={voucherFormConfig}
+      uiMode={uiMode}
+      onSave={handleSave}
+      initialData={voucher}
+      onApprove={handleApprove}
+      onReject={handleReject}
+      onPost={handlePost}
+      onCancel={handleCancel}
+      onReverse={handleReverse}
+      onPrint={handlePrint}
+    />
   );
 };
 

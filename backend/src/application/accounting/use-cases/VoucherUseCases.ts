@@ -161,6 +161,72 @@ const buildSourcePayload = (payload: any, existing?: any): Record<string, any> |
   return Object.keys(strippedSnapshot).length > 0 ? strippedSnapshot : undefined;
 };
 
+/**
+ * Build structured formData from the incoming payload.
+ * formData is the frontend form's intent — the fields the user actually filled in.
+ * Unlike sourcePayload (a raw opaque dump), formData is explicitly structured:
+ *   { formId, headerFields, detailLines }
+ * This is the authoritative source for reopen, so the frontend never needs
+ * to reverse-engineer accounting lines.
+ */
+const FORM_DATA_EXCLUDED_KEYS = new Set([
+  // Core accounting/system fields — belong to VoucherEntity directly
+  'id', 'companyId', 'voucherNo', 'voucherNumber', 'type', 'date', 'description',
+  'currency', 'baseCurrency', 'exchangeRate', 'lines', 'status',
+  'createdBy', 'createdAt', 'updatedBy', 'updatedAt',
+  'approvedBy', 'approvedAt', 'rejectedBy', 'rejectedAt',
+  'postedBy', 'postedAt', 'postingLockPolicy',
+  'metadata', 'reference', 'postingPeriodNo', 'prefix',
+  // Legacy snapshot keys — not needed in formData
+  'sourcePayload', 'sourceVoucher', 'formData',
+  // UI-only noise
+  'voucherConfig', 'uiMode', '_rowId',
+]);
+
+const buildFormData = (payload: any, existingFormData?: Record<string, any> | null): Record<string, any> | null => {
+  if (!payload || typeof payload !== 'object') return existingFormData || null;
+
+  // Explicit formData in payload takes priority (frontend already shaped it)
+  if (payload.formData && typeof payload.formData === 'object' && !Array.isArray(payload.formData)) {
+    const merged = { ...(existingFormData || {}), ...payload.formData };
+    return sanitizeSnapshotObject(merged) || null;
+  }
+
+  // Auto-extract: pick all non-core, non-system top-level fields as headerFields
+  // and treat `lines` as detailLines (preserving original form line shapes)
+  const headerFields: Record<string, any> = {};
+  Object.entries(payload).forEach(([key, value]) => {
+    if (FORM_DATA_EXCLUDED_KEYS.has(key)) return;
+    if (value === undefined || value === null) return;
+    headerFields[key] = value;
+  });
+
+  const detailLines = Array.isArray(payload.lines)
+    ? payload.lines.map((line: any) => {
+        // Strip internal accounting fields from detail lines — keep business fields
+        const { side, baseAmount, baseCurrency: _bc, debitAmount, creditAmount, ...rest } = line;
+        return sanitizeSnapshotValue(rest);
+      }).filter(Boolean)
+    : [];
+
+  const result: Record<string, any> = {
+    formId: payload.formId || payload.metadata?.formId || null,
+    headerFields: sanitizeSnapshotObject(headerFields),
+    detailLines,
+  };
+
+  // Merge with existing formData so partial updates don't erase prior fields
+  if (existingFormData) {
+    return {
+      ...existingFormData,
+      ...result,
+      headerFields: { ...(existingFormData.headerFields || {}), ...result.headerFields },
+    };
+  }
+
+  return result;
+};
+
 export class CreateVoucherUseCase {
   constructor(
     private voucherRepo: IVoucherRepository,
@@ -346,6 +412,7 @@ export class CreateVoucherUseCase {
 
       const sourcePayload = buildSourcePayload(payload);
       const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
+      const formData = buildFormData(payload);
 
       const voucherMetadata = {
         ...extraMetadata,
@@ -402,7 +469,8 @@ export class CreateVoucherUseCase {
         undefined, // reference
         undefined, // updatedAt
         payload.postingPeriodNo, // Special/Adjustment period override
-        sourcePayload || null
+        sourcePayload || null,
+        formData || null
       );
 
       // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
@@ -670,6 +738,7 @@ export class UpdateVoucherUseCase {
       payload,
       (voucher as any).sourcePayload || voucher.metadata?.sourceVoucher
     );
+    const formData = buildFormData(payload, (voucher as any).formData);
     const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
 
     let updatedVoucher = new VoucherEntity(
@@ -704,7 +773,8 @@ export class UpdateVoucherUseCase {
       payload.reference || voucher.reference,
       new Date(),
       payload.postingPeriodNo !== undefined ? payload.postingPeriodNo : voucher.postingPeriodNo,
-      sourcePayload || (voucher as any).sourcePayload || null
+      sourcePayload || (voucher as any).sourcePayload || null,
+      formData || (voucher as any).formData || null
     );
 
     // NEW Step: Policy Validation if auto-approving

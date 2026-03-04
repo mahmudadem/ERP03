@@ -1,19 +1,21 @@
 /**
- * CurrencyExchangeWidget (Updated)
- * 
- * Fetches exchange rates from API instead of using hardcoded mock rates.
- * Displays rate deviation warnings when detected.
+ * CurrencyExchangeWidget
+ *
+ * Fetches exchange rates from the API and displays them.
+ * - On initial load: auto-applies the system rate only when no meaningful value is saved.
+ * - On currency change: ALWAYS auto-fetches and applies the new system rate.
+ * - Refresh button: manually re-fetches the system rate and applies it.
  */
 
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { accountingApi, RateDeviationWarning } from '../../../../api/accountingApi';
 
 interface CurrencyExchangeWidgetProps {
   currency: string;
-  value?: number; // Current exchange rate
+  value?: number;
   baseCurrency?: string;
-  voucherDate?: string; // ISO date string for rate lookup
+  voucherDate?: string;
   onChange?: (rate: number) => void;
   disabled?: boolean;
 }
@@ -34,82 +36,85 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingRate, setPendingRate] = useState<number | null>(null);
 
-  // Fetch suggested rate when currency changes
+  // Track previous currency to detect user-initiated currency changes vs initial load
+  const prevCurrencyRef = useRef<string>(currency);
+  const isInitialMountRef = useRef(true);
+
+  // ─── Core rate fetcher ────────────────────────────────────────────────────
+  const fetchSystemRate = async (forceApply: boolean) => {
+    const c1 = currency?.toUpperCase().trim() || '';
+    const c2 = baseCurrency?.toUpperCase().trim() || '';
+
+    if (!c1 || !c2) { setLoading(false); return; }
+
+    if (c1 === c2) {
+      setSuggestedRate(1);
+      setRateSource('SAME_CURRENCY');
+      setLoading(false);
+      if (forceApply || !disabled && (value === undefined || value === null || Number(value) <= 0)) {
+        setManualRate(1);
+        onChange?.(1);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await accountingApi.getSuggestedRate(c1, c2, voucherDate);
+      setSuggestedRate(response.rate);
+      setRateSource(response.source);
+
+      const resolvedRate = response.rate;
+      // Auto-apply when:
+      //   forceApply = true (currency just changed by user, or refresh button clicked)
+      //   OR no meaningful value exists on the form yet
+      const noMeaningfulValue =
+        value === undefined || value === null || Number(value) <= 0 ||
+        (Number(value) === 1 && c1 !== c2);
+
+      if (!disabled && resolvedRate !== null && (forceApply || noMeaningfulValue)) {
+        setManualRate(resolvedRate as number);
+        onChange?.(resolvedRate as number);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch exchange rate:', error);
+      setSuggestedRate(null);
+      setRateSource('ERROR');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Effect: fires on currency / baseCurrency / voucherDate change ────────
   useEffect(() => {
     let mounted = true;
-    
-    const fetchRate = async () => {
-      // Normalize currencies
-      const c1 = currency?.toUpperCase().trim() || '';
-      const c2 = baseCurrency?.toUpperCase().trim() || '';
 
-      // Guard: Missing info
-      if (!c1 || !c2) {
-        setLoading(false);
-        return;
-      }
+    const run = async () => {
+      const currencyChanged = currency !== prevCurrencyRef.current;
+      prevCurrencyRef.current = currency;
 
-      // Same currency = rate of 1
-      if (c1 === c2) {
-        setSuggestedRate(1);
-        setRateSource('SAME_CURRENCY');
-        setLoading(false); // Ensure spinner stops
-        const shouldAutoApply =
-          !disabled &&
-          (value === undefined || value === null || Number(value) <= 0);
-        if (shouldAutoApply) {
-          setManualRate(1);
-          onChange?.(1);
-        }
-        return;
-      }
+      // forceApply if: currency just changed (user switched it) but NOT on initial mount
+      const forceApply = !isInitialMountRef.current && currencyChanged;
+      isInitialMountRef.current = false;
 
-      setLoading(true);
-      try {
-        const response = await accountingApi.getSuggestedRate(
-          c1,
-          c2,
-          voucherDate
-        );
-        
-        if (mounted) {
-          setSuggestedRate(response.rate);
-          setRateSource(response.source);
-          
-          // Do not overwrite persisted voucher rates on reopen.
-          // Auto-apply only when header has no meaningful value (or default 1 in FX case).
-          const resolvedRate = response.rate;
-          const shouldAutoApply =
-            !disabled &&
-            resolvedRate !== null &&
-            (
-              value === undefined ||
-              value === null ||
-              Number(value) <= 0 ||
-              (Number(value) === 1 && c1 !== c2)
-            );
-
-          if (shouldAutoApply) {
-            setManualRate(resolvedRate as number);
-            onChange?.(resolvedRate as number);
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to fetch exchange rate:', error);
-        if (mounted) {
-          setSuggestedRate(null);
-          setRateSource('ERROR');
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
+      if (!mounted) return;
+      await fetchSystemRate(forceApply);
     };
 
-    fetchRate();
+    run();
     return () => { mounted = false; };
-  }, [currency, baseCurrency, voucherDate, value, disabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency, baseCurrency, voucherDate]);
 
-  // Check for rate deviation when manual rate changes
+  // ─── Sync external value → internal state (e.g., parent resets the form) ──
+  useEffect(() => {
+    const effectiveRate = manualRate ?? suggestedRate ?? 1;
+    if (value !== undefined && value !== effectiveRate) {
+      setManualRate(value);
+    }
+  }, [value]);
+
+  // ─── Deviation check ──────────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
 
@@ -118,69 +123,46 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
         setWarnings([]);
         return;
       }
-
       try {
-        const response = await accountingApi.checkRateDeviation(
-          currency,
-          baseCurrency,
-          manualRate
-        );
-        if (mounted) {
-          setWarnings(response.warnings);
-        }
-      } catch (error) {
-        // Ignore deviation check errors
+        const response = await accountingApi.checkRateDeviation(currency, baseCurrency, manualRate);
+        if (mounted) setWarnings(response.warnings);
+      } catch {
+        // ignore
       }
     };
 
-    const debounce = setTimeout(checkDeviation, 500);
-    return () => { 
-      mounted = false;
-      clearTimeout(debounce);
-    };
+    const timer = setTimeout(checkDeviation, 500);
+    return () => { mounted = false; clearTimeout(timer); };
   }, [manualRate, currency, baseCurrency]);
 
-  // Sync manual rate with external value
-  useEffect(() => {
-    const effectiveRate = manualRate ?? suggestedRate ?? 1;
-    if (value !== undefined && value !== effectiveRate) {
-      setManualRate(value);
-    }
-  }, [value]);
-
+  // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleManualRateChange = (newRate: number | string) => {
     const val = typeof newRate === 'string' ? (parseFloat(newRate) || undefined) : newRate;
     setManualRate(val);
   };
 
-  const effectiveRate = manualRate ?? suggestedRate ?? null;
-  const hasOverride = manualRate !== undefined && suggestedRate !== null && manualRate !== suggestedRate;
-  const isMissingRate = effectiveRate === null && currency !== baseCurrency;
-
   const handleBlur = async () => {
-    if (manualRate === undefined || manualRate <= 0) {
-      return;
-    }
+    if (manualRate === undefined || manualRate <= 0) return;
 
-    // Check if this is a significant deviation (>10%)
     const percentageWarning = warnings.find(w => w.type === 'PERCENTAGE_DEVIATION');
-    const deviationPercentage = percentageWarning?.percentageDeviation ? Math.abs(percentageWarning.percentageDeviation * 100) : 0;
+    const deviationPercentage = percentageWarning?.percentageDeviation
+      ? Math.abs(percentageWarning.percentageDeviation * 100) : 0;
 
     if (deviationPercentage >= 10) {
-      // Show confirmation modal for significant deviations
       setPendingRate(manualRate);
       setShowConfirmModal(true);
     } else {
-      // Small deviation or no deviation - apply immediately
       onChange?.(manualRate);
     }
   };
 
+  const handleRefresh = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fetchSystemRate(true); // forceApply = true → always overwrites current rate
+  };
+
   const handleConfirmRate = () => {
-    if (pendingRate !== null) {
-      setManualRate(pendingRate);
-      onChange?.(pendingRate);
-    }
+    if (pendingRate !== null) { setManualRate(pendingRate); onChange?.(pendingRate); }
     setShowConfirmModal(false);
     setPendingRate(null);
   };
@@ -188,18 +170,21 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   const handleCancelRate = () => {
     setShowConfirmModal(false);
     setPendingRate(null);
-    // Reset input to current value
     setManualRate(manualRate);
   };
 
-  // Helper for status tooltip
+  // ─── Derived display ──────────────────────────────────────────────────────
+  const effectiveRate = manualRate ?? suggestedRate ?? null;
+  const hasOverride = manualRate !== undefined && suggestedRate !== null && manualRate !== suggestedRate;
+  const isMissingRate = effectiveRate === null && currency !== baseCurrency;
+
   const getStatusTooltip = () => {
-    if (loading) return 'Fetching rate...';
+    if (loading) return 'Fetching rate…';
     if (warnings.length > 0) return warnings.map(w => w.message).join('\n');
     if (rateSource === 'SAME_CURRENCY') return 'Same currency (1:1)';
-    if (hasOverride) return 'Manual Override (Click to reset)';
+    if (hasOverride) return 'Manual Override — click × to reset to system rate';
     if (rateSource === 'EXACT_DATE') return `System Rate for ${voucherDate || 'Date'}`;
-    return `System Rate (Last Known)`;
+    return 'System Rate (Last Known)';
   };
 
   const getStatusIcon = () => {
@@ -210,65 +195,83 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
     return <div className="w-2 h-2 rounded-full bg-emerald-500" />;
   };
 
+  const isSameCurrency = currency?.toUpperCase() === baseCurrency?.toUpperCase();
+
   return (
     <>
-      <div 
+      <div
         className={`
           flex items-center h-[32px] w-full border rounded overflow-hidden transition-all bg-[var(--color-bg-primary)]
-          ${warnings.length > 0 ? 'border-amber-400 ring-1 ring-amber-100' : 
-            hasOverride ? 'border-primary-400 ring-1 ring-primary-50 dark:border-primary-600' : 
+          ${warnings.length > 0 ? 'border-amber-400 ring-1 ring-amber-100' :
+            hasOverride ? 'border-primary-400 ring-1 ring-primary-50 dark:border-primary-600' :
+            isMissingRate ? 'border-red-400 ring-1 ring-red-50' :
             'border-[var(--color-border)] hover:border-gray-400'}
           ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50' : ''}
         `}
         title={getStatusTooltip()}
       >
-        {/* Left: 1 [CURRENCY] = */}
+        {/* Left: 1 [CURRENCY] → */}
         <div className="flex items-center justify-center px-2 h-full bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] text-[10px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap min-w-[60px]">
-           1 {currency || '???'} <span className="opacity-50 mx-1">→</span>
+          1 {currency || '???'} <span className="opacity-50 mx-1">→</span>
         </div>
 
-        {/* Middle: Input */}
+        {/* Middle: Input + Reset × button */}
         <div className="flex-1 relative h-full">
-           <input
+          <input
             type="number"
             step="0.0001"
-            placeholder={loading ? '...' : (suggestedRate?.toFixed(4) || '0.00')}
+            placeholder={loading ? '…' : (suggestedRate?.toFixed(4) || '0.00')}
             value={manualRate || ''}
             onChange={(e) => handleManualRateChange(e.target.value)}
             onBlur={handleBlur}
-            disabled={disabled || currency === baseCurrency}
+            disabled={disabled || isSameCurrency}
             className={`
               w-full h-full px-2 text-xs font-semibold bg-transparent outline-none
-              ${warnings.length > 0 ? 'text-amber-700 dark:text-amber-500' : 
-                hasOverride ? 'text-primary-700 dark:text-primary-400' : 
+              ${warnings.length > 0 ? 'text-amber-700 dark:text-amber-500' :
+                hasOverride ? 'text-primary-700 dark:text-primary-400' :
                 'text-[var(--color-text-primary)]'}
               placeholder:font-normal placeholder:text-gray-400
             `}
           />
-           {/* Reset Button (only if override) - Absolute Right of Input */}
-           {hasOverride && !disabled && (
-             <button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setManualRate(undefined);
-                 if (suggestedRate) onChange?.(suggestedRate);
-               }}
-               className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
-               title="Reset to System Rate"
-             >
-               <div className="w-3 h-3 flex items-center justify-center">×</div>
-             </button>
-           )}
+          {/* Reset × — shown when user has overridden the rate */}
+          {hasOverride && !disabled && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setManualRate(undefined);
+                if (suggestedRate) onChange?.(suggestedRate);
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
+              title="Reset to System Rate"
+            >
+              <div className="w-3 h-3 flex items-center justify-center">×</div>
+            </button>
+          )}
         </div>
 
-        {/* Right: [BASE] + Status */}
-        <div className="flex items-center justify-between gap-1.5 px-2 h-full bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] min-w-[70px]">
-           <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">
-             {baseCurrency}
-           </span>
-           <div className="flex items-center justify-center" title={getStatusTooltip()}>
-             {getStatusIcon()}
-           </div>
+        {/* Right: [BASE] + status icon + Refresh button */}
+        <div className="flex items-center gap-1.5 px-2 h-full bg-[var(--color-bg-secondary)] border-l border-[var(--color-border)] min-w-[80px]">
+          <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">
+            {baseCurrency}
+          </span>
+          <div className="flex items-center gap-1">
+            <div className="flex items-center justify-center" title={getStatusTooltip()}>
+              {getStatusIcon()}
+            </div>
+            {/* Refresh button — always visible when not same-currency and not disabled */}
+            {!isSameCurrency && !disabled && (
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center justify-center w-4 h-4 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-primary-600 transition-colors disabled:opacity-40"
+                title="Refresh system rate"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

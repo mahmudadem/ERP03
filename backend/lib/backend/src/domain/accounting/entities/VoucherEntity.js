@@ -39,7 +39,21 @@ class VoucherEntity {
     createdBy, createdAt, approvedBy, approvedAt, rejectedBy, rejectedAt, rejectionReason, lockedBy, lockedAt, postedBy, postedAt, postingLockPolicy, reversalOfVoucherId, reference, // External reference (invoice #, check #, etc.)
     updatedAt, // Last modification timestamp
     postingPeriodNo, // Special/Adjustment period override
-    sourcePayload) {
+    sourcePayload, 
+    /**
+     * formData — structured snapshot of the original form submission.
+     * Stores header fields and detail lines exactly as the user saw/entered them.
+     * Used by the frontend to faithfully restore the form on reopen
+     * WITHOUT needing to reverse-engineer the accounting posting strategy.
+     *
+     * Shape (flexible, depends on form definition):
+     * {
+     *   formId: string,
+     *   headerFields: { depositToAccountId?, payFromAccountId?, description?, reference?, ... },
+     *   detailLines: [ { receiveFromAccountId?, payToAccountId?, amount, notes, currency, ... } ]
+     * }
+     */
+    formData) {
         this.id = id;
         this.companyId = companyId;
         this.voucherNo = voucherNo;
@@ -71,6 +85,7 @@ class VoucherEntity {
         this.updatedAt = updatedAt;
         this.postingPeriodNo = postingPeriodNo;
         this.sourcePayload = sourcePayload;
+        this.formData = formData;
         // Calculated totals in voucher currency (sum of line.amount)
         this.totalDebitVoucher = lines.reduce((sum, line) => sum + (line.amount || 0), 0) / 2; // Rough balance estimate if needed, but wait
         // Better: just use debit side as the document amount
@@ -288,7 +303,7 @@ class VoucherEntity {
         undefined, // rejectedAt cleared
         undefined, // rejectionReason cleared
         this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), // UpdatedAt
-        this.postingPeriodNo, this.sourcePayload);
+        this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Check if voucher can be approved
@@ -321,7 +336,7 @@ class VoucherEntity {
         if (!this.canApprove) {
             throw new Error(`Cannot approve voucher in status: ${this.status}`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.metadata, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, this.metadata, this.createdBy, this.createdAt, approvedBy, approvedAt, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Satisfy the Financial Approval gate (immutable update).
@@ -338,7 +353,7 @@ class VoucherEntity {
                 by: approverId,
                 at: approvedAt.toISOString()
             } });
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, isFullySatisfied ? VoucherTypes_1.VoucherStatus.APPROVED : VoucherTypes_1.VoucherStatus.PENDING, newMetadata, this.createdBy, this.createdAt, isFullySatisfied ? approverId : undefined, isFullySatisfied ? approvedAt : undefined, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, isFullySatisfied ? VoucherTypes_1.VoucherStatus.APPROVED : VoucherTypes_1.VoucherStatus.PENDING, newMetadata, this.createdBy, this.createdAt, isFullySatisfied ? approverId : undefined, isFullySatisfied ? approvedAt : undefined, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Confirm custody for one or more accounts (immutable update).
@@ -367,7 +382,7 @@ class VoucherEntity {
         // Note: If transition to APPROVED happens via CC, we MUST set approvedAt
         // because it wasn't set during FA (since FA wasn't final then).
         // We set approvedBy to the custodian (as the finalizer) or keep existing if any.
-        isFullySatisfied ? (this.approvedBy || custodianUserId) : undefined, isFullySatisfied ? (this.approvedAt || confirmedAt) : undefined, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload);
+        isFullySatisfied ? (this.approvedBy || custodianUserId) : undefined, isFullySatisfied ? (this.approvedAt || confirmedAt) : undefined, undefined, undefined, undefined, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Create rejected version (immutable update)
@@ -379,7 +394,7 @@ class VoucherEntity {
         if (this.status !== VoucherTypes_1.VoucherStatus.PENDING) {
             throw new Error(`Cannot reject voucher in status: ${this.status}. Rejection is only allowed for PENDING vouchers.`);
         }
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.REJECTED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, rejectedBy, rejectedAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Create cancelled version (immutable update)
@@ -390,7 +405,7 @@ class VoucherEntity {
             throw new Error('Cannot cancel a posted voucher. Use reversal instead.');
         }
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.CANCELLED, this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, cancelledBy, cancelledAt, reason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), // updatedAt
-        this.postingPeriodNo, this.sourcePayload);
+        this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Create posted version (immutable update)
@@ -401,7 +416,7 @@ class VoucherEntity {
             throw new Error(`Cannot post voucher: status=${this.status}, isPosted=${this.isPosted}`);
         }
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, // V1: Status stays APPROVED
-        this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, postedBy, postedAt, lockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload);
+        this.metadata, this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, postedBy, postedAt, lockPolicy, this.reversalOfVoucherId, this.reference, this.updatedAt, this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Mark voucher as edited (immutable update).
@@ -409,7 +424,7 @@ class VoucherEntity {
      */
     markAsEdited() {
         return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { isEdited: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), // UpdatedAt
-        this.postingPeriodNo, this.sourcePayload);
+        this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Link a reversal attempt to this voucher.
@@ -418,7 +433,7 @@ class VoucherEntity {
      * @param reversalVoucherId - ID of the voucher that reverses this one
      */
     linkReversal(reversalVoucherId) {
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     /**
      * Mark voucher as reversed (finalized immutable update).
@@ -428,7 +443,7 @@ class VoucherEntity {
      */
     markAsReversed(reversalVoucherId) {
         var _a;
-        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId || ((_a = this.metadata) === null || _a === void 0 ? void 0 : _a.reversedByVoucherId), isReversed: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload);
+        return new VoucherEntity(this.id, this.companyId, this.voucherNo, this.type, this.date, this.description, this.currency, this.baseCurrency, this.exchangeRate, this.lines, this.totalDebit, this.totalCredit, this.status, Object.assign(Object.assign({}, this.metadata), { reversedByVoucherId: reversalVoucherId || ((_a = this.metadata) === null || _a === void 0 ? void 0 : _a.reversedByVoucherId), isReversed: true }), this.createdBy, this.createdAt, this.approvedBy, this.approvedAt, this.rejectedBy, this.rejectedAt, this.rejectionReason, this.lockedBy, this.lockedAt, this.postedBy, this.postedAt, this.postingLockPolicy, this.reversalOfVoucherId, this.reference, new Date(), this.postingPeriodNo, this.sourcePayload, this.formData);
     }
     // V1: lock() method removed. Period locking is enforced via lockedThroughDate in use cases.
     /**
@@ -545,7 +560,8 @@ class VoucherEntity {
             formId: this.formId || null,
             prefix: this.prefix || null,
             postingPeriodNo: this.postingPeriodNo || null,
-            sourcePayload: this.sourcePayload || null
+            sourcePayload: this.sourcePayload || null,
+            formData: this.formData || null
         };
     }
     /**
@@ -560,11 +576,12 @@ class VoucherEntity {
         const voucherNo = data.voucherNo || data.voucherNumber || '';
         const reversalOfVoucherId = data.reversalOfVoucherId || ((_a = data.metadata) === null || _a === void 0 ? void 0 : _a.reversalOfVoucherId) || null;
         const sourcePayload = data.sourcePayload || ((_b = data.metadata) === null || _b === void 0 ? void 0 : _b.sourceVoucher) || null;
+        const formData = data.formData || null;
         const normalizedMetadata = Object.assign({}, (data.metadata || {}));
         delete normalizedMetadata.sourceVoucher;
         return new VoucherEntity(id, data.companyId, voucherNo, data.type, data.date, (_c = data.description) !== null && _c !== void 0 ? _c : '', data.currency, baseCurrency, data.exchangeRate, (data.lines || []).map((lineData) => VoucherLineEntity_1.VoucherLineEntity.fromJSON(lineData, baseCurrency)), data.totalDebit, data.totalCredit, data.status, normalizedMetadata, data.createdBy, new Date(data.createdAt), data.approvedBy, data.approvedAt ? new Date(data.approvedAt) : undefined, data.rejectedBy, data.rejectedAt ? new Date(data.rejectedAt) : undefined, data.rejectionReason, data.lockedBy, data.lockedAt ? new Date(data.lockedAt) : undefined, data.postedBy, data.postedAt ? new Date(data.postedAt) : undefined, data.postingLockPolicy, reversalOfVoucherId, 
         // Additional legacy fields
-        data.reference, data.updatedAt ? new Date(data.updatedAt) : undefined, data.postingPeriodNo, sourcePayload);
+        data.reference, data.updatedAt ? new Date(data.updatedAt) : undefined, data.postingPeriodNo, sourcePayload, formData);
     }
 }
 exports.VoucherEntity = VoucherEntity;

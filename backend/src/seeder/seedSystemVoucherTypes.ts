@@ -418,7 +418,12 @@ export const seedSystemVoucherTypes = async (repo: IVoucherTypeDefinitionReposit
           t.layout,
           2,                          // schemaVersion
           undefined,                  // requiredPostingRoles
-          t.workflow                  // workflow
+          t.workflow,                 // workflow
+          (t as any).uiModeOverrides,
+          (t as any).isMultiLine,
+          (t as any).rules,
+          (t as any).actions,
+          (t as any).defaultCurrency
         );
         
         await repo.createVoucherType(def);

@@ -208,9 +208,176 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }).catch(err => console.error('Failed to load fiscal years', err));
   }, []);
 
-  // Sync state with initialData updates (e.g. after fetch completes or partial submit)
+  // ─── Reopen Hydration ─────────────────────────────────────────────────────
+  // Priority chain for restoring form state from a persisted voucher:
+  //
+  //   1. formData (Option-A structured field) — trusted, direct mapping
+  //   2. sourcePayload / metadata.sourceVoucher — legacy fallback
+  //   3. initialData.lines — last resort (canonical accounting lines)
+  //
+  // When formData is present (all vouchers created after the Option-A refactor),
+  // we skip the heuristic type-detection and reverse-engineering entirely.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // Shared helper: ensure every mapped row has a unique numeric id
+  const deduplicateRowIds = (rows: any[]): any[] => {
+    const seen = new Set<number>();
+    return rows.map((r, i) => {
+      if (seen.has(r.id)) {
+        const newId = -(Date.now() + i + 1000);
+        seen.add(newId);
+        return { ...r, id: newId };
+      }
+      seen.add(r.id);
+      return r;
+    });
+  };
+
+  // Shared helper: resolve an account reference to its ID string
+  const resolveAccountRef = (value: any): string | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+      return value.id || value.accountId || value.code || value.account || undefined;
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     if (!initialData) return;
+
+    // ── TIER 1: formData (Option-A) ──────────────────────────────────────
+    const fd = initialData.formData;
+    if (fd && typeof fd === 'object' && !Array.isArray(fd)) {
+      const headerFields = fd.headerFields || {};
+      const detailLines: any[] = Array.isArray(fd.detailLines) ? fd.detailLines : [];
+
+      // Build merged header: canonical system fields win over form snapshot
+      // Step 1: resolve the header account from whatever key it was saved under
+      const rawHeaderAccountRef =
+        headerFields.depositToAccountId ||
+        headerFields.payFromAccountId ||
+        headerFields.accountId ||
+        headerFields.account ||
+        null;
+      const resolvedHeaderAccount = rawHeaderAccountRef
+        ? (getAccountById(String(rawHeaderAccountRef)) || getAccountByCode(String(rawHeaderAccountRef)) || null)
+        : null;
+      // Step 2: determine the voucher type to populate the correct semantic key
+      const tier1IsReceipt = String(initialData.type || '').toLowerCase().includes('receipt');
+      const tier1IsPayment = String(initialData.type || '').toLowerCase().includes('payment');
+      const semanticHeaderAccountId = resolvedHeaderAccount?.id || (typeof rawHeaderAccountRef === 'string' ? rawHeaderAccountRef : '') || '';
+      const semanticHeaderAccountCode = resolvedHeaderAccount?.code || '';
+
+      const mergedHeader: any = {
+        ...headerFields,
+        // Explicitly normalize header account across ALL possible field key variants
+        // so any form config (fieldId='account', 'accountId', 'depositToAccountId', etc.) finds the value
+        ...(semanticHeaderAccountId ? {
+          accountId: semanticHeaderAccountId,
+          account: semanticHeaderAccountCode || semanticHeaderAccountId,
+          ...(tier1IsReceipt ? { depositToAccountId: semanticHeaderAccountId } : {}),
+          ...(tier1IsPayment ? { payFromAccountId: semanticHeaderAccountId } : {}),
+        } : {}),
+        // Always take these from the live voucher document
+        id: initialData.id,
+        // Prefer the real assigned sequence number; skip placeholder values like "Pending"
+        voucherNo: initialData.voucherNo || initialData.voucherNumber,
+        voucherNumber: (() => {
+          const n = initialData.voucherNumber;
+          const placeholder = !n || n === 'Pending' || n === 'pending' || n === '-';
+          return placeholder
+            ? (initialData.voucherNo || initialData.id || n)
+            : n;
+        })(),
+        status: initialData.status,
+        date: initialData.date,
+        currency: initialData.currency,
+        baseCurrency: initialData.baseCurrency,
+        exchangeRate: initialData.exchangeRate,
+        description: initialData.description ?? headerFields.description,
+        reference: initialData.reference ?? headerFields.reference,
+        postedAt: initialData.postedAt,
+        approvedAt: initialData.approvedAt,
+        postingLockPolicy: initialData.postingLockPolicy,
+        createdBy: initialData.createdBy,
+        createdAt: initialData.createdAt,
+        metadata: initialData.metadata,
+        type: initialData.type,
+        formId: initialData.formId || fd.formId,
+      };
+
+      // Map detail lines → row shape the table expects
+      const mappedLines = deduplicateRowIds(
+        detailLines.map((l: any, i: number) => {
+          const accountId = resolveAccountRef(
+            l.receiveFromAccountId || l.payToAccountId || l.accountId || l.account
+          );
+          const accountObj = accountId ? getAccountById(accountId) : undefined;
+          const accountCode = accountObj?.code || (typeof l.account === 'string' ? l.account : (accountId || ''));
+          const amount = Math.abs(Number(l.amount ?? l.debit ?? l.credit ?? 0));
+
+          return {
+            ...l,
+            id: l.id ?? -(Date.now() + i),
+            _rowId: i + 1,
+            accountId,
+            account: accountCode,
+            amount,
+            debit: l.debit !== undefined ? l.debit : amount,
+            credit: l.credit !== undefined ? l.credit : 0,
+            notes: l.notes || l.description || '',
+            currency: l.currency || l.lineCurrency || initialData.currency || '',
+            parity: Number(l.exchangeRate || l.parity || 1) || 1.0,
+            equivalent: l.baseAmount || l.equivalent || 0,
+            metadata: l.metadata || {},
+          };
+        })
+      );
+
+      setFormData((prev: any) => {
+        if (prev?.id !== initialData.id || !prev?.id) {
+          return {
+            ...mergedHeader,
+            date: mergedHeader.date ? formatForInput(mergedHeader.date) : (prev?.date || getCompanyToday(settings)),
+          };
+        }
+        // Same voucher: sync system-managed field changes AND newly-resolved account fields
+        const patch: any = {};
+        SYSTEM_MANAGED_FIELDS.forEach((key) => {
+          if ((initialData as any)[key] !== undefined && prev[key] !== (initialData as any)[key]) {
+            patch[key] = (initialData as any)[key];
+          }
+        });
+        // Also sync account fields that may have just resolved when accounts loaded
+        const accountPatchKeys = ['accountId', 'account', 'depositToAccountId', 'payFromAccountId'];
+        accountPatchKeys.forEach((key) => {
+          const newVal = (mergedHeader as any)[key];
+          if (newVal && newVal !== prev[key]) {
+            patch[key] = newVal;
+          }
+        });
+        return Object.keys(patch).length > 0 ? { ...prev, ...patch } : prev;
+
+      });
+
+      if (mappedLines.length > 0) {
+        setRows((prev) => {
+          const isNew = initialData.id !== (formData.id || initialData.id);
+          const isEmpty = prev.length === 0 || (prev.length <= 5 && prev.every(r => !r.account));
+          if (isNew || isEmpty) return mappedLines;
+          return prev;
+        });
+      }
+
+      hasUserTouchedHeaderFxRef.current = false;
+      return; // ← Done. No fallback needed.
+    }
+
+    // ── TIER 2: sourcePayload / metadata.sourceVoucher (legacy) ─────────
+    // Keep the existing heuristic logic unchanged for old vouchers that
+    // pre-date the formData field. This path will naturally phase out as
+    // vouchers are re-saved through normal edits.
 
     const resolveBackendType = (): string => {
       const defAny = definition as any;
@@ -222,23 +389,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (payloadType.includes('journal') || payloadType === 'jv') return 'journal_entry';
 
       const typeMap: Record<string, string> = {
-        JOURNAL_ENTRY: 'journal_entry',
-        PAYMENT: 'payment',
-        RECEIPT: 'receipt',
-        OPENING_BALANCE: 'opening_balance',
-        REVERSAL: 'reversal'
+        JOURNAL_ENTRY: 'journal_entry', PAYMENT: 'payment',
+        RECEIPT: 'receipt', OPENING_BALANCE: 'opening_balance', REVERSAL: 'reversal'
       };
-
-      if (defAny._typeId && typeMap[String(defAny._typeId).toUpperCase()]) {
-        return typeMap[String(defAny._typeId).toUpperCase()];
-      }
-      if (defAny.baseType && typeMap[String(defAny.baseType).toUpperCase()]) {
-        return typeMap[String(defAny.baseType).toUpperCase()];
-      }
-      if (definition.code && typeMap[String(definition.code).toUpperCase()]) {
-        return typeMap[String(definition.code).toUpperCase()];
-      }
-
+      if (defAny._typeId && typeMap[String(defAny._typeId).toUpperCase()]) return typeMap[String(defAny._typeId).toUpperCase()];
+      if (defAny.baseType && typeMap[String(defAny.baseType).toUpperCase()]) return typeMap[String(defAny.baseType).toUpperCase()];
+      if (definition.code && typeMap[String(definition.code).toUpperCase()]) return typeMap[String(definition.code).toUpperCase()];
       const nameLower = String(definition.name || '').toLowerCase();
       const codeLower = String(definition.code || '').toLowerCase();
       if (nameLower.includes('receipt') || codeLower.includes('receipt')) return 'receipt';
@@ -268,8 +424,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       : (Array.isArray(initialData.lines) ? initialData.lines : []);
     const amountOf = (line: any): number => Math.abs(Number(line?.amount ?? line?.debit ?? line?.credit ?? 0));
 
-    // Source payload must win for business fields during reopen.
-    // Canonical lines/fields are still available as fallback if source is missing.
     const mergedInitialData = {
       ...initialData,
       ...(sourceVoucher || {}),
@@ -280,14 +434,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           : {})
       }
     };
-    // Canonical persisted header FX fields must win over snapshots on reopen.
     (['currency', 'baseCurrency', 'exchangeRate'] as const).forEach((key) => {
       const canonicalValue = (initialData as any)?.[key];
       if (canonicalValue !== undefined && canonicalValue !== null && canonicalValue !== '') {
         (mergedInitialData as any)[key] = canonicalValue;
       }
     });
-    // Always prefer real voucher lifecycle fields from backend document.
     SYSTEM_MANAGED_FIELDS.forEach((key) => {
       if ((initialData as any)?.[key] !== undefined) {
         (mergedInitialData as any)[key] = (initialData as any)[key];
@@ -295,7 +447,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     });
 
     const cleanInitialData = Object.entries(mergedInitialData).reduce((acc, [key, value]) => {
-      // Never persist or replay UI designer config as voucher business data.
       if (key === 'voucherConfig') return acc;
       acc[key] = value;
       return acc;
@@ -306,21 +457,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
       const lowered = key.toLowerCase();
       const found = Object.keys(obj).find(k => k.toLowerCase() === lowered);
-      if (found && obj[found] !== undefined && obj[found] !== null && obj[found] !== '') {
-        return obj[found];
-      }
-      return undefined;
-    };
-
-    const resolveAccountRef = (value: any): string | undefined => {
-      if (value === undefined || value === null || value === '') return undefined;
-      if (typeof value === 'string') return value;
-      if (typeof value === 'object') {
-        if (typeof value.id === 'string' && value.id) return value.id;
-        if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
-        if (typeof value.code === 'string' && value.code) return value.code;
-        if (typeof value.account === 'string' && value.account) return value.account;
-      }
+      if (found && obj[found] !== undefined && obj[found] !== null && obj[found] !== '') return obj[found];
       return undefined;
     };
 
@@ -343,7 +480,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       semanticHeaderAccount = resolveAccountRef(headerAnchor?.accountId || headerAnchor?.account);
     }
 
-    // Fallback to canonical persisted lines when sourcePayload is partial/missing header account.
     if (!semanticHeaderAccount && semanticHeaderKey && Array.isArray(initialData.lines) && initialData.lines.length > 0) {
       const expectedHeaderSide = isReceipt ? 'Debit' : (isPayment ? 'Credit' : '');
       const canonicalHeaderAnchor = initialData.lines.find((line: any) =>
@@ -357,7 +493,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     if (semanticHeaderAccount) {
       const accountById = getAccountById(semanticHeaderAccount);
       const accountByCode = accountById ? undefined : getAccountByCode(semanticHeaderAccount);
-      // Keep raw semantic account ref when lookup is not ready yet (accounts may load async).
       semanticHeaderAccountId = accountById?.id || accountByCode?.id || semanticHeaderAccount;
       headerAccountCode = accountById?.code || accountByCode?.code || (accountByCode ? semanticHeaderAccount : undefined);
     }
@@ -373,14 +508,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       ...(semanticHeaderKey && (semanticHeaderAccountId || semanticHeaderAccount)
         ? { [semanticHeaderKey]: semanticHeaderAccountId || semanticHeaderAccount }
         : {}),
-      // Normalize header account shape for controls: always keep scalar accountId/account code.
       ...(semanticHeaderAccountId ? { accountId: semanticHeaderAccountId } : {}),
       ...(headerAccountCode ? { account: headerAccountCode } : {})
     };
 
     // 1. Sync Form Metadata
     setFormData((prev: any) => {
-      // If it's a completely different voucher, or we don't have an ID yet, overwrite.
       if (prev?.id !== initialData.id || !prev?.id) {
         return {
           ...prev,
@@ -391,50 +524,33 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
 
       const systemFieldPatch = Array.from(SYSTEM_MANAGED_FIELDS).reduce((acc, key) => {
         const nextValue = (initialData as any)?.[key];
-        if (nextValue !== undefined && prev?.[key] !== nextValue) {
-          acc[key] = nextValue;
-        }
+        if (nextValue !== undefined && prev?.[key] !== nextValue) acc[key] = nextValue;
         return acc;
       }, {} as Record<string, any>);
 
-      const nextVoucherNumber =
-        initialData.voucherNumber ||
-        initialData.voucherNo ||
-        initialData.id ||
-        prev?.voucherNumber;
+      const nextVoucherNumber = initialData.voucherNumber || initialData.voucherNo || initialData.id || prev?.voucherNumber;
       if (nextVoucherNumber !== undefined && prev?.voucherNumber !== nextVoucherNumber) {
         systemFieldPatch.voucherNumber = nextVoucherNumber;
       }
 
-      if (Object.keys(systemFieldPatch).length > 0) {
-        return {
-          ...prev,
-          ...systemFieldPatch
-        };
-      }
+      if (Object.keys(systemFieldPatch).length > 0) return { ...prev, ...systemFieldPatch };
 
-      // Repair partial hydration for same voucher id (e.g., async account lookup/source payload refresh).
       const hasStringDiff = (key: string): boolean => {
         if (hydratedInitialData[key] === undefined || hydratedInitialData[key] === null) return false;
         return String(prev?.[key] ?? '') !== String(hydratedInitialData[key] ?? '');
       };
       const hasNumberDiff = (key: string): boolean => {
         if (hydratedInitialData[key] === undefined || hydratedInitialData[key] === null || hydratedInitialData[key] === '') return false;
-        const prevNum = Number(prev?.[key] ?? 0);
         const nextNum = Number(hydratedInitialData[key] ?? 0);
         if (!Number.isFinite(nextNum)) return false;
-        return Math.abs(prevNum - nextNum) > 0.000001;
+        return Math.abs(Number(prev?.[key] ?? 0) - nextNum) > 0.000001;
       };
 
       const needsRepair =
-        hasStringDiff('account') ||
-        hasStringDiff('accountId') ||
-        hasStringDiff('depositToAccountId') ||
-        hasStringDiff('payFromAccountId') ||
-        hasStringDiff('currency') ||
-        hasStringDiff('baseCurrency') ||
-        hasStringDiff('description') ||
-        hasStringDiff('date') ||
+        hasStringDiff('account') || hasStringDiff('accountId') ||
+        hasStringDiff('depositToAccountId') || hasStringDiff('payFromAccountId') ||
+        hasStringDiff('currency') || hasStringDiff('baseCurrency') ||
+        hasStringDiff('description') || hasStringDiff('date') ||
         hasNumberDiff('exchangeRate');
 
       if (needsRepair) {
@@ -447,14 +563,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       return prev;
     });
 
-    // 2. Sync Rows (Lines)
+    // 2. Sync Rows (Lines) — Tier 2/3 path
     if (rawLines.length > 0) {
       setRows((prev) => {
         const isNewVoucher = initialData.id !== (formData.id || initialData.id);
         const isEmptyRows = prev.length === 0 || (prev.length <= 5 && prev.every(r => !r.account));
 
-        // Only perform mass-overwrite from initialData if it's truly a NEW voucher load
-        // or if the current state is completely empty/uninitialized.
         if (isNewVoucher || isEmptyRows) {
           let mappedLines: any[] = [];
 
@@ -479,7 +593,6 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
                 const amount = amountOf(l);
                 const accountObj = semanticAccountId ? getAccountById(semanticAccountId) : undefined;
                 const accountCode = accountObj?.code || (typeof l.account === 'string' ? l.account : (semanticAccountId || ''));
-
                 return {
                   ...l,
                   id: l.id ?? -(Date.now() + i),
@@ -503,18 +616,14 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
               const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
               const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
               const semanticAccountId = l.accountId || l.account || l.receiveFromAccountId || l.payToAccountId;
-
               let accountCode = l.account || '';
               if (!accountCode && semanticAccountId) {
                 const acc = getAccountById(semanticAccountId);
-                if (acc) accountCode = acc.code;
-                else accountCode = semanticAccountId;
+                accountCode = acc ? acc.code : semanticAccountId;
               }
-
               return {
                 ...l,
-                debit,
-                credit,
+                debit, credit,
                 amount: amountOf(l),
                 id: l.id ?? -(Date.now() + i),
                 _rowId: i + 1,
@@ -529,33 +638,22 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             });
           }
 
-          // SAFETY: Ensure all row IDs are unique to prevent React key collisions
-          // and row operation corruption (e.g., editing/deleting one row affects all)
-          const seenIds = new Set<number>();
-          for (let i = 0; i < mappedLines.length; i++) {
-            if (seenIds.has(mappedLines[i].id)) {
-              mappedLines[i] = { ...mappedLines[i], id: -(Date.now() + i + 1000) };
-            }
-            seenIds.add(mappedLines[i].id);
-          }
+          mappedLines = deduplicateRowIds(mappedLines);
 
-          // Trigger change ONLY if we actually replaced the rows from external data
           if (isNewVoucher) {
-            onChangeRef.current?.({
-              ...formData,
-              ...hydratedInitialData,
-              lines: mappedLines
-            });
+            onChangeRef.current?.({ ...formData, ...hydratedInitialData, lines: mappedLines });
           }
-
           return mappedLines;
         }
         return prev;
       });
     }
-    // New initialData loaded: reset user-driven FX sync guard.
+
     hasUserTouchedHeaderFxRef.current = false;
   }, [initialData, getAccountById, getAccountByCode, settings, definition]);
+
+
+
   
   // Recalculate parities when voucher currency or exchange rate changes
   // IMPORTANT: This sync is ONLY for header-level changes. 
@@ -1707,19 +1805,45 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     }
 
     // 0.5. Custom Components from Registry
-    if (CustomComponentRegistry[fieldId] || fieldId === 'account' || fieldId === 'accountSelector') {
-      const Component = CustomComponentRegistry[fieldId] || CustomComponentRegistry.account;
+    // Also route any field that is an account selector by name or type:
+    //   - explicit registry entry
+    //   - fieldId === 'account' or 'accountSelector'
+    //   - semantic header account fields: depositToAccountId, payFromAccountId
+    //   - any field ending in 'accountid' (case-insensitive)
+    //   - typeOverride === 'account-selector'
+    const lowerFieldId = fieldId.toLowerCase();
+    const isAccountSelectorField =
+      !!CustomComponentRegistry[fieldId] ||
+      fieldId === 'account' ||
+      fieldId === 'accountSelector' ||
+      fieldId === 'depositToAccountId' ||
+      fieldId === 'payFromAccountId' ||
+      lowerFieldId.endsWith('accountid') ||
+      typeOverride === 'account-selector' ||
+      typeOverride === 'AccountSelector';
+
+    if (isAccountSelectorField) {
+      // Prefer any registered custom component, then fall back to the imported AccountSelector
+      const AccountComponent = CustomComponentRegistry[fieldId] || CustomComponentRegistry.account || AccountSelector;
+      // Resolve value: check exact field key, then semantic siblings, then generic accountId
+      const fieldValue =
+        formData[fieldId] ||
+        (lowerFieldId === 'deposittoaccountid' ? formData.depositToAccountId : undefined) ||
+        (lowerFieldId === 'payfromaccountid' ? formData.payFromAccountId : undefined) ||
+        formData.accountId ||
+        '';
       return (
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
-          <Component
-            value={formData[fieldId]}
+          <AccountComponent
+            value={fieldValue}
             disabled={readOnly}
             onChange={(val: any) => {
-               // Adaptation for AccountSelector which returns an account object
                if (val && typeof val === 'object' && (val.id || val.code)) {
-                  // For fields explicitly named 'account', store code. For others (likely ...Id), store ID.
-                  handleInputChange(fieldId, fieldId === 'account' ? val.code : (val.id || val.code));
+                  const stored = fieldId === 'account' ? val.code : (val.id || val.code);
+                  handleInputChange(fieldId, stored);
+                  if (fieldId !== 'account') handleInputChange('accountId', val.id || val.code);
+                  if (fieldId !== 'accountId') handleInputChange('account', val.code || val.id);
                } else {
                   handleInputChange(fieldId, val);
                }
@@ -1728,6 +1852,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         </div>
       );
     }
+
     
     // 1. System Fields (Read Only)
     // Removed 'date' from this list as it should be editable via CompanyDatePicker
@@ -1764,7 +1889,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
            // Truncate long user IDs
            displayValue = rawValue.substring(0, 12) + '...';
        } else {
-           displayValue = rawValue || 'Pending';
+           // For voucherNumber: fall back to voucherNo (backend canonical field) before showing placeholder
+           let resolvedValue = rawValue;
+           if (!resolvedValue && (lowerFid === 'vouchernumber' || lowerFid === 'voucherno')) {
+             resolvedValue = formData.voucherNo || formData.voucherNumber || '';
+           }
+           displayValue = resolvedValue || '-';
        }
        
        return (
@@ -2270,7 +2400,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // System fields list - these are read-only display fields
     const systemFields = ['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
-    const lowerFieldId = fieldId.toLowerCase();
+    // lowerFieldId is already declared above; reuse it here
     const isSystemField = systemFields.some(sf => sf.toLowerCase() === lowerFieldId) || 
                           lowerFieldId.endsWith('createdat') || 
                           lowerFieldId.endsWith('updatedat') || 

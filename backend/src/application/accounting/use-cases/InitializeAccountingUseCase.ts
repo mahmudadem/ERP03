@@ -353,6 +353,15 @@ export class InitializeAccountingUseCase {
     for (const type of types) {
       // Use same ID as type for the default form (simpler)
       const formId = type.id;
+      const code = String(type.data.code || type.id || '').toUpperCase();
+      const baseType = String(type.data.baseType || '').toUpperCase() || (
+        code.includes('RECEIPT') ? 'RECEIPT' :
+        code.includes('PAYMENT') ? 'PAYMENT' :
+        code.includes('JOURNAL') ? 'JOURNAL' :
+        code.includes('TRANSFER') ? 'TRANSFER' :
+        code.includes('INVOICE') ? 'INVOICE' :
+        code
+      );
       
       const formRef = db
         .collection('companies')
@@ -366,9 +375,10 @@ export class InitializeAccountingUseCase {
       const form = {
         id: formId,
         companyId,
-        typeId: type.id,
+        typeId: baseType || type.id,
+        baseType: baseType || type.id,
         name: type.data.name || type.id, // Use original name, no suffix
-        code: type.data.code || type.id,
+        code: type.data.code || baseType || type.id,
         description: `Default form for ${type.data.name || type.id}`,
         prefix: type.data.prefix || type.data.code?.slice(0, 3).toUpperCase() || 'V',
         isDefault: true,
@@ -378,6 +388,12 @@ export class InitializeAccountingUseCase {
         // Copy layout from type definition
         headerFields: type.data.headerFields || type.data.fields?.filter((f: any) => f.section === 'header') || [],
         tableColumns: type.data.tableColumns || type.data.fields?.filter((f: any) => f.section === 'table') || [],
+        uiModeOverrides: type.data.uiModeOverrides || null,
+        rules: type.data.rules || [],
+        actions: type.data.actions || [],
+        isMultiLine: type.data.isMultiLine ?? true,
+        tableStyle: type.data.tableStyle || 'web',
+        defaultCurrency: type.data.defaultCurrency || '',
         layout: type.data.layout || {
           theme: 'default',
           showTotals: true
