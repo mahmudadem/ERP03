@@ -40,6 +40,8 @@ export interface AccountDTO {
   isProtected: boolean;
   replacedByAccountId?: string | null;
   cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+  plSubgroup?: 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES' | null;
+  equitySubgroup?: 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES' | null;
   
   // Audit
   createdAt: string;
@@ -78,6 +80,8 @@ export interface CreateAccountRequest {
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;
   cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+  plSubgroup?: 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES' | null;
+  equitySubgroup?: 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES' | null;
   
   // Approval
   requiresApproval?: boolean;
@@ -112,6 +116,8 @@ export interface UpdateAccountRequest {
   // System
   isProtected?: boolean;
   cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+  plSubgroup?: 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES' | null;
+  equitySubgroup?: 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES' | null;
   
   // Approval
   requiresApproval?: boolean;
@@ -240,6 +246,8 @@ export class AccountingDTOMapper {
       isProtected: account.isProtected,
       replacedByAccountId: account.replacedByAccountId,
       cashFlowCategory: account.cashFlowCategory ?? null,
+      plSubgroup: account.plSubgroup ?? null,
+      equitySubgroup: account.equitySubgroup ?? null,
       
       // Audit
       createdAt: account.createdAt.toISOString(),

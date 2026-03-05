@@ -39,6 +39,12 @@ class FirestoreAccountingPolicyConfigProvider {
             const merged = Object.assign(Object.assign(Object.assign({}, this.getDefaultConfig()), data), { 
                 // Override nested objects specifically if they exist to avoid partial merges
                 costCenterPolicy: Object.assign(Object.assign({}, (this.getDefaultConfig().costCenterPolicy)), (data.costCenterPolicy || {})) });
+            // Backward compat: map legacy key to canonical key when canonical is absent.
+            if (merged.allowEditPostedVouchersEnabled !== undefined && merged.allowEditDeletePosted === undefined) {
+                merged.allowEditDeletePosted = merged.allowEditPostedVouchersEnabled;
+            }
+            // CRITICAL: approval is required when either financial approval or custody confirmation is enabled.
+            merged.approvalRequired = !!(merged.financialApprovalEnabled || merged.custodyConfirmationEnabled);
             console.log('[PolicyConfigProvider] Merged config:', JSON.stringify(merged, null, 2));
             return merged;
         }
@@ -54,6 +60,7 @@ class FirestoreAccountingPolicyConfigProvider {
             financialApprovalEnabled: false,
             faApplyMode: 'ALL',
             custodyConfirmationEnabled: false,
+            // Derived: true if ANY gate (financial approval or custody confirmation) is enabled.
             approvalRequired: false,
             // Mode A Controls (V1)
             autoPostEnabled: true,

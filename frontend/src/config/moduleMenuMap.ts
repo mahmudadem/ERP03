@@ -18,6 +18,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Overview', path: '/accounting', icon: 'LayoutDashboard' },
       { label: 'Chart of Accounts', path: '/accounting/accounts', permission: 'accounting.accounts.view', icon: 'Book' },
+      { label: 'Subgroup Tagging', path: '/accounting/settings/subgroup-tagging', permission: 'accounting.accounts.edit', icon: 'Tags' },
       { label: 'Budgets', path: '/accounting/budgets', permission: 'accounting.settings.read', icon: 'PiggyBank' },
       { label: 'Approval Center', path: '/accounting/approvals', permission: 'accounting.vouchers.view', icon: 'ShieldCheck' },
       { label: 'Vouchers', path: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'FileText' },
@@ -31,6 +32,7 @@ export const moduleMenuMap: Record<
           { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet', permission: 'accounting.reports.balanceSheet.view', icon: 'BookMinus' },
           { label: 'General Ledger', path: '/accounting/reports/ledger', permission: 'accounting.reports.generalLedger.view', icon: 'BookOpen' },
           { label: 'Profit & Loss', path: '/accounting/reports/profit-loss', permission: 'accounting.reports.profitAndLoss.view', icon: 'PieChart' },
+          { label: 'Trading Account', path: '/accounting/reports/trading-account', permission: 'accounting.reports.tradingAccount.view', icon: 'BarChart3' },
           { label: 'Cash Flow', path: '/accounting/reports/cash-flow', permission: 'accounting.reports.cashFlow.view', icon: 'Waves' },
           { label: 'Journal', path: '/accounting/reports/journal', permission: 'accounting.reports.generalLedger.view', icon: 'BookMarked' },
           { label: 'Aging', path: '/accounting/reports/aging', permission: 'accounting.reports.generalLedger.view', icon: 'Clock3' },

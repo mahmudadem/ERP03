@@ -149,6 +149,7 @@ exports.ManufacturingCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "302",
@@ -156,6 +157,7 @@ exports.ManufacturingCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     // ========== REVENUE ==========
     {
@@ -171,6 +173,7 @@ exports.ManufacturingCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "402",
@@ -178,6 +181,7 @@ exports.ManufacturingCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     // ========== EXPENSES ==========
     {
@@ -193,7 +197,8 @@ exports.ManufacturingCOA = [
         name: "Cost of Goods Manufactured",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50101",
@@ -201,6 +206,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50102",
@@ -208,6 +214,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     // Factory Overhead
     {
@@ -215,7 +222,8 @@ exports.ManufacturingCOA = [
         name: "Factory Overhead",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50201",
@@ -223,6 +231,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50202",
@@ -230,6 +239,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50203",
@@ -237,6 +247,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     // Operating Expenses
     {
@@ -244,7 +255,8 @@ exports.ManufacturingCOA = [
         name: "Operating Expenses",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50301",
@@ -252,6 +264,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "503",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50302",
@@ -259,6 +272,7 @@ exports.ManufacturingCOA = [
         type: "expense",
         parentCode: "503",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
 ];
 /**
@@ -408,6 +422,7 @@ exports.ServicesCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "302",
@@ -415,6 +430,7 @@ exports.ServicesCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     // ========== REVENUE ==========
     {
@@ -429,7 +445,8 @@ exports.ServicesCOA = [
         name: "Service Revenue",
         type: "revenue",
         parentCode: "4",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "SALES",
     },
     {
         code: "40101",
@@ -437,6 +454,7 @@ exports.ServicesCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "40102",
@@ -444,6 +462,7 @@ exports.ServicesCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "40103",
@@ -451,6 +470,7 @@ exports.ServicesCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     // ========== EXPENSES ==========
     {
@@ -465,7 +485,8 @@ exports.ServicesCOA = [
         name: "Personnel Costs",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50101",
@@ -473,6 +494,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50102",
@@ -480,6 +502,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50103",
@@ -487,13 +510,15 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "502",
         name: "Operating Expenses",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50201",
@@ -501,6 +526,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50202",
@@ -508,6 +534,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50203",
@@ -515,13 +542,15 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "503",
         name: "Marketing & Business Development",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50301",
@@ -529,6 +558,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "503",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50302",
@@ -536,6 +566,7 @@ exports.ServicesCOA = [
         type: "expense",
         parentCode: "503",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
 ];
 /**
@@ -699,6 +730,7 @@ exports.RetailCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "302",
@@ -706,6 +738,7 @@ exports.RetailCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     // ========== REVENUE ==========
     {
@@ -720,7 +753,8 @@ exports.RetailCOA = [
         name: "Sales Revenue",
         type: "revenue",
         parentCode: "4",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "SALES",
     },
     {
         code: "40101",
@@ -728,6 +762,7 @@ exports.RetailCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "40102",
@@ -735,6 +770,7 @@ exports.RetailCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "402",
@@ -742,6 +778,7 @@ exports.RetailCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     // ========== COST OF SALES ==========
     {
@@ -756,7 +793,8 @@ exports.RetailCOA = [
         name: "Cost of Goods Sold",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50101",
@@ -764,6 +802,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50102",
@@ -771,13 +810,15 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "502",
         name: "Inventory Adjustments",
         type: "expense",
         parentCode: "5",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50201",
@@ -785,6 +826,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50202",
@@ -792,6 +834,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     // ========== OPERATING EXPENSES ==========
     {
@@ -806,7 +849,8 @@ exports.RetailCOA = [
         name: "Store Expenses",
         type: "expense",
         parentCode: "6",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60101",
@@ -814,6 +858,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "601",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60102",
@@ -821,6 +866,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "601",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60103",
@@ -828,13 +874,15 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "601",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "602",
         name: "Personnel Expenses",
         type: "expense",
         parentCode: "6",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60201",
@@ -842,6 +890,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "602",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60202",
@@ -849,13 +898,15 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "602",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "603",
         name: "Marketing & Advertising",
         type: "expense",
         parentCode: "6",
-        isProtected: true, // Has children
+        isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60301",
@@ -863,6 +914,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "603",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60302",
@@ -870,6 +922,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "603",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "60303",
@@ -877,6 +930,7 @@ exports.RetailCOA = [
         type: "expense",
         parentCode: "603",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
 ];
 //# sourceMappingURL=IndustryCOATemplates.js.map

@@ -10,12 +10,14 @@ const NotificationInboxPage = lazy(() => import('../modules/core/pages/Notificat
 const AccountingDashboard = lazy(() => import('../modules/accounting/AccountingDashboard'));
 const ApprovalsPage = lazy(() => import('../modules/accounting/pages/ApprovalsPage'));
 const AccountsListPage = lazy(() => import('../modules/accounting/pages/AccountsListPage'));
+const SubgroupTaggingPage = lazy(() => import('../modules/accounting/pages/SubgroupTaggingPage'));
 const VouchersListPage = lazy(() => import('../modules/accounting/pages/VouchersListPage'));
 const VoucherEditorPage = lazy(() => import('../modules/accounting/pages/VoucherEditorPage'));
 const VoucherViewPage = lazy(() => import('../modules/accounting/pages/VoucherViewPage'));
 const BalanceSheetPage = lazy(() => import('../modules/accounting/pages/BalanceSheetPage'));
 const TrialBalancePage = lazy(() => import('../modules/accounting/pages/TrialBalancePage'));
 const ProfitAndLossPage = lazy(() => import('../modules/accounting/pages/ProfitAndLossPage'));
+const TradingAccountPage = lazy(() => import('../modules/accounting/pages/TradingAccountPage'));
 const AccountStatementPage = lazy(() => import('../modules/accounting/pages/AccountStatementPage'));
 const CostCentersPage = lazy(() => import('../modules/accounting/pages/CostCentersPage'));
 const CashFlowPage = lazy(() => import('../modules/accounting/pages/CashFlowPage'));
@@ -116,6 +118,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting', label: 'Overview', component: AccountingDashboard, section: 'ACCOUNTING', requiredModule: 'accounting' },
   { path: '/accounting/approvals', label: 'Approval Center', component: ApprovalsPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/accounts', label: 'Chart of Accounts', component: AccountsListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.view', requiredModule: 'accounting' },
+  { path: '/accounting/settings/subgroup-tagging', label: 'Subgroup Tagging', component: SubgroupTaggingPage, section: 'ACCOUNTING', requiredPermission: 'accounting.accounts.edit', requiredModule: 'accounting' },
   { path: '/accounting/vouchers', label: 'Vouchers', component: VouchersListPage, section: 'ACCOUNTING', requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id/view', label: 'View Voucher', component: VoucherViewPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.view', requiredModule: 'accounting' },
   { path: '/accounting/vouchers/:id', label: 'Edit Voucher', component: VoucherEditorPage, section: 'ACCOUNTING', hideInMenu: true, requiredPermission: 'accounting.vouchers.edit', requiredModule: 'accounting' },
@@ -126,6 +129,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/accounting/reports/bank-reconciliation', label: 'Bank Reconciliation', component: BankReconciliationPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/ledger', label: 'Ledger Report', component: LedgerReportPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.generalLedger.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/profit-loss', label: 'Profit & Loss', component: ProfitAndLossPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.profitAndLoss.view', requiredModule: 'accounting' },
+  { path: '/accounting/reports/trading-account', label: 'Trading Account', component: TradingAccountPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.tradingAccount.view', requiredModule: 'accounting' },
   { path: '/accounting/reports/cash-flow', label: 'Cash Flow', component: CashFlowPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.cashFlow.view', requiredModule: 'accounting' },
   { path: '/accounting/budgets', label: 'Budgets', component: BudgetPage, section: 'ACCOUNTING', requiredPermission: 'accounting.settings.read', requiredModule: 'accounting' },
   { path: '/accounting/reports/budget-vs-actual', label: 'Budget vs Actual', component: BudgetVsActualPage, section: 'ACCOUNTING', requiredPermission: 'accounting.reports.trialBalance.view', requiredModule: 'accounting' },

@@ -8,7 +8,9 @@ import {
     BalanceEnforcement, 
     CurrencyPolicy,
     AccountStatus,
-    CashFlowCategory
+    CashFlowCategory,
+    PlSubgroup,
+    EquitySubgroup
 } from '../../../api/accounting';
 import { CurrencySelector } from './shared/CurrencySelector';
 import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdmin';
@@ -62,6 +64,22 @@ const CASH_FLOW_CATEGORIES: { value: CashFlowCategory | ''; label: string }[] = 
     { value: 'FINANCING', label: 'Financing' },
 ];
 
+const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string; forClassification: AccountClassification[] }[] = [
+    { value: '', label: 'None (Unassigned)', forClassification: ['REVENUE', 'EXPENSE'] },
+    { value: 'SALES', label: 'Sales', forClassification: ['REVENUE'] },
+    { value: 'OTHER_REVENUE', label: 'Other Revenue', forClassification: ['REVENUE'] },
+    { value: 'COST_OF_SALES', label: 'Cost of Sales (COGS)', forClassification: ['EXPENSE'] },
+    { value: 'OPERATING_EXPENSES', label: 'Operating Expenses', forClassification: ['EXPENSE'] },
+    { value: 'OTHER_EXPENSES', label: 'Other Expenses', forClassification: ['EXPENSE'] },
+];
+
+const EQUITY_SUBGROUPS: { value: EquitySubgroup | ''; label: string }[] = [
+    { value: '', label: 'None (Unassigned)' },
+    { value: 'RETAINED_EARNINGS', label: 'Retained Earnings' },
+    { value: 'CONTRIBUTED_CAPITAL', label: 'Contributed Capital' },
+    { value: 'RESERVES', label: 'Reserves' },
+];
+
 export const AccountForm: React.FC<AccountFormProps> = ({
     mode,
     initialValues,
@@ -93,6 +111,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     const [currencyPolicy, setCurrencyPolicy] = useState<CurrencyPolicy>(initialValues?.currencyPolicy || 'INHERIT');
     const [fixedCurrencyCode, setFixedCurrencyCode] = useState(initialValues?.fixedCurrencyCode || initialValues?.currency || '');
     const [cashFlowCategory, setCashFlowCategory] = useState<CashFlowCategory | ''>(initialValues?.cashFlowCategory || '');
+    const [plSubgroup, setPlSubgroup] = useState<PlSubgroup | ''>(initialValues?.plSubgroup || '');
+    const [equitySubgroup, setEquitySubgroup] = useState<EquitySubgroup | ''>(initialValues?.equitySubgroup || '');
 
     // Fetch base currency from accounting module config
     const { getModuleStatus } = useCompanyModules();
@@ -145,6 +165,20 @@ export const AccountForm: React.FC<AccountFormProps> = ({
         }
     }, [classification, initialValues]);
 
+    // Clear P&L subgroup when switching away from Revenue/Expense
+    useEffect(() => {
+        if (!['REVENUE', 'EXPENSE'].includes(classification)) {
+            setPlSubgroup('');
+        }
+    }, [classification]);
+
+    // Clear equity subgroup when switching away from Equity
+    useEffect(() => {
+        if (classification !== 'EQUITY') {
+            setEquitySubgroup('');
+        }
+    }, [classification]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -162,6 +196,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                 currencyPolicy,
                 fixedCurrencyCode: currencyPolicy === 'FIXED' ? fixedCurrencyCode : null,
                 cashFlowCategory: cashFlowCategory || null,
+                plSubgroup: plSubgroup || null,
+                equitySubgroup: equitySubgroup || null,
                 requiresApproval,
                 requiresCustodyConfirmation,
                 custodianUserId: requiresCustodyConfirmation ? custodianUserId : null,
@@ -308,6 +344,44 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     </select>
                     <p className="text-xs text-gray-400 mt-1">Optional override used by Cash Flow report classification.</p>
                  </div>
+
+                 {(classification === 'REVENUE' || classification === 'EXPENSE') && (
+                    <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">P&L Subgroup</label>
+                        <select
+                            value={plSubgroup}
+                            onChange={(e) => setPlSubgroup(e.target.value as PlSubgroup | '')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                            {PL_SUBGROUPS
+                                .filter((s) => s.forClassification.includes(classification))
+                                .map((s) => (
+                                    <option key={s.value || 'NONE'} value={s.value}>{s.label}</option>
+                                ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Optional. Used by Trading Account and detailed P&L reports.
+                        </p>
+                    </div>
+                 )}
+
+                 {classification === 'EQUITY' && (
+                    <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Equity Subgroup</label>
+                        <select
+                            value={equitySubgroup}
+                            onChange={(e) => setEquitySubgroup(e.target.value as EquitySubgroup | '')}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                            {EQUITY_SUBGROUPS.map((s) => (
+                                <option key={s.value || 'NONE'} value={s.value}>{s.label}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Optional. Used by Balance Sheet retained earnings classification.
+                        </p>
+                    </div>
+                 )}
             </div>
 
             {/* --- Section 3: Currency & Hierarchy --- */}

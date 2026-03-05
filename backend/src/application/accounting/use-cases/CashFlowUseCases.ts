@@ -122,7 +122,13 @@ export class GetCashFlowStatementUseCase {
     private permissionChecker: PermissionChecker
   ) {}
 
-  async execute(companyId: string, userId: string, fromDate: string, toDate: string): Promise<CashFlowData> {
+  async execute(
+    companyId: string,
+    userId: string,
+    fromDate: string,
+    toDate: string,
+    excludeSpecialPeriods: boolean = false
+  ): Promise<CashFlowData> {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.cashFlow.view');
 
     const effectiveFrom = fromDate || iso(new Date(new Date().getFullYear(), 0, 1));
@@ -139,8 +145,8 @@ export class GetCashFlowStatementUseCase {
       d.setDate(d.getDate() - 1);
       return iso(d);
     })();
-    const openingTB = await this.ledgerRepo.getTrialBalance(companyId, openingDate);
-    const closingTB = await this.ledgerRepo.getTrialBalance(companyId, effectiveTo);
+    const openingTB = await this.ledgerRepo.getTrialBalance(companyId, openingDate, excludeSpecialPeriods);
+    const closingTB = await this.ledgerRepo.getTrialBalance(companyId, effectiveTo, excludeSpecialPeriods);
     const tbMap = (tb: any[]) => {
       const m = new Map<string, { debit: number; credit: number }>();
       tb.forEach((r) => m.set(r.accountId, { debit: r.debit || 0, credit: r.credit || 0 }));

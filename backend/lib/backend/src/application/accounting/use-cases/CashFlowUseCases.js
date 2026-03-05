@@ -83,7 +83,7 @@ class GetCashFlowStatementUseCase {
         this.companyRepo = companyRepo;
         this.permissionChecker = permissionChecker;
     }
-    async execute(companyId, userId, fromDate, toDate) {
+    async execute(companyId, userId, fromDate, toDate, excludeSpecialPeriods = false) {
         var _a, _b, _c;
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.cashFlow.view');
         const effectiveFrom = fromDate || iso(new Date(new Date().getFullYear(), 0, 1));
@@ -98,8 +98,8 @@ class GetCashFlowStatementUseCase {
             d.setDate(d.getDate() - 1);
             return iso(d);
         })();
-        const openingTB = await this.ledgerRepo.getTrialBalance(companyId, openingDate);
-        const closingTB = await this.ledgerRepo.getTrialBalance(companyId, effectiveTo);
+        const openingTB = await this.ledgerRepo.getTrialBalance(companyId, openingDate, excludeSpecialPeriods);
+        const closingTB = await this.ledgerRepo.getTrialBalance(companyId, effectiveTo, excludeSpecialPeriods);
         const tbMap = (tb) => {
             const m = new Map();
             tb.forEach((r) => m.set(r.accountId, { debit: r.debit || 0, credit: r.credit || 0 }));

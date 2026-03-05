@@ -235,7 +235,7 @@ class CloseYearUseCase {
         const updatedFy = new FiscalYear_1.FiscalYear(fy.id, fy.companyId, fy.name, fy.startDate, fy.endDate, fy.status, fy.periods, voucher.id, // Set the closingVoucherId to our new Draft
         fy.createdAt, fy.createdBy, fy.periodScheme, fy.specialPeriodsCount);
         await this.transactionManager.runTransaction(async (tx) => {
-            await this.voucherRepo.save(voucher);
+            await this.voucherRepo.save(voucher, tx);
             await this.fiscalYearRepo.update(updatedFy);
         });
         return Object.assign({ voucherId: voucher.id }, summary);
@@ -270,7 +270,7 @@ class CommitYearCloseUseCase {
         // Finally, close the Fiscal Year strictly
         const closedFy = fy.closeYear(userId, posted.id);
         await this.transactionManager.runTransaction(async (tx) => {
-            await this.voucherRepo.save(posted);
+            await this.voucherRepo.save(posted, tx);
             await this.ledgerRepo.recordForVoucher(posted, tx);
             await this.fiscalYearRepo.update(closedFy);
         });
@@ -313,8 +313,8 @@ class ReopenYearUseCase {
         const updated = fy.reopenYear();
         await this.transactionManager.runTransaction(async (tx) => {
             if (reversalVoucher && originalVoucher) {
-                await this.voucherRepo.save(originalVoucher); // Save with isReversed flag from createReversal
-                await this.voucherRepo.save(reversalVoucher);
+                await this.voucherRepo.save(originalVoucher, tx); // Save with isReversed flag from createReversal
+                await this.voucherRepo.save(reversalVoucher, tx);
                 await this.ledgerRepo.recordForVoucher(reversalVoucher, tx);
             }
             await this.fiscalYearRepo.update(updated);

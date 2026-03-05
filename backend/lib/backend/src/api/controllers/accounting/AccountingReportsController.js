@@ -24,8 +24,9 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.unauthorized('User missing');
             const asOfDate = req.query.asOfDate || new Date().toISOString().split('T')[0];
             const includeZeroBalance = req.query.includeZeroBalance === 'true';
+            const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
             const useCase = new LedgerUseCases_1.GetTrialBalanceUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
-            const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance);
+            const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance, excludeSpecialPeriods);
             res.status(200).json({
                 success: true,
                 data: {
@@ -84,8 +85,9 @@ class AccountingReportsController {
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
             const asOfDate = req.query.asOfDate || new Date().toISOString().split('T')[0];
+            const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
             const useCase = new LedgerUseCases_1.GetBalanceSheetUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker, bindRepositories_1.diContainer.companyRepository);
-            const report = await useCase.execute(companyId, userId, asOfDate);
+            const report = await useCase.execute(companyId, userId, asOfDate, excludeSpecialPeriods);
             res.status(200).json({
                 success: true,
                 data: report,
@@ -108,18 +110,25 @@ class AccountingReportsController {
                 throw ApiError_1.ApiError.badRequest('Company Context Missing');
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
-            const { accountId, fromDate, toDate, includeUnposted } = req.query;
+            const { accountId, fromDate, toDate, includeUnposted, costCenterId, currency } = req.query;
             if (!accountId) {
                 return res.status(400).json({ error: 'accountId is required' });
             }
             const useCase = new LedgerUseCases_1.GetAccountStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, permissionChecker, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository);
-            const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '', { includeUnposted: includeUnposted === 'true' });
+            const options = {};
+            if (includeUnposted === 'true')
+                options.includeUnposted = true;
+            if (typeof costCenterId === 'string' && costCenterId.trim())
+                options.costCenterId = costCenterId.trim();
+            if (typeof currency === 'string' && currency.trim())
+                options.currency = currency.trim().toUpperCase();
+            const report = await useCase.execute(companyId, userId, accountId, fromDate || '', toDate || '', options);
             res.status(200).json({
                 success: true,
                 data: report,
                 meta: {
                     generatedAt: new Date().toISOString(),
-                    filters: { accountId, fromDate, toDate }
+                    filters: { accountId, fromDate, toDate, includeUnposted, costCenterId, currency }
                 }
             });
         }
@@ -183,8 +192,9 @@ class AccountingReportsController {
             if (!userId)
                 throw ApiError_1.ApiError.unauthorized('User missing');
             const { from, to } = req.query;
+            const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
             const useCase = new CashFlowUseCases_1.GetCashFlowStatementUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository, permissionChecker);
-            const data = await useCase.execute(companyId, userId, from || '', to || '');
+            const data = await useCase.execute(companyId, userId, from || '', to || '', excludeSpecialPeriods);
             res.status(200).json({ success: true, data });
         }
         catch (error) {

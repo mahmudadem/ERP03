@@ -31,6 +31,7 @@ export class AccountingReportsController {
 
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
       const includeZeroBalance = req.query.includeZeroBalance === 'true';
+      const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
 
       const useCase = new GetTrialBalanceUseCase(
         diContainer.ledgerRepository,
@@ -38,7 +39,13 @@ export class AccountingReportsController {
         permissionChecker
       );
 
-      const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance);
+      const result = await useCase.execute(
+        companyId,
+        userId,
+        asOfDate,
+        includeZeroBalance,
+        excludeSpecialPeriods
+      );
 
       (res as any).status(200).json({
         success: true,
@@ -104,6 +111,7 @@ export class AccountingReportsController {
       if (!userId) throw ApiError.unauthorized('User missing');
 
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
+      const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
       const useCase = new GetBalanceSheetUseCase(
         diContainer.ledgerRepository,
         diContainer.accountRepository,
@@ -111,7 +119,7 @@ export class AccountingReportsController {
         diContainer.companyRepository
       );
 
-      const report = await useCase.execute(companyId, userId, asOfDate);
+      const report = await useCase.execute(companyId, userId, asOfDate, excludeSpecialPeriods);
 
       (res as any).status(200).json({
         success: true,
@@ -133,7 +141,7 @@ export class AccountingReportsController {
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
 
-      const { accountId, fromDate, toDate, includeUnposted } = req.query;
+      const { accountId, fromDate, toDate, includeUnposted, costCenterId, currency } = req.query;
       if (!accountId) {
         return res.status(400).json({ error: 'accountId is required' });
       }
@@ -144,13 +152,18 @@ export class AccountingReportsController {
         diContainer.accountRepository,
         diContainer.companyRepository
       );
+      const options: { includeUnposted?: boolean; costCenterId?: string; currency?: string } = {};
+      if (includeUnposted === 'true') options.includeUnposted = true;
+      if (typeof costCenterId === 'string' && costCenterId.trim()) options.costCenterId = costCenterId.trim();
+      if (typeof currency === 'string' && currency.trim()) options.currency = currency.trim().toUpperCase();
+
       const report = await useCase.execute(
         companyId,
         userId,
         accountId as string,
         (fromDate as string) || '',
         (toDate as string) || '',
-        { includeUnposted: includeUnposted === 'true' }
+        options
       );
 
       (res as any).status(200).json({
@@ -158,7 +171,7 @@ export class AccountingReportsController {
         data: report,
         meta: {
           generatedAt: new Date().toISOString(),
-          filters: { accountId, fromDate, toDate }
+          filters: { accountId, fromDate, toDate, includeUnposted, costCenterId, currency }
         }
       });
     } catch (error) {
@@ -222,13 +235,20 @@ export class AccountingReportsController {
       if (!companyId) throw ApiError.badRequest('Company Context Missing');
       if (!userId) throw ApiError.unauthorized('User missing');
       const { from, to } = req.query;
+      const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
       const useCase = new GetCashFlowStatementUseCase(
         diContainer.ledgerRepository,
         diContainer.accountRepository,
         diContainer.companyRepository,
         permissionChecker
       );
-      const data = await useCase.execute(companyId, userId, (from as string) || '', (to as string) || '');
+      const data = await useCase.execute(
+        companyId,
+        userId,
+        (from as string) || '',
+        (to as string) || '',
+        excludeSpecialPeriods
+      );
       (res as any).status(200).json({ success: true, data });
     } catch (error) {
       next(error);

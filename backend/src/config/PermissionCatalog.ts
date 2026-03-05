@@ -25,6 +25,9 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             
             // Charts of Accounts
             { id: 'accounting.accounts.view', label: 'View Chart of Accounts' },
+            { id: 'accounting.accounts.create', label: 'Create Accounts' },
+            { id: 'accounting.accounts.edit', label: 'Edit Accounts' },
+            { id: 'accounting.accounts.delete', label: 'Delete Accounts' },
             { id: 'accounting.accounts.manage', label: 'Manage Chart of Accounts' },
             
             // Vouchers (General)
@@ -33,6 +36,10 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             { id: 'accounting.vouchers.edit', label: 'Edit Draft Vouchers' },
             { id: 'accounting.vouchers.delete', label: 'Delete Draft Vouchers' },
             { id: 'accounting.vouchers.post', label: 'Post Vouchers' }, // Force post permission
+            { id: 'accounting.vouchers.approve', label: 'Approve/Reject Vouchers' },
+            { id: 'accounting.vouchers.cancel', label: 'Cancel Vouchers' },
+            { id: 'accounting.vouchers.correct', label: 'Correct/Reverse Vouchers' },
+            { id: 'accounting.vouchers.lock', label: 'Lock Vouchers' },
             
             // Approval Workflow
             { id: 'accounting.approve.finance', label: 'Financial Approval' },
@@ -49,6 +56,16 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             
             // Reporting
             { id: 'accounting.reports.view', label: 'View Financial Reports' },
+            { id: 'accounting.reports.profitAndLoss.view', label: 'View Profit & Loss' },
+            { id: 'accounting.reports.tradingAccount.view', label: 'View Trading Account' },
+            { id: 'accounting.reports.trialBalance.view', label: 'View Trial Balance' },
+            { id: 'accounting.reports.balanceSheet.view', label: 'View Balance Sheet' },
+            { id: 'accounting.reports.cashFlow.view', label: 'View Cash Flow Statement' },
+            { id: 'accounting.reports.generalLedger.view', label: 'View General Ledger' },
+
+            // Settings
+            { id: 'accounting.settings.read', label: 'View Accounting Settings' },
+            { id: 'accounting.settings.write', label: 'Modify Accounting Settings' },
         ]
     },
     {
@@ -56,7 +73,9 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
         permissions: [
             { id: 'inventory.view', label: 'View Inventory Dashboard' },
             { id: 'inventory.items.view', label: 'View Items' },
+            { id: 'inventory.items.create', label: 'Create Items' },
             { id: 'inventory.items.manage', label: 'Manage Items' },
+            { id: 'inventory.warehouses.create', label: 'Create Warehouses' },
             { id: 'inventory.stock.adjust', label: 'Adjust Stock' },
         ]
     },
@@ -74,6 +93,7 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             { id: 'system.users.manage', label: 'Manage Users' },
             { id: 'system.roles.manage', label: 'Manage Roles' },
             { id: 'system.settings.manage', label: 'Manage Company Settings' },
+            { id: 'system.company.manage', label: 'Manage Company' },
         ]
     }
 ];

@@ -38,6 +38,7 @@ router.get('/accounts/valid', (0, permissionGuard_1.permissionGuard)('accounting
 router.get('/accounts/resolve/:code', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), AccountController_1.AccountController.resolveCode);
 router.get('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), AccountController_1.AccountController.getById);
 router.post('/accounts', (0, permissionGuard_1.permissionGuard)('accounting.accounts.create'), AccountController_1.AccountController.create);
+router.post('/accounts/batch-update-subgroups', (0, permissionGuard_1.permissionGuard)('accounting.accounts.edit'), AccountController_1.AccountController.batchUpdateSubgroups);
 router.put('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.edit'), AccountController_1.AccountController.update);
 router.delete('/accounts/:id', (0, permissionGuard_1.permissionGuard)('accounting.accounts.delete'), AccountController_1.AccountController.deactivate);
 // Vouchers
@@ -58,6 +59,7 @@ router.post('/vouchers/:id/reject', (0, permissionGuard_1.permissionGuard)('acco
 router.post('/vouchers/:id/cancel', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.cancel'), VoucherController_1.VoucherController.cancel);
 // Reports
 router.get('/reports/profit-loss', (0, permissionGuard_1.permissionGuard)('accounting.reports.profitAndLoss.view'), ReportingController_1.ReportingController.profitAndLoss);
+router.get('/reports/trading-account', (0, permissionGuard_1.permissionGuard)('accounting.reports.tradingAccount.view'), ReportingController_1.ReportingController.tradingAccount);
 router.get('/reports/balance-sheet', (0, permissionGuard_1.permissionGuard)('accounting.reports.balanceSheet.view'), AccountingReportsController_1.AccountingReportsController.getBalanceSheet);
 router.get('/reports/trial-balance', (0, permissionGuard_1.permissionGuard)('accounting.reports.trialBalance.view'), AccountingReportsController_1.AccountingReportsController.getTrialBalance);
 router.get('/reports/general-ledger', (0, permissionGuard_1.permissionGuard)('accounting.reports.generalLedger.view'), AccountingReportsController_1.AccountingReportsController.getGeneralLedger);

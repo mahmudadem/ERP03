@@ -18,16 +18,35 @@ class CurrencyPolicyRule {
         if (!lineCurrency) {
             return { valid: true };
         }
+        // Opt-in fixed-currency enforcement:
+        // only evaluate when both fixedCurrencyCode and lineCurrency are present.
+        const fixedCurrency = account.fixedCurrencyCode;
+        if (fixedCurrency && lineCurrency) {
+            const normalizedFixed = fixedCurrency.toUpperCase();
+            const normalizedLine = lineCurrency.toUpperCase();
+            const normalizedBase = (ctx.baseCurrency || '').toUpperCase();
+            if (normalizedLine !== normalizedFixed && normalizedLine !== normalizedBase) {
+                return {
+                    valid: false,
+                    reason: `Account "${account.userCode}" only accepts ${normalizedFixed} or base currency. Got: ${normalizedLine}.`,
+                    ruleName: this.name
+                };
+            }
+        }
         // Check based on currency policy
         switch (account.currencyPolicy) {
             case 'FIXED':
-                if (account.fixedCurrencyCode &&
-                    lineCurrency.toUpperCase() !== account.fixedCurrencyCode.toUpperCase()) {
-                    return {
-                        valid: false,
-                        reason: `Account "${account.userCode}" requires currency ${account.fixedCurrencyCode}, but transaction uses ${lineCurrency}.`,
-                        ruleName: this.name
-                    };
+                if (account.fixedCurrencyCode) {
+                    const normalizedFixed = account.fixedCurrencyCode.toUpperCase();
+                    const normalizedLine = lineCurrency.toUpperCase();
+                    const normalizedBase = (ctx.baseCurrency || '').toUpperCase();
+                    if (normalizedLine !== normalizedFixed && normalizedLine !== normalizedBase) {
+                        return {
+                            valid: false,
+                            reason: `Account "${account.userCode}" requires currency ${account.fixedCurrencyCode}, but transaction uses ${lineCurrency}.`,
+                            ruleName: this.name
+                        };
+                    }
                 }
                 break;
             case 'RESTRICTED':

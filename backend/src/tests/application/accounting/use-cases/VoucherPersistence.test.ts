@@ -1,6 +1,6 @@
 import { CreateVoucherUseCase, UpdateVoucherUseCase } from '../../../../application/accounting/use-cases/VoucherUseCases';
 import { VoucherEntity } from '../../../../domain/accounting/entities/VoucherEntity';
-import { VoucherStatus, VoucherType } from '../../../../domain/accounting/types/VoucherTypes';
+import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../../domain/accounting/types/VoucherTypes';
 import { VoucherLineEntity } from '../../../../domain/accounting/entities/VoucherLineEntity';
 
 // 1. Mock VoucherValidationService BEFORE import if possible, or use jest.mock
@@ -39,12 +39,26 @@ const mockAccountRepo: any = {
     isUsed: jest.fn().mockResolvedValue(true)
 };
 
+const mockLedgerRepo: any = {
+    deleteForVoucher: jest.fn().mockResolvedValue(undefined),
+    recordForVoucher: jest.fn().mockResolvedValue(undefined)
+};
+
+const mockPolicyConfig: any = {
+    getConfig: jest.fn().mockResolvedValue({
+        strictApprovalMode: false,
+        approvalRequired: false,
+        allowEditDeletePosted: true
+    })
+};
+
 const mockSettingsRepo: any = {
     getSettings: jest.fn().mockResolvedValue({ baseCurrency: 'USD', autoNumbering: false })
 };
 
+const mockTransaction: any = { id: 'tx-1' };
 const mockTransactionManager: any = {
-    runTransaction: jest.fn((cb) => cb({}))
+    runTransaction: jest.fn((cb) => cb(mockTransaction))
 };
 
 const mockVoucherTypeRepo: any = {
@@ -61,6 +75,20 @@ describe('Voucher Persistence Tests', () => {
         
         // Setup default mocks
         mockSettingsRepo.getSettings.mockResolvedValue({ baseCurrency: 'USD' });
+        mockPolicyConfig.getConfig.mockResolvedValue({
+            strictApprovalMode: false,
+            approvalRequired: false,
+            allowEditDeletePosted: true
+        });
+        mockAccountRepo.getById.mockImplementation(async (_companyId: string, accountId: string) => ({
+            id: accountId,
+            userCode: String(accountId).toUpperCase(),
+            name: 'Test Account',
+            accountRole: 'POSTING',
+            currencyPolicy: 'INHERIT',
+            status: 'ACTIVE',
+            setHasChildren: jest.fn()
+        }));
         
         createUseCase = new CreateVoucherUseCase(
             mockVoucherRepo,
@@ -109,6 +137,27 @@ describe('Voucher Persistence Tests', () => {
         expect(savedVoucher.postingPeriodNo).toBe(13);
     });
 
+    test('CreateVoucherUseCase passes transaction to save inside runTransaction', async () => {
+        const payload = {
+            companyId: 'c1',
+            voucherNo: 'V-002',
+            date: '2024-12-31',
+            type: VoucherType.JOURNAL_ENTRY,
+            description: 'Tx test',
+            currency: 'USD',
+            lines: [
+                { accountId: 'acc1', side: 'Debit', amount: 50 },
+                { accountId: 'acc2', side: 'Credit', amount: 50 }
+            ]
+        };
+
+        await createUseCase.execute('c1', 'user1', payload);
+
+        expect(mockVoucherRepo.save).toHaveBeenCalled();
+        const firstSaveCall = mockVoucherRepo.save.mock.calls[0];
+        expect(firstSaveCall[1]).toBe(mockTransaction);
+    });
+
     test('UpdateVoucherUseCase preserves/updates postingPeriodNo', async () => {
         // Arrange: Existing voucher
         const existingVoucher = new VoucherEntity(
@@ -130,7 +179,13 @@ describe('Voucher Persistence Tests', () => {
         mockVoucherRepo.findById.mockResolvedValue(existingVoucher);
 
         // Act: Update without changing period
-        await updateUseCase.execute('c1', 'user1', 'v1', { description: 'Updated' });
+        await updateUseCase.execute('c1', 'user1', 'v1', {
+            description: 'Updated',
+            lines: [
+                { accountId: 'acc1', side: 'Debit', amount: 100 },
+                { accountId: 'acc2', side: 'Credit', amount: 100 }
+            ]
+        });
 
         // Assert: Preserved
         expect(mockVoucherRepo.save).toHaveBeenCalled();
@@ -139,10 +194,57 @@ describe('Voucher Persistence Tests', () => {
 
         // Act 2: Update period
         mockVoucherRepo.save.mockClear();
-        await updateUseCase.execute('c1', 'user1', 'v1', { postingPeriodNo: 14 });
+        await updateUseCase.execute('c1', 'user1', 'v1', {
+            postingPeriodNo: 14,
+            lines: [
+                { accountId: 'acc1', side: 'Debit', amount: 100 },
+                { accountId: 'acc2', side: 'Credit', amount: 100 }
+            ]
+        });
         
         // Assert: Updated
         const updated2 = mockVoucherRepo.save.mock.calls[0][0];
         expect(updated2.postingPeriodNo).toBe(14);
+    });
+
+    test('UpdateVoucherUseCase posted refresh passes transaction to deleteForVoucher and save', async () => {
+        const approvedVoucher = new VoucherEntity(
+            'v-posted', 'c1', 'V-003', VoucherType.JOURNAL_ENTRY, '2024-12-31', 'Posted Voucher',
+            'USD', 'USD', 1,
+            [
+                new VoucherLineEntity(1, 'acc1', 'Debit', 100, 'USD', 100, 'USD', 1),
+                new VoucherLineEntity(2, 'acc2', 'Credit', 100, 'USD', 100, 'USD', 1)
+            ],
+            100, 100,
+            VoucherStatus.APPROVED,
+            {},
+            'user1', new Date(),
+            'user1', new Date()
+        );
+        const postedVoucher = approvedVoucher.post('user1', new Date(), PostingLockPolicy.FLEXIBLE_LOCKED);
+
+        mockVoucherRepo.findById.mockResolvedValue(postedVoucher);
+
+        const postedUpdateUseCase = new UpdateVoucherUseCase(
+            mockVoucherRepo,
+            mockAccountRepo,
+            mockPermissionChecker,
+            mockTransactionManager,
+            mockPolicyConfig,
+            mockLedgerRepo
+        );
+
+        await postedUpdateUseCase.execute('c1', 'user1', 'v-posted', {
+            description: 'Edited posted voucher',
+            lines: [
+                { accountId: 'acc1', side: 'Debit', amount: 100 },
+                { accountId: 'acc2', side: 'Credit', amount: 100 }
+            ]
+        });
+
+        expect(mockLedgerRepo.deleteForVoucher).toHaveBeenCalledWith('c1', 'v-posted', mockTransaction);
+        expect(mockVoucherRepo.save).toHaveBeenCalled();
+        const saveCall = mockVoucherRepo.save.mock.calls[0];
+        expect(saveCall[1]).toBe(mockTransaction);
     });
 });

@@ -4,6 +4,20 @@ import { ICompanyRepository } from '../../../repository/interfaces/core/ICompany
 import { getDefaultBalanceNature } from '../../../domain/accounting/entities/Account';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
 
+const toMillis = (value: any): number => {
+  if (!value) return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+const compareVoucherNo = (a: any, b: any) =>
+  String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+
 /**
  * DeleteVoucherLedgerUseCase
  * 
@@ -62,13 +76,14 @@ export class GetTrialBalanceUseCase {
     companyId: string,
     userId: string,
     asOfDate: string,
-    includeZeroBalance: boolean = false
+    includeZeroBalance: boolean = false,
+    excludeSpecialPeriods: boolean = false
   ): Promise<{ data: TrialBalanceLine[]; meta: TrialBalanceMeta }> {
     const effectiveDate = asOfDate || new Date().toISOString().split('T')[0];
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.trialBalance.view');
 
     const [rawTB, accounts] = await Promise.all([
-      this.ledgerRepo.getTrialBalance(companyId, effectiveDate),
+      this.ledgerRepo.getTrialBalance(companyId, effectiveDate, excludeSpecialPeriods),
       this.accountRepo.list(companyId)
     ]);
 
@@ -181,7 +196,14 @@ export class GetAccountStatementUseCase {
     private companyRepo?: ICompanyRepository
   ) {}
 
-  async execute(companyId: string, userId: string, accountId: string, fromDate: string, toDate: string, options?: { includeUnposted?: boolean }) {
+  async execute(
+    companyId: string,
+    userId: string,
+    accountId: string,
+    fromDate: string,
+    toDate: string,
+    options?: { includeUnposted?: boolean; costCenterId?: string; currency?: string }
+  ) {
     if (!accountId) {
       throw new Error('accountId is required');
     }
@@ -228,6 +250,7 @@ export class GetAccountStatementUseCase {
       (s.entries || []).map((entry: any) => ({
         id: entry.id,
         date: entry.date,
+        time: entry.time,
         voucherId: entry.voucherId,
         voucherNo: entry.voucherNo || entry.voucherId || '',
         description: entry.description || '',
@@ -238,11 +261,16 @@ export class GetAccountStatementUseCase {
     );
 
     flatEntries.sort((a, b) => {
-      if (a.date === b.date) {
-        if (a.voucherNo === b.voucherNo) return a.id.localeCompare(b.id);
-        return String(a.voucherNo).localeCompare(String(b.voucherNo));
-      }
-      return String(a.date).localeCompare(String(b.date));
+      const dateCmp = String(a.date || '').localeCompare(String(b.date || ''));
+      if (dateCmp !== 0) return dateCmp;
+
+      const timeCmp = toMillis(a.time) - toMillis(b.time);
+      if (timeCmp !== 0) return timeCmp;
+
+      const voucherCmp = compareVoucherNo(a.voucherNo, b.voucherNo);
+      if (voucherCmp !== 0) return voucherCmp;
+
+      return String(a.id || '').localeCompare(String(b.id || ''));
     });
 
     let running = openingBalance;
@@ -372,12 +400,17 @@ export class GetBalanceSheetUseCase {
     private companyRepo?: ICompanyRepository
   ) {}
 
-  async execute(companyId: string, userId: string, asOfDate: string): Promise<BalanceSheetData> {
+  async execute(
+    companyId: string,
+    userId: string,
+    asOfDate: string,
+    excludeSpecialPeriods: boolean = false
+  ): Promise<BalanceSheetData> {
     const effectiveDate = asOfDate || new Date().toISOString().split('T')[0];
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.reports.balanceSheet.view');
 
     const [trialBalance, accounts, company] = await Promise.all([
-      this.ledgerRepo.getTrialBalance(companyId, effectiveDate),
+      this.ledgerRepo.getTrialBalance(companyId, effectiveDate, excludeSpecialPeriods),
       this.accountRepo.list(companyId),
       this.companyRepo?.findById(companyId).catch(() => null)
     ]);
@@ -466,20 +499,33 @@ export class GetBalanceSheetUseCase {
       .filter((a) => a.classification === 'EXPENSE')
       .reduce((sum, acc) => sum + getNetBalance(acc), 0);
 
-    const retainedEarnings = revenueTotal - expenseTotal;
+    const isRetainedEarningsAccount = (acc: any) => {
+      // Primary: explicit tag for consistent classification
+      if (acc?.equitySubgroup === 'RETAINED_EARNINGS') return true;
+      // Fallback: keep legacy name-hint detection for untagged companies
+      const name = String(acc?.name || '').toLowerCase();
+      return ['retained earnings', 'retained earning', 'accumulated profit'].some((hint) => name.includes(hint));
+    };
+    const existingREBalance = accounts
+      .filter((a) => a.classification === 'EQUITY' && isRetainedEarningsAccount(a))
+      .reduce((sum, acc) => sum + getNetBalance(acc), 0);
+
+    const retainedEarnings = (revenueTotal - expenseTotal) - existingREBalance;
 
     const retainedLine: BalanceSheetLine = {
       accountId: 'retained-earnings',
       code: 'RE',
-      name: 'Retained Earnings',
+      name: 'Current Year Earnings (Unposted)',
       parentId: null,
       level: 0,
       balance: retainedEarnings,
       isParent: false
     };
 
-    equity.accounts = [...equity.accounts, retainedLine];
-    equity.total += retainedEarnings;
+    if (Math.abs(retainedEarnings) >= 0.005) {
+      equity.accounts = [...equity.accounts, retainedLine];
+      equity.total += retainedEarnings;
+    }
 
     const totalAssets = assets.total;
     const totalLiabilitiesAndEquity = liabilities.total + equity.total;
@@ -554,3 +600,11 @@ export class GetJournalUseCase {
     });
   }
 }
+
+/**
+ * FUTURE: GetTradingAccountUseCase
+ * 
+ * Trading Account = Net Sales - COGS = Gross Profit
+ * Requires: Revenue sub-classification (SALES vs COST_OF_SALES)
+ * See: FUTURE_TRADING_ACCOUNT.md
+ */

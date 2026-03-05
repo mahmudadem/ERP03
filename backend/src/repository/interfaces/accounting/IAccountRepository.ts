@@ -8,6 +8,8 @@
 import { Account, AccountClassification, AccountRole, AccountStatus, BalanceNature, BalanceEnforcement, CurrencyPolicy } from '../../../domain/accounting/models/Account';
 
 export type CashFlowCategory = 'OPERATING' | 'INVESTING' | 'FINANCING';
+export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES';
+export type EquitySubgroup = 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES';
 
 // ============================================================================
 // INPUT TYPES
@@ -34,6 +36,8 @@ export interface NewAccountInput {
   allowedCurrencyCodes?: string[];
   isProtected?: boolean;               // Default: false
   cashFlowCategory?: CashFlowCategory | null;
+  plSubgroup?: PlSubgroup | null;
+  equitySubgroup?: EquitySubgroup | null;
   
   // Approval Policy
   requiresApproval?: boolean;
@@ -69,6 +73,8 @@ export interface UpdateAccountInput {
   // System
   isProtected?: boolean;
   cashFlowCategory?: CashFlowCategory | null;
+  plSubgroup?: PlSubgroup | null;
+  equitySubgroup?: EquitySubgroup | null;
   
   // Approval Policy
   requiresApproval?: boolean;

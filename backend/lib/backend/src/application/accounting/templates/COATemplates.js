@@ -162,6 +162,7 @@ exports.StandardCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: true,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "30101",
@@ -169,6 +170,7 @@ exports.StandardCOA = [
         type: "equity",
         parentCode: "301",
         isProtected: false,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "30102",
@@ -184,6 +186,7 @@ exports.StandardCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     {
         code: "30201",
@@ -191,6 +194,7 @@ exports.StandardCOA = [
         type: "equity",
         parentCode: "302",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     // ========== REVENUE ==========
     {
@@ -207,6 +211,7 @@ exports.StandardCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: true,
+        plSubgroup: "SALES",
     },
     {
         code: "40101",
@@ -214,6 +219,7 @@ exports.StandardCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "40102",
@@ -221,6 +227,7 @@ exports.StandardCOA = [
         type: "revenue",
         parentCode: "401",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     // Retail Sales
     {
@@ -229,6 +236,7 @@ exports.StandardCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     {
         code: "40201",
@@ -236,6 +244,7 @@ exports.StandardCOA = [
         type: "revenue",
         parentCode: "402",
         isProtected: false,
+        plSubgroup: "SALES",
     },
     // ========== EXPENSES ==========
     {
@@ -252,6 +261,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "5",
         isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50101",
@@ -259,6 +269,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "50102",
@@ -266,6 +277,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "501",
         isProtected: false,
+        plSubgroup: "COST_OF_SALES",
     },
     // Operating Expenses
     {
@@ -274,6 +286,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "5",
         isProtected: true,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50201",
@@ -281,6 +294,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
     {
         code: "50202",
@@ -288,6 +302,7 @@ exports.StandardCOA = [
         type: "expense",
         parentCode: "502",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
 ];
 /**
@@ -367,6 +382,7 @@ exports.SimplifiedCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: true,
+        equitySubgroup: "CONTRIBUTED_CAPITAL",
     },
     {
         code: "302",
@@ -374,6 +390,7 @@ exports.SimplifiedCOA = [
         type: "equity",
         parentCode: "3",
         isProtected: false,
+        equitySubgroup: "RETAINED_EARNINGS",
     },
     // Revenue
     {
@@ -389,6 +406,7 @@ exports.SimplifiedCOA = [
         type: "revenue",
         parentCode: "4",
         isProtected: true,
+        plSubgroup: "SALES",
     },
     // Expenses
     {
@@ -404,6 +422,7 @@ exports.SimplifiedCOA = [
         type: "expense",
         parentCode: "5",
         isProtected: true,
+        plSubgroup: "COST_OF_SALES",
     },
     {
         code: "502",
@@ -411,6 +430,7 @@ exports.SimplifiedCOA = [
         type: "expense",
         parentCode: "5",
         isProtected: false,
+        plSubgroup: "OPERATING_EXPENSES",
     },
 ];
 //# sourceMappingURL=COATemplates.js.map

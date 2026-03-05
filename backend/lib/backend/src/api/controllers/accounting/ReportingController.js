@@ -4,6 +4,7 @@ exports.ReportingController = void 0;
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const LedgerUseCases_1 = require("../../../application/accounting/use-cases/LedgerUseCases");
 const GetProfitAndLossUseCase_1 = require("../../../application/reporting/use-cases/GetProfitAndLossUseCase");
+const GetTradingAccountUseCase_1 = require("../../../application/reporting/use-cases/GetTradingAccountUseCase");
 const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
 const GetCurrentUserPermissionsForCompanyUseCase_1 = require("../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase");
 const permissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
@@ -26,7 +27,7 @@ class ReportingController {
             const toDate = typeof req.query.to === 'string'
                 ? req.query.to
                 : new Date().toISOString().slice(0, 10);
-            const useCase = new GetProfitAndLossUseCase_1.GetProfitAndLossUseCase(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
+            const useCase = new GetProfitAndLossUseCase_1.GetProfitAndLossUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
             const data = await useCase.execute({
                 companyId,
                 userId,
@@ -41,14 +42,38 @@ class ReportingController {
             next(err);
         }
     }
+    static async tradingAccount(req, res, next) {
+        try {
+            const companyId = req.user.companyId;
+            const userId = req.user.uid;
+            const fromDate = typeof req.query.from === 'string'
+                ? req.query.from
+                : `${new Date().getFullYear()}-01-01`;
+            const toDate = typeof req.query.to === 'string'
+                ? req.query.to
+                : new Date().toISOString().slice(0, 10);
+            const useCase = new GetTradingAccountUseCase_1.GetTradingAccountUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
+            const data = await useCase.execute({
+                companyId,
+                userId,
+                fromDate,
+                toDate
+            });
+            res.json({ success: true, data });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
     static async trialBalance(req, res, next) {
         try {
             const companyId = req.user.companyId;
             const userId = req.user.uid;
             const asOfDate = String(req.query.asOfDate || new Date().toISOString().split('T')[0]);
             const includeZeroBalance = req.query.includeZeroBalance === 'true';
+            const excludeSpecialPeriods = req.query.excludeSpecialPeriods === 'true';
             const useCase = new LedgerUseCases_1.GetTrialBalanceUseCase(bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.accountRepository, permissionChecker);
-            const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance);
+            const result = await useCase.execute(companyId, userId, asOfDate, includeZeroBalance, excludeSpecialPeriods);
             res.json({ success: true, data: { rows: result.data, meta: result.meta } });
         }
         catch (err) {

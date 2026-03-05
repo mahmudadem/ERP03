@@ -14,6 +14,8 @@ export interface AccountValidationContext {
   voucherType?: string;
   lineType?: 'debit' | 'credit';
   amount?: number;
+  lineCurrency?: string;
+  baseCurrency?: string;
 }
 
 export interface ValidationResult {

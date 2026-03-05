@@ -148,6 +148,8 @@ export class FirestoreAccountRepository implements IAccountRepository {
         isProtected: data.isProtected ?? false,
         replacedByAccountId: null,
         cashFlowCategory: data.cashFlowCategory ?? null,
+        plSubgroup: data.plSubgroup ?? null,
+        equitySubgroup: data.equitySubgroup ?? null,
         createdAt: now,
         createdBy: data.createdBy,
         updatedAt: now,
@@ -208,6 +210,8 @@ export class FirestoreAccountRepository implements IAccountRepository {
       if (data.fixedCurrencyCode !== undefined) updateData.fixedCurrencyCode = data.fixedCurrencyCode || data.currency || null;
       if (data.allowedCurrencyCodes !== undefined) updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
       if (data.cashFlowCategory !== undefined) updateData.cashFlowCategory = data.cashFlowCategory;
+      if (data.plSubgroup !== undefined) updateData.plSubgroup = data.plSubgroup;
+      if (data.equitySubgroup !== undefined) updateData.equitySubgroup = data.equitySubgroup;
       
       if (data.requiresApproval !== undefined) updateData.requiresApproval = data.requiresApproval;
       if (data.requiresCustodyConfirmation !== undefined) updateData.requiresCustodyConfirmation = data.requiresCustodyConfirmation;
@@ -247,22 +251,32 @@ export class FirestoreAccountRepository implements IAccountRepository {
 
   async isUsed(companyId: string, accountId: string): Promise<boolean> {
     try {
-      const vouchersCol = this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('vouchers');
-      const vouchersSnap = await vouchersCol.limit(1).get();
-      
-      if (vouchersSnap.empty) {
-        return false;
-      }
-      
-      const allVouchers = await vouchersCol.get();
-      
-      for (const voucherDoc of allVouchers.docs) {
-        const linesSnap = await voucherDoc.ref.collection('lines').where('accountId', '==', accountId).limit(1).get();
-        if (!linesSnap.empty) {
+      const accountingDataRef = this.db
+        .collection('companies')
+        .doc(companyId)
+        .collection('accounting')
+        .doc('Data');
+
+      const ledgerSnap = await accountingDataRef
+        .collection('ledger')
+        .where('accountId', '==', accountId)
+        .limit(1)
+        .get();
+      if (!ledgerSnap.empty) return true;
+
+      const vouchersSnap = await accountingDataRef
+        .collection('vouchers')
+        .limit(500)
+        .get();
+
+      for (const voucherDoc of vouchersSnap.docs) {
+        const lines = voucherDoc.data()?.lines;
+        if (!Array.isArray(lines)) continue;
+        if (lines.some((line: any) => line?.accountId === accountId)) {
           return true;
         }
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error checking if account is used:', error);

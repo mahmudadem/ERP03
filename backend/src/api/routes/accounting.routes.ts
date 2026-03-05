@@ -37,6 +37,7 @@ router.get('/accounts/valid', permissionGuard('accounting.vouchers.create'), Acc
 router.get('/accounts/resolve/:code', permissionGuard('accounting.vouchers.create'), AccountController.resolveCode);
 router.get('/accounts/:id', permissionGuard('accounting.accounts.view'), AccountController.getById);
 router.post('/accounts', permissionGuard('accounting.accounts.create'), AccountController.create);
+router.post('/accounts/batch-update-subgroups', permissionGuard('accounting.accounts.edit'), AccountController.batchUpdateSubgroups);
 router.put('/accounts/:id', permissionGuard('accounting.accounts.edit'), AccountController.update);
 router.delete('/accounts/:id', permissionGuard('accounting.accounts.delete'), AccountController.deactivate);
 
@@ -62,6 +63,7 @@ router.post('/vouchers/:id/cancel', permissionGuard('accounting.vouchers.cancel'
 
 // Reports
 router.get('/reports/profit-loss', permissionGuard('accounting.reports.profitAndLoss.view'), ReportingController.profitAndLoss);
+router.get('/reports/trading-account', permissionGuard('accounting.reports.tradingAccount.view'), ReportingController.tradingAccount);
 router.get('/reports/balance-sheet', permissionGuard('accounting.reports.balanceSheet.view'), AccountingReportsController.getBalanceSheet);
 router.get('/reports/trial-balance', permissionGuard('accounting.reports.trialBalance.view'), AccountingReportsController.getTrialBalance);
 router.get('/reports/general-ledger', permissionGuard('accounting.reports.generalLedger.view'), AccountingReportsController.getGeneralLedger);

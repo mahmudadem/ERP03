@@ -11,6 +11,8 @@ export {
   BalanceEnforcement,
   AccountStatus,
   CurrencyPolicy,
+  PlSubgroup,
+  EquitySubgroup,
   AccountType,
   normalizeUserCode,
   validateUserCodeFormat,

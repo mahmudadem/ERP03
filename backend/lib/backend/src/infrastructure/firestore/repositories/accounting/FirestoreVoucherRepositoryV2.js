@@ -18,15 +18,21 @@ class FirestoreVoucherRepositoryV2 {
     getCollection(companyId) {
         return this.settingsResolver.getVouchersCollection(companyId);
     }
-    async save(voucher) {
+    async save(voucher, transaction) {
         const data = voucher.toJSON();
         // Maintain a search index for all currencies used in this voucher (header + lines)
         const currencies = new Set();
         currencies.add(voucher.currency.toUpperCase());
         voucher.lines.forEach(line => currencies.add(line.currency.toUpperCase()));
         data._allCurrencies = Array.from(currencies);
-        // Save to modular location only
-        await this.getCollection(voucher.companyId).doc(voucher.id).set(data, { merge: true });
+        const docRef = this.getCollection(voucher.companyId).doc(voucher.id);
+        if (transaction) {
+            transaction.set(docRef, data, { merge: true });
+        }
+        else {
+            // Save to modular location only
+            await docRef.set(data, { merge: true });
+        }
         return voucher;
     }
     async findById(companyId, voucherId) {

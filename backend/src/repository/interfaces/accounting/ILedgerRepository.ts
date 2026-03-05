@@ -31,6 +31,7 @@ export interface GLFilters {
 export interface AccountStatementEntry {
   id: string;
   date: string;
+  time?: string;
   voucherId: string;
   voucherNo: string;
   description: string;
@@ -75,7 +76,7 @@ export interface ILedgerRepository {
     accountId: string,
     fromDate: string,
     toDate: string,
-    options?: { includeUnposted?: boolean }
+    options?: { includeUnposted?: boolean; costCenterId?: string; currency?: string }
   ): Promise<AccountStatementData>;
   getUnreconciledEntries(
     companyId: string,

@@ -3,6 +3,16 @@
  * Prisma (SQL) implementation of ICompanyAdminRepository
  */
 
+/**
+ * SQL MIGRATION STATUS: NOT IMPLEMENTED
+ * 
+ * This repository is a placeholder for future SQL/PostgreSQL migration.
+ * Current production uses Firestore via the corresponding Firestore repository.
+ * 
+ * To activate: Set DB_TYPE=sql in .env and implement all methods with Prisma queries.
+ * See: backend/src/infrastructure/di/bindRepositories.ts for the toggling mechanism.
+ */
+
 import { ICompanyAdminRepository, UserInvitation, Invitation } from '../../../repository/interfaces/company-admin/ICompanyAdminRepository';
 import { Company } from '../../../domain/core/entities/Company';
 import { CompanyUser } from '../../../domain/rbac/CompanyUser';

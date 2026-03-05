@@ -96,6 +96,7 @@ export interface BalanceSheetData {
 export interface AccountStatementEntry {
   id: string;
   date: string;
+  time?: string;
   voucherId: string;
   voucherNo: string;
   description: string;
@@ -186,6 +187,8 @@ export interface AccountDTO {
   status: string;
   isProtected: boolean;
   replacedByAccountId?: string | null;
+  plSubgroup?: 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES' | null;
+  equitySubgroup?: 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES' | null;
   
   // Computed flags
   canPost?: boolean;
@@ -263,6 +266,16 @@ export const accountingApi = {
   
   getAccounts: (): Promise<AccountDTO[]> => {
     return client.get('/tenant/accounting/accounts');
+  },
+
+  batchUpdateSubgroups: (
+    updates: Array<{
+      accountId: string;
+      plSubgroup?: 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES' | null;
+      equitySubgroup?: 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES' | null;
+    }>
+  ): Promise<{ updated: number; errors: Array<{ accountId: string; error: string }> }> => {
+    return client.post('/tenant/accounting/accounts/batch-update-subgroups', { updates });
   },
 
   listVouchers: (filters: VoucherListFilters): Promise<VoucherListResponse> => {
@@ -371,6 +384,13 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/profit-loss?${params.toString()}`);
   },
 
+  getTradingAccount: (fromDate: string, toDate: string): Promise<any> => {
+    const params = new URLSearchParams();
+    params.append('from', fromDate);
+    params.append('to', toDate);
+    return client.get(`/tenant/accounting/reports/trading-account?${params.toString()}`);
+  },
+
   getBalanceSheet: (asOfDate?: string): Promise<BalanceSheetData> => {
     const params = new URLSearchParams();
     if (asOfDate) params.append('asOfDate', asOfDate);
@@ -398,11 +418,20 @@ export const accountingApi = {
     return client.get(`/tenant/accounting/reports/cost-center-summary?${params.toString()}`);
   },
 
-  getAccountStatement: (accountId: string, fromDate?: string, toDate?: string, includeUnposted?: boolean): Promise<AccountStatementData> => {
+  getAccountStatement: (
+    accountId: string,
+    fromDate?: string,
+    toDate?: string,
+    includeUnposted?: boolean,
+    costCenterId?: string,
+    currency?: string
+  ): Promise<AccountStatementData> => {
     const params: Record<string, any> = { accountId };
     if (fromDate) params.fromDate = fromDate;
     if (toDate) params.toDate = toDate;
     if (includeUnposted) params.includeUnposted = 'true';
+    if (costCenterId) params.costCenterId = costCenterId;
+    if (currency) params.currency = currency;
     return client
       .get('/tenant/accounting/reports/account-statement', { params })
       .then((r: any) => {

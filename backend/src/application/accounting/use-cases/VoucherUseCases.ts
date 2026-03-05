@@ -326,7 +326,11 @@ export class CreateVoucherUseCase {
             companyId,
             userId,
             line.accountId,
-            voucherType
+            voucherType,
+            {
+              lineCurrency: line.currency,
+              baseCurrency
+            }
           );
 
           if (account.id === line.accountId) {
@@ -360,11 +364,21 @@ export class CreateVoucherUseCase {
             );
           }
 
+          const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
+
           // Resolve Code to UUID for persistence
-          const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId);
+          const account = await accountValidationService.validateAccountById(
+            companyId,
+            userId,
+            l.accountId,
+            undefined,
+            {
+              lineCurrency,
+              baseCurrency
+            }
+          );
 
           const amount = Math.abs(Number(l.amount) || 0);
-          const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
           const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
           
           // MULTI-CURRENCY FIX: Use triangulation formula
@@ -477,7 +491,7 @@ export class CreateVoucherUseCase {
       // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
       this.validationService.validateCore(voucher);
 
-      await this.voucherRepo.save(voucher);
+      await this.voucherRepo.save(voucher, transaction);
 
       if (!approvalRequired && this.ledgerRepo) {
         // Flexible Mode (Mode A): Auto-approve, then post inline
@@ -502,7 +516,7 @@ export class CreateVoucherUseCase {
             
             if (isStrictNow) {
               lockPolicy = PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
-            } else if (config.allowEditPostedVouchersEnabled) {
+            } else if (config.allowEditDeletePosted) {
               lockPolicy = PostingLockPolicy.FLEXIBLE_EDITABLE;
             } else {
               lockPolicy = PostingLockPolicy.FLEXIBLE_LOCKED;
@@ -543,7 +557,7 @@ export class CreateVoucherUseCase {
         await ledgerRepo.recordForVoucher(postedVoucher, transaction);
         
         // 5. Persist the posted voucher
-        await this.voucherRepo.save(postedVoucher);
+        await this.voucherRepo.save(postedVoucher, transaction);
         
         return postedVoucher;
       }
@@ -660,7 +674,11 @@ export class UpdateVoucherUseCase {
           companyId,
           userId,
           line.accountId,
-          mergedVoucherType
+          mergedVoucherType,
+          {
+            lineCurrency: line.currency,
+            baseCurrency
+          }
         );
 
         if (account.id === line.accountId) return line;
@@ -684,14 +702,23 @@ export class UpdateVoucherUseCase {
 
       lines = await Promise.all(rawLines.map(async (l: any, idx: number) => {
         const originalLine = voucher.lines[idx];
+        const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
 
         // 1. Resolve Account ID (UUID)
         const inputAccountId = l.accountId ?? originalLine?.accountId;
-        const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
+        const account = await accountValidationService.validateAccountById(
+          companyId,
+          userId,
+          inputAccountId,
+          undefined,
+          {
+            lineCurrency: currency,
+            baseCurrency
+          }
+        );
 
         // 2. Resolve side and amounts (Handle 0 and field variations correctly)
         const side = l.side ?? originalLine?.side;
-        const currency = (l.currency ?? l.lineCurrency ?? originalLine?.currency ?? baseCurrency).toUpperCase();
         const amount = Number(l.amount ?? originalLine?.amount ?? 0);
 
         // 3. MULTI-CURRENCY FIX: Use triangulation formula
@@ -821,16 +848,16 @@ export class UpdateVoucherUseCase {
         if (!this.ledgerRepo) throw new Error('Ledger repository required for updating posted vouchers');
         
         // 1. Delete old ledger records
-        await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+        await this.ledgerRepo.deleteForVoucher(companyId, voucherId, transaction);
         
         // 2. Save updated voucher
-        await this.voucherRepo.save(updatedVoucher);
+        await this.voucherRepo.save(updatedVoucher, transaction);
         
         // 3. Re-record to ledger
         await this.ledgerRepo.recordForVoucher(updatedVoucher, transaction);
       } else {
         // Standard save
-        await this.voucherRepo.save(updatedVoucher);
+        await this.voucherRepo.save(updatedVoucher, transaction);
       }
     });
   }
@@ -1097,7 +1124,7 @@ export class PostVoucherUseCase {
             
             if (isStrictNow) {
               lockPolicy = PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
-            } else if (config.allowEditPostedVouchersEnabled) {
+            } else if (config.allowEditDeletePosted) {
               lockPolicy = PostingLockPolicy.FLEXIBLE_EDITABLE;
             } else {
               lockPolicy = PostingLockPolicy.FLEXIBLE_LOCKED;
@@ -1111,14 +1138,14 @@ export class PostVoucherUseCase {
         await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
 
         // 5. Finalizing persistence
-        await this.voucherRepo.save(postedVoucher);
+        await this.voucherRepo.save(postedVoucher, transaction);
 
         // EXTRA: If this is a reversal, officially mark the original as reversed
         if (postedVoucher.reversalOfVoucherId) {
           const originalVoucher = await this.voucherRepo.findById(companyId, postedVoucher.reversalOfVoucherId);
           if (originalVoucher) {
             const reversedOriginal = originalVoucher.markAsReversed(postedVoucher.id);
-            await this.voucherRepo.save(reversedOriginal);
+            await this.voucherRepo.save(reversedOriginal, transaction);
           }
         }
 

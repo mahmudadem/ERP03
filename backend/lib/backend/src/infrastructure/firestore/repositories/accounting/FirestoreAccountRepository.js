@@ -97,7 +97,7 @@ class FirestoreAccountRepository {
     // MUTATION METHODS
     // =========================================================================
     async create(companyId, data) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         try {
             const id = data.id || this.db.collection('tmp').doc().id;
             const systemCode = await this.generateNextSystemCode(companyId);
@@ -124,13 +124,15 @@ class FirestoreAccountRepository {
                 isProtected: (_c = data.isProtected) !== null && _c !== void 0 ? _c : false,
                 replacedByAccountId: null,
                 cashFlowCategory: (_d = data.cashFlowCategory) !== null && _d !== void 0 ? _d : null,
+                plSubgroup: (_e = data.plSubgroup) !== null && _e !== void 0 ? _e : null,
+                equitySubgroup: (_f = data.equitySubgroup) !== null && _f !== void 0 ? _f : null,
                 createdAt: now,
                 createdBy: data.createdBy,
                 updatedAt: now,
                 updatedBy: data.createdBy,
                 requiresApproval: data.requiresApproval || false,
                 requiresCustodyConfirmation: data.requiresCustodyConfirmation || false,
-                custodianUserId: (_e = data.custodianUserId) !== null && _e !== void 0 ? _e : null
+                custodianUserId: (_g = data.custodianUserId) !== null && _g !== void 0 ? _g : null
             });
             const errors = account.validate();
             if (errors.length > 0) {
@@ -192,6 +194,10 @@ class FirestoreAccountRepository {
                 updateData.allowedCurrencyCodes = data.allowedCurrencyCodes;
             if (data.cashFlowCategory !== undefined)
                 updateData.cashFlowCategory = data.cashFlowCategory;
+            if (data.plSubgroup !== undefined)
+                updateData.plSubgroup = data.plSubgroup;
+            if (data.equitySubgroup !== undefined)
+                updateData.equitySubgroup = data.equitySubgroup;
             if (data.requiresApproval !== undefined)
                 updateData.requiresApproval = data.requiresApproval;
             if (data.requiresCustodyConfirmation !== undefined)
@@ -229,16 +235,29 @@ class FirestoreAccountRepository {
     // VALIDATION/CHECK METHODS
     // =========================================================================
     async isUsed(companyId, accountId) {
+        var _a;
         try {
-            const vouchersCol = this.db.collection('companies').doc(companyId).collection('accounting').doc('Data').collection('vouchers');
-            const vouchersSnap = await vouchersCol.limit(1).get();
-            if (vouchersSnap.empty) {
-                return false;
-            }
-            const allVouchers = await vouchersCol.get();
-            for (const voucherDoc of allVouchers.docs) {
-                const linesSnap = await voucherDoc.ref.collection('lines').where('accountId', '==', accountId).limit(1).get();
-                if (!linesSnap.empty) {
+            const accountingDataRef = this.db
+                .collection('companies')
+                .doc(companyId)
+                .collection('accounting')
+                .doc('Data');
+            const ledgerSnap = await accountingDataRef
+                .collection('ledger')
+                .where('accountId', '==', accountId)
+                .limit(1)
+                .get();
+            if (!ledgerSnap.empty)
+                return true;
+            const vouchersSnap = await accountingDataRef
+                .collection('vouchers')
+                .limit(500)
+                .get();
+            for (const voucherDoc of vouchersSnap.docs) {
+                const lines = (_a = voucherDoc.data()) === null || _a === void 0 ? void 0 : _a.lines;
+                if (!Array.isArray(lines))
+                    continue;
+                if (lines.some((line) => (line === null || line === void 0 ? void 0 : line.accountId) === accountId)) {
                     return true;
                 }
             }

@@ -3,6 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaExchangeRateRepository = void 0;
 const ExchangeRate_1 = require("../../../domain/accounting/entities/ExchangeRate");
 /**
+ * SQL MIGRATION STATUS: NOT IMPLEMENTED
+ *
+ * This repository is part of the SQL/PostgreSQL migration path.
+ * Current production uses Firestore via the corresponding Firestore repository.
+ *
+ * To activate: Set DB_TYPE=sql in .env and verify all repository methods against domain behavior.
+ * See: backend/src/infrastructure/di/bindRepositories.ts for the toggling mechanism.
+ */
+/**
  * Prisma implementation of IExchangeRateRepository.
  *
  * Supports:

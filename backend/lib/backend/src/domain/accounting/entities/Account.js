@@ -102,7 +102,7 @@ function validateCurrencyPolicy(policy, fixedCurrencyCode, allowedCurrencyCodes)
 exports.validateCurrencyPolicy = validateCurrencyPolicy;
 class Account {
     constructor(props) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         // Runtime flags (computed, not persisted directly)
         this._hasChildren = false;
         this._isUsed = false;
@@ -132,13 +132,15 @@ class Account {
         this.isProtected = props.isProtected;
         this.replacedByAccountId = (_e = props.replacedByAccountId) !== null && _e !== void 0 ? _e : null;
         this.cashFlowCategory = (_f = props.cashFlowCategory) !== null && _f !== void 0 ? _f : null;
+        this.plSubgroup = (_g = props.plSubgroup) !== null && _g !== void 0 ? _g : null;
+        this.equitySubgroup = (_h = props.equitySubgroup) !== null && _h !== void 0 ? _h : null;
         // Audit
         this.updatedAt = props.updatedAt;
         this.updatedBy = props.updatedBy;
         // Legacy
-        this.requiresApproval = (_g = props.requiresApproval) !== null && _g !== void 0 ? _g : false;
-        this.requiresCustodyConfirmation = (_h = props.requiresCustodyConfirmation) !== null && _h !== void 0 ? _h : false;
-        this.custodianUserId = (_j = props.custodianUserId) !== null && _j !== void 0 ? _j : null;
+        this.requiresApproval = (_j = props.requiresApproval) !== null && _j !== void 0 ? _j : false;
+        this.requiresCustodyConfirmation = (_k = props.requiresCustodyConfirmation) !== null && _k !== void 0 ? _k : false;
+        this.custodianUserId = (_l = props.custodianUserId) !== null && _l !== void 0 ? _l : null;
     }
     // =========================================================================
     // COMPUTED PROPERTIES (Legacy compatibility)
@@ -225,7 +227,9 @@ class Account {
             'replacedByAccountId',
             'requiresApproval',
             'requiresCustodyConfirmation',
-            'custodianUserId'
+            'custodianUserId',
+            'plSubgroup',
+            'equitySubgroup'
         ];
     }
     /**
@@ -246,6 +250,24 @@ class Account {
         const currencyError = validateCurrencyPolicy(this.currencyPolicy, this.fixedCurrencyCode, this.allowedCurrencyCodes);
         if (currencyError)
             errors.push(currencyError);
+        // P&L subgroup validation
+        if (this.plSubgroup) {
+            const revenueSubgroups = ['SALES', 'OTHER_REVENUE'];
+            const expenseSubgroups = ['COST_OF_SALES', 'OPERATING_EXPENSES', 'OTHER_EXPENSES'];
+            if (this.classification === 'REVENUE' && !revenueSubgroups.includes(this.plSubgroup)) {
+                errors.push(`P&L Subgroup "${this.plSubgroup}" is not valid for Revenue accounts. Use: ${revenueSubgroups.join(', ')}.`);
+            }
+            if (this.classification === 'EXPENSE' && !expenseSubgroups.includes(this.plSubgroup)) {
+                errors.push(`P&L Subgroup "${this.plSubgroup}" is not valid for Expense accounts. Use: ${expenseSubgroups.join(', ')}.`);
+            }
+            if (['ASSET', 'LIABILITY', 'EQUITY'].includes(this.classification)) {
+                errors.push('P&L Subgroup only applies to Revenue and Expense accounts.');
+            }
+        }
+        // Equity subgroup validation
+        if (this.equitySubgroup && this.classification !== 'EQUITY') {
+            errors.push('Equity subgroup only applies to Equity accounts.');
+        }
         // Role vs children
         if (this._hasChildren && this.accountRole === 'POSTING') {
             errors.push('POSTING accounts cannot have children. Change to HEADER or remove children.');
@@ -281,14 +303,16 @@ class Account {
             requiresApproval: this.requiresApproval,
             requiresCustodyConfirmation: this.requiresCustodyConfirmation,
             custodianUserId: this.custodianUserId,
-            cashFlowCategory: this.cashFlowCategory
+            cashFlowCategory: this.cashFlowCategory,
+            plSubgroup: this.plSubgroup,
+            equitySubgroup: this.equitySubgroup
         };
     }
     /**
      * Create an Account from raw data (persistence)
      */
     static fromJSON(data) {
-        var _a, _b;
+        var _a, _b, _c, _d;
         return new Account({
             id: data.id,
             systemCode: data.systemCode || data.code || data.id,
@@ -308,6 +332,8 @@ class Account {
             isProtected: (_a = data.isProtected) !== null && _a !== void 0 ? _a : false,
             replacedByAccountId: data.replacedByAccountId,
             cashFlowCategory: (_b = data.cashFlowCategory) !== null && _b !== void 0 ? _b : null,
+            plSubgroup: (_c = data.plSubgroup) !== null && _c !== void 0 ? _c : null,
+            equitySubgroup: (_d = data.equitySubgroup) !== null && _d !== void 0 ? _d : null,
             createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt || Date.now()),
             createdBy: data.createdBy || 'SYSTEM',
             updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt || Date.now()),

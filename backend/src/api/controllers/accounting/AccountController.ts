@@ -158,6 +158,66 @@ export class AccountController {
     }
   }
 
+  static async batchUpdateSubgroups(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).user.companyId;
+      const userId = (req as any).user.uid;
+      const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
+
+      await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.edit');
+
+      const useCase = new UpdateAccountUseCase(
+        diContainer.accountRepository,
+        diContainer.companyRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      let updated = 0;
+      const errors: Array<{ accountId: string; error: string }> = [];
+
+      for (const item of updates) {
+        const accountId = String(item?.accountId || '').trim();
+        if (!accountId) {
+          errors.push({ accountId: '', error: 'accountId is required' });
+          continue;
+        }
+
+        const command: any = { updatedBy: userId };
+        if (Object.prototype.hasOwnProperty.call(item, 'plSubgroup')) {
+          command.plSubgroup = item.plSubgroup ?? null;
+        }
+        if (Object.prototype.hasOwnProperty.call(item, 'equitySubgroup')) {
+          command.equitySubgroup = item.equitySubgroup ?? null;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(item, 'plSubgroup') && !Object.prototype.hasOwnProperty.call(item, 'equitySubgroup')) {
+          errors.push({ accountId, error: 'No subgroup fields provided' });
+          continue;
+        }
+
+        try {
+          await useCase.execute(companyId, accountId, command);
+          updated += 1;
+        } catch (error: any) {
+          errors.push({
+            accountId,
+            error: error?.message || 'Unknown error'
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          updated,
+          errors
+        }
+      });
+    } catch (err) {
+      return next(err);
+    }
+  }
+
   static async deactivate(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = (req as any).user.companyId;

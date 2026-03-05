@@ -323,7 +323,10 @@ class CreateVoucherUseCase {
                 // Strategies may receive account codes from flexible/cloned forms.
                 const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
                 lines = await Promise.all(lines.map(async (line) => {
-                    const account = await accountValidationService.validateAccountById(companyId, userId, line.accountId, voucherType);
+                    const account = await accountValidationService.validateAccountById(companyId, userId, line.accountId, voucherType, {
+                        lineCurrency: line.currency,
+                        baseCurrency
+                    });
                     if (account.id === line.accountId) {
                         return line;
                     }
@@ -338,10 +341,13 @@ class CreateVoucherUseCase {
                     if (!l.side || l.amount === undefined) {
                         throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VAL_REQUIRED_FIELD, `Line ${idx + 1}: Missing required V2 fields: side, amount`);
                     }
-                    // Resolve Code to UUID for persistence
-                    const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId);
-                    const amount = Math.abs(Number(l.amount) || 0);
                     const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
+                    // Resolve Code to UUID for persistence
+                    const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId, undefined, {
+                        lineCurrency,
+                        baseCurrency
+                    });
+                    const amount = Math.abs(Number(l.amount) || 0);
                     const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
                     // MULTI-CURRENCY FIX: Use triangulation formula
                     // parity = rate from Line Currency → Voucher Currency (entered by user)
@@ -411,7 +417,7 @@ class CreateVoucherUseCase {
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
             this.validationService.validateCore(voucher);
-            await this.voucherRepo.save(voucher);
+            await this.voucherRepo.save(voucher, transaction);
             if (!approvalRequired && this.ledgerRepo) {
                 // Flexible Mode (Mode A): Auto-approve, then post inline
                 // Capturing ledgerRepo to satisfy TypeScript strict null checks across async calls
@@ -431,7 +437,7 @@ class CreateVoucherUseCase {
                         if (isStrictNow) {
                             lockPolicy = VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
                         }
-                        else if (config.allowEditPostedVouchersEnabled) {
+                        else if (config.allowEditDeletePosted) {
                             lockPolicy = VoucherTypes_1.PostingLockPolicy.FLEXIBLE_EDITABLE;
                         }
                         else {
@@ -469,7 +475,7 @@ class CreateVoucherUseCase {
                 // 4. Record to ledger using captured repo
                 await ledgerRepo.recordForVoucher(postedVoucher, transaction);
                 // 5. Persist the posted voucher
-                await this.voucherRepo.save(postedVoucher);
+                await this.voucherRepo.save(postedVoucher, transaction);
                 return postedVoucher;
             }
             return voucher;
@@ -562,7 +568,10 @@ class UpdateVoucherUseCase {
             lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
             // Normalize/validate strategy-produced account refs to persisted UUIDs.
             lines = await Promise.all(lines.map(async (line, idx) => {
-                const account = await accountValidationService.validateAccountById(companyId, userId, line.accountId, mergedVoucherType);
+                const account = await accountValidationService.validateAccountById(companyId, userId, line.accountId, mergedVoucherType, {
+                    lineCurrency: line.currency,
+                    baseCurrency
+                });
                 if (account.id === line.accountId)
                     return line;
                 return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, line.side, line.baseAmount, line.baseCurrency, line.amount, line.currency, line.exchangeRate, line.notes, line.costCenterId, line.metadata);
@@ -573,12 +582,15 @@ class UpdateVoucherUseCase {
             lines = await Promise.all(rawLines.map(async (l, idx) => {
                 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
                 const originalLine = voucher.lines[idx];
+                const currency = ((_c = (_b = (_a = l.currency) !== null && _a !== void 0 ? _a : l.lineCurrency) !== null && _b !== void 0 ? _b : originalLine === null || originalLine === void 0 ? void 0 : originalLine.currency) !== null && _c !== void 0 ? _c : baseCurrency).toUpperCase();
                 // 1. Resolve Account ID (UUID)
-                const inputAccountId = (_a = l.accountId) !== null && _a !== void 0 ? _a : originalLine === null || originalLine === void 0 ? void 0 : originalLine.accountId;
-                const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId);
+                const inputAccountId = (_d = l.accountId) !== null && _d !== void 0 ? _d : originalLine === null || originalLine === void 0 ? void 0 : originalLine.accountId;
+                const account = await accountValidationService.validateAccountById(companyId, userId, inputAccountId, undefined, {
+                    lineCurrency: currency,
+                    baseCurrency
+                });
                 // 2. Resolve side and amounts (Handle 0 and field variations correctly)
-                const side = (_b = l.side) !== null && _b !== void 0 ? _b : originalLine === null || originalLine === void 0 ? void 0 : originalLine.side;
-                const currency = ((_e = (_d = (_c = l.currency) !== null && _c !== void 0 ? _c : l.lineCurrency) !== null && _d !== void 0 ? _d : originalLine === null || originalLine === void 0 ? void 0 : originalLine.currency) !== null && _e !== void 0 ? _e : baseCurrency).toUpperCase();
+                const side = (_e = l.side) !== null && _e !== void 0 ? _e : originalLine === null || originalLine === void 0 ? void 0 : originalLine.side;
                 const amount = Number((_g = (_f = l.amount) !== null && _f !== void 0 ? _f : originalLine === null || originalLine === void 0 ? void 0 : originalLine.amount) !== null && _g !== void 0 ? _g : 0);
                 // 3. MULTI-CURRENCY FIX: Use triangulation formula
                 // parity = rate from Line Currency → Voucher Currency
@@ -648,15 +660,15 @@ class UpdateVoucherUseCase {
                 if (!this.ledgerRepo)
                     throw new Error('Ledger repository required for updating posted vouchers');
                 // 1. Delete old ledger records
-                await this.ledgerRepo.deleteForVoucher(companyId, voucherId);
+                await this.ledgerRepo.deleteForVoucher(companyId, voucherId, transaction);
                 // 2. Save updated voucher
-                await this.voucherRepo.save(updatedVoucher);
+                await this.voucherRepo.save(updatedVoucher, transaction);
                 // 3. Re-record to ledger
                 await this.ledgerRepo.recordForVoucher(updatedVoucher, transaction);
             }
             else {
                 // Standard save
-                await this.voucherRepo.save(updatedVoucher);
+                await this.voucherRepo.save(updatedVoucher, transaction);
             }
         });
     }
@@ -885,7 +897,7 @@ class PostVoucherUseCase {
                         if (isStrictNow) {
                             lockPolicy = VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED; // AUDIT LOCK
                         }
-                        else if (config.allowEditPostedVouchersEnabled) {
+                        else if (config.allowEditDeletePosted) {
                             lockPolicy = VoucherTypes_1.PostingLockPolicy.FLEXIBLE_EDITABLE;
                         }
                         else {
@@ -898,13 +910,13 @@ class PostVoucherUseCase {
                 // 4. Single Source of Truth: Record to Ledger
                 await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
                 // 5. Finalizing persistence
-                await this.voucherRepo.save(postedVoucher);
+                await this.voucherRepo.save(postedVoucher, transaction);
                 // EXTRA: If this is a reversal, officially mark the original as reversed
                 if (postedVoucher.reversalOfVoucherId) {
                     const originalVoucher = await this.voucherRepo.findById(companyId, postedVoucher.reversalOfVoucherId);
                     if (originalVoucher) {
                         const reversedOriginal = originalVoucher.markAsReversed(postedVoucher.id);
-                        await this.voucherRepo.save(reversedOriginal);
+                        await this.voucherRepo.save(reversedOriginal, transaction);
                     }
                 }
                 // Log success

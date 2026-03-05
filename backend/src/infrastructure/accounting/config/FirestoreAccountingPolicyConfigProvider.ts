@@ -52,6 +52,14 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
           ...(data.costCenterPolicy || {})
         }
       };
+
+      // Backward compat: map legacy key to canonical key when canonical is absent.
+      if (merged.allowEditPostedVouchersEnabled !== undefined && merged.allowEditDeletePosted === undefined) {
+        merged.allowEditDeletePosted = merged.allowEditPostedVouchersEnabled;
+      }
+
+      // CRITICAL: approval is required when either financial approval or custody confirmation is enabled.
+      merged.approvalRequired = !!(merged.financialApprovalEnabled || merged.custodyConfirmationEnabled);
       
       console.log('[PolicyConfigProvider] Merged config:', JSON.stringify(merged, null, 2));
       return merged;
@@ -68,7 +76,8 @@ export class FirestoreAccountingPolicyConfigProvider implements IAccountingPolic
       financialApprovalEnabled: false,
       faApplyMode: 'ALL',  // Default: apply to all vouchers when FA is ON
       custodyConfirmationEnabled: false,
-      approvalRequired: false,  // Legacy sync
+      // Derived: true if ANY gate (financial approval or custody confirmation) is enabled.
+      approvalRequired: false,  // Both gates default to false
       
       // Mode A Controls (V1)
       autoPostEnabled: true,                    // Default: auto-post when approved

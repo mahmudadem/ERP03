@@ -5,6 +5,16 @@ import {
 } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 
 /**
+ * SQL MIGRATION STATUS: NOT IMPLEMENTED
+ * 
+ * This repository is part of the SQL/PostgreSQL migration path.
+ * Current production uses Firestore via the corresponding Firestore repository.
+ * 
+ * To activate: Set DB_TYPE=sql in .env and verify all repository methods against domain behavior.
+ * See: backend/src/infrastructure/di/bindRepositories.ts for the toggling mechanism.
+ */
+
+/**
  * Prisma implementation of ICompanyCurrencyRepository.
  * Manages enabled currencies per company.
  * Rate storage is handled by IExchangeRateRepository.

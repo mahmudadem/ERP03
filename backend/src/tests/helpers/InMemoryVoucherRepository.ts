@@ -16,7 +16,7 @@ export class InMemoryVoucherRepository implements IVoucherRepository {
     return this.store.get(companyId)!;
   }
 
-  async save(voucher: VoucherEntity): Promise<VoucherEntity> {
+  async save(voucher: VoucherEntity, transaction?: any): Promise<VoucherEntity> {
     this.getCompanyMap(voucher.companyId).set(voucher.id, voucher);
     return voucher;
   }

@@ -19,7 +19,7 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     return this.settingsResolver.getVouchersCollection(companyId);
   }
 
-  async save(voucher: VoucherEntity): Promise<VoucherEntity> {
+  async save(voucher: VoucherEntity, transaction?: any): Promise<VoucherEntity> {
     const data = voucher.toJSON();
     
     // Maintain a search index for all currencies used in this voucher (header + lines)
@@ -28,8 +28,14 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
     voucher.lines.forEach(line => currencies.add(line.currency.toUpperCase()));
     data._allCurrencies = Array.from(currencies);
 
-    // Save to modular location only
-    await this.getCollection(voucher.companyId).doc(voucher.id).set(data, { merge: true });
+    const docRef = this.getCollection(voucher.companyId).doc(voucher.id);
+
+    if (transaction) {
+      transaction.set(docRef, data, { merge: true });
+    } else {
+      // Save to modular location only
+      await docRef.set(data, { merge: true });
+    }
     
     return voucher;
   }

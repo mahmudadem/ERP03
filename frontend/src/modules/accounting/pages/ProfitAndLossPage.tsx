@@ -15,6 +15,23 @@ interface ProfitAndLossParams {
   toDate: string;
 }
 
+interface StructuredProfitAndLoss {
+  netSales: number;
+  costOfSales: number;
+  grossProfit: number;
+  operatingExpenses: number;
+  operatingProfit: number;
+  otherRevenue: number;
+  otherExpenses: number;
+  salesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  cogsByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  opexByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  otherRevenueByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  otherExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  unclassifiedRevenueByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  unclassifiedExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+}
+
 interface ProfitAndLossData {
   revenue: number;
   expenses: number;
@@ -22,10 +39,13 @@ interface ProfitAndLossData {
   revenueByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
   expensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
   period: { from: string; to: string };
+  structured?: StructuredProfitAndLoss;
 }
 
 const moneyFmt = (value: number, currency: string) =>
   `${value.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${currency}`;
+
+const expenseFmt = (value: number, currency: string) => `(${moneyFmt(Math.abs(value), currency)})`;
 
 const ProfitAndLossInitiator: React.FC<{
   onSubmit: (params: ProfitAndLossParams) => void;
@@ -115,6 +135,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
   const [data, setData] = useState<ProfitAndLossData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailedView, setDetailedView] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -133,6 +154,12 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
     load();
   }, [params.fromDate, params.toDate, t]);
 
+  useEffect(() => {
+    if (!data?.structured) {
+      setDetailedView(false);
+    }
+  }, [data?.structured]);
+
   const periodFrom = data?.period?.from || params.fromDate;
   const periodTo = data?.period?.to || params.toDate;
   const periodText = t('profitLoss.periodLabel', {
@@ -144,6 +171,8 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
     if (!data || data.revenue === 0) return 0;
     return (data.netProfit / data.revenue) * 100;
   }, [data]);
+
+  const hasStructured = !!data?.structured;
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -174,49 +203,266 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
           </div>
         ) : data ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.totalRevenue')}</div>
-                <div className="text-2xl font-bold text-emerald-700">{moneyFmt(data.revenue, currency)}</div>
+            {hasStructured && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setDetailedView((prev) => !prev)}
+                  className="text-xs font-bold uppercase tracking-widest px-3 py-2 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
+                >
+                  {detailedView ? 'Summary View' : 'Detailed View'}
+                </button>
               </div>
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.totalExpenses')}</div>
-                <div className="text-2xl font-bold text-rose-700">{moneyFmt(data.expenses, currency)}</div>
-              </div>
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">
-                  {data.netProfit >= 0 ? t('profitLoss.netProfit') : t('profitLoss.netLoss')}
-                </div>
-                <div className={`text-2xl font-bold ${data.netProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
-                  {moneyFmt(Math.abs(data.netProfit), currency)}
-                </div>
-              </div>
-              <div className="bg-white border rounded-xl p-4 shadow-sm">
-                <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.margin')}</div>
-                <div className="text-2xl font-bold text-slate-900">{isFinite(margin) ? margin.toFixed(2) : '0.00'}%</div>
-              </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <BreakdownCard
-                title={t('profitLoss.revenueBreakdown')}
-                rows={data.revenueByAccount}
-                totalLabel={t('profitLoss.total')}
-                total={data.revenue}
-                emptyLabel={t('profitLoss.noRevenue')}
-                totalClassName="text-emerald-700"
-                currency={currency}
-              />
-              <BreakdownCard
-                title={t('profitLoss.expenseBreakdown')}
-                rows={data.expensesByAccount}
-                totalLabel={t('profitLoss.total')}
-                total={data.expenses}
-                emptyLabel={t('profitLoss.noExpense')}
-                totalClassName="text-rose-700"
-                currency={currency}
-              />
-            </div>
+            {data.structured ? (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Net Sales</div>
+                  <div className="text-2xl font-bold text-emerald-700">{moneyFmt(data.structured.netSales, currency)}</div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">COGS</div>
+                  <div className="text-2xl font-bold text-rose-700">{moneyFmt(data.structured.costOfSales, currency)}</div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Gross Profit</div>
+                  <div className={`text-2xl font-bold ${data.structured.grossProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                    {moneyFmt(Math.abs(data.structured.grossProfit), currency)}
+                  </div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Operating Profit</div>
+                  <div className={`text-2xl font-bold ${data.structured.operatingProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                    {moneyFmt(Math.abs(data.structured.operatingProfit), currency)}
+                  </div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {data.netProfit >= 0 ? t('profitLoss.netProfit') : t('profitLoss.netLoss')}
+                  </div>
+                  <div className={`text-2xl font-bold ${data.netProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                    {moneyFmt(Math.abs(data.netProfit), currency)}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.totalRevenue')}</div>
+                  <div className="text-2xl font-bold text-emerald-700">{moneyFmt(data.revenue, currency)}</div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.totalExpenses')}</div>
+                  <div className="text-2xl font-bold text-rose-700">{moneyFmt(data.expenses, currency)}</div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {data.netProfit >= 0 ? t('profitLoss.netProfit') : t('profitLoss.netLoss')}
+                  </div>
+                  <div className={`text-2xl font-bold ${data.netProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                    {moneyFmt(Math.abs(data.netProfit), currency)}
+                  </div>
+                </div>
+                <div className="bg-white border rounded-xl p-4 shadow-sm">
+                  <div className="text-xs text-slate-500 uppercase font-semibold">{t('profitLoss.margin')}</div>
+                  <div className="text-2xl font-bold text-slate-900">{isFinite(margin) ? margin.toFixed(2) : '0.00'}%</div>
+                </div>
+              </div>
+            )}
+
+            {data.structured && detailedView ? (
+              <>
+                <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="font-semibold text-slate-900">Net Sales</span>
+                      <span className="font-mono font-bold text-emerald-700">{moneyFmt(data.structured.netSales, currency)}</span>
+                    </div>
+                    {data.structured.salesByAccount.length > 0 && (
+                      <div className="pl-4 mt-2 space-y-1">
+                        {data.structured.salesByAccount.map((row, index) => (
+                          <div key={`${row.accountId}-${index}`} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">{row.accountName || row.accountId}</span>
+                            <span className="font-mono text-emerald-700">{moneyFmt(row.amount, currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="font-semibold text-slate-900">Cost of Sales</span>
+                      <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.costOfSales, currency)}</span>
+                    </div>
+                    {data.structured.cogsByAccount.length > 0 && (
+                      <div className="pl-4 mt-2 space-y-1">
+                        {data.structured.cogsByAccount.map((row, index) => (
+                          <div key={`${row.accountId}-${index}`} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">{row.accountName || row.accountId}</span>
+                            <span className="font-mono text-rose-700">{expenseFmt(row.amount, currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between">
+                    <span className="text-base font-bold text-slate-900">Gross Profit</span>
+                    <span className={`font-mono text-xl font-bold ${data.structured.grossProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                      {moneyFmt(Math.abs(data.structured.grossProfit), currency)}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3">
+                    <div className="flex items-center justify-between py-1">
+                      <span className="font-semibold text-slate-900">Operating Expenses</span>
+                      <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.operatingExpenses, currency)}</span>
+                    </div>
+                    {data.structured.opexByAccount.length > 0 && (
+                      <div className="pl-4 mt-2 space-y-1">
+                        {data.structured.opexByAccount.map((row, index) => (
+                          <div key={`${row.accountId}-${index}`} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">{row.accountName || row.accountId}</span>
+                            <span className="font-mono text-rose-700">{expenseFmt(row.amount, currency)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between">
+                    <span className="text-base font-bold text-slate-900">Operating Profit</span>
+                    <span className={`font-mono text-xl font-bold ${data.structured.operatingProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                      {moneyFmt(Math.abs(data.structured.operatingProfit), currency)}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900">Other Revenue</span>
+                      <span className="font-mono font-bold text-emerald-700">{moneyFmt(data.structured.otherRevenue, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900">Other Expenses</span>
+                      <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.otherExpenses, currency)}</span>
+                    </div>
+                    {data.structured.unclassifiedRevenueByAccount.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-900">Unclassified Revenue</span>
+                        <span className="font-mono font-bold text-emerald-700">
+                          {moneyFmt(data.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0), currency)}
+                        </span>
+                      </div>
+                    )}
+                    {data.structured.unclassifiedExpensesByAccount.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-900">Unclassified Expenses</span>
+                        <span className="font-mono font-bold text-rose-700">
+                          {expenseFmt(data.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0), currency)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-300 pt-3 flex items-center justify-between">
+                    <span className="text-lg font-black text-slate-900">Net Profit</span>
+                    <span className={`font-mono text-2xl font-black ${data.netProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                      {moneyFmt(Math.abs(data.netProfit), currency)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <BreakdownCard
+                    title="Sales Breakdown"
+                    rows={data.structured.salesByAccount}
+                    totalLabel="Net Sales"
+                    total={data.structured.netSales}
+                    emptyLabel="No sales accounts"
+                    totalClassName="text-emerald-700"
+                    currency={currency}
+                  />
+                  <BreakdownCard
+                    title="Cost of Sales Breakdown"
+                    rows={data.structured.cogsByAccount}
+                    totalLabel="Cost of Sales"
+                    total={data.structured.costOfSales}
+                    emptyLabel="No COGS accounts"
+                    totalClassName="text-rose-700"
+                    currency={currency}
+                  />
+                  <BreakdownCard
+                    title="Operating Expenses Breakdown"
+                    rows={data.structured.opexByAccount}
+                    totalLabel="Operating Expenses"
+                    total={data.structured.operatingExpenses}
+                    emptyLabel="No operating expense accounts"
+                    totalClassName="text-rose-700"
+                    currency={currency}
+                  />
+                  <BreakdownCard
+                    title="Other Revenue Breakdown"
+                    rows={data.structured.otherRevenueByAccount}
+                    totalLabel="Other Revenue"
+                    total={data.structured.otherRevenue}
+                    emptyLabel="No other revenue accounts"
+                    totalClassName="text-emerald-700"
+                    currency={currency}
+                  />
+                  <BreakdownCard
+                    title="Other Expenses Breakdown"
+                    rows={data.structured.otherExpensesByAccount}
+                    totalLabel="Other Expenses"
+                    total={data.structured.otherExpenses}
+                    emptyLabel="No other expense accounts"
+                    totalClassName="text-rose-700"
+                    currency={currency}
+                  />
+                  {(data.structured.unclassifiedRevenueByAccount.length > 0 || data.structured.unclassifiedExpensesByAccount.length > 0) && (
+                    <BreakdownCard
+                      title="Unclassified Accounts"
+                      rows={[
+                        ...data.structured.unclassifiedRevenueByAccount,
+                        ...data.structured.unclassifiedExpensesByAccount.map((row) => ({
+                          ...row,
+                          amount: -Math.abs(row.amount),
+                        })),
+                      ]}
+                      totalLabel="Net Unclassified Impact"
+                      total={
+                        data.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0) -
+                        data.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0)
+                      }
+                      emptyLabel="No unclassified accounts"
+                      totalClassName="text-slate-700"
+                      currency={currency}
+                    />
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BreakdownCard
+                  title={t('profitLoss.revenueBreakdown')}
+                  rows={data.revenueByAccount}
+                  totalLabel={t('profitLoss.total')}
+                  total={data.revenue}
+                  emptyLabel={t('profitLoss.noRevenue')}
+                  totalClassName="text-emerald-700"
+                  currency={currency}
+                />
+                <BreakdownCard
+                  title={t('profitLoss.expenseBreakdown')}
+                  rows={data.expensesByAccount}
+                  totalLabel={t('profitLoss.total')}
+                  total={data.expenses}
+                  emptyLabel={t('profitLoss.noExpense')}
+                  totalClassName="text-rose-700"
+                  currency={currency}
+                />
+              </div>
+            )}
           </>
         ) : (
           <div className="bg-white border rounded-xl p-6 shadow-sm text-slate-500">{t('profitLoss.loading')}</div>
@@ -233,15 +479,64 @@ const ProfitAndLossPage: React.FC = () => {
   const handleExportExcel = async (params: ProfitAndLossParams) => {
     const response: ProfitAndLossData = await accountingApi.getProfitAndLoss(params.fromDate, params.toDate);
     const rows: any[] = [];
-    response.revenueByAccount.forEach((acc) =>
-      rows.push({ section: t('profitLoss.revenue'), account: acc.accountName || acc.accountId, amount: acc.amount })
-    );
-    rows.push({ section: t('profitLoss.revenue'), account: t('profitLoss.totalRevenue'), amount: response.revenue });
-    response.expensesByAccount.forEach((acc) =>
-      rows.push({ section: t('profitLoss.expenses'), account: acc.accountName || acc.accountId, amount: acc.amount })
-    );
-    rows.push({ section: t('profitLoss.expenses'), account: t('profitLoss.totalExpenses'), amount: response.expenses });
-    rows.push({ section: t('profitLoss.net'), account: t('profitLoss.netProfitLoss'), amount: response.netProfit });
+
+    if (response.structured) {
+      const pushSection = (
+        section: string,
+        sectionRows: Array<{ accountId: string; accountName: string; amount: number }>,
+        subtotalLabel: string,
+        subtotalValue: number
+      ) => {
+        sectionRows.forEach((acc) =>
+          rows.push({ section, account: acc.accountName || acc.accountId, amount: acc.amount })
+        );
+        rows.push({ section, account: subtotalLabel, amount: subtotalValue });
+      };
+
+      pushSection('Net Sales', response.structured.salesByAccount, 'Net Sales Total', response.structured.netSales);
+      pushSection('Cost of Sales', response.structured.cogsByAccount, 'Cost of Sales Total', response.structured.costOfSales);
+      rows.push({ section: 'Summary', account: 'Gross Profit', amount: response.structured.grossProfit });
+
+      pushSection(
+        'Operating Expenses',
+        response.structured.opexByAccount,
+        'Operating Expenses Total',
+        response.structured.operatingExpenses
+      );
+      rows.push({ section: 'Summary', account: 'Operating Profit', amount: response.structured.operatingProfit });
+
+      pushSection('Other Revenue', response.structured.otherRevenueByAccount, 'Other Revenue Total', response.structured.otherRevenue);
+      pushSection('Other Expenses', response.structured.otherExpensesByAccount, 'Other Expenses Total', response.structured.otherExpenses);
+
+      if (response.structured.unclassifiedRevenueByAccount.length > 0) {
+        pushSection(
+          'Unclassified Revenue',
+          response.structured.unclassifiedRevenueByAccount,
+          'Unclassified Revenue Total',
+          response.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0)
+        );
+      }
+      if (response.structured.unclassifiedExpensesByAccount.length > 0) {
+        pushSection(
+          'Unclassified Expenses',
+          response.structured.unclassifiedExpensesByAccount,
+          'Unclassified Expenses Total',
+          response.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0)
+        );
+      }
+
+      rows.push({ section: 'Summary', account: 'Net Profit', amount: response.netProfit });
+    } else {
+      response.revenueByAccount.forEach((acc) =>
+        rows.push({ section: t('profitLoss.revenue'), account: acc.accountName || acc.accountId, amount: acc.amount })
+      );
+      rows.push({ section: t('profitLoss.revenue'), account: t('profitLoss.totalRevenue'), amount: response.revenue });
+      response.expensesByAccount.forEach((acc) =>
+        rows.push({ section: t('profitLoss.expenses'), account: acc.accountName || acc.accountId, amount: acc.amount })
+      );
+      rows.push({ section: t('profitLoss.expenses'), account: t('profitLoss.totalExpenses'), amount: response.expenses });
+      rows.push({ section: t('profitLoss.net'), account: t('profitLoss.netProfitLoss'), amount: response.netProfit });
+    }
 
     await exportToExcel(
       rows,

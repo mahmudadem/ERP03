@@ -159,6 +159,7 @@ const AccountingDashboard: React.FC = () => {
                   { label: 'Trial Balance', path: '/accounting/reports/trial-balance' },
                   { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet' },
                   { label: 'Profit & Loss', path: '/accounting/reports/profit-loss' },
+                  { label: 'Trading Account', path: '/accounting/reports/trading-account' },
                   { label: 'Account Statement', path: '/accounting/reports/account-statement' },
                   { label: 'Aging Report', path: '/accounting/reports/aging' },
                 ].map(report => (

@@ -15,6 +15,8 @@ export type BalanceEnforcement = 'ALLOW_ABNORMAL' | 'WARN_ABNORMAL' | 'BLOCK_ABN
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 export type CurrencyPolicy = 'INHERIT' | 'FIXED' | 'OPEN' | 'RESTRICTED';
 export type CashFlowCategory = 'OPERATING' | 'INVESTING' | 'FINANCING';
+export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES';
+export type EquitySubgroup = 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES';
 
 // Main Account Entity
 export interface Account {
@@ -48,6 +50,8 @@ export interface Account {
     isProtected: boolean;
     replacedByAccountId?: string | null;
     cashFlowCategory?: CashFlowCategory | null;
+    plSubgroup?: PlSubgroup | null;
+    equitySubgroup?: EquitySubgroup | null;
     
     // Computed Flags
     isUsed?: boolean;
@@ -88,6 +92,8 @@ export interface NewAccountInput {
     fixedCurrencyCode?: string | null;
     allowedCurrencyCodes?: string[];
     cashFlowCategory?: CashFlowCategory | null;
+    plSubgroup?: PlSubgroup | null;
+    equitySubgroup?: EquitySubgroup | null;
     
     // Approval Policy
     requiresApproval?: boolean;
@@ -118,6 +124,8 @@ export interface UpdateAccountInput {
     allowedCurrencyCodes?: string[];
     replacedByAccountId?: string | null;
     cashFlowCategory?: CashFlowCategory | null;
+    plSubgroup?: PlSubgroup | null;
+    equitySubgroup?: EquitySubgroup | null;
     
     // Approval Policy
     requiresApproval?: boolean;

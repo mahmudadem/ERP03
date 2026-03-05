@@ -22,7 +22,7 @@ export interface IVoucherRepository {
    * @param voucher Voucher entity to save
    * @returns The saved voucher (with any DB-generated fields)
    */
-  save(voucher: VoucherEntity): Promise<VoucherEntity>;
+  save(voucher: VoucherEntity, transaction?: any): Promise<VoucherEntity>;
 
   /**
    * Find voucher by ID

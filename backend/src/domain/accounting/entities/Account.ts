@@ -15,6 +15,8 @@ export type BalanceNature = 'DEBIT' | 'CREDIT' | 'BOTH';
 export type BalanceEnforcement = 'ALLOW_ABNORMAL' | 'WARN_ABNORMAL' | 'BLOCK_ABNORMAL';
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 export type CurrencyPolicy = 'INHERIT' | 'FIXED' | 'OPEN' | 'RESTRICTED';
+export type PlSubgroup = 'SALES' | 'COST_OF_SALES' | 'OPERATING_EXPENSES' | 'OTHER_REVENUE' | 'OTHER_EXPENSES';
+export type EquitySubgroup = 'RETAINED_EARNINGS' | 'CONTRIBUTED_CAPITAL' | 'RESERVES';
 
 // Legacy compatibility - map to new enum
 export type AccountType = AccountClassification;
@@ -152,6 +154,8 @@ export interface AccountProps {
   isProtected: boolean;
   replacedByAccountId?: string | null;
   cashFlowCategory?: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+  plSubgroup?: PlSubgroup | null;
+  equitySubgroup?: EquitySubgroup | null;
   
   // Audit
   createdAt: Date;
@@ -197,6 +201,8 @@ export class Account {
   isProtected: boolean;
   replacedByAccountId: string | null;
   cashFlowCategory: 'OPERATING' | 'INVESTING' | 'FINANCING' | null;
+  plSubgroup: PlSubgroup | null;
+  equitySubgroup: EquitySubgroup | null;
   
   // Audit
   updatedAt: Date;
@@ -243,6 +249,8 @@ export class Account {
     this.isProtected = props.isProtected;
     this.replacedByAccountId = props.replacedByAccountId ?? null;
     this.cashFlowCategory = props.cashFlowCategory ?? null;
+    this.plSubgroup = props.plSubgroup ?? null;
+    this.equitySubgroup = props.equitySubgroup ?? null;
     
     // Audit
     this.updatedAt = props.updatedAt;
@@ -356,7 +364,9 @@ export class Account {
       'replacedByAccountId',
       'requiresApproval',
       'requiresCustodyConfirmation',
-      'custodianUserId'
+      'custodianUserId',
+      'plSubgroup',
+      'equitySubgroup'
     ];
   }
   
@@ -382,6 +392,27 @@ export class Account {
       this.allowedCurrencyCodes
     );
     if (currencyError) errors.push(currencyError);
+
+    // P&L subgroup validation
+    if (this.plSubgroup) {
+      const revenueSubgroups: PlSubgroup[] = ['SALES', 'OTHER_REVENUE'];
+      const expenseSubgroups: PlSubgroup[] = ['COST_OF_SALES', 'OPERATING_EXPENSES', 'OTHER_EXPENSES'];
+
+      if (this.classification === 'REVENUE' && !revenueSubgroups.includes(this.plSubgroup)) {
+        errors.push(`P&L Subgroup "${this.plSubgroup}" is not valid for Revenue accounts. Use: ${revenueSubgroups.join(', ')}.`);
+      }
+      if (this.classification === 'EXPENSE' && !expenseSubgroups.includes(this.plSubgroup)) {
+        errors.push(`P&L Subgroup "${this.plSubgroup}" is not valid for Expense accounts. Use: ${expenseSubgroups.join(', ')}.`);
+      }
+      if (['ASSET', 'LIABILITY', 'EQUITY'].includes(this.classification)) {
+        errors.push('P&L Subgroup only applies to Revenue and Expense accounts.');
+      }
+    }
+
+    // Equity subgroup validation
+    if (this.equitySubgroup && this.classification !== 'EQUITY') {
+      errors.push('Equity subgroup only applies to Equity accounts.');
+    }
     
     // Role vs children
     if (this._hasChildren && this.accountRole === 'POSTING') {
@@ -420,7 +451,9 @@ export class Account {
       requiresApproval: this.requiresApproval,
       requiresCustodyConfirmation: this.requiresCustodyConfirmation,
       custodianUserId: this.custodianUserId,
-      cashFlowCategory: this.cashFlowCategory
+      cashFlowCategory: this.cashFlowCategory,
+      plSubgroup: this.plSubgroup,
+      equitySubgroup: this.equitySubgroup
     };
   }
   
@@ -449,6 +482,8 @@ export class Account {
       isProtected: data.isProtected ?? false,
       replacedByAccountId: data.replacedByAccountId,
       cashFlowCategory: data.cashFlowCategory ?? null,
+      plSubgroup: data.plSubgroup ?? null,
+      equitySubgroup: data.equitySubgroup ?? null,
       createdAt: data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt || Date.now()),
       createdBy: data.createdBy || 'SYSTEM',
       updatedAt: data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt || Date.now()),

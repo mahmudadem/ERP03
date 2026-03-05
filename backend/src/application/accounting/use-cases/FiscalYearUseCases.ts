@@ -340,7 +340,7 @@ export class CloseYearUseCase {
     );
 
     await this.transactionManager.runTransaction(async (tx) => {
-      await this.voucherRepo.save(voucher);
+      await this.voucherRepo.save(voucher, tx);
       await this.fiscalYearRepo.update(updatedFy);
     });
 
@@ -384,7 +384,7 @@ export class CommitYearCloseUseCase {
     const closedFy = fy.closeYear(userId, posted.id);
 
     await this.transactionManager.runTransaction(async (tx) => {
-      await this.voucherRepo.save(posted);
+      await this.voucherRepo.save(posted, tx);
       await this.ledgerRepo.recordForVoucher(posted, tx as any);
       await this.fiscalYearRepo.update(closedFy);
     });
@@ -441,8 +441,8 @@ export class ReopenYearUseCase {
 
     await this.transactionManager.runTransaction(async (tx) => {
       if (reversalVoucher && originalVoucher) {
-        await this.voucherRepo.save(originalVoucher); // Save with isReversed flag from createReversal
-        await this.voucherRepo.save(reversalVoucher);
+        await this.voucherRepo.save(originalVoucher, tx); // Save with isReversed flag from createReversal
+        await this.voucherRepo.save(reversalVoucher, tx);
         await this.ledgerRepo.recordForVoucher(reversalVoucher, tx as any);
       }
       await this.fiscalYearRepo.update(updated);
@@ -591,10 +591,11 @@ export class AutoCreateRetainedEarningsUseCase {
     
     const accounts = await this.accountRepo.list(companyId);
     
-    // Idempotency Check: Look for existing "Retained Earnings"
-    const existing = accounts.find(a => 
-      a.name.trim().toLowerCase() === 'retained earnings'
-    );
+    // Idempotency Check: find existing retained earnings account
+    // Primary: field-based lookup (reliable)
+    // Fallback: name-based lookup (backward compat for old COA without tags)
+    const existing = accounts.find(a => a.equitySubgroup === 'RETAINED_EARNINGS')
+      || accounts.find(a => a.name.trim().toLowerCase() === 'retained earnings');
 
     if (existing) {
       return { 
@@ -620,7 +621,8 @@ export class AutoCreateRetainedEarningsUseCase {
       createdBy: userId,
       description: 'System-generated account for annual profit/loss retention.',
       balanceNature: 'CREDIT', // BalanceNature.CREDIT
-      isProtected: true // Protect system account
+      isProtected: true, // Protect system account
+      equitySubgroup: 'RETAINED_EARNINGS'
     });
 
     return { 
@@ -630,4 +632,3 @@ export class AutoCreateRetainedEarningsUseCase {
     };
   }
 }
-

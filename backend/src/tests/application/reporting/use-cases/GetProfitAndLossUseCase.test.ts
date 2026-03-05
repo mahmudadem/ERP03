@@ -1,11 +1,11 @@
 import { GetProfitAndLossUseCase } from '../../../../application/reporting/use-cases/GetProfitAndLossUseCase';
-import { IVoucherRepository } from '../../../../domain/accounting/repositories/IVoucherRepository';
+import { ILedgerRepository } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
 
-const createVoucherRepository = () =>
+const createLedgerRepository = () =>
   ({
-    findByDateRange: jest.fn(),
-  } as unknown as jest.Mocked<IVoucherRepository>);
+    getTrialBalance: jest.fn(),
+  } as unknown as jest.Mocked<ILedgerRepository>);
 
 const createAccountRepository = () =>
   ({
@@ -19,8 +19,8 @@ describe('GetProfitAndLossUseCase', () => {
     jest.clearAllMocks();
   });
 
-  it('calculates totals from account classifications (not account-id prefixes) and ignores unposted vouchers', async () => {
-    const voucherRepository = createVoucherRepository();
+  it('calculates period totals from trial-balance delta by account classification', async () => {
+    const ledgerRepository = createLedgerRepository();
     const accountRepository = createAccountRepository();
 
     accountRepository.list.mockResolvedValue(
@@ -31,24 +31,23 @@ describe('GetProfitAndLossUseCase', () => {
       ] as any
     );
 
-    voucherRepository.findByDateRange.mockResolvedValue(
+    ledgerRepository.getTrialBalance
+      .mockResolvedValueOnce(
+        [
+          { accountId: 'acc-rev-uuid', debit: 0, credit: 100 },
+          { accountId: 'acc-exp-uuid', debit: 50, credit: 0 },
+          { accountId: 'acc-cash', debit: 50, credit: 0 },
+        ] as any
+      )
+      .mockResolvedValueOnce(
       [
-        {
-          isPosted: true,
-          lines: [
-            { accountId: 'acc-rev-uuid', creditAmount: 1000, debitAmount: 0 },
-            { accountId: 'acc-exp-uuid', creditAmount: 0, debitAmount: 400 },
-            { accountId: 'acc-cash', creditAmount: 0, debitAmount: 600 },
-          ],
-        },
-        {
-          isPosted: false,
-          lines: [{ accountId: 'acc-rev-uuid', creditAmount: 999, debitAmount: 0 }],
-        },
+        { accountId: 'acc-rev-uuid', debit: 0, credit: 1100 },
+        { accountId: 'acc-exp-uuid', debit: 450, credit: 0 },
+        { accountId: 'acc-cash', debit: 650, credit: 0 },
       ] as any
-    );
+      );
 
-    const useCase = new GetProfitAndLossUseCase(voucherRepository, accountRepository, permissionChecker);
+    const useCase = new GetProfitAndLossUseCase(ledgerRepository, accountRepository, permissionChecker);
     const result = await useCase.execute({
       companyId: 'c1',
       userId: 'u1',
@@ -57,7 +56,8 @@ describe('GetProfitAndLossUseCase', () => {
     });
 
     expect(permissionChecker.assertOrThrow).toHaveBeenCalledWith('u1', 'c1', 'accounting.reports.profitAndLoss.view');
-    expect(voucherRepository.findByDateRange).toHaveBeenCalledWith('c1', '2026-01-01', '2026-01-31', 100000);
+    expect(ledgerRepository.getTrialBalance).toHaveBeenNthCalledWith(1, 'c1', '2025-12-31');
+    expect(ledgerRepository.getTrialBalance).toHaveBeenNthCalledWith(2, 'c1', '2026-01-31');
     expect(result.revenue).toBe(1000);
     expect(result.expenses).toBe(400);
     expect(result.netProfit).toBe(600);
@@ -71,7 +71,7 @@ describe('GetProfitAndLossUseCase', () => {
   });
 
   it('uses net movement per line side and normalizes ISO datetime inputs to date-only', async () => {
-    const voucherRepository = createVoucherRepository();
+    const ledgerRepository = createLedgerRepository();
     const accountRepository = createAccountRepository();
 
     accountRepository.list.mockResolvedValue(
@@ -81,21 +81,21 @@ describe('GetProfitAndLossUseCase', () => {
       ] as any
     );
 
-    voucherRepository.findByDateRange.mockResolvedValue(
-      [
-        {
-          isPosted: true,
-          lines: [
-            { accountId: 'rev', creditAmount: 500, debitAmount: 0 },
-            { accountId: 'rev', creditAmount: 0, debitAmount: 200 },
-            { accountId: 'exp', creditAmount: 0, debitAmount: 150 },
-            { accountId: 'exp', creditAmount: 25, debitAmount: 0 },
-          ],
-        },
-      ] as any
-    );
+    ledgerRepository.getTrialBalance
+      .mockResolvedValueOnce(
+        [
+          { accountId: 'rev', debit: 20, credit: 100 },
+          { accountId: 'exp', debit: 10, credit: 0 },
+        ] as any
+      )
+      .mockResolvedValueOnce(
+        [
+          { accountId: 'rev', debit: 120, credit: 500 },
+          { accountId: 'exp', debit: 160, credit: 25 },
+        ] as any
+      );
 
-    const useCase = new GetProfitAndLossUseCase(voucherRepository, accountRepository, permissionChecker);
+    const useCase = new GetProfitAndLossUseCase(ledgerRepository, accountRepository, permissionChecker);
     const result = await useCase.execute({
       companyId: 'c1',
       userId: 'u1',
@@ -103,7 +103,8 @@ describe('GetProfitAndLossUseCase', () => {
       toDate: '2026-01-31T23:59:59.999Z',
     });
 
-    expect(voucherRepository.findByDateRange).toHaveBeenCalledWith('c1', '2026-01-01', '2026-01-31', 100000);
+    expect(ledgerRepository.getTrialBalance).toHaveBeenNthCalledWith(1, 'c1', '2025-12-31');
+    expect(ledgerRepository.getTrialBalance).toHaveBeenNthCalledWith(2, 'c1', '2026-01-31');
     expect(result.revenue).toBe(300);
     expect(result.expenses).toBe(125);
     expect(result.netProfit).toBe(175);

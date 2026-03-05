@@ -40,6 +40,41 @@ const dateToIso = (val: any): string => {
   return String(val);
 };
 
+const toMillis = (val: any): number => {
+  if (!val) return 0;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  if (val instanceof Date) return val.getTime();
+  if (typeof val === 'string') {
+    const parsed = Date.parse(val);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof val === 'object' && 'seconds' in val) {
+    const seconds = Number((val as any).seconds || 0);
+    const nanos = Number((val as any).nanoseconds || 0);
+    return (seconds * 1000) + Math.floor(nanos / 1_000_000);
+  }
+  return 0;
+};
+
+const compareVoucherNo = (a: any, b: any) =>
+  String(a || '').localeCompare(String(b || ''), undefined, { numeric: true, sensitivity: 'base' });
+
+const compareAccountStatementRows = (
+  a: { date: string; timeMs: number; voucherNo: string; id: string },
+  b: { date: string; timeMs: number; voucherNo: string; id: string }
+) => {
+  const dateCmp = String(a.date || '').localeCompare(String(b.date || ''));
+  if (dateCmp !== 0) return dateCmp;
+
+  const timeCmp = a.timeMs - b.timeMs;
+  if (timeCmp !== 0) return timeCmp;
+
+  const voucherCmp = compareVoucherNo(a.voucherNo, b.voucherNo);
+  if (voucherCmp !== 0) return voucherCmp;
+
+  return String(a.id || '').localeCompare(String(b.id || ''));
+};
+
 const getAmountsBySide = (entry: any, targetAccountCurrency: string | undefined, baseCurrency: string | undefined) => {
   const side = entry.side || 'Debit';
   const entryCurrency = (entry.currency || '').toUpperCase();
@@ -219,7 +254,13 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
     }
   }
 
-  async getAccountStatement(companyId: string, accountId: string, fromDate: string, toDate: string, options?: { includeUnposted?: boolean }): Promise<AccountStatementData> {
+  async getAccountStatement(
+    companyId: string,
+    accountId: string,
+    fromDate: string,
+    toDate: string,
+    options?: { includeUnposted?: boolean; costCenterId?: string; currency?: string }
+  ): Promise<AccountStatementData> {
     try {
       const startDate = fromDate || '1900-01-01';
       const endDate = toDate || new Date().toISOString().split('T')[0];
@@ -263,11 +304,27 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       const accountName = accountData?.name || 'Unknown Account';
       const accountCurrency = accountData?.fixedCurrencyCode || accountData?.currency || '';
       const baseCurrency = (companyDoc.exists ? (companyDoc.data() as any)?.baseCurrency : '') || '';
+      const selectedCostCenterId = (options?.costCenterId || '').trim();
+      const selectedCurrency = String(options?.currency || '').trim().toUpperCase();
+
+      const matchesOptionalFilters = (entry: any): boolean => {
+        if (selectedCostCenterId && String(entry?.costCenterId || '') !== selectedCostCenterId) {
+          return false;
+        }
+        if (selectedCurrency) {
+          const entryCurrency = String(entry?.currency || accountCurrency || '').toUpperCase();
+          if (entryCurrency !== selectedCurrency) {
+            return false;
+          }
+        }
+        return true;
+      };
 
       let openingBalance = 0;
       let openingBalanceBase = 0;
       openingSnap.docs.forEach((doc) => {
         const e = doc.data() as any;
+        if (!matchesOptionalFilters(e)) return;
         const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
         const signedAccount = side === 'Debit' ? debit : -credit;
         const signedBase = side === 'Debit' ? baseDebit : -baseCredit;
@@ -283,8 +340,32 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
       let totalBaseCredit = 0;
       const entries: AccountStatementEntry[] = [];
 
-      rangeSnap.docs.forEach((doc) => {
-        const e = doc.data() as any;
+      const orderedRows = rangeSnap.docs
+        .map((doc) => {
+          const e = doc.data() as any;
+          const date = dateToIso(e.date);
+          const timeMs = toMillis(e.createdAt) || toMillis(e.postedAt) || toMillis(e.date);
+          return { doc, e, date, timeMs };
+        })
+        .filter(({ e }) => matchesOptionalFilters(e))
+        .sort((a, b) =>
+          compareAccountStatementRows(
+            {
+              date: a.date,
+              timeMs: a.timeMs,
+              voucherNo: a.e.voucherNo || a.e.voucherId || '',
+              id: a.e.id || a.doc.id
+            },
+            {
+              date: b.date,
+              timeMs: b.timeMs,
+              voucherNo: b.e.voucherNo || b.e.voucherId || '',
+              id: b.e.id || b.doc.id
+            }
+          )
+        );
+
+      orderedRows.forEach(({ doc, e, date, timeMs }) => {
         const { debit, credit, baseDebit, baseCredit, side } = getAmountsBySide(e, accountCurrency, baseCurrency);
         running += side === 'Debit' ? debit : -credit;
         runningBase += side === 'Debit' ? baseDebit : -baseCredit;
@@ -295,7 +376,8 @@ export class FirestoreLedgerRepository implements ILedgerRepository {
 
         entries.push({
           id: e.id || doc.id,
-          date: dateToIso(e.date),
+          date,
+          time: timeMs ? new Date(timeMs).toISOString() : undefined,
           voucherId: e.voucherId,
           voucherNo: e.voucherNo || e.voucherId || '',
           description: e.notes || e.description || '',

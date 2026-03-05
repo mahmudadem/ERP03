@@ -214,6 +214,10 @@ class UpdateAccountUseCase {
             updateInput.allowedCurrencyCodes = data.allowedCurrencyCodes;
         if (data.cashFlowCategory !== undefined)
             updateInput.cashFlowCategory = data.cashFlowCategory;
+        if (data.plSubgroup !== undefined)
+            updateInput.plSubgroup = data.plSubgroup;
+        if (data.equitySubgroup !== undefined)
+            updateInput.equitySubgroup = data.equitySubgroup;
         // Approval policy fields
         if (data.requiresApproval !== undefined)
             updateInput.requiresApproval = data.requiresApproval;

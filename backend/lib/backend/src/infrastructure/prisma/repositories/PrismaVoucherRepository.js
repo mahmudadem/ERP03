@@ -1,11 +1,20 @@
 "use strict";
+/**
+ * SQL MIGRATION STATUS: NOT IMPLEMENTED
+ *
+ * This repository is a placeholder for future SQL/PostgreSQL migration.
+ * Current production uses Firestore via the corresponding Firestore repository.
+ *
+ * To activate: Set DB_TYPE=sql in .env and implement all methods with Prisma queries.
+ * See: backend/src/infrastructure/di/bindRepositories.ts for the toggling mechanism.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaVoucherRepository = void 0;
 class PrismaVoucherRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async save(voucher) {
+    async save(voucher, transaction) {
         throw new Error('PrismaVoucherRepository not yet implemented for V2. Use Firestore.');
     }
     async findById(companyId, voucherId) {

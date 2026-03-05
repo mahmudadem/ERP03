@@ -130,12 +130,12 @@ export class ReverseAndReplaceVoucherUseCase {
       );
 
       // Save reversal as DRAFT first
-      const savedReversal = await this.voucherRepo.save(reversalVoucher);
+      const savedReversal = await this.voucherRepo.save(reversalVoucher, transaction);
       
       // PERSIST LINKAGE: Link the reversal attempt
       // This ensures the original record knows a reversal is in progress
       const reversedOriginal = originalVoucher.linkReversal(reversalVoucherId);
-      await this.voucherRepo.save(reversedOriginal);
+      await this.voucherRepo.save(reversedOriginal, transaction);
       
       // DEEP INTEGRATION: Submit reversal for approval (Governance: Formal Gates)
       // Using SubmitVoucherUseCase to evaluate policies, custodians, and managers

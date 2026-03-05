@@ -22,7 +22,7 @@ describe('AutoCreateRetainedEarningsUseCase', () => {
         mockAccountRepo.list.mockResolvedValue([
             { userCode: '1000', name: 'Cash' }
         ]);
-        mockAccountRepo.create.mockResolvedValue({ id: 'new-acc', userCode: '30200', name: 'Retained Earnings' });
+        mockAccountRepo.create.mockResolvedValue({ id: 'new-acc', userCode: '30200', name: 'Retained Earnings', equitySubgroup: 'RETAINED_EARNINGS' });
 
         const result = await useCase.execute('c1', 'u1');
 
@@ -32,11 +32,23 @@ describe('AutoCreateRetainedEarningsUseCase', () => {
             userCode: '30200',
             name: 'Retained Earnings',
             classification: 'EQUITY',
-            isProtected: true
+            isProtected: true,
+            equitySubgroup: 'RETAINED_EARNINGS'
         }));
     });
 
-    test('Returns existing account if it exists by name', async () => {
+    test('Returns existing account found by equitySubgroup tag', async () => {
+        const existing = { id: 'ext-tag', userCode: '30500', name: 'Accumulated Profit', equitySubgroup: 'RETAINED_EARNINGS' };
+        mockAccountRepo.list.mockResolvedValue([existing]);
+
+        const result = await useCase.execute('c1', 'u1');
+
+        expect(result.created).toBe(false);
+        expect(result.account.id).toBe('ext-tag');
+        expect(mockAccountRepo.create).not.toHaveBeenCalled();
+    });
+
+    test('Falls back to name-based lookup for backward compat', async () => {
         const existing = { id: 'ext-1', userCode: '30500', name: 'Retained Earnings' };
         mockAccountRepo.list.mockResolvedValue([existing]);
 

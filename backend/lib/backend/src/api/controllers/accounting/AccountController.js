@@ -118,6 +118,56 @@ class AccountController {
             return next(err);
         }
     }
+    static async batchUpdateSubgroups(req, res, next) {
+        var _a, _b, _c;
+        try {
+            const companyId = req.user.companyId;
+            const userId = req.user.uid;
+            const updates = Array.isArray((_a = req.body) === null || _a === void 0 ? void 0 : _a.updates) ? req.body.updates : [];
+            await permissionChecker.assertOrThrow(userId, companyId, 'accounting.accounts.edit');
+            const useCase = new UpdateAccountUseCase_1.UpdateAccountUseCase(bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
+            let updated = 0;
+            const errors = [];
+            for (const item of updates) {
+                const accountId = String((item === null || item === void 0 ? void 0 : item.accountId) || '').trim();
+                if (!accountId) {
+                    errors.push({ accountId: '', error: 'accountId is required' });
+                    continue;
+                }
+                const command = { updatedBy: userId };
+                if (Object.prototype.hasOwnProperty.call(item, 'plSubgroup')) {
+                    command.plSubgroup = (_b = item.plSubgroup) !== null && _b !== void 0 ? _b : null;
+                }
+                if (Object.prototype.hasOwnProperty.call(item, 'equitySubgroup')) {
+                    command.equitySubgroup = (_c = item.equitySubgroup) !== null && _c !== void 0 ? _c : null;
+                }
+                if (!Object.prototype.hasOwnProperty.call(item, 'plSubgroup') && !Object.prototype.hasOwnProperty.call(item, 'equitySubgroup')) {
+                    errors.push({ accountId, error: 'No subgroup fields provided' });
+                    continue;
+                }
+                try {
+                    await useCase.execute(companyId, accountId, command);
+                    updated += 1;
+                }
+                catch (error) {
+                    errors.push({
+                        accountId,
+                        error: (error === null || error === void 0 ? void 0 : error.message) || 'Unknown error'
+                    });
+                }
+            }
+            return res.json({
+                success: true,
+                data: {
+                    updated,
+                    errors
+                }
+            });
+        }
+        catch (err) {
+            return next(err);
+        }
+    }
     static async deactivate(req, res, next) {
         try {
             const companyId = req.user.companyId;

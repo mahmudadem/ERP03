@@ -156,6 +156,7 @@ export interface AccountingPolicyConfig {
    * @deprecated Use allowEditDeletePosted instead
    * Legacy field for backward compatibility
    */
+  allowEditPostedVouchersEnabled?: boolean;
 
   
   // ========== Period Lock Policy ==========

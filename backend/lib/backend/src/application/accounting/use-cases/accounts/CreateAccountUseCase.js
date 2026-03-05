@@ -15,7 +15,7 @@ class CreateAccountUseCase {
         this.companyCurrencyRepo = companyCurrencyRepo;
     }
     async execute(companyId, data) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         // 1. Normalize and validate userCode
         const userCode = (0, Account_1.normalizeUserCode)(data.userCode || data.code || '');
         const codeError = (0, Account_1.validateUserCodeFormat)(userCode);
@@ -122,6 +122,8 @@ class CreateAccountUseCase {
             allowedCurrencyCodes: data.allowedCurrencyCodes || [],
             isProtected: (_d = data.isProtected) !== null && _d !== void 0 ? _d : false,
             cashFlowCategory: (_e = data.cashFlowCategory) !== null && _e !== void 0 ? _e : null,
+            plSubgroup: (_f = data.plSubgroup) !== null && _f !== void 0 ? _f : null,
+            equitySubgroup: (_g = data.equitySubgroup) !== null && _g !== void 0 ? _g : null,
         };
         // 9. Create account (repository handles systemCode generation)
         const account = await this.accountRepo.create(companyId, input);

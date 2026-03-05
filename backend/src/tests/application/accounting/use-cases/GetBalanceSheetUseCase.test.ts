@@ -11,7 +11,8 @@ const createMockLedgerRepo = (): jest.Mocked<ILedgerRepository> => ({
   getGeneralLedger: jest.fn(),
   getAccountStatement: jest.fn(),
   getUnreconciledEntries: jest.fn(),
-  markReconciled: jest.fn()
+  markReconciled: jest.fn(),
+  getForeignBalances: jest.fn()
 });
 
 const createMockAccountRepo = (): jest.Mocked<IAccountRepository> => ({
