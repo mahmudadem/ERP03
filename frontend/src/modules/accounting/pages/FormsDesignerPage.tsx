@@ -13,6 +13,7 @@ import { Button } from '../../../components/ui/Button';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAuth } from '../../../context/AuthContext';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Forms Designer Page (Voucher Wizard Integration)
@@ -20,6 +21,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
  * Integrated with the extracted voucher wizard and real database operations
  */
 export default function FormsDesignerPage() {
+  const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
   const [templates, setTemplates] = useState<VoucherFormConfig[]>([]);
@@ -45,7 +47,7 @@ export default function FormsDesignerPage() {
         setForms(loadedForms); // Show ONLY company-specific forms in the main list
       } catch (err) {
         console.error('Failed to load voucher data:', err);
-        setError('Failed to load voucher forms. Please refresh the page.');
+        setError(t('accounting.formsDesigner.messages.loadFailed'));
       } finally {
         setLoading(false);
       }
@@ -56,7 +58,7 @@ export default function FormsDesignerPage() {
 
   const handleVoucherSaved = async (config: VoucherFormConfig, isEdit: boolean) => {
     if (!companyId || !user) {
-      setError('Missing company ID or user information');
+      setError(t('accounting.formsDesigner.messages.missingContext'));
       return;
     }
 
@@ -69,11 +71,11 @@ export default function FormsDesignerPage() {
         setForms(updatedForms);
         setError(null);
       } else {
-        setError(result.errors?.join(', ') || 'Failed to save voucher form');
+        setError(result.errors?.join(', ') || t('accounting.formsDesigner.messages.saveFailed'));
       }
     } catch (err) {
       console.error('Failed to save voucher form:', err);
-      setError('Failed to save voucher form. Please try again.');
+      setError(t('accounting.formsDesigner.messages.saveRetry'));
     }
   };
 
@@ -89,7 +91,7 @@ export default function FormsDesignerPage() {
       console.error('Failed to toggle form state in database:', err);
       // Revert on failure
       setForms(prev => prev.map(f => f.id === formId ? { ...f, enabled: !enabled } : f));
-      setError('Failed to update form status in database.');
+      setError(t('accounting.formsDesigner.messages.toggleFailed'));
     }
   };
 
@@ -101,7 +103,7 @@ export default function FormsDesignerPage() {
       setForms(prev => prev.filter(f => f.id !== formId));
     } catch (err) {
       console.error('Failed to delete form from database:', err);
-      setError('Failed to delete form from database.');
+      setError(t('accounting.formsDesigner.messages.deleteFailed'));
     }
   };
 
@@ -110,7 +112,7 @@ export default function FormsDesignerPage() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <Loader2 className="animate-spin h-8 w-8 mx-auto mb-4 text-indigo-600" />
-          <p className="text-gray-600">Loading forms...</p>
+          <p className="text-gray-600">{t('accounting.formsDesigner.loading')}</p>
         </div>
       </div>
     );
@@ -122,10 +124,10 @@ export default function FormsDesignerPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <h3 className="font-bold text-red-900">Error</h3>
+            <h3 className="font-bold text-red-900">{t('accounting.formsDesigner.errorTitle')}</h3>
             <p className="text-red-700 mt-1">{error}</p>
             <Button onClick={() => window.location.reload()} className="mt-3">
-              Reload Page
+              {t('accounting.formsDesigner.reload')}
             </Button>
           </div>
         </div>

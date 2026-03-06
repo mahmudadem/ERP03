@@ -88,8 +88,8 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
       const variantClasses: Record<string, string> = {
         primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
         secondary: 'bg-gray-600 text-white hover:bg-gray-700',
-        outline: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-        text: 'text-gray-600 hover:text-gray-800 hover:bg-gray-100',
+        outline: 'bg-white dark:bg-[var(--color-bg-primary)] border border-gray-300 dark:border-[var(--color-border)] text-gray-700 dark:text-[var(--color-text-secondary)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-tertiary)]',
+        text: 'text-gray-600 dark:text-[var(--color-text-secondary)] hover:text-gray-800 dark:hover:text-[var(--color-text-primary)] hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)]',
         danger: 'bg-red-600 text-white hover:bg-red-700',
       };
 
@@ -153,30 +153,30 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
       <div
         ref={windowRef}
         style={style}
-        className="bg-white rounded-lg shadow-2xl border border-gray-300 flex flex-col"
+        className="bg-white dark:bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-gray-300 dark:border-[var(--color-border)] flex flex-col"
       >
         {/* Window Header */}
         <div 
-          className="window-header px-4 py-3 bg-gray-50 border-b border-gray-200 cursor-move select-none"
+          className="window-header px-4 py-3 bg-gray-50 dark:bg-[var(--color-bg-tertiary)] border-b border-gray-200 dark:border-[var(--color-border)] cursor-move select-none"
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-gray-700">{config.header.title}</h3>
+            <h3 className="font-medium text-gray-700 dark:text-[var(--color-text-primary)]">{config.header.title}</h3>
             
             {config.header.showControls && (
               <div className="flex items-center gap-1">
                 {onMinimize && (
-                  <button onClick={onMinimize} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                  <button onClick={onMinimize} className="p-1 hover:bg-gray-200 dark:hover:bg-[var(--color-bg-secondary)] rounded text-gray-500 dark:text-[var(--color-text-muted)]">
                     <Minus className="w-4 h-4" />
                   </button>
                 )}
                 {onMaximize && (
-                  <button onClick={onMaximize} className="p-1 hover:bg-gray-200 rounded text-gray-500">
+                  <button onClick={onMaximize} className="p-1 hover:bg-gray-200 dark:hover:bg-[var(--color-bg-secondary)] rounded text-gray-500 dark:text-[var(--color-text-muted)]">
                     <Square className="w-3 h-3" />
                   </button>
                 )}
                 {onClose && (
-                  <button onClick={onClose} className="p-1 hover:bg-red-100 hover:text-red-500 rounded text-gray-500 transition-colors">
+                  <button onClick={onClose} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-500 rounded text-gray-500 dark:text-[var(--color-text-muted)] transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -185,20 +185,20 @@ export const ConfigurableWindow: React.FC<ConfigurableWindowProps> = ({
           </div>
           
           {config.header.components && config.header.components.length > 0 && (
-            <div className="pt-2 border-t border-gray-200">
+            <div className="pt-2 border-t border-gray-200 dark:border-[var(--color-border)]">
               {renderGridSection(config.header.components)}
             </div>
           )}
         </div>
 
         {/* Window Body */}
-        <div className="flex-1 overflow-y-auto p-4 bg-white max-h-[600px]">
+        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-[var(--color-bg-primary)] max-h-[600px]">
           {children}
         </div>
 
         {/* Window Footer */}
         {config.footer.components && config.footer.components.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-tertiary)]">
             {renderGridSection(config.footer.components)}
           </div>
         )}

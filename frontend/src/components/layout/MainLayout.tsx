@@ -9,14 +9,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-[var(--color-bg-secondary)] flex">
       <Sidebar isOpen={isSidebarOpen} />
       
       <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20 lg:ml-64'}`}>
-        <header className="h-16 bg-white border-b shadow-sm flex items-center justify-between px-6 sticky top-0 z-10">
+        <header className="h-16 bg-white dark:bg-[var(--color-bg-primary)] border-b border-gray-200 dark:border-[var(--color-border)] shadow-sm flex items-center justify-between px-6 sticky top-0 z-10">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] rounded text-gray-700 dark:text-[var(--color-text-secondary)]"
           >
             {/* Hamburger Icon Placeholder */}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

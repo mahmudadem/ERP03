@@ -1,21 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Shield, Info, AlertTriangle, Database, Check, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
 
-const notificationCategories = [
-  { id: 'APPROVAL', name: 'Financial Approvals', icon: <Shield className="w-5 h-5 text-indigo-500" />, desc: 'When a voucher requires your approval.' },
-  { id: 'CUSTODY', name: 'Custody Confirmations', icon: <Database className="w-5 h-5 text-emerald-500" />, desc: 'When you are assigned as the custodian of an account in a transaction.' },
-  { id: 'SYSTEM', name: 'System Info', icon: <Info className="w-5 h-5 text-blue-500" />, desc: 'General system notifications and non-critical updates.' },
-  { id: 'WARNING', name: 'System Warnings', icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, desc: 'Alerts regarding system status, rejected vouchers, or other warnings.' }
-];
-
 export const NotificationSettingsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { settings, updateSettings, isLoading } = useCompanySettings();
   const { company } = useCompanyAccess();
   const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const notificationCategories = [
+    {
+      id: 'APPROVAL',
+      name: t('settings.notifications.categories.approval.name', { defaultValue: 'Financial Approvals' }),
+      icon: <Shield className="w-5 h-5 text-indigo-500" />,
+      desc: t('settings.notifications.categories.approval.desc', { defaultValue: 'When a voucher requires your approval.' }),
+    },
+    {
+      id: 'CUSTODY',
+      name: t('settings.notifications.categories.custody.name', { defaultValue: 'Custody Confirmations' }),
+      icon: <Database className="w-5 h-5 text-emerald-500" />,
+      desc: t('settings.notifications.categories.custody.desc', {
+        defaultValue: 'When you are assigned as the custodian of an account in a transaction.',
+      }),
+    },
+    {
+      id: 'SYSTEM',
+      name: t('settings.notifications.categories.system.name', { defaultValue: 'System Info' }),
+      icon: <Info className="w-5 h-5 text-blue-500" />,
+      desc: t('settings.notifications.categories.system.desc', {
+        defaultValue: 'General system notifications and non-critical updates.',
+      }),
+    },
+    {
+      id: 'WARNING',
+      name: t('settings.notifications.categories.warning.name', { defaultValue: 'System Warnings' }),
+      icon: <AlertTriangle className="w-5 h-5 text-amber-500" />,
+      desc: t('settings.notifications.categories.warning.desc', {
+        defaultValue: 'Alerts regarding system status, rejected vouchers, or other warnings.',
+      }),
+    },
+  ];
 
   useEffect(() => {
     if (settings?.disabledNotificationCategories) {
@@ -39,7 +66,9 @@ export const NotificationSettingsPage: React.FC = () => {
     setSaving(true);
     try {
       await updateSettings({ disabledNotificationCategories: disabledCategories });
-      errorHandler.showSuccess('Company notification defaults saved');
+      errorHandler.showSuccess(
+        t('settings.notifications.saved', { defaultValue: 'Company notification defaults saved' })
+      );
     } catch (error) {
       errorHandler.showError(error);
     } finally {
@@ -55,10 +84,13 @@ export const NotificationSettingsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Bell className="w-6 h-6 text-indigo-500" />
-            Company Notification Defaults
+            {t('settings.notifications.title', { defaultValue: 'Company Notification Defaults' })}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Default notification policy for all users in {company?.name || 'this company'}.
+            {t('settings.notifications.subtitle', {
+              defaultValue: 'Default notification policy for all users in {{company}}.',
+              company: company?.name || t('settings.notifications.thisCompany', { defaultValue: 'this company' }),
+            })}
           </p>
         </div>
         <button
@@ -67,15 +99,20 @@ export const NotificationSettingsPage: React.FC = () => {
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="animate-spin w-4 h-4" /> : <Check className="w-4 h-4" />}
-          Save Company Defaults
+          {t('settings.notifications.save', { defaultValue: 'Save Company Defaults' })}
         </button>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Event Categories</h2>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+            {t('settings.notifications.eventCategories', { defaultValue: 'Event Categories' })}
+          </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 pb-1">
-            Disable categories here to turn them off by default for all users in this company. Users can still override these defaults in their profile.
+            {t('settings.notifications.hint', {
+              defaultValue:
+                'Disable categories here to turn them off by default for all users in this company. Users can still override these defaults in their profile.',
+            })}
           </p>
         </div>
         

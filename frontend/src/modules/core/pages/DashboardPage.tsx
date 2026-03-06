@@ -18,8 +18,10 @@ import {
 } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
+import { useTranslation } from 'react-i18next';
 
 const DashboardPage: React.FC = () => {
+  const { t } = useTranslation('dashboard');
   const { settings } = useCompanySettings();
   const currentDate = formatCompanyDate(new Date(), settings);
 
@@ -32,18 +34,18 @@ const DashboardPage: React.FC = () => {
         <div>
            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium mb-1">
              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-             {currentDate}
+             {t('asOf', { defaultValue: 'As of {{date}}', date: currentDate })}
            </div>
-           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Overview</h1>
+           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{t('overview', { defaultValue: 'Overview' })}</h1>
         </div>
         <div className="flex gap-3">
            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm">
               <Settings className="w-4 h-4" />
-              Customize
+              {t('customize', { defaultValue: 'Customize' })}
            </button>
            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 hover:shadow-md transition-all shadow-sm">
               <Plus className="w-4 h-4" />
-              New Transaction
+              {t('newTransaction', { defaultValue: 'New Transaction' })}
            </button>
         </div>
       </div>
@@ -51,7 +53,7 @@ const DashboardPage: React.FC = () => {
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
          <StatsCard 
-            label="Total Revenue" 
+            label={t('stats.totalRevenue', { defaultValue: 'Total Revenue' })} 
             value="$124,500" 
             metric="+12.5%" 
             trend="up" 
@@ -59,7 +61,7 @@ const DashboardPage: React.FC = () => {
             color="emerald"
          />
          <StatsCard 
-            label="Expenses" 
+            label={t('stats.expenses', { defaultValue: 'Expenses' })} 
             value="$82,100" 
             metric="-2.4%" 
             trend="down" 
@@ -67,7 +69,7 @@ const DashboardPage: React.FC = () => {
             color="rose"
          />
          <StatsCard 
-            label="Net Profit" 
+            label={t('stats.netProfit', { defaultValue: 'Net Profit' })} 
             value="$42,400" 
             metric="+8.1%" 
             trend="up" 
@@ -75,9 +77,9 @@ const DashboardPage: React.FC = () => {
             color="blue"
          />
          <StatsCard 
-            label="Active Projects" 
+            label={t('stats.activeProjects', { defaultValue: 'Active Projects' })} 
             value="12" 
-            metric="On Track" 
+            metric={t('stats.onTrack', { defaultValue: 'On Track' })} 
             trend="neutral" 
             icon={<Briefcase className="w-5 h-5 text-indigo-600" />}
             color="indigo"
@@ -93,30 +95,30 @@ const DashboardPage: React.FC = () => {
            {/* Quick Actions */}
            <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                 <Activity className="w-5 h-5 text-gray-400" /> Quick Actions
+                 <Activity className="w-5 h-5 text-gray-400" /> {t('quickActions', { defaultValue: 'Quick Actions' })}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <ActionBtn label="New Invoice" icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
-                 <ActionBtn label="Add Vendor" icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
-                 <ActionBtn label="Record Expense" icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
-                 <ActionBtn label="Add Product" icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
+                 <ActionBtn label={t('actions.newInvoice', { defaultValue: 'New Invoice' })} icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
+                 <ActionBtn label={t('actions.addVendor', { defaultValue: 'Add Vendor' })} icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
+                 <ActionBtn label={t('actions.recordExpense', { defaultValue: 'Record Expense' })} icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
+                 <ActionBtn label={t('actions.addProduct', { defaultValue: 'Add Product' })} icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
               </div>
            </section>
 
            {/* Recent Transactions */}
            <Card className="p-0 overflow-hidden border border-gray-200 shadow-sm">
               <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                 <h3 className="font-semibold text-gray-900">Recent Transactions</h3>
+                 <h3 className="font-semibold text-gray-900">{t('recentTransactions', { defaultValue: 'Recent Transactions' })}</h3>
                  <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                    View All <ArrowRight className="w-4 h-4" />
+                    {t('viewAll', { defaultValue: 'View All' })} <ArrowRight className="w-4 h-4" />
                  </button>
               </div>
               <div className="divide-y divide-gray-100">
-                 <TransactionRow title="Payment from Acme Corp" subtitle="Invoice #INV-2023-001" amount="+$1,200.00" date="Today, 10:23 AM" type="income" />
-                 <TransactionRow title="Office Supplies" subtitle="Staples Inc." amount="-$350.00" date="Yesterday" type="expense" />
-                 <TransactionRow title="Subscription Renewal" subtitle="Adobe Creative Cloud" amount="-$54.99" date="Oct 24, 2023" type="expense" />
-                 <TransactionRow title="Consulting Fees" subtitle="Tech Solutions Ltd" amount="+$2,500.00" date="Oct 22, 2023" type="income" />
-                 <TransactionRow title="Server Costs" subtitle="AWS Web Services" amount="-$120.50" date="Oct 21, 2023" type="expense" />
+                 <TransactionRow title={t('transactions.paymentFromAcme', { defaultValue: 'Payment from Acme Corp' })} subtitle={t('transactions.invoiceRef', { defaultValue: 'Invoice #INV-2023-001' })} amount="+$1,200.00" date={t('transactions.todayTime', { defaultValue: 'Today, 10:23 AM' })} type="income" />
+                 <TransactionRow title={t('transactions.officeSupplies', { defaultValue: 'Office Supplies' })} subtitle={t('transactions.staplesInc', { defaultValue: 'Staples Inc.' })} amount="-$350.00" date={t('transactions.yesterday', { defaultValue: 'Yesterday' })} type="expense" />
+                 <TransactionRow title={t('transactions.subscriptionRenewal', { defaultValue: 'Subscription Renewal' })} subtitle={t('transactions.adobe', { defaultValue: 'Adobe Creative Cloud' })} amount="-$54.99" date="Oct 24, 2023" type="expense" />
+                 <TransactionRow title={t('transactions.consultingFees', { defaultValue: 'Consulting Fees' })} subtitle={t('transactions.techSolutions', { defaultValue: 'Tech Solutions Ltd' })} amount="+$2,500.00" date="Oct 22, 2023" type="income" />
+                 <TransactionRow title={t('transactions.serverCosts', { defaultValue: 'Server Costs' })} subtitle={t('transactions.aws', { defaultValue: 'AWS Web Services' })} amount="-$120.50" date="Oct 21, 2023" type="expense" />
               </div>
            </Card>
         </div>
@@ -126,11 +128,11 @@ const DashboardPage: React.FC = () => {
            
            {/* System Health Widget */}
            <Card className="p-6 border border-gray-200 shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-5">System Usage</h3>
+              <h3 className="font-semibold text-gray-900 mb-5">{t('systemUsage', { defaultValue: 'System Usage' })}</h3>
               <div className="space-y-6">
-                 <ProgressBar label="Storage" value={75} total="200GB" color="bg-blue-600" />
-                 <ProgressBar label="API Calls" value={42} total="10k/mo" color="bg-emerald-500" />
-                 <ProgressBar label="Users" value={12} total="20 Seats" color="bg-violet-500" />
+                 <ProgressBar label={t('usage.storage', { defaultValue: 'Storage' })} value={75} total="200GB" color="bg-blue-600" />
+                 <ProgressBar label={t('usage.apiCalls', { defaultValue: 'API Calls' })} value={42} total="10k/mo" color="bg-emerald-500" />
+                 <ProgressBar label={t('usage.users', { defaultValue: 'Users' })} value={12} total="20 Seats" color="bg-violet-500" />
               </div>
            </Card>
 
@@ -140,12 +142,12 @@ const DashboardPage: React.FC = () => {
                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center mb-4 backdrop-blur-sm">
                     <TrendingUp className="w-6 h-6 text-yellow-400" />
                  </div>
-                 <h3 className="text-lg font-bold mb-2">Upgrade to Pro</h3>
+                 <h3 className="text-lg font-bold mb-2">{t('upgrade.title', { defaultValue: 'Upgrade to Pro' })}</h3>
                  <p className="text-slate-300 text-sm mb-6 leading-relaxed">
-                    Unlock advanced analytics, custom reports, and unlimited user seats.
+                    {t('upgrade.subtitle', { defaultValue: 'Unlock advanced analytics, custom reports, and unlimited user seats.' })}
                  </p>
                  <button className="w-full py-2.5 bg-white text-slate-900 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-md active:transform active:scale-95">
-                    View Plans
+                    {t('upgrade.viewPlans', { defaultValue: 'View Plans' })}
                  </button>
               </div>
               {/* Decorative Circle */}

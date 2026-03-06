@@ -38,7 +38,8 @@ export const Button: React.FC<ButtonProps> = ({
     secondary: clsx(
       "bg-white text-gray-700 border border-gray-200 shadow-sm",
       "hover:bg-gray-50 hover:border-gray-300",
-      "focus-visible:ring-gray-300"
+      "focus-visible:ring-gray-300",
+      "dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-secondary)] dark:border-[var(--color-border)] dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)]"
     ),
     outline: clsx(
       "bg-transparent text-primary-600 border border-primary-300",
@@ -58,7 +59,8 @@ export const Button: React.FC<ButtonProps> = ({
     ghost: clsx(
       "bg-transparent text-gray-600",
       "hover:bg-gray-100 hover:text-gray-900",
-      "focus-visible:ring-gray-300"
+      "focus-visible:ring-gray-300",
+      "dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)]"
     ),
   };
 

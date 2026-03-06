@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 export const LoginPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { login, user, loading: authLoading } = useAuth();
   const location = useLocation() as any;
   const redirectTo = location.state?.from?.pathname || '/';
@@ -27,7 +29,7 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Login failed', err);
       // Firebase auth errors usually have a code, but we'll show a generic or message if available
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      setError(err.message || t('auth.login.error'));
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export const LoginPage: React.FC = () => {
         width: '100%', 
         maxWidth: '400px' 
       }}>
-        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Login</h2>
+        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>{t('auth.login.title')}</h2>
         
         {error && (
           <div style={{ 
@@ -68,7 +70,7 @@ export const LoginPage: React.FC = () => {
               htmlFor="email" 
               style={{ display: 'block', marginBottom: '0.5rem' }}
             >
-              Email
+              {t('auth.login.email')}
             </label>
             <input
               id="email"
@@ -90,7 +92,7 @@ export const LoginPage: React.FC = () => {
               htmlFor="password" 
               style={{ display: 'block', marginBottom: '0.5rem' }}
             >
-              Password
+              {t('auth.login.password')}
             </label>
             <input
               id="password"
@@ -121,7 +123,7 @@ export const LoginPage: React.FC = () => {
               fontSize: '1rem'
             }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? t('auth.login.loggingIn') : t('auth.login.submit')}
           </button>
         </form>
       </div>

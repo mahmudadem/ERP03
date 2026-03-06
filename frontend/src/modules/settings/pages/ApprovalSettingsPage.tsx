@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { errorHandler } from '../../../services/errorHandler';
 
 const ApprovalSettingsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { settings, updateSettings, isLoading } = useCompanySettings();
   const [strictMode, setStrictMode] = useState(true);
 
@@ -17,27 +19,34 @@ const ApprovalSettingsPage: React.FC = () => {
   const handleSave = async () => {
     try {
       await updateSettings({ strictApprovalMode: strictMode });
-      errorHandler.showSuccess('common:success.SAVE');
+      errorHandler.showSuccess(t('success.SAVE', { defaultValue: 'Saved successfully' }));
     } catch (error: any) {
       errorHandler.showError(error);
     }
   };
 
-  if (isLoading) return <div>Loading settings...</div>;
+  if (isLoading) return <div>{t('settings.approval.loading', { defaultValue: 'Loading settings...' })}</div>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Approval Workflow Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-800">
+        {t('settings.approval.title', { defaultValue: 'Approval Workflow Settings' })}
+      </h1>
       
       <Card className="p-6 max-w-2xl">
         <div className="flex items-start gap-4">
           <div className="flex-1">
-            <h3 className="font-bold text-lg text-gray-900 mb-2">Strict Approval Mode</h3>
+            <h3 className="font-bold text-lg text-gray-900 mb-2">
+              {t('settings.approval.strictMode.title', { defaultValue: 'Strict Approval Mode' })}
+            </h3>
             <p className="text-sm text-gray-500 mb-4">
-              When enabled, vouchers start as <strong>Draft</strong> and must be explicitly 
-              <strong> Sent for Approval</strong> and then <strong>Approved</strong> before they can be locked.
+              {t('settings.approval.strictMode.description1', {
+                defaultValue: 'When enabled, vouchers start as Draft and must be explicitly sent for approval and then approved before they can be locked.',
+              })}
               <br/><br/>
-              When disabled (Flexible Mode), creating a voucher automatically sets it to <strong>Approved</strong>.
+              {t('settings.approval.strictMode.description2', {
+                defaultValue: 'When disabled (Flexible Mode), creating a voucher automatically sets it to Approved.',
+              })}
             </p>
           </div>
           
@@ -59,7 +68,7 @@ const ApprovalSettingsPage: React.FC = () => {
         </div>
 
         <div className="mt-6 pt-6 border-t flex justify-end">
-          <Button onClick={handleSave}>Save Configuration</Button>
+          <Button onClick={handleSave}>{t('settings.approval.save', { defaultValue: 'Save Configuration' })}</Button>
         </div>
       </Card>
     </div>

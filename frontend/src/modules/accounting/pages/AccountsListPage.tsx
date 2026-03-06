@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPolicy } from '../../../api/accounting';
 import { AccountForm } from '../components/AccountForm';
 import { errorHandler } from '../../../services/errorHandler';
@@ -8,6 +9,7 @@ import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe } from 'lucide-react';
 
 export default function AccountsListPage() {
+    const { t } = useTranslation('accounting');
     const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -67,7 +69,7 @@ export default function AccountsListPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
             setIsCreateModalOpen(false);
-            errorHandler.showSuccess('Account created successfully');
+            errorHandler.showSuccess(t('accountsList.messages.created', { defaultValue: 'Account created successfully' }));
         },
         onError: (err) => errorHandler.showError(err)
     });
@@ -77,7 +79,7 @@ export default function AccountsListPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
             closeEditModal();
-            errorHandler.showSuccess('Account updated successfully');
+            errorHandler.showSuccess(t('accountsList.messages.updated', { defaultValue: 'Account updated successfully' }));
         },
         onError: (err) => errorHandler.showError(err)
     });
@@ -86,13 +88,13 @@ export default function AccountsListPage() {
         mutationFn: accountingApi.deactivateAccount,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['accounts'] });
-            errorHandler.showSuccess('Account deactivated');
+            errorHandler.showSuccess(t('accountsList.messages.deactivated', { defaultValue: 'Account deactivated' }));
         },
         onError: (err) => errorHandler.showError(err)
     });
 
     const handleDeactivate = async (id: string, name: string) => {
-        if (confirm(`Are you sure you want to deactivate account "${name}"?`)) {
+        if (confirm(t('accountsList.messages.confirmDeactivate', { name, defaultValue: `Are you sure you want to deactivate account "${name}"?` }))) {
             try {
                 await deactivateMutation.mutateAsync(id);
             } catch (error: any) {
@@ -224,8 +226,8 @@ export default function AccountsListPage() {
     };
 
     const getRoleBadge = (role: AccountRole | string) => {
-        if (role === 'HEADER') return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"><Folder className="w-3 h-3 mr-1"/> Header</span>;
-        return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-800"><FileText className="w-3 h-3 mr-1"/> Posting</span>;
+        if (role === 'HEADER') return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"><Folder className="w-3 h-3 mr-1"/> {t('accountsList.roles.header', { defaultValue: 'Header' })}</span>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-800"><FileText className="w-3 h-3 mr-1"/> {t('accountsList.roles.posting', { defaultValue: 'Posting' })}</span>;
     };
 
     const getEffectiveCurrency = (account: any): { code: string; isInherited: boolean; type: CurrencyPolicy } => {
@@ -266,7 +268,7 @@ export default function AccountsListPage() {
         return (
             <div className="p-8 flex justify-center items-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-500">Loading accounts...</span>
+                <span className="ml-3 text-gray-500">{t('accountsList.loading', { defaultValue: 'Loading accounts...' })}</span>
             </div>
         );
     }
@@ -275,8 +277,8 @@ export default function AccountsListPage() {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage your financial account structure</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{t('accountsList.title', { defaultValue: 'Chart of Accounts' })}</h1>
+                    <p className="text-sm text-gray-500 mt-1">{t('accountsList.subtitle', { defaultValue: 'Manage your financial account structure' })}</p>
                 </div>
                 <div className="flex items-center space-x-3">
                     <div className="flex bg-gray-100 rounded-md p-0.5 border border-gray-200">
@@ -284,20 +286,20 @@ export default function AccountsListPage() {
                             onClick={expandAll}
                             className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-all shadow-sm"
                         >
-                            Expand All
+                            {t('accountsList.actions.expandAll', { defaultValue: 'Expand All' })}
                         </button>
                         <button
                             onClick={collapseAll}
                             className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded transition-all shadow-sm"
                         >
-                            Collapse All
+                            {t('accountsList.actions.collapseAll', { defaultValue: 'Collapse All' })}
                         </button>
                     </div>
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm transition-colors flex items-center"
                     >
-                        <span className="text-lg mr-1">+</span> New Account
+                        <span className="text-lg mr-1">+</span> {t('accountsList.actions.newAccount', { defaultValue: 'New Account' })}
                     </button>
                 </div>
             </div>
@@ -305,9 +307,9 @@ export default function AccountsListPage() {
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h3 className="font-bold text-gray-900 text-base">Chart Preview</h3>
+                        <h3 className="font-bold text-gray-900 text-base">{t('accountsList.preview.title', { defaultValue: 'Chart Preview' })}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">
-                            {accounts.length} accounts • Click to expand/collapse
+                            {t('accountsList.preview.count', { count: accounts.length, defaultValue: '{{count}} accounts' })} • {t('accountsList.preview.expandHint', { defaultValue: 'Click to expand/collapse' })}
                         </p>
                     </div>
                     
@@ -315,7 +317,7 @@ export default function AccountsListPage() {
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search accounts..."
+                            placeholder={t('accountsList.searchPlaceholder', { defaultValue: 'Search accounts...' })}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -372,12 +374,12 @@ export default function AccountsListPage() {
                                             </span>
                                             {account.isOrphan && (
                                                 <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 font-bold px-1.5 py-0.5 rounded border border-amber-100">
-                                                    <AlertTriangle className="w-3 h-3" /> Orphaned
+                                                    <AlertTriangle className="w-3 h-3" /> {t('accountsList.badges.orphaned', { defaultValue: 'Orphaned' })}
                                                 </span>
                                             )}
                                             {account.isCircular && (
-                                                <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded border border-red-100" title="Circular Reference Detected: This account points to its own descendant!">
-                                                    <AlertTriangle className="w-3 h-3" /> Circular Loop
+                                                <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded border border-red-100" title={t('accountsList.badges.circularTooltip', { defaultValue: 'Circular Reference Detected: This account points to its own descendant!' })}>
+                                                    <AlertTriangle className="w-3 h-3" /> {t('accountsList.badges.circular', { defaultValue: 'Circular Loop' })}
                                                 </span>
                                             )}
                                             {account.isProtected && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
@@ -411,7 +413,7 @@ export default function AccountsListPage() {
                                                         setIsCreateModalOpen(true);
                                                     }}
                                                     className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                                                    title="Add Child Account"
+                                                    title={t('accountsList.actions.addChild', { defaultValue: 'Add Child Account' })}
                                                 >
                                                     <Plus className="w-3.5 h-3.5" />
                                                 </button>
@@ -421,7 +423,7 @@ export default function AccountsListPage() {
                                                         setEditingAccount(account);
                                                     }}
                                                     className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                    title="Edit Account"
+                                                    title={t('accountsList.actions.edit', { defaultValue: 'Edit Account' })}
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
@@ -432,7 +434,7 @@ export default function AccountsListPage() {
                                                             handleDeactivate(account.id, account.name);
                                                         }}
                                                         className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                        title="Deactivate Account"
+                                                        title={t('accountsList.actions.deactivate', { defaultValue: 'Deactivate Account' })}
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
@@ -448,7 +450,7 @@ export default function AccountsListPage() {
                                                     ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
                                                     : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                                             }`}>
-                                                {account.accountRole || (hasChildren ? 'HEADER' : 'POSTING')}
+                                                {account.accountRole || (hasChildren ? t('accountsList.roles.header', { defaultValue: 'HEADER' }) : t('accountsList.roles.posting', { defaultValue: 'POSTING' }))}
                                             </span>
                                             {(() => {
                                                 const effective = getEffectiveCurrency(account);
@@ -464,7 +466,7 @@ export default function AccountsListPage() {
                                                         effective.isInherited 
                                                             ? 'bg-transparent text-blue-400 border-blue-200 border-dashed' 
                                                             : 'bg-blue-50 text-blue-600 border-blue-100'
-                                                    }`} title={account.level === 0 ? 'Root Level Currency Lock (Immutable)' : effective.isInherited ? 'Inherited Policy' : 'Fixed Policy'}>
+                                                    }`} title={account.level === 0 ? t('accountsList.currency.rootLock', { defaultValue: 'Root Level Currency Lock (Immutable)' }) : effective.isInherited ? t('accountsList.currency.inheritedPolicy', { defaultValue: 'Inherited Policy' }) : t('accountsList.currency.fixedPolicy', { defaultValue: 'Fixed Policy' })}>
                                                         {account.level === 0 && <Lock size={10} className="text-blue-500 opacity-80" />}
                                                         {effective.code}
                                                         {effective.isInherited && account.level !== 0 && <span className="text-[8px] opacity-70">↓</span>}
@@ -486,7 +488,7 @@ export default function AccountsListPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
                     <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 pb-2 border-b flex justify-between items-center">
-                             <h2 className="text-xl font-bold text-gray-800">Create New Account</h2>
+                             <h2 className="text-xl font-bold text-gray-800">{t('accountsList.modals.createTitle', { defaultValue: 'Create New Account' })}</h2>
                              <button onClick={() => {
                                  setIsCreateModalOpen(false);
                                  setPrePopulatedData(null);
@@ -517,7 +519,7 @@ export default function AccountsListPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
                     <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="mb-4 pb-2 border-b flex justify-between items-center">
-                             <h2 className="text-xl font-bold text-gray-800">Edit Account: {editingAccount.name}</h2>
+                             <h2 className="text-xl font-bold text-gray-800">{t('accountsList.modals.editTitle', { name: editingAccount.name, defaultValue: `Edit Account: ${editingAccount.name}` })}</h2>
                              <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600">
                                  <span className="text-2xl">&times;</span>
                              </button>

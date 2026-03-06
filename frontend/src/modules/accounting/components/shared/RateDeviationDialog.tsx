@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { RateDeviationResult } from '../../utils/rateDeviationCheck';
 
@@ -21,6 +22,7 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
   onConfirmWithSync,
   onCancel
 }) => {
+  const { t } = useTranslation('accounting');
   if (!isOpen) return null;
 
   const formatNumber = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -34,11 +36,11 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
             <AlertTriangle size={24} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold leading-tight">Exchange Rate Deviation</h2>
+            <h2 className="text-lg font-bold leading-tight">{t('rateDeviation.title', { defaultValue: 'Exchange Rate Deviation' })}</h2>
             <div className="flex items-center gap-2 text-amber-100 text-xs mt-0.5">
-               <span>Checking rates for <b>{voucherDate}</b></span>
+               <span>{t('rateDeviation.checkingRatesFor', { defaultValue: 'Checking rates for' })} <b>{voucherDate}</b></span>
                <span className="opacity-50">|</span>
-               <span>Tolerance: 1%</span>
+               <span>{t('rateDeviation.tolerance', { defaultValue: 'Tolerance: 1%' })}</span>
             </div>
           </div>
         </div>
@@ -46,7 +48,7 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
         {/* Content */}
         <div className="p-6 max-h-[60vh] overflow-y-auto custom-scroll">
           <p className="text-sm text-[var(--color-text-secondary)] mb-4 leading-relaxed">
-            The effective rates in your voucher differ from the system rates recorded for <span className="font-bold text-[var(--color-text-primary)]">{voucherDate}</span>.
+            {t('rateDeviation.descriptionPrefix', { defaultValue: 'The effective rates in your voucher differ from the system rates recorded for' })} <span className="font-bold text-[var(--color-text-primary)]">{voucherDate}</span>.
           </p>
 
           {/* Warnings Table */}
@@ -54,11 +56,11 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
-                  <th className="px-4 py-2.5 text-left">Currency</th>
-                  <th className="px-4 py-2.5 text-right">Effective</th>
+                  <th className="px-4 py-2.5 text-left">{t('rateDeviation.columns.currency', { defaultValue: 'Currency' })}</th>
+                  <th className="px-4 py-2.5 text-right">{t('rateDeviation.columns.effective', { defaultValue: 'Effective' })}</th>
                   <th className="px-4 py-2.5 text-center"></th>
-                  <th className="px-4 py-2.5 text-right">System</th>
-                  <th className="px-4 py-2.5 text-right">Diff</th>
+                  <th className="px-4 py-2.5 text-right">{t('rateDeviation.columns.system', { defaultValue: 'System' })}</th>
+                  <th className="px-4 py-2.5 text-right">{t('rateDeviation.columns.diff', { defaultValue: 'Diff' })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -85,17 +87,17 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
 
           {/* Impact Summary */}
           <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 mb-2">
-            <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400 mb-2 uppercase tracking-wide">Posting Impact ({baseCurrency})</h4>
+            <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400 mb-2 uppercase tracking-wide">{t('rateDeviation.postingImpact', { currency: baseCurrency, defaultValue: `Posting Impact (${baseCurrency})` })}</h4>
             <div className="grid grid-cols-2 gap-6 text-xs">
               <div className="space-y-1">
-                <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">Effective Balance:</div>
+                <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">{t('rateDeviation.effectiveBalance', { defaultValue: 'Effective Balance:' })}</div>
                 <div className="font-mono text-[var(--color-text-primary)] flex justify-between">
                   <span>D {formatNumber(result.totalEffectiveBase.debit)}</span>
                   <span>C {formatNumber(result.totalEffectiveBase.credit)}</span>
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">System Rate Balance:</div>
+                <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">{t('rateDeviation.systemBalance', { defaultValue: 'System Rate Balance:' })}</div>
                 <div className="font-mono text-[var(--color-text-primary)] flex justify-between">
                   <span>D {formatNumber(result.totalSystemBase.debit)}</span>
                   <span>C {formatNumber(result.totalSystemBase.credit)}</span>
@@ -111,20 +113,20 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
             onClick={onCancel}
             className="flex-1 px-4 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-primary)] transition-all active:scale-95"
           >
-            Cancel
+            {t('rateDeviation.actions.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             onClick={onConfirm}
             className="flex-1 px-4 py-2.5 text-sm font-bold text-[var(--color-text-primary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-text-muted)] transition-all active:scale-95"
           >
-            Proceed
+            {t('rateDeviation.actions.proceed', { defaultValue: 'Proceed' })}
           </button>
           {onConfirmWithSync && (
             <button
               onClick={onConfirmWithSync}
               className="flex-[1.5] px-4 py-2.5 text-sm font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              Proceed & Sync
+              {t('rateDeviation.actions.proceedSync', { defaultValue: 'Proceed & Sync' })}
             </button>
           )}
         </div>

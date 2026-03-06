@@ -28,7 +28,40 @@
     "saveBtn": "Save Preferences",
     "saving": "Saving...",
     "saved": "Preferences saved.",
-    "saveError": "Could not save preferences."
+    "saveError": "Could not save preferences.",
+    "notifications": {
+      "title": "Notification Overrides",
+      "subtitle": "Company defaults are applied first. You can override each category for your own account.",
+      "loading": "Loading notification preferences...",
+      "saveBtn": "Save Notification Overrides",
+      "saving": "Saving...",
+      "saved": "Notification overrides saved.",
+      "saveError": "Could not save notification overrides.",
+      "statusLine": "Company default: {{companyDefault}} | Effective for you: {{effective}}",
+      "state": {
+        "on": "On",
+        "off": "Off",
+        "inherit": "Inherit"
+      },
+      "categories": {
+        "approval": {
+          "name": "Financial Approvals",
+          "desc": "Approval required notifications for accounting workflow."
+        },
+        "custody": {
+          "name": "Custody Confirmations",
+          "desc": "Custody confirmation requests assigned to you."
+        },
+        "system": {
+          "name": "System Info",
+          "desc": "General information and non-critical system updates."
+        },
+        "warning": {
+          "name": "System Warnings",
+          "desc": "Warnings and alert-style notifications."
+        }
+      }
+    }
   },
   "sidebar": {
     "accounting": "Accounting",
@@ -48,6 +81,7 @@
     "formsDesigner": "Forms Designer",
     "windowDesigner": "Window Designer",
     "trialBalance": "Trial Balance",
+    "subgroupTagging": "Subgroup Tagging",
     "accountStatement": "Account Statement",
     "balanceSheet": "Balance Sheet",
     "generalLedger": "General Ledger",
@@ -78,6 +112,1336 @@
     "bundles": "Bundles",
     "notifications": "Notifications",
     "generalSettings": "General Settings",
-    "companySettings": "Company Settings"
+    "companySettings": "Company Settings",
+    "tradingAccount": "Trading Account",
+    "journal": "Journal",
+    "aging": "Aging",
+    "bankReconciliation": "Bank Reconciliation",
+    "costCenterSummary": "Cost Center Summary",
+    "budgetVsActual": "Budget vs Actual"
+  },
+  "reportContainer": {
+    "refresh": "Refresh",
+    "filters": "Filters",
+    "columns": "Columns",
+    "visibility": "Visibility",
+    "configure": "Configure {{title}}",
+    "page": "Page",
+    "rows": "Rows",
+    "total": "Total",
+    "referenceDate": "Ref. Date"
+  },
+  "companies": {
+    "title": "My Companies",
+    "createHint": "If you do not have a company, click here to create one",
+    "createNew": "+ Create New Company",
+    "active": "Active",
+    "premiumPlan": "Premium Plan",
+    "sample": {
+      "name": "TechFlow Solutions",
+      "id": "ID: CMP_12345"
+    }
+  },
+  "modulePlaceholders": {
+    "common": {
+      "underDevelopment": "Module Under Development",
+      "underConstruction": "Module Under Construction"
+    },
+    "crm": {
+      "title": "CRM Overview",
+      "subtitle": "Manage your customer relationships and leads.",
+      "newLead": "New Lead",
+      "message": "The full CRM module is currently under development. You have successfully activated the license!",
+      "stats": {
+        "totalCustomers": "Total Customers",
+        "activeLeads": "Active Leads",
+        "pendingEmails": "Pending Emails",
+        "meetings": "Meetings"
+      }
+    },
+    "projects": {
+      "title": "Projects Overview",
+      "subtitle": "Track project progress, tasks, and timelines.",
+      "createProject": "Create Project",
+      "message": "We are putting the finishing touches on the Projects module. Your access is verified.",
+      "stats": {
+        "totalProjects": "Total Projects",
+        "pendingTasks": "Pending Tasks",
+        "teamMembers": "Team Members",
+        "hoursLogged": "Hours Logged"
+      }
+    },
+    "purchase": {
+      "title": "Purchasing Overview",
+      "subtitle": "Manage vendors, purchase orders, and procurement.",
+      "newOrder": "New Order",
+      "message": "The Purchase module is active but we're still finalizing the UI. Check back soon!",
+      "stats": {
+        "openOrders": "Open Orders",
+        "inTransit": "In Transit",
+        "billsToPay": "Bills to Pay",
+        "rfqs": "RFQs"
+      }
+    },
+    "manufacturing": {
+      "title": "Manufacturing Overview",
+      "subtitle": "Monitor production lines and work orders.",
+      "newWorkOrder": "New Work Order",
+      "message": "The full Manufacturing module is coming in the next update. Module license is active.",
+      "stats": {
+        "activeJobs": "Active Jobs",
+        "workStations": "Work Stations",
+        "completed": "Completed",
+        "issues": "Issues"
+      }
+    },
+    "hr": {
+      "title": "HR & Payroll",
+      "employeesTitle": "Employees",
+      "employeesDesc": "Employee directory will go here."
+    },
+    "inventory": {
+      "title": "Inventory Overview",
+      "itemsTitle": "Inventory Items",
+      "itemsDesc": "List of inventory products will go here."
+    },
+    "pos": {
+      "title": "Point of Sale"
+    }
+  },
+  "actions": {
+    "close": "Close"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications",
+    "viewAll": "View all notifications",
+    "inbox": {
+      "filters": {
+        "all": "All",
+        "unread": "Unread",
+        "read": "Read"
+      },
+      "title": "Notifications",
+      "unreadCount": "You have {{count}} unread notifications",
+      "markAllAsRead": "Mark all as read",
+      "searchPlaceholder": "Search notifications...",
+      "loading": "Loading notifications...",
+      "emptyTitle": "All caught up!",
+      "emptyBody": "No notifications found."
+    }
+  },
+  "instructions": {
+    "importantNotes": "Important Notes"
+  },
+  "widget": {
+    "toggleBorder": "Toggle Border",
+    "toggleBackground": "Toggle Background"
+  },
+  "companyAdmin": {
+    "shared": {
+      "companyAdmin": "Company Admin",
+      "users": "Users",
+      "roles": "Roles",
+      "create": "Create",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "system": "System",
+      "custom": "Custom",
+      "remove": "Remove",
+      "reset": "Reset",
+      "saveChanges": "Save Changes"
+    },
+    "users": {
+      "title": "User Management",
+      "inviteUser": "Invite User",
+      "searchPlaceholder": "Search users...",
+      "count": "{{count}} users",
+      "owner": "Owner",
+      "noRole": "No Role",
+      "changeRole": "Change Role",
+      "disableUser": "Disable User",
+      "enableUser": "Enable User",
+      "removeUser": "Remove User",
+      "assignRole": "Assign Role",
+      "assigningRoleFor": "Assigning role for {{name}}",
+      "selectRole": "Select Role",
+      "selectRolePlaceholder": "Select a role...",
+      "inviteNewUser": "Invite New User",
+      "emailAddress": "Email Address *",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "assignRoleRequired": "Assign Role *",
+      "sending": "Sending...",
+      "sendInvitation": "Send Invitation",
+      "table": {
+        "user": "User",
+        "email": "Email",
+        "role": "Role",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "active",
+        "inactive": "inactive"
+      },
+      "empty": {
+        "noSearchMatches": "No users match your search",
+        "noUsersFound": "No users found",
+        "adjustSearch": "Try adjusting your search terms",
+        "inviteHint": "Get started by inviting users to your company."
+      },
+      "confirm": {
+        "disableVerb": "disable",
+        "enableVerb": "enable",
+        "toggleStatus": "Are you sure you want to {{action}} {{email}}?",
+        "removeUser": "Are you sure you want to remove {{email}} from the company?"
+      }
+    },
+    "roles": {
+      "title": "Role Management",
+      "createTitle": "Create Role",
+      "createNew": "Create New Role",
+      "createRole": "Create Role",
+      "searchPlaceholder": "Search roles...",
+      "countFound": "{{count}} roles found",
+      "roleNameRequired": "Role Name *",
+      "roleNamePlaceholder": "e.g., Finance Manager",
+      "roleNameHint": "Choose a descriptive name for this role",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe the role's responsibilities and access level...",
+      "permissions": "Permissions",
+      "permissionsAfterCreate": "Permissions can be configured after the role is created",
+      "permissionsShownInEdit": "Available permissions will be displayed in the edit screen",
+      "creating": "Creating...",
+      "confirmDelete": "Are you sure you want to delete the role \"{{roleName}}\"?",
+      "table": {
+        "roleName": "Role Name",
+        "description": "Description",
+        "permissions": "Permissions",
+        "type": "Type",
+        "actions": "Actions"
+      },
+      "editRole": "Edit Role",
+      "deleteRole": "Delete Role",
+      "empty": {
+        "noSearchMatches": "No roles match your search",
+        "noRolesFound": "No roles found",
+        "adjustSearch": "Try adjusting your search terms",
+        "createHint": "Get started by creating a new role for your users."
+      },
+      "editWithName": "Edit {{name}}",
+      "systemWarning": "This is a system role. Some permissions cannot be removed.",
+      "quickStartTemplate": "Quick Start from Template",
+      "startFromScratch": "-- Start from scratch --",
+      "accountantPlaceholder": "e.g., Accountant",
+      "whatCanDo": "What can this role do?",
+      "permissionsSelected": "of {{total}} permissions selected",
+      "selectedCount": "{{count}} selected",
+      "searchPermissions": "Search permissions...",
+      "noPermissionMatches": "No permissions match your search.",
+      "saveRole": "Save Role"
+    },
+    "settings": {
+      "title": "Settings",
+      "companyLogo": "Company Logo",
+      "noLogo": "No Logo",
+      "wait": "Wait...",
+      "logoHint": "This logo will appear on your dashboard, vouchers, and reports. For best results, use a square image with a transparent background.",
+      "changeLogo": "Change Logo",
+      "uploadLogo": "Upload Logo",
+      "companyInformation": "Company Information",
+      "companyNameRequired": "Company Name *",
+      "taxId": "Tax ID",
+      "taxIdPlaceholder": "e.g., 123456789",
+      "address": "Address",
+      "addressPlaceholder": "Company address",
+      "financialSettings": "Financial Settings",
+      "baseCurrencyRequired": "Base Currency *",
+      "selectCurrency": "Select currency",
+      "fiscalYearStartMonth": "Fiscal Year Start Month",
+      "fiscalYearEndMonth": "Fiscal Year End Month",
+      "subscription": "Subscription",
+      "currentPlan": "Current Plan",
+      "manageSubscription": "Manage Subscription",
+      "dateTimeSettings": "Date & Time Settings",
+      "companyTimezoneRequired": "Company Timezone *",
+      "preferredDateFormatRequired": "Preferred Date Format *",
+      "systemLanguageRequired": "System Language *",
+      "dateSettingsHint": "These settings will affect how dates are displayed across all company reports and vouchers.",
+      "dangerZone": "Danger Zone",
+      "deleteCompany": "Delete Company",
+      "deleteCompanyHint": "Permanently delete this company and all associated data"
+    },
+    "bundles": {
+      "title": "Subscription",
+      "subscription": "Subscription",
+      "currentPlan": "Current Plan",
+      "availablePlans": "Available Plans",
+      "modulesIncluded": "Modules Included",
+      "featuresIncluded": "Features Included",
+      "includedModules": "Included Modules:",
+      "current": "Current",
+      "perMonth": "/month",
+      "annualPrice": "or ${{annual}}/year (save {{savings}}%)",
+      "modules": "Modules",
+      "features": "Features",
+      "noUpgradeOptions": "No upgrade options available",
+      "highestPlan": "You are already on the highest tier plan.",
+      "upgrading": "Upgrading...",
+      "upgradeTo": "Upgrade to {{bundleName}}",
+      "confirmUpgrade": "Are you sure you want to upgrade to {{bundleName}}?"
+    },
+    "features": {
+      "title": "Features",
+      "activeFeatures": "Active Features",
+      "loading": "Loading...",
+      "enabledCount": "{{count}} features currently enabled",
+      "noFeatures": "No features available",
+      "noFeaturesDescription": "No features are available for your subscription plan.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "modules": {
+      "title": "Modules",
+      "activeModules": "Active Modules",
+      "loading": "Loading...",
+      "activeCount": "{{count}} modules currently active",
+      "noModules": "No modules available",
+      "noModulesDescription": "No modules are available for your subscription plan.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "mandatoryModule": "Mandatory Module",
+      "cannotBeDisabled": "Cannot be disabled",
+      "processing": "Processing...",
+      "disableModule": "Disable Module",
+      "enableModule": "Enable Module",
+      "confirmDisable": "Are you sure you want to disable the {{moduleName}} module?"
+    },
+    "overview": {
+      "title": "Overview",
+      "breadcrumb": "Overview",
+      "subscriptionPlanLabel": "{{plan}} Plan",
+      "companyInformation": "Company Information",
+      "companyName": "Company Name",
+      "subscriptionPlan": "Subscription Plan",
+      "currency": "Currency",
+      "taxId": "Tax ID",
+      "notSet": "Not set",
+      "noCompanyInfo": "No company information available",
+      "editCompanySettings": "Edit Company Settings",
+      "quickActions": "Quick Actions",
+      "statistics": {
+        "roles": "Roles",
+        "users": "Users",
+        "modules": "Modules",
+        "features": "Features"
+      },
+      "actions": {
+        "inviteUser": "+ Invite New User",
+        "createRole": "+ Create New Role",
+        "manageSubscription": "Manage Subscription",
+        "configureModules": "Configure Modules"
+      }
+    }
+  },
+  "superAdmin": {
+    "plans": {
+      "loading": "Loading...",
+      "title": "Plans Management",
+      "subtitle": "Manage user subscription plans (account signup tiers)",
+      "note": "Note: Plans are for user signup, Bundles are for company creation",
+      "confirmDelete": "Are you sure you want to delete this plan?",
+      "empty": "No plans found. Create your first plan to get started.",
+      "perMonth": "mo",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "price": "Price",
+        "status": "Status",
+        "limits": "Limits",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "deprecated": "Deprecated"
+      },
+      "limits": {
+        "companies": "companies",
+        "usersPerCompany": "users/company",
+        "modules": "modules"
+      },
+      "fields": {
+        "id": "ID *",
+        "name": "Name *",
+        "description": "Description",
+        "price": "Price (USD/month) *",
+        "status": "Status *",
+        "limits": "Plan Limits",
+        "maxCompanies": "Max Companies",
+        "maxUsersPerCompany": "Max Users per Company",
+        "maxModulesAllowed": "Max Modules Allowed",
+        "maxStorageMB": "Max Storage (MB)",
+        "maxTransactionsPerMonth": "Max Transactions per Month"
+      },
+      "placeholders": {
+        "id": "e.g., free-tier",
+        "name": "e.g., Free Tier",
+        "description": "Describe this plan..."
+      },
+      "modal": {
+        "createTitle": "Create Plan",
+        "editTitle": "Edit Plan"
+      },
+      "actions": {
+        "create": "Create Plan",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "update": "Update"
+      },
+      "messages": {
+        "created": "Plan created",
+        "updated": "Plan updated",
+        "deleted": "Plan deleted",
+        "idNameRequired": "ID and Name are required"
+      }
+    },
+    "bundles": {
+      "loading": "Loading...",
+      "title": "Bundles Management",
+      "subtitle": "Manage company module bundles with business domains",
+      "confirmDelete": "Are you sure you want to delete this bundle?",
+      "empty": "No bundles found. Create your first bundle to get started.",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "businessDomains": "Business Domains",
+        "modules": "Modules",
+        "actions": "Actions"
+      },
+      "fields": {
+        "id": "ID *",
+        "name": "Name *",
+        "description": "Description",
+        "businessDomains": "Business Domains *",
+        "modulesIncluded": "Modules Included *"
+      },
+      "placeholders": {
+        "id": "e.g., standard-restaurant",
+        "name": "e.g., Standard Restaurant Bundle",
+        "description": "Describe this bundle..."
+      },
+      "noBusinessDomains": "No business domains available. Create domains first.",
+      "noModules": "No modules available. Create modules first.",
+      "modal": {
+        "createTitle": "Create Bundle",
+        "editTitle": "Edit Bundle"
+      },
+      "actions": {
+        "create": "Create Bundle",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "update": "Update"
+      },
+      "messages": {
+        "created": "Bundle created",
+        "updated": "Bundle updated",
+        "deleted": "Bundle deleted",
+        "idNameRequired": "ID and Name are required"
+      }
+    },
+    "voucherTemplatesEditor": {
+      "titleCreate": "Create Template",
+      "titleEdit": "Edit {{name}}",
+      "actions": {
+        "cancel": "Cancel",
+        "saveTemplate": "Save Template",
+        "remove": "Remove",
+        "addField": "Add Field",
+        "addColumn": "Add Column"
+      },
+      "tabs": {
+        "general": "General",
+        "headerFields": "Header Fields",
+        "lineFields": "Line Fields",
+        "tableColumns": "Table Columns",
+        "json": "JSON"
+      },
+      "fields": {
+        "newField": "New Field",
+        "label": "Label",
+        "dataProperty": "Name (Data Property)",
+        "type": "Type",
+        "required": "Required",
+        "readonly": "Readonly"
+      },
+      "fieldTypes": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "checkbox": "Checkbox (Boolean)",
+        "relation": "Relation",
+        "select": "Select"
+      },
+      "general": {
+        "templateName": "Template Name",
+        "code": "Code (Unique)",
+        "module": "Module"
+      },
+      "modules": {
+        "accounting": "Accounting",
+        "inventory": "Inventory"
+      },
+      "tableColumns": {
+        "description": "Define which fields from \"Line Fields\" should appear as columns in the table.",
+        "fieldId": "Field ID (must match Line Field ID)",
+        "width": "Width"
+      },
+      "jsonHelp": "Advanced: Edit the raw JSON definition directly.",
+      "errors": {
+        "templateNotFound": "Template not found",
+        "saveFailed": "Save Failed: ",
+        "invalidJson": "Invalid JSON"
+      }
+    },
+    "roleTemplates": {
+      "loading": "Loading...",
+      "title": "System Role Templates",
+      "subtitle": "Manage system-wide role templates",
+      "empty": "No role templates found. Create your first role template to get started.",
+      "columns": {
+        "roleName": "Role Name",
+        "permissions": "Permissions",
+        "actions": "Actions"
+      },
+      "permissionsCount": "permissions",
+      "actions": {
+        "createRoleTemplate": "Create Role Template",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "create": "Create"
+      },
+      "modal": {
+        "title": "Create Role Template"
+      },
+      "fields": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description"
+      },
+      "placeholders": {
+        "id": "e.g., template_manager",
+        "name": "e.g., Manager",
+        "description": "Describe this role template..."
+      },
+      "messages": {
+        "created": "Role template created successfully"
+      }
+    },
+    "modules": {
+      "loading": "Loading...",
+      "title": "Modules Management",
+      "subtitle": "Manage system-wide module definitions",
+      "confirmDelete": "Are you sure you want to delete this module?",
+      "empty": "No modules found. Create your first module to get started.",
+      "protected": "Protected",
+      "reservedHint": "Cannot use: core, companyAdmin (reserved)",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description",
+        "actions": "Actions"
+      },
+      "fields": {
+        "id": "ID *",
+        "name": "Name *",
+        "description": "Description"
+      },
+      "placeholders": {
+        "id": "e.g., crm",
+        "name": "e.g., Customer Relationship Management",
+        "description": "Describe this module..."
+      },
+      "modal": {
+        "createTitle": "Create Module",
+        "editTitle": "Edit Module"
+      },
+      "actions": {
+        "create": "Create",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "update": "Update"
+      },
+      "errors": {
+        "cannotDeleteProtected": "Cannot delete protected module: {{id}}",
+        "cannotCreateReservedId": "Cannot create module with ID: {{id}}. This is a reserved system component."
+      },
+      "messages": {
+        "created": "Module created",
+        "updated": "Module updated",
+        "deleted": "Module deleted",
+        "idNameRequired": "ID and Name are required"
+      }
+    },
+    "permissions": {
+      "loading": "Loading...",
+      "title": "Permissions Management",
+      "subtitle": "Manage system-wide permission definitions",
+      "confirmDelete": "Are you sure you want to delete this permission?",
+      "empty": "No permissions found. Create your first permission to get started.",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description",
+        "actions": "Actions"
+      },
+      "fields": {
+        "id": "ID *",
+        "name": "Name *",
+        "description": "Description"
+      },
+      "placeholders": {
+        "id": "e.g., accounting.view",
+        "name": "e.g., View Accounting",
+        "description": "Describe this permission..."
+      },
+      "modal": {
+        "createTitle": "Create Permission",
+        "editTitle": "Edit Permission"
+      },
+      "actions": {
+        "createPermission": "Create Permission",
+        "create": "Create",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "update": "Update"
+      },
+      "messages": {
+        "created": "Permission created",
+        "updated": "Permission updated",
+        "deleted": "Permission deleted",
+        "idNameRequired": "ID and Name are required"
+      }
+    },
+    "businessDomains": {
+      "loading": "Loading...",
+      "title": "Business Domains Management",
+      "subtitle": "Manage business domain categories for bundles",
+      "confirmDelete": "Are you sure you want to delete this business domain?",
+      "empty": "No business domains found. Create your first domain to get started.",
+      "columns": {
+        "id": "ID",
+        "name": "Name",
+        "description": "Description",
+        "actions": "Actions"
+      },
+      "fields": {
+        "id": "ID *",
+        "name": "Name *",
+        "description": "Description"
+      },
+      "placeholders": {
+        "id": "e.g., food-trading",
+        "name": "e.g., Food Trading",
+        "description": "Describe this business domain..."
+      },
+      "modal": {
+        "createTitle": "Create Business Domain",
+        "editTitle": "Edit Business Domain"
+      },
+      "actions": {
+        "createDomain": "Create Domain",
+        "create": "Create",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "update": "Update"
+      },
+      "messages": {
+        "created": "Business domain created",
+        "updated": "Business domain updated",
+        "deleted": "Business domain deleted",
+        "idNameRequired": "ID and Name are required"
+      }
+    },
+    "modulePermissionsEditor": {
+      "loading": "Loading editor...",
+      "title": "Manage Module Permissions",
+      "moduleLabel": "Module",
+      "availablePermissions": "Available Permissions (Registry)",
+      "searchPlaceholder": "Search permissions...",
+      "noMatches": "No matches",
+      "noAvailablePermissions": "No available permissions found in Registry.",
+      "goToPermissionsRegistry": "Go to Permissions Registry to create new ones.",
+      "assignedPermissions": "Assigned Permissions",
+      "dragHint": "Drag items here from the left",
+      "dragPermissionsHere": "Drag permissions here",
+      "autoAttach": "Auto-attach to Global Roles:",
+      "autoAttachPlaceholder": "e.g. OWNER, ADMIN (comma separated)",
+      "actions": {
+        "saveChanges": "Save Changes"
+      }
+    },
+    "usersManagement": {
+      "title": "Users Management",
+      "subtitle": "Manage all users and their associated companies",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "searchPlaceholder": "Search by name, email, or ID...",
+      "loadingUsers": "Loading users...",
+      "noUsers": "No users found matching your criteria",
+      "unnamedUser": "Unnamed User",
+      "joinedOn": "Joined {{date}}",
+      "companiesCount": "Companies ({{count}})",
+      "noCompaniesOwned": "No companies owned",
+      "userFallback": "User",
+      "userCompaniesTitle": "{{name}}'s Companies",
+      "currencyLabel": "Currency: {{currency}}",
+      "stats": {
+        "totalUsers": "Total Users",
+        "superAdmins": "Super Admins",
+        "regularUsers": "Regular Users",
+        "totalCompanies": "Total Companies"
+      },
+      "filters": {
+        "allRoles": "All Roles",
+        "usersOnly": "Users Only",
+        "superAdminsOnly": "Super Admins Only"
+      },
+      "role": {
+        "superAdmin": "SUPER ADMIN",
+        "user": "USER"
+      },
+      "actions": {
+        "impersonate": "Impersonate",
+        "viewAllCompanies": "View all {{count}} companies",
+        "demoteToUser": "Demote to User",
+        "promoteToSuperAdmin": "Promote to Super Admin",
+        "close": "Close"
+      },
+      "confirm": {
+        "promote": "Promote this user to SUPER_ADMIN? This will grant them full system access.",
+        "demote": "Demote this SUPER_ADMIN to USER? They will lose all system admin privileges.",
+        "startImpersonation": "Start impersonation session for this company?"
+      },
+      "messages": {
+        "promoted": "User promoted to SUPER_ADMIN",
+        "demoted": "User demoted to USER",
+        "impersonationStarted": "Impersonation session started. Reloading..."
+      }
+    },
+    "companies": {
+      "title": "All Companies",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "loading": "Loading companies...",
+      "empty": "No companies found.",
+      "confirmImpersonate": "Start impersonating this company?",
+      "columns": {
+        "companyId": "Company ID",
+        "name": "Name",
+        "ownerUid": "Owner UID",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "actions": {
+        "impersonate": "Impersonate"
+      },
+      "messages": {
+        "impersonationStarted": "Impersonation started. Redirecting..."
+      }
+    },
+    "users": {
+      "title": "All Users",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "loading": "Loading users...",
+      "empty": "No users found.",
+      "confirmPromote": "Promote this user to SUPER_ADMIN?",
+      "confirmDemote": "Demote this SUPER_ADMIN to USER?",
+      "columns": {
+        "userId": "User ID",
+        "email": "Email",
+        "globalRole": "Global Role",
+        "actions": "Actions"
+      },
+      "actions": {
+        "promote": "Promote",
+        "demote": "Demote"
+      },
+      "messages": {
+        "promoted": "User promoted to SUPER_ADMIN",
+        "demoted": "User demoted to USER"
+      }
+    },
+    "systemOverview": {
+      "title": "System Overview",
+      "subtitle": "High-level view of tenants and resources",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "loading": "Loading system overview...",
+      "noData": "No data available yet.",
+      "quickActionsTitle": "Quick Actions",
+      "quickActionsSubtitle": "Jump to super admin tools",
+      "stats": {
+        "totalUsers": "Total Users",
+        "totalCompanies": "Total Companies",
+        "totalVouchers": "Total Vouchers",
+        "inventoryItems": "Inventory Items",
+        "roles": "Roles"
+      },
+      "actions": {
+        "manageUsers": "Manage Users",
+        "manageCompanies": "Manage Companies"
+      }
+    },
+    "templates": {
+      "title": "Templates",
+      "subtitle": "Wizard templates, chart of accounts templates, and currencies.",
+      "loading": "Loading...",
+      "loadFailed": "Failed to load: {{message}}",
+      "unknownError": "Unknown error",
+      "empty": "No records found.",
+      "sections": {
+        "wizardTemplates": "Wizard Templates",
+        "coaTemplates": "Chart of Accounts Templates",
+        "currencies": "Currencies"
+      },
+      "columns": {
+        "name": "Name",
+        "models": "Models",
+        "id": "ID",
+        "code": "Code"
+      }
+    },
+    "roleEditor": {
+      "loading": "Loading...",
+      "title": "Edit Role",
+      "name": "Name",
+      "moduleBundles": "Module Bundles",
+      "explicitPermissions": "Explicit Permissions",
+      "resolvedPreview": "Resolved Preview (read-only)",
+      "save": "Save"
+    },
+    "modulePermissionsList": {
+      "loading": "Loading...",
+      "title": "Module Permissions",
+      "edit": "Edit",
+      "permissionsCount": "{{count}} permissions"
+    },
+    "voucherTemplates": {
+      "title": "System Voucher Templates",
+      "loading": "Loading...",
+      "empty": "No system templates found.",
+      "columns": {
+        "name": "Name",
+        "code": "Code",
+        "module": "Module",
+        "actions": "Actions"
+      },
+      "actions": {
+        "createTemplate": "Create Template",
+        "edit": "Edit"
+      }
+    }
+  },
+  "onboarding": {
+    "landing": {
+      "authFailed": "Authentication failed",
+      "nav": {
+        "features": "Features",
+        "solutions": "Solutions",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise",
+        "login": "Log in",
+        "getStarted": "Get Started"
+      },
+      "badge": "New ERP System v3.0",
+      "hero": {
+        "titlePrefix": "Everything you need to",
+        "titleHighlight": "manage",
+        "titleSuffix": "your business.",
+        "subtitle": "The all-in-one platform built for modern enterprises. Seamlessly integrated accounting, operations, and HR tools.",
+        "freeTrial": "Free Trial",
+        "noCard": "No credit card required"
+      },
+      "authTabs": {
+        "createAccount": "CREATE ACCOUNT",
+        "signIn": "SIGN IN"
+      },
+      "auth": {
+        "joinTitle": "Join ERP03",
+        "welcomeTitle": "Welcome back",
+        "joinSubtitle": "Start your journey with us today.",
+        "welcomeSubtitle": "Please enter your credentials to continue."
+      },
+      "form": {
+        "firstName": "First Name",
+        "firstPlaceholder": "First",
+        "lastName": "Last Name",
+        "lastPlaceholder": "Last",
+        "email": "Email Address",
+        "emailPlaceholder": "email@company.com",
+        "password": "Password",
+        "submitCreate": "Create Account",
+        "submitSignIn": "Sign In"
+      },
+      "admin": {
+        "prefix": "System Admin?",
+        "portal": "Portal Access"
+      },
+      "legal": {
+        "prefix": "By continuing, you agree to our",
+        "terms": "Terms",
+        "privacy": "Privacy"
+      },
+      "stats": {
+        "industryBundles": "Industry Bundles",
+        "activeOrgs": "Active Orgs",
+        "uptimeSla": "Uptime SLA",
+        "globalSupport": "Global Support"
+      },
+      "features": {
+        "titlePrefix": "Everything you need to",
+        "titleHighlight": "scale",
+        "subtitle": "Modular, scalable, and easy to use. Choose the apps you need and add more as you grow."
+      },
+      "cards": {
+        "financials": {
+          "title": "Financials",
+          "desc": "Automate accounting, invoicing, and expenses."
+        },
+        "humanCapital": {
+          "title": "Human Capital",
+          "desc": "Manage payroll, attendance, and recruitment."
+        },
+        "globalOps": {
+          "title": "Global Ops",
+          "desc": "Multi-currency, multi-language, and multi-company."
+        }
+      }
+    },
+    "companyWizard": {
+      "basic": {
+        "errors": {
+          "invalidImageType": "Only PNG, JPG, ICO or WEBP images are allowed.",
+          "logoSize": "Logo must be smaller than 5MB.",
+          "logoProcessFailed": "Failed to process image. Please try another one.",
+          "companyNameRequired": "Company name is required",
+          "countryRequired": "Please select a country"
+        },
+        "fields": {
+          "companyName": "Company Name",
+          "country": "Country / Region",
+          "description": "Description",
+          "companyLogo": "Company Logo"
+        },
+        "placeholders": {
+          "companyName": "e.g. Acme Corp",
+          "searchCountries": "Search countries...",
+          "description": "Briefly describe your company..."
+        },
+        "optional": "Optional",
+        "noCountriesFound": "No countries found",
+        "optimizing": "Optimizing...",
+        "actions": {
+          "upload": "Upload",
+          "removeLogo": "Remove logo",
+          "cancel": "Cancel",
+          "nextStep": "Next Step"
+        },
+        "dragDrop": "or drag & drop",
+        "allowedFormats": "PNG, JPG, ICO, WEBP",
+        "readyForDocuments": "Ready for Documents",
+        "autoConfigEnabled": "Auto-Configuration Enabled",
+        "smartDefaultsIntro": "Based on {{country}}, we've applied the following smart defaults:",
+        "defaults": {
+          "currency": "Currency",
+          "language": "Language",
+          "timezone": "Timezone",
+          "dateFormat": "Date Format"
+        },
+        "languages": {
+          "arabic": "Arabic",
+          "turkish": "Turkish",
+          "english": "English"
+        },
+        "customizeLater": "These settings can be customized in your company profile later."
+      }
+    }
+  },
+  "rbac": {
+    "rolesList": {
+      "loading": "Loading roles...",
+      "title": "Company Roles",
+      "confirmDelete": "Are you sure you want to delete this role?",
+      "permissionsCount": "{{count}} permissions",
+      "columns": {
+        "name": "Name",
+        "description": "Description",
+        "permissions": "Permissions",
+        "actions": "Actions"
+      },
+      "actions": {
+        "createRole": "Create Role",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "messages": {
+        "deleted": "Role deleted"
+      }
+    },
+    "editRole": {
+      "loading": "Loading...",
+      "titleCreate": "Create Role",
+      "titleEdit": "Edit Role",
+      "loadFromTemplate": "Load from Template",
+      "selectTemplate": "-- Select Template --",
+      "roleName": "Role Name",
+      "roleNamePlaceholder": "e.g., Accountant",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional description",
+      "permissions": "Permissions",
+      "actions": {
+        "saveRole": "Save Role",
+        "cancel": "Cancel"
+      }
+    },
+    "assignUsers": {
+      "loading": "Loading...",
+      "title": "Assign User Roles",
+      "selectRole": "-- Select Role --",
+      "noRole": "No role",
+      "yes": "Yes",
+      "no": "No",
+      "confirmRemoveUser": "Are you sure you want to remove this user from the company?",
+      "columns": {
+        "userId": "User ID",
+        "currentRole": "Current Role",
+        "owner": "Owner",
+        "actions": "Actions"
+      },
+      "actions": {
+        "removeUser": "Remove User"
+      },
+      "messages": {
+        "userRemoved": "User removed successfully",
+        "roleAssigned": "Role assigned successfully"
+      }
+    }
+  },
+  "auth": {
+    "loading": "Loading...",
+    "loadingResource": "Loading resource...",
+    "forbidden": {
+      "title": "Access Denied",
+      "description": "You don't have permission to access this page.",
+      "goBack": "Go Back"
+    },
+    "login": {
+      "title": "Login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Login",
+      "loggingIn": "Logging in...",
+      "error": "Failed to login. Please check your credentials."
+    },
+    "admin": {
+      "title": "System Administrator",
+      "subtitle": "Secure access to system management",
+      "restricted": "Restricted area. Authorized personnel only.",
+      "email": "Administrator Email",
+      "password": "Password",
+      "authenticating": "Authenticating...",
+      "accessSystem": "Access System",
+      "regularUserPrefix": "Regular user?",
+      "signInHere": "Sign in here",
+      "securityNotice": "All access attempts are logged and monitored for security purposes.",
+      "error": "Invalid administrator credentials. Access denied."
+    },
+    "moduleInit": {
+      "checkingStatus": "Checking module status...",
+      "redirecting": "Redirecting to setup wizard..."
+    }
+  },
+  "widgets": {
+    "managerTitle": "Workspace Widgets",
+    "approvalMode": {
+      "label": "Approval Mode",
+      "strict": "Strict",
+      "flexible": "Flexible"
+    },
+    "baseCurrency": {
+      "label": "Currency",
+      "none": "NONE"
+    },
+    "fiscalYear": {
+      "label": "Fiscal Year",
+      "value": "FY {{year}}"
+    },
+    "uiMode": {
+      "windows": "Windows",
+      "web": "Web"
+    },
+    "notes": {
+      "label": "Notes",
+      "clickMessage": "Notes widget clicked. Not fully implemented yet."
+    },
+    "alarm": {
+      "label": "Alarm",
+      "clickMessage": "Alarm widget clicked. Add an alarm."
+    },
+    "company": {
+      "none": "No Company",
+      "logoAlt": "Company Logo"
+    },
+    "types": {
+      "clock": "Clock",
+      "date": "Date",
+      "notes": "Notes",
+      "alarm": "Alarm",
+      "company-logo": "Company",
+      "fiscal-year": "Fiscal Year",
+      "base-currency": "Base Currency",
+      "approval-mode": "Approval Mode",
+      "ui-mode": "UI Mode"
+    }
+  },
+  "shell": {
+    "superAdmin": {
+      "title": "Super Admin",
+      "systemDashboard": "System Dashboard",
+      "superAdministrator": "Super Administrator",
+      "logout": "Logout",
+      "confirmLogout": "Are you sure you want to logout?",
+      "systemAdminPanel": "System Admin Panel",
+      "nav": {
+        "overview": "Overview",
+        "users": "Users Management",
+        "companies": "Companies",
+        "businessDomains": "Business Domains",
+        "modules": "Modules",
+        "permissions": "Permissions",
+        "bundles": "Bundles",
+        "plans": "Plans"
+      }
+    }
+  },
+  "companySelector": {
+    "title": "Your Companies",
+    "subtitle": "Select a workspace to continue",
+    "refresh": "Refresh",
+    "signOut": "Sign Out",
+    "unableToLoad": "Unable to load companies",
+    "tryAgain": "Try Again",
+    "welcomeTitle": "Welcome to ERP System",
+    "welcomeDescription": "You don't have any companies yet. Create your first one to get started.",
+    "createNewCompany": "Create New Company",
+    "card": {
+      "member": "Member",
+      "business": "Business",
+      "created": "Created",
+      "lastActive": "Last active",
+      "enterWorkspace": "Enter Workspace"
+    }
+  },
+  "moduleSetupCard": {
+    "title": "Get Started",
+    "subtitle": "Complete the configuration of your installed apps to activate your workspace.",
+    "setupProgress": "Setup Progress",
+    "pending": "Pending",
+    "configureApp": "Configure App",
+    "modules": {
+      "accounting": {
+        "name": "Accounting",
+        "description": "Chart of Accounts, Fiscal Years, Currencies"
+      },
+      "inventory": {
+        "name": "Inventory",
+        "description": "Warehouses, Product Categories, UoM"
+      },
+      "hr": {
+        "name": "Human Resources",
+        "description": "Departments, Employees, Positions"
+      },
+      "pos": {
+        "name": "Point of Sale",
+        "description": "POS Terminals, Payment Methods"
+      },
+      "companyAdmin": {
+        "name": "Company Administration",
+        "description": "Company Settings, Permissions"
+      },
+      "crm": {
+        "name": "CRM",
+        "description": "Pipelines, Sales Teams, Lead Sources"
+      },
+      "invoicing": {
+        "name": "Invoicing",
+        "description": "Tax Rules, Payment Terms, Templates"
+      },
+      "defaultDescription": "Complete module setup"
+    }
+  },
+  "moduleSetupModal": {
+    "required": "Required",
+    "notConfigured": "Not Configured",
+    "configurationRequired": "Configuration Required",
+    "configurationRequiredDescription": "This module is critical for your business operations and must be configured before use.",
+    "quickSetupIncludes": "Quick Setup Includes:",
+    "startWizard": "Start Configuration Wizard",
+    "cancel": "Cancel",
+    "skipForNow": "Skip for Now",
+    "requiredFooter": "You can configure this module later from the dashboard.",
+    "optionalFooter": "You can configure this module anytime from the settings.",
+    "modules": {
+      "accounting": {
+        "name": "Accounting",
+        "description": "Set up your accounting foundation to track finances, manage transactions, and generate reports.",
+        "steps": [
+          "Configure Chart of Accounts",
+          "Set Fiscal Year",
+          "Select Default Currency"
+        ]
+      },
+      "companyAdmin": {
+        "name": "Company Administration",
+        "description": "Finalize your company settings, permissions, and user access controls.",
+        "steps": [
+          "Complete Company Profile",
+          "Set Up User Roles",
+          "Configure Permissions"
+        ]
+      },
+      "inventory": {
+        "name": "Inventory",
+        "description": "Configure warehouse management, product categories, and stock tracking settings.",
+        "steps": [
+          "Create Warehouses",
+          "Set Up Product Categories",
+          "Define Units of Measure"
+        ]
+      },
+      "hr": {
+        "name": "Human Resources",
+        "description": "Set up your organization structure, departments, and employee management system.",
+        "steps": [
+          "Create Departments",
+          "Define Employee Positions",
+          "Configure Attendance Settings"
+        ]
+      },
+      "pos": {
+        "name": "Point of Sale",
+        "description": "Configure POS terminals, payment methods, and cashier workflows.",
+        "steps": [
+          "Set Up POS Terminals",
+          "Configure Payment Methods",
+          "Define Product Categories"
+        ]
+      },
+      "crm": {
+        "name": "CRM",
+        "description": "Set up sales pipelines, teams, and lead management workflows.",
+        "steps": [
+          "Create Sales Pipelines",
+          "Set Up Sales Teams",
+          "Configure Lead Sources"
+        ]
+      },
+      "invoicing": {
+        "name": "Invoicing",
+        "description": "Configure invoice templates, tax rules, and payment terms.",
+        "steps": [
+          "Set Up Tax Rules",
+          "Define Payment Terms",
+          "Customize Invoice Templates"
+        ]
+      },
+      "defaultDescription": "This module requires configuration before use.",
+      "defaultStep": "Complete module setup"
+    }
+  },
+  "settings": {
+    "appearance": {
+      "title": "Appearance",
+      "placeholder": "Theme configuration settings will appear here."
+    },
+    "home": {
+      "title": "System Settings"
+    },
+    "sidebar": {
+      "title": "Menu Configuration",
+      "placeholder": "Configure visibility of sidebar items here."
+    },
+    "approval": {
+      "loading": "Loading settings...",
+      "title": "Approval Workflow Settings",
+      "strictMode": {
+        "title": "Strict Approval Mode",
+        "description1": "When enabled, vouchers start as Draft and must be explicitly sent for approval and then approved before they can be locked.",
+        "description2": "When disabled (Flexible Mode), creating a voucher automatically sets it to Approved."
+      },
+      "save": "Save Configuration"
+    },
+    "notifications": {
+      "categories": {
+        "approval": {
+          "name": "Financial Approvals",
+          "desc": "When a voucher requires your approval."
+        },
+        "custody": {
+          "name": "Custody Confirmations",
+          "desc": "When you are assigned as the custodian of an account in a transaction."
+        },
+        "system": {
+          "name": "System Info",
+          "desc": "General system notifications and non-critical updates."
+        },
+        "warning": {
+          "name": "System Warnings",
+          "desc": "Alerts regarding system status, rejected vouchers, or other warnings."
+        }
+      },
+      "saved": "Company notification defaults saved",
+      "title": "Company Notification Defaults",
+      "subtitle": "Default notification policy for all users in {{company}}.",
+      "save": "Save Company Defaults",
+      "eventCategories": "Event Categories",
+      "hint": "Disable categories here to turn them off by default for all users in this company. Users can still override these defaults in their profile."
+    }
+  },
+  "success": {
+    "SAVE": "Saved successfully"
+  },
+  "companyWizard": {
+    "errors": {
+      "submitStep": "Failed to submit step",
+      "completeWizard": "Failed to complete wizard",
+      "missingSession": "Missing session. Please start the wizard again."
+    },
+    "success": {
+      "companyCreated": "Company created successfully"
+    },
+    "actions": {
+      "goToStart": "Go to Wizard Start"
+    },
+    "loadingStep": "Loading wizard step...",
+    "selectModel": {
+      "title": "Create Company",
+      "subtitle": "Select a business model to start. You can always add or disable modules later to fit your needs.",
+      "companyName": "Company Name",
+      "model": "Model",
+      "selectModel": "Select a model",
+      "starting": "Starting...",
+      "startWizard": "Start Wizard"
+    }
   }
 }

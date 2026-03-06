@@ -9,5 +9,48 @@
   "createInvoice": "إنشاء فاتورة",
   "addInventory": "إضافة مخزون",
   "asOf": "حتى تاريخ {{date}}",
-  "currencyLabel": "دولار"
+  "currencyLabel": "دولار",
+  "overview": "ملخص",
+  "customize": "تخصيص",
+  "newTransaction": "معاملة جديدة",
+  "viewAll": "عرض الكل",
+  "recentTransactions": "المعاملات الأخيرة",
+  "systemUsage": "استخدام النظام",
+  "stats": {
+    "totalRevenue": "إجمالي الإيرادات",
+    "expenses": "نفقات",
+    "netProfit": "صافي الربح",
+    "activeProjects": "المشاريع النشطة",
+    "onTrack": "على المسار الصحيح"
+  },
+  "actions": {
+    "newInvoice": "فاتورة جديدة",
+    "addVendor": "إضافة بائع",
+    "recordExpense": "سجل النفقات",
+    "addProduct": "أضف منتج"
+  },
+  "transactions": {
+    "paymentFromAcme": "الدفع من شركة Acme",
+    "invoiceRef": "الفاتورة #INV-2023-001",
+    "todayTime": "اليوم الساعة 10:23 صباحًا",
+    "officeSupplies": "اللوازم المكتبية",
+    "staplesInc": "شركة ستابلز",
+    "yesterday": "أمس",
+    "subscriptionRenewal": "تجديد الاشتراك",
+    "adobe": "أدوبي كريتيف كلاود",
+    "consultingFees": "رسوم الاستشارة",
+    "techSolutions": "شركة الحلول التقنية المحدودة",
+    "serverCosts": "تكاليف الخادم",
+    "aws": "خدمات ويب AWS"
+  },
+  "usage": {
+    "storage": "تخزين",
+    "apiCalls": "مكالمات واجهة برمجة التطبيقات",
+    "users": "المستخدمين"
+  },
+  "upgrade": {
+    "title": "الترقية إلى برو",
+    "subtitle": "أطلق العنان للتحليلات المتقدمة والتقارير المخصصة ومقاعد المستخدمين غير المحدودة.",
+    "viewPlans": "عرض الخطط"
+  }
 }

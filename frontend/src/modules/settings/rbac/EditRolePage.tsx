@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { rbacApi, CompanyRole, Permission, SystemRoleTemplate } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 export default function EditRolePage() {
+  const { t } = useTranslation('common');
   const { roleId } = useParams<{ roleId: string }>();
   const navigate = useNavigate();
   const { companyId } = useCompanyAccess();
@@ -87,7 +89,7 @@ export default function EditRolePage() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6">{t('rbac.editRole.loading')}</div>;
 
   const permissionsByCategory = allPermissions.reduce((acc, perm) => {
     if (!acc[perm.category]) acc[perm.category] = [];
@@ -98,19 +100,19 @@ export default function EditRolePage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">
-        {roleId === 'new' ? 'Create Role' : 'Edit Role'}
+        {roleId === 'new' ? t('rbac.editRole.titleCreate') : t('rbac.editRole.titleEdit')}
       </h1>
 
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Load from Template
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('rbac.editRole.loadFromTemplate')}
           </label>
           <select
             onChange={(e) => handleTemplateSelect(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
           >
-            <option value="">-- Select Template --</option>
+            <option value="">{t('rbac.editRole.selectTemplate')}</option>
             {templates.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -118,34 +120,34 @@ export default function EditRolePage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Role Name
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('rbac.editRole.roleName')}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
-            placeholder="e.g., Accountant"
+            placeholder={t('rbac.editRole.roleNamePlaceholder')}
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('rbac.editRole.description')}
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2"
             rows={3}
-            placeholder="Optional description"
+            placeholder={t('rbac.editRole.descriptionPlaceholder')}
           />
         </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Permissions</h2>
+        <h2 className="text-lg font-semibold mb-4">{t('rbac.editRole.permissions')}</h2>
         
         {Object.entries(permissionsByCategory).map(([category, perms]) => (
           <div key={category} className="mb-6">
@@ -174,13 +176,13 @@ export default function EditRolePage() {
           onClick={handleSave}
           className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Save Role
+          {t('rbac.editRole.actions.saveRole')}
         </button>
         <button
           onClick={() => navigate('/settings/rbac/roles')}
           className="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
         >
-          Cancel
+          {t('rbac.editRole.actions.cancel')}
         </button>
       </div>
     </div>

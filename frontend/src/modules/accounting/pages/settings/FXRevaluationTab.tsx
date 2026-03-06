@@ -78,10 +78,10 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
       }));
       setDetectedCurrencies(currencies);
       if (currencies.length === 0) {
-        setError('No foreign currency balances found for the selected scope and date.');
+        setError(t('settings.fxRevaluation.errors.noForeignBalances', { defaultValue: 'No foreign currency balances found for the selected scope and date.' }));
       }
     } catch (err: any) {
-      setError(err?.message || 'Failed to detect currencies');
+      setError(err?.message || t('settings.fxRevaluation.errors.detectFailed', { defaultValue: 'Failed to detect currencies' }));
     } finally {
       setDetecting(false);
     }
@@ -90,11 +90,11 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
   // === Step 1 → Step 2: Calculate ===
   const handleCalculate = useCallback(async () => {
     if (!targetGainLossAccountId) {
-      setError('Please select an Unrealized Gain/Loss account.');
+      setError(t('settings.fxRevaluation.errors.selectGainLoss', { defaultValue: 'Please select an Unrealized Gain/Loss account.' }));
       return;
     }
     if (detectedCurrencies.length === 0) {
-      setError('No currencies detected. Click "Detect Currencies" first.');
+      setError(t('settings.fxRevaluation.errors.detectFirst', { defaultValue: 'No currencies detected. Click \"Detect Currencies\" first.' }));
       return;
     }
     setCalculating(true);
@@ -110,7 +110,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
       setCalculationResult(result);
       setStep('PREVIEW');
     } catch (err: any) {
-      setError(err?.message || 'Failed to calculate revaluation');
+      setError(err?.message || t('settings.fxRevaluation.errors.calculateFailed', { defaultValue: 'Failed to calculate revaluation' }));
     } finally {
       setCalculating(false);
     }
@@ -126,7 +126,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
       setGeneratedVoucher(result);
       setStep('DONE');
     } catch (err: any) {
-      setError(err?.message || 'Failed to generate voucher');
+      setError(err?.message || t('settings.fxRevaluation.errors.generateFailed', { defaultValue: 'Failed to generate voucher' }));
     } finally {
       setGenerating(false);
     }
@@ -154,15 +154,15 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <Calculator size={20} />
-            FX Revaluation
+            {t('settings.fxRevaluation.title', { defaultValue: 'FX Revaluation' })}
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Revalue foreign currency balances to current exchange rates and generate adjustment vouchers.
+            {t('settings.fxRevaluation.subtitle', { defaultValue: 'Revalue foreign currency balances to current exchange rates and generate adjustment vouchers.' })}
           </p>
         </div>
         {step !== 'SCOPE' && (
           <button onClick={handleReset} className="px-3 py-1.5 text-sm border rounded-md text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
-            <RefreshCw size={14} /> Start Over
+            <RefreshCw size={14} /> {t('settings.fxRevaluation.startOver', { defaultValue: 'Start Over' })}
           </button>
         )}
       </div>
@@ -170,15 +170,15 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
       {/* Progress Steps */}
       <div className="flex gap-2 items-center text-sm font-medium">
         <div className={`px-3 py-1 rounded-full ${step === 'SCOPE' ? 'bg-indigo-600 text-white' : 'bg-green-100 text-green-800'}`}>
-          1. Scope & Rates
+          {t('settings.fxRevaluation.steps.scopeRates', { defaultValue: '1. Scope & Rates' })}
         </div>
         <span className="text-slate-300">→</span>
         <div className={`px-3 py-1 rounded-full ${step === 'PREVIEW' ? 'bg-indigo-600 text-white' : step === 'DONE' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-400'}`}>
-          2. Preview
+          {t('settings.fxRevaluation.steps.preview', { defaultValue: '2. Preview' })}
         </div>
         <span className="text-slate-300">→</span>
         <div className={`px-3 py-1 rounded-full ${step === 'DONE' ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-          3. Done
+          {t('settings.fxRevaluation.steps.done', { defaultValue: '3. Done' })}
         </div>
       </div>
 
@@ -195,10 +195,10 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
         <div className="space-y-4">
           {/* Date & Filter */}
           <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-700">Configuration</h3>
+            <h3 className="text-sm font-bold text-slate-700">{t('settings.fxRevaluation.configuration', { defaultValue: 'Configuration' })}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">As Of Date</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t('settings.fxRevaluation.asOfDate', { defaultValue: 'As Of Date' })}</label>
                 <DatePicker
                   value={asOfDate}
                   onChange={setAsOfDate}
@@ -207,7 +207,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
-                  Filter by Account <span className="text-slate-400">(Optional)</span>
+                  {t('settings.fxRevaluation.filterByAccount', { defaultValue: 'Filter by Account' })} <span className="text-slate-400">({t('settings.common.optional', { defaultValue: 'Optional' })})</span>
                 </label>
                 <AccountSelector
                   value={filterAccountIds[0] || ''}
@@ -224,7 +224,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
                 value={targetGainLossAccountId}
                 onChange={(acct: any) => setTargetGainLossAccountId(acct?.id || '')}
               />
-              <p className="text-xs text-slate-400 mt-1">The account where the FX gain/loss adjustment will be posted.</p>
+              <p className="text-xs text-slate-400 mt-1">{t('settings.fxRevaluation.gainLossHint', { defaultValue: 'The account where the FX gain/loss adjustment will be posted.' })}</p>
             </div>
 
             <button
@@ -233,7 +233,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
               className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
             >
               {detecting ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              Detect Currencies
+              {t('settings.fxRevaluation.detectCurrencies', { defaultValue: 'Detect Currencies' })}
             </button>
           </div>
 
@@ -242,22 +242,22 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
             <div className="bg-white border rounded-xl p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-700">
-                  Foreign Currencies Detected ({detectedCurrencies.length})
+                  {t('settings.fxRevaluation.foreignDetected', { count: detectedCurrencies.length, defaultValue: `Foreign Currencies Detected (${detectedCurrencies.length})` })}
                 </h3>
                 <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">
-                  Base: {baseCurrency}
+                  {t('settings.fxRevaluation.base', { defaultValue: 'Base' })}: {baseCurrency}
                 </span>
               </div>
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-blue-700 flex items-start gap-1.5">
                 <Info size={14} className="mt-0.5 shrink-0" />
-                The system has fetched the latest exchange rates. You may override them below before processing.
+                {t('settings.fxRevaluation.latestRatesHint', { defaultValue: 'The system has fetched the latest exchange rates. You may override them below before processing.' })}
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-slate-500">
-                    <th className="py-2 px-2">Currency</th>
-                    <th className="py-2 px-2">Suggested Rate</th>
-                    <th className="py-2 px-2">Your Rate</th>
+                    <th className="py-2 px-2">{t('settings.fxRevaluation.columns.currency', { defaultValue: 'Currency' })}</th>
+                    <th className="py-2 px-2">{t('settings.fxRevaluation.columns.suggestedRate', { defaultValue: 'Suggested Rate' })}</th>
+                    <th className="py-2 px-2">{t('settings.fxRevaluation.columns.yourRate', { defaultValue: 'Your Rate' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -286,7 +286,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
                 className="px-5 py-2.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
               >
                 {calculating ? <RefreshCw size={14} className="animate-spin" /> : <Calculator size={14} />}
-                Calculate Revaluation
+                {t('settings.fxRevaluation.calculate', { defaultValue: 'Calculate Revaluation' })}
               </button>
             </div>
           )}
@@ -299,19 +299,19 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <div className="text-xs font-semibold text-green-700">Total Unrealized Gain</div>
+              <div className="text-xs font-semibold text-green-700">{t('settings.fxRevaluation.totalGain', { defaultValue: 'Total Unrealized Gain' })}</div>
               <div className="text-2xl font-bold text-green-800 mt-1">
                 {calculationResult.totalGain.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <div className="text-xs font-semibold text-red-700">Total Unrealized Loss</div>
+              <div className="text-xs font-semibold text-red-700">{t('settings.fxRevaluation.totalLoss', { defaultValue: 'Total Unrealized Loss' })}</div>
               <div className="text-2xl font-bold text-red-800 mt-1">
                 ({calculationResult.totalLoss.toLocaleString(undefined, { minimumFractionDigits: 2 })})
               </div>
             </div>
             <div className={`border rounded-xl p-4 ${calculationResult.netDelta >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-              <div className="text-xs font-semibold text-slate-700">Net Delta</div>
+              <div className="text-xs font-semibold text-slate-700">{t('settings.fxRevaluation.netDelta', { defaultValue: 'Net Delta' })}</div>
               <div className={`text-2xl font-bold mt-1 ${calculationResult.netDelta >= 0 ? 'text-green-800' : 'text-red-800'}`}>
                 {calculationResult.netDelta.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </div>
@@ -320,18 +320,18 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
 
           {/* Detail Table */}
           <div className="bg-white border rounded-xl p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-700 mb-3">Affected Accounts ({calculationResult.lines.length})</h3>
+            <h3 className="text-sm font-bold text-slate-700 mb-3">{t('settings.fxRevaluation.affectedAccounts', { count: calculationResult.lines.length, defaultValue: `Affected Accounts (${calculationResult.lines.length})` })}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-slate-500">
-                    <th className="py-2 px-2">Account</th>
-                    <th className="py-2 px-2">Currency</th>
-                    <th className="py-2 px-2 text-right">Foreign Balance</th>
-                    <th className="py-2 px-2 text-right">Historical Base</th>
-                    <th className="py-2 px-2 text-right">New Rate</th>
-                    <th className="py-2 px-2 text-right">Target Base</th>
-                    <th className="py-2 px-2 text-right">Delta</th>
+                    <th className="py-2 px-2">{t('settings.fxRevaluation.preview.account', { defaultValue: 'Account' })}</th>
+                    <th className="py-2 px-2">{t('settings.fxRevaluation.preview.currency', { defaultValue: 'Currency' })}</th>
+                    <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.foreignBalance', { defaultValue: 'Foreign Balance' })}</th>
+                    <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.historicalBase', { defaultValue: 'Historical Base' })}</th>
+                    <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.newRate', { defaultValue: 'New Rate' })}</th>
+                    <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.targetBase', { defaultValue: 'Target Base' })}</th>
+                    <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.delta', { defaultValue: 'Delta' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -362,7 +362,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
               onClick={() => setStep('SCOPE')}
               className="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50"
             >
-              ← Back
+              {t('settings.common.back', { defaultValue: '← Back' })}
             </button>
             <button
               onClick={handleGenerateVoucher}
@@ -370,7 +370,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
               className="px-5 py-2.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
             >
               {generating ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
-              Generate Draft Voucher
+              {t('settings.fxRevaluation.generateDraft', { defaultValue: 'Generate Draft Voucher' })}
             </button>
           </div>
         </div>
@@ -380,18 +380,18 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
       {step === 'DONE' && generatedVoucher && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center space-y-3">
           <CheckCircle2 size={48} className="text-green-600 mx-auto" />
-          <h3 className="text-lg font-bold text-green-800">FX Revaluation Voucher Created!</h3>
+          <h3 className="text-lg font-bold text-green-800">{t('settings.fxRevaluation.done.title', { defaultValue: 'FX Revaluation Voucher Created!' })}</h3>
           <p className="text-sm text-green-700">
-            Voucher <strong>{generatedVoucher.voucherNo}</strong> has been saved as a <strong>DRAFT</strong>.
+            {t('settings.fxRevaluation.done.savedAsDraftPrefix', { defaultValue: 'Voucher' })} <strong>{generatedVoucher.voucherNo}</strong> {t('settings.fxRevaluation.done.savedAsDraftSuffix', { defaultValue: 'has been saved as a' })} <strong>{t('settings.fxRevaluation.done.draft', { defaultValue: 'DRAFT' })}</strong>.
           </p>
           <p className="text-xs text-green-600">
-            You can review and post it from the Voucher List.
+            {t('settings.fxRevaluation.done.reviewHint', { defaultValue: 'You can review and post it from the Voucher List.' })}
           </p>
           <button
             onClick={handleReset}
             className="mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
           >
-            Run Another Revaluation
+            {t('settings.fxRevaluation.done.runAnother', { defaultValue: 'Run Another Revaluation' })}
           </button>
         </div>
       )}

@@ -5,11 +5,10 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useCompanyProfile, useCompanyUsers, useCompanyRoles, useCompanyModules, useCompanyFeatures } from '../../../hooks/useCompanyAdmin';
-
-// Mock translation function
-const t = (key: string) => key;
+import { useTranslation } from 'react-i18next';
 
 export const OverviewPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { profile, isLoading: profileLoading } = useCompanyProfile();
   const { users, isLoading: usersLoading } = useCompanyUsers();
@@ -50,8 +49,8 @@ export const OverviewPage: React.FC = () => {
     <CompanyAdminLayout>
       <PageHeader 
         title={profile?.name || t("companyAdmin.overview.title")} 
-        breadcrumbs={[{ label: 'Company Admin' }, { label: 'Overview' }]}
-        subtitle={profile?.subscriptionPlan ? `${profile.subscriptionPlan} Plan` : undefined}
+        breadcrumbs={[{ label: t('companyAdmin.shared.companyAdmin') }, { label: t('companyAdmin.overview.breadcrumb') }]}
+        subtitle={profile?.subscriptionPlan ? t('companyAdmin.overview.subscriptionPlanLabel', { plan: profile.subscriptionPlan }) : undefined}
       />
 
       {/* Statistics */}
@@ -76,7 +75,7 @@ export const OverviewPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Company Info */}
         <Card className="lg:col-span-2 p-6">
-          <h2 className="text-lg font-bold mb-4">Company Information</h2>
+          <h2 className="text-lg font-bold mb-4">{t('companyAdmin.overview.companyInformation')}</h2>
           {isLoading ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -85,20 +84,20 @@ export const OverviewPage: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Company Name</p>
+                  <p className="text-sm text-gray-500">{t('companyAdmin.overview.companyName')}</p>
                   <p className="font-medium">{profile.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Subscription Plan</p>
+                  <p className="text-sm text-gray-500">{t('companyAdmin.overview.subscriptionPlan')}</p>
                   <p className="font-medium capitalize">{profile.subscriptionPlan}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Currency</p>
+                  <p className="text-sm text-gray-500">{t('companyAdmin.overview.currency')}</p>
                   <p className="font-medium">{profile.currency}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Tax ID</p>
-                  <p className="font-medium">{profile.taxId || 'Not set'}</p>
+                  <p className="text-sm text-gray-500">{t('companyAdmin.overview.taxId')}</p>
+                  <p className="font-medium">{profile.taxId || t('companyAdmin.overview.notSet')}</p>
                 </div>
               </div>
               <div className="pt-4 border-t">
@@ -106,46 +105,46 @@ export const OverviewPage: React.FC = () => {
                   variant="secondary" 
                   onClick={() => navigate('/company-admin/settings')}
                 >
-                  Edit Company Settings
+                  {t('companyAdmin.overview.editCompanySettings')}
                 </Button>
               </div>
             </div>
           ) : (
-            <p className="text-gray-400">No company information available</p>
+            <p className="text-gray-400">{t('companyAdmin.overview.noCompanyInfo')}</p>
           )}
         </Card>
 
         {/* Quick Actions */}
         <Card className="p-6">
-          <h2 className="text-lg font-bold mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-bold mb-4">{t('companyAdmin.overview.quickActions')}</h2>
           <div className="space-y-3">
              <Button 
                className="w-full justify-start" 
                variant="secondary"
                onClick={() => navigate('/company-admin/users')}
              >
-               + Invite New User
+               {t('companyAdmin.overview.actions.inviteUser')}
              </Button>
              <Button 
                className="w-full justify-start" 
                variant="secondary"
                onClick={() => navigate('/company-admin/roles/create')}
              >
-               + Create New Role
+               {t('companyAdmin.overview.actions.createRole')}
              </Button>
              <Button 
                className="w-full justify-start" 
                variant="secondary"
                onClick={() => navigate('/company-admin/bundles')}
              >
-               Manage Subscription
+               {t('companyAdmin.overview.actions.manageSubscription')}
              </Button>
              <Button 
                className="w-full justify-start" 
                variant="secondary"
                onClick={() => navigate('/company-admin/modules')}
              >
-               Configure Modules
+               {t('companyAdmin.overview.actions.configureModules')}
              </Button>
           </div>
         </Card>

@@ -9,5 +9,48 @@
   "createInvoice": "Fatura Oluştur",
   "addInventory": "Stok Ekle",
   "asOf": "{{date}} itibariyle",
-  "currencyLabel": "USD"
+  "currencyLabel": "USD",
+  "overview": "Genel Bakış",
+  "customize": "Özelleştirmek",
+  "newTransaction": "Yeni İşlem",
+  "viewAll": "Tümünü Görüntüle",
+  "recentTransactions": "Son İşlemler",
+  "systemUsage": "Sistem Kullanımı",
+  "stats": {
+    "totalRevenue": "Toplam Gelir",
+    "expenses": "Giderler",
+    "netProfit": "Net Kar",
+    "activeProjects": "Aktif Projeler",
+    "onTrack": "Yolunda"
+  },
+  "actions": {
+    "newInvoice": "Yeni Fatura",
+    "addVendor": "Satıcı Ekle",
+    "recordExpense": "Gider Kaydet",
+    "addProduct": "Ürün Ekle"
+  },
+  "transactions": {
+    "paymentFromAcme": "Acme Corp'tan ödeme",
+    "invoiceRef": "Fatura #INV-2023-001",
+    "todayTime": "Bugün 10:23",
+    "officeSupplies": "Ofis Malzemeleri",
+    "staplesInc": "Staples Inc.",
+    "yesterday": "Dün",
+    "subscriptionRenewal": "Abonelik Yenileme",
+    "adobe": "Adobe Yaratıcı Bulut",
+    "consultingFees": "Danışmanlık Ücretleri",
+    "techSolutions": "Teknoloji Çözümleri Ltd.",
+    "serverCosts": "Sunucu Maliyetleri",
+    "aws": "AWS Web Hizmetleri"
+  },
+  "usage": {
+    "storage": "Depolama",
+    "apiCalls": "API Çağrıları",
+    "users": "Kullanıcılar"
+  },
+  "upgrade": {
+    "title": "Pro'ya yükseltin",
+    "subtitle": "Gelişmiş analizlerin, özel raporların ve sınırsız kullanıcı koltuklarının kilidini açın.",
+    "viewPlans": "Planları Görüntüle"
+  }
 }

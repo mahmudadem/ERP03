@@ -10,8 +10,10 @@ import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useAuth } from '../../hooks/useAuth';
 import { errorHandler } from '../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 const CompanySelectorPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { companies, loading, error, refresh } = useCompanies();
   const navigate = useNavigate();
   const { switchCompany } = useCompanyAccess();
@@ -53,9 +55,9 @@ const CompanySelectorPage: React.FC = () => {
     if (error) {
       return (
         <Card className="p-6 space-y-4 text-center max-w-md mx-auto">
-          <div className="text-red-500 font-medium">Unable to load companies</div>
+          <div className="text-red-500 font-medium">{t('companySelector.unableToLoad')}</div>
           <p className="text-sm text-gray-500">{error}</p>
-          <Button variant="secondary" onClick={refresh}>Try Again</Button>
+          <Button variant="secondary" onClick={refresh}>{t('companySelector.tryAgain')}</Button>
         </Card>
       );
     }
@@ -66,10 +68,10 @@ const CompanySelectorPage: React.FC = () => {
           <div className="mx-auto bg-white p-3 rounded-full w-fit shadow-sm">
              <Plus size={32} className="text-blue-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Welcome to ERP System</h2>
-          <p className="text-gray-600">You don't have any companies yet. Create your first one to get started.</p>
+          <h2 className="text-xl font-bold text-gray-900">{t('companySelector.welcomeTitle')}</h2>
+          <p className="text-gray-600">{t('companySelector.welcomeDescription')}</p>
           <Button onClick={() => navigate('/company-wizard')} className="mt-4">
-            Create New Company
+            {t('companySelector.createNewCompany')}
           </Button>
         </Card>
       );
@@ -91,13 +93,13 @@ const CompanySelectorPage: React.FC = () => {
       {/* Header - Always Visible */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Your Companies</h1>
-          <p className="text-gray-500 mt-1">Select a workspace to continue</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{t('companySelector.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('companySelector.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {!loading && (
              <Button variant="ghost" onClick={refresh} className="text-gray-500 hover:text-gray-900">
-               Refresh
+               {t('companySelector.refresh')}
              </Button>
           )}
           <Button 
@@ -106,7 +108,7 @@ const CompanySelectorPage: React.FC = () => {
             className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
+            {t('companySelector.signOut')}
           </Button>
         </div>
       </div>

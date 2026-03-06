@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAccountingSettings } from '../../hooks/useAccountingSettings';
 import { ChevronDown, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PaymentMethodDropdownProps {
   value: string;
@@ -18,6 +19,7 @@ export const PaymentMethodDropdown: React.FC<PaymentMethodDropdownProps> = ({
   readOnly,
   onBlur
 }) => {
+  const { t } = useTranslation('accounting');
   const { data: settings, isLoading } = useAccountingSettings();
   const paymentMethods = settings?.paymentMethods || [];
   const enabledMethods = paymentMethods.filter(pm => pm.isEnabled);
@@ -34,14 +36,14 @@ export const PaymentMethodDropdown: React.FC<PaymentMethodDropdownProps> = ({
         onBlur={onBlur}
         className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm appearance-none pr-8 transition-colors ${readOnly || disabled ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
       >
-        {!isLoading && enabledMethods.length === 0 && <option value="">No payment methods configured</option>}
+        {!isLoading && enabledMethods.length === 0 && <option value="">{t('paymentMethodDropdown.noMethodsConfigured')}</option>}
         {enabledMethods.map(pm => (
           <option key={pm.id} value={pm.name}>
             {pm.name}
           </option>
         ))}
         {showValue && (
-          <option value={value}>{value} (Inactive/Legacy)</option>
+          <option value={value}>{t('paymentMethodDropdown.inactiveLegacyValue', { value })}</option>
         )}
       </select>
       <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center pointer-events-none text-[var(--color-text-muted)]">

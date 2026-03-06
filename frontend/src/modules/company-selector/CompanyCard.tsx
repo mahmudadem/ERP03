@@ -3,6 +3,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { UserCompany } from './api';
 import { formatCompanyDate } from '../../utils/dateUtils';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   company: UserCompany;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
+  const { t } = useTranslation('common');
   // Use the first letter of each word for the fallback avatar, up to 2 letters
   const initials = company.name
     .split(/\s+/)
@@ -19,7 +21,7 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
     .toUpperCase() || '?';
 
   // Role display mapping
-  const roleDisplay = company.roleId || company.role || 'Member';
+  const roleDisplay = company.roleId || company.role || t('companySelector.card.member');
 
   return (
     <Card 
@@ -60,7 +62,7 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
             <div className="mt-1 flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {company.model || 'Business'} • {roleDisplay}
+                {company.model || t('companySelector.card.business')} • {roleDisplay}
               </p>
             </div>
           </div>
@@ -69,12 +71,12 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100/50">
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tight mb-0.5">Created</p>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tight mb-0.5">{t('companySelector.card.created')}</p>
             <p className="text-xs text-slate-700 font-medium">{formatCompanyDate(company.createdAt, null)}</p>
           </div>
           {company.lastAccessedAt && (
             <div className="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100/30">
-              <p className="text-[10px] text-blue-400 uppercase font-bold tracking-tight mb-0.5">Last active</p>
+              <p className="text-[10px] text-blue-400 uppercase font-bold tracking-tight mb-0.5">{t('companySelector.card.lastActive')}</p>
               <p className="text-xs text-blue-700 font-medium">{formatCompanyDate(company.lastAccessedAt, null)}</p>
             </div>
           )}
@@ -89,7 +91,7 @@ export const CompanyCard: React.FC<Props> = ({ company, onEnter }) => {
           }} 
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 group/btn"
         >
-          Enter Workspace
+          {t('companySelector.card.enterWorkspace')}
           <span className="transition-transform duration-300 group-hover/btn:translate-x-1">→</span>
         </Button>
       </div>

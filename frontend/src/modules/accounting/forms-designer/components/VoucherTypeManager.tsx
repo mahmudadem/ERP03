@@ -5,12 +5,14 @@ import { VoucherDesigner } from './VoucherDesigner';
 import { useVouchers } from '../VoucherContext';
 import { Button } from './ui/Button';
 import { AccountsProvider } from '../../../../context/AccountsContext';
+import { useTranslation } from 'react-i18next';
 
 interface VoucherTypeManagerProps {
   onExit: () => void;
 }
 
 export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }) => {
+  const { t } = useTranslation('accounting');
   const [viewMode, setViewMode] = useState<'list' | 'designer'>('list');
   const [editingDefinition, setEditingDefinition] = useState<VoucherTypeDefinition | null>(null);
   const { definitions, addDefinition, updateDefinition, deleteDefinition } = useVouchers();
@@ -26,7 +28,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this voucher type?')) {
+    if (window.confirm(t('voucherTypeManager.confirmDelete'))) {
       deleteDefinition(id);
     }
   };
@@ -52,7 +54,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
   // Helper: Get display prefix from code
   const getDisplayPrefix = (definition: VoucherTypeDefinition): string => {
     // Extract first 2-3 chars from code, or use module initial
-    return definition.code?.substring(0, 3) || '???';
+    return definition.code?.substring(0, 3) || '---';
   };
 
   // Helper: Check if multi-line
@@ -84,7 +86,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
             <button 
               onClick={onExit}
               className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors"
-              title="Back to Dashboard"
+              title={t('voucherTypeManager.backToDashboard')}
             >
               <LayoutDashboard size={20} />
             </button>
@@ -94,8 +96,8 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
                 <FileSpreadsheet size={20} />
                 </div>
                 <div>
-                <h1 className="text-lg font-bold text-slate-800 leading-tight">Voucher Designer</h1>
-                <p className="text-xs text-slate-500">Manage your accounting document definitions</p>
+                <h1 className="text-lg font-bold text-slate-800 leading-tight">{t('voucherTypeManager.title')}</h1>
+                <p className="text-xs text-slate-500">{t('voucherTypeManager.subtitle')}</p>
                 </div>
             </div>
          </div>
@@ -103,7 +105,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
            onClick={handleCreateNew}
            className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow transition-colors"
          >
-           <Plus size={18} /> Create New Type
+           <Plus size={18} /> {t('voucherTypeManager.createNewType')}
          </button>
       </div>
 
@@ -114,7 +116,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
             <div className="mb-6 relative">
             <input 
                 type="text" 
-                placeholder="Search voucher types..." 
+                placeholder={t('voucherTypeManager.searchPlaceholder')} 
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
             />
             <Search className="absolute left-3 top-3.5 text-gray-400" size={20} />
@@ -134,39 +136,39 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
                         <button 
                             onClick={() => handleEdit(definition)}
                             className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
-                            title="Edit"
+                            title={t('voucherTypeManager.actions.edit')}
                             >
                             <Edit3 size={16} />
                         </button>
                         <button 
                             onClick={() => handleDelete(definition.id)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                            title="Delete"
+                            title={t('voucherTypeManager.actions.delete')}
                             >
                             <Trash2 size={16} />
                         </button>
                         </div>
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-1">{definition.name}</h3>
-                    <p className="text-sm text-gray-500">Code: {definition.code}</p>
+                    <p className="text-sm text-gray-500">{t('voucherTypeManager.codeLabel', { code: definition.code })}</p>
                     
                     <div className="mt-6 flex gap-2 flex-wrap">
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                         Schema V{definition.schemaVersion}
                         </span>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                        {isMultiLine(definition) ? 'Multi-Line' : 'Single-Line'}
+                        {isMultiLine(definition) ? t('voucherTypeManager.multiLine') : t('voucherTypeManager.singleLine')}
                         </span>
                     </div>
                 </div>
                 <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
-                    <span>Module: {definition.module}</span>
+                    <span>{t('voucherTypeManager.moduleLabel', { module: definition.module })}</span>
                 </div>
                 </div>
               ))
             ) : (
               <div className="col-span-full text-center py-12">
-                <p className="text-gray-500 text-sm">No voucher types yet. Create one to get started!</p>
+                <p className="text-gray-500 text-sm">{t('voucherTypeManager.empty')}</p>
               </div>
             )}
             </div>

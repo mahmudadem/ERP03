@@ -234,7 +234,8 @@ const BudgetPage: React.FC = () => {
     setLines((budget.lines || []).map((line) => normalizeLine(line)));
     setStatusMessage(
       t('budget.revisionPrepared', {
-        defaultValue: `Prepared revision v${revisionVersion} from selected budget.`
+        defaultValue: 'Prepared revision v{{version}} from selected budget.',
+        version: revisionVersion
       })
     );
   };

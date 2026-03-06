@@ -3,8 +3,10 @@ import { rbacApi, CompanyUser, CompanyRole } from '../../../api/rbac';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function AssignUsersRolesPage() {
+  const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
@@ -33,11 +35,11 @@ export default function AssignUsersRolesPage() {
   
   const handleDeleteUser = async (userId: string) => {
     if (!companyId) return;
-    if (!window.confirm('Are you sure you want to remove this user from the company?')) return;
+    if (!window.confirm(t('rbac.assignUsers.confirmRemoveUser'))) return;
     try {
       await rbacApi.deleteCompanyUser(companyId, userId);
       await loadData();
-      errorHandler.showSuccess('User removed successfully');
+      errorHandler.showSuccess(t('rbac.assignUsers.messages.userRemoved'));
     } catch (error: any) {
       errorHandler.showError(error);
     }
@@ -47,26 +49,26 @@ export default function AssignUsersRolesPage() {
     try {
       await rbacApi.assignRoleToUser(companyId, userId, roleId);
       await loadData();
-      errorHandler.showSuccess('Role assigned successfully');
+      errorHandler.showSuccess(t('rbac.assignUsers.messages.roleAssigned'));
     } catch (error: any) {
       errorHandler.showError(error);
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6">{t('rbac.assignUsers.loading')}</div>;
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Assign User Roles</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('rbac.assignUsers.title')}</h1>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Current Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('rbac.assignUsers.columns.userId')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('rbac.assignUsers.columns.currentRole')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('rbac.assignUsers.columns.owner')}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('rbac.assignUsers.columns.actions')}</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -78,10 +80,10 @@ export default function AssignUsersRolesPage() {
                     {user.userId}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {currentRole?.name || 'No role'}
+                    {currentRole?.name || t('rbac.assignUsers.noRole')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.isOwner ? 'Yes' : 'No'}
+                    {user.isOwner ? t('rbac.assignUsers.yes') : t('rbac.assignUsers.no')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
@@ -91,7 +93,7 @@ export default function AssignUsersRolesPage() {
                         className="border border-gray-300 rounded px-2 py-1"
                         disabled={user.isOwner}
                       >
-                        <option value="">-- Select Role --</option>
+                        <option value="">{t('rbac.assignUsers.selectRole')}</option>
                         {roles.map(role => (
                           <option key={role.id} value={role.id}>
                             {role.name}
@@ -102,7 +104,7 @@ export default function AssignUsersRolesPage() {
                         <button
                           onClick={() => handleDeleteUser(user.userId)}
                           className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded transition-colors"
-                          title="Remove User"
+                          title={t('rbac.assignUsers.actions.removeUser')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

@@ -5,8 +5,10 @@ import { superAdminPermissionsApi } from '../../../api/superAdmin/permissions';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 const EditRolePage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { roleId } = useParams();
   const [role, setRole] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
@@ -66,7 +68,7 @@ const EditRolePage: React.FC = () => {
     }
   };
 
-  if (loading || !role) return <div className="p-6">Loading...</div>;
+  if (loading || !role) return <div className="p-6">{t('superAdmin.roleEditor.loading')}</div>;
 
   const resolvedPreview = new Set<string>(role.explicitPermissions || []);
   (role.moduleBundles || []).forEach((modId: string) => {
@@ -76,9 +78,9 @@ const EditRolePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Edit Role</h1>
+      <h1 className="text-2xl font-bold">{t('superAdmin.roleEditor.title')}</h1>
       <Card className="p-4 space-y-2">
-        <label className="text-sm font-semibold">Name</label>
+        <label className="text-sm font-semibold">{t('superAdmin.roleEditor.name')}</label>
         <input
           className="border rounded px-3 py-2 text-sm"
           value={role.name}
@@ -87,7 +89,7 @@ const EditRolePage: React.FC = () => {
       </Card>
 
       <Card className="p-4 space-y-2">
-        <div className="font-semibold">Module Bundles</div>
+        <div className="font-semibold">{t('superAdmin.roleEditor.moduleBundles')}</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {modules.map((m: any) => {
             const id = m.moduleId || m.id;
@@ -103,7 +105,7 @@ const EditRolePage: React.FC = () => {
       </Card>
 
       <Card className="p-4 space-y-2">
-        <div className="font-semibold">Explicit Permissions</div>
+        <div className="font-semibold">{t('superAdmin.roleEditor.explicitPermissions')}</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
           {permissions.map((pid) => {
             const selected = (role.explicitPermissions || []).includes(pid);
@@ -118,13 +120,13 @@ const EditRolePage: React.FC = () => {
       </Card>
 
       <Card className="p-4 space-y-2">
-        <div className="font-semibold">Resolved Preview (read-only)</div>
+        <div className="font-semibold">{t('superAdmin.roleEditor.resolvedPreview')}</div>
         <div className="text-xs text-gray-700">
           {Array.from(resolvedPreview).join(', ')}
         </div>
       </Card>
 
-      <Button onClick={save}>Save</Button>
+      <Button onClick={save}>{t('superAdmin.roleEditor.save')}</Button>
     </div>
   );
 };

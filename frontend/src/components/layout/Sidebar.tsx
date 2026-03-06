@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavItem } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   navItems: NavItem[];
@@ -7,6 +8,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ navItems, isOpen }) => {
+  const { t } = useTranslation('common');
   return (
     <aside
       className={`
@@ -15,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ navItems, isOpen }) => {
       `}
     >
       <div className="h-16 flex items-center justify-center border-b border-gray-700">
-        <span className={`font-bold text-xl ${!isOpen && 'hidden'}`}>ERP System</span>
+        <span className={`font-bold text-xl ${!isOpen && 'hidden'}`}>{t('appName')}</span>
         <span className={`font-bold text-xl ${isOpen && 'hidden'}`}>E</span>
       </div>
 

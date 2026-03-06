@@ -5,8 +5,10 @@ import { superAdminApi, Permission } from '../../../api/superAdmin';
 import { Button } from '../../../components/ui/Button';
 import { ChevronRight, GripVertical, Search, Trash2 } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 const EditModulePermissionsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { moduleId } = useParams();
   const [definition, setDefinition] = useState<any>(null);
   const [registryPermissions, setRegistryPermissions] = useState<Permission[]>([]);
@@ -92,28 +94,28 @@ const EditModulePermissionsPage: React.FC = () => {
     }
   };
 
-  if (loading || !definition) return <div className="p-8 text-center text-gray-500">Loading editor...</div>;
+  if (loading || !definition) return <div className="p-8 text-center text-gray-500">{t('superAdmin.modulePermissionsEditor.loading')}</div>;
 
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col gap-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Manage Module Permissions</h1>
-          <p className="text-gray-500">Module: <span className="font-mono text-blue-600">{moduleId}</span></p>
+          <h1 className="text-2xl font-bold">{t('superAdmin.modulePermissionsEditor.title')}</h1>
+          <p className="text-gray-500">{t('superAdmin.modulePermissionsEditor.moduleLabel')}: <span className="font-mono text-blue-600">{moduleId}</span></p>
         </div>
-        <Button onClick={save} className="bg-green-600 hover:bg-green-700">Save Changes</Button>
+        <Button onClick={save} className="bg-green-600 hover:bg-green-700">{t('superAdmin.modulePermissionsEditor.actions.saveChanges')}</Button>
       </div>
 
       <div className="flex-1 grid grid-cols-2 gap-6 min-h-0">
         {/* LEFT: Source (Registry) */}
         <div className="bg-white rounded-lg shadow border flex flex-col min-h-0">
           <div className="p-4 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-700 mb-2">Available Permissions (Registry)</h2>
+            <h2 className="font-semibold text-gray-700 mb-2">{t('superAdmin.modulePermissionsEditor.availablePermissions')}</h2>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
               <input 
                 className="w-full pl-9 pr-4 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Search permissions..."
+                placeholder={t('superAdmin.modulePermissionsEditor.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -139,15 +141,15 @@ const EditModulePermissionsPage: React.FC = () => {
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500" />
                     </div>
                   ))}
-                  {perms.length === 0 && <div className="text-sm text-gray-400 italic">No matches</div>}
+                  {perms.length === 0 && <div className="text-sm text-gray-400 italic">{t('superAdmin.modulePermissionsEditor.noMatches')}</div>}
                 </div>
               </div>
             ))}
             {Object.keys(groupedAvailable).length === 0 && (
               <div className="text-center py-8 text-gray-400">
-                No available permissions found in Registry.
+                {t('superAdmin.modulePermissionsEditor.noAvailablePermissions')}
                 <br />
-                <span className="text-xs">Go to Permissions Registry to create new ones.</span>
+                <span className="text-xs">{t('superAdmin.modulePermissionsEditor.goToPermissionsRegistry')}</span>
               </div>
             )}
           </div>
@@ -156,8 +158,8 @@ const EditModulePermissionsPage: React.FC = () => {
         {/* RIGHT: Target (Module) */}
         <div className="bg-white rounded-lg shadow border flex flex-col min-h-0">
           <div className="p-4 border-b bg-blue-50/50">
-            <h2 className="font-semibold text-gray-700">Assigned Permissions</h2>
-            <p className="text-xs text-gray-500 mt-1">Drag items here from the left</p>
+            <h2 className="font-semibold text-gray-700">{t('superAdmin.modulePermissionsEditor.assignedPermissions')}</h2>
+            <p className="text-xs text-gray-500 mt-1">{t('superAdmin.modulePermissionsEditor.dragHint')}</p>
           </div>
           
           <div 
@@ -185,16 +187,16 @@ const EditModulePermissionsPage: React.FC = () => {
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50">
-                <p>Drag permissions here</p>
+                <p>{t('superAdmin.modulePermissionsEditor.dragPermissionsHere')}</p>
               </div>
             )}
           </div>
 
           <div className="p-4 border-t bg-gray-50 space-y-2">
-             <div className="font-semibold text-sm text-gray-700">Auto-attach to Global Roles:</div>
+             <div className="font-semibold text-sm text-gray-700">{t('superAdmin.modulePermissionsEditor.autoAttach')}</div>
              <input
                className="w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"
-               placeholder="e.g. OWNER, ADMIN (comma separated)"
+               placeholder={t('superAdmin.modulePermissionsEditor.autoAttachPlaceholder')}
                value={(definition.autoAttachToRoles || []).join(', ')}
                onChange={(e) =>
                  setDefinition((prev: any) => ({

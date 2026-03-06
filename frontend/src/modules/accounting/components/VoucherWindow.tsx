@@ -844,27 +844,27 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
                         : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                   }`}>
                     {win.data.metadata?.pendingFinancialApproval 
-                      ? '⏳ Awaiting Approval' 
+                      ? t('voucherWindow.awaitingApproval', { defaultValue: '⏳ Awaiting Approval' })
                       : win.data.metadata?.pendingCustodyConfirmations?.length > 0
-                        ? `⏳ Custody (${win.data.metadata.pendingCustodyConfirmations.length})`
-                        : '✓ All Gates Satisfied'}
+                        ? t('voucherWindow.awaitingCustody', { count: win.data.metadata.pendingCustodyConfirmations.length, defaultValue: `⏳ Custody (${win.data.metadata.pendingCustodyConfirmations.length})` })
+                        : t('voucherWindow.allGatesSatisfied', { defaultValue: '✓ All Gates Satisfied' })}
                   </span>
                   {/* Tooltip with details */}
                   <div className="absolute left-0 top-5 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl z-50 min-w-48">
-                    <p className="font-bold border-b border-gray-600 pb-1 mb-1">Gate Status</p>
+                    <p className="font-bold border-b border-gray-600 pb-1 mb-1">{t('voucherWindow.gateStatus', { defaultValue: 'Gate Status' })}</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className={win.data.metadata?.pendingFinancialApproval ? 'text-amber-300' : 'text-emerald-300'}>
                           {win.data.metadata?.pendingFinancialApproval ? '⏳' : '✓'}
                         </span>
-                        <span>Financial Approval</span>
+                        <span>{t('voucherWindow.financialApproval', { defaultValue: 'Financial Approval' })}</span>
                       </div>
                       {win.data.metadata?.custodyConfirmationRequired && (
                         <div className="flex items-center gap-2">
                           <span className={win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? 'text-amber-300' : 'text-emerald-300'}>
                             {win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? '⏳' : '✓'}
                           </span>
-                          <span>Custody ({win.data.metadata?.pendingCustodyConfirmations?.length || 0} pending)</span>
+                          <span>{t('voucherWindow.custodyPending', { count: win.data.metadata?.pendingCustodyConfirmations?.length || 0, defaultValue: `Custody (${win.data.metadata?.pendingCustodyConfirmations?.length || 0} pending)` })}</span>
                         </div>
                       )}
                     </div>
@@ -879,21 +879,21 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
           <button
             onClick={() => minimizeWindow(win.id)}
             className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            title="Minimize"
+            title={t('voucherWindow.minimize', { defaultValue: 'Minimize' })}
           >
             <Minus className="w-4 h-4" />
           </button>
           <button
             onClick={() => maximizeWindow(win.id)}
             className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            title={win.isMaximized ? "Restore" : "Maximize"}
+            title={win.isMaximized ? t('voucherWindow.restore', { defaultValue: 'Restore' }) : t('voucherWindow.maximize', { defaultValue: 'Maximize' })}
           >
             <Square className="w-3 h-3" />
           </button>
           <button
             onClick={handleCloseAttempt}
             className="p-1.5 hover:bg-danger-500/10 rounded-full text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
-            title="Close"
+            title={t('voucherWindow.close', { defaultValue: 'Close' })}
           >
             <X className="w-4 h-4" />
           </button>

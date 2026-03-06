@@ -2,6 +2,7 @@ import React from 'react';
 import { Monitor, LayoutGrid } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useTranslation } from 'react-i18next';
 
 interface UIModeWidgetProps {
   showBorder?: boolean;
@@ -12,6 +13,7 @@ export const UIModeWidget: React.FC<UIModeWidgetProps> = ({
   showBorder = true,
   showBackground = true
 }) => {
+  const { t } = useTranslation('common');
   const { uiMode, setUiMode } = useUserPreferences();
 
   return (
@@ -30,7 +32,7 @@ export const UIModeWidget: React.FC<UIModeWidgetProps> = ({
         )}
       >
         <Monitor className="w-3.5 h-3.5 shrink-0" />
-        <span className="truncate hidden sm:inline">Windows</span>
+        <span className="truncate hidden sm:inline">{t('widgets.uiMode.windows', 'Windows')}</span>
       </button>
       <button
         onClick={() => setUiMode('classic')}
@@ -42,7 +44,7 @@ export const UIModeWidget: React.FC<UIModeWidgetProps> = ({
         )}
       >
         <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
-        <span className="truncate hidden sm:inline">Web</span>
+        <span className="truncate hidden sm:inline">{t('widgets.uiMode.web', 'Web')}</span>
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface DateWidgetProps {
   showBorder?: boolean;
@@ -11,6 +12,7 @@ export const DateWidget: React.FC<DateWidgetProps> = ({
   showBorder = true, 
   showBackground = true 
 }) => {
+  const { i18n } = useTranslation('common');
   const date = new Date();
   
   return (
@@ -20,7 +22,7 @@ export const DateWidget: React.FC<DateWidgetProps> = ({
       showBorder && "border border-slate-200"
     )}>
       <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-      {date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+      {date.toLocaleDateString(i18n.language, { weekday: 'short', month: 'short', day: 'numeric' })}
     </div>
   );
 };

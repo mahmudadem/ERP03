@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { accountingApi, RateDeviationWarning } from '../../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyExchangeWidgetProps {
   currency: string;
@@ -28,6 +29,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   onChange,
   disabled = false
 }) => {
+  const { t } = useTranslation('accounting');
   const [suggestedRate, setSuggestedRate] = useState<number | null>(null);
   const [rateSource, setRateSource] = useState<string>('NONE');
   const [loading, setLoading] = useState(false);
@@ -179,12 +181,12 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
   const isMissingRate = effectiveRate === null && currency !== baseCurrency;
 
   const getStatusTooltip = () => {
-    if (loading) return 'Fetching rate…';
+    if (loading) return t('currencyExchangeWidget.tooltips.fetchingRate');
     if (warnings.length > 0) return warnings.map(w => w.message).join('\n');
-    if (rateSource === 'SAME_CURRENCY') return 'Same currency (1:1)';
-    if (hasOverride) return 'Manual Override — click × to reset to system rate';
-    if (rateSource === 'EXACT_DATE') return `System Rate for ${voucherDate || 'Date'}`;
-    return 'System Rate (Last Known)';
+    if (rateSource === 'SAME_CURRENCY') return t('currencyExchangeWidget.tooltips.sameCurrency');
+    if (hasOverride) return t('currencyExchangeWidget.tooltips.manualOverride');
+    if (rateSource === 'EXACT_DATE') return t('currencyExchangeWidget.tooltips.systemRateForDate', { date: voucherDate || t('currencyExchangeWidget.tooltips.dateFallback') });
+    return t('currencyExchangeWidget.tooltips.systemRateLastKnown');
   };
 
   const getStatusIcon = () => {
@@ -212,7 +214,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
       >
         {/* Left: 1 [CURRENCY] → */}
         <div className="flex items-center justify-center px-2 h-full bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] text-[10px] font-medium text-[var(--color-text-secondary)] whitespace-nowrap min-w-[60px]">
-          1 {currency || '???'} <span className="opacity-50 mx-1">→</span>
+          1 {currency || t('currencyExchangeWidget.unknownCurrency')} <span className="opacity-50 mx-1">→</span>
         </div>
 
         {/* Middle: Input + Reset × button */}
@@ -243,7 +245,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
                 if (suggestedRate) onChange?.(suggestedRate);
               }}
               className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-500 transition-colors"
-              title="Reset to System Rate"
+              title={t('currencyExchangeWidget.actions.resetToSystemRate')}
             >
               <div className="w-3 h-3 flex items-center justify-center">×</div>
             </button>
@@ -266,7 +268,7 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
                 onClick={handleRefresh}
                 disabled={loading}
                 className="flex items-center justify-center w-4 h-4 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-primary-600 transition-colors disabled:opacity-40"
-                title="Refresh system rate"
+                title={t('currencyExchangeWidget.actions.refreshRate')}
               >
                 <RefreshCw className={`w-2.5 h-2.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
@@ -281,10 +283,10 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 max-w-sm mx-4 border border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
-              <h3 className="font-bold text-sm">Review Rate</h3>
+              <h3 className="font-bold text-sm">{t('currencyExchangeWidget.modal.title')}</h3>
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
-              The rate <strong>{pendingRate}</strong> deviates significantly from the system rate ({suggestedRate}).
+              {t('currencyExchangeWidget.modal.body', { pendingRate, suggestedRate })}
             </p>
             {warnings.map((w, i) => (
               <div key={i} className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded mb-3">
@@ -292,8 +294,8 @@ export const CurrencyExchangeWidget: React.FC<CurrencyExchangeWidgetProps> = ({
               </div>
             ))}
             <div className="flex justify-end gap-2">
-              <button onClick={handleCancelRate} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded text-gray-700">Cancel</button>
-              <button onClick={handleConfirmRate} className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded">Confirm</button>
+              <button onClick={handleCancelRate} className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded text-gray-700">{t('currencyExchangeWidget.modal.cancel')}</button>
+              <button onClick={handleConfirmRate} className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded">{t('currencyExchangeWidget.modal.confirm')}</button>
             </div>
           </div>
         </div>

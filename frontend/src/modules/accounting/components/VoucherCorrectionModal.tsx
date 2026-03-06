@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, AlertCircle, RotateCcw, RefreshCw } from 'lucide-react';
 import { accountingApi, CorrectionMode, CorrectionRequest } from '../../../api/accountingApi';
 import { useAuth } from '../../../context/AuthContext';
@@ -24,6 +25,7 @@ export function VoucherCorrectionModal({
   initialMode = 'REVERSE_ONLY',
   onSuccess
 }: VoucherCorrectionModalProps) {
+  const { t } = useTranslation('accounting');
   const { user } = useAuth();
   const [mode, setMode] = useState<CorrectionMode>(initialMode);
   const [reason, setReason] = useState('');
@@ -43,7 +45,7 @@ export function VoucherCorrectionModal({
     e.preventDefault();
 
     if (!reason.trim()) {
-      errorHandler.showInfo('Please provide a reason for the correction');
+      errorHandler.showInfo(t('voucherCorrection.errors.reasonRequired', { defaultValue: 'Please provide a reason for the correction' }));
       return;
     }
 
@@ -88,7 +90,7 @@ export function VoucherCorrectionModal({
     } catch (error: any) {
       errorHandler.showError({
         code: 'VOUCHER_CORRECTION_FAILED',
-        message: error.message || 'Failed to create correction',
+        message: error.message || t('voucherCorrection.errors.createFailed', { defaultValue: 'Failed to create correction' }),
         severity: 'error' as any
       });
     } finally {
@@ -108,7 +110,7 @@ export function VoucherCorrectionModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-            Reverse & Replace Voucher
+            {t('voucherCorrection.title', { defaultValue: 'Reverse & Replace Voucher' })}
           </h2>
           <button
             onClick={onClose}
@@ -126,8 +128,8 @@ export function VoucherCorrectionModal({
               <div className="flex items-start gap-2">
                 <AlertCircle className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" size={18} />
                 <div className="text-sm text-blue-900 dark:text-blue-100">
-                  <div className="font-medium mb-1">Correcting: Voucher #{voucherNumber}</div>
-                  <div>This will create a reversal voucher that negates the original transaction.</div>
+                  <div className="font-medium mb-1">{t('voucherCorrection.correctingVoucher', { voucherNumber, defaultValue: `Correcting: Voucher #${voucherNumber}` })}</div>
+                  <div>{t('voucherCorrection.infoText', { defaultValue: 'This will create a reversal voucher that negates the original transaction.' })}</div>
                 </div>
               </div>
             </div>
@@ -135,7 +137,7 @@ export function VoucherCorrectionModal({
             {/* Mode Selection */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                Correction Mode
+                {t('voucherCorrection.correctionMode', { defaultValue: 'Correction Mode' })}
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <button
@@ -148,9 +150,9 @@ export function VoucherCorrectionModal({
                   }`}
                 >
                   <RotateCcw className="mx-auto mb-2" size={24} />
-                  <div className="font-medium">Reverse Only</div>
+                  <div className="font-medium">{t('voucherCorrection.reverseOnly', { defaultValue: 'Reverse Only' })}</div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Cancel the transaction completely
+                    {t('voucherCorrection.reverseOnlyHint', { defaultValue: 'Cancel the transaction completely' })}
                   </div>
                 </button>
 
@@ -164,9 +166,9 @@ export function VoucherCorrectionModal({
                   }`}
                 >
                   <RefreshCw className="mx-auto mb-2" size={24} />
-                  <div className="font-medium">Reverse & Replace</div>
+                  <div className="font-medium">{t('voucherCorrection.reverseReplace', { defaultValue: 'Reverse & Replace' })}</div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                    Correct with a new voucher
+                    {t('voucherCorrection.reverseReplaceHint', { defaultValue: 'Correct with a new voucher' })}
                   </div>
                 </button>
               </div>
@@ -175,7 +177,7 @@ export function VoucherCorrectionModal({
             {/* Reason */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                Reason for Correction <span className="text-red-500">*</span>
+                {t('voucherCorrection.reason', { defaultValue: 'Reason for Correction' })} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={reason}
@@ -183,14 +185,14 @@ export function VoucherCorrectionModal({
                 required
                 rows={3}
                 className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-primary-500 outline-none"
-                placeholder="Explain why this correction is needed..."
+                placeholder={t('voucherCorrection.reasonPlaceholder', { defaultValue: 'Explain why this correction is needed...' })}
               />
             </div>
 
             {/* Date Strategy */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-2">
-                Reversal Date
+                {t('voucherCorrection.reversalDate', { defaultValue: 'Reversal Date' })}
               </label>
               <div className="space-y-2">
                 <label className="flex items-center">
@@ -201,7 +203,7 @@ export function VoucherCorrectionModal({
                     onChange={(e) => setDateStrategy(e.target.value as any)}
                     className="mr-2"
                   />
-                  <span className="text-sm">Use original date ({originalVoucher?.date})</span>
+                  <span className="text-sm">{t('voucherCorrection.useOriginalDate', { date: originalVoucher?.date, defaultValue: `Use original date (${originalVoucher?.date})` })}</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -211,7 +213,7 @@ export function VoucherCorrectionModal({
                     onChange={(e) => setDateStrategy(e.target.value as any)}
                     className="mr-2"
                   />
-                  <span className="text-sm">Use today's date</span>
+                  <span className="text-sm">{t('voucherCorrection.useTodayDate', { defaultValue: "Use today's date" })}</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -221,7 +223,7 @@ export function VoucherCorrectionModal({
                     onChange={(e) => setDateStrategy(e.target.value as any)}
                     className="mr-2"
                   />
-                  <span className="text-sm">Custom date:</span>
+                  <span className="text-sm">{t('voucherCorrection.customDate', { defaultValue: 'Custom date:' })}</span>
                   {dateStrategy === 'custom' && (
                     <DatePicker
                       value={customDate}
@@ -237,14 +239,14 @@ export function VoucherCorrectionModal({
             {mode === 'REVERSE_AND_REPLACE' && (
               <div className="border-t border-[var(--color-border)] pt-6">
                 <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
-                  Replacement Voucher (Pre-filled from original)
+                  {t('voucherCorrection.replacementTitle', { defaultValue: 'Replacement Voucher (Pre-filled from original)' })}
                 </h3>
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-                        Date
+                        {t('voucherCorrection.fields.date', { defaultValue: 'Date' })}
                       </label>
                       <DatePicker
                         value={replacementDate}
@@ -254,7 +256,7 @@ export function VoucherCorrectionModal({
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-                        Reference
+                        {t('voucherCorrection.fields.reference', { defaultValue: 'Reference' })}
                       </label>
                       <input
                         type="text"
@@ -267,7 +269,7 @@ export function VoucherCorrectionModal({
 
                   <div>
                     <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1">
-                      Description
+                      {t('voucherCorrection.fields.description', { defaultValue: 'Description' })}
                     </label>
                     <input
                       type="text"
@@ -279,15 +281,15 @@ export function VoucherCorrectionModal({
 
                   <div>
                     <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-2">
-                      Lines (Edit amounts as needed)
+                      {t('voucherCorrection.linesLabel', { defaultValue: 'Lines (Edit amounts as needed)' })}
                     </label>
                     <div className="border border-[var(--color-border)] rounded overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-[var(--color-bg-secondary)]">
                           <tr>
-                            <th className="px-3 py-2 text-left">Account</th>
-                            <th className="px-3 py-2 text-right">Debit</th>
-                            <th className="px-3 py-2 text-right">Credit</th>
+                            <th className="px-3 py-2 text-left">{t('voucherCorrection.columns.account', { defaultValue: 'Account' })}</th>
+                            <th className="px-3 py-2 text-right">{t('voucherCorrection.columns.debit', { defaultValue: 'Debit' })}</th>
+                            <th className="px-3 py-2 text-right">{t('voucherCorrection.columns.credit', { defaultValue: 'Credit' })}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -330,7 +332,7 @@ export function VoucherCorrectionModal({
                 disabled={isSubmitting}
                 className="px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] rounded-lg transition-colors"
               >
-                Cancel
+                {t('voucherCorrection.actions.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button
                 type="submit"
@@ -340,10 +342,10 @@ export function VoucherCorrectionModal({
                 {isSubmitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Processing...
+                    {t('voucherCorrection.actions.processing', { defaultValue: 'Processing...' })}
                   </>
                 ) : (
-                  'Submit Correction'
+                  t('voucherCorrection.actions.submit', { defaultValue: 'Submit Correction' })
                 )}
               </button>
             </div>

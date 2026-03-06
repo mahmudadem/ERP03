@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { superAdminApi, BusinessDomain } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 export const BusinessDomainsManagerPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [domains, setDomains] = useState<BusinessDomain[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,11 +40,11 @@ export const BusinessDomainsManagerPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this business domain?')) return;
+    if (!confirm(t('superAdmin.businessDomains.confirmDelete'))) return;
     
     try {
       await superAdminApi.deleteBusinessDomain(id);
-      errorHandler.showSuccess('Business domain deleted');
+      errorHandler.showSuccess(t('superAdmin.businessDomains.messages.deleted'));
       loadDomains();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -55,7 +57,7 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     if (!formData.id || !formData.name) {
       errorHandler.showError({
         code: 'VAL_001',
-        message: 'ID and Name are required',
+        message: t('superAdmin.businessDomains.messages.idNameRequired'),
         severity: 'WARNING'
       } as any);
       return;
@@ -67,10 +69,10 @@ export const BusinessDomainsManagerPage: React.FC = () => {
           name: formData.name,
           description: formData.description
         });
-        errorHandler.showSuccess('Business domain updated');
+        errorHandler.showSuccess(t('superAdmin.businessDomains.messages.updated'));
       } else {
         await superAdminApi.createBusinessDomain(formData);
-        errorHandler.showSuccess('Business domain created');
+        errorHandler.showSuccess(t('superAdmin.businessDomains.messages.created'));
       }
       
       setIsModalOpen(false);
@@ -80,20 +82,20 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">{t('superAdmin.businessDomains.loading')}</div>;
 
   return (
     <div className="business-domains-manager p-6">
       <div className="header mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Business Domains Management</h1>
-          <p className="text-gray-600 mt-2">Manage business domain categories for bundles</p>
+          <h1 className="text-3xl font-bold">{t('superAdmin.businessDomains.title')}</h1>
+          <p className="text-gray-600 mt-2">{t('superAdmin.businessDomains.subtitle')}</p>
         </div>
         <button 
           onClick={handleCreate} 
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          + Create Domain
+          + {t('superAdmin.businessDomains.actions.createDomain')}
         </button>
       </div>
 
@@ -101,17 +103,17 @@ export const BusinessDomainsManagerPage: React.FC = () => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left">ID</th>
-              <th className="px-6 py-3 text-left">Name</th>
-              <th className="px-6 py-3 text-left">Description</th>
-              <th className="px-6 py-3 text-left">Actions</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.id')}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.name')}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.description')}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {domains.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  No business domains found. Create your first domain to get started.
+                  {t('superAdmin.businessDomains.empty')}
                 </td>
               </tr>
             ) : (
@@ -122,10 +124,10 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                   <td className="px-6 py-4 text-gray-600">{domain.description}</td>
                   <td className="px-6 py-4">
                     <button onClick={() => handleEdit(domain)} className="text-blue-600 hover:underline mr-4">
-                      Edit
+                      {t('superAdmin.businessDomains.actions.edit')}
                     </button>
                     <button onClick={() => handleDelete(domain.id)} className="text-red-600 hover:underline">
-                      Delete
+                      {t('superAdmin.businessDomains.actions.delete')}
                     </button>
                   </td>
                 </tr>
@@ -139,12 +141,12 @@ export const BusinessDomainsManagerPage: React.FC = () => {
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="modal-content bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold mb-4">
-              {editingDomain ? 'Edit Business Domain' : 'Create Business Domain'}
+              {editingDomain ? t('superAdmin.businessDomains.modal.editTitle') : t('superAdmin.businessDomains.modal.createTitle')}
             </h2>
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">ID *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.businessDomains.fields.id')}</label>
                 <input
                   type="text"
                   value={formData.id}
@@ -152,30 +154,30 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                   className="w-full px-3 py-2 border rounded"
                   required
                   disabled={!!editingDomain}
-                  placeholder="e.g., food-trading"
+                  placeholder={t('superAdmin.businessDomains.placeholders.id')}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Name *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.businessDomains.fields.name')}</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border rounded"
                   required
-                  placeholder="e.g., Food Trading"
+                  placeholder={t('superAdmin.businessDomains.placeholders.name')}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Description</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.businessDomains.fields.description')}</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border rounded"
                   rows={3}
-                  placeholder="Describe this business domain..."
+                  placeholder={t('superAdmin.businessDomains.placeholders.description')}
                 />
               </div>
 
@@ -185,13 +187,13 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border rounded hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('superAdmin.businessDomains.actions.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  {editingDomain ? 'Update' : 'Create'}
+                  {editingDomain ? t('superAdmin.businessDomains.actions.update') : t('superAdmin.businessDomains.actions.create')}
                 </button>
               </div>
             </form>

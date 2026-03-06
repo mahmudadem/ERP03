@@ -51,22 +51,22 @@ interface JournalVoucher {
 /* ── Initiator (Filters Form) ─────────────────────────── */
 
 const VOUCHER_TYPES = [
-  { value: '', label: 'All Types' },
-  { value: 'journal_entry', label: 'Journal Entry' },
-  { value: 'payment', label: 'Payment Voucher' },
-  { value: 'receipt', label: 'Receipt Voucher' },
-  { value: 'opening_balance', label: 'Opening Balance' },
-  { value: 'reversal', label: 'Reversal' },
-  { value: 'fx_revaluation', label: 'FX Revaluation' },
+  { value: '', key: 'allTypes', defaultValue: 'All Types' },
+  { value: 'journal_entry', key: 'journalEntry', defaultValue: 'Journal Entry' },
+  { value: 'payment', key: 'paymentVoucher', defaultValue: 'Payment Voucher' },
+  { value: 'receipt', key: 'receiptVoucher', defaultValue: 'Receipt Voucher' },
+  { value: 'opening_balance', key: 'openingBalance', defaultValue: 'Opening Balance' },
+  { value: 'reversal', key: 'reversal', defaultValue: 'Reversal' },
+  { value: 'fx_revaluation', key: 'fxRevaluation', defaultValue: 'FX Revaluation' },
 ];
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: '', key: 'allStatuses', defaultValue: 'All Statuses' },
+  { value: 'draft', key: 'draft', defaultValue: 'Draft' },
+  { value: 'pending', key: 'pending', defaultValue: 'Pending' },
+  { value: 'approved', key: 'approved', defaultValue: 'Approved' },
+  { value: 'rejected', key: 'rejected', defaultValue: 'Rejected' },
+  { value: 'cancelled', key: 'cancelled', defaultValue: 'Cancelled' },
 ];
 
 const JournalInitiator: React.FC<{
@@ -131,36 +131,44 @@ const JournalInitiator: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Voucher Type
+            {t('journal.filters.voucherType', { defaultValue: 'Voucher Type' })}
           </label>
           <select value={voucherType} onChange={e => setVoucherType(e.target.value)} className={selectClass}>
-            {VOUCHER_TYPES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            {VOUCHER_TYPES.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {t(`journal.voucherTypes.${opt.key}`, { defaultValue: opt.defaultValue })}
+              </option>
+            ))}
           </select>
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Voucher Form
+            {t('journal.filters.voucherForm', { defaultValue: 'Voucher Form' })}
           </label>
           <select value={formName} onChange={e => setFormName(e.target.value)} className={selectClass}>
-            <option value="">All Forms</option>
+            <option value="">{t('journal.filters.allForms', { defaultValue: 'All Forms' })}</option>
             {forms.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
           </select>
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Currency
+            {t('journal.filters.currency', { defaultValue: 'Currency' })}
           </label>
           <select value={currency} onChange={e => setCurrency(e.target.value)} className={selectClass}>
-            <option value="">All Currencies</option>
+            <option value="">{t('journal.filters.allCurrencies', { defaultValue: 'All Currencies' })}</option>
             {companyCurrencies.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
           </select>
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Status
+            {t('journal.filters.status', { defaultValue: 'Status' })}
           </label>
           <select value={status} onChange={e => setStatus(e.target.value)} className={selectClass}>
-            {STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {t(`journal.statuses.${opt.key}`, { defaultValue: opt.defaultValue })}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -168,7 +176,7 @@ const JournalInitiator: React.FC<{
       {/* Submit */}
       <div>
         <Button type="submit" className="bg-slate-900 hover:bg-black text-white px-8 py-2.5 rounded text-xs font-bold uppercase tracking-widest">
-          Generate Report
+          {t('journal.filters.generateReport', { defaultValue: 'Generate Report' })}
         </Button>
       </div>
     </form>
@@ -201,7 +209,7 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
         const result = await accountingApi.getJournal(apiParams);
         setData(result || []);
       } catch (err: any) {
-        setError(err?.message || 'Failed to load journal data');
+        setError(err?.message || t('journal.errors.loadFailed', { defaultValue: 'Failed to load journal data' }));
         setData([]);
       } finally {
         setLoading(false);
@@ -227,31 +235,31 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50">
             <CalendarDays className="w-4 h-4 text-blue-600" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Period</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">{t('journal.filters.period', { defaultValue: 'Period' })}</span>
             <span className="text-sm font-semibold text-slate-800">{periodText}</span>
           </div>
           {params.voucherType && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-              Type: {VOUCHER_TYPES.find(v => v.value === params.voucherType)?.label || params.voucherType}
+              {t('journal.filters.type', { defaultValue: 'Type' })}: {t(`journal.voucherTypes.${VOUCHER_TYPES.find(v => v.value === params.voucherType)?.key || ''}`, { defaultValue: params.voucherType })}
             </span>
           )}
           {params.formName && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-              Form: {params.formName}
+              {t('journal.filters.form', { defaultValue: 'Form' })}: {params.formName}
             </span>
           )}
           {params.currency && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-              Currency: {params.currency}
+              {t('journal.filters.currency', { defaultValue: 'Currency' })}: {params.currency}
             </span>
           )}
           {params.status && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-              Status: {params.status}
+              {t('journal.filters.status', { defaultValue: 'Status' })}: {t(`journal.statuses.${STATUS_OPTIONS.find(s => s.value === params.status)?.key || ''}`, { defaultValue: params.status })}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500">
-            {data.length} voucher{data.length !== 1 ? 's' : ''}
+            {t('journal.voucherCount', { count: data.length, defaultValue: '{{count}} vouchers' })}
           </span>
         </div>
       </div>
@@ -267,13 +275,13 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('journal.processing', { defaultValue: 'Processing...' })}</p>
               </div>
             </div>
           </div>
         ) : data.length === 0 && !error ? (
           <div className="bg-white border rounded-xl p-8 shadow-sm text-center">
-            <p className="text-slate-400 text-sm">No journal entries found for the selected criteria.</p>
+            <p className="text-slate-400 text-sm">{t('journal.empty', { defaultValue: 'No journal entries found for the selected criteria.' })}</p>
           </div>
         ) : (
           <>
@@ -328,10 +336,10 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      <th className="text-left px-4 py-2">Account</th>
-                      <th className="text-left px-4 py-2">Description</th>
-                      <th className="text-right px-4 py-2">Debit</th>
-                      <th className="text-right px-4 py-2">Credit</th>
+                      <th className="text-left px-4 py-2">{t('journal.columns.account', { defaultValue: 'Account' })}</th>
+                      <th className="text-left px-4 py-2">{t('journal.columns.description', { defaultValue: 'Description' })}</th>
+                      <th className="text-right px-4 py-2">{t('journal.columns.debit', { defaultValue: 'Debit' })}</th>
+                      <th className="text-right px-4 py-2">{t('journal.columns.credit', { defaultValue: 'Credit' })}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -351,8 +359,8 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
 
                 {/* Voucher Totals */}
                 <div className="flex justify-end gap-8 px-4 py-2.5 bg-slate-50 border-t border-slate-100 text-sm font-bold">
-                  <span className="text-slate-600">Debit: <span className="font-mono text-slate-900">{numberFmt(v.totalDebit)}</span></span>
-                  <span className="text-slate-600">Credit: <span className="font-mono text-slate-900">{numberFmt(v.totalCredit)}</span></span>
+                  <span className="text-slate-600">{t('journal.columns.debit', { defaultValue: 'Debit' })}: <span className="font-mono text-slate-900">{numberFmt(v.totalDebit)}</span></span>
+                  <span className="text-slate-600">{t('journal.columns.credit', { defaultValue: 'Credit' })}: <span className="font-mono text-slate-900">{numberFmt(v.totalCredit)}</span></span>
                 </div>
               </div>
             ))}
@@ -361,12 +369,12 @@ const JournalReportContent: React.FC<{ params: JournalParams }> = ({ params }) =
             {data.length > 0 && (
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-black text-slate-900 uppercase tracking-widest">Grand Total</span>
+                  <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{t('journal.grandTotal', { defaultValue: 'Grand Total' })}</span>
                   <div className="flex gap-8 text-sm font-bold">
-                    <span className="text-slate-600">Debit: <span className="font-mono text-slate-900">{numberFmt(totals.debit)}</span></span>
-                    <span className="text-slate-600">Credit: <span className="font-mono text-slate-900">{numberFmt(totals.credit)}</span></span>
+                    <span className="text-slate-600">{t('journal.columns.debit', { defaultValue: 'Debit' })}: <span className="font-mono text-slate-900">{numberFmt(totals.debit)}</span></span>
+                    <span className="text-slate-600">{t('journal.columns.credit', { defaultValue: 'Credit' })}: <span className="font-mono text-slate-900">{numberFmt(totals.credit)}</span></span>
                     {Math.abs(totals.debit - totals.credit) < 0.01 && (
-                      <span className="text-green-600 text-xs font-bold">✓ Balanced</span>
+                      <span className="text-green-600 text-xs font-bold">{t('journal.balanced', { defaultValue: '✓ Balanced' })}</span>
                     )}
                   </div>
                 </div>

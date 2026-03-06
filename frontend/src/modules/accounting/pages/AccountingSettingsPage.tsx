@@ -178,16 +178,16 @@ const AccountingSettingsPageContent: React.FC = () => {
 
   // Granular tabs as per implementation plan
   const tabs = [
-    { id: 'general', label: 'General Settings', icon: Globe },
-    { id: 'currencies', label: 'Currencies', icon: Coins },
-    { id: 'policies', label: 'Approval Workflow', icon: Shield },
-    { id: 'payment-methods', label: 'Payment Methods', icon: CreditCard },
-    { id: 'cost-center', label: 'Cost Center Required', icon: DollarSign },
-    { id: 'cost-centers-manage', label: 'Cost Centers', icon: Layers },
-    { id: 'error-mode', label: 'Policy Error Mode', icon: AlertTriangle },
-    { id: 'fiscal', label: 'Accounting Periods', icon: Building2 },
-    { id: 'numbering', label: 'Voucher Numbering', icon: Hash },
-    { id: 'fx-revaluation', label: 'FX Revaluation', icon: ArrowLeftRight },
+    { id: 'general', label: t('settings.tabs.general', 'General Settings'), icon: Globe },
+    { id: 'currencies', label: t('settings.tabs.currencies', 'Currencies'), icon: Coins },
+    { id: 'policies', label: t('settings.tabs.policies', 'Approval Workflow'), icon: Shield },
+    { id: 'payment-methods', label: t('settings.tabs.paymentMethods', 'Payment Methods'), icon: CreditCard },
+    { id: 'cost-center', label: t('settings.tabs.costCenter', 'Cost Center Required'), icon: DollarSign },
+    { id: 'cost-centers-manage', label: t('settings.tabs.costCentersManage', 'Cost Centers'), icon: Layers },
+    { id: 'error-mode', label: t('settings.tabs.errorMode', 'Policy Error Mode'), icon: AlertTriangle },
+    { id: 'fiscal', label: t('settings.tabs.fiscal', 'Accounting Periods'), icon: Building2 },
+    { id: 'numbering', label: t('settings.tabs.numbering', 'Voucher Numbering'), icon: Hash },
+    { id: 'fx-revaluation', label: t('settings.tabs.fxRevaluation', 'FX Revaluation'), icon: ArrowLeftRight },
   ];
 
   // Mode A = both Financial Approval AND Custody Confirmation are OFF
@@ -1232,7 +1232,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                       ) : (
                         <Shield size={18} className="text-indigo-600 dark:text-indigo-400" />
                       )}
-                      Posting Behavior
+                      {t('settings.policies.postingBehavior', 'Posting Behavior')}
                     </h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1241,18 +1241,18 @@ const AccountingSettingsPageContent: React.FC = () => {
                         isModeA ? 'bg-white/70 dark:bg-[var(--color-bg-tertiary)] border-emerald-100 dark:border-emerald-800/30' : 'bg-gray-50/50 dark:bg-[var(--color-bg-tertiary)] border-gray-100 dark:border-[var(--color-border)]'
                       }`}>
                         <div className="flex-1">
-                          <label className="font-medium text-gray-800 dark:text-[var(--color-text-primary)] text-sm">Auto-Post When Approved</label>
+                          <label className="font-medium text-gray-800 dark:text-[var(--color-text-primary)] text-sm">{t('settings.policies.autoPostWhenApproved', 'Auto-Post When Approved')}</label>
                           <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-0.5">
                             {isModeA 
-                              ? 'Post to ledger automatically upon submission' 
-                              : 'System automatically posts vouchers only after all approval gates are cleared'}
+                              ? t('settings.policies.autoPostModeA', 'Post to ledger automatically upon submission')
+                              : t('settings.policies.autoPostStrict', 'System automatically posts vouchers only after all approval gates are cleared')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
                           <span className={`text-xs font-bold uppercase tracking-wider ${
                             config.autoPostEnabled ? (isModeA ? 'text-emerald-600' : 'text-indigo-600') : 'text-gray-400'
                           }`}>
-                            {config.autoPostEnabled ? 'ON' : 'OFF'}
+                            {config.autoPostEnabled ? t('settings.on') : t('settings.off')}
                           </span>
                           <label className={`relative inline-flex items-center ${isModeA ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                             <input
@@ -1281,13 +1281,13 @@ const AccountingSettingsPageContent: React.FC = () => {
                         }`}>
                           <div className="flex-1">
                             <label className={`font-medium text-sm flex items-center gap-2 ${isModeA ? 'text-gray-800 dark:text-[var(--color-text-primary)]' : 'text-gray-500 dark:text-[var(--color-text-muted)]'}`}>
-                              Allow Edit/Delete Posted
+                              {t('settings.policies.allowEditDeletePosted', 'Allow Edit/Delete Posted')}
                               {!isModeA && <Lock size={14} className="text-gray-400" />}
                             </label>
                             <p className={`text-xs mt-0.5 ${isModeA ? 'text-gray-500 dark:text-[var(--color-text-secondary)]' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
                               {isModeA 
-                                ? 'Edit or delete posted vouchers (modifies/removes ledger entries)'
-                                : 'Not available in Strict Mode — posted vouchers are immutable'}
+                                ? t('settings.policies.allowEditDeleteHelpFlexible', 'Edit or delete posted vouchers (modifies/removes ledger entries)')
+                                : t('settings.policies.allowEditDeleteHelpStrict', 'Not available in Strict Mode — posted vouchers are immutable')}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -1298,7 +1298,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                   ? 'text-amber-600 dark:text-amber-500' 
                                   : 'text-gray-400 dark:text-[var(--color-text-muted)]'
                             }`}>
-                              {config.allowEditDeletePosted ? 'ON' : 'OFF'}
+                              {config.allowEditDeletePosted ? t('settings.on') : t('settings.off')}
                             </span>
                             <label className={`relative inline-flex items-center ${isModeA ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                               <input
@@ -1328,7 +1328,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                       <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
                         <AlertTriangle size={14} className="text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-800 dark:text-amber-300">
-                          <strong>Caution:</strong> Editing posted vouchers modifies ledger entries. Consider using reversals for better audit trail.
+                          <strong>{t('settings.policies.cautionTitle', 'Caution:')}</strong> {t('settings.policies.cautionBody', 'Editing posted vouchers modifies ledger entries. Consider using reversals for better audit trail.')}
                         </p>
                       </div>
                     ) : !isModeA ? (
@@ -1336,7 +1336,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                       <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg">
                         <Shield size={14} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                         <p className="text-xs text-blue-800 dark:text-blue-300">
-                          <strong>Strict Mode Active:</strong> Posted vouchers are immutable and cannot be edited or deleted. To correct a financial effect, create a <strong>Reversal Voucher</strong> that posts offsetting entries.
+                          <strong>{t('settings.policies.strictModeActive', 'Strict Mode Active:')}</strong> {t('settings.policies.strictModeImmutablePart1', 'Posted vouchers are immutable and cannot be edited or deleted. To correct a financial effect, create a')} <strong>{t('settings.policies.reversalVoucher', 'Reversal Voucher')}</strong> {t('settings.policies.strictModeImmutablePart2', 'that posts offsetting entries.')}
                         </p>
                       </div>
                     ) : null}
@@ -1351,8 +1351,8 @@ const AccountingSettingsPageContent: React.FC = () => {
             {(activeTab as string) === 'payment-methods' && (
               <div className="max-w-4xl mx-auto space-y-8">
                 <SectionHeader 
-                  title="Payment Methods" 
-                  description="Define and manage payment methods used across vouchers"
+                  title={t('settings.tabs.paymentMethods', 'Payment Methods')} 
+                  description={t('settings.paymentMethods.description', 'Define and manage payment methods used across vouchers')}
                   onSave={() => handleSave('payment-methods')}
                   disabled={!hasMethodChanges || saving}
                   saving={saving}
@@ -1361,26 +1361,26 @@ const AccountingSettingsPageContent: React.FC = () => {
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
                   <div className="p-6 border-b border-gray-200 dark:border-[var(--color-border)] bg-gray-50/50 dark:bg-[var(--color-bg-tertiary)] flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">Configured Methods</h3>
-                      <p className="text-xs text-gray-500 mt-1">Status of payment options in voucher forms</p>
+                      <h3 className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.paymentMethods.configuredMethods', 'Configured Methods')}</h3>
+                      <p className="text-xs text-gray-500 mt-1">{t('settings.paymentMethods.configuredMethodsDesc', 'Status of payment options in voucher forms')}</p>
                     </div>
                     <button 
                       onClick={() => {
                         const newId = `method_${Date.now()}`;
-                        const updated = [...(config.paymentMethods || []), { id: newId, name: 'New Payment Method', isEnabled: true }];
+                        const updated = [...(config.paymentMethods || []), { id: newId, name: t('settings.paymentMethods.newMethodDefault', 'New Payment Method'), isEnabled: true }];
                         setConfig({ ...config, paymentMethods: updated });
                       }}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                     >
                       <Plus size={14} />
-                      Add Method
+                      {t('settings.paymentMethods.addMethod', 'Add Method')}
                     </button>
                   </div>
 
                   <div className="divide-y divide-gray-100 dark:divide-[var(--color-border)]">
                     {(!config.paymentMethods || config.paymentMethods.length === 0) ? (
                       <div className="p-12 text-center text-gray-500 text-sm italic">
-                        No payment methods defined. Click 'Add Method' to get started.
+                        {t('settings.paymentMethods.noneDefined', "No payment methods defined. Click 'Add Method' to get started.")}
                       </div>
                     ) : (
                       config.paymentMethods.map((pm, index) => (
@@ -1407,7 +1407,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                           <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${pm.isEnabled ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                {pm.isEnabled ? 'Enabled' : 'Disabled'}
+                                {pm.isEnabled ? t('settings.paymentMethods.enabled', 'Enabled') : t('settings.paymentMethods.disabled', 'Disabled')}
                               </span>
                               <label className="relative inline-flex items-center cursor-pointer scale-90">
                                 <input
@@ -1447,10 +1447,9 @@ const AccountingSettingsPageContent: React.FC = () => {
                     <Layout size={16} className="text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Form Integration</h4>
+                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">{t('settings.paymentMethods.formIntegration', 'Form Integration')}</h4>
                     <p className="text-xs text-blue-800 dark:text-blue-400 mt-1 leading-relaxed">
-                      Payment methods defined here will automatically populate the dropdowns in the Voucher Editor. 
-                      Disabled methods will be hidden from the selector but preserved in existing records.
+                      {t('settings.paymentMethods.formIntegrationDesc', 'Payment methods defined here will automatically populate the dropdowns in the Voucher Editor. Disabled methods will be hidden from the selector but preserved in existing records.')}
                     </p>
                   </div>
                 </div>
@@ -1629,10 +1628,9 @@ const AccountingSettingsPageContent: React.FC = () => {
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 flex items-start gap-3">
                     <AlertTriangle className="text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h4 className="font-bold text-amber-900 dark:text-amber-300 text-sm">No Active Accounting Periods</h4>
+                      <h4 className="font-bold text-amber-900 dark:text-amber-300 text-sm">{t('settings.fiscal.noActivePeriodsTitle', 'No Active Accounting Periods')}</h4>
                       <p className="text-amber-800 dark:text-amber-400 text-xs mt-1">
-                        Accounting periods are automatically generated when you define a Fiscal Year. 
-                        Please create a Fiscal Year below to initialize your reporting periods (e.g., Monthly, Quarterly).
+                        {t('settings.fiscal.noActivePeriodsDesc', 'Accounting periods are automatically generated when you define a Fiscal Year. Please create a Fiscal Year below to initialize your reporting periods (e.g., Monthly, Quarterly).')}
                       </p>
                     </div>
                   </div>
@@ -1704,7 +1702,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                 <label className={`text-sm font-bold ${!config.lockedThroughDate ? 'text-red-900 dark:text-red-300' : 'text-gray-800 dark:text-[var(--color-text-primary)]'}`}>
                                    {t('settings.fiscal.lockedThroughDate')}
                                 </label>
-                                {!config.lockedThroughDate && <span className="text-[10px] font-bold text-red-600 uppercase">Required</span>}
+                                {!config.lockedThroughDate && <span className="text-[10px] font-bold text-red-600 uppercase">{t('settings.fiscal.required', 'Required')}</span>}
                              </div>
                              <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">
                                 {t('settings.fiscal.lockedThroughDateDesc')}
@@ -1812,7 +1810,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                     onClick={() => handleReopenYear(fy.id)}
                                     disabled={fiscalLoading}
                                     className="p-1 text-emerald-600 hover:text-emerald-700 transition-colors"
-                                    title="Reopen Fiscal Year"
+                                    title={t('settings.fiscal.reopenYear', 'Reopen Fiscal Year')}
                                   >
                                     <RotateCcw size={16} />
                                   </button>
@@ -1970,7 +1968,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                       
                                       <div className="mt-4 flex flex-col gap-2">
                                         <div className="flex items-center justify-between text-[10px] font-bold text-amber-700/60 uppercase tracking-widest">
-                                          <span>Last Closing Voucher</span>
+                                          <span>{t('settings.fiscal.lastClosingVoucher', 'Last Closing Voucher')}</span>
                                           <span className="font-mono">{lastClosingVoucher?.voucherNo || fiscalYears.find(f => f.id === closingFyId)?.closingVoucherId?.substring(0,8)}</span>
                                         </div>
                                         {lastClosingVoucher && (
@@ -2070,9 +2068,9 @@ const AccountingSettingsPageContent: React.FC = () => {
                                               <td className="py-2 px-4">
                                                 <div className="flex items-center gap-2">
                                                   <span className="font-medium text-gray-900 dark:text-gray-200 flex items-center gap-1.5">
-                                                    {accounts.find(a => a.id === line.accountId)?.name || 'Unknown'}
-                                                    {isRetained && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1 rounded uppercase font-bold">RE</span>}
-                                                    {isClearing && <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded uppercase font-bold">P&L CLR</span>}
+                                                    {accounts.find(a => a.id === line.accountId)?.name || t('settings.common.unknown', 'Unknown')}
+                                                    {isRetained && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1 rounded uppercase font-bold">{t('settings.fiscal.retainedShort', 'RE')}</span>}
+                                                    {isClearing && <span className="text-[9px] bg-amber-100 text-amber-700 px-1 rounded uppercase font-bold">{t('settings.fiscal.plClearingShort', 'P&L CLR')}</span>}
                                                   </span>
                                                 </div>
                                               </td>
@@ -2319,7 +2317,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                               onChange={(e) => setSpecialPeriodData({ ...specialPeriodData, newName: e.target.value })}
                               onKeyDown={(e) => e.key === 'Enter' && confirmAddSpecialPeriod()}
                               className="w-full px-4 py-2 bg-white dark:bg-[var(--color-bg-secondary)] border border-gray-300 dark:border-[var(--color-border)] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                              placeholder="e.g. Year-End Adjustments"
+                              placeholder={t('settings.fiscal.periodNamePlaceholder', 'e.g. Year-End Adjustments')}
                             />
                           </div>
                         </div>
@@ -2354,30 +2352,30 @@ const AccountingSettingsPageContent: React.FC = () => {
                 <div className="flex flex-col gap-4 mb-8">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{t('settings.numbering.title')}</h2>
-                    <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">Monitor active voucher sequences and override numbering for migration or corrections.</p>
+                    <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{t('settings.numbering.descriptionLong', 'Monitor active voucher sequences and override numbering for migration or corrections.')}</p>
                   </div>
                 </div>
 
                 {/* How It Works */}
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl p-4">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2">How Numbering Works</h4>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2">{t('settings.numbering.howItWorks', 'How Numbering Works')}</h4>
                   <ul className="text-sm text-indigo-900 dark:text-indigo-100 space-y-1 list-disc list-inside">
-                    <li>Each voucher form has its own <strong>prefix</strong> (set in the Voucher Designer).</li>
-                    <li>The system maintains an <strong>independent sequence counter</strong> per prefix.</li>
-                    <li>If "Reset Annually" is enabled in General settings, counters reset per fiscal year.</li>
-                    <li>Format: <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded text-xs">PREFIX-0001</code> or <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded text-xs">PREFIX-2026-0001</code></li>
+                    <li>{t('settings.numbering.howItWorksLine1', 'Each voucher form has its own prefix (set in the Voucher Designer).')}</li>
+                    <li>{t('settings.numbering.howItWorksLine2', 'The system maintains an independent sequence counter per prefix.')}</li>
+                    <li>{t('settings.numbering.howItWorksLine3', 'If Reset Annually is enabled in General settings, counters reset per fiscal year.')}</li>
+                    <li>{t('settings.numbering.howItWorksLine4', 'Format: PREFIX-0001 or PREFIX-2026-0001')}</li>
                   </ul>
                 </div>
 
                 {/* Active Sequences Dashboard */}
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100 dark:border-[var(--color-border)] flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)]">Active Sequences</h3>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)]">{t('settings.numbering.activeSequences', 'Active Sequences')}</h3>
                     <button 
                       onClick={() => { loadSequences(); loadVoucherForms(); }}
                       className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
                     >
-                      <RefreshCw size={12} /> Refresh
+                      <RefreshCw size={12} /> {t('settings.common.refresh')}
                     </button>
                   </div>
 
@@ -2409,7 +2407,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                       const cleanPrefix = s.prefix?.replace(/-$/, '');
                       if (!usedPrefixes.has(cleanPrefix)) {
                         rows.push({
-                          formName: `(No form — ${s.prefix})`,
+                          formName: t('settings.numbering.noFormWithPrefix', { prefix: s.prefix, defaultValue: `(No form — ${s.prefix})` }),
                           prefix: s.prefix,
                           lastNumber: s.lastNumber || 0,
                           year: s.year,
@@ -2421,7 +2419,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                     if (rows.length === 0) {
                       return (
                         <div className="px-4 py-8 text-center text-sm text-slate-400">
-                          No voucher forms or sequences found. Create voucher forms in the Voucher Designer first.
+                          {t('settings.numbering.noneFound', 'No voucher forms or sequences found. Create voucher forms in the Voucher Designer first.')}
                         </div>
                       );
                     }
@@ -2430,12 +2428,12 @@ const AccountingSettingsPageContent: React.FC = () => {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-100 dark:border-[var(--color-border)] bg-slate-50 dark:bg-[var(--color-bg-secondary)]">
-                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Voucher Form</th>
-                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Prefix</th>
-                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Last #</th>
-                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Next Will Be</th>
-                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Year</th>
-                            <th className="text-right px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Actions</th>
+                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.voucherForm', 'Voucher Form')}</th>
+                            <th className="text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.prefix', 'Prefix')}</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.last', 'Last #')}</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.next', 'Next Will Be')}</th>
+                            <th className="text-center px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.year', 'Year')}</th>
+                            <th className="text-right px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{t('settings.numbering.columns.actions', 'Actions')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-[var(--color-border)]">
@@ -2480,13 +2478,13 @@ const AccountingSettingsPageContent: React.FC = () => {
                                         disabled={saving}
                                         className="px-2 py-1 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700 disabled:opacity-50"
                                       >
-                                        {saving ? '...' : 'Save'}
+                                        {saving ? '...' : t('settings.common.save', 'Save')}
                                       </button>
                                       <button 
                                         onClick={() => setEditingSeq(null)}
                                         className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs font-bold hover:bg-slate-300"
                                       >
-                                        Cancel
+                                        {t('settings.common.cancel')}
                                       </button>
                                     </div>
                                   ) : (
@@ -2494,7 +2492,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                       onClick={() => setEditingSeq({ prefix: cleanP, year: row.year, nextNumber: row.lastNumber + 1 })}
                                       className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold hover:underline"
                                     >
-                                      Set Next #
+                                      {t('settings.numbering.setNext', 'Set Next #')}
                                     </button>
                                   )}
                                 </td>
@@ -2509,13 +2507,13 @@ const AccountingSettingsPageContent: React.FC = () => {
 
                 {/* Format Reference */}
                 <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-4 shadow-sm">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)] mb-3">Format Template Reference</h3>
-                  <p className="text-xs text-slate-500 mb-3">Custom formats can be set per form in the Voucher Designer. Available placeholders:</p>
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-[var(--color-text-primary)] mb-3">{t('settings.numbering.formatReference', 'Format Template Reference')}</h3>
+                  <p className="text-xs text-slate-500 mb-3">{t('settings.numbering.formatReferenceDesc', 'Custom formats can be set per form in the Voucher Designer. Available placeholders:')}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {[
-                      { token: '{PREFIX}', desc: 'Voucher form prefix (e.g. JE, PV, RV)' },
-                      { token: '{YYYY}', desc: 'Fiscal year (e.g. 2026)' },
-                      { token: '{COUNTER:4}', desc: 'Zero-padded sequence (e.g. 0001)' },
+                      { token: '{PREFIX}', desc: t('settings.numbering.placeholderPrefix', 'Voucher form prefix (e.g. JE, PV, RV)') },
+                      { token: '{YYYY}', desc: t('settings.numbering.placeholderYear', 'Fiscal year (e.g. 2026)') },
+                      { token: '{COUNTER:4}', desc: t('settings.numbering.placeholderCounter', 'Zero-padded sequence (e.g. 0001)') },
                     ].map(({ token, desc }) => (
                       <div key={token} className="flex items-center gap-2 text-sm">
                         <code className="bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded text-xs font-mono font-bold whitespace-nowrap">{token}</code>
@@ -2524,7 +2522,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[var(--color-border)]">
-                    <p className="text-xs text-slate-500">Example: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>JE-2026-0042</strong></p>
+                    <p className="text-xs text-slate-500">{t('settings.numbering.example', 'Example')}: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>JE-2026-0042</strong></p>
                   </div>
                 </div>
               </div>

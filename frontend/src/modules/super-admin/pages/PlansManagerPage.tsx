@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { superAdminApi, Plan } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 
 export const PlansManagerPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,11 +73,11 @@ export const PlansManagerPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return;
+    if (!confirm(t('superAdmin.plans.confirmDelete', { defaultValue: 'Are you sure you want to delete this plan?' }))) return;
     
     try {
       await superAdminApi.deletePlan(id);
-      errorHandler.showSuccess('Plan deleted');
+      errorHandler.showSuccess(t('superAdmin.plans.messages.deleted', { defaultValue: 'Plan deleted' }));
       loadPlans();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -88,7 +90,7 @@ export const PlansManagerPage: React.FC = () => {
     if (!formData.id || !formData.name) {
       errorHandler.showError({
         code: 'VAL_001',
-        message: 'ID and Name are required',
+        message: t('superAdmin.plans.messages.idNameRequired', { defaultValue: 'ID and Name are required' }),
         severity: 'WARNING'
       } as any);
       return;
@@ -103,10 +105,10 @@ export const PlansManagerPage: React.FC = () => {
           status: formData.status,
           limits: formData.limits
         });
-        errorHandler.showSuccess('Plan updated');
+        errorHandler.showSuccess(t('superAdmin.plans.messages.updated', { defaultValue: 'Plan updated' }));
       } else {
         await superAdminApi.createPlan(formData);
-        errorHandler.showSuccess('Plan created');
+        errorHandler.showSuccess(t('superAdmin.plans.messages.created', { defaultValue: 'Plan created' }));
       }
       
       setIsModalOpen(false);
@@ -116,21 +118,21 @@ export const PlansManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">{t('superAdmin.plans.loading', { defaultValue: 'Loading...' })}</div>;
 
   return (
     <div className="plans-manager p-6">
       <div className="header mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Plans Management</h1>
-          <p className="text-gray-600 mt-2">Manage user subscription plans (account signup tiers)</p>
-          <p className="text-sm text-amber-600 mt-1">Note: Plans are for user signup, Bundles are for company creation</p>
+          <h1 className="text-3xl font-bold">{t('superAdmin.plans.title', { defaultValue: 'Plans Management' })}</h1>
+          <p className="text-gray-600 mt-2">{t('superAdmin.plans.subtitle', { defaultValue: 'Manage user subscription plans (account signup tiers)' })}</p>
+          <p className="text-sm text-amber-600 mt-1">{t('superAdmin.plans.note', { defaultValue: 'Note: Plans are for user signup, Bundles are for company creation' })}</p>
         </div>
         <button 
           onClick={handleCreate} 
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          + Create Plan
+          + {t('superAdmin.plans.actions.create', { defaultValue: 'Create Plan' })}
         </button>
       </div>
 
@@ -138,19 +140,19 @@ export const PlansManagerPage: React.FC = () => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left">ID</th>
-              <th className="px-6 py-3 text-left">Name</th>
-              <th className="px-6 py-3 text-left">Price</th>
-              <th className="px-6 py-3 text-left">Status</th>
-              <th className="px-6 py-3 text-left">Limits</th>
-              <th className="px-6 py-3 text-left">Actions</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.id', { defaultValue: 'ID' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.name', { defaultValue: 'Name' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.price', { defaultValue: 'Price' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.status', { defaultValue: 'Status' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.limits', { defaultValue: 'Limits' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.actions', { defaultValue: 'Actions' })}</th>
             </tr>
           </thead>
           <tbody>
             {plans.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No plans found. Create your first plan to get started.
+                  {t('superAdmin.plans.empty', { defaultValue: 'No plans found. Create your first plan to get started.' })}
                 </td>
               </tr>
             ) : (
@@ -158,7 +160,7 @@ export const PlansManagerPage: React.FC = () => {
                 <tr key={plan.id} className="border-t hover:bg-gray-50">
                   <td className="px-6 py-4 font-mono text-sm">{plan.id}</td>
                   <td className="px-6 py-4 font-semibold">{plan.name}</td>
-                  <td className="px-6 py-4">${plan.price}/mo</td>
+                  <td className="px-6 py-4">${plan.price}/{t('superAdmin.plans.perMonth', { defaultValue: 'mo' })}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded text-xs ${
                       plan.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -169,16 +171,16 @@ export const PlansManagerPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <div>{plan.limits.maxCompanies} companies</div>
-                    <div>{plan.limits.maxUsersPerCompany} users/company</div>
-                    <div>{plan.limits.maxModulesAllowed} modules</div>
+                    <div>{plan.limits.maxCompanies} {t('superAdmin.plans.limits.companies', { defaultValue: 'companies' })}</div>
+                    <div>{plan.limits.maxUsersPerCompany} {t('superAdmin.plans.limits.usersPerCompany', { defaultValue: 'users/company' })}</div>
+                    <div>{plan.limits.maxModulesAllowed} {t('superAdmin.plans.limits.modules', { defaultValue: 'modules' })}</div>
                   </td>
                   <td className="px-6 py-4">
                     <button onClick={() => handleEdit(plan)} className="text-blue-600 hover:underline mr-4">
-                      Edit
+                      {t('superAdmin.plans.actions.edit', { defaultValue: 'Edit' })}
                     </button>
                     <button onClick={() => handleDelete(plan.id)} className="text-red-600 hover:underline">
-                      Delete
+                      {t('superAdmin.plans.actions.delete', { defaultValue: 'Delete' })}
                     </button>
                   </td>
                 </tr>
@@ -192,13 +194,13 @@ export const PlansManagerPage: React.FC = () => {
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="modal-content bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
-              {editingPlan ? 'Edit Plan' : 'Create Plan'}
+              {editingPlan ? t('superAdmin.plans.modal.editTitle', { defaultValue: 'Edit Plan' }) : t('superAdmin.plans.modal.createTitle', { defaultValue: 'Create Plan' })}
             </h2>
             
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-2">ID *</label>
+                  <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.id', { defaultValue: 'ID *' })}</label>
                   <input
                     type="text"
                     value={formData.id}
@@ -206,35 +208,35 @@ export const PlansManagerPage: React.FC = () => {
                     className="w-full px-3 py-2 border rounded"
                     required
                     disabled={!!editingPlan}
-                    placeholder="e.g., free-tier"
+                    placeholder={t('superAdmin.plans.placeholders.id', { defaultValue: 'e.g., free-tier' })}
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-2">Name *</label>
+                  <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.name', { defaultValue: 'Name *' })}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-3 py-2 border rounded"
                     required
-                    placeholder="e.g., Free Tier"
+                    placeholder={t('superAdmin.plans.placeholders.name', { defaultValue: 'e.g., Free Tier' })}
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.description', { defaultValue: 'Description' })}</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-3 py-2 border rounded"
                     rows={2}
-                    placeholder="Describe this plan..."
+                    placeholder={t('superAdmin.plans.placeholders.description', { defaultValue: 'Describe this plan...' })}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Price (USD/month) *</label>
+                  <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.price', { defaultValue: 'Price (USD/month) *' })}</label>
                   <input
                     type="number"
                     value={formData.price}
@@ -247,25 +249,25 @@ export const PlansManagerPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Status *</label>
+                  <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.status', { defaultValue: 'Status *' })}</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                     className="w-full px-3 py-2 border rounded"
                     required
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="deprecated">Deprecated</option>
+                    <option value="active">{t('superAdmin.plans.status.active', { defaultValue: 'Active' })}</option>
+                    <option value="inactive">{t('superAdmin.plans.status.inactive', { defaultValue: 'Inactive' })}</option>
+                    <option value="deprecated">{t('superAdmin.plans.status.deprecated', { defaultValue: 'Deprecated' })}</option>
                   </select>
                 </div>
 
                 <div className="col-span-2 border-t pt-4 mt-2">
-                  <h3 className="font-semibold mb-3">Plan Limits</h3>
+                  <h3 className="font-semibold mb-3">{t('superAdmin.plans.fields.limits', { defaultValue: 'Plan Limits' })}</h3>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Max Companies</label>
+                      <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.maxCompanies', { defaultValue: 'Max Companies' })}</label>
                       <input
                         type="number"
                         value={formData.limits.maxCompanies}
@@ -280,7 +282,7 @@ export const PlansManagerPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Max Users per Company</label>
+                      <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.maxUsersPerCompany', { defaultValue: 'Max Users per Company' })}</label>
                       <input
                         type="number"
                         value={formData.limits.maxUsersPerCompany}
@@ -295,7 +297,7 @@ export const PlansManagerPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Max Modules Allowed</label>
+                      <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.maxModulesAllowed', { defaultValue: 'Max Modules Allowed' })}</label>
                       <input
                         type="number"
                         value={formData.limits.maxModulesAllowed}
@@ -310,7 +312,7 @@ export const PlansManagerPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Max Storage (MB)</label>
+                      <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.maxStorageMB', { defaultValue: 'Max Storage (MB)' })}</label>
                       <input
                         type="number"
                         value={formData.limits.maxStorageMB}
@@ -325,7 +327,7 @@ export const PlansManagerPage: React.FC = () => {
                     </div>
 
                     <div className="col-span-2">
-                      <label className="block text-sm font-medium mb-2">Max Transactions per Month</label>
+                      <label className="block text-sm font-medium mb-2">{t('superAdmin.plans.fields.maxTransactionsPerMonth', { defaultValue: 'Max Transactions per Month' })}</label>
                       <input
                         type="number"
                         value={formData.limits.maxTransactionsPerMonth}
@@ -348,13 +350,13 @@ export const PlansManagerPage: React.FC = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border rounded hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('superAdmin.plans.actions.cancel', { defaultValue: 'Cancel' })}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  {editingPlan ? 'Update' : 'Create'}
+                  {editingPlan ? t('superAdmin.plans.actions.update', { defaultValue: 'Update' }) : t('superAdmin.plans.actions.create', { defaultValue: 'Create' })}
                 </button>
               </div>
             </form>

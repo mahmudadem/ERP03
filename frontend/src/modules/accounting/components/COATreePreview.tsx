@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown, Circle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Account {
   code: string;
@@ -24,6 +25,7 @@ interface TreeNode {
  * Displays a hierarchical tree view of chart of accounts
  */
 export const COATreePreview: React.FC<COATreePreviewProps> = ({ accounts, className = '' }) => {
+  const { t } = useTranslation('accounting');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['1', '2', '3', '4', '5'])); // Expand main categories by default
 
   // Build tree structure from flat account list
@@ -118,7 +120,7 @@ export const COATreePreview: React.FC<COATreePreviewProps> = ({ accounts, classN
                     ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
                     : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
               }`}>
-                {hasChildren ? 'Header' : 'Posting'}
+                {hasChildren ? t('coaTreePreview.header') : t('coaTreePreview.posting')}
               </span>
             </div>
           </div>
@@ -139,7 +141,7 @@ export const COATreePreview: React.FC<COATreePreviewProps> = ({ accounts, classN
   if (!accounts || accounts.length === 0) {
     return (
       <div className={`text-center py-8 text-gray-500 ${className}`}>
-        No accounts to preview
+        {t('coaTreePreview.noAccounts')}
       </div>
     );
   }
@@ -147,9 +149,9 @@ export const COATreePreview: React.FC<COATreePreviewProps> = ({ accounts, classN
   return (
     <div className={`bg-white border border-gray-200 rounded-lg ${className}`}>
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h3 className="font-semibold text-gray-900 text-sm">Chart Preview</h3>
+        <h3 className="font-semibold text-gray-900 text-sm">{t('coaTreePreview.title')}</h3>
         <p className="text-xs text-gray-600 mt-0.5">
-          {accounts.length} accounts • Click to expand/collapse
+          {t('coaTreePreview.subtitle', { count: accounts.length })}
         </p>
       </div>
       <div className="px-2 py-2 max-h-96 overflow-y-auto">

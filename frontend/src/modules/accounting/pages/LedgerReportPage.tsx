@@ -38,15 +38,15 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   balance: 160,
 };
 
-const ALL_COLUMNS = [
+const getAllColumns = (t: (key: string, options?: any) => string) => [
   { id: 'index', label: '#', permanent: true },
-  { id: 'date', label: 'Date', sortable: true, filterable: true },
-  { id: 'voucherNo', label: 'Reference', sortable: true, filterable: true },
-  { id: 'description', label: 'Particulars', sortable: true, filterable: true },
-  { id: 'costCenter', label: 'Cost Center', sortable: true, filterable: true },
-  { id: 'debit', label: 'Total Dr.', sortable: true },
-  { id: 'credit', label: 'Total Cr.', sortable: true },
-  { id: 'balance', label: 'Resulting Bal.', permanent: true },
+  { id: 'date', label: t('generalLedger.date', { defaultValue: 'Date' }), sortable: true, filterable: true },
+  { id: 'voucherNo', label: t('generalLedger.voucherNo', { defaultValue: 'Reference' }), sortable: true, filterable: true },
+  { id: 'description', label: t('generalLedger.description', { defaultValue: 'Particulars' }), sortable: true, filterable: true },
+  { id: 'costCenter', label: t('generalLedger.costCenter', { defaultValue: 'Cost Center' }), sortable: true, filterable: true },
+  { id: 'debit', label: t('generalLedger.debit', { defaultValue: 'Total Dr.' }), sortable: true },
+  { id: 'credit', label: t('generalLedger.credit', { defaultValue: 'Total Cr.' }), sortable: true },
+  { id: 'balance', label: t('generalLedger.balance', { defaultValue: 'Resulting Bal.' }), permanent: true },
 ];
 
 interface LedgerParams {
@@ -63,6 +63,7 @@ const LedgerInitiator: React.FC<{
   initialParams?: LedgerParams | null;
   isModal?: boolean;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('accounting');
   const [accountId, setAccountId] = useState(initialParams?.accountId || '');
   const [accountName, setAccountName] = useState(initialParams?.accountName || ''); 
   const [costCenterId, setCostCenterId] = useState(initialParams?.costCenterId || '');
@@ -84,7 +85,7 @@ const LedgerInitiator: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="space-y-2 md:col-span-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            General Ledger Account <span className="text-red-500">*</span>
+            {t('generalLedger.account', { defaultValue: 'General Ledger Account' })} <span className="text-red-500">*</span>
           </label>
           <div onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}>
             <AccountSelector 
@@ -94,13 +95,13 @@ const LedgerInitiator: React.FC<{
                 if (account) { setAccountId(account.id); setAccountName(account.name); }
                 else { setAccountId(''); setAccountName(''); }
               }}
-              placeholder="Select account to analyze..."
+              placeholder={t('generalLedger.searchPlaceholder', { defaultValue: 'Select account to analyze...' })}
             />
           </div>
         </div>
         <div className="space-y-2 md:col-span-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Cost Center <span className="text-[8px] text-slate-400 normal-case">(optional)</span>
+            {t('generalLedger.costCenter', { defaultValue: 'Cost Center' })} <span className="text-[8px] text-slate-400 normal-case">({t('generalLedger.optional', { defaultValue: 'optional' })})</span>
           </label>
           <div onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}>
             <CostCenterSelector
@@ -109,22 +110,26 @@ const LedgerInitiator: React.FC<{
                 if (cc) { setCostCenterId(cc.id); setCostCenterLabel(`${cc.code} - ${cc.name}`); }
                 else { setCostCenterId(''); setCostCenterLabel(''); }
               }}
-              placeholder="All cost centers..."
+              placeholder={t('generalLedger.allCostCenters', { defaultValue: 'All cost centers...' })}
             />
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">From Date</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+            {t('generalLedger.fromDate', { defaultValue: 'From Date' })}
+          </label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full text-base" />
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">To Date</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+            {t('generalLedger.toDate', { defaultValue: 'To Date' })}
+          </label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full text-base" />
         </div>
       </div>
       <div className="flex justify-start pt-6 border-t border-slate-100">
         <Button type="submit" disabled={!accountId} className="bg-slate-900 hover:bg-black text-white px-10 py-2.5 rounded text-xs font-bold uppercase tracking-widest">
-          Execute Analysis
+          {t('generalLedger.executeAnalysis', { defaultValue: 'Execute Analysis' })}
         </Button>
       </div>
     </form>
@@ -142,6 +147,7 @@ const LedgerReportContent: React.FC<{
   visibleColumns?: string[];
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, visibleColumns: _ignore, density = 'comfortable' }) => {
+  const { t } = useTranslation('accounting');
   const isCompact = density === 'compact';
   const { settings } = useCompanySettings();
   const [loading, setLoading] = useState(true);
@@ -156,9 +162,10 @@ const LedgerReportContent: React.FC<{
 
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_VISIBLE_COLUMNS);
-    const savedIds = saved ? JSON.parse(saved) : ALL_COLUMNS.map(c => c.id);
+    const columns = getAllColumns(t);
+    const savedIds = saved ? JSON.parse(saved) : columns.map((c) => c.id);
     // Ensure all permanent columns are present
-    const permanentIds = ALL_COLUMNS.filter(c => c.permanent).map(c => c.id);
+    const permanentIds = columns.filter((c) => c.permanent).map((c) => c.id);
     const combined = Array.from(new Set([...permanentIds, ...savedIds]));
     return combined;
   });
@@ -285,19 +292,27 @@ const LedgerReportContent: React.FC<{
       {/* HEADER: Audit Context */}
       <div className="shrink-0 bg-slate-50 border-b border-slate-200 grid grid-cols-2 md:grid-cols-4">
          <div className="p-2.5 border-r border-slate-200">
-            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">Target Account</span>
+            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">
+              {t('generalLedger.targetAccount', { defaultValue: 'Target Account' })}
+            </span>
             <span className="text-xs font-bold text-slate-900 border-l-2 border-slate-900 pl-2 block truncate">{params.accountName}</span>
          </div>
          <div className="p-2.5 border-r border-slate-200">
-            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">Audit Period</span>
+            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">
+              {t('generalLedger.auditPeriod', { defaultValue: 'Audit Period' })}
+            </span>
             <span className="text-[11px] font-bold text-slate-700 block">{formatCompanyDate(params.fromDate, settings)} <ArrowRight className="inline mx-1 text-slate-300" size={10} /> {formatCompanyDate(params.toDate, settings)}</span>
          </div>
          <div className="p-2.5 border-r border-slate-200">
-            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">Opening</span>
+            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">
+              {t('generalLedger.opening', { defaultValue: 'Opening' })}
+            </span>
             <span className="text-xs font-black text-slate-900 tabular-nums">{summary.opening.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
          </div>
          <div className="p-2.5">
-            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">Period Net</span>
+            <span className="text-[8px] font-black text-slate-400 font-mono uppercase tracking-[0.2em] block mb-0.5">
+              {t('generalLedger.periodNet', { defaultValue: 'Period Net' })}
+            </span>
             <span className="text-xs font-black text-slate-900 tabular-nums">{summary.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
          </div>
       </div>
@@ -308,7 +323,7 @@ const LedgerReportContent: React.FC<{
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
             type="text" 
-            placeholder="Quick filter particulars or references..." 
+            placeholder={t('generalLedger.quickFilter', { defaultValue: 'Quick filter particulars or references...' })}
             value={localFilter}
             onChange={(e) => setLocalFilter(e.target.value)}
             className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs w-80 outline-none focus:border-slate-400"
@@ -321,14 +336,16 @@ const LedgerReportContent: React.FC<{
             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors"
           >
             <Settings2 size={14} />
-            Column Registry
+            {t('generalLedger.columnRegistry', { defaultValue: 'Column Registry' })}
           </button>
           
           {showColumnSettings && (
             <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 shadow-xl z-50 p-4 rounded-sm">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 pb-2 border-b border-slate-100">Visibility Dashboard</h4>
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 pb-2 border-b border-slate-100">
+                {t('generalLedger.visibilityDashboard', { defaultValue: 'Visibility Dashboard' })}
+              </h4>
               <div className="space-y-1">
-                {ALL_COLUMNS.map(col => (
+                {getAllColumns(t).map(col => (
                   <label key={col.id} className="flex items-center justify-between p-2 hover:bg-slate-50 cursor-pointer rounded transition-colors">
                     <span className="text-xs font-semibold text-slate-700">{col.label}</span>
                     <input 
@@ -356,7 +373,7 @@ const LedgerReportContent: React.FC<{
         <table className="w-full text-left border-collapse table-fixed bg-white">
           <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
             <tr>
-              {ALL_COLUMNS.filter(c => visibleColumns.includes(c.id)).map(col => (
+              {getAllColumns(t).filter(c => visibleColumns.includes(c.id)).map(col => (
                 <th 
                   key={col.id} 
                   className={clsx(
@@ -392,7 +409,11 @@ const LedgerReportContent: React.FC<{
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-900">
             {filteredAndSortedEntries.length === 0 ? (
-              <tr><td colSpan={visibleColumns.length} className="py-20 text-center text-slate-400 text-xs font-medium uppercase tracking-widest bg-white">Zero matched transactions in registry</td></tr>
+              <tr>
+                <td colSpan={visibleColumns.length} className="py-20 text-center text-slate-400 text-xs font-medium uppercase tracking-widest bg-white">
+                  {t('generalLedger.zeroMatched', { defaultValue: 'Zero matched transactions in registry' })}
+                </td>
+              </tr>
             ) : (
               filteredAndSortedEntries.map((entry, idx) => (
                 <tr 
@@ -430,18 +451,26 @@ const LedgerReportContent: React.FC<{
       <div className="shrink-0 bg-white border-t border-slate-300 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] grid grid-cols-2 md:grid-cols-6 items-center z-10">
          <div className="md:col-span-3 p-4 flex items-center gap-3">
             <div className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Analysis Segment Summary</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              {t('generalLedger.analysisSummary', { defaultValue: 'Analysis Segment Summary' })}
+            </span>
          </div>
          <div className="p-4 border-l border-slate-100 text-right">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Period Dr.</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">
+              {t('generalLedger.totalPeriodDebit', { defaultValue: 'Total Period Dr.' })}
+            </span>
             <span className="font-mono text-sm font-black text-slate-900 tabular-nums">{summary.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
          </div>
          <div className="p-4 border-l border-slate-100 text-right">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Period Cr.</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">
+              {t('generalLedger.totalPeriodCredit', { defaultValue: 'Total Period Cr.' })}
+            </span>
             <span className="font-mono text-sm font-black text-slate-900 tabular-nums">{summary.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
          </div>
          <div className="p-4 border-l border-slate-300 bg-slate-50 text-right shadow-inner">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block leading-none mb-1">Final Analysis Result</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block leading-none mb-1">
+              {t('generalLedger.finalResult', { defaultValue: 'Final Analysis Result' })}
+            </span>
             <span className="font-mono text-base font-black text-slate-900 tabular-nums">{summary.closing.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
          </div>
       </div>
@@ -450,16 +479,17 @@ const LedgerReportContent: React.FC<{
 };
 
 export default function LedgerReportPage() {
+  const { t } = useTranslation('accounting');
   return (
     <ReportContainer<LedgerParams>
-      title="General Ledger"
+      title={t('generalLedger.title', { defaultValue: 'General Ledger' })}
       subtitle=""
       initiator={LedgerInitiator}
       ReportContent={LedgerReportContent}
       config={{ 
         paginated: true, 
         defaultPageSize: 100,
-        availableColumns: ALL_COLUMNS
+        availableColumns: getAllColumns(t)
       }}
     />
   );

@@ -3,13 +3,15 @@ import React from 'react';
 import { WizardStepProps } from './types';
 import { Mail, Shield } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export const StepContactInfo: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack }) => {
+  const { t } = useTranslation('common');
   const [error, setError] = React.useState('');
 
   const validate = () => {
     if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      setError('Please enter a valid business email address.');
+      setError(t('onboarding.companyWizard.contact.errors.invalidEmail'));
       return false;
     }
     return true;
@@ -30,21 +32,21 @@ export const StepContactInfo: React.FC<WizardStepProps> = ({ data, updateData, o
             <div className="inline-flex h-10 w-10 md:h-12 md:w-12 items-center justify-center rounded-full bg-blue-50 mb-3 md:mb-4">
                 <Mail className="h-5 w-5 md:h-6 md:w-6 text-primary-600" />
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-slate-900">Contact Information</h3>
-            <p className="text-sm md:text-base text-slate-500 mt-1 md:mt-2 px-4">Where should we send important updates about this company?</p>
+            <h3 className="text-lg md:text-xl font-bold text-slate-900">{t('onboarding.companyWizard.contact.title')}</h3>
+            <p className="text-sm md:text-base text-slate-500 mt-1 md:mt-2 px-4">{t('onboarding.companyWizard.contact.subtitle')}</p>
         </div>
 
         {/* Email Field */}
         <div className="space-y-3 px-2 md:px-0">
           <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Business Email <span className="text-red-500">*</span>
+            {t('onboarding.companyWizard.contact.businessEmail')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
             <input
               id="email"
               type="email"
-              placeholder="admin@company.com"
+              placeholder={t('onboarding.companyWizard.contact.emailPlaceholder')}
               value={data.email || ''}
               onChange={(e) => {
                 updateData({ email: e.target.value });
@@ -59,7 +61,7 @@ export const StepContactInfo: React.FC<WizardStepProps> = ({ data, updateData, o
           {/* Helper Description */}
           <p className="text-xs text-slate-500 flex items-center gap-1.5">
              <Shield className="h-3 w-3" />
-             We will send billing, security, and admin notifications here.
+             {t('onboarding.companyWizard.contact.helper')}
           </p>
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         </div>
@@ -73,13 +75,13 @@ export const StepContactInfo: React.FC<WizardStepProps> = ({ data, updateData, o
           onClick={onBack}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-slate-100 hover:text-accent-foreground h-10 px-4 py-2"
         >
-          Back
+          {t('onboarding.companyWizard.contact.actions.back')}
         </button>
         <button
           type="submit"
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary-600 text-white hover:bg-primary-600/90 h-10 px-8 py-2"
         >
-          Next Step
+          {t('onboarding.companyWizard.contact.actions.nextStep')}
         </button>
       </div>
     </form>

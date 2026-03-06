@@ -175,41 +175,49 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Net Sales</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('tradingAccount.netSales', { defaultValue: 'Net Sales' })}
+                  </div>
                   <div className="text-2xl font-bold text-emerald-700">{moneyFmt(data.netSales, currency)}</div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Cost of Sales</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' })}
+                  </div>
                   <div className="text-2xl font-bold text-rose-700">{moneyFmt(data.costOfSales, currency)}</div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Gross Profit</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('tradingAccount.grossProfit', { defaultValue: 'Gross Profit' })}
+                  </div>
                   <div className={`text-2xl font-bold ${data.grossProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                     {moneyFmt(Math.abs(data.grossProfit), currency)}
                   </div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">GP Margin</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('tradingAccount.gpMargin', { defaultValue: 'GP Margin' })}
+                  </div>
                   <div className="text-2xl font-bold text-slate-900">{isFinite(data.grossProfitMargin) ? data.grossProfitMargin.toFixed(2) : '0.00'}%</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <BreakdownCard
-                  title="Sales Breakdown"
+                  title={t('tradingAccount.salesBreakdown', { defaultValue: 'Sales Breakdown' })}
                   rows={data.salesByAccount}
                   totalLabel={t('profitLoss.total', { defaultValue: 'Total' })}
                   total={data.netSales}
-                  emptyLabel="No sales accounts in this period"
+                  emptyLabel={t('tradingAccount.noSalesForPeriod', { defaultValue: 'No sales accounts in this period' })}
                   totalClassName="text-emerald-700"
                   currency={currency}
                 />
                 <BreakdownCard
-                  title="Cost of Sales Breakdown"
+                  title={t('tradingAccount.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })}
                   rows={data.cogsByAccount}
                   totalLabel={t('profitLoss.total', { defaultValue: 'Total' })}
                   total={data.costOfSales}
-                  emptyLabel="No cost of sales accounts in this period"
+                  emptyLabel={t('tradingAccount.noCostForPeriod', { defaultValue: 'No cost of sales accounts in this period' })}
                   totalClassName="text-rose-700"
                   currency={currency}
                 />
@@ -219,8 +227,12 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-4 rounded-lg flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 mt-0.5 text-amber-600" />
               <div>
-                <p className="font-semibold">No Sales or COGS accounts configured.</p>
-                <p className="text-sm mt-1">Assign P&amp;L Subgroups in Chart of Accounts to enable this report.</p>
+                <p className="font-semibold">{t('tradingAccount.noAccountsConfigured', { defaultValue: 'No Sales or COGS accounts configured.' })}</p>
+                <p className="text-sm mt-1">
+                  {t('tradingAccount.enableHint', {
+                    defaultValue: 'Assign P&L Subgroups in Chart of Accounts to enable this report.',
+                  })}
+                </p>
               </div>
             </div>
           )
@@ -233,6 +245,7 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
 };
 
 const TradingAccountPage: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const { settings } = useCompanySettings();
 
   const handleExportExcel = async (params: TradingAccountParams) => {
@@ -240,35 +253,63 @@ const TradingAccountPage: React.FC = () => {
     const rows: any[] = [];
 
     response.salesByAccount.forEach((acc) =>
-      rows.push({ section: 'Sales', account: acc.accountName || acc.accountId, amount: acc.amount })
+      rows.push({
+        section: t('tradingAccount.sales', { defaultValue: 'Sales' }),
+        account: acc.accountName || acc.accountId,
+        amount: acc.amount,
+      })
     );
-    rows.push({ section: 'Sales', account: 'Total Net Sales', amount: response.netSales });
+    rows.push({
+      section: t('tradingAccount.sales', { defaultValue: 'Sales' }),
+      account: t('tradingAccount.totalNetSales', { defaultValue: 'Total Net Sales' }),
+      amount: response.netSales,
+    });
 
     response.cogsByAccount.forEach((acc) =>
-      rows.push({ section: 'Cost of Sales', account: acc.accountName || acc.accountId, amount: acc.amount })
+      rows.push({
+        section: t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' }),
+        account: acc.accountName || acc.accountId,
+        amount: acc.amount,
+      })
     );
-    rows.push({ section: 'Cost of Sales', account: 'Total Cost of Sales', amount: response.costOfSales });
+    rows.push({
+      section: t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' }),
+      account: t('tradingAccount.totalCostOfSales', { defaultValue: 'Total Cost of Sales' }),
+      amount: response.costOfSales,
+    });
 
-    rows.push({ section: 'Summary', account: 'Gross Profit', amount: response.grossProfit });
-    rows.push({ section: 'Summary', account: 'Gross Profit Margin %', amount: response.grossProfitMargin });
+    rows.push({
+      section: t('tradingAccount.summary', { defaultValue: 'Summary' }),
+      account: t('tradingAccount.grossProfit', { defaultValue: 'Gross Profit' }),
+      amount: response.grossProfit,
+    });
+    rows.push({
+      section: t('tradingAccount.summary', { defaultValue: 'Summary' }),
+      account: t('tradingAccount.grossProfitMarginPct', { defaultValue: 'Gross Profit Margin %' }),
+      amount: response.grossProfitMargin,
+    });
 
     await exportToExcel(
       rows,
       [
-        { header: 'Section', key: 'section' },
-        { header: 'Account', key: 'account' },
-        { header: 'Amount', key: 'amount', isNumber: true },
+        { header: t('tradingAccount.section', { defaultValue: 'Section' }), key: 'section' },
+        { header: t('tradingAccount.account', { defaultValue: 'Account' }), key: 'account' },
+        { header: t('tradingAccount.amount', { defaultValue: 'Amount' }), key: 'amount', isNumber: true },
       ],
       `Trading-Account-${response.period.from}-${response.period.to}`,
-      'Trading Account (Gross Profit)',
-      `Period: ${formatCompanyDate(response.period.from, settings)} - ${formatCompanyDate(response.period.to, settings)}`
+      t('tradingAccount.title', { defaultValue: 'Trading Account (Gross Profit)' }),
+      t('tradingAccount.periodLine', {
+        defaultValue: 'Period: {{from}} - {{to}}',
+        from: formatCompanyDate(response.period.from, settings),
+        to: formatCompanyDate(response.period.to, settings),
+      })
     );
   };
 
   return (
     <ReportContainer<TradingAccountParams>
-      title="Trading Account (Gross Profit)"
-      subtitle="Revenue vs Direct Costs"
+      title={t('tradingAccount.title', { defaultValue: 'Trading Account (Gross Profit)' })}
+      subtitle={t('tradingAccount.subtitle', { defaultValue: 'Revenue vs Direct Costs' })}
       initiator={TradingAccountInitiator}
       ReportContent={TradingAccountReportContent}
       onExportExcel={handleExportExcel}

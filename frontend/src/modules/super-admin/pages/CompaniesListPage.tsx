@@ -4,8 +4,10 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
+import { useTranslation } from 'react-i18next';
 
 export default function CompaniesListPage() {
+  const { t } = useTranslation('common');
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,10 +28,10 @@ export default function CompaniesListPage() {
   };
 
   const handleImpersonate = async (companyId: string) => {
-    if (!window.confirm('Start impersonating this company?')) return;
+    if (!window.confirm(t('superAdmin.companies.confirmImpersonate'))) return;
     try {
       await superAdminApi.startImpersonation(companyId);
-      errorHandler.showSuccess('Impersonation started. Redirecting...');
+      errorHandler.showSuccess(t('superAdmin.companies.messages.impersonationStarted'));
       window.location.href = '/';
     } catch (error: any) {
       errorHandler.showError(error);
@@ -39,24 +41,24 @@ export default function CompaniesListPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">All Companies</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{t('superAdmin.companies.title')}</h1>
         <Button variant="ghost" size="sm" onClick={loadCompanies} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+          {loading ? t('superAdmin.companies.refreshing') : t('superAdmin.companies.refresh')}
         </Button>
       </div>
 
       <Card className="overflow-hidden">
         {loading && companies.length === 0 ? (
-          <div className="p-6 text-gray-500">Loading companies...</div>
+          <div className="p-6 text-gray-500">{t('superAdmin.companies.loading')}</div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner UID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('superAdmin.companies.columns.companyId')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('superAdmin.companies.columns.name')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('superAdmin.companies.columns.ownerUid')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('superAdmin.companies.columns.created')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('superAdmin.companies.columns.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -70,7 +72,7 @@ export default function CompaniesListPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>
-                      Impersonate
+                      {t('superAdmin.companies.actions.impersonate')}
                     </Button>
                   </td>
                 </tr>
@@ -78,7 +80,7 @@ export default function CompaniesListPage() {
               {companies.length === 0 && !loading && (
                 <tr>
                   <td className="px-6 py-4 text-sm text-gray-500" colSpan={5}>
-                    No companies found.
+                    {t('superAdmin.companies.empty')}
                   </td>
                 </tr>
               )}

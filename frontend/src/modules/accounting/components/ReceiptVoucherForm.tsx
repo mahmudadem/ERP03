@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AmountInput } from './shared/AmountInput';
 import { accountingApi } from '../../../api/accountingApi';
 import { AccountSelectorSimple } from './AccountSelectorSimple';
@@ -24,6 +25,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
   onSuccess,
   onCancel
 }) => {
+  const { t } = useTranslation('accounting');
   const { settings } = useCompanySettings();
   const { company } = useCompanyAccess();
   const baseCurrency = company?.baseCurrency || '';
@@ -81,13 +83,21 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
       const result = await accountingApi.createVoucher(payload);
       
-      errorHandler.showSuccess(`Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: ${baseCurrency} ${totalAmount.toFixed(2)}`);
+      errorHandler.showSuccess(
+        t('receiptVoucher.successMessage', {
+          voucherNo: result.voucherNo || result.id,
+          date: formatCompanyDate(localDate, settings),
+          currency: baseCurrency,
+          amount: totalAmount.toFixed(2),
+          defaultValue: `Receipt voucher created successfully!\nVoucher #: ${result.voucherNo || result.id}\nDate: ${formatCompanyDate(localDate, settings)}\nAmount: ${baseCurrency} ${totalAmount.toFixed(2)}`
+        })
+      );
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to create receipt voucher');
+      setError(err.message || t('receiptVoucher.errors.createFailed', { defaultValue: 'Failed to create receipt voucher' }));
       errorHandler.showError(err);
     } finally {
       setLoading(false);
@@ -96,7 +106,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
   return (
     <div className="receipt-voucher-form">
-      <h2>New Receipt Voucher</h2>
+      <h2>{t('receiptVoucher.title', { defaultValue: 'New Receipt Voucher' })}</h2>
       
       {error && (
         <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
@@ -107,17 +117,17 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
       <form onSubmit={handleSubmit}>
         {/* Header Section */}
         <div className="form-section">
-          <h3>Receipt Header</h3>
+          <h3>{t('receiptVoucher.sections.header', { defaultValue: 'Receipt Header' })}</h3>
           
           <AccountSelectorSimple
             value={depositToAccountId}
             onChange={setDepositToAccountId}
-            label="Deposit To Account"
+            label={t('receiptVoucher.fields.depositTo', { defaultValue: 'Deposit To Account' })}
             required
           />
 
           <div className="form-group">
-            <label>Description</label>
+            <label>{t('receiptVoucher.fields.description', { defaultValue: 'Description' })}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -128,15 +138,15 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
 
         {/* Sources Section */}
         <div className="form-section">
-          <h3>Receipt Sources</h3>
+          <h3>{t('receiptVoucher.sections.sources', { defaultValue: 'Receipt Sources' })}</h3>
           
           <table className="sources-table">
             <thead>
               <tr>
-                <th>Receive From Account *</th>
-                <th>Amount *</th>
-                <th>Notes</th>
-                <th>Actions</th>
+                <th>{t('receiptVoucher.fields.receiveFrom', { defaultValue: 'Receive From Account *' })}</th>
+                <th>{t('receiptVoucher.fields.amount', { defaultValue: 'Amount *' })}</th>
+                <th>{t('receiptVoucher.fields.notes', { defaultValue: 'Notes' })}</th>
+                <th>{t('receiptVoucher.fields.actions', { defaultValue: 'Actions' })}</th>
               </tr>
             </thead>
             <tbody>
@@ -163,7 +173,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
                       type="text"
                       value={source.notes}
                       onChange={(e) => handleSourceChange(index, 'notes', e.target.value)}
-                      placeholder="Notes (e.g., Invoice #)"
+                      placeholder={t('receiptVoucher.placeholders.notes', { defaultValue: 'Notes (e.g., Invoice #)' })}
                     />
                   </td>
                   <td>
@@ -172,7 +182,7 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
                       onClick={() => handleRemoveSource(index)}
                       disabled={sources.length === 1}
                     >
-                      Remove
+                      {t('receiptVoucher.actions.remove', { defaultValue: 'Remove' })}
                     </button>
                   </td>
                 </tr>
@@ -181,15 +191,15 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
           </table>
 
           <button type="button" onClick={handleAddSource} className="add-source-btn">
-            + Add Source
+            + {t('receiptVoucher.actions.addSource', { defaultValue: 'Add Source' })}
           </button>
         </div>
 
         {/* Summary Section */}
         <div className="form-section summary-section">
-          <h3>Summary</h3>
+          <h3>{t('receiptVoucher.sections.summary', { defaultValue: 'Summary' })}</h3>
           <div className="summary-row">
-            <span>Total Amount ({baseCurrency}):</span>
+            <span>{t('receiptVoucher.totalAmount', { currency: baseCurrency, defaultValue: `Total Amount (${baseCurrency}):` })}</span>
             <strong>{totalAmount.toFixed(2)}</strong>
           </div>
         </div>
@@ -197,10 +207,10 @@ export const ReceiptVoucherForm: React.FC<ReceiptFormProps> = ({
         {/* Actions */}
         <div className="form-actions">
           <button type="button" onClick={onCancel} disabled={loading}>
-            Cancel
+            {t('receiptVoucher.actions.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button type="submit" disabled={loading || !depositToAccountId || totalAmount === 0}>
-            {loading ? 'Saving...' : 'Save as Draft'}
+            {loading ? t('receiptVoucher.actions.saving', { defaultValue: 'Saving...' }) : t('receiptVoucher.actions.saveDraft', { defaultValue: 'Save as Draft' })}
           </button>
         </div>
       </form>

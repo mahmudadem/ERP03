@@ -3,18 +3,20 @@ import React from 'react';
 import { WizardStepProps } from './types';
 import { Building2, Globe, Box, Mail, Loader2, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { onboardingApi } from '../../api/onboardingApi';
+import { useTranslation } from 'react-i18next';
 
 export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack, bundles = [] }) => {
+  const { t } = useTranslation('common');
   
   const selectedBundle = bundles.find(b => b.id === data.selectedBundleId);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [showModal, setShowModal] = React.useState(false);
   const [progressSteps, setProgressSteps] = React.useState<Array<{ label: string; status: 'pending' | 'loading' | 'done' | 'error' }>>([
-    { label: 'Creating company', status: 'pending' },
-    { label: 'Installing modules', status: 'pending' },
-    { label: 'Setting up permissions', status: 'pending' },
-    { label: 'Finalizing', status: 'pending' },
+    { label: t('onboarding.companyWizard.review.progress.creatingCompany'), status: 'pending' },
+    { label: t('onboarding.companyWizard.review.progress.installingModules'), status: 'pending' },
+    { label: t('onboarding.companyWizard.review.progress.settingPermissions'), status: 'pending' },
+    { label: t('onboarding.companyWizard.review.progress.finalizing'), status: 'pending' },
   ]);
 
   const handleCreate = async () => {
@@ -24,7 +26,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
     }
 
     if (!data.companyName || !data.selectedBundleId) {
-      setError("Missing required information");
+      setError(t('onboarding.companyWizard.review.errors.missingInfo'));
       return;
     }
 
@@ -41,7 +43,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
       const result = await onboardingApi.createCompany({
         companyName: data.companyName,
         description: data.description || '',
-        country: data.country || 'United States',
+        country: data.country || t('onboarding.companyWizard.review.defaults.country'),
         email: data.email || '',
         bundleId: data.selectedBundleId,
         logoData,
@@ -89,7 +91,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
       }));
       
       // Extract error message
-      const errorMessage = err?.response?.data?.error?.message || err?.message || "Failed to create company. Please try again.";
+      const errorMessage = err?.response?.data?.error?.message || err?.message || t('onboarding.companyWizard.review.errors.createFailed');
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -110,7 +112,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
       <div className="flex-1 overflow-y-auto min-h-0 pr-1 md:pr-2">
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 md:p-6 mb-4 md:mb-6">
           <h3 className="font-semibold text-base md:text-lg text-slate-900 mb-4 flex items-center gap-2">
-            Company Summary
+            {t('onboarding.companyWizard.review.companySummary')}
           </h3>
           
           <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 md:gap-y-6">
@@ -123,7 +125,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                 )}
               </div>
               <div className="min-w-0">
-                <dt className="text-xs md:text-sm font-medium text-slate-500">Company Name</dt>
+                <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.companyName')}</dt>
                 <dd className="text-base md:text-lg font-semibold text-slate-900 mt-0.5 truncate">{data.companyName}</dd>
                 {data.description && (
                   <p className="text-xs md:text-sm text-slate-600 mt-1 max-w-lg line-clamp-2">{data.description}</p>
@@ -136,7 +138,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                  <Globe className="h-3 w-3 md:h-4 md:w-4" />
                </div>
                <div className="min-w-0">
-                 <dt className="text-xs md:text-sm font-medium text-slate-500">Location</dt>
+                 <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.location')}</dt>
                  <dd className="text-sm md:text-base font-medium text-slate-900 truncate">{data.country}</dd>
                </div>
             </div>
@@ -146,7 +148,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                  <Mail className="h-3 w-3 md:h-4 md:w-4" />
                </div>
                <div className="min-w-0">
-                 <dt className="text-xs md:text-sm font-medium text-slate-500">Admin Email</dt>
+                 <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.adminEmail')}</dt>
                  <dd className="text-sm md:text-base font-medium text-slate-900 truncate">{data.email}</dd>
                </div>
             </div>
@@ -156,9 +158,9 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                  <Box className="h-3 w-3 md:h-4 md:w-4" />
                </div>
                <div className="w-full">
-                 <dt className="text-xs md:text-sm font-medium text-slate-500">Selected Bundle</dt>
+                 <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.selectedBundle')}</dt>
                  <dd className="text-sm md:text-base font-medium text-slate-900">{selectedBundle?.name}</dd>
-                 <dd className="text-[10px] md:text-xs text-slate-500">{selectedBundle?.modules.length} modules included</dd>
+                 <dd className="text-[10px] md:text-xs text-slate-500">{t('onboarding.companyWizard.review.modulesIncluded', { count: selectedBundle?.modules.length || 0 })}</dd>
                </div>
             </div>
           </dl>
@@ -166,7 +168,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
 
         <div className="bg-white border border-slate-200 rounded-lg p-4 md:p-6 shadow-sm mb-4">
           <div className="flex justify-between items-center mb-3">
-             <h4 className="font-medium text-sm md:text-base text-slate-900">Modules to be installed</h4>
+             <h4 className="font-medium text-sm md:text-base text-slate-900">{t('onboarding.companyWizard.review.modulesToInstall')}</h4>
           </div>
           <div className="flex flex-wrap gap-2">
             {selectedBundle?.modules.map((mod) => (
@@ -175,13 +177,13 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
               </span>
             ))}
             {(!selectedBundle?.modules || selectedBundle.modules.length === 0) && (
-                <span className="text-xs text-slate-500 italic">No specific modules selected.</span>
+                <span className="text-xs text-slate-500 italic">{t('onboarding.companyWizard.review.noSpecificModules')}</span>
             )}
           </div>
         </div>
 
         <div className="text-center text-xs text-slate-500 pb-2">
-           By clicking "Create Company", you agree to the Terms of Service for ERP03.
+           {t('onboarding.companyWizard.review.legal')}
         </div>
       </div>
 
@@ -191,7 +193,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
           disabled={isSubmitting}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-slate-100 hover:text-accent-foreground h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Back
+          {t('onboarding.companyWizard.review.actions.back')}
         </button>
         <button
           onClick={handleCreate}
@@ -201,10 +203,10 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating...
+              {t('onboarding.companyWizard.review.actions.creating')}
             </>
           ) : (
-            'Create Company'
+            t('onboarding.companyWizard.review.actions.createCompany')
           )}
         </button>
       </div>
@@ -216,7 +218,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">
-                {error ? 'Creation Failed' : isSubmitting ? 'Creating Company...' : 'Company Created!'}
+                {error ? t('onboarding.companyWizard.review.modal.creationFailed') : isSubmitting ? t('onboarding.companyWizard.review.modal.creatingCompany') : t('onboarding.companyWizard.review.modal.companyCreated')}
               </h3>
               {!isSubmitting && (
                 <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -261,7 +263,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-red-900 mb-1">Error</h4>
+                    <h4 className="text-sm font-semibold text-red-900 mb-1">{t('onboarding.companyWizard.review.modal.error')}</h4>
                     <p className="text-sm text-red-700">{error}</p>
                   </div>
                 </div>
@@ -275,7 +277,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                   onClick={closeModal}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Close
+                  {t('onboarding.companyWizard.review.actions.close')}
                 </button>
                 <button
                   onClick={() => {
@@ -284,14 +286,14 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                   }}
                   className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
                 >
-                  Try Again
+                  {t('onboarding.companyWizard.review.actions.tryAgain')}
                 </button>
               </div>
             )}
 
             {isSubmitting && (
               <p className="text-center text-sm text-gray-500">
-                Please wait, this may take a few moments...
+                {t('onboarding.companyWizard.review.modal.pleaseWait')}
               </p>
             )}
           </div>

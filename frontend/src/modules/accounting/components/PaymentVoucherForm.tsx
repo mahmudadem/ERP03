@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AmountInput } from './shared/AmountInput';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import { accountingApi } from '../../../api/accountingApi';
@@ -26,6 +27,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
   onSuccess,
   onCancel
 }) => {
+  const { t } = useTranslation('accounting');
   const { settings } = useCompanySettings();
   const { company } = useCompanyAccess();
   const baseCurrency = company?.baseCurrency || '';
@@ -101,33 +103,33 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
     <div className="payment-voucher-form p-6 max-w-4xl mx-auto transition-colors">
       <div className="flex items-center justify-between mb-8">
         <div>
-           <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">New Payment Voucher</h2>
-           <p className="text-sm text-[var(--color-text-muted)] mt-1">Record a disbursement or expense payment.</p>
+           <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('paymentVoucher.title', { defaultValue: 'New Payment Voucher' })}</h2>
+           <p className="text-sm text-[var(--color-text-muted)] mt-1">{t('paymentVoucher.subtitle', { defaultValue: 'Record a disbursement or expense payment.' })}</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Header Section */}
         <div className="form-section bg-[var(--color-bg-secondary)] p-6 rounded-xl border border-[var(--color-border)] shadow-sm">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">Payment Source</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">{t('paymentVoucher.sections.source', { defaultValue: 'Payment Source' })}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-               <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Pay From Account *</label>
+               <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('paymentVoucher.fields.payFrom', { defaultValue: 'Pay From Account *' })}</label>
                <AccountSelector
                  value={payFromAccountId}
                  onChange={(acc: Account | null) => setPayFromAccountId(acc?.id || '')}
-                 placeholder="Search bank / cash account..."
+                 placeholder={t('paymentVoucher.placeholders.payFrom', { defaultValue: 'Search bank / cash account...' })}
                />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Description</label>
+              <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('paymentVoucher.fields.description', { defaultValue: 'Description' })}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                placeholder="Overall payment description..."
+                placeholder={t('paymentVoucher.placeholders.description', { defaultValue: 'Overall payment description...' })}
                 className="w-full p-2 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none transition-colors"
               />
             </div>
@@ -136,16 +138,16 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
 
         {/* Allocations Section */}
         <div className="form-section bg-[var(--color-bg-secondary)] p-6 rounded-xl border border-[var(--color-border)] shadow-sm">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">Payment Allocations</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-4">{t('paymentVoucher.sections.allocations', { defaultValue: 'Payment Allocations' })}</h3>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Pay To Account *</th>
-                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-40">Amount *</th>
-                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Notes</th>
-                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-20 text-center">Action</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('paymentVoucher.fields.payTo', { defaultValue: 'Pay To Account *' })}</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-40">{t('paymentVoucher.fields.amount', { defaultValue: 'Amount *' })}</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('paymentVoucher.fields.notes', { defaultValue: 'Notes' })}</th>
+                  <th className="py-2 text-[10px] font-bold text-[var(--color-text-muted)] uppercase w-20 text-center">{t('paymentVoucher.fields.action', { defaultValue: 'Action' })}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -155,7 +157,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
                       <AccountSelector
                         value={alloc.payToAccountId}
                         onChange={(acc: Account | null) => handleAllocationChange(index, 'payToAccountId', acc?.id || '')}
-                        placeholder="Search destination..."
+                        placeholder={t('paymentVoucher.placeholders.payTo', { defaultValue: 'Search destination...' })}
                         noBorder
                         className="bg-transparent"
                       />
@@ -176,7 +178,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
                         type="text"
                         value={alloc.notes}
                         onChange={(e) => handleAllocationChange(index, 'notes', e.target.value)}
-                        placeholder="Invoice #, etc."
+                        placeholder={t('paymentVoucher.placeholders.notes', { defaultValue: 'Invoice #, etc.' })}
                         className="w-full p-1.5 text-sm border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] focus:ring-1 focus:ring-primary-500 outline-none"
                       />
                     </td>
@@ -201,7 +203,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
             onClick={handleAddAllocation} 
             className="mt-4 flex items-center gap-2 text-sm font-bold text-primary-600 hover:text-primary-700 transition-colors bg-primary-50 dark:bg-primary-900/10 px-4 py-2 rounded-lg"
           >
-            <Plus className="w-4 h-4" /> Add Another Line
+            <Plus className="w-4 h-4" /> {t('paymentVoucher.actions.addLine', { defaultValue: 'Add Another Line' })}
           </button>
         </div>
 
@@ -209,7 +211,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
         <div className="flex items-center justify-between bg-[var(--color-bg-tertiary)] p-6 rounded-xl border border-[var(--color-border)] shadow-inner">
           <div className="flex items-center gap-8">
             <div>
-              <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase block mb-1">Total Payment</span>
+              <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase block mb-1">{t('paymentVoucher.totalPayment', { defaultValue: 'Total Payment' })}</span>
               <span className="text-2xl font-mono font-bold text-primary-600 dark:text-primary-400">
                 {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(totalAmount)}
                 <span className="text-sm ml-1 opacity-60">{baseCurrency}</span>
@@ -224,7 +226,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
               disabled={loading}
               className="px-6 py-2.5 text-sm font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] rounded-lg transition-colors"
             >
-              Cancel
+              {t('paymentVoucher.actions.cancel', { defaultValue: 'Cancel' })}
             </button>
             <button 
               type="submit" 
@@ -232,7 +234,7 @@ export const PaymentVoucherForm: React.FC<PaymentFormProps> = ({
               className="px-8 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white rounded-lg font-bold shadow-lg shadow-primary-500/20 transition-all flex items-center gap-2"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? 'Processing...' : 'Save Payment'}
+              {loading ? t('paymentVoucher.actions.processing', { defaultValue: 'Processing...' }) : t('paymentVoucher.actions.save', { defaultValue: 'Save Payment' })}
             </button>
           </div>
         </div>

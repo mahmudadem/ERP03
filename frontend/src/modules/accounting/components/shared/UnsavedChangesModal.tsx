@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface UnsavedChangesModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
   onCancel,
   onConfirm
 }) => {
+  const { t } = useTranslation('accounting');
   if (!isOpen) return null;
 
   return (
@@ -29,9 +31,9 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
         <div className="p-6">
           <div className="flex items-start gap-4">
              <div>
-               <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">Unsaved Changes</h3>
+               <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-2">{t('unsavedChangesModal.title')}</h3>
                <p className="text-[var(--color-text-secondary)] leading-relaxed">
-                 You have unsaved changes. Are you sure you want to close without saving?
+                 {t('unsavedChangesModal.description')}
                </p>
              </div>
           </div>
@@ -43,13 +45,13 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
             onClick={onCancel}
             className="px-4 py-2 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border border-[var(--color-border)] font-bold rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
           >
-            Cancel
+            {t('unsavedChangesModal.cancel')}
           </button>
           <button
             onClick={onConfirm}
             className="px-4 py-2 bg-danger-600 text-white font-bold rounded-lg hover:bg-danger-700 transition-colors shadow-sm"
           >
-            Close Without Saving
+            {t('unsavedChangesModal.closeWithoutSaving')}
           </button>
         </div>
       </div>

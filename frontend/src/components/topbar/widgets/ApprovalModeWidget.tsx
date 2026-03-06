@@ -2,6 +2,7 @@ import React from 'react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface ApprovalModeWidgetProps {
   showBorder?: boolean;
@@ -12,6 +13,7 @@ export const ApprovalModeWidget: React.FC<ApprovalModeWidgetProps> = ({
   showBorder = true,
   showBackground = true
 }) => {
+  const { t } = useTranslation('common');
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading || !settings) return (
@@ -41,9 +43,13 @@ export const ApprovalModeWidget: React.FC<ApprovalModeWidgetProps> = ({
         <ShieldCheck className="w-4 h-4 shrink-0" />
       )}
       <div className="flex flex-col truncate hidden sm:flex">
-         <span className="text-[8px] font-bold uppercase tracking-widest leading-none mb-0.5 opacity-80">Approval Mode</span>
+         <span className="text-[8px] font-bold uppercase tracking-widest leading-none mb-0.5 opacity-80">
+           {t('widgets.approvalMode.label', 'Approval Mode')}
+         </span>
          <span className="text-[11px] font-black tracking-tight leading-none uppercase truncate">
-            {settings.strictApprovalMode ? 'Strict' : 'Flexible'}
+            {settings.strictApprovalMode
+              ? t('widgets.approvalMode.strict', 'Strict')
+              : t('widgets.approvalMode.flexible', 'Flexible')}
          </span>
       </div>
     </div>

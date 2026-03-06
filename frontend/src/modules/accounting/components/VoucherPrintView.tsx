@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Printer, Download, Image as ImageIcon, X, FileText } from 'lucide-react';
 import { VoucherDetailDTO } from '../../../api/accountingApi';
 import { formatCompanyDate, formatCompanyTime } from '../../../utils/dateUtils';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherType }) => {
+  const { t } = useTranslation('accounting');
   const { settings } = useCompanySettings();
   const { company } = useCompanyAccess();
   const { getAccountById, getAccountByCode } = useAccounts();
@@ -86,7 +88,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
             <FileText className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Official View</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t('voucherPrint.officialView', { defaultValue: 'Official View' })}</h2>
             <p className="text-xs text-slate-500">{voucher.voucherNo || voucher.id}</p>
           </div>
         </div>
@@ -94,7 +96,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handlePrint} className="flex items-center gap-2">
             <Printer className="w-4 h-4" />
-            Print
+            {t('voucherPrint.actions.print', { defaultValue: 'Print' })}
           </Button>
           <Button variant="secondary" onClick={handleDownloadPDF} className="flex items-center gap-2 text-indigo-600">
             <Download className="w-4 h-4" />
@@ -102,7 +104,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
           </Button>
           <Button variant="secondary" onClick={handleDownloadImage} className="flex items-center gap-2">
             <ImageIcon className="w-4 h-4" />
-            Image
+            {t('voucherPrint.actions.image', { defaultValue: 'Image' })}
           </Button>
           <div className="w-[1px] h-6 bg-slate-200 mx-2" />
           <button 
@@ -131,37 +133,37 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                 <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-slate-600">
                    {/* 1. Standard Critical Fields (Built-in) */}
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">No:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.number', { defaultValue: 'No:' })}</span>
                      <span className="text-sm">{voucher.voucherNo || voucher.id}</span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">Date:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.date', { defaultValue: 'Date:' })}</span>
                      <span className="text-sm">{formatCompanyDate(voucher.date, settings)}</span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">Created At:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.createdAt', { defaultValue: 'Created At:' })}</span>
                      <span className="text-sm">
                        {voucher.createdAt 
                          ? `${formatCompanyDate(voucher.createdAt, settings)} ${formatCompanyTime(voucher.createdAt, settings)}`
-                         : 'N/A'}
+                         : t('voucherPrint.meta.na', { defaultValue: 'N/A' })}
                      </span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">Print Time:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.printTime', { defaultValue: 'Print Time:' })}</span>
                      <span className="text-sm">
                        {formatCompanyDate(new Date(), settings)} {formatCompanyTime(new Date(), settings)}
                      </span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">Currency:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.currency', { defaultValue: 'Currency:' })}</span>
                      <span className={cn("text-sm", !company?.baseCurrency && "text-slate-400 italic")}>
-                       {company?.baseCurrency || 'None Specified'}
+                       {company?.baseCurrency || t('voucherPrint.meta.noneSpecified', { defaultValue: 'None Specified' })}
                      </span>
                    </div>
                    <div className="flex items-center gap-2">
-                     <span className="font-bold text-slate-900 w-24 text-sm">Fiscal Year:</span>
+                     <span className="font-bold text-slate-900 w-24 text-sm">{t('voucherPrint.meta.fiscalYear', { defaultValue: 'Fiscal Year:' })}</span>
                      <span className={cn("text-sm", !company?.fiscalYearStart && "text-slate-400 italic")}>
-                       {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : 'Unset'}
+                       {company?.fiscalYearStart ? `FY ${new Date(company.fiscalYearStart).getFullYear()}` : t('voucherPrint.meta.unset', { defaultValue: 'Unset' })}
                      </span>
                    </div>
 
@@ -170,7 +172,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                      // Get value from voucher data (core or metadata)
                      const value = (voucher as any)[field.id] || (voucher.metadata && voucher.metadata[field.id]);
                      const displayValue = value || (
-                       <span className="text-slate-300 italic text-[10px]">Not Entered</span>
+                       <span className="text-slate-300 italic text-[10px]">{t('voucherPrint.meta.notEntered', { defaultValue: 'Not Entered' })}</span>
                      );
 
                      return (
@@ -211,7 +213,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                    {company?.name || 'Voucher System'}
                 </div>
                 <div className="text-[10px] text-slate-400 mt-1">
-                   Official Document
+                   {t('voucherPrint.officialDocument', { defaultValue: 'Official Document' })}
                 </div>
              </div>
           </div>
@@ -227,10 +229,10 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                   {/* Ledger Header - Render based on definition if available, otherwise fallback */}
                   {(!voucherType?.tableColumns || voucherType.tableColumns.length === 0) ? (
                     <>
-                      <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest border border-slate-900">Account</th>
-                      <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest border border-slate-900">Description</th>
-                      <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-widest border border-slate-900 w-36">Debit</th>
-                      <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-widest border border-slate-900 w-36">Credit</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest border border-slate-900">{t('voucherPrint.columns.account', { defaultValue: 'Account' })}</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest border border-slate-900">{t('voucherPrint.columns.description', { defaultValue: 'Description' })}</th>
+                      <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-widest border border-slate-900 w-36">{t('voucherPrint.columns.debit', { defaultValue: 'Debit' })}</th>
+                      <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-widest border border-slate-900 w-36">{t('voucherPrint.columns.credit', { defaultValue: 'Credit' })}</th>
                     </>
                   ) : (
                     voucherType.tableColumns.map((col: any) => (
@@ -298,7 +300,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                       colSpan={voucherType?.tableColumns?.length || 4} 
                       className="px-5 py-12 text-center text-slate-400 italic"
                     >
-                      No lines available
+                      {t('voucherPrint.noLines', { defaultValue: 'No lines available' })}
                     </td>
                   </tr>
                 )}
@@ -308,7 +310,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                   {(!voucherType?.tableColumns || voucherType.tableColumns.length === 0) ? (
                     <>
                       <td colSpan={2} className="px-5 py-4 text-right text-[11px] uppercase tracking-widest text-slate-700 border border-slate-200">
-                        Total
+                        {t('voucherPrint.total', { defaultValue: 'Total' })}
                       </td>
                       <td className="px-5 py-4 text-right text-sm border border-slate-200 whitespace-nowrap font-bold text-slate-900">
                         {voucher.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })} <span className="text-[10px] ml-1 text-slate-500 font-normal">{voucher.currency}</span>
@@ -345,7 +347,7 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
                       if (nextColId === 'debit') {
                         return (
                           <td key={colId} className="px-5 py-4 text-right text-[11px] uppercase tracking-widest text-slate-700 border border-slate-200">
-                            Total
+                            {t('voucherPrint.total', { defaultValue: 'Total' })}
                           </td>
                         );
                       }
@@ -362,15 +364,15 @@ export const VoucherPrintView: React.FC<Props> = ({ voucher, onClose, voucherTyp
           <div className="mt-20 grid grid-cols-3 gap-12">
             <div className="text-center">
               <div className="border-b border-slate-900 h-10 mb-2"></div>
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Prepared By</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{t('voucherPrint.signatures.preparedBy', { defaultValue: 'Prepared By' })}</p>
             </div>
             <div className="text-center">
               <div className="border-b border-slate-900 h-10 mb-2"></div>
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Reviewed By</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{t('voucherPrint.signatures.reviewedBy', { defaultValue: 'Reviewed By' })}</p>
             </div>
             <div className="text-center">
               <div className="border-b border-slate-900 h-10 mb-2"></div>
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Approved By</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{t('voucherPrint.signatures.approvedBy', { defaultValue: 'Approved By' })}</p>
             </div>
           </div>
           

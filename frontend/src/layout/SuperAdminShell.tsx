@@ -16,6 +16,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { PageTitleManager } from '../components/common/PageTitleManager';
+import { useTranslation } from 'react-i18next';
 
 interface NavItem {
   path: string;
@@ -23,25 +24,26 @@ interface NavItem {
   icon: React.ComponentType<any>;
 }
 
-const navItems: NavItem[] = [
-  { path: '/super-admin/overview', label: 'Overview', icon: LayoutDashboard },
-  { path: '/super-admin/users', label: 'Users Management', icon: Users },
-  { path: '/super-admin/companies', label: 'Companies', icon: Building2 },
-  { path: '/super-admin/business-domains', label: 'Business Domains', icon: Blocks },
-  { path: '/super-admin/modules-registry', label: 'Modules', icon: Layers },
-  { path: '/super-admin/permissions-registry', label: 'Permissions', icon: Shield },
-  { path: '/super-admin/bundles-manager', label: 'Bundles', icon: Package },
-  { path: '/super-admin/plans', label: 'Plans', icon: Crown },
-];
-
 export const SuperAdminShell: React.FC = () => {
+  const { t } = useTranslation('common');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const navItems: NavItem[] = [
+    { path: '/super-admin/overview', label: t('shell.superAdmin.nav.overview'), icon: LayoutDashboard },
+    { path: '/super-admin/users', label: t('shell.superAdmin.nav.users'), icon: Users },
+    { path: '/super-admin/companies', label: t('shell.superAdmin.nav.companies'), icon: Building2 },
+    { path: '/super-admin/business-domains', label: t('shell.superAdmin.nav.businessDomains'), icon: Blocks },
+    { path: '/super-admin/modules-registry', label: t('shell.superAdmin.nav.modules'), icon: Layers },
+    { path: '/super-admin/permissions-registry', label: t('shell.superAdmin.nav.permissions'), icon: Shield },
+    { path: '/super-admin/bundles-manager', label: t('shell.superAdmin.nav.bundles'), icon: Package },
+    { path: '/super-admin/plans', label: t('shell.superAdmin.nav.plans'), icon: Crown },
+  ];
+
   const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    if (window.confirm(t('shell.superAdmin.confirmLogout'))) {
       await logout();
       navigate('/admin/login');
     }
@@ -68,8 +70,8 @@ export const SuperAdminShell: React.FC = () => {
                     <Crown className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-white font-bold text-lg">Super Admin</h1>
-                    <p className="text-purple-300 text-xs">System Dashboard</p>
+                    <h1 className="text-white font-bold text-lg">{t('shell.superAdmin.title')}</h1>
+                    <p className="text-purple-300 text-xs">{t('shell.superAdmin.systemDashboard')}</p>
                   </div>
                 </div>
               </div>
@@ -122,7 +124,7 @@ export const SuperAdminShell: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{user?.email}</p>
-                    <p className="text-purple-300 text-xs">Super Administrator</p>
+                    <p className="text-purple-300 text-xs">{t('shell.superAdmin.superAdministrator')}</p>
                   </div>
                 </div>
                 <button
@@ -130,7 +132,7 @@ export const SuperAdminShell: React.FC = () => {
                   className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="font-medium">Logout</span>
+                  <span className="font-medium">{t('shell.superAdmin.logout')}</span>
                 </button>
               </div>
             ) : (
@@ -174,7 +176,7 @@ export const SuperAdminShell: React.FC = () => {
             
             <div className="flex items-center gap-2 ml-auto">
               <div className="px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-                <span className="text-purple-300 text-sm font-medium">System Admin Panel</span>
+                <span className="text-purple-300 text-sm font-medium">{t('shell.superAdmin.systemAdminPanel')}</span>
               </div>
             </div>
           </div>

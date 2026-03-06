@@ -9,6 +9,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { exportToExcel } from '../../../utils/exportUtils';
 import { useNavigate } from 'react-router-dom';
+import i18n from '../../../i18n/config';
 
 interface CashFlowParams {
   fromDate: string;
@@ -64,48 +65,52 @@ const Section: React.FC<{
   currency,
   highlightedRows,
   onRowContextMenu,
-}) => (
-  <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
-      <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-      <span className="text-sm font-semibold text-slate-700">{numberFmt(total, currency)}</span>
-    </div>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-100/70 text-slate-600 uppercase text-[11px] tracking-wide">
-          <tr>
-            <th className="text-left px-4 py-2 font-semibold">Item</th>
-            <th className="text-right px-4 py-2 font-semibold">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 ? (
+}) => {
+  const { t } = useTranslation('accounting');
+
+  return (
+    <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+        <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+        <span className="text-sm font-semibold text-slate-700">{numberFmt(total, currency)}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-100/70 text-slate-600 uppercase text-[11px] tracking-wide">
             <tr>
-              <td className="px-4 py-3 text-slate-400" colSpan={2}>—</td>
+              <th className="text-left px-4 py-2 font-semibold">{t('cashFlow.item', { defaultValue: 'Item' })}</th>
+              <th className="text-right px-4 py-2 font-semibold">{t('cashFlow.amount', { defaultValue: 'Amount' })}</th>
             </tr>
-          ) : (
-            items.map((i, idx) => {
-              const rowKey = `${sectionKey}:${i.accountId || i.name}:${idx}`;
-              const isHighlighted = highlightedRows.has(rowKey);
-              return (
-                <tr
-                  key={rowKey}
-                  className={`border-t border-slate-100 hover:bg-blue-50/40 transition-colors ${
-                    isHighlighted ? 'bg-amber-100/70' : ''
-                  }`}
-                  onContextMenu={(e) => onRowContextMenu(e, i, rowKey)}
-                >
-                  <td className="px-4 py-2 text-slate-700">{i.name}</td>
-                  <td className="px-4 py-2 text-right font-mono text-slate-800">{numberFmt(i.amount, currency)}</td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td className="px-4 py-3 text-slate-400" colSpan={2}>—</td>
+              </tr>
+            ) : (
+              items.map((i, idx) => {
+                const rowKey = `${sectionKey}:${i.accountId || i.name}:${idx}`;
+                const isHighlighted = highlightedRows.has(rowKey);
+                return (
+                  <tr
+                    key={rowKey}
+                    className={`border-t border-slate-100 hover:bg-blue-50/40 transition-colors ${
+                      isHighlighted ? 'bg-amber-100/70' : ''
+                    }`}
+                    onContextMenu={(e) => onRowContextMenu(e, i, rowKey)}
+                  >
+                    <td className="px-4 py-2 text-slate-700">{i.name}</td>
+                    <td className="px-4 py-2 text-right font-mono text-slate-800">{numberFmt(i.amount, currency)}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CashFlowInitiator: React.FC<{
   onSubmit: (params: CashFlowParams) => void;
@@ -167,7 +172,7 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
         setData(result);
       } catch (err: any) {
         console.error('Failed to load cash flow report', err);
-        setError(err?.message || 'Failed to load cash flow report');
+        setError(err?.message || t('cashFlow.errors.loadFailed', { defaultValue: 'Failed to load cash flow report' }));
         setData(null);
       } finally {
         setLoading(false);
@@ -248,7 +253,9 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
+                  {t('cashFlow.processing', { defaultValue: 'Processing...' })}
+                </p>
               </div>
             </div>
           </div>
@@ -256,14 +263,16 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
           <>
             <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Summary</h3>
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                  {t('cashFlow.summary', { defaultValue: 'Summary' })}
+                </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-100/70 text-slate-600 uppercase text-[11px] tracking-wide">
                     <tr>
-                      <th className="text-left px-4 py-2 font-semibold">Metric</th>
-                      <th className="text-right px-4 py-2 font-semibold">Amount</th>
+                      <th className="text-left px-4 py-2 font-semibold">{t('cashFlow.metric', { defaultValue: 'Metric' })}</th>
+                      <th className="text-right px-4 py-2 font-semibold">{t('cashFlow.amount', { defaultValue: 'Amount' })}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -333,7 +342,9 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
             <div className="flex items-center justify-center min-h-[180px]">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
+                  {t('cashFlow.processing', { defaultValue: 'Processing...' })}
+                </p>
               </div>
             </div>
           </div>
@@ -360,7 +371,7 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
             }}
             disabled={!contextMenu.item.accountId}
           >
-            Account Statement
+            {t('cashFlow.actions.accountStatement', { defaultValue: 'Account Statement' })}
           </button>
           <button
             type="button"
@@ -373,7 +384,7 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
             }}
             disabled={!contextMenu.item.accountId}
           >
-            Account Card
+            {t('cashFlow.actions.accountCard', { defaultValue: 'Account Card' })}
           </button>
           <button
             type="button"
@@ -383,7 +394,9 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
               setContextMenu(null);
             }}
           >
-            {highlightedRows.has(contextMenu.rowKey) ? 'Unhighlight Line' : 'Highlight Line'}
+            {highlightedRows.has(contextMenu.rowKey)
+              ? t('cashFlow.actions.unhighlightLine', { defaultValue: 'Unhighlight Line' })
+              : t('cashFlow.actions.highlightLine', { defaultValue: 'Highlight Line' })}
           </button>
         </div>
       )}
@@ -392,29 +405,30 @@ const CashFlowReportContent: React.FC<{ params: CashFlowParams }> = ({ params })
 };
 
 const exportCashFlowToExcel = async (params: CashFlowParams) => {
+  const t = i18n.getFixedT(i18n.language, 'accounting');
   const result: CashFlowResponse = await accountingApi.getCashFlow(params.fromDate, params.toDate);
   const rows: Array<{ section: string; item: string; amount: number }> = [
-    { section: 'Summary', item: 'Net Income', amount: result.netIncome },
-    { section: 'Summary', item: 'Opening Cash', amount: result.openingCashBalance },
-    { section: 'Summary', item: 'Closing Cash', amount: result.closingCashBalance },
-    { section: 'Summary', item: 'Net Change in Cash', amount: result.netCashChange },
-    ...result.operating.items.map((x) => ({ section: 'Operating', item: x.name, amount: x.amount })),
-    { section: 'Operating', item: 'Total', amount: result.operating.total },
-    ...result.investing.items.map((x) => ({ section: 'Investing', item: x.name, amount: x.amount })),
-    { section: 'Investing', item: 'Total', amount: result.investing.total },
-    ...result.financing.items.map((x) => ({ section: 'Financing', item: x.name, amount: x.amount })),
-    { section: 'Financing', item: 'Total', amount: result.financing.total },
+    { section: t('cashFlow.summary', { defaultValue: 'Summary' }), item: t('cashFlow.netIncome', { defaultValue: 'Net Income' }), amount: result.netIncome },
+    { section: t('cashFlow.summary', { defaultValue: 'Summary' }), item: t('cashFlow.openingCash', { defaultValue: 'Opening Cash' }), amount: result.openingCashBalance },
+    { section: t('cashFlow.summary', { defaultValue: 'Summary' }), item: t('cashFlow.closingCash', { defaultValue: 'Closing Cash' }), amount: result.closingCashBalance },
+    { section: t('cashFlow.summary', { defaultValue: 'Summary' }), item: t('cashFlow.netChange', { defaultValue: 'Net Change in Cash' }), amount: result.netCashChange },
+    ...result.operating.items.map((x) => ({ section: t('cashFlow.operating', { defaultValue: 'Operating' }), item: x.name, amount: x.amount })),
+    { section: t('cashFlow.operating', { defaultValue: 'Operating' }), item: t('cashFlow.total', { defaultValue: 'Total' }), amount: result.operating.total },
+    ...result.investing.items.map((x) => ({ section: t('cashFlow.investing', { defaultValue: 'Investing' }), item: x.name, amount: x.amount })),
+    { section: t('cashFlow.investing', { defaultValue: 'Investing' }), item: t('cashFlow.total', { defaultValue: 'Total' }), amount: result.investing.total },
+    ...result.financing.items.map((x) => ({ section: t('cashFlow.financing', { defaultValue: 'Financing' }), item: x.name, amount: x.amount })),
+    { section: t('cashFlow.financing', { defaultValue: 'Financing' }), item: t('cashFlow.total', { defaultValue: 'Total' }), amount: result.financing.total },
   ];
 
   exportToExcel(
     rows,
     [
-      { header: 'Section', key: 'section' },
-      { header: 'Item', key: 'item' },
-      { header: 'Amount', key: 'amount', isNumber: true },
+      { header: t('cashFlow.excel.section', { defaultValue: 'Section' }), key: 'section' },
+      { header: t('cashFlow.excel.item', { defaultValue: 'Item' }), key: 'item' },
+      { header: t('cashFlow.excel.amount', { defaultValue: 'Amount' }), key: 'amount', isNumber: true },
     ],
     `Cash-Flow-${result.period.from}-to-${result.period.to}`,
-    'Cash Flow'
+    t('cashFlow.title', { defaultValue: 'Cash Flow' })
   );
 };
 

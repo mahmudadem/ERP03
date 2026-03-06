@@ -1,5 +1,6 @@
 
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { WizardStepProps } from './types';
 import { COUNTRIES } from './countries';
 import { Upload, X, Building2, Globe, Loader2, Search, Check, Info } from 'lucide-react';
@@ -11,6 +12,7 @@ const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5MB (original limit for selection)
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/x-icon'];
 
 export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack }) => {
+  const { t } = useTranslation('common');
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [countrySearch, setCountrySearch] = React.useState('');
@@ -57,12 +59,12 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
       
       // Validation
       if (!ALLOWED_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith('.ico')) {
-        setErrors(prev => ({ ...prev, logo: "Only PNG, JPG, ICO or WEBP images are allowed." }));
+        setErrors(prev => ({ ...prev, logo: t('onboarding.companyWizard.basic.errors.invalidImageType', { defaultValue: 'Only PNG, JPG, ICO or WEBP images are allowed.' }) }));
         return;
       }
 
       if (file.size > MAX_LOGO_SIZE) {
-        setErrors(prev => ({ ...prev, logo: "Logo must be smaller than 5MB." }));
+        setErrors(prev => ({ ...prev, logo: t('onboarding.companyWizard.basic.errors.logoSize', { defaultValue: 'Logo must be smaller than 5MB.' }) }));
         return;
       }
 
@@ -78,7 +80,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
         const processedDataUrl = await processImage(file, 512, 0.85);
         updateData({ logo: file, logoPreviewUrl: processedDataUrl });
       } catch (err) {
-        setErrors(prev => ({ ...prev, logo: "Failed to process image. please try another one." }));
+        setErrors(prev => ({ ...prev, logo: t('onboarding.companyWizard.basic.errors.logoProcessFailed', { defaultValue: 'Failed to process image. Please try another one.' }) }));
       } finally {
         setIsProcessing(false);
       }
@@ -96,8 +98,8 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!data.companyName.trim()) newErrors.companyName = "Company name is required";
-    if (!data.country) newErrors.country = "Please select a country";
+    if (!data.companyName.trim()) newErrors.companyName = t('onboarding.companyWizard.basic.errors.companyNameRequired', { defaultValue: 'Company name is required' });
+    if (!data.country) newErrors.country = t('onboarding.companyWizard.basic.errors.countryRequired', { defaultValue: 'Please select a country' });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -119,14 +121,14 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
             {/* Company Name */}
             <div className="space-y-2 md:col-span-1">
             <label htmlFor="companyName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Company Name <span className="text-red-500">*</span>
+                {t('onboarding.companyWizard.basic.fields.companyName', { defaultValue: 'Company Name' })} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                 id="companyName"
                 type="text"
-                placeholder="e.g. Acme Corp"
+                placeholder={t('onboarding.companyWizard.basic.placeholders.companyName', { defaultValue: 'e.g. Acme Corp' })}
                 value={data.companyName}
                 onChange={(e) => {
                     updateData({ companyName: e.target.value });
@@ -144,7 +146,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
             {/* Country - Searchable */}
             <div className="space-y-2 md:col-span-1">
             <label htmlFor="country" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Country / Region <span className="text-red-500">*</span>
+                {t('onboarding.companyWizard.basic.fields.country', { defaultValue: 'Country / Region' })} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -152,7 +154,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                   ref={countryInputRef}
                   id="country"
                   type="text"
-                  placeholder="Search countries..."
+                  placeholder={t('onboarding.companyWizard.basic.placeholders.searchCountries', { defaultValue: 'Search countries...' })}
                   value={isCountryDropdownOpen ? countrySearch : data.country || ''}
                   onChange={(e) => {
                     setCountrySearch(e.target.value);
@@ -204,7 +206,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                       ))
                     ) : (
                       <div className="px-3 py-4 text-sm text-slate-500 text-center">
-                        No countries found
+                        {t('onboarding.companyWizard.basic.noCountriesFound', { defaultValue: 'No countries found' })}
                       </div>
                     )}
                   </div>
@@ -216,11 +218,11 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
             {/* Description - Shared Row */}
             <div className="space-y-2 md:col-span-1 flex flex-col">
             <label htmlFor="description" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Description <span className="text-slate-400 font-normal">(Optional)</span>
+                {t('onboarding.companyWizard.basic.fields.description', { defaultValue: 'Description' })} <span className="text-slate-400 font-normal">({t('onboarding.companyWizard.basic.optional', { defaultValue: 'Optional' })})</span>
             </label>
             <textarea
                 id="description"
-                placeholder="Briefly describe your company..."
+                placeholder={t('onboarding.companyWizard.basic.placeholders.description', { defaultValue: 'Briefly describe your company...' })}
                 value={data.description}
                 onChange={(e) => updateData({ description: e.target.value })}
                 className="flex-1 min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 resize-none transition-colors"
@@ -230,7 +232,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
             {/* Logo Upload - Shared Row */}
             <div className="space-y-2 md:col-span-1 flex flex-col">
             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Company Logo <span className="text-slate-400 font-normal">(Optional)</span>
+                {t('onboarding.companyWizard.basic.fields.companyLogo', { defaultValue: 'Company Logo' })} <span className="text-slate-400 font-normal">({t('onboarding.companyWizard.basic.optional', { defaultValue: 'Optional' })})</span>
             </label>
             
             {!data.logoPreviewUrl ? (
@@ -242,7 +244,7 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                     {isProcessing ? (
                       <div className="flex flex-col items-center">
                         <Loader2 className="h-8 w-8 text-primary-600 animate-spin" />
-                        <p className="text-[10px] text-slate-500 mt-2 font-medium uppercase tracking-wider">Optimizing...</p>
+                        <p className="text-[10px] text-slate-500 mt-2 font-medium uppercase tracking-wider">{t('onboarding.companyWizard.basic.optimizing', { defaultValue: 'Optimizing...' })}</p>
                       </div>
                     ) : (
                       <>
@@ -257,12 +259,12 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                             htmlFor="file-upload"
                             className="relative cursor-pointer rounded-md font-semibold text-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600 focus-within:ring-offset-2 hover:text-primary-600/80"
                         >
-                            <span>Upload</span>
+                            <span>{t('onboarding.companyWizard.basic.actions.upload', { defaultValue: 'Upload' })}</span>
                             <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
                         </label>
-                        <p className="pl-1">or drag & drop</p>
+                        <p className="pl-1">{t('onboarding.companyWizard.basic.dragDrop', { defaultValue: 'or drag & drop' })}</p>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">PNG, JPG, ICO, WEBP</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{t('onboarding.companyWizard.basic.allowedFormats', { defaultValue: 'PNG, JPG, ICO, WEBP' })}</p>
                       </>
                     )}
                 </div>
@@ -274,13 +276,13 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 truncate tracking-tight">{data.logo?.name}</p>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">Ready for Documents</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">{t('onboarding.companyWizard.basic.readyForDocuments', { defaultValue: 'Ready for Documents' })}</p>
                 </div>
                 <button
                     type="button"
                     onClick={clearLogo}
                     className="p-1.5 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all"
-                    aria-label="Remove logo"
+                    aria-label={t('onboarding.companyWizard.basic.actions.removeLogo', { defaultValue: 'Remove logo' })}
                 >
                     <X className="h-4 w-4" />
                 </button>
@@ -297,16 +299,16 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
              <div className="mt-4 p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
                <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
                <div className="flex-1">
-                 <p className="text-xs text-blue-700 font-medium">Auto-Configuration Enabled</p>
+                 <p className="text-xs text-blue-700 font-medium">{t('onboarding.companyWizard.basic.autoConfigEnabled', { defaultValue: 'Auto-Configuration Enabled' })}</p>
                  <div className="text-[11px] text-slate-500 mt-1 leading-relaxed space-y-1">
-                    <p>Based on <strong>{data.country}</strong>, we've applied the following smart defaults:</p>
+                    <p>{t('onboarding.companyWizard.basic.smartDefaultsIntro', { country: data.country, defaultValue: `Based on ${data.country}, we've applied the following smart defaults:` })}</p>
                     <ul className="list-disc pl-4 space-y-0.5 text-slate-600">
-                        <li>Currency: <strong>{defaults.currency}</strong></li>
-                        <li>Language: <strong>{defaults.language === 'ar' ? 'Arabic' : defaults.language === 'tr' ? 'Turkish' : 'English'}</strong></li>
-                        {defaults.timezone && <li>Timezone: <strong>{defaults.timezone}</strong></li>}
-                        {defaults.dateFormat && <li>Date Format: <strong>{defaults.dateFormat}</strong></li>}
+                        <li>{t('onboarding.companyWizard.basic.defaults.currency', { defaultValue: 'Currency' })}: <strong>{defaults.currency}</strong></li>
+                        <li>{t('onboarding.companyWizard.basic.defaults.language', { defaultValue: 'Language' })}: <strong>{defaults.language === 'ar' ? t('onboarding.companyWizard.basic.languages.arabic', { defaultValue: 'Arabic' }) : defaults.language === 'tr' ? t('onboarding.companyWizard.basic.languages.turkish', { defaultValue: 'Turkish' }) : t('onboarding.companyWizard.basic.languages.english', { defaultValue: 'English' })}</strong></li>
+                        {defaults.timezone && <li>{t('onboarding.companyWizard.basic.defaults.timezone', { defaultValue: 'Timezone' })}: <strong>{defaults.timezone}</strong></li>}
+                        {defaults.dateFormat && <li>{t('onboarding.companyWizard.basic.defaults.dateFormat', { defaultValue: 'Date Format' })}: <strong>{defaults.dateFormat}</strong></li>}
                     </ul>
-                    <p className="text-[10px] text-slate-400 mt-1">These settings can be customized in your company profile later.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{t('onboarding.companyWizard.basic.customizeLater', { defaultValue: 'These settings can be customized in your company profile later.' })}</p>
                  </div>
                </div>
                <button onClick={() => setShowDefaultInfo(false)} className="text-slate-400 hover:text-slate-600 self-start">
@@ -324,13 +326,13 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
           onClick={onBack}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-slate-100 hover:text-accent-foreground h-10 px-4 py-2"
         >
-          Cancel
+          {t('onboarding.companyWizard.basic.actions.cancel', { defaultValue: 'Cancel' })}
         </button>
         <button
           type="submit"
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary-600 text-white hover:bg-primary-600/90 h-10 px-8 py-2"
         >
-          Next Step
+          {t('onboarding.companyWizard.basic.actions.nextStep', { defaultValue: 'Next Step' })}
         </button>
       </div>
     </form>

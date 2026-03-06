@@ -7,8 +7,10 @@ import { Input } from '../../../components/ui/Input';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyUsers, useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Search, Shield, User as UserIcon, Mail, Power, UserPlus, X, Save, CheckCircle, Ban, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const UsersPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { 
     users, 
     isLoading, 
@@ -77,8 +79,14 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleToggleStatus = (user: any) => {
-    const action = user.status === 'active' ? 'disable' : 'enable';
-    if (window.confirm(`Are you sure you want to ${action} ${user.email}?`)) {
+    const action = user.status === 'active'
+      ? t('companyAdmin.users.confirm.disableVerb', { defaultValue: 'disable' })
+      : t('companyAdmin.users.confirm.enableVerb', { defaultValue: 'enable' });
+    if (window.confirm(t('companyAdmin.users.confirm.toggleStatus', {
+      defaultValue: 'Are you sure you want to {{action}} {{email}}?',
+      action,
+      email: user.email,
+    }))) {
       if (user.status === 'active') {
         disableUser(user.userId);
       } else {
@@ -88,7 +96,10 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleDeleteUser = (user: any) => {
-    if (window.confirm(`Are you sure you want to remove ${user.email} from the company?`)) {
+    if (window.confirm(t('companyAdmin.users.confirm.removeUser', {
+      defaultValue: 'Are you sure you want to remove {{email}} from the company?',
+      email: user.email,
+    }))) {
       deleteUser(user.userId);
     }
   };
@@ -98,11 +109,14 @@ export const UsersPage: React.FC = () => {
   return (
     <CompanyAdminLayout>
       <PageHeader 
-        title="User Management" 
-        breadcrumbs={[{ label: 'Company Admin' }, { label: 'Users' }]}
+        title={t('companyAdmin.users.title', { defaultValue: 'User Management' })}
+        breadcrumbs={[
+          { label: t('companyAdmin.shared.companyAdmin', { defaultValue: 'Company Admin' }) },
+          { label: t('companyAdmin.shared.users', { defaultValue: 'Users' }) },
+        ]}
         action={
           <Button onClick={() => setShowInviteModal(true)}>
-            <UserPlus size={18} className="mr-2" /> Invite User
+            <UserPlus size={18} className="mr-2" /> {t('companyAdmin.users.inviteUser', { defaultValue: 'Invite User' })}
           </Button>
         }
       />
@@ -112,14 +126,17 @@ export const UsersPage: React.FC = () => {
            <div className="flex-1 relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
              <Input 
-               placeholder="Search users..." 
+               placeholder={t('companyAdmin.users.searchPlaceholder', { defaultValue: 'Search users...' })} 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
                className="pl-10"
              />
            </div>
            <div className="text-sm text-gray-500">
-             {filteredUsers.length} users
+             {t('companyAdmin.users.count', {
+               defaultValue: '{{count}} users',
+               count: filteredUsers.length,
+             })}
            </div>
         </div>
       </Card>
@@ -130,20 +147,32 @@ export const UsersPage: React.FC = () => {
         </div>
       ) : filteredUsers.length === 0 ? (
         <EmptyState 
-          title={searchTerm ? "No users match your search" : "No users found"} 
-          description={searchTerm ? "Try adjusting your search terms" : "Get started by inviting users to your company."}
-          action={!searchTerm ? <Button onClick={() => setShowInviteModal(true)}>Invite User</Button> : undefined}
+          title={
+            searchTerm
+              ? t('companyAdmin.users.empty.noSearchMatches', { defaultValue: 'No users match your search' })
+              : t('companyAdmin.users.empty.noUsersFound', { defaultValue: 'No users found' })
+          }
+          description={
+            searchTerm
+              ? t('companyAdmin.users.empty.adjustSearch', { defaultValue: 'Try adjusting your search terms' })
+              : t('companyAdmin.users.empty.inviteHint', { defaultValue: 'Get started by inviting users to your company.' })
+          }
+          action={
+            !searchTerm
+              ? <Button onClick={() => setShowInviteModal(true)}>{t('companyAdmin.users.inviteUser', { defaultValue: 'Invite User' })}</Button>
+              : undefined
+          }
         />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.users.table.user', { defaultValue: 'User' })}</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.users.table.email', { defaultValue: 'Email' })}</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.users.table.role', { defaultValue: 'Role' })}</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.users.table.status', { defaultValue: 'Status' })}</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.users.table.actions', { defaultValue: 'Actions' })}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -165,7 +194,7 @@ export const UsersPage: React.FC = () => {
                           {user.firstName} {user.lastName}
                           {user.isOwner && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 uppercase tracking-wide">
-                              Owner
+                              {t('companyAdmin.users.owner', { defaultValue: 'Owner' })}
                             </span>
                           )}
                         </div>
@@ -191,12 +220,12 @@ export const UsersPage: React.FC = () => {
                             user.roleName ? 'text-gray-900 bg-gray-50' : 'text-gray-400 bg-gray-50 italic'
                           }`}>
                             <Shield size={14} className="mr-1.5 text-blue-500" />
-                            {user.roleName || 'No Role'}
+                            {user.roleName || t('companyAdmin.users.noRole', { defaultValue: 'No Role' })}
                           </div>
                           <button 
                             onClick={() => openRoleModal(user)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Change Role"
+                            title={t('companyAdmin.users.changeRole', { defaultValue: 'Change Role' })}
                           >
                             <Edit2 size={14} />
                           </button>
@@ -215,7 +244,11 @@ export const UsersPage: React.FC = () => {
                       ) : (
                         <Ban size={12} className="mr-1.5" />
                       )}
-                      <span className="capitalize">{user.status}</span>
+                      <span className="capitalize">
+                        {user.status === 'active'
+                          ? t('companyAdmin.users.status.active', { defaultValue: 'active' })
+                          : t('companyAdmin.users.status.inactive', { defaultValue: 'inactive' })}
+                      </span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -229,7 +262,9 @@ export const UsersPage: React.FC = () => {
                               ? 'text-gray-400 hover:text-amber-600 hover:bg-amber-50' 
                               : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
                           }`}
-                          title={user.status === 'active' ? 'Disable User' : 'Enable User'}
+                          title={user.status === 'active'
+                            ? t('companyAdmin.users.disableUser', { defaultValue: 'Disable User' })
+                            : t('companyAdmin.users.enableUser', { defaultValue: 'Enable User' })}
                         >
                           <Power size={18} />
                         </button>
@@ -237,7 +272,7 @@ export const UsersPage: React.FC = () => {
                           onClick={() => handleDeleteUser(user)}
                           disabled={isActionLoading}
                           className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title="Remove User"
+                          title={t('companyAdmin.users.removeUser', { defaultValue: 'Remove User' })}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -257,9 +292,12 @@ export const UsersPage: React.FC = () => {
           <Card className="w-full max-w-md p-6 shadow-xl border-0">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Assign Role</h2>
+                <h2 className="text-xl font-bold text-gray-900">{t('companyAdmin.users.assignRole', { defaultValue: 'Assign Role' })}</h2>
                 <div className="text-sm text-gray-500 mt-1">
-                  Assigning role for <span className="font-medium text-gray-900">{roleAssignmentUser.firstName} {roleAssignmentUser.lastName}</span>
+                  {t('companyAdmin.users.assigningRoleFor', {
+                    defaultValue: 'Assigning role for {{name}}',
+                    name: `${roleAssignmentUser.firstName} ${roleAssignmentUser.lastName}`,
+                  })}
                 </div>
               </div>
               <button 
@@ -271,16 +309,16 @@ export const UsersPage: React.FC = () => {
             </div>
             
             <div className="mb-8">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Role</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('companyAdmin.users.selectRole', { defaultValue: 'Select Role' })}</label>
               <select
                 value={targetRoleId}
                 onChange={(e) => setTargetRoleId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition-shadow"
               >
-                <option value="">Select a role...</option>
+                <option value="">{t('companyAdmin.users.selectRolePlaceholder', { defaultValue: 'Select a role...' })}</option>
                 {roles.map(role => (
                   <option key={role.id} value={role.id}>
-                    {role.name} {role.isSystem ? '(System)' : ''}
+                    {role.name} {role.isSystem ? `(${t('companyAdmin.shared.system', { defaultValue: 'System' })})` : ''}
                   </option>
                 ))}
               </select>
@@ -292,7 +330,7 @@ export const UsersPage: React.FC = () => {
                 onClick={() => setRoleAssignmentUser(null)}
                 disabled={isUpdatingRole}
               >
-                Cancel
+                {t('companyAdmin.shared.cancel', { defaultValue: 'Cancel' })}
               </Button>
               <Button 
                 onClick={handleSaveRole} 
@@ -304,7 +342,7 @@ export const UsersPage: React.FC = () => {
                 ) : (
                   <Save size={16} className="mr-2" />
                 )}
-                Save
+                {t('companyAdmin.shared.save', { defaultValue: 'Save' })}
               </Button>
             </div>
           </Card>
@@ -316,7 +354,7 @@ export const UsersPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-md p-6 shadow-xl border-0">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Invite New User</h2>
+              <h2 className="text-xl font-bold text-gray-900">{t('companyAdmin.users.inviteNewUser', { defaultValue: 'Invite New User' })}</h2>
               <button 
                 onClick={() => setShowInviteModal(false)}
                 className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -326,7 +364,7 @@ export const UsersPage: React.FC = () => {
             </div>
             <form onSubmit={handleInvite} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('companyAdmin.users.emailAddress', { defaultValue: 'Email Address *' })}</label>
                 <Input
                   type="email"
                   value={inviteForm.email}
@@ -337,7 +375,7 @@ export const UsersPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('companyAdmin.users.firstName', { defaultValue: 'First Name' })}</label>
                   <Input
                     value={inviteForm.firstName}
                     onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
@@ -345,7 +383,7 @@ export const UsersPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('companyAdmin.users.lastName', { defaultValue: 'Last Name' })}</label>
                   <Input
                     value={inviteForm.lastName}
                     onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
@@ -354,14 +392,14 @@ export const UsersPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assign Role *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('companyAdmin.users.assignRoleRequired', { defaultValue: 'Assign Role *' })}</label>
                 <select
                   value={inviteForm.roleId}
                   onChange={(e) => setInviteForm({ ...inviteForm, roleId: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm"
                   required
                 >
-                  <option value="">Select a role...</option>
+                  <option value="">{t('companyAdmin.users.selectRolePlaceholder', { defaultValue: 'Select a role...' })}</option>
                   {roles.map(role => (
                     <option key={role.id} value={role.id}>{role.name}</option>
                   ))}
@@ -374,10 +412,12 @@ export const UsersPage: React.FC = () => {
                   onClick={() => setShowInviteModal(false)}
                   disabled={isInviting}
                 >
-                  Cancel
+                  {t('companyAdmin.shared.cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button type="submit" disabled={isInviting}>
-                  {isInviting ? 'Sending...' : 'Send Invitation'}
+                  {isInviting
+                    ? t('companyAdmin.users.sending', { defaultValue: 'Sending...' })
+                    : t('companyAdmin.users.sendInvitation', { defaultValue: 'Send Invitation' })}
                 </Button>
               </div>
             </form>

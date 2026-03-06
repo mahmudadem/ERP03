@@ -13,8 +13,10 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useAuth } from '../../../context/AuthContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 const CompaniesListPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { companies, loading, error, refresh } = useCompanies();
@@ -62,13 +64,13 @@ const CompaniesListPage: React.FC = () => {
             <div className="bg-primary-500/10 p-2 rounded-lg">
                 <Building2 className="h-6 w-6 text-primary-500" />
             </div>
-            <span className="font-bold text-xl text-slate-900">ERP03</span>
+            <span className="font-bold text-xl text-slate-900">{t('appName')}</span>
           </div>
           <div className="flex items-center gap-4">
              <button 
                onClick={refresh}
                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors hidden sm:block"
-               title="Refresh"
+               title={t('companiesList.refresh')}
              >
                <RefreshCw className="h-5 w-5" />
              </button>
@@ -80,10 +82,10 @@ const CompaniesListPage: React.FC = () => {
              <button 
                onClick={handleLogout}
                className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors ml-2"
-               title="Sign Out"
+               title={t('companiesList.signOut')}
              >
                <LogOut className="h-4 w-4" />
-               <span className="hidden sm:inline">Sign Out</span>
+               <span className="hidden sm:inline">{t('companiesList.signOut')}</span>
              </button>
           </div>
         </div>
@@ -92,15 +94,15 @@ const CompaniesListPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">My Companies</h1>
-            <p className="text-slate-500 mt-1">Choose a company to enter or create a new one.</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t('companiesList.title')}</h1>
+            <p className="text-slate-500 mt-1">{t('companiesList.subtitle')}</p>
           </div>
           <button
             onClick={handleCreateClick}
             className="inline-flex items-center justify-center rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white shadow transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Create New Company
+            {t('companiesList.createNewCompany')}
           </button>
         </div>
 
@@ -108,7 +110,7 @@ const CompaniesListPage: React.FC = () => {
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex justify-between items-center">
             <span>{error}</span>
             <button onClick={refresh} className="text-red-600 hover:text-red-800 font-medium text-sm">
-              Retry
+              {t('companiesList.retry')}
             </button>
           </div>
         )}
@@ -119,15 +121,15 @@ const CompaniesListPage: React.FC = () => {
              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
                 <Building2 className="h-10 w-10 text-slate-400" />
              </div>
-             <h3 className="mt-4 text-lg font-semibold text-slate-900">No companies yet</h3>
+             <h3 className="mt-4 text-lg font-semibold text-slate-900">{t('companiesList.emptyTitle')}</h3>
              <p className="mt-2 text-sm text-slate-500 max-w-sm mx-auto">
-               Get started by creating your first company workspace to access ERP modules.
+               {t('companiesList.emptyDescription')}
              </p>
              <button
                 onClick={handleCreateClick}
                 className="mt-6 inline-flex items-center justify-center rounded-md text-primary-500 hover:bg-primary-500/5 px-4 py-2 text-sm font-medium transition-colors"
               >
-               Create your first company →
+               {t('companiesList.createFirstCompany')}
              </button>
           </div>
         ) : (
@@ -148,7 +150,7 @@ const CompaniesListPage: React.FC = () => {
                       <h3 className="font-semibold text-slate-900 group-hover:text-primary-500 transition-colors">
                         {company.name}
                       </h3>
-                      <p className="text-xs text-slate-500">{company.model || 'Business'}</p>
+                      <p className="text-xs text-slate-500">{company.model || t('companiesList.business')}</p>
                     </div>
                   </div>
                   <button 
@@ -161,10 +163,10 @@ const CompaniesListPage: React.FC = () => {
 
                 <div className="mt-6 flex items-center justify-between text-sm">
                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 px-2 py-1 rounded">
-                      <span className="font-medium capitalize">{company.role || 'Member'}</span>
+                      <span className="font-medium capitalize">{company.role || t('companiesList.member')}</span>
                    </div>
                    <div className="flex items-center gap-1 text-primary-500 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Open Dashboard <ExternalLink className="h-3 w-3" />
+                      {t('companiesList.openDashboard')} <ExternalLink className="h-3 w-3" />
                    </div>
                 </div>
               </div>

@@ -22,9 +22,9 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
   return (
     <div
       className={`
-        absolute rounded-lg overflow-hidden shadow-xl border flex flex-col bg-white
+        absolute rounded-lg overflow-hidden shadow-xl border flex flex-col bg-white dark:bg-[var(--color-bg-primary)]
         transition-shadow duration-200
-        ${isActive ? 'ring-2 ring-blue-400 shadow-2xl' : 'border-gray-300'}
+        ${isActive ? 'ring-2 ring-blue-400 shadow-2xl border-blue-400' : 'border-gray-300 dark:border-[var(--color-border)]'}
       `}
       style={{
         width: '800px',
@@ -40,10 +40,10 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
       {/* Title Bar */}
       <div className={`
         h-10 px-4 flex items-center justify-between select-none
-        ${isActive ? 'bg-gray-100' : 'bg-gray-50'}
-        border-b border-gray-200
+        ${isActive ? 'bg-gray-100 dark:bg-[var(--color-bg-tertiary)]' : 'bg-gray-50 dark:bg-[var(--color-bg-tertiary)]'}
+        border-b border-gray-200 dark:border-[var(--color-border)]
       `}>
-        <span className="font-medium text-sm text-gray-700 truncate">{title}</span>
+        <span className="font-medium text-sm text-gray-700 dark:text-[var(--color-text-secondary)] truncate">{title}</span>
         <div className="flex items-center gap-2">
            <button className="w-3 h-3 rounded-full bg-yellow-400 hover:bg-yellow-500" />
            <button className="w-3 h-3 rounded-full bg-green-400 hover:bg-green-500" />
@@ -52,7 +52,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto bg-white p-4 window-scroll relative">
+      <div className="flex-1 overflow-auto bg-white dark:bg-[var(--color-bg-primary)] p-4 window-scroll relative">
         {children}
       </div>
     </div>

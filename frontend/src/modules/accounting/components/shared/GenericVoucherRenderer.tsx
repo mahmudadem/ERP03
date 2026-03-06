@@ -308,6 +308,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
       };
 
       // Map detail lines → row shape the table expects
+      // Use canonical lines (initialData.lines) to resolve side when detailLines lack debit/credit info
+      const canonicalLines: any[] = Array.isArray(initialData.lines) ? initialData.lines : [];
       const mappedLines = deduplicateRowIds(
         detailLines.map((l: any, i: number) => {
           const accountId = resolveAccountRef(
@@ -317,6 +319,27 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
           const accountCode = accountObj?.code || (typeof l.account === 'string' ? l.account : (accountId || ''));
           const amount = Math.abs(Number(l.amount ?? l.debit ?? l.credit ?? 0));
 
+          // Resolve debit/credit: prefer explicit fields, then side field, then canonical line side
+          let debit = 0;
+          let credit = 0;
+          if (l.debit !== undefined || l.credit !== undefined) {
+            // Explicit debit/credit stored — use them directly
+            debit = Number(l.debit ?? 0);
+            credit = Number(l.credit ?? 0);
+          } else if (l.side) {
+            // Side field present on the detail line
+            debit = l.side === 'Debit' ? amount : 0;
+            credit = l.side === 'Credit' ? amount : 0;
+          } else if (canonicalLines[i] && canonicalLines[i].side) {
+            // Fallback: look up the canonical line at the same index for side info
+            debit = canonicalLines[i].side === 'Debit' ? amount : 0;
+            credit = canonicalLines[i].side === 'Credit' ? amount : 0;
+          } else {
+            // Last resort: everything goes to debit (preserves old behavior)
+            debit = amount;
+            credit = 0;
+          }
+
           return {
             ...l,
             id: l.id ?? -(Date.now() + i),
@@ -324,8 +347,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
             accountId,
             account: accountCode,
             amount,
-            debit: l.debit !== undefined ? l.debit : amount,
-            credit: l.credit !== undefined ? l.credit : 0,
+            debit,
+            credit,
             notes: l.notes || l.description || '',
             currency: l.currency || l.lineCurrency || initialData.currency || '',
             parity: Number(l.exchangeRate || l.parity || 1) || 1.0,

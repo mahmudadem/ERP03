@@ -8,6 +8,7 @@
 import React from 'react';
 import { X, AlertTriangle, Lightbulb, HelpCircle } from 'lucide-react';
 import { PageInstructions } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface InstructionsModalProps {
   /** Whether the modal is visible */
@@ -67,6 +68,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
   onClose,
   instructions,
 }) => {
+  const { t } = useTranslation('common');
   if (!isOpen) return null;
 
   return (
@@ -90,7 +92,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
-            aria-label="Close"
+            aria-label={t('actions.close', { defaultValue: 'Close' })}
           >
             <X className="w-5 h-5 text-gray-500 dark:text-[var(--color-text-muted)]" />
           </button>
@@ -140,7 +142,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
         {instructions.footerWarnings && instructions.footerWarnings.length > 0 && (
           <div className="px-6 py-4 bg-gray-50 dark:bg-[var(--color-bg-primary)] border-t border-gray-200 dark:border-[var(--color-border)]">
             <p className="text-xs font-semibold text-gray-500 dark:text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-              Important Notes
+              {t('instructions.importantNotes', { defaultValue: 'Important Notes' })}
             </p>
             <ul className="space-y-1">
               {instructions.footerWarnings.map((warning, idx) => (

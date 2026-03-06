@@ -53,16 +53,16 @@ export const ErrorModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-white dark:bg-[var(--color-bg-primary)] rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-200 dark:border-[var(--color-border)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[var(--color-border)]">
           <div className="flex items-center gap-3">
             {getIcon()}
-            <h2 className="text-lg font-semibold text-gray-900">{getTitle()}</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">{getTitle()}</h2>
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:text-[var(--color-text-muted)] dark:hover:text-[var(--color-text-secondary)] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,11 +70,11 @@ export const ErrorModal: React.FC = () => {
 
         {/* Body */}
         <div className="p-6">
-          <p className="text-gray-700 whitespace-pre-wrap">{message}</p>
+          <p className="text-gray-700 dark:text-[var(--color-text-secondary)] whitespace-pre-wrap">{message}</p>
           
           {/* Show error code for debugging */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-3 bg-gray-100 rounded text-xs font-mono text-gray-600">
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-[var(--color-bg-tertiary)] rounded text-xs font-mono text-gray-600 dark:text-[var(--color-text-secondary)]">
               <div>Code: {error.code}</div>
               {error.field && <div>Field: {error.field}</div>}
               {error.context && (
@@ -85,7 +85,7 @@ export const ErrorModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t bg-gray-50">
+        <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-tertiary)]">
           <button
             onClick={handleClose}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"

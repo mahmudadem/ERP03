@@ -44,7 +44,7 @@ export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const isRtl = i18n.dir() === 'rtl';
   const sortedNotifications = useMemo(
     () =>
@@ -158,7 +158,7 @@ export const NotificationBell: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        title="Notifications"
+        title={t('notifications.title', { defaultValue: 'Notifications' })}
       >
         <Bell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         {unreadCount > 0 && (
@@ -183,7 +183,9 @@ export const NotificationBell: React.FC = () => {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-200">Notifications</h3>
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+              {t('notifications.title', { defaultValue: 'Notifications' })}
+            </h3>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -196,7 +198,7 @@ export const NotificationBell: React.FC = () => {
           {sortedNotifications.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No notifications</p>
+              <p className="text-sm">{t('notifications.empty', { defaultValue: 'No notifications' })}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[18rem] overflow-y-auto">
@@ -250,7 +252,7 @@ export const NotificationBell: React.FC = () => {
               }}
               className="w-full p-3 text-sm text-center font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
             >
-              View all notifications
+              {t('notifications.viewAll', { defaultValue: 'View all notifications' })}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { accountingApi } from '../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
 interface AccountSelectorProps {
   value: string;
@@ -14,6 +15,7 @@ export const AccountSelectorSimple: React.FC<AccountSelectorProps> = ({
   label,
   required = false
 }) => {
+  const { t } = useTranslation('accounting');
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +38,7 @@ export const AccountSelectorSimple: React.FC<AccountSelectorProps> = ({
       <div>
         <label>{label} {required && '*'}</label>
         <select disabled>
-          <option>Loading accounts...</option>
+          <option>{t('accountSelector.loadingAccounts')}</option>
         </select>
       </div>
     );
@@ -50,7 +52,7 @@ export const AccountSelectorSimple: React.FC<AccountSelectorProps> = ({
         onChange={(e) => onChange(e.target.value)}
         required={required}
       >
-        <option value="">-- Select Account --</option>
+        <option value="">{t('accountSelector.selectAccount')}</option>
         {accounts.map(account => (
           <option key={account.id} value={account.id}>
             {account.code} - {account.name}

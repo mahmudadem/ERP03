@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Shield, Lock, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Super Admin Login Page
@@ -9,6 +10,7 @@ import { Shield, Lock, Mail } from 'lucide-react';
  * Route: /admin/login
  */
 export const AdminLoginPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -33,7 +35,7 @@ export const AdminLoginPage: React.FC = () => {
       navigate('/super-admin/overview');
     } catch (err: any) {
       console.error('Admin login failed', err);
-      setError(err.message || 'Invalid administrator credentials. Access denied.');
+      setError(err.message || t('auth.admin.error'));
     } finally {
       setLoading(false);
     }
@@ -50,8 +52,8 @@ export const AdminLoginPage: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4 shadow-lg shadow-blue-500/50">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">System Administrator</h1>
-          <p className="text-slate-400">Secure access to system management</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t('auth.admin.title')}</h1>
+          <p className="text-slate-400">{t('auth.admin.subtitle')}</p>
         </div>
 
         {/* Login Card */}
@@ -60,7 +62,7 @@ export const AdminLoginPage: React.FC = () => {
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mb-6">
             <p className="text-sm text-amber-400 flex items-center gap-2">
               <Lock className="w-4 h-4" />
-              Restricted area. Authorized personnel only.
+              {t('auth.admin.restricted')}
             </p>
           </div>
 
@@ -74,7 +76,7 @@ export const AdminLoginPage: React.FC = () => {
             {/* Email */}
             <div>
               <label htmlFor="admin-email" className="block text-sm font-medium text-slate-300 mb-2">
-                Administrator Email
+                {t('auth.admin.email')}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -94,7 +96,7 @@ export const AdminLoginPage: React.FC = () => {
             {/* Password */}
             <div>
               <label htmlFor="admin-password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
+                {t('auth.admin.password')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -120,10 +122,10 @@ export const AdminLoginPage: React.FC = () => {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Authenticating...
+                  {t('auth.admin.authenticating')}
                 </span>
               ) : (
-                'Access System'
+                t('auth.admin.accessSystem')
               )}
             </button>
           </form>
@@ -131,14 +133,14 @@ export const AdminLoginPage: React.FC = () => {
           {/* Footer */}
           <div className="mt-6 pt-6 border-t border-slate-700">
             <p className="text-center text-sm text-slate-500">
-              Regular user? <a href="/login" className="text-blue-400 hover:text-blue-300 font-medium">Sign in here</a>
+              {t('auth.admin.regularUserPrefix')} <a href="/login" className="text-blue-400 hover:text-blue-300 font-medium">{t('auth.admin.signInHere')}</a>
             </p>
           </div>
         </div>
 
         {/* Security Notice */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          All access attempts are logged and monitored for security purposes.
+          {t('auth.admin.securityNotice')}
         </p>
       </div>
     </div>

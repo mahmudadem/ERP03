@@ -8,8 +8,10 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Input } from '../../../components/ui/Input';
 import { useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { Edit2, Trash2, Shield, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const RolesPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { roles, isLoading, deleteRole, isDeleting } = useCompanyRoles();
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +23,10 @@ export const RolesPage: React.FC = () => {
   );
 
   const handleDelete = async (roleId: string, roleName: string) => {
-    if (window.confirm(`Are you sure you want to delete the role "${roleName}"?`)) {
+    if (window.confirm(t('companyAdmin.roles.confirmDelete', {
+      defaultValue: 'Are you sure you want to delete the role \"{{roleName}}\"?',
+      roleName,
+    }))) {
       setDeletingRoleId(roleId);
       deleteRole(roleId, {
         onSettled: () => setDeletingRoleId(null)
@@ -32,11 +37,14 @@ export const RolesPage: React.FC = () => {
   return (
     <CompanyAdminLayout>
       <PageHeader 
-        title="Role Management" 
-        breadcrumbs={[{ label: 'Company Admin' }, { label: 'Roles' }]}
+        title={t('companyAdmin.roles.title', { defaultValue: 'Role Management' })} 
+        breadcrumbs={[
+          { label: t('companyAdmin.shared.companyAdmin', { defaultValue: 'Company Admin' }) },
+          { label: t('companyAdmin.shared.roles', { defaultValue: 'Roles' }) },
+        ]}
         action={
           <Button onClick={() => navigate('/company-admin/roles/new')}>
-            + Create New Role
+            + {t('companyAdmin.roles.createNew', { defaultValue: 'Create New Role' })}
           </Button>
         }
       />
@@ -46,14 +54,17 @@ export const RolesPage: React.FC = () => {
            <div className="flex-1 relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
              <Input 
-               placeholder="Search roles..." 
+               placeholder={t('companyAdmin.roles.searchPlaceholder', { defaultValue: 'Search roles...' })} 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
                className="pl-10"
              />
            </div>
            <div className="text-sm text-gray-500">
-             {filteredRoles.length} roles found
+             {t('companyAdmin.roles.countFound', {
+               defaultValue: '{{count}} roles found',
+               count: filteredRoles.length,
+             })}
            </div>
         </div>
       </Card>
@@ -64,20 +75,32 @@ export const RolesPage: React.FC = () => {
         </div>
       ) : filteredRoles.length === 0 ? (
         <EmptyState 
-           title={searchTerm ? "No roles match your search" : "No roles found"} 
-           description={searchTerm ? "Try adjusting your search terms" : "Get started by creating a new role for your users."}
-           action={!searchTerm ? <Button onClick={() => navigate('/company-admin/roles/new')}>Create Role</Button> : undefined}
+           title={
+            searchTerm
+              ? t('companyAdmin.roles.empty.noSearchMatches', { defaultValue: 'No roles match your search' })
+              : t('companyAdmin.roles.empty.noRolesFound', { defaultValue: 'No roles found' })
+           } 
+           description={
+            searchTerm
+              ? t('companyAdmin.roles.empty.adjustSearch', { defaultValue: 'Try adjusting your search terms' })
+              : t('companyAdmin.roles.empty.createHint', { defaultValue: 'Get started by creating a new role for your users.' })
+           }
+           action={
+            !searchTerm
+              ? <Button onClick={() => navigate('/company-admin/roles/new')}>{t('companyAdmin.roles.createRole', { defaultValue: 'Create Role' })}</Button>
+              : undefined
+           }
         />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Permissions</th>
-                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.roles.table.roleName', { defaultValue: 'Role Name' })}</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.roles.table.description', { defaultValue: 'Description' })}</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.roles.table.permissions', { defaultValue: 'Permissions' })}</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.roles.table.type', { defaultValue: 'Type' })}</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('companyAdmin.roles.table.actions', { defaultValue: 'Actions' })}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -104,11 +127,11 @@ export const RolesPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     {role.isSystem ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        System
+                        {t('companyAdmin.shared.system', { defaultValue: 'System' })}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Custom
+                        {t('companyAdmin.shared.custom', { defaultValue: 'Custom' })}
                       </span>
                     )}
                   </td>
@@ -117,7 +140,7 @@ export const RolesPage: React.FC = () => {
                       <button 
                         className="text-gray-400 hover:text-blue-600 transition-colors p-1" 
                         onClick={() => navigate(`/company-admin/roles/${role.id}`)}
-                        title="Edit Role"
+                        title={t('companyAdmin.roles.editRole', { defaultValue: 'Edit Role' })}
                       >
                         <Edit2 size={18} />
                       </button>
@@ -126,7 +149,7 @@ export const RolesPage: React.FC = () => {
                           className="text-gray-400 hover:text-red-600 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                           onClick={() => handleDelete(role.id, role.name)}
                           disabled={isDeleting && deletingRoleId === role.id}
-                          title="Delete Role"
+                          title={t('companyAdmin.roles.deleteRole', { defaultValue: 'Delete Role' })}
                         >
                           <Trash2 size={18} />
                         </button>

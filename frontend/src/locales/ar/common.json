@@ -1,5 +1,5 @@
 {
-  "appName": "ERP03",
+  "appName": "تخطيط موارد المؤسسات03",
   "language": {
     "label": "اللغة",
     "english": "الإنجليزية",
@@ -28,7 +28,40 @@
     "saveBtn": "حفظ التفضيلات",
     "saving": "جارٍ الحفظ...",
     "saved": "تم حفظ التفضيلات.",
-    "saveError": "تعذر حفظ التفضيلات."
+    "saveError": "تعذر حفظ التفضيلات.",
+    "notifications": {
+      "title": "تخصيص الإشعارات",
+      "subtitle": "يتم تطبيق إعدادات الشركة الافتراضية أولًا. يمكنك تخصيص كل فئة لحسابك.",
+      "loading": "جارٍ تحميل تفضيلات الإشعارات...",
+      "saveBtn": "حفظ تخصيصات الإشعارات",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم حفظ تخصيصات الإشعارات.",
+      "saveError": "تعذر حفظ تخصيصات الإشعارات.",
+      "statusLine": "الإعداد الافتراضي للشركة: {{companyDefault}} | الحالة الفعلية لك: {{effective}}",
+      "state": {
+        "on": "تشغيل",
+        "off": "إيقاف",
+        "inherit": "افتراضي"
+      },
+      "categories": {
+        "approval": {
+          "name": "موافقات مالية",
+          "desc": "إشعارات الموافقات المطلوبة ضمن سير العمل المحاسبي."
+        },
+        "custody": {
+          "name": "تأكيدات العهدة",
+          "desc": "طلبات تأكيد العهدة المعيّنة لك."
+        },
+        "system": {
+          "name": "معلومات النظام",
+          "desc": "معلومات عامة وتحديثات نظام غير حرجة."
+        },
+        "warning": {
+          "name": "تحذيرات النظام",
+          "desc": "تحذيرات وتنبيهات على مستوى النظام."
+        }
+      }
+    }
   },
   "sidebar": {
     "accounting": "الحسابات",
@@ -48,6 +81,7 @@
     "formsDesigner": "مصمم النماذج",
     "windowDesigner": "مصمم النوافذ",
     "trialBalance": "ميزان المراجعة",
+    "subgroupTagging": "وسم المجموعات الفرعية",
     "accountStatement": "كشف حساب",
     "balanceSheet": "الميزانية العمومية",
     "generalLedger": "دفتر الأستاذ",
@@ -78,6 +112,1336 @@
     "bundles": "الحزم",
     "notifications": "الإشعارات",
     "generalSettings": "الإعدادات العامة",
-    "companySettings": "إعدادات الشركة"
+    "companySettings": "إعدادات الشركة",
+    "tradingAccount": "???? ????????",
+    "journal": "???????",
+    "aging": "????? ?????",
+    "bankReconciliation": "?????? ?????",
+    "costCenterSummary": "???? ???? ???????",
+    "budgetVsActual": "???????? ????? ??????"
+  },
+  "reportContainer": {
+    "refresh": "تحديث",
+    "filters": "الفلاتر",
+    "columns": "الأعمدة",
+    "visibility": "الظهور",
+    "configure": "تهيئة {{title}}",
+    "page": "الصفحة",
+    "rows": "الصفوف",
+    "total": "الإجمالي",
+    "referenceDate": "تاريخ المرجع"
+  },
+  "companies": {
+    "title": "شركاتي",
+    "createHint": "إذا لم يكن لديك شركة، اضغط هنا لإنشاء شركة",
+    "createNew": "+ إنشاء شركة جديدة",
+    "active": "نشط",
+    "premiumPlan": "خطة بريميوم",
+    "sample": {
+      "name": "حلول تكن فلو",
+      "id": "المعرف: CMP_12345"
+    }
+  },
+  "modulePlaceholders": {
+    "common": {
+      "underDevelopment": "الوحدة قيد التطوير",
+      "underConstruction": "الوحدة قيد الإنشاء"
+    },
+    "crm": {
+      "title": "نظرة عامة على CRM",
+      "subtitle": "إدارة علاقات العملاء والعملاء المحتملين.",
+      "newLead": "عميل محتمل جديد",
+      "message": "وحدة CRM الكاملة ما زالت قيد التطوير. تم تفعيل الرخصة بنجاح!",
+      "stats": {
+        "totalCustomers": "إجمالي العملاء",
+        "activeLeads": "العملاء المحتملون النشطون",
+        "pendingEmails": "رسائل البريد المعلقة",
+        "meetings": "الاجتماعات"
+      }
+    },
+    "projects": {
+      "title": "نظرة عامة على المشاريع",
+      "subtitle": "تتبع تقدم المشاريع والمهام والجداول الزمنية.",
+      "createProject": "إنشاء مشروع",
+      "message": "نقوم بوضع اللمسات الأخيرة على وحدة المشاريع. تم التحقق من صلاحية الوصول.",
+      "stats": {
+        "totalProjects": "إجمالي المشاريع",
+        "pendingTasks": "المهام المعلقة",
+        "teamMembers": "أعضاء الفريق",
+        "hoursLogged": "الساعات المسجلة"
+      }
+    },
+    "purchase": {
+      "title": "نظرة عامة على المشتريات",
+      "subtitle": "إدارة الموردين وطلبات الشراء وعمليات التوريد.",
+      "newOrder": "طلب جديد",
+      "message": "وحدة المشتريات مفعلة لكن الواجهة ما زالت قيد اللمسات النهائية. تحقق لاحقًا.",
+      "stats": {
+        "openOrders": "الطلبات المفتوحة",
+        "inTransit": "قيد الشحن",
+        "billsToPay": "فواتير مستحقة",
+        "rfqs": "طلبات عرض السعر"
+      }
+    },
+    "manufacturing": {
+      "title": "نظرة عامة على التصنيع",
+      "subtitle": "مراقبة خطوط الإنتاج وأوامر العمل.",
+      "newWorkOrder": "أمر عمل جديد",
+      "message": "الإصدار الكامل من وحدة التصنيع سيصدر في التحديث القادم. رخصة الوحدة مفعلة.",
+      "stats": {
+        "activeJobs": "الأعمال النشطة",
+        "workStations": "محطات العمل",
+        "completed": "مكتمل",
+        "issues": "المشكلات"
+      }
+    },
+    "hr": {
+      "title": "الموارد البشرية والرواتب",
+      "employeesTitle": "الموظفون",
+      "employeesDesc": "سيظهر دليل الموظفين هنا."
+    },
+    "inventory": {
+      "title": "نظرة عامة على المخزون",
+      "itemsTitle": "أصناف المخزون",
+      "itemsDesc": "ستظهر قائمة منتجات المخزون هنا."
+    },
+    "pos": {
+      "title": "نقطة البيع"
+    }
+  },
+  "actions": {
+    "close": "يغلق"
+  },
+  "notifications": {
+    "title": "إشعارات",
+    "empty": "لا الإخطارات",
+    "viewAll": "عرض جميع الإخطارات",
+    "inbox": {
+      "filters": {
+        "all": "الجميع",
+        "unread": "غير مقروءة",
+        "read": "يقرأ"
+      },
+      "title": "إشعارات",
+      "unreadCount": "لديك {{count}} إشعارات غير مقروءة",
+      "markAllAsRead": "وضع علامة على الكل كمقروءة",
+      "searchPlaceholder": "إشعارات البحث...",
+      "loading": "جارٍ تحميل الإشعارات...",
+      "emptyTitle": "جميع المحاصرين!",
+      "emptyBody": "لم يتم العثور على أي إشعارات."
+    }
+  },
+  "instructions": {
+    "importantNotes": "ملاحظات هامة"
+  },
+  "widget": {
+    "toggleBorder": "تبديل الحدود",
+    "toggleBackground": "تبديل الخلفية"
+  },
+  "companyAdmin": {
+    "shared": {
+      "companyAdmin": "مدير الشركة",
+      "users": "المستخدمين",
+      "roles": "الأدوار",
+      "create": "يخلق",
+      "edit": "يحرر",
+      "cancel": "يلغي",
+      "save": "يحفظ",
+      "saving": "توفير...",
+      "system": "نظام",
+      "custom": "مخصص",
+      "remove": "يزيل",
+      "reset": "إعادة ضبط",
+      "saveChanges": "حفظ التغييرات"
+    },
+    "users": {
+      "title": "إدارة المستخدم",
+      "inviteUser": "دعوة المستخدم",
+      "searchPlaceholder": "البحث عن المستخدمين...",
+      "count": "{{count}} المستخدمين",
+      "owner": "مالك",
+      "noRole": "لا دور",
+      "changeRole": "تغيير الدور",
+      "disableUser": "تعطيل المستخدم",
+      "enableUser": "تمكين المستخدم",
+      "removeUser": "إزالة المستخدم",
+      "assignRole": "تعيين الدور",
+      "assigningRoleFor": "تعيين دور لـ {{name}}",
+      "selectRole": "حدد الدور",
+      "selectRolePlaceholder": "حدد الدور...",
+      "inviteNewUser": "دعوة مستخدم جديد",
+      "emailAddress": "عنوان البريد الإلكتروني *",
+      "firstName": "الاسم الأول",
+      "lastName": "اسم العائلة",
+      "assignRoleRequired": "تعيين الدور *",
+      "sending": "إرسال...",
+      "sendInvitation": "أرسل الدعوة",
+      "table": {
+        "user": "مستخدم",
+        "email": "بريد إلكتروني",
+        "role": "دور",
+        "status": "حالة",
+        "actions": "الإجراءات"
+      },
+      "status": {
+        "active": "نشيط",
+        "inactive": "غير نشط"
+      },
+      "empty": {
+        "noSearchMatches": "لا يوجد مستخدمون يطابقون بحثك",
+        "noUsersFound": "لم يتم العثور على مستخدمين",
+        "adjustSearch": "حاول تعديل مصطلحات البحث الخاصة بك",
+        "inviteHint": "ابدأ بدعوة المستخدمين إلى شركتك."
+      },
+      "confirm": {
+        "disableVerb": "إبطال",
+        "enableVerb": "يُمكَِن",
+        "toggleStatus": "هل أنت متأكد أنك تريد {{action}} {{email}}؟",
+        "removeUser": "هل أنت متأكد أنك تريد إزالة {{email}} من الشركة؟"
+      }
+    },
+    "roles": {
+      "title": "إدارة الأدوار",
+      "createTitle": "إنشاء دور",
+      "createNew": "إنشاء دور جديد",
+      "createRole": "إنشاء دور",
+      "searchPlaceholder": "بحث في الأدوار...",
+      "countFound": "{{count}} تم العثور على الأدوار",
+      "roleNameRequired": "اسم الدور *",
+      "roleNamePlaceholder": "على سبيل المثال، المدير المالي",
+      "roleNameHint": "اختر اسمًا وصفيًا لهذا الدور",
+      "description": "وصف",
+      "descriptionPlaceholder": "وصف مسؤوليات الدور ومستوى الوصول...",
+      "permissions": "الأذونات",
+      "permissionsAfterCreate": "يمكن تكوين الأذونات بعد إنشاء الدور",
+      "permissionsShownInEdit": "سيتم عرض الأذونات المتاحة في شاشة التحرير",
+      "creating": "جارٍ الإنشاء...",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف الدور \"{{roleName}}\"؟",
+      "table": {
+        "roleName": "اسم الدور",
+        "description": "وصف",
+        "permissions": "الأذونات",
+        "type": "يكتب",
+        "actions": "الإجراءات"
+      },
+      "editRole": "تحرير الدور",
+      "deleteRole": "حذف الدور",
+      "empty": {
+        "noSearchMatches": "لا توجد أدوار تطابق بحثك",
+        "noRolesFound": "لم يتم العثور على الأدوار",
+        "adjustSearch": "حاول تعديل مصطلحات البحث الخاصة بك",
+        "createHint": "ابدأ بإنشاء دور جديد للمستخدمين."
+      },
+      "editWithName": "تحرير {{name}}",
+      "systemWarning": "هذا هو دور النظام. لا يمكن إزالة بعض الأذونات.",
+      "quickStartTemplate": "البدء السريع من القالب",
+      "startFromScratch": "-- البدء من الصفر --",
+      "accountantPlaceholder": "على سبيل المثال، محاسب",
+      "whatCanDo": "ماذا يمكن أن يفعل هذا الدور؟",
+      "permissionsSelected": "من {{total}} تم تحديد الأذونات",
+      "selectedCount": "{{count}} تم التحديد",
+      "searchPermissions": "أذونات البحث...",
+      "noPermissionMatches": "لا توجد أذونات تطابق بحثك.",
+      "saveRole": "حفظ الدور"
+    },
+    "settings": {
+      "title": "إعدادات",
+      "companyLogo": "شعار الشركة",
+      "noLogo": "لا يوجد شعار",
+      "wait": "انتظر...",
+      "logoHint": "سيظهر هذا الشعار على لوحة التحكم والقسائم والتقارير. للحصول على أفضل النتائج، استخدم صورة مربعة بخلفية شفافة.",
+      "changeLogo": "تغيير الشعار",
+      "uploadLogo": "تحميل الشعار",
+      "companyInformation": "معلومات الشركة",
+      "companyNameRequired": "اسم الشركة *",
+      "taxId": "معرف الضريبة",
+      "taxIdPlaceholder": "على سبيل المثال، 123456789",
+      "address": "عنوان",
+      "addressPlaceholder": "عنوان الشركة",
+      "financialSettings": "الإعدادات المالية",
+      "baseCurrencyRequired": "العملة الأساسية *",
+      "selectCurrency": "اختر العملة",
+      "fiscalYearStartMonth": "شهر بداية السنة المالية",
+      "fiscalYearEndMonth": "شهر نهاية السنة المالية",
+      "subscription": "الاشتراك",
+      "currentPlan": "الخطة الحالية",
+      "manageSubscription": "إدارة الاشتراك",
+      "dateTimeSettings": "إعدادات التاريخ والوقت",
+      "companyTimezoneRequired": "المنطقة الزمنية للشركة *",
+      "preferredDateFormatRequired": "تنسيق التاريخ المفضل *",
+      "systemLanguageRequired": "لغة النظام *",
+      "dateSettingsHint": "ستؤثر هذه الإعدادات على كيفية عرض التواريخ عبر جميع تقارير الشركة وإيصالاتها.",
+      "dangerZone": "منطقة الخطر",
+      "deleteCompany": "حذف الشركة",
+      "deleteCompanyHint": "حذف هذه الشركة وجميع البيانات المرتبطة بها نهائيًا"
+    },
+    "bundles": {
+      "title": "الاشتراك",
+      "subscription": "الاشتراك",
+      "currentPlan": "الخطة الحالية",
+      "availablePlans": "الخطط المتاحة",
+      "modulesIncluded": "الوحدات متضمنة",
+      "featuresIncluded": "الميزات المدرجة",
+      "includedModules": "الوحدات المتضمنة:",
+      "current": "حاضِر",
+      "perMonth": "/شهر",
+      "annualPrice": "أو ${{annual}}/سنة (احفظ {{savings}}%)",
+      "modules": "وحدات",
+      "features": "سمات",
+      "noUpgradeOptions": "لا تتوفر خيارات الترقية",
+      "highestPlan": "أنت بالفعل مشترك في خطة المستوى الأعلى.",
+      "upgrading": "جارٍ الترقية...",
+      "upgradeTo": "الترقية إلى {{bundleName}}",
+      "confirmUpgrade": "هل أنت متأكد أنك تريد الترقية إلى {{bundleName}}؟"
+    },
+    "features": {
+      "title": "سمات",
+      "activeFeatures": "الميزات النشطة",
+      "loading": "تحميل...",
+      "enabledCount": "{{count}} الميزات ممكّنة حاليًا",
+      "noFeatures": "لا توجد ميزات متاحة",
+      "noFeaturesDescription": "لا توجد ميزات متاحة لخطة الاشتراك الخاصة بك.",
+      "enabled": "ممكّن",
+      "disabled": "عاجز"
+    },
+    "modules": {
+      "title": "وحدات",
+      "activeModules": "الوحدات النشطة",
+      "loading": "تحميل...",
+      "activeCount": "{{count}} الوحدات النشطة حاليًا",
+      "noModules": "لا توجد وحدات متاحة",
+      "noModulesDescription": "لا توجد وحدات متاحة لخطة الاشتراك الخاصة بك.",
+      "active": "نشيط",
+      "inactive": "غير نشط",
+      "mandatoryModule": "الوحدة الإلزامية",
+      "cannotBeDisabled": "لا يمكن تعطيله",
+      "processing": "يعالج...",
+      "disableModule": "تعطيل الوحدة النمطية",
+      "enableModule": "تمكين الوحدة النمطية",
+      "confirmDisable": "هل أنت متأكد أنك تريد تعطيل الوحدة {{moduleName}}؟"
+    },
+    "overview": {
+      "title": "ملخص",
+      "breadcrumb": "ملخص",
+      "subscriptionPlanLabel": "{{plan}} الخطة",
+      "companyInformation": "معلومات الشركة",
+      "companyName": "اسم الشركة",
+      "subscriptionPlan": "خطة الاشتراك",
+      "currency": "عملة",
+      "taxId": "معرف الضريبة",
+      "notSet": "لم يتم ضبطه",
+      "noCompanyInfo": "لا توجد معلومات الشركة المتاحة",
+      "editCompanySettings": "تعديل إعدادات الشركة",
+      "quickActions": "إجراءات سريعة",
+      "statistics": {
+        "roles": "الأدوار",
+        "users": "المستخدمين",
+        "modules": "وحدات",
+        "features": "سمات"
+      },
+      "actions": {
+        "inviteUser": "+ دعوة مستخدم جديد",
+        "createRole": "+ إنشاء دور جديد",
+        "manageSubscription": "إدارة الاشتراك",
+        "configureModules": "تكوين الوحدات"
+      }
+    }
+  },
+  "superAdmin": {
+    "plans": {
+      "loading": "تحميل...",
+      "title": "إدارة الخطط",
+      "subtitle": "إدارة خطط اشتراك المستخدم (مستويات تسجيل الحساب)",
+      "note": "ملحوظة: الخطط مخصصة لتسجيل المستخدم، أما الحزم فهي مخصصة لإنشاء الشركة",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف هذه الخطة؟",
+      "empty": "لم يتم العثور على خطط. أنشئ خطتك الأولى للبدء.",
+      "perMonth": "شهر",
+      "columns": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "price": "سعر",
+        "status": "حالة",
+        "limits": "حدود",
+        "actions": "الإجراءات"
+      },
+      "status": {
+        "active": "نشيط",
+        "inactive": "غير نشط",
+        "deprecated": "مهمل"
+      },
+      "limits": {
+        "companies": "شركات",
+        "usersPerCompany": "المستخدمين/الشركة",
+        "modules": "وحدات"
+      },
+      "fields": {
+        "id": "بطاقة تعريف *",
+        "name": "اسم *",
+        "description": "وصف",
+        "price": "السعر (دولار/شهر) *",
+        "status": "حالة *",
+        "limits": "حدود الخطة",
+        "maxCompanies": "شركات ماكس",
+        "maxUsersPerCompany": "الحد الأقصى للمستخدمين لكل شركة",
+        "maxModulesAllowed": "الحد الأقصى للوحدات المسموح بها",
+        "maxStorageMB": "الحد الأقصى للتخزين (ميجابايت)",
+        "maxTransactionsPerMonth": "ماكس المعاملات شهريا"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، الطبقة الحرة",
+        "name": "على سبيل المثال، الطبقة المجانية",
+        "description": "وصف هذه الخطة..."
+      },
+      "modal": {
+        "createTitle": "إنشاء خطة",
+        "editTitle": "تحرير الخطة"
+      },
+      "actions": {
+        "create": "إنشاء خطة",
+        "edit": "يحرر",
+        "delete": "يمسح",
+        "cancel": "يلغي",
+        "update": "تحديث"
+      },
+      "messages": {
+        "created": "تم إنشاء الخطة",
+        "updated": "تم تحديث الخطة",
+        "deleted": "تم حذف الخطة",
+        "idNameRequired": "مطلوب الهوية والاسم"
+      }
+    },
+    "bundles": {
+      "loading": "تحميل...",
+      "title": "إدارة الحزم",
+      "subtitle": "إدارة حزم وحدات الشركة مع مجالات الأعمال",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف هذه الحزمة؟",
+      "empty": "لم يتم العثور على حزم. أنشئ مجموعتك الأولى للبدء.",
+      "columns": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "businessDomains": "مجالات الأعمال",
+        "modules": "وحدات",
+        "actions": "الإجراءات"
+      },
+      "fields": {
+        "id": "بطاقة تعريف *",
+        "name": "اسم *",
+        "description": "وصف",
+        "businessDomains": "مجالات العمل *",
+        "modulesIncluded": "الوحدات المتضمنة *"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، مطعم قياسي",
+        "name": "على سبيل المثال، حزمة المطاعم القياسية",
+        "description": "وصف هذه المجموعة..."
+      },
+      "noBusinessDomains": "لا توجد مجالات الأعمال المتاحة. إنشاء المجالات أولا.",
+      "noModules": "لا توجد وحدات متاحة. قم بإنشاء الوحدات أولاً.",
+      "modal": {
+        "createTitle": "إنشاء حزمة",
+        "editTitle": "تحرير الحزمة"
+      },
+      "actions": {
+        "create": "إنشاء حزمة",
+        "edit": "يحرر",
+        "delete": "يمسح",
+        "cancel": "يلغي",
+        "update": "تحديث"
+      },
+      "messages": {
+        "created": "تم إنشاء الحزمة",
+        "updated": "تم تحديث الحزمة",
+        "deleted": "تم حذف الحزمة",
+        "idNameRequired": "مطلوب الهوية والاسم"
+      }
+    },
+    "voucherTemplatesEditor": {
+      "titleCreate": "إنشاء قالب",
+      "titleEdit": "تحرير {{name}}",
+      "actions": {
+        "cancel": "يلغي",
+        "saveTemplate": "حفظ القالب",
+        "remove": "يزيل",
+        "addField": "إضافة حقل",
+        "addColumn": "إضافة عمود"
+      },
+      "tabs": {
+        "general": "عام",
+        "headerFields": "حقول الرأس",
+        "lineFields": "حقول الخط",
+        "tableColumns": "أعمدة الجدول",
+        "json": "JSON"
+      },
+      "fields": {
+        "newField": "حقل جديد",
+        "label": "ملصق",
+        "dataProperty": "الاسم (خاصية البيانات)",
+        "type": "يكتب",
+        "required": "مطلوب",
+        "readonly": "للقراءة فقط"
+      },
+      "fieldTypes": {
+        "text": "نص",
+        "number": "رقم",
+        "date": "تاريخ",
+        "checkbox": "خانة الاختيار (منطقية)",
+        "relation": "العلاقة",
+        "select": "يختار"
+      },
+      "general": {
+        "templateName": "اسم القالب",
+        "code": "الكود (فريد)",
+        "module": "الوحدة النمطية"
+      },
+      "modules": {
+        "accounting": "محاسبة",
+        "inventory": "جرد"
+      },
+      "tableColumns": {
+        "description": "حدد الحقول من \"حقول السطر\" التي يجب أن تظهر كأعمدة في الجدول.",
+        "fieldId": "معرف الحقل (يجب أن يتطابق مع معرف حقل السطر)",
+        "width": "عرض"
+      },
+      "jsonHelp": "متقدم: قم بتحرير تعريف JSON الأولي مباشرة.",
+      "errors": {
+        "templateNotFound": "لم يتم العثور على القالب",
+        "saveFailed": "فشل الحفظ:",
+        "invalidJson": "تنسيق JSON غير صالح"
+      }
+    },
+    "roleTemplates": {
+      "loading": "تحميل...",
+      "title": "قوالب دور النظام",
+      "subtitle": "إدارة قوالب الأدوار على مستوى النظام",
+      "empty": "لم يتم العثور على قوالب الأدوار. قم بإنشاء قالب دورك الأول للبدء.",
+      "columns": {
+        "roleName": "اسم الدور",
+        "permissions": "الأذونات",
+        "actions": "الإجراءات"
+      },
+      "permissionsCount": "الأذونات",
+      "actions": {
+        "createRoleTemplate": "إنشاء قالب الدور",
+        "edit": "يحرر",
+        "cancel": "يلغي",
+        "create": "يخلق"
+      },
+      "modal": {
+        "title": "إنشاء قالب الدور"
+      },
+      "fields": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "description": "وصف"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، template_manager",
+        "name": "على سبيل المثال، مدير",
+        "description": "وصف نموذج الدور هذا..."
+      },
+      "messages": {
+        "created": "تم إنشاء قالب الدور بنجاح"
+      }
+    },
+    "modules": {
+      "loading": "تحميل...",
+      "title": "إدارة الوحدات",
+      "subtitle": "إدارة تعريفات الوحدة النمطية على مستوى النظام",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف هذه الوحدة؟",
+      "empty": "لم يتم العثور على وحدات. قم بإنشاء الوحدة الأولى الخاصة بك للبدء.",
+      "protected": "محمي",
+      "reservedHint": "لا يمكن استخدام: الأساسية، CompanyAdmin (محجوزة)",
+      "columns": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "description": "وصف",
+        "actions": "الإجراءات"
+      },
+      "fields": {
+        "id": "بطاقة تعريف *",
+        "name": "اسم *",
+        "description": "وصف"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، إدارة علاقات العملاء",
+        "name": "على سبيل المثال، إدارة علاقات العملاء",
+        "description": "وصف هذه الوحدة..."
+      },
+      "modal": {
+        "createTitle": "إنشاء وحدة",
+        "editTitle": "تحرير الوحدة النمطية"
+      },
+      "actions": {
+        "create": "يخلق",
+        "edit": "يحرر",
+        "delete": "يمسح",
+        "cancel": "يلغي",
+        "update": "تحديث"
+      },
+      "errors": {
+        "cannotDeleteProtected": "لا يمكن حذف الوحدة المحمية: {{id}}",
+        "cannotCreateReservedId": "لا يمكن إنشاء وحدة بالمعرف: {{id}}. هذا أحد مكونات النظام المحجوزة."
+      },
+      "messages": {
+        "created": "تم إنشاء الوحدة",
+        "updated": "تم تحديث الوحدة",
+        "deleted": "تم حذف الوحدة",
+        "idNameRequired": "مطلوب الهوية والاسم"
+      }
+    },
+    "permissions": {
+      "loading": "تحميل...",
+      "title": "إدارة الأذونات",
+      "subtitle": "إدارة تعريفات الأذونات على مستوى النظام",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف هذا الإذن؟",
+      "empty": "لم يتم العثور على أذونات. أنشئ إذنك الأول للبدء.",
+      "columns": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "description": "وصف",
+        "actions": "الإجراءات"
+      },
+      "fields": {
+        "id": "بطاقة تعريف *",
+        "name": "اسم *",
+        "description": "وصف"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، account.view",
+        "name": "على سبيل المثال، عرض المحاسبة",
+        "description": "وصف هذا الإذن..."
+      },
+      "modal": {
+        "createTitle": "إنشاء إذن",
+        "editTitle": "تحرير إذن"
+      },
+      "actions": {
+        "createPermission": "إنشاء إذن",
+        "create": "يخلق",
+        "edit": "يحرر",
+        "delete": "يمسح",
+        "cancel": "يلغي",
+        "update": "تحديث"
+      },
+      "messages": {
+        "created": "تم إنشاء الإذن",
+        "updated": "تم تحديث الإذن",
+        "deleted": "تم حذف الإذن",
+        "idNameRequired": "مطلوب الهوية والاسم"
+      }
+    },
+    "businessDomains": {
+      "loading": "تحميل...",
+      "title": "إدارة مجالات الأعمال",
+      "subtitle": "إدارة فئات مجال الأعمال للحزم",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف مجال الأعمال هذا؟",
+      "empty": "لم يتم العثور على نطاقات الأعمال. قم بإنشاء نطاقك الأول للبدء.",
+      "columns": {
+        "id": "بطاقة تعريف",
+        "name": "اسم",
+        "description": "وصف",
+        "actions": "الإجراءات"
+      },
+      "fields": {
+        "id": "بطاقة تعريف *",
+        "name": "اسم *",
+        "description": "وصف"
+      },
+      "placeholders": {
+        "id": "على سبيل المثال، تجارة المواد الغذائية",
+        "name": "على سبيل المثال، تجارة المواد الغذائية",
+        "description": "وصف هذا المجال التجاري..."
+      },
+      "modal": {
+        "createTitle": "إنشاء مجال الأعمال",
+        "editTitle": "تحرير مجال الأعمال"
+      },
+      "actions": {
+        "createDomain": "إنشاء المجال",
+        "create": "يخلق",
+        "edit": "يحرر",
+        "delete": "يمسح",
+        "cancel": "يلغي",
+        "update": "تحديث"
+      },
+      "messages": {
+        "created": "تم إنشاء مجال الأعمال",
+        "updated": "تم تحديث مجال الأعمال",
+        "deleted": "تم حذف نطاق الأعمال",
+        "idNameRequired": "مطلوب الهوية والاسم"
+      }
+    },
+    "modulePermissionsEditor": {
+      "loading": "جارٍ تحميل المحرر...",
+      "title": "إدارة أذونات الوحدة النمطية",
+      "moduleLabel": "الوحدة النمطية",
+      "availablePermissions": "الأذونات المتاحة (التسجيل)",
+      "searchPlaceholder": "أذونات البحث...",
+      "noMatches": "لا توجد مباريات",
+      "noAvailablePermissions": "لم يتم العثور على أذونات متاحة في التسجيل.",
+      "goToPermissionsRegistry": "انتقل إلى سجل الأذونات لإنشاء أذونات جديدة.",
+      "assignedPermissions": "الأذونات المعينة",
+      "dragHint": "اسحب العناصر هنا من اليسار",
+      "dragPermissionsHere": "اسحب الأذونات هنا",
+      "autoAttach": "الارتباط التلقائي بالأدوار العالمية:",
+      "autoAttachPlaceholder": "على سبيل المثال المالك، المشرف (مفصولة بفاصلة)",
+      "actions": {
+        "saveChanges": "حفظ التغييرات"
+      }
+    },
+    "usersManagement": {
+      "title": "إدارة المستخدمين",
+      "subtitle": "إدارة جميع المستخدمين والشركات المرتبطة بهم",
+      "refresh": "ينعش",
+      "refreshing": "منعش...",
+      "searchPlaceholder": "البحث حسب الاسم أو البريد الإلكتروني أو رقم التعريف...",
+      "loadingUsers": "جارٍ تحميل المستخدمين...",
+      "noUsers": "لم يتم العثور على مستخدمين مطابقين لمعاييرك",
+      "unnamedUser": "مستخدم لم يذكر اسمه",
+      "joinedOn": "انضم {{date}}",
+      "companiesCount": "الشركات ({{count}})",
+      "noCompaniesOwned": "لا توجد شركات مملوكة",
+      "userFallback": "مستخدم",
+      "userCompaniesTitle": "شركات {{name}}",
+      "currencyLabel": "العملة: {{currency}}",
+      "stats": {
+        "totalUsers": "إجمالي المستخدمين",
+        "superAdmins": "المشرفون المتميزون",
+        "regularUsers": "المستخدمون العاديون",
+        "totalCompanies": "إجمالي الشركات"
+      },
+      "filters": {
+        "allRoles": "جميع الأدوار",
+        "usersOnly": "المستخدمين فقط",
+        "superAdminsOnly": "المشرفون المتميزون فقط"
+      },
+      "role": {
+        "superAdmin": "المشرف الفائق",
+        "user": "مستخدم"
+      },
+      "actions": {
+        "impersonate": "انتحال شخصية",
+        "viewAllCompanies": "عرض جميع الشركات {{count}}",
+        "demoteToUser": "خفض رتبة المستخدم",
+        "promoteToSuperAdmin": "الترقية إلى مشرف متميز",
+        "close": "يغلق"
+      },
+      "confirm": {
+        "promote": "هل تريد ترقية هذا المستخدم إلى SUPER_ADMIN؟ وهذا سيمنحهم الوصول الكامل إلى النظام.",
+        "demote": "هل تريد خفض رتبة SUPER_ADMIN إلى USER؟ سوف يفقدون جميع امتيازات مسؤول النظام.",
+        "startImpersonation": "هل تريد بدء جلسة انتحال شخصية لهذه الشركة؟"
+      },
+      "messages": {
+        "promoted": "تمت ترقية المستخدم إلى SUPER_ADMIN",
+        "demoted": "تم تخفيض رتبة المستخدم إلى USER",
+        "impersonationStarted": "بدأت جلسة انتحال الشخصية. جارٍ إعادة التحميل..."
+      }
+    },
+    "companies": {
+      "title": "جميع الشركات",
+      "refresh": "ينعش",
+      "refreshing": "منعش...",
+      "loading": "جاري تحميل الشركات...",
+      "empty": "لم يتم العثور على شركات.",
+      "confirmImpersonate": "البدء في انتحال صفة هذه الشركة؟",
+      "columns": {
+        "companyId": "معرف الشركة",
+        "name": "اسم",
+        "ownerUid": "معرف المالك المميز",
+        "created": "مخلوق",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "impersonate": "انتحال شخصية"
+      },
+      "messages": {
+        "impersonationStarted": "بدأ انتحال الشخصية. إعادة التوجيه..."
+      }
+    },
+    "users": {
+      "title": "كافة المستخدمين",
+      "refresh": "ينعش",
+      "refreshing": "منعش...",
+      "loading": "جارٍ تحميل المستخدمين...",
+      "empty": "لم يتم العثور على مستخدمين.",
+      "confirmPromote": "هل تريد ترقية هذا المستخدم إلى SUPER_ADMIN؟",
+      "confirmDemote": "هل تريد خفض رتبة SUPER_ADMIN إلى USER؟",
+      "columns": {
+        "userId": "معرف المستخدم",
+        "email": "بريد إلكتروني",
+        "globalRole": "الدور العالمي",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "promote": "يرقي",
+        "demote": "خفض الرتبة"
+      },
+      "messages": {
+        "promoted": "تمت ترقية المستخدم إلى SUPER_ADMIN",
+        "demoted": "تم تخفيض رتبة المستخدم إلى USER"
+      }
+    },
+    "systemOverview": {
+      "title": "نظرة عامة على النظام",
+      "subtitle": "رؤية عالية المستوى للمستأجرين والموارد",
+      "refresh": "ينعش",
+      "refreshing": "منعش...",
+      "loading": "جارٍ تحميل نظرة عامة على النظام...",
+      "noData": "لا توجد بيانات متاحة حتى الآن.",
+      "quickActionsTitle": "إجراءات سريعة",
+      "quickActionsSubtitle": "انتقل إلى أدوات المشرف المتميز",
+      "stats": {
+        "totalUsers": "إجمالي المستخدمين",
+        "totalCompanies": "إجمالي الشركات",
+        "totalVouchers": "إجمالي القسائم",
+        "inventoryItems": "عناصر المخزون",
+        "roles": "الأدوار"
+      },
+      "actions": {
+        "manageUsers": "إدارة المستخدمين",
+        "manageCompanies": "إدارة الشركات"
+      }
+    },
+    "templates": {
+      "title": "قوالب",
+      "subtitle": "قوالب المعالج، وقوالب مخطط الحسابات، والعملات.",
+      "loading": "تحميل...",
+      "loadFailed": "فشل التحميل: {{message}}",
+      "unknownError": "خطأ غير معروف",
+      "empty": "لم يتم العثور على سجلات.",
+      "sections": {
+        "wizardTemplates": "قوالب المعالج",
+        "coaTemplates": "قوالب مخطط الحسابات",
+        "currencies": "العملات"
+      },
+      "columns": {
+        "name": "اسم",
+        "models": "نماذج",
+        "id": "بطاقة تعريف",
+        "code": "شفرة"
+      }
+    },
+    "roleEditor": {
+      "loading": "تحميل...",
+      "title": "تحرير الدور",
+      "name": "اسم",
+      "moduleBundles": "حزم الوحدة",
+      "explicitPermissions": "أذونات صريحة",
+      "resolvedPreview": "المعاينة التي تم حلها (للقراءة فقط)",
+      "save": "يحفظ"
+    },
+    "modulePermissionsList": {
+      "loading": "تحميل...",
+      "title": "أذونات الوحدة",
+      "edit": "يحرر",
+      "permissionsCount": "{{count}} الأذونات"
+    },
+    "voucherTemplates": {
+      "title": "قوالب قسيمة النظام",
+      "loading": "تحميل...",
+      "empty": "لم يتم العثور على قوالب النظام.",
+      "columns": {
+        "name": "اسم",
+        "code": "شفرة",
+        "module": "الوحدة النمطية",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "createTemplate": "إنشاء قالب",
+        "edit": "يحرر"
+      }
+    }
+  },
+  "onboarding": {
+    "landing": {
+      "authFailed": "فشلت المصادقة",
+      "nav": {
+        "features": "سمات",
+        "solutions": "الحلول",
+        "pricing": "التسعير",
+        "enterprise": "مَشرُوع",
+        "login": "تسجيل الدخول",
+        "getStarted": "ابدأ"
+      },
+      "badge": "نظام تخطيط موارد المؤسسات الجديد v3.0",
+      "hero": {
+        "titlePrefix": "كل ما تحتاج إليه",
+        "titleHighlight": "يدير",
+        "titleSuffix": "عملك.",
+        "subtitle": "منصة الكل في واحد مصممة للمؤسسات الحديثة. أدوات المحاسبة والعمليات والموارد البشرية المتكاملة بسلاسة.",
+        "freeTrial": "تجربة مجانية",
+        "noCard": "لا حاجة لبطاقة الائتمان"
+      },
+      "authTabs": {
+        "createAccount": "إنشاء حساب",
+        "signIn": "تسجيل الدخول"
+      },
+      "auth": {
+        "joinTitle": "انضم إلى ERP03",
+        "welcomeTitle": "مرحبًا بعودتك",
+        "joinSubtitle": "ابدأ رحلتك معنا اليوم.",
+        "welcomeSubtitle": "الرجاء إدخال بيانات الاعتماد الخاصة بك للمتابعة."
+      },
+      "form": {
+        "firstName": "الاسم الأول",
+        "firstPlaceholder": "أولاً",
+        "lastName": "اسم العائلة",
+        "lastPlaceholder": "آخر",
+        "email": "عنوان البريد الإلكتروني",
+        "emailPlaceholder": "email@company.com",
+        "password": "كلمة المرور",
+        "submitCreate": "إنشاء حساب",
+        "submitSignIn": "تسجيل الدخول"
+      },
+      "admin": {
+        "prefix": "مسؤول النظام؟",
+        "portal": "الوصول إلى البوابة"
+      },
+      "legal": {
+        "prefix": "من خلال الاستمرار، فإنك توافق على لدينا",
+        "terms": "شروط",
+        "privacy": "خصوصية"
+      },
+      "stats": {
+        "industryBundles": "حزم الصناعة",
+        "activeOrgs": "المنظمات النشطة",
+        "uptimeSla": "وقت التشغيل لاتفاقية مستوى الخدمة",
+        "globalSupport": "الدعم العالمي"
+      },
+      "features": {
+        "titlePrefix": "كل ما تحتاج إليه",
+        "titleHighlight": "حجم",
+        "subtitle": "وحدات، قابلة للتطوير، وسهلة الاستخدام. اختر التطبيقات التي تحتاجها وأضف المزيد منها مع تقدمك."
+      },
+      "cards": {
+        "financials": {
+          "title": "المالية",
+          "desc": "أتمتة المحاسبة والفواتير والنفقات."
+        },
+        "humanCapital": {
+          "title": "رأس المال البشري",
+          "desc": "إدارة الرواتب والحضور والتوظيف."
+        },
+        "globalOps": {
+          "title": "العمليات العالمية",
+          "desc": "متعدد العملات، متعدد اللغات، ومتعدد الشركات."
+        }
+      }
+    },
+    "companyWizard": {
+      "basic": {
+        "errors": {
+          "invalidImageType": "يُسمح فقط بصور PNG أو JPG أو ICO أو WEBP.",
+          "logoSize": "يجب أن يكون الشعار أصغر من 5 ميغابايت.",
+          "logoProcessFailed": "فشلت معالجة الصورة. يرجى تجربة واحدة أخرى.",
+          "companyNameRequired": "اسم الشركة مطلوب",
+          "countryRequired": "الرجاء اختيار البلد"
+        },
+        "fields": {
+          "companyName": "اسم الشركة",
+          "country": "البلد / المنطقة",
+          "description": "وصف",
+          "companyLogo": "شعار الشركة"
+        },
+        "placeholders": {
+          "companyName": "على سبيل المثال شركة اكمي",
+          "searchCountries": "بحث عن الدول...",
+          "description": "قم بوصف شركتك بإيجاز..."
+        },
+        "optional": "خياري",
+        "noCountriesFound": "لم يتم العثور على بلدان",
+        "optimizing": "جارٍ التحسين...",
+        "actions": {
+          "upload": "رفع",
+          "removeLogo": "إزالة الشعار",
+          "cancel": "يلغي",
+          "nextStep": "الخطوة التالية"
+        },
+        "dragDrop": "أو السحب والإفلات",
+        "allowedFormats": "PNG، JPG، ICO، ويب",
+        "readyForDocuments": "جاهز للمستندات",
+        "autoConfigEnabled": "تم تمكين التكوين التلقائي",
+        "smartDefaultsIntro": "استنادًا إلى {{country}}، قمنا بتطبيق الإعدادات الافتراضية الذكية التالية:",
+        "defaults": {
+          "currency": "عملة",
+          "language": "لغة",
+          "timezone": "المنطقة الزمنية",
+          "dateFormat": "تنسيق التاريخ"
+        },
+        "languages": {
+          "arabic": "عربي",
+          "turkish": "تركي",
+          "english": "إنجليزي"
+        },
+        "customizeLater": "يمكن تخصيص هذه الإعدادات في الملف التعريفي لشركتك لاحقًا."
+      }
+    }
+  },
+  "rbac": {
+    "rolesList": {
+      "loading": "جارٍ تحميل الأدوار...",
+      "title": "أدوار الشركة",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف هذا الدور؟",
+      "permissionsCount": "{{count}} الأذونات",
+      "columns": {
+        "name": "اسم",
+        "description": "وصف",
+        "permissions": "الأذونات",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "createRole": "إنشاء دور",
+        "edit": "يحرر",
+        "delete": "يمسح"
+      },
+      "messages": {
+        "deleted": "تم حذف الدور"
+      }
+    },
+    "editRole": {
+      "loading": "تحميل...",
+      "titleCreate": "إنشاء دور",
+      "titleEdit": "تحرير الدور",
+      "loadFromTemplate": "تحميل من القالب",
+      "selectTemplate": "-- اختر القالب --",
+      "roleName": "اسم الدور",
+      "roleNamePlaceholder": "على سبيل المثال، محاسب",
+      "description": "وصف",
+      "descriptionPlaceholder": "وصف اختياري",
+      "permissions": "الأذونات",
+      "actions": {
+        "saveRole": "حفظ الدور",
+        "cancel": "يلغي"
+      }
+    },
+    "assignUsers": {
+      "loading": "تحميل...",
+      "title": "تعيين أدوار المستخدم",
+      "selectRole": "-- اختر الدور --",
+      "noRole": "لا دور",
+      "yes": "نعم",
+      "no": "لا",
+      "confirmRemoveUser": "هل أنت متأكد أنك تريد إزالة هذا المستخدم من الشركة؟",
+      "columns": {
+        "userId": "معرف المستخدم",
+        "currentRole": "الدور الحالي",
+        "owner": "مالك",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "removeUser": "إزالة المستخدم"
+      },
+      "messages": {
+        "userRemoved": "تمت إزالة المستخدم بنجاح",
+        "roleAssigned": "تم تعيين الدور بنجاح"
+      }
+    }
+  },
+  "auth": {
+    "loading": "تحميل...",
+    "loadingResource": "جارٍ تحميل المورد...",
+    "forbidden": {
+      "title": "تم الرفض",
+      "description": "ليس لديك إذن للوصول إلى هذه الصفحة.",
+      "goBack": "عُد"
+    },
+    "login": {
+      "title": "تسجيل الدخول",
+      "email": "بريد إلكتروني",
+      "password": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "loggingIn": "تسجيل الدخول...",
+      "error": "فشل تسجيل الدخول. يرجى التحقق من بيانات الاعتماد الخاصة بك."
+    },
+    "admin": {
+      "title": "مسؤول النظام",
+      "subtitle": "الوصول الآمن إلى إدارة النظام",
+      "restricted": "منطقة محظورة. الموظفين المعتمدين فقط.",
+      "email": "البريد الإلكتروني للمسؤول",
+      "password": "كلمة المرور",
+      "authenticating": "جارٍ المصادقة...",
+      "accessSystem": "نظام الوصول",
+      "regularUserPrefix": "مستخدم عادي؟",
+      "signInHere": "تسجيل الدخول هنا",
+      "securityNotice": "يتم تسجيل كافة محاولات الوصول ومراقبتها لأغراض أمنية.",
+      "error": "بيانات اعتماد المسؤول غير صالحة. تم الرفض."
+    },
+    "moduleInit": {
+      "checkingStatus": "التحقق من حالة الوحدة...",
+      "redirecting": "جارٍ إعادة التوجيه إلى معالج الإعداد..."
+    }
+  },
+  "widgets": {
+    "managerTitle": "عناصر مساحة العمل",
+    "approvalMode": {
+      "label": "وضع الموافقة",
+      "strict": "حازم",
+      "flexible": "مرن"
+    },
+    "baseCurrency": {
+      "label": "عملة",
+      "none": "لا أحد"
+    },
+    "fiscalYear": {
+      "label": "السنة المالية",
+      "value": "السنة المالية {{year}}"
+    },
+    "uiMode": {
+      "windows": "ويندوز",
+      "web": "ويب"
+    },
+    "notes": {
+      "label": "ملاحظات",
+      "clickMessage": "تم النقر على عنصر الملاحظات. لم يكتمل بعد."
+    },
+    "alarm": {
+      "label": "تنبيه",
+      "clickMessage": "تم النقر على عنصر التنبيه. أضف تنبيهًا."
+    },
+    "company": {
+      "none": "لا توجد شركة",
+      "logoAlt": "شعار الشركة"
+    },
+    "types": {
+      "clock": "الوقت",
+      "date": "التاريخ",
+      "notes": "ملاحظات",
+      "alarm": "تنبيه",
+      "company-logo": "الشركة",
+      "fiscal-year": "السنة المالية",
+      "base-currency": "العملة الأساسية",
+      "approval-mode": "وضع الموافقة",
+      "ui-mode": "وضع الواجهة"
+    }
+  },
+  "shell": {
+    "superAdmin": {
+      "title": "المشرف الفائق",
+      "systemDashboard": "لوحة تحكم النظام",
+      "superAdministrator": "مدير سوبر",
+      "logout": "تسجيل الخروج",
+      "confirmLogout": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+      "systemAdminPanel": "لوحة إدارة النظام",
+      "nav": {
+        "overview": "ملخص",
+        "users": "إدارة المستخدمين",
+        "companies": "شركات",
+        "businessDomains": "مجالات الأعمال",
+        "modules": "وحدات",
+        "permissions": "الأذونات",
+        "bundles": "حزم",
+        "plans": "الخطط"
+      }
+    }
+  },
+  "companySelector": {
+    "title": "شركاتك",
+    "subtitle": "حدد مساحة عمل للمتابعة",
+    "refresh": "ينعش",
+    "signOut": "تسجيل الخروج",
+    "unableToLoad": "غير قادر على تحميل الشركات",
+    "tryAgain": "حاول ثانية",
+    "welcomeTitle": "مرحبا بكم في نظام تخطيط موارد المؤسسات",
+    "welcomeDescription": "ليس لديك أي شركات حتى الآن. قم بإنشاء أول واحد للبدء.",
+    "createNewCompany": "إنشاء شركة جديدة",
+    "card": {
+      "member": "عضو",
+      "business": "عمل",
+      "created": "مخلوق",
+      "lastActive": "آخر نشاط",
+      "enterWorkspace": "أدخل مساحة العمل"
+    }
+  },
+  "moduleSetupCard": {
+    "title": "ابدأ",
+    "subtitle": "أكمل تكوين تطبيقاتك المثبتة لتنشيط مساحة العمل الخاصة بك.",
+    "setupProgress": "تقدم الإعداد",
+    "pending": "قيد الانتظار",
+    "configureApp": "تكوين التطبيق",
+    "modules": {
+      "accounting": {
+        "name": "محاسبة",
+        "description": "دليل الحسابات، السنوات المالية، العملات"
+      },
+      "inventory": {
+        "name": "جرد",
+        "description": "المستودعات، فئات المنتجات، UoM"
+      },
+      "hr": {
+        "name": "الموارد البشرية",
+        "description": "الإدارات، الموظفون، المناصب"
+      },
+      "pos": {
+        "name": "نقطة البيع",
+        "description": "محطات نقاط البيع، طرق الدفع"
+      },
+      "companyAdmin": {
+        "name": "إدارة الشركة",
+        "description": "إعدادات الشركة والأذونات"
+      },
+      "crm": {
+        "name": "إدارة علاقات العملاء",
+        "description": "خطوط الأنابيب، فرق المبيعات، مصادر الرصاص"
+      },
+      "invoicing": {
+        "name": "الفواتير",
+        "description": "القواعد الضريبية، شروط الدفع، القوالب"
+      },
+      "defaultDescription": "استكمال إعداد الوحدة النمطية"
+    }
+  },
+  "moduleSetupModal": {
+    "required": "مطلوب",
+    "notConfigured": "لم يتم تكوينه",
+    "configurationRequired": "التكوين مطلوب",
+    "configurationRequiredDescription": "تعتبر هذه الوحدة ضرورية لعمليات عملك ويجب تهيئتها قبل الاستخدام.",
+    "quickSetupIncludes": "يتضمن الإعداد السريع ما يلي:",
+    "startWizard": "بدء تشغيل معالج التكوين",
+    "cancel": "يلغي",
+    "skipForNow": "تخطي الآن",
+    "requiredFooter": "يمكنك تكوين هذه الوحدة لاحقًا من لوحة المعلومات.",
+    "optionalFooter": "يمكنك تكوين هذه الوحدة في أي وقت من الإعدادات.",
+    "modules": {
+      "accounting": {
+        "name": "محاسبة",
+        "description": "قم بإعداد الأساس المحاسبي الخاص بك لتتبع الشؤون المالية وإدارة المعاملات وإنشاء التقارير.",
+        "steps": {
+          "0": "تكوين مخطط الحسابات",
+          "1": "تعيين السنة المالية",
+          "2": "حدد العملة الافتراضية"
+        }
+      },
+      "companyAdmin": {
+        "name": "إدارة الشركة",
+        "description": "قم بإنهاء إعدادات شركتك والأذونات وعناصر التحكم في وصول المستخدم.",
+        "steps": {
+          "0": "ملف الشركة الكامل",
+          "1": "قم بإعداد أدوار المستخدم",
+          "2": "تكوين الأذونات"
+        }
+      },
+      "inventory": {
+        "name": "جرد",
+        "description": "تكوين إدارة المستودعات وفئات المنتجات وإعدادات تتبع المخزون.",
+        "steps": {
+          "0": "إنشاء المستودعات",
+          "1": "إعداد فئات المنتجات",
+          "2": "تحديد وحدات القياس"
+        }
+      },
+      "hr": {
+        "name": "الموارد البشرية",
+        "description": "قم بإعداد الهيكل التنظيمي والإدارات ونظام إدارة الموظفين.",
+        "steps": {
+          "0": "إنشاء أقسام",
+          "1": "تحديد مناصب الموظفين",
+          "2": "تكوين إعدادات الحضور"
+        }
+      },
+      "pos": {
+        "name": "نقطة البيع",
+        "description": "قم بتكوين محطات نقاط البيع وطرق الدفع وسير عمل أمين الصندوق.",
+        "steps": {
+          "0": "إعداد محطات نقاط البيع",
+          "1": "تكوين طرق الدفع",
+          "2": "تحديد فئات المنتجات"
+        }
+      },
+      "crm": {
+        "name": "إدارة علاقات العملاء",
+        "description": "قم بإعداد خطوط أنابيب المبيعات والفرق وسير عمل الإدارة الرائدة.",
+        "steps": {
+          "0": "إنشاء خطوط أنابيب المبيعات",
+          "1": "إعداد فرق المبيعات",
+          "2": "تكوين مصادر الرصاص"
+        }
+      },
+      "invoicing": {
+        "name": "الفواتير",
+        "description": "قم بتكوين قوالب الفاتورة وقواعد الضرائب وشروط الدفع.",
+        "steps": {
+          "0": "إعداد القواعد الضريبية",
+          "1": "تحديد شروط الدفع",
+          "2": "تخصيص قوالب الفاتورة"
+        }
+      },
+      "defaultDescription": "تتطلب هذه الوحدة التكوين قبل الاستخدام.",
+      "defaultStep": "استكمال إعداد الوحدة النمطية"
+    }
+  },
+  "settings": {
+    "appearance": {
+      "title": "مظهر",
+      "placeholder": "ستظهر إعدادات تكوين السمة هنا."
+    },
+    "home": {
+      "title": "إعدادات النظام"
+    },
+    "sidebar": {
+      "title": "تكوين القائمة",
+      "placeholder": "قم بتكوين رؤية عناصر الشريط الجانبي هنا."
+    },
+    "approval": {
+      "loading": "جارٍ تحميل الإعدادات...",
+      "title": "إعدادات سير عمل الموافقة",
+      "strictMode": {
+        "title": "وضع الموافقة الصارمة",
+        "description1": "عند تمكينها، تبدأ القسائم كمسودة ويجب إرسالها بشكل صريح للموافقة عليها ثم الموافقة عليها قبل أن يتم تأمينها.",
+        "description2": "عند التعطيل (الوضع المرن)، يؤدي إنشاء قسيمة إلى تعيينها تلقائيًا إلى \"معتمد\"."
+      },
+      "save": "حفظ التكوين"
+    },
+    "notifications": {
+      "categories": {
+        "approval": {
+          "name": "الموافقات المالية",
+          "desc": "عندما تتطلب القسيمة موافقتك."
+        },
+        "custody": {
+          "name": "تأكيدات الحضانة",
+          "desc": "عندما يتم تعيينك كأمين لحساب في إحدى المعاملات."
+        },
+        "system": {
+          "name": "معلومات النظام",
+          "desc": "إشعارات النظام العامة والتحديثات غير الهامة."
+        },
+        "warning": {
+          "name": "تحذيرات النظام",
+          "desc": "تنبيهات بشأن حالة النظام أو القسائم المرفوضة أو التحذيرات الأخرى."
+        }
+      },
+      "saved": "تم حفظ الإعدادات الافتراضية لإشعارات الشركة",
+      "title": "افتراضيات إشعارات الشركة",
+      "subtitle": "سياسة الإعلام الافتراضية لجميع المستخدمين في {{company}}.",
+      "save": "حفظ افتراضيات الشركة",
+      "eventCategories": "فئات الأحداث",
+      "hint": "قم بتعطيل الفئات هنا لإيقاف تشغيلها بشكل افتراضي لجميع المستخدمين في هذه الشركة. لا يزال بإمكان المستخدمين تجاوز هذه الإعدادات الافتراضية في ملفاتهم الشخصية."
+    }
+  },
+  "success": {
+    "SAVE": "تم الحفظ بنجاح"
+  },
+  "companyWizard": {
+    "errors": {
+      "submitStep": "فشل إرسال الخطوة",
+      "completeWizard": "فشل في إكمال المعالج",
+      "missingSession": "جلسة مفقودة. الرجاء بدء تشغيل المعالج مرة أخرى."
+    },
+    "success": {
+      "companyCreated": "تم إنشاء الشركة بنجاح"
+    },
+    "actions": {
+      "goToStart": "انتقل إلى \"بدء المعالج\"."
+    },
+    "loadingStep": "جارٍ تحميل خطوة المعالج...",
+    "selectModel": {
+      "title": "إنشاء شركة",
+      "subtitle": "حدد نموذج العمل للبدء. يمكنك دائمًا إضافة الوحدات النمطية أو تعطيلها لاحقًا لتناسب احتياجاتك.",
+      "companyName": "اسم الشركة",
+      "model": "نموذج",
+      "selectModel": "حدد نموذجًا",
+      "starting": "جارٍ البدء...",
+      "startWizard": "معالج البدء"
+    }
   }
 }

@@ -5,15 +5,15 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyModules } from '../../../hooks/useCompanyAdmin';
-
-const t = (key: string) => key;
+import { useTranslation } from 'react-i18next';
 
 export const ModulesPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { modules, activeModules, isLoading, enableModule, disableModule, isEnabling, isDisabling } = useCompanyModules();
 
   const handleToggle = (moduleName: string, isEnabled: boolean) => {
     if (isEnabled) {
-      if (window.confirm(`Are you sure you want to disable the ${moduleName} module?`)) {
+      if (window.confirm(t('companyAdmin.modules.confirmDisable', { moduleName }))) {
         disableModule({ moduleName });
       }
     } else {
@@ -25,16 +25,16 @@ export const ModulesPage: React.FC = () => {
     <CompanyAdminLayout>
       <PageHeader 
         title={t("companyAdmin.modules.title")} 
-        breadcrumbs={[{ label: 'Company Admin' }, { label: 'Modules' }]}
+        breadcrumbs={[{ label: t('companyAdmin.shared.companyAdmin') }, { label: t('companyAdmin.modules.title') }]}
       />
 
       <div className="mb-6">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-gray-900">Active Modules</h3>
+              <h3 className="text-sm font-medium text-gray-900">{t('companyAdmin.modules.activeModules')}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                {isLoading ? 'Loading...' : `${activeModules.length} modules currently active`}
+                {isLoading ? t('companyAdmin.modules.loading') : t('companyAdmin.modules.activeCount', { count: activeModules.length })}
               </p>
             </div>
           </div>
@@ -47,8 +47,8 @@ export const ModulesPage: React.FC = () => {
         </div>
       ) : modules.length === 0 ? (
         <EmptyState 
-          title="No modules available" 
-          description="No modules are available for your subscription plan."
+          title={t('companyAdmin.modules.noModules')} 
+          description={t('companyAdmin.modules.noModulesDescription')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -68,13 +68,13 @@ export const ModulesPage: React.FC = () => {
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {isEnabled ? 'Active' : 'Inactive'}
+                    {isEnabled ? t('companyAdmin.modules.active') : t('companyAdmin.modules.inactive')}
                   </div>
                 </div>
 
                 {isMandatory && (
                   <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                    <span className="font-medium">Mandatory Module</span> - Cannot be disabled
+                    <span className="font-medium">{t('companyAdmin.modules.mandatoryModule')}</span> - {t('companyAdmin.modules.cannotBeDisabled')}
                   </div>
                 )}
 
@@ -85,7 +85,7 @@ export const ModulesPage: React.FC = () => {
                     onClick={() => handleToggle(module.id, isEnabled)}
                     disabled={isMandatory || isEnabling || isDisabling}
                   >
-                    {isEnabling || isDisabling ? 'Processing...' : isEnabled ? 'Disable Module' : 'Enable Module'}
+                    {isEnabling || isDisabling ? t('companyAdmin.modules.processing') : isEnabled ? t('companyAdmin.modules.disableModule') : t('companyAdmin.modules.enableModule')}
                   </Button>
                 </div>
               </Card>

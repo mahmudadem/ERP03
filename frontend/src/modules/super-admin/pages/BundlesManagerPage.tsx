@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { superAdminApi, Bundle, BusinessDomain, Module } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 
 export const BundlesManagerPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [businessDomains, setBusinessDomains] = useState<BusinessDomain[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -65,11 +67,11 @@ export const BundlesManagerPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this bundle?')) return;
+    if (!confirm(t('superAdmin.bundles.confirmDelete', { defaultValue: 'Are you sure you want to delete this bundle?' }))) return;
     
     try {
       await superAdminApi.deleteBundle(id);
-      errorHandler.showSuccess('Bundle deleted');
+      errorHandler.showSuccess(t('superAdmin.bundles.messages.deleted', { defaultValue: 'Bundle deleted' }));
       loadData();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -82,7 +84,7 @@ export const BundlesManagerPage: React.FC = () => {
     if (!formData.id || !formData.name) {
       errorHandler.showError({
         code: 'VAL_001',
-        message: 'ID and Name are required',
+        message: t('superAdmin.bundles.messages.idNameRequired', { defaultValue: 'ID and Name are required' }),
         severity: 'WARNING'
       } as any);
       return;
@@ -96,10 +98,10 @@ export const BundlesManagerPage: React.FC = () => {
           businessDomains: formData.businessDomains,
           modulesIncluded: formData.modulesIncluded
         });
-        errorHandler.showSuccess('Bundle updated');
+        errorHandler.showSuccess(t('superAdmin.bundles.messages.updated', { defaultValue: 'Bundle updated' }));
       } else {
         await superAdminApi.createBundle(formData);
-        errorHandler.showSuccess('Bundle created');
+        errorHandler.showSuccess(t('superAdmin.bundles.messages.created', { defaultValue: 'Bundle created' }));
       }
       
       setIsModalOpen(false);
@@ -117,20 +119,20 @@ export const BundlesManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">{t('superAdmin.bundles.loading', { defaultValue: 'Loading...' })}</div>;
 
   return (
     <div className="bundles-manager p-6">
       <div className="header mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Bundles Management</h1>
-          <p className="text-gray-600 mt-2">Manage company module bundles with business domains</p>
+          <h1 className="text-3xl font-bold">{t('superAdmin.bundles.title', { defaultValue: 'Bundles Management' })}</h1>
+          <p className="text-gray-600 mt-2">{t('superAdmin.bundles.subtitle', { defaultValue: 'Manage company module bundles with business domains' })}</p>
         </div>
         <button 
           onClick={handleCreate} 
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          + Create Bundle
+          + {t('superAdmin.bundles.actions.create', { defaultValue: 'Create Bundle' })}
         </button>
       </div>
 
@@ -138,18 +140,18 @@ export const BundlesManagerPage: React.FC = () => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left">ID</th>
-              <th className="px-6 py-3 text-left">Name</th>
-              <th className="px-6 py-3 text-left">Business Domains</th>
-              <th className="px-6 py-3 text-left">Modules</th>
-              <th className="px-6 py-3 text-left">Actions</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.bundles.columns.id', { defaultValue: 'ID' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.bundles.columns.name', { defaultValue: 'Name' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.bundles.columns.businessDomains', { defaultValue: 'Business Domains' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.bundles.columns.modules', { defaultValue: 'Modules' })}</th>
+              <th className="px-6 py-3 text-left">{t('superAdmin.bundles.columns.actions', { defaultValue: 'Actions' })}</th>
             </tr>
           </thead>
           <tbody>
             {bundles.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                  No bundles found. Create your first bundle to get started.
+                  {t('superAdmin.bundles.empty', { defaultValue: 'No bundles found. Create your first bundle to get started.' })}
                 </td>
               </tr>
             ) : (
@@ -177,10 +179,10 @@ export const BundlesManagerPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <button onClick={() => handleEdit(bundle)} className="text-blue-600 hover:underline mr-4">
-                      Edit
+                      {t('superAdmin.bundles.actions.edit', { defaultValue: 'Edit' })}
                     </button>
                     <button onClick={() => handleDelete(bundle.id)} className="text-red-600 hover:underline">
-                      Delete
+                      {t('superAdmin.bundles.actions.delete', { defaultValue: 'Delete' })}
                     </button>
                   </td>
                 </tr>
@@ -194,12 +196,12 @@ export const BundlesManagerPage: React.FC = () => {
         <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="modal-content bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
-              {editingBundle ? 'Edit Bundle' : 'Create Bundle'}
+              {editingBundle ? t('superAdmin.bundles.modal.editTitle', { defaultValue: 'Edit Bundle' }) : t('superAdmin.bundles.modal.createTitle', { defaultValue: 'Create Bundle' })}
             </h2>
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">ID *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.bundles.fields.id', { defaultValue: 'ID *' })}</label>
                 <input
                   type="text"
                   value={formData.id}
@@ -207,38 +209,38 @@ export const BundlesManagerPage: React.FC = () => {
                   className="w-full px-3 py-2 border rounded"
                   required
                   disabled={!!editingBundle}
-                  placeholder="e.g., standard-restaurant"
+                  placeholder={t('superAdmin.bundles.placeholders.id', { defaultValue: 'e.g., standard-restaurant' })}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Name *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.bundles.fields.name', { defaultValue: 'Name *' })}</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border rounded"
                   required
-                  placeholder="e.g., Standard Restaurant Bundle"
+                  placeholder={t('superAdmin.bundles.placeholders.name', { defaultValue: 'e.g., Standard Restaurant Bundle' })}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Description</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.bundles.fields.description', { defaultValue: 'Description' })}</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border rounded"
                   rows={3}
-                  placeholder="Describe this bundle..."
+                  placeholder={t('superAdmin.bundles.placeholders.description', { defaultValue: 'Describe this bundle...' })}
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Business Domains *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.bundles.fields.businessDomains', { defaultValue: 'Business Domains *' })}</label>
                 <div className="border rounded p-3 max-h-48 overflow-y-auto">
                   {businessDomains.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No business domains available. Create domains first.</p>
+                    <p className="text-gray-500 text-sm">{t('superAdmin.bundles.noBusinessDomains', { defaultValue: 'No business domains available. Create domains first.' })}</p>
                   ) : (
                     businessDomains.map(domain => (
                       <label key={domain.id} className="flex items-center mb-2 cursor-pointer">
@@ -260,10 +262,10 @@ export const BundlesManagerPage: React.FC = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Modules Included *</label>
+                <label className="block text-sm font-medium mb-2">{t('superAdmin.bundles.fields.modulesIncluded', { defaultValue: 'Modules Included *' })}</label>
                 <div className="border rounded p-3 max-h-48 overflow-y-auto">
                   {modules.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No modules available. Create modules first.</p>
+                    <p className="text-gray-500 text-sm">{t('superAdmin.bundles.noModules', { defaultValue: 'No modules available. Create modules first.' })}</p>
                   ) : (
                     modules.map(module => (
                       <label key={module.id} className="flex items-center mb-2 cursor-pointer">
@@ -290,13 +292,13 @@ export const BundlesManagerPage: React.FC = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border rounded hover:bg-gray-50"
                 >
-                  Cancel
+                  {t('superAdmin.bundles.actions.cancel', { defaultValue: 'Cancel' })}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  {editingBundle ? 'Update' : 'Create'}
+                  {editingBundle ? t('superAdmin.bundles.actions.update', { defaultValue: 'Update' }) : t('superAdmin.bundles.actions.create', { defaultValue: 'Create' })}
                 </button>
               </div>
             </form>

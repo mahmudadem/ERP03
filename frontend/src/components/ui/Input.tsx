@@ -21,14 +21,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)] mb-1.5">
           {label}
           {props.required && <span className="text-danger-500 ml-0.5">*</span>}
         </label>
       )}
       <div className="relative">
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[var(--color-text-muted)]">
             {leftIcon}
           </div>
         )}
@@ -40,17 +40,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
             "placeholder:text-gray-400",
             "focus:outline-none focus:ring-2 focus:ring-offset-0",
             "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
+            "dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)] dark:placeholder:text-[var(--color-text-muted)] dark:disabled:bg-[var(--color-bg-tertiary)] dark:disabled:text-[var(--color-text-muted)]",
             leftIcon && "pl-10",
             rightIcon && "pr-10",
             error 
-              ? "border-danger-300 text-danger-900 focus:border-danger-500 focus:ring-danger-500/20" 
+              ? "border-danger-300 text-danger-900 focus:border-danger-500 focus:ring-danger-500/20 dark:text-danger-400" 
               : "border-gray-200 focus:border-primary-500 focus:ring-primary-500/20",
             className
           )}
           {...props}
         />
         {rightIcon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[var(--color-text-muted)]">
             {rightIcon}
           </div>
         )}
@@ -64,7 +65,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         </p>
       )}
       {hint && !error && (
-        <p className="mt-1.5 text-xs text-gray-500">{hint}</p>
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-[var(--color-text-muted)]">{hint}</p>
       )}
     </div>
   );
@@ -88,7 +89,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)] mb-1.5">
           {label}
           {props.required && <span className="text-danger-500 ml-0.5">*</span>}
         </label>
@@ -101,8 +102,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
           "placeholder:text-gray-400",
           "focus:outline-none focus:ring-2 focus:ring-offset-0",
           "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
+          "dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)] dark:placeholder:text-[var(--color-text-muted)] dark:disabled:bg-[var(--color-bg-tertiary)] dark:disabled:text-[var(--color-text-muted)]",
           error 
-            ? "border-danger-300 text-danger-900 focus:border-danger-500 focus:ring-danger-500/20" 
+            ? "border-danger-300 text-danger-900 focus:border-danger-500 focus:ring-danger-500/20 dark:text-danger-400" 
             : "border-gray-200 focus:border-primary-500 focus:ring-primary-500/20",
           className
         )}
@@ -117,7 +119,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
         </p>
       )}
       {hint && !error && (
-        <p className="mt-1.5 text-xs text-gray-500">{hint}</p>
+        <p className="mt-1.5 text-xs text-gray-500 dark:text-[var(--color-text-muted)]">{hint}</p>
       )}
     </div>
   );

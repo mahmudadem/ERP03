@@ -1,33 +1,43 @@
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Briefcase, ListTodo, Users, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ProjectsHomePage: React.FC = () => {
+  const { t } = useTranslation('common');
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">Projects Overview</h1>
-          <p className="text-[var(--color-text-secondary)]">Track project progress, tasks, and timelines.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">
+            {t('modulePlaceholders.projects.title', { defaultValue: 'Projects Overview' })}
+          </h1>
+          <p className="text-[var(--color-text-secondary)]">
+            {t('modulePlaceholders.projects.subtitle', { defaultValue: 'Track project progress, tasks, and timelines.' })}
+          </p>
         </div>
         <button className="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700 transition shadow-md shadow-primary-500/10 active:scale-[0.98]">
-          Create Project
+          {t('modulePlaceholders.projects.createProject', { defaultValue: 'Create Project' })}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard icon={<Briefcase />} label="Total Projects" value="0" />
-        <StatsCard icon={<ListTodo />} label="Pending Tasks" value="0" />
-        <StatsCard icon={<Users />} label="Team Members" value="0" />
-        <StatsCard icon={<Clock />} label="Hours Logged" value="0" />
+        <StatsCard icon={<Briefcase />} label={t('modulePlaceholders.projects.stats.totalProjects', { defaultValue: 'Total Projects' })} value="0" />
+        <StatsCard icon={<ListTodo />} label={t('modulePlaceholders.projects.stats.pendingTasks', { defaultValue: 'Pending Tasks' })} value="0" />
+        <StatsCard icon={<Users />} label={t('modulePlaceholders.projects.stats.teamMembers', { defaultValue: 'Team Members' })} value="0" />
+        <StatsCard icon={<Clock />} label={t('modulePlaceholders.projects.stats.hoursLogged', { defaultValue: 'Hours Logged' })} value="0" />
       </div>
 
       <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl p-12 text-center shadow-inner transition-colors">
         <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center mb-4">
            <Briefcase className="w-8 h-8 text-primary-600" />
         </div>
-        <h3 className="text-xl font-bold text-[var(--color-text-primary)]">Module Under Construction</h3>
-        <p className="text-[var(--color-text-secondary)] mt-2 font-medium">We are putting the finishing touches on the Projects module. Your access is verified.</p>
+        <h3 className="text-xl font-bold text-[var(--color-text-primary)]">
+          {t('modulePlaceholders.common.underConstruction', { defaultValue: 'Module Under Construction' })}
+        </h3>
+        <p className="text-[var(--color-text-secondary)] mt-2 font-medium">
+          {t('modulePlaceholders.projects.message', { defaultValue: 'We are putting the finishing touches on the Projects module. Your access is verified.' })}
+        </p>
       </div>
     </div>
   );

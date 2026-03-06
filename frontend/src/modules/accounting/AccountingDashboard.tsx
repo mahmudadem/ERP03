@@ -3,6 +3,7 @@ import { PendingApprovalsWidget } from './components/PendingApprovalsWidget';
 import { LayoutDashboard, FileText, ArrowRightLeft, TrendingUp, Wallet, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { accountingApi } from '../../api/accountingApi';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const SkeletonCard: React.FC = () => (
   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm animate-pulse">
@@ -13,6 +14,7 @@ const SkeletonCard: React.FC = () => (
 );
 
 const AccountingDashboard: React.FC = () => {
+  const { t } = useTranslation('accounting');
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -46,16 +48,20 @@ const AccountingDashboard: React.FC = () => {
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
               <LayoutDashboard size={32} className="text-primary-600" />
-              Accounting Dashboard
+              {t('accountingDashboard.title', { defaultValue: 'Accounting Dashboard' })}
             </h1>
-            <p className="text-slate-500 mt-2 font-medium">Real-time overview of your financial operations and required actions.</p>
+            <p className="text-slate-500 mt-2 font-medium">
+              {t('accountingDashboard.subtitle', {
+                defaultValue: 'Real-time overview of your financial operations and required actions.',
+              })}
+            </p>
           </div>
           <button
             onClick={load}
             className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold text-slate-700"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('accountingDashboard.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
 
@@ -78,11 +84,16 @@ const AccountingDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Total Vouchers</h3>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">
+                    {t('accountingDashboard.totalVouchers', { defaultValue: 'Total Vouchers' })}
+                  </h3>
                   <p className="text-2xl font-black text-slate-900">{summary?.vouchers?.total ?? 0}</p>
                   <p className={`text-xs font-bold mt-1 ${pctChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {pctChange >= 0 ? '+' : ''}
-                    {pctChange.toFixed(1)}% vs last month
+                    {t('accountingDashboard.vsLastMonth', {
+                      defaultValue: '{{pct}}% vs last month',
+                      pct: pctChange.toFixed(1),
+                    })}
                   </p>
                 </div>
               </div>
@@ -94,11 +105,15 @@ const AccountingDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Cash On Hand</h3>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">
+                    {t('accountingDashboard.cashOnHand', { defaultValue: 'Cash On Hand' })}
+                  </h3>
                   <p className="text-2xl font-black text-slate-900">
                     {summary?.cashPosition?.toLocaleString(undefined, { minimumFractionDigits: 2 })} {summary?.baseCurrency || ''}
                   </p>
-                  <p className="text-xs text-slate-500 font-medium mt-1">Across cash/bank accounts</p>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    {t('accountingDashboard.cashHint', { defaultValue: 'Across cash/bank accounts' })}
+                  </p>
                 </div>
               </div>
             </>
@@ -110,10 +125,10 @@ const AccountingDashboard: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 <ArrowRightLeft size={20} className="text-slate-400" />
-                Recent Journal Entries
+                {t('accountingDashboard.recentJournalEntries', { defaultValue: 'Recent Journal Entries' })}
               </h2>
               <button className="text-sm font-bold text-primary-600 hover:underline" onClick={() => navigate('/accounting/reports/ledger')}>
-                View Ledger
+                {t('accountingDashboard.viewLedger', { defaultValue: 'View Ledger' })}
               </button>
             </div>
             {loading ? (
@@ -142,7 +157,7 @@ const AccountingDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-slate-500">No vouchers yet.</div>
+              <div className="text-sm text-slate-500">{t('accountingDashboard.noVouchersYet', { defaultValue: 'No vouchers yet.' })}</div>
             )}
           </div>
 
@@ -151,20 +166,24 @@ const AccountingDashboard: React.FC = () => {
               <div className="bg-slate-800 w-12 h-12 rounded-2xl flex items-center justify-center mb-6">
                  <Wallet size={24} className="text-primary-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-2">Financial Reports</h2>
-              <p className="text-slate-400 text-sm mb-8">Access P&L, Balance Sheet, Trial Balance.</p>
+              <h2 className="text-2xl font-bold mb-2">{t('accountingDashboard.financialReports', { defaultValue: 'Financial Reports' })}</h2>
+              <p className="text-slate-400 text-sm mb-8">
+                {t('accountingDashboard.financialReportsHint', { defaultValue: 'Access P&L, Balance Sheet, Trial Balance.' })}
+              </p>
               
               <ul className="space-y-4">
                 {[
-                  { label: 'Trial Balance', path: '/accounting/reports/trial-balance' },
-                  { label: 'Balance Sheet', path: '/accounting/reports/balance-sheet' },
-                  { label: 'Profit & Loss', path: '/accounting/reports/profit-loss' },
-                  { label: 'Trading Account', path: '/accounting/reports/trading-account' },
-                  { label: 'Account Statement', path: '/accounting/reports/account-statement' },
-                  { label: 'Aging Report', path: '/accounting/reports/aging' },
+                  { key: 'trialBalance', defaultValue: 'Trial Balance', path: '/accounting/reports/trial-balance' },
+                  { key: 'balanceSheet', defaultValue: 'Balance Sheet', path: '/accounting/reports/balance-sheet' },
+                  { key: 'profitLoss', defaultValue: 'Profit & Loss', path: '/accounting/reports/profit-loss' },
+                  { key: 'tradingAccount', defaultValue: 'Trading Account', path: '/accounting/reports/trading-account' },
+                  { key: 'accountStatement', defaultValue: 'Account Statement', path: '/accounting/reports/account-statement' },
+                  { key: 'agingReport', defaultValue: 'Aging Report', path: '/accounting/reports/aging' },
                 ].map(report => (
-                  <li key={report.label} className="flex items-center justify-between group cursor-pointer hover:text-primary-400 transition-colors" onClick={() => navigate(report.path)}>
-                    <span className="font-semibold text-slate-200 group-hover:text-white">{report.label}</span>
+                  <li key={report.key} className="flex items-center justify-between group cursor-pointer hover:text-primary-400 transition-colors" onClick={() => navigate(report.path)}>
+                    <span className="font-semibold text-slate-200 group-hover:text-white">
+                      {t(`accountingDashboard.reports.${report.key}`, { defaultValue: report.defaultValue })}
+                    </span>
                     <TrendingUp size={16} className="text-slate-600 group-hover:text-primary-400" />
                   </li>
                 ))}
@@ -172,7 +191,7 @@ const AccountingDashboard: React.FC = () => {
             </div>
             
             <button className="w-full bg-primary-600 hover:bg-primary-700 py-4 rounded-2xl font-bold mt-10 transition-colors shadow-lg shadow-primary-900/20" onClick={() => navigate('/accounting/vouchers')}>
-              New Voucher
+              {t('accountingDashboard.newVoucher', { defaultValue: 'New Voucher' })}
             </button>
           </div>
         </div>
@@ -180,13 +199,16 @@ const AccountingDashboard: React.FC = () => {
         {!loading && summary?.unbalancedDrafts > 0 && (
           <div className="mt-8 p-4 border border-red-200 bg-red-50 rounded-xl flex items-center gap-3 text-red-700">
             <AlertTriangle className="w-5 h-5" />
-            {summary.unbalancedDrafts} unbalanced draft voucher(s) need attention.
+            {t('accountingDashboard.unbalancedDrafts', {
+              defaultValue: '{{count}} unbalanced draft voucher(s) need attention.',
+              count: summary.unbalancedDrafts,
+            })}
           </div>
         )}
         {!loading && summary?.fiscalPeriodStatus && (
           <div className="mt-4 p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-sm">
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            Current period status: {summary.fiscalPeriodStatus}
+            {t('accountingDashboard.currentPeriodStatus', { defaultValue: 'Current period status' })}: {summary.fiscalPeriodStatus}
           </div>
         )}
       </div>

@@ -11,6 +11,7 @@ import {
   X,
   AlertCircle,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ModuleSetupPromptModalProps {
   moduleCode: string;
@@ -29,104 +30,104 @@ interface ModuleInfo {
   isRequired: boolean; // Critical modules must be configured
 }
 
-const getModuleInfo = (moduleCode: string): ModuleInfo => {
+const getModuleInfo = (moduleCode: string, t: (key: string) => string): ModuleInfo => {
   const moduleMap: Record<string, ModuleInfo> = {
     accounting: {
-      name: 'Accounting',
-      description: 'Set up your accounting foundation to track finances, manage transactions, and generate reports.',
+      name: t('moduleSetupModal.modules.accounting.name'),
+      description: t('moduleSetupModal.modules.accounting.description'),
       setupPath: '/accounting/setup',
       icon: Calculator,
       iconBg: 'bg-teal-50',
       iconColor: 'text-teal-600',
       isRequired: true, // ← Critical module
       setupSteps: [
-        'Configure Chart of Accounts',
-        'Set Fiscal Year',
-        'Select Default Currency',
+        t('moduleSetupModal.modules.accounting.steps.0'),
+        t('moduleSetupModal.modules.accounting.steps.1'),
+        t('moduleSetupModal.modules.accounting.steps.2'),
       ],
     },
     companyAdmin: {
-      name: 'Company Administration',
-      description: 'Finalize your company settings, permissions, and user access controls.',
+      name: t('moduleSetupModal.modules.companyAdmin.name'),
+      description: t('moduleSetupModal.modules.companyAdmin.description'),
       setupPath: '/companyAdmin/setup',
       icon: Building2,
       iconBg: 'bg-indigo-50',
       iconColor: 'text-indigo-600',
       isRequired: false, // ← Optional - owner user is sufficient
       setupSteps: [
-        'Complete Company Profile',
-        'Set Up User Roles',
-        'Configure Permissions',
+        t('moduleSetupModal.modules.companyAdmin.steps.0'),
+        t('moduleSetupModal.modules.companyAdmin.steps.1'),
+        t('moduleSetupModal.modules.companyAdmin.steps.2'),
       ],
     },
     inventory: {
-      name: 'Inventory',
-      description: 'Configure warehouse management, product categories, and stock tracking settings.',
+      name: t('moduleSetupModal.modules.inventory.name'),
+      description: t('moduleSetupModal.modules.inventory.description'),
       setupPath: '/inventory/setup',
       icon: Package,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
       isRequired: false, // Optional
       setupSteps: [
-        'Create Warehouses',
-        'Set Up Product Categories',
-        'Define Units of Measure',
+        t('moduleSetupModal.modules.inventory.steps.0'),
+        t('moduleSetupModal.modules.inventory.steps.1'),
+        t('moduleSetupModal.modules.inventory.steps.2'),
       ],
     },
     hr: {
-      name: 'Human Resources',
-      description: 'Set up your organization structure, departments, and employee management system.',
+      name: t('moduleSetupModal.modules.hr.name'),
+      description: t('moduleSetupModal.modules.hr.description'),
       setupPath: '/hr/setup',
       icon: Users,
       iconBg: 'bg-purple-50',
       iconColor: 'text-purple-600',
       isRequired: false, // Optional
       setupSteps: [
-        'Create Departments',
-        'Define Employee Positions',
-        'Configure Attendance Settings',
+        t('moduleSetupModal.modules.hr.steps.0'),
+        t('moduleSetupModal.modules.hr.steps.1'),
+        t('moduleSetupModal.modules.hr.steps.2'),
       ],
     },
     pos: {
-      name: 'Point of Sale',
-      description: 'Configure POS terminals, payment methods, and cashier workflows.',
+      name: t('moduleSetupModal.modules.pos.name'),
+      description: t('moduleSetupModal.modules.pos.description'),
       setupPath: '/pos/setup',
       icon: ShoppingCart,
       iconBg: 'bg-green-50',
       iconColor: 'text-green-600',
       isRequired: false, // Optional
       setupSteps: [
-        'Set Up POS Terminals',
-        'Configure Payment Methods',
-        'Define Product Categories',
+        t('moduleSetupModal.modules.pos.steps.0'),
+        t('moduleSetupModal.modules.pos.steps.1'),
+        t('moduleSetupModal.modules.pos.steps.2'),
       ],
     },
     crm: {
-      name: 'CRM',
-      description: 'Set up sales pipelines, teams, and lead management workflows.',
+      name: t('moduleSetupModal.modules.crm.name'),
+      description: t('moduleSetupModal.modules.crm.description'),
       setupPath: '/crm/setup',
       icon: Users,
       iconBg: 'bg-pink-50',
       iconColor: 'text-pink-600',
       isRequired: false, // Optional
       setupSteps: [
-        'Create Sales Pipelines',
-        'Set Up Sales Teams',
-        'Configure Lead Sources',
+        t('moduleSetupModal.modules.crm.steps.0'),
+        t('moduleSetupModal.modules.crm.steps.1'),
+        t('moduleSetupModal.modules.crm.steps.2'),
       ],
     },
     invoicing: {
-      name: 'Invoicing',
-      description: 'Configure invoice templates, tax rules, and payment terms.',
+      name: t('moduleSetupModal.modules.invoicing.name'),
+      description: t('moduleSetupModal.modules.invoicing.description'),
       setupPath: '/invoicing/setup',
       icon: FileText,
       iconBg: 'bg-orange-50',
       iconColor: 'text-orange-600',
       isRequired: false, // Optional
       setupSteps: [
-        'Set Up Tax Rules',
-        'Define Payment Terms',
-        'Customize Invoice Templates',
+        t('moduleSetupModal.modules.invoicing.steps.0'),
+        t('moduleSetupModal.modules.invoicing.steps.1'),
+        t('moduleSetupModal.modules.invoicing.steps.2'),
       ],
     },
   };
@@ -134,13 +135,13 @@ const getModuleInfo = (moduleCode: string): ModuleInfo => {
   return (
     moduleMap[moduleCode] || {
       name: moduleCode,
-      description: 'This module requires configuration before use.',
+      description: t('moduleSetupModal.modules.defaultDescription'),
       setupPath: `/${moduleCode}/setup`,
       icon: Building2,
       iconBg: 'bg-gray-50',
       iconColor: 'text-gray-600',
       isRequired: false,
-      setupSteps: ['Complete module setup'],
+      setupSteps: [t('moduleSetupModal.modules.defaultStep')],
     }
   );
 };
@@ -149,8 +150,9 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
   moduleCode,
   onSkip,
 }) => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
-  const info = getModuleInfo(moduleCode);
+  const info = getModuleInfo(moduleCode, t);
   const Icon = info.icon;
 
   const handleStartWizard = () => {
@@ -189,7 +191,7 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
               </div>
               <div className="flex-1 pt-1">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  {info.name} {info.isRequired ? 'Required' : 'Not Configured'}
+                  {info.name} {info.isRequired ? t('moduleSetupModal.required') : t('moduleSetupModal.notConfigured')}
                 </h2>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {info.description}
@@ -203,9 +205,9 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
             <div className="mx-6 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-900">Configuration Required</p>
+                <p className="text-sm font-medium text-amber-900">{t('moduleSetupModal.configurationRequired')}</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  This module is critical for your business operations and must be configured before use.
+                  {t('moduleSetupModal.configurationRequiredDescription')}
                 </p>
               </div>
             </div>
@@ -215,7 +217,7 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
           <div className="px-6 pb-6">
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Quick Setup Includes:
+                {t('moduleSetupModal.quickSetupIncludes')}
               </h3>
               <ul className="space-y-2">
                 {info.setupSteps.map((step, index) => (
@@ -233,7 +235,7 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
                 onClick={handleStartWizard}
                 className="flex-1 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium text-sm shadow-sm hover:shadow transition-all duration-200"
               >
-                Start Configuration Wizard
+                {t('moduleSetupModal.startWizard')}
               </button>
               
               {/* Show "Skip" for optional modules, "Cancel" for required modules */}
@@ -241,15 +243,15 @@ export const ModuleSetupPromptModal: React.FC<ModuleSetupPromptModalProps> = ({
                 onClick={onSkip}
                 className="px-4 py-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg font-medium text-sm transition-colors duration-200"
               >
-                {info.isRequired ? 'Cancel' : 'Skip for Now'}
+                {info.isRequired ? t('moduleSetupModal.cancel') : t('moduleSetupModal.skipForNow')}
               </button>
             </div>
 
             {/* Footer message */}
             <p className="text-xs text-gray-500 text-center mt-4">
               {info.isRequired 
-                ? 'You can configure this module later from the dashboard.'
-                : 'You can configure this module anytime from the settings.'
+                ? t('moduleSetupModal.requiredFooter')
+                : t('moduleSetupModal.optionalFooter')
               }
             </p>
           </div>

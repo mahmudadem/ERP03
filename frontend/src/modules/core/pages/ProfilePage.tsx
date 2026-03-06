@@ -6,19 +6,49 @@ import { useUserPreferences, SidebarMode, UiMode } from '../../../hooks/useUserP
 import { userPreferencesApi } from '../../../api/userPreferencesApi';
 import { useTranslation } from 'react-i18next';
 
-const notificationCategories = [
-  { id: 'APPROVAL', name: 'Financial Approvals', desc: 'Approval required notifications for accounting workflow.' },
-  { id: 'CUSTODY', name: 'Custody Confirmations', desc: 'Custody confirmation requests assigned to you.' },
-  { id: 'SYSTEM', name: 'System Info', desc: 'General information and non-critical system updates.' },
-  { id: 'WARNING', name: 'System Warnings', desc: 'Warnings and alert-style notifications.' }
-];
-
 const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const { company } = useCompanyAccess();
   const { settings: companySettings } = useCompanySettings();
   const { sidebarMode, setSidebarMode, uiMode, setUiMode, language, setLanguage, savePreferences, loadingFromServer } = useUserPreferences();
   const { t } = useTranslation('common');
+  const notificationCategories = React.useMemo(
+    () => [
+      {
+        id: 'APPROVAL',
+        name: t('profile.notifications.categories.approval.name', 'Financial Approvals'),
+        desc: t(
+          'profile.notifications.categories.approval.desc',
+          'Approval required notifications for accounting workflow.'
+        ),
+      },
+      {
+        id: 'CUSTODY',
+        name: t('profile.notifications.categories.custody.name', 'Custody Confirmations'),
+        desc: t(
+          'profile.notifications.categories.custody.desc',
+          'Custody confirmation requests assigned to you.'
+        ),
+      },
+      {
+        id: 'SYSTEM',
+        name: t('profile.notifications.categories.system.name', 'System Info'),
+        desc: t(
+          'profile.notifications.categories.system.desc',
+          'General information and non-critical system updates.'
+        ),
+      },
+      {
+        id: 'WARNING',
+        name: t('profile.notifications.categories.warning.name', 'System Warnings'),
+        desc: t(
+          'profile.notifications.categories.warning.desc',
+          'Warnings and alert-style notifications.'
+        ),
+      },
+    ],
+    [t]
+  );
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null);
@@ -127,13 +157,13 @@ const ProfilePage: React.FC = () => {
         // Clear legacy list to avoid conflict with explicit override logic.
         disabledNotificationCategories: []
       });
-      setNotificationsMsg('Notification overrides saved.');
+      setNotificationsMsg(t('profile.notifications.saved', 'Notification overrides saved.'));
       setNotificationsStatus('success');
     } catch (err: any) {
       const apiMessage =
         err?.response?.data?.error?.message ||
         err?.message ||
-        'Could not save notification overrides.';
+        t('profile.notifications.saveError', 'Could not save notification overrides.');
       setNotificationsMsg(apiMessage);
       setNotificationsStatus('error');
     } finally {
@@ -286,14 +316,21 @@ const ProfilePage: React.FC = () => {
         {/* Notification Overrides */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
           <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Notification Overrides</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              {t('profile.notifications.title', 'Notification Overrides')}
+            </h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Company defaults are applied first. You can override each category for your own account.
+              {t(
+                'profile.notifications.subtitle',
+                'Company defaults are applied first. You can override each category for your own account.'
+              )}
             </p>
           </div>
           <div className="px-4 py-5 sm:px-6 space-y-4">
             {notificationsLoading ? (
-              <div className="text-sm text-gray-500">Loading notification preferences...</div>
+              <div className="text-sm text-gray-500">
+                {t('profile.notifications.loading', 'Loading notification preferences...')}
+              </div>
             ) : (
               <>
                 {notificationCategories.map((category) => {
@@ -306,7 +343,15 @@ const ProfilePage: React.FC = () => {
                           <div className="text-sm font-semibold text-gray-900">{category.name}</div>
                           <div className="text-xs text-gray-500 mt-0.5">{category.desc}</div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Company default: {companyDisabledCategories.has(category.id) ? 'Off' : 'On'} | Effective for you: {effectiveEnabled ? 'On' : 'Off'}
+                            {t('profile.notifications.statusLine', {
+                              defaultValue: 'Company default: {{companyDefault}} | Effective for you: {{effective}}',
+                              companyDefault: companyDisabledCategories.has(category.id)
+                                ? t('profile.notifications.state.off', 'Off')
+                                : t('profile.notifications.state.on', 'On'),
+                              effective: effectiveEnabled
+                                ? t('profile.notifications.state.on', 'On')
+                                : t('profile.notifications.state.off', 'Off'),
+                            })}
                           </div>
                         </div>
                         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
@@ -317,7 +362,7 @@ const ProfilePage: React.FC = () => {
                               mode === 'inherit' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            Inherit
+                            {t('profile.notifications.state.inherit', 'Inherit')}
                           </button>
                           <button
                             type="button"
@@ -326,7 +371,7 @@ const ProfilePage: React.FC = () => {
                               mode === 'on' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            On
+                            {t('profile.notifications.state.on', 'On')}
                           </button>
                           <button
                             type="button"
@@ -335,7 +380,7 @@ const ProfilePage: React.FC = () => {
                               mode === 'off' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                             }`}
                           >
-                            Off
+                            {t('profile.notifications.state.off', 'Off')}
                           </button>
                         </div>
                       </div>
@@ -349,7 +394,9 @@ const ProfilePage: React.FC = () => {
                     disabled={notificationsSaving}
                     className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {notificationsSaving ? 'Saving...' : 'Save Notification Overrides'}
+                    {notificationsSaving
+                      ? t('profile.notifications.saving', 'Saving...')
+                      : t('profile.notifications.saveBtn', 'Save Notification Overrides')}
                   </button>
                   {notificationsMsg && (
                     <span className={`text-xs ${notificationsStatus === 'error' ? 'text-red-600' : 'text-green-600'}`}>

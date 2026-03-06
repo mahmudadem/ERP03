@@ -28,7 +28,40 @@
     "saveBtn": "Tercihleri Kaydet",
     "saving": "Kaydediliyor...",
     "saved": "Tercihler kaydedildi.",
-    "saveError": "Tercihler kaydedilemedi."
+    "saveError": "Tercihler kaydedilemedi.",
+    "notifications": {
+      "title": "Bildirim Geçersiz Kılmaları",
+      "subtitle": "Önce şirket varsayılanları uygulanır. Her kategoriyi kendi hesabınız için geçersiz kılabilirsiniz.",
+      "loading": "Bildirim tercihleri yükleniyor...",
+      "saveBtn": "Bildirim Geçersiz Kılmalarını Kaydet",
+      "saving": "Kaydediliyor...",
+      "saved": "Bildirim geçersiz kılmaları kaydedildi.",
+      "saveError": "Bildirim geçersiz kılmaları kaydedilemedi.",
+      "statusLine": "Şirket varsayılanı: {{companyDefault}} | Sizin için geçerli: {{effective}}",
+      "state": {
+        "on": "Açık",
+        "off": "Kapalı",
+        "inherit": "Devral"
+      },
+      "categories": {
+        "approval": {
+          "name": "Finansal Onaylar",
+          "desc": "Muhasebe iş akışında onay gerektiren bildirimler."
+        },
+        "custody": {
+          "name": "Zimmet Onayları",
+          "desc": "Size atanan zimmet onayı talepleri."
+        },
+        "system": {
+          "name": "Sistem Bilgisi",
+          "desc": "Genel bilgiler ve kritik olmayan sistem güncellemeleri."
+        },
+        "warning": {
+          "name": "Sistem Uyarıları",
+          "desc": "Uyarı ve alarm türündeki sistem bildirimleri."
+        }
+      }
+    }
   },
   "sidebar": {
     "accounting": "Muhasebe",
@@ -48,6 +81,7 @@
     "formsDesigner": "Form Tasarımcısı",
     "windowDesigner": "Pencere Tasarımcısı",
     "trialBalance": "Mizan",
+    "subgroupTagging": "Alt Grup Etiketleme",
     "accountStatement": "Hesap Ekstresi",
     "balanceSheet": "Bilanço",
     "generalLedger": "Defter-i Kebir",
@@ -78,6 +112,1336 @@
     "bundles": "Paketler",
     "notifications": "Bildirimler",
     "generalSettings": "Genel Ayarlar",
-    "companySettings": "Şirket Ayarları"
+    "companySettings": "Şirket Ayarları",
+    "tradingAccount": "Ticaret Hesab?",
+    "journal": "Yevmiye",
+    "aging": "Ya?land?rma",
+    "bankReconciliation": "Banka Mutabakat?",
+    "costCenterSummary": "Maliyet Merkezi ?zeti",
+    "budgetVsActual": "B?t?e ve Ger?ekle?en"
+  },
+  "reportContainer": {
+    "refresh": "Yenile",
+    "filters": "Filtreler",
+    "columns": "Sütunlar",
+    "visibility": "Görünürlük",
+    "configure": "{{title}} yapılandır",
+    "page": "Sayfa",
+    "rows": "Satır",
+    "total": "Toplam",
+    "referenceDate": "Ref. Tarih"
+  },
+  "companies": {
+    "title": "Şirketlerim",
+    "createHint": "Bir şirketiniz yoksa, oluşturmak için buraya tıklayın",
+    "createNew": "+ Yeni Şirket Oluştur",
+    "active": "Aktif",
+    "premiumPlan": "Prim Planı",
+    "sample": {
+      "name": "TechFlow Çözümleri",
+      "id": "Kimlik: CMP_12345"
+    }
+  },
+  "modulePlaceholders": {
+    "common": {
+      "underDevelopment": "Modül Geliştirme Aşamasında",
+      "underConstruction": "Modül Yapım Aşamasında"
+    },
+    "crm": {
+      "title": "CRM Genel Bakış",
+      "subtitle": "Müşteri ilişkilerini ve adayları yönetin.",
+      "newLead": "Yeni Aday",
+      "message": "CRM modülü şu anda geliştirme aşamasında. Lisansınız başarıyla etkinleştirildi!",
+      "stats": {
+        "totalCustomers": "Toplam Müşteri",
+        "activeLeads": "Aktif Adaylar",
+        "pendingEmails": "Bekleyen E-postalar",
+        "meetings": "Toplantılar"
+      }
+    },
+    "projects": {
+      "title": "Projeler Genel Bakış",
+      "subtitle": "Proje ilerlemesini, görevleri ve zaman çizelgesini takip edin.",
+      "createProject": "Proje Oluştur",
+      "message": "Projeler modülünün son dokunuşlarını yapıyoruz. Erişiminiz doğrulandı.",
+      "stats": {
+        "totalProjects": "Toplam Proje",
+        "pendingTasks": "Bekleyen Görevler",
+        "teamMembers": "Ekip Üyeleri",
+        "hoursLogged": "Kaydedilen Saat"
+      }
+    },
+    "purchase": {
+      "title": "Satınalma Genel Bakış",
+      "subtitle": "Tedarikçileri, siparişleri ve satınalma süreçlerini yönetin.",
+      "newOrder": "Yeni Sipariş",
+      "message": "Satınalma modülü aktif, ancak arayüz hâlâ tamamlanıyor. Yakında tekrar kontrol edin!",
+      "stats": {
+        "openOrders": "Açık Siparişler",
+        "inTransit": "Yoldaki Siparişler",
+        "billsToPay": "Ödenecek Faturalar",
+        "rfqs": "Fiyat Teklifleri"
+      }
+    },
+    "manufacturing": {
+      "title": "Üretim Genel Bakış",
+      "subtitle": "Üretim hatlarını ve iş emirlerini izleyin.",
+      "newWorkOrder": "Yeni İş Emri",
+      "message": "Üretim modülünün tam sürümü bir sonraki güncellemede gelecek. Modül lisansı aktif.",
+      "stats": {
+        "activeJobs": "Aktif İşler",
+        "workStations": "İş İstasyonları",
+        "completed": "Tamamlanan",
+        "issues": "Sorunlar"
+      }
+    },
+    "hr": {
+      "title": "İK ve Bordro",
+      "employeesTitle": "Çalışanlar",
+      "employeesDesc": "Çalışan dizini burada gösterilecek."
+    },
+    "inventory": {
+      "title": "Stok Genel Bakış",
+      "itemsTitle": "Stok Kalemleri",
+      "itemsDesc": "Stok ürün listesi burada gösterilecek."
+    },
+    "pos": {
+      "title": "Satış Noktası"
+    }
+  },
+  "actions": {
+    "close": "Kapat"
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "empty": "Bildirim yok",
+    "viewAll": "Tüm bildirimleri görüntüle",
+    "inbox": {
+      "filters": {
+        "all": "Tüm",
+        "unread": "Okunmamış",
+        "read": "Okundu"
+      },
+      "title": "Bildirimler",
+      "unreadCount": "{{count}} okunmamış bildirimleriniz var",
+      "markAllAsRead": "Tümünü okundu olarak işaretle",
+      "searchPlaceholder": "Bildirimleri ara...",
+      "loading": "Bildirimler yükleniyor...",
+      "emptyTitle": "Hepsi yakalandı!",
+      "emptyBody": "Hiçbir bildirim bulunamadı."
+    }
+  },
+  "instructions": {
+    "importantNotes": "Önemli Notlar"
+  },
+  "widget": {
+    "toggleBorder": "Kenarlığı Değiştir",
+    "toggleBackground": "Arka Planı Değiştir"
+  },
+  "companyAdmin": {
+    "shared": {
+      "companyAdmin": "Şirket Yöneticisi",
+      "users": "Kullanıcılar",
+      "roles": "Roller",
+      "create": "Yaratmak",
+      "edit": "Düzenlemek",
+      "cancel": "İptal etmek",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor...",
+      "system": "Sistem",
+      "custom": "Gelenek",
+      "remove": "Kaldırmak",
+      "reset": "Sıfırla",
+      "saveChanges": "Değişiklikleri Kaydet"
+    },
+    "users": {
+      "title": "Kullanıcı Yönetimi",
+      "inviteUser": "Kullanıcıyı Davet Et",
+      "searchPlaceholder": "Kullanıcıları ara...",
+      "count": "{{count}} kullanıcılar",
+      "owner": "Sahip",
+      "noRole": "Rol Yok",
+      "changeRole": "Rolü Değiştir",
+      "disableUser": "Kullanıcıyı Devre Dışı Bırak",
+      "enableUser": "Kullanıcıyı Etkinleştir",
+      "removeUser": "Kullanıcıyı Kaldır",
+      "assignRole": "Rol Ata",
+      "assigningRoleFor": "{{name}} için rol atanıyor",
+      "selectRole": "Rol Seçin",
+      "selectRolePlaceholder": "Bir rol seçin...",
+      "inviteNewUser": "Yeni Kullanıcı Davet Et",
+      "emailAddress": "E-posta Adresi *",
+      "firstName": "Ad",
+      "lastName": "Soyad",
+      "assignRoleRequired": "Rol Ata *",
+      "sending": "Gönderiliyor...",
+      "sendInvitation": "Davetiye Gönder",
+      "table": {
+        "user": "Kullanıcı",
+        "email": "E-posta",
+        "role": "Rol",
+        "status": "Durum",
+        "actions": "Eylemler"
+      },
+      "status": {
+        "active": "aktif",
+        "inactive": "pasif"
+      },
+      "empty": {
+        "noSearchMatches": "Aramanızla eşleşen kullanıcı yok",
+        "noUsersFound": "Kullanıcı bulunamadı",
+        "adjustSearch": "Arama terimlerinizi ayarlamayı deneyin",
+        "inviteHint": "Kullanıcıları şirketinize davet ederek başlayın."
+      },
+      "confirm": {
+        "disableVerb": "devre dışı bırakmak",
+        "enableVerb": "olanak vermek",
+        "toggleStatus": "{{action}} {{email}} yapmak istediğinizden emin misiniz?",
+        "removeUser": "{{email}}'yi şirketten çıkarmak istediğinizden emin misiniz?"
+      }
+    },
+    "roles": {
+      "title": "Rol Yönetimi",
+      "createTitle": "Rol Oluştur",
+      "createNew": "Yeni Rol Oluştur",
+      "createRole": "Rol Oluştur",
+      "searchPlaceholder": "Rol ara...",
+      "countFound": "{{count}} rol bulundu",
+      "roleNameRequired": "Rol Adı *",
+      "roleNamePlaceholder": "ör. Finans Müdürü",
+      "roleNameHint": "Bu rol için açıklayıcı bir ad seçin",
+      "description": "Tanım",
+      "descriptionPlaceholder": "Rolün sorumluluklarını ve erişim düzeyini açıklayın...",
+      "permissions": "Yetkiler",
+      "permissionsAfterCreate": "İzinler, rol oluşturulduktan sonra yapılandırılabilir",
+      "permissionsShownInEdit": "Mevcut izinler düzenleme ekranında görüntülenecektir",
+      "creating": "Oluşturuluyor...",
+      "confirmDelete": "\"{{roleName}}\" rolünü silmek istediğinizden emin misiniz?",
+      "table": {
+        "roleName": "Rol Adı",
+        "description": "Tanım",
+        "permissions": "Yetkiler",
+        "type": "Tip",
+        "actions": "Eylemler"
+      },
+      "editRole": "Rolü Düzenle",
+      "deleteRole": "Rolü Sil",
+      "empty": {
+        "noSearchMatches": "Aramanızla eşleşen rol yok",
+        "noRolesFound": "Hiçbir rol bulunamadı",
+        "adjustSearch": "Arama terimlerinizi ayarlamayı deneyin",
+        "createHint": "Kullanıcılarınız için yeni bir rol oluşturarak başlayın."
+      },
+      "editWithName": "{{name}}'yi düzenle",
+      "systemWarning": "Bu bir sistem rolüdür. Bazı izinler kaldırılamaz.",
+      "quickStartTemplate": "Şablondan Hızlı Başlangıç",
+      "startFromScratch": "-- Sıfırdan başla --",
+      "accountantPlaceholder": "örneğin, Muhasebeci",
+      "whatCanDo": "Bu rol ne yapabilir?",
+      "permissionsSelected": "Seçilen {{total}} izinlerin sayısı",
+      "selectedCount": "{{count}} seçildi",
+      "searchPermissions": "Yetki ara...",
+      "noPermissionMatches": "Aramanızla eşleşen izin yok.",
+      "saveRole": "Rolü Kaydet"
+    },
+    "settings": {
+      "title": "Ayarlar",
+      "companyLogo": "Şirket logosu",
+      "noLogo": "Logo Yok",
+      "wait": "Bekleyin...",
+      "logoHint": "Bu logo kontrol panelinizde, kuponlarınızda ve raporlarınızda görünecektir. En iyi sonuçları elde etmek için şeffaf arka plana sahip kare bir resim kullanın.",
+      "changeLogo": "Logoyu Değiştir",
+      "uploadLogo": "Logoyu Yükle",
+      "companyInformation": "Şirket Bilgileri",
+      "companyNameRequired": "Firma Adı *",
+      "taxId": "Vergi No",
+      "taxIdPlaceholder": "ör. 123456789",
+      "address": "Adres",
+      "addressPlaceholder": "Şirket adresi",
+      "financialSettings": "Finansal Ayarlar",
+      "baseCurrencyRequired": "Temel Para Birimi *",
+      "selectCurrency": "Para birimini seçin",
+      "fiscalYearStartMonth": "Mali Yıl Başlangıç ​​Ayı",
+      "fiscalYearEndMonth": "Mali Yıl Sonu Ayı",
+      "subscription": "Abonelik",
+      "currentPlan": "Mevcut Plan",
+      "manageSubscription": "Aboneliği Yönet",
+      "dateTimeSettings": "Tarih ve Saat Ayarları",
+      "companyTimezoneRequired": "Şirket Saat Dilimi *",
+      "preferredDateFormatRequired": "Tercih Edilen Tarih Formatı *",
+      "systemLanguageRequired": "Sistem Dili *",
+      "dateSettingsHint": "Bu ayarlar, tarihlerin tüm şirket raporlarında ve kuponlarında nasıl görüntüleneceğini etkileyecektir.",
+      "dangerZone": "Tehlikeli Alan",
+      "deleteCompany": "Şirketi Sil",
+      "deleteCompanyHint": "Bu şirketi ve ilişkili tüm verileri kalıcı olarak sil"
+    },
+    "bundles": {
+      "title": "Abonelik",
+      "subscription": "Abonelik",
+      "currentPlan": "Mevcut Plan",
+      "availablePlans": "Mevcut Planlar",
+      "modulesIncluded": "Dahil Moduller",
+      "featuresIncluded": "Dahil Ozellikler",
+      "includedModules": "Dahil Moduller:",
+      "current": "Mevcut",
+      "perMonth": "/ay",
+      "annualPrice": "veya yilda ${{annual}} (%{{savings}} tasarruf)",
+      "modules": "Moduller",
+      "features": "Ozellikler",
+      "noUpgradeOptions": "Yukseltme secenegi yok",
+      "highestPlan": "Zaten en yuksek plan seviyesindesiniz.",
+      "upgrading": "Yukseltiliyor...",
+      "upgradeTo": "{{bundleName}} planina yukselt",
+      "confirmUpgrade": "{{bundleName}} sürümüne geçmek istediğinizden emin misiniz?"
+    },
+    "features": {
+      "title": "Ozellikler",
+      "activeFeatures": "Aktif Ozellikler",
+      "loading": "Yukleniyor...",
+      "enabledCount": "{{count}} ozellik etkin",
+      "noFeatures": "Ozellik bulunamadi",
+      "noFeaturesDescription": "Abonelik planiniz icin ozellik bulunmuyor.",
+      "enabled": "Etkin",
+      "disabled": "Pasif"
+    },
+    "modules": {
+      "title": "Moduller",
+      "activeModules": "Aktif Moduller",
+      "loading": "Yukleniyor...",
+      "activeCount": "{{count}} modul aktif",
+      "noModules": "Modul bulunamadi",
+      "noModulesDescription": "Abonelik planiniz icin modul bulunmuyor.",
+      "active": "Aktif",
+      "inactive": "Pasif",
+      "mandatoryModule": "Zorunlu Modul",
+      "cannotBeDisabled": "Devre disi birakilamaz",
+      "processing": "Isleniyor...",
+      "disableModule": "Modulu Devre Disi Birak",
+      "enableModule": "Modulu Etkinlestir",
+      "confirmDisable": "{{moduleName}} modülünü devre dışı bırakmak istediğinizden emin misiniz?"
+    },
+    "overview": {
+      "title": "Genel Bakis",
+      "breadcrumb": "Genel Bakis",
+      "subscriptionPlanLabel": "{{plan}} Plani",
+      "companyInformation": "Sirket Bilgileri",
+      "companyName": "Sirket Adi",
+      "subscriptionPlan": "Abonelik Plani",
+      "currency": "Para Birimi",
+      "taxId": "Vergi No",
+      "notSet": "Belirlenmedi",
+      "noCompanyInfo": "Sirket bilgisi mevcut degil",
+      "editCompanySettings": "Sirket Ayarlarini Duzenle",
+      "quickActions": "Hizli Islemler",
+      "statistics": {
+        "roles": "Roller",
+        "users": "Kullanicilar",
+        "modules": "Moduller",
+        "features": "Ozellikler"
+      },
+      "actions": {
+        "inviteUser": "+ Yeni Kullanici Davet Et",
+        "createRole": "+ Yeni Rol Olustur",
+        "manageSubscription": "Aboneligi Yonet",
+        "configureModules": "Modulleri Yapilandir"
+      }
+    }
+  },
+  "superAdmin": {
+    "plans": {
+      "loading": "Yukleniyor...",
+      "title": "Plan Yonetimi",
+      "subtitle": "Kullanici abonelik planlarini yonetin",
+      "note": "Not: Planlar kullanici kaydi icin, Paketler sirket olusturma icindir",
+      "confirmDelete": "Bu planı silmek istediğinizden emin misiniz?",
+      "empty": "Plan bulunamadi. Baslamak icin ilk plani olusturun.",
+      "perMonth": "ay",
+      "columns": {
+        "id": "İD",
+        "name": "Ad",
+        "price": "Fiyat",
+        "status": "Durum",
+        "limits": "Limitler",
+        "actions": "Islemler"
+      },
+      "status": {
+        "active": "Aktif",
+        "inactive": "Pasif",
+        "deprecated": "Kaldirilacak"
+      },
+      "limits": {
+        "companies": "sirket",
+        "usersPerCompany": "kullanici/sirket",
+        "modules": "modul"
+      },
+      "fields": {
+        "id": "Kimlik *",
+        "name": "Ad *",
+        "description": "Aciklama",
+        "price": "Fiyat (USD/ay) *",
+        "status": "Durum *",
+        "limits": "Plan Limitleri",
+        "maxCompanies": "Maks Sirket",
+        "maxUsersPerCompany": "Sirket Basina Maks Kullanici",
+        "maxModulesAllowed": "Maks Modul",
+        "maxStorageMB": "Maks Depolama (MB)",
+        "maxTransactionsPerMonth": "Aylik Maks Islem"
+      },
+      "placeholders": {
+        "id": "or. free-tier",
+        "name": "or. Ucretsiz Plan",
+        "description": "Bu plani aciklayin..."
+      },
+      "modal": {
+        "createTitle": "Plan Olustur",
+        "editTitle": "Plani Duzenle"
+      },
+      "actions": {
+        "create": "Plan Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "cancel": "Iptal",
+        "update": "Guncelle"
+      },
+      "messages": {
+        "created": "Plan olusturuldu",
+        "updated": "Plan guncellendi",
+        "deleted": "Plan silindi",
+        "idNameRequired": "ID ve Ad zorunludur"
+      }
+    },
+    "bundles": {
+      "loading": "Yukleniyor...",
+      "title": "Paket Yonetimi",
+      "subtitle": "Is alanlariyla sirket modul paketlerini yonetin",
+      "confirmDelete": "Bu paketi silmek istediğinizden emin misiniz?",
+      "empty": "Paket bulunamadi. Baslamak icin ilk paketi olusturun.",
+      "columns": {
+        "id": "İD",
+        "name": "Ad",
+        "businessDomains": "Is Alanlari",
+        "modules": "Moduller",
+        "actions": "Islemler"
+      },
+      "fields": {
+        "id": "Kimlik *",
+        "name": "Ad *",
+        "description": "Aciklama",
+        "businessDomains": "Is Alanlari *",
+        "modulesIncluded": "Dahil Moduller *"
+      },
+      "placeholders": {
+        "id": "or. standard-restaurant",
+        "name": "or. Standart Restoran Paketi",
+        "description": "Bu paketi aciklayin..."
+      },
+      "noBusinessDomains": "Is alani yok. Once is alanlari olusturun.",
+      "noModules": "Modul yok. Once moduller olusturun.",
+      "modal": {
+        "createTitle": "Paket Olustur",
+        "editTitle": "Paketi Duzenle"
+      },
+      "actions": {
+        "create": "Paket Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "cancel": "Iptal",
+        "update": "Guncelle"
+      },
+      "messages": {
+        "created": "Paket olusturuldu",
+        "updated": "Paket guncellendi",
+        "deleted": "Paket silindi",
+        "idNameRequired": "ID ve Ad zorunludur"
+      }
+    },
+    "voucherTemplatesEditor": {
+      "titleCreate": "Sablon Olustur",
+      "titleEdit": "{{name}} Duzenle",
+      "actions": {
+        "cancel": "Iptal",
+        "saveTemplate": "Sablonu Kaydet",
+        "remove": "Kaldir",
+        "addField": "Alan Ekle",
+        "addColumn": "Sutun Ekle"
+      },
+      "tabs": {
+        "general": "Genel",
+        "headerFields": "Baslik Alanlari",
+        "lineFields": "Satir Alanlari",
+        "tableColumns": "Tablo Sutunlari",
+        "json": "JSON"
+      },
+      "fields": {
+        "newField": "Yeni Alan",
+        "label": "Etiket",
+        "dataProperty": "Ad (Veri Ozelligi)",
+        "type": "Tur",
+        "required": "Zorunlu",
+        "readonly": "Salt Okunur"
+      },
+      "fieldTypes": {
+        "text": "Metin",
+        "number": "Sayi",
+        "date": "Tarih",
+        "checkbox": "Onay Kutusu (Boolean)",
+        "relation": "Iliski",
+        "select": "Secim"
+      },
+      "general": {
+        "templateName": "Sablon Adi",
+        "code": "Kod (Benzersiz)",
+        "module": "Modul"
+      },
+      "modules": {
+        "accounting": "Muhasebe",
+        "inventory": "Stok"
+      },
+      "tableColumns": {
+        "description": "\"Satir Alanlari\"ndan hangi alanlarin tablo sutunu olacagini belirleyin.",
+        "fieldId": "Alan ID (Satir Alan ID ile ayni olmali)",
+        "width": "Genislik"
+      },
+      "jsonHelp": "Gelismis: Ham JSON tanimini dogrudan duzenleyin.",
+      "errors": {
+        "templateNotFound": "Sablon bulunamadi",
+        "saveFailed": "Kaydetme Basarisiz: ",
+        "invalidJson": "Gecersiz JSON"
+      }
+    },
+    "roleTemplates": {
+      "loading": "Yukleniyor...",
+      "title": "Sistem Rol Sablonlari",
+      "subtitle": "Sistem geneli rol sablonlarini yonetin",
+      "empty": "Rol sablonu bulunamadi. Baslamak icin ilk rol sablonunu olusturun.",
+      "columns": {
+        "roleName": "Rol Adi",
+        "permissions": "Izinler",
+        "actions": "Islemler"
+      },
+      "permissionsCount": "izin",
+      "actions": {
+        "createRoleTemplate": "Rol Sablonu Olustur",
+        "edit": "Duzenle",
+        "cancel": "Iptal",
+        "create": "Olustur"
+      },
+      "modal": {
+        "title": "Rol Sablonu Olustur"
+      },
+      "fields": {
+        "id": "İD",
+        "name": "Ad",
+        "description": "Aciklama"
+      },
+      "placeholders": {
+        "id": "or. template_manager",
+        "name": "or. Mudur",
+        "description": "Bu rol sablonunu aciklayin..."
+      },
+      "messages": {
+        "created": "Rol sablonu basariyla olusturuldu"
+      }
+    },
+    "modules": {
+      "loading": "Yukleniyor...",
+      "title": "Modul Yonetimi",
+      "subtitle": "Sistem genelindeki modul tanimlarini yonetin",
+      "confirmDelete": "Bu modülü silmek istediğinizden emin misiniz?",
+      "empty": "Modul bulunamadi. Baslamak icin ilk modulu olusturun.",
+      "protected": "Korumali",
+      "reservedHint": "Kullanilamaz: core, companyAdmin (ayrilmis)",
+      "columns": {
+        "id": "İD",
+        "name": "Ad",
+        "description": "Aciklama",
+        "actions": "Islemler"
+      },
+      "fields": {
+        "id": "Kimlik *",
+        "name": "Ad *",
+        "description": "Aciklama"
+      },
+      "placeholders": {
+        "id": "or. crm",
+        "name": "or. Musteri Iliskileri Yonetimi",
+        "description": "Bu modulu aciklayin..."
+      },
+      "modal": {
+        "createTitle": "Modul Olustur",
+        "editTitle": "Modul Duzenle"
+      },
+      "actions": {
+        "create": "Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "cancel": "Iptal",
+        "update": "Guncelle"
+      },
+      "errors": {
+        "cannotDeleteProtected": "Korumali modul silinemez: {{id}}",
+        "cannotCreateReservedId": "Bu ID ile modul olusturulamaz: {{id}}. Sistem tarafindan ayrilmistir."
+      },
+      "messages": {
+        "created": "Modul olusturuldu",
+        "updated": "Modul guncellendi",
+        "deleted": "Modul silindi",
+        "idNameRequired": "ID ve Ad zorunludur"
+      }
+    },
+    "permissions": {
+      "loading": "Yukleniyor...",
+      "title": "Izin Yonetimi",
+      "subtitle": "Sistem genelindeki izin tanimlarini yonetin",
+      "confirmDelete": "Bu izni silmek istediğinizden emin misiniz?",
+      "empty": "Izin bulunamadi. Baslamak icin ilk izni olusturun.",
+      "columns": {
+        "id": "İD",
+        "name": "Ad",
+        "description": "Aciklama",
+        "actions": "Islemler"
+      },
+      "fields": {
+        "id": "Kimlik *",
+        "name": "Ad *",
+        "description": "Aciklama"
+      },
+      "placeholders": {
+        "id": "or. accounting.view",
+        "name": "or. Muhasebe Goruntule",
+        "description": "Bu izni aciklayin..."
+      },
+      "modal": {
+        "createTitle": "Izin Olustur",
+        "editTitle": "Izni Duzenle"
+      },
+      "actions": {
+        "createPermission": "Izin Olustur",
+        "create": "Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "cancel": "Iptal",
+        "update": "Guncelle"
+      },
+      "messages": {
+        "created": "Izin olusturuldu",
+        "updated": "Izin guncellendi",
+        "deleted": "Izin silindi",
+        "idNameRequired": "ID ve Ad zorunludur"
+      }
+    },
+    "businessDomains": {
+      "loading": "Yukleniyor...",
+      "title": "Is Alani Yonetimi",
+      "subtitle": "Paketler icin is alani kategorilerini yonetin",
+      "confirmDelete": "Bu işletme alan adını silmek istediğinizden emin misiniz?",
+      "empty": "Is alani bulunamadi. Baslamak icin ilk alani olusturun.",
+      "columns": {
+        "id": "İD",
+        "name": "Ad",
+        "description": "Aciklama",
+        "actions": "Islemler"
+      },
+      "fields": {
+        "id": "Kimlik *",
+        "name": "Ad *",
+        "description": "Aciklama"
+      },
+      "placeholders": {
+        "id": "or. food-trading",
+        "name": "or. Gida Ticareti",
+        "description": "Bu is alanini aciklayin..."
+      },
+      "modal": {
+        "createTitle": "Is Alani Olustur",
+        "editTitle": "Is Alanini Duzenle"
+      },
+      "actions": {
+        "createDomain": "Alan Olustur",
+        "create": "Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil",
+        "cancel": "Iptal",
+        "update": "Guncelle"
+      },
+      "messages": {
+        "created": "Is alani olusturuldu",
+        "updated": "Is alani guncellendi",
+        "deleted": "Is alani silindi",
+        "idNameRequired": "ID ve Ad zorunludur"
+      }
+    },
+    "modulePermissionsEditor": {
+      "loading": "Editor yukleniyor...",
+      "title": "Modul Izinlerini Yonet",
+      "moduleLabel": "Modul",
+      "availablePermissions": "Mevcut Izinler (Kayit)",
+      "searchPlaceholder": "Izin ara...",
+      "noMatches": "Eslesme yok",
+      "noAvailablePermissions": "Kayitta kullanilabilir izin bulunamadi.",
+      "goToPermissionsRegistry": "Yeni izin olusturmak icin Izin Kaydina gidin.",
+      "assignedPermissions": "Atanmis Izinler",
+      "dragHint": "Ogeleri soldan buraya surukleyin",
+      "dragPermissionsHere": "Izinleri buraya surukleyin",
+      "autoAttach": "Global rollere otomatik ekle:",
+      "autoAttachPlaceholder": "or. OWNER, ADMIN (virgulle ayirin)",
+      "actions": {
+        "saveChanges": "Degisiklikleri Kaydet"
+      }
+    },
+    "usersManagement": {
+      "title": "Kullanici Yonetimi",
+      "subtitle": "Tum kullanicilari ve bagli sirketlerini yonetin",
+      "refresh": "Yenile",
+      "refreshing": "Yenileniyor...",
+      "searchPlaceholder": "Ad, e-posta veya ID ile ara...",
+      "loadingUsers": "Kullanicilar yukleniyor...",
+      "noUsers": "Kriterlerinize uyan kullanici bulunamadi",
+      "unnamedUser": "Adsiz Kullanici",
+      "joinedOn": "Katilma: {{date}}",
+      "companiesCount": "Sirketler ({{count}})",
+      "noCompaniesOwned": "Sahip olunan sirket yok",
+      "userFallback": "Kullanici",
+      "userCompaniesTitle": "{{name}} kullanicisinin sirketleri",
+      "currencyLabel": "Para Birimi: {{currency}}",
+      "stats": {
+        "totalUsers": "Toplam Kullanici",
+        "superAdmins": "Super Admin",
+        "regularUsers": "Normal Kullanici",
+        "totalCompanies": "Toplam Sirket"
+      },
+      "filters": {
+        "allRoles": "Tum Roller",
+        "usersOnly": "Sadece Kullanici",
+        "superAdminsOnly": "Sadece Super Admin"
+      },
+      "role": {
+        "superAdmin": "SÜPER YÖNETİCİ",
+        "user": "KULLANICI"
+      },
+      "actions": {
+        "impersonate": "Taklit Et",
+        "viewAllCompanies": "Tum {{count}} sirketi gor",
+        "demoteToUser": "Kullaniciya Dusur",
+        "promoteToSuperAdmin": "Super Admin Yap",
+        "close": "Kapat"
+      },
+      "confirm": {
+        "promote": "Bu kullanıcı SUPER_ADMIN konumuna yükseltilsin mi? Bu onlara tam sistem erişimi sağlayacaktır.",
+        "demote": "Bu SUPER_ADMIN, USER konumuna düşürülsün mü? Tüm sistem yöneticisi ayrıcalıklarını kaybedecekler.",
+        "startImpersonation": "Bu şirket için kimliğe bürünme oturumu başlatılsın mı?"
+      },
+      "messages": {
+        "promoted": "Kullanici SUPER_ADMIN yapildi",
+        "demoted": "Kullanici USER seviyesine dusuruldu",
+        "impersonationStarted": "Taklit oturumu baslatildi. Yenileniyor..."
+      }
+    },
+    "companies": {
+      "title": "Tum Sirketler",
+      "refresh": "Yenile",
+      "refreshing": "Yenileniyor...",
+      "loading": "Sirketler yukleniyor...",
+      "empty": "Sirket bulunamadi.",
+      "confirmImpersonate": "Bu şirketin kimliğine bürünmeye başlansın mı?",
+      "columns": {
+        "companyId": "Sirket ID",
+        "name": "Ad",
+        "ownerUid": "Sahip UID",
+        "created": "Olusturma",
+        "actions": "Islemler"
+      },
+      "actions": {
+        "impersonate": "Taklit Et"
+      },
+      "messages": {
+        "impersonationStarted": "Taklit baslatildi. Yonlendiriliyor..."
+      }
+    },
+    "users": {
+      "title": "Tum Kullanicilar",
+      "refresh": "Yenile",
+      "refreshing": "Yenileniyor...",
+      "loading": "Kullanicilar yukleniyor...",
+      "empty": "Kullanici bulunamadi.",
+      "confirmPromote": "Bu kullanıcı SUPER_ADMIN konumuna yükseltilsin mi?",
+      "confirmDemote": "Bu SUPER_ADMIN, USER konumuna düşürülsün mü?",
+      "columns": {
+        "userId": "Kullanici ID",
+        "email": "E-posta",
+        "globalRole": "Global Rol",
+        "actions": "Islemler"
+      },
+      "actions": {
+        "promote": "Yukselt",
+        "demote": "Dusur"
+      },
+      "messages": {
+        "promoted": "Kullanici SUPER_ADMIN yapildi",
+        "demoted": "Kullanici USER seviyesine dusuruldu"
+      }
+    },
+    "systemOverview": {
+      "title": "Sistem Ozeti",
+      "subtitle": "Kiracilar ve kaynaklarin ust duzey gorunumu",
+      "refresh": "Yenile",
+      "refreshing": "Yenileniyor...",
+      "loading": "Sistem ozeti yukleniyor...",
+      "noData": "Henuz veri yok.",
+      "quickActionsTitle": "Hizli Islemler",
+      "quickActionsSubtitle": "Super admin araclarina gecin",
+      "stats": {
+        "totalUsers": "Toplam Kullanici",
+        "totalCompanies": "Toplam Sirket",
+        "totalVouchers": "Toplam Fis",
+        "inventoryItems": "Stok Kalemleri",
+        "roles": "Roller"
+      },
+      "actions": {
+        "manageUsers": "Kullanicilari Yonet",
+        "manageCompanies": "Sirketleri Yonet"
+      }
+    },
+    "templates": {
+      "title": "Sablonlar",
+      "subtitle": "Sihirbaz sablonlari, hesap plani sablonlari ve para birimleri.",
+      "loading": "Yukleniyor...",
+      "loadFailed": "Yukleme basarisiz: {{message}}",
+      "unknownError": "Bilinmeyen hata",
+      "empty": "Kayit bulunamadi.",
+      "sections": {
+        "wizardTemplates": "Sihirbaz Sablonlari",
+        "coaTemplates": "Hesap Plani Sablonlari",
+        "currencies": "Para Birimleri"
+      },
+      "columns": {
+        "name": "Ad",
+        "models": "Modeller",
+        "id": "İD",
+        "code": "Kod"
+      }
+    },
+    "roleEditor": {
+      "loading": "Yukleniyor...",
+      "title": "Rol Duzenle",
+      "name": "Ad",
+      "moduleBundles": "Modul Paketleri",
+      "explicitPermissions": "Acik Izinler",
+      "resolvedPreview": "Cozumlenmis Onizleme (salt okunur)",
+      "save": "Kaydet"
+    },
+    "modulePermissionsList": {
+      "loading": "Yukleniyor...",
+      "title": "Modul Izinleri",
+      "edit": "Duzenle",
+      "permissionsCount": "{{count}} izin"
+    },
+    "voucherTemplates": {
+      "title": "Sistem Fis Sablonlari",
+      "loading": "Yukleniyor...",
+      "empty": "Sistem sablonu bulunamadi.",
+      "columns": {
+        "name": "Ad",
+        "code": "Kod",
+        "module": "Modul",
+        "actions": "Islemler"
+      },
+      "actions": {
+        "createTemplate": "Sablon Olustur",
+        "edit": "Duzenle"
+      }
+    }
+  },
+  "onboarding": {
+    "landing": {
+      "authFailed": "Kimlik dogrulama basarisiz",
+      "nav": {
+        "features": "Ozellikler",
+        "solutions": "Cozumler",
+        "pricing": "Fiyatlandirma",
+        "enterprise": "Kurumsal",
+        "login": "Giris yap",
+        "getStarted": "Basla"
+      },
+      "badge": "Yeni ERP Sistemi v3.0",
+      "hero": {
+        "titlePrefix": "Ihtiyaciniz olan her sey",
+        "titleHighlight": "yonetmek",
+        "titleSuffix": "icin burada.",
+        "subtitle": "Modern isletmeler icin gelistirilmis hepsi bir arada platform. Muhasebe, operasyon ve IK araclari entegre.",
+        "freeTrial": "Ucretsiz Deneme",
+        "noCard": "Kredi karti gerekmez"
+      },
+      "authTabs": {
+        "createAccount": "HESAP OLUSTUR",
+        "signIn": "GIRIS YAP"
+      },
+      "auth": {
+        "joinTitle": "ERP03e Katilin",
+        "welcomeTitle": "Tekrar hos geldiniz",
+        "joinSubtitle": "Bugun bizimle baslayin.",
+        "welcomeSubtitle": "Devam etmek icin bilgilerinizi girin."
+      },
+      "form": {
+        "firstName": "Ad",
+        "firstPlaceholder": "Ad",
+        "lastName": "Soyad",
+        "lastPlaceholder": "Soyad",
+        "email": "E-posta Adresi",
+        "emailPlaceholder": "email@sirket.com",
+        "password": "Sifre",
+        "submitCreate": "Hesap Olustur",
+        "submitSignIn": "Giris Yap"
+      },
+      "admin": {
+        "prefix": "Sistem Yöneticisi?",
+        "portal": "Portal Erisimi"
+      },
+      "legal": {
+        "prefix": "Devam ederek su kosullari kabul edersiniz:",
+        "terms": "Kosullar",
+        "privacy": "Gizlilik"
+      },
+      "stats": {
+        "industryBundles": "Sektor Paketi",
+        "activeOrgs": "Aktif Kurulus",
+        "uptimeSla": "Calisma SLA",
+        "globalSupport": "Global Destek"
+      },
+      "features": {
+        "titlePrefix": "Olceklemek icin ihtiyaciniz olan",
+        "titleHighlight": "her sey",
+        "subtitle": "Moduler, olceklenebilir ve kolay. Ihtiyaciniz olan uygulamalari secin, buyudukce ekleyin."
+      },
+      "cards": {
+        "financials": {
+          "title": "Finans",
+          "desc": "Muhasebe, faturalama ve giderleri otomatiklestirin."
+        },
+        "humanCapital": {
+          "title": "Insan Kaynagi",
+          "desc": "Bordro, devam ve ise alim sureclerini yonetin."
+        },
+        "globalOps": {
+          "title": "Global Operasyon",
+          "desc": "Coklu para birimi, dil ve sirket destegi."
+        }
+      }
+    },
+    "companyWizard": {
+      "basic": {
+        "errors": {
+          "invalidImageType": "Sadece PNG, JPG, ICO veya WEBP kabul edilir.",
+          "logoSize": "Logo 5MB'dan kucuk olmalidir.",
+          "logoProcessFailed": "Gorsel islenemedi. Lutfen baska bir dosya deneyin.",
+          "companyNameRequired": "Sirket adi zorunludur",
+          "countryRequired": "Lutfen bir ulke secin"
+        },
+        "fields": {
+          "companyName": "Sirket Adi",
+          "country": "Ulke / Bolge",
+          "description": "Aciklama",
+          "companyLogo": "Sirket Logosu"
+        },
+        "placeholders": {
+          "companyName": "or. Acme Corp",
+          "searchCountries": "Ulke ara...",
+          "description": "Sirketinizi kisaca aciklayin..."
+        },
+        "optional": "Opsiyonel",
+        "noCountriesFound": "Ulke bulunamadi",
+        "optimizing": "Optimize ediliyor...",
+        "actions": {
+          "upload": "Yukle",
+          "removeLogo": "Logoyu kaldir",
+          "cancel": "Iptal",
+          "nextStep": "Sonraki Adim"
+        },
+        "dragDrop": "veya surukle birak",
+        "allowedFormats": "PNG, JPG, ICO, WEBP",
+        "readyForDocuments": "Belgeler icin hazir",
+        "autoConfigEnabled": "Otomatik Yapilandirma Acik",
+        "smartDefaultsIntro": "{{country}} temel alinarak su akilli varsayilanlar uygulandi:",
+        "defaults": {
+          "currency": "Para Birimi",
+          "language": "Dil",
+          "timezone": "Saat Dilimi",
+          "dateFormat": "Tarih Formati"
+        },
+        "languages": {
+          "arabic": "Arapca",
+          "turkish": "Turkce",
+          "english": "Ingilizce"
+        },
+        "customizeLater": "Bu ayarlar daha sonra sirket profilinizden degistirilebilir."
+      }
+    }
+  },
+  "rbac": {
+    "rolesList": {
+      "loading": "Roller yukleniyor...",
+      "title": "Sirket Rolleri",
+      "confirmDelete": "Bu rolü silmek istediğinizden emin misiniz?",
+      "permissionsCount": "{{count}} izin",
+      "columns": {
+        "name": "Ad",
+        "description": "Aciklama",
+        "permissions": "Izinler",
+        "actions": "Islemler"
+      },
+      "actions": {
+        "createRole": "Rol Olustur",
+        "edit": "Duzenle",
+        "delete": "Sil"
+      },
+      "messages": {
+        "deleted": "Rol silindi"
+      }
+    },
+    "editRole": {
+      "loading": "Yukleniyor...",
+      "titleCreate": "Rol Olustur",
+      "titleEdit": "Rol Duzenle",
+      "loadFromTemplate": "Sablondan Yukle",
+      "selectTemplate": "-- Sablon Secin --",
+      "roleName": "Rol Adi",
+      "roleNamePlaceholder": "or. Muhasebeci",
+      "description": "Aciklama",
+      "descriptionPlaceholder": "Istege bagli aciklama",
+      "permissions": "Izinler",
+      "actions": {
+        "saveRole": "Rolu Kaydet",
+        "cancel": "Iptal"
+      }
+    },
+    "assignUsers": {
+      "loading": "Yukleniyor...",
+      "title": "Kullanici Rollerini Ata",
+      "selectRole": "-- Rol Secin --",
+      "noRole": "Rol yok",
+      "yes": "Evet",
+      "no": "Hayir",
+      "confirmRemoveUser": "Bu kullanıcıyı şirketten çıkarmak istediğinizden emin misiniz?",
+      "columns": {
+        "userId": "Kullanici ID",
+        "currentRole": "Mevcut Rol",
+        "owner": "Sahip",
+        "actions": "Islemler"
+      },
+      "actions": {
+        "removeUser": "Kullaniciyi Kaldir"
+      },
+      "messages": {
+        "userRemoved": "Kullanici basariyla kaldirildi",
+        "roleAssigned": "Rol basariyla atandi"
+      }
+    }
+  },
+  "auth": {
+    "loading": "Yukleniyor...",
+    "loadingResource": "Kaynak yukleniyor...",
+    "forbidden": {
+      "title": "Erisim Engellendi",
+      "description": "Bu sayfaya erisim izniniz yok.",
+      "goBack": "Geri Don"
+    },
+    "login": {
+      "title": "Giris",
+      "email": "E-posta",
+      "password": "Sifre",
+      "submit": "Giris",
+      "loggingIn": "Giris yapiliyor...",
+      "error": "Giris basarisiz. Lutfen bilgilerinizi kontrol edin."
+    },
+    "admin": {
+      "title": "Sistem Yoneticisi",
+      "subtitle": "Sistem yonetimine guvenli erisim",
+      "restricted": "Kisitli alan. Yalnizca yetkili personel.",
+      "email": "Yonetici E-postasi",
+      "password": "Sifre",
+      "authenticating": "Dogrulaniyor...",
+      "accessSystem": "Sisteme Gir",
+      "regularUserPrefix": "Düzenli kullanıcı mı?",
+      "signInHere": "Buradan giris yapin",
+      "securityNotice": "Tum erisim denemeleri guvenlik icin kaydedilir ve izlenir.",
+      "error": "Gecersiz yonetici kimlik bilgileri. Erisim reddedildi."
+    },
+    "moduleInit": {
+      "checkingStatus": "Modul durumu kontrol ediliyor...",
+      "redirecting": "Kurulum sihirbazina yonlendiriliyor..."
+    }
+  },
+  "widgets": {
+    "managerTitle": "Çalışma Alanı Bileşenleri",
+    "approvalMode": {
+      "label": "Onay Modu",
+      "strict": "Siki",
+      "flexible": "Esnek"
+    },
+    "baseCurrency": {
+      "label": "Para Birimi",
+      "none": "YOK"
+    },
+    "fiscalYear": {
+      "label": "Mali Yil",
+      "value": "MY {{year}}"
+    },
+    "uiMode": {
+      "windows": "Pencereler",
+      "web": "ağ"
+    },
+    "notes": {
+      "label": "Notlar",
+      "clickMessage": "Notlar bileşenine tıklandı. Henüz tam uygulanmadı."
+    },
+    "alarm": {
+      "label": "Alarm",
+      "clickMessage": "Alarm bileşenine tıklandı. Bir alarm ekleyin."
+    },
+    "company": {
+      "none": "Sirket Yok",
+      "logoAlt": "Sirket Logosu"
+    },
+    "types": {
+      "clock": "Saat",
+      "date": "Tarih",
+      "notes": "Notlar",
+      "alarm": "Alarm",
+      "company-logo": "Sirket",
+      "fiscal-year": "Mali Yil",
+      "base-currency": "Temel Para Birimi",
+      "approval-mode": "Onay Modu",
+      "ui-mode": "Arayuz Modu"
+    }
+  },
+  "shell": {
+    "superAdmin": {
+      "title": "Süper Yönetici",
+      "systemDashboard": "Sistem Panosu",
+      "superAdministrator": "Super Yonetici",
+      "logout": "Cikis Yap",
+      "confirmLogout": "Oturumu kapatmak istediğinizden emin misiniz?",
+      "systemAdminPanel": "Sistem Yonetim Paneli",
+      "nav": {
+        "overview": "Genel Bakis",
+        "users": "Kullanici Yonetimi",
+        "companies": "Sirketler",
+        "businessDomains": "Is Alanlari",
+        "modules": "Moduller",
+        "permissions": "Izinler",
+        "bundles": "Paketler",
+        "plans": "Planlar"
+      }
+    }
+  },
+  "companySelector": {
+    "title": "Sirketleriniz",
+    "subtitle": "Devam etmek icin bir calisma alani secin",
+    "refresh": "Yenile",
+    "signOut": "Cikis Yap",
+    "unableToLoad": "Sirketler yuklenemedi",
+    "tryAgain": "Tekrar Dene",
+    "welcomeTitle": "ERP Sistemine Hos Geldiniz",
+    "welcomeDescription": "Henuz sirketiniz yok. Baslamak icin ilk sirketinizi olusturun.",
+    "createNewCompany": "Yeni Sirket Olustur",
+    "card": {
+      "member": "Uye",
+      "business": "Isletme",
+      "created": "Olusturma",
+      "lastActive": "Son aktif",
+      "enterWorkspace": "Calisma Alanina Gir"
+    }
+  },
+  "moduleSetupCard": {
+    "title": "Baslayin",
+    "subtitle": "Calisma alaninizi etkinlestirmek icin kurulu uygulamalarinizi tamamlayin.",
+    "setupProgress": "Kurulum Ilerlemesi",
+    "pending": "Beklemede",
+    "configureApp": "Uygulamayi Yapilandir",
+    "modules": {
+      "accounting": {
+        "name": "Muhasebe",
+        "description": "Hesap Plani, Mali Yillar, Para Birimleri"
+      },
+      "inventory": {
+        "name": "Stok",
+        "description": "Depolar, Urun Kategorileri, Olcu Birimi"
+      },
+      "hr": {
+        "name": "Insan Kaynaklari",
+        "description": "Departmanlar, Calisanlar, Pozisyonlar"
+      },
+      "pos": {
+        "name": "Satis Noktasi",
+        "description": "POS Terminalleri, Odeme Yontemleri"
+      },
+      "companyAdmin": {
+        "name": "Sirket Yonetimi",
+        "description": "Sirket Ayarlari, Izinler"
+      },
+      "crm": {
+        "name": "CRM",
+        "description": "Pipeline, Satis Ekipleri, Kaynaklar"
+      },
+      "invoicing": {
+        "name": "Faturalama",
+        "description": "Vergi Kurallari, Vade Kosullari, Sablonlar"
+      },
+      "defaultDescription": "Modul kurulumunu tamamlayin"
+    }
+  },
+  "moduleSetupModal": {
+    "required": "Zorunlu",
+    "notConfigured": "Yapilandirilmadi",
+    "configurationRequired": "Yapilandirma Gerekli",
+    "configurationRequiredDescription": "Bu modul is surecleri icin kritiktir ve kullanmadan once yapilandirilmalidir.",
+    "quickSetupIncludes": "Hizli Kurulum Icerir:",
+    "startWizard": "Yapilandirma Sihirbazini Baslat",
+    "cancel": "Iptal",
+    "skipForNow": "Simdilik Atla",
+    "requiredFooter": "Bu modulu daha sonra panodan yapilandirabilirsiniz.",
+    "optionalFooter": "Bu modulu istediginiz zaman ayarlardan yapilandirabilirsiniz.",
+    "modules": {
+      "accounting": {
+        "name": "Muhasebe",
+        "description": "Finanslari izlemek, islemleri yonetmek ve raporlar olusturmak icin muhasebe temelini kurun.",
+        "steps": [
+          "Hesap Planini Yapilandir",
+          "Mali Yili Belirle",
+          "Varsayilan Para Birimi Sec"
+        ]
+      },
+      "companyAdmin": {
+        "name": "Sirket Yonetimi",
+        "description": "Sirket ayarlarini, izinleri ve kullanici erisimini tamamlayin.",
+        "steps": [
+          "Sirket Profilini Tamamla",
+          "Kullanici Rollerini Ayarla",
+          "Izinleri Yapilandir"
+        ]
+      },
+      "inventory": {
+        "name": "Stok",
+        "description": "Depo yonetimi, urun kategorileri ve stok ayarlarini yapilandirin.",
+        "steps": [
+          "Depo Olustur",
+          "Urun Kategorilerini Ayarla",
+          "Olcu Birimlerini Tanimla"
+        ]
+      },
+      "hr": {
+        "name": "Insan Kaynaklari",
+        "description": "Organizasyon yapisi, departmanlar ve calisan yonetimini kurun.",
+        "steps": [
+          "Departman Olustur",
+          "Pozisyonlari Tanimla",
+          "Devam Ayarlarini Yapilandir"
+        ]
+      },
+      "pos": {
+        "name": "Satis Noktasi",
+        "description": "POS terminalleri, odeme yontemleri ve kasa akisini yapilandirin.",
+        "steps": [
+          "POS Terminallerini Ayarla",
+          "Odeme Yontemlerini Yapilandir",
+          "Urun Kategorilerini Tanimla"
+        ]
+      },
+      "crm": {
+        "name": "CRM",
+        "description": "Satis hatti, ekipler ve lead sureclerini kurun.",
+        "steps": [
+          "Satis Pipeline Olustur",
+          "Satis Ekiplerini Ayarla",
+          "Lead Kaynaklarini Yapilandir"
+        ]
+      },
+      "invoicing": {
+        "name": "Faturalama",
+        "description": "Fatura sablonlari, vergi kurallari ve odeme kosullarini yapilandirin.",
+        "steps": [
+          "Vergi Kurallarini Ayarla",
+          "Odeme Kosullarini Tanimla",
+          "Fatura Sablonlarini Ozellestir"
+        ]
+      },
+      "defaultDescription": "Bu modul kullanmadan once yapilandirilmalidir.",
+      "defaultStep": "Modul kurulumunu tamamlayin"
+    }
+  },
+  "settings": {
+    "appearance": {
+      "title": "Dış görünüş",
+      "placeholder": "Tema yapılandırma ayarları burada görünecektir."
+    },
+    "home": {
+      "title": "Sistem Ayarları"
+    },
+    "sidebar": {
+      "title": "Menü Yapılandırması",
+      "placeholder": "Kenar çubuğu öğelerinin görünürlüğünü burada yapılandırın."
+    },
+    "approval": {
+      "loading": "Ayarlar yükleniyor...",
+      "title": "Onay İş Akışı Ayarları",
+      "strictMode": {
+        "title": "Katı Onay Modu",
+        "description1": "Etkinleştirildiğinde, kuponlar Taslak olarak başlar ve kilitlenebilmeleri için açıkça onaya gönderilmeleri ve ardından onaylanmaları gerekir.",
+        "description2": "Devre dışı bırakıldığında (Esnek Mod), kupon oluşturmak otomatik olarak Onaylandı olarak ayarlanır."
+      },
+      "save": "Yapılandırmayı Kaydet"
+    },
+    "notifications": {
+      "categories": {
+        "approval": {
+          "name": "Mali Onaylar",
+          "desc": "Bir kupon onayınızı gerektirdiğinde."
+        },
+        "custody": {
+          "name": "Saklama Onayları",
+          "desc": "Bir işlemde bir hesabın saklayıcısı olarak atandığınızda."
+        },
+        "system": {
+          "name": "Sistem Bilgisi",
+          "desc": "Genel sistem bildirimleri ve kritik olmayan güncellemeler."
+        },
+        "warning": {
+          "name": "Sistem Uyarıları",
+          "desc": "Sistem durumuna, reddedilen kuponlara veya diğer uyarılara ilişkin uyarılar."
+        }
+      },
+      "saved": "Şirket bildirim varsayılanları kaydedildi",
+      "title": "Şirket Bildirim Varsayılanları",
+      "subtitle": "{{company}} bölgesindeki tüm kullanıcılar için varsayılan bildirim politikası.",
+      "save": "Şirket Varsayılanlarını Kaydet",
+      "eventCategories": "Etkinlik Kategorileri",
+      "hint": "Kategorileri bu şirketteki tüm kullanıcılar için varsayılan olarak kapatmak için burada devre dışı bırakın. Kullanıcılar yine de profillerinde bu varsayılanları geçersiz kılabilir."
+    }
+  },
+  "success": {
+    "SAVE": "Başarıyla kaydedildi"
+  },
+  "companyWizard": {
+    "errors": {
+      "submitStep": "Adım gönderilemedi",
+      "completeWizard": "Sihirbaz tamamlanamadı",
+      "missingSession": "Eksik oturum. Lütfen sihirbazı yeniden başlatın."
+    },
+    "success": {
+      "companyCreated": "Şirket başarıyla oluşturuldu"
+    },
+    "actions": {
+      "goToStart": "Sihirbaz Başlat'a git"
+    },
+    "loadingStep": "Sihirbaz adımı yükleniyor...",
+    "selectModel": {
+      "title": "Şirket Oluştur",
+      "subtitle": "Başlamak için bir iş modeli seçin. İhtiyaçlarınıza uyacak şekilde modülleri daha sonra istediğiniz zaman ekleyebilir veya devre dışı bırakabilirsiniz.",
+      "companyName": "Firma Adı",
+      "model": "Modeli",
+      "selectModel": "Bir model seçin",
+      "starting": "Başlangıç...",
+      "startWizard": "Sihirbazı Başlat"
+    }
   }
 }

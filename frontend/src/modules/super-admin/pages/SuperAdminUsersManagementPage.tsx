@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Users, Building2, Shield, Crown, Search, Filter, ChevronRight, Mail, Calendar } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
+import { useTranslation } from 'react-i18next';
 
 interface UserWithCompanies extends SuperAdminUser {
   companies?: SuperAdminCompany[];
@@ -11,6 +12,7 @@ interface UserWithCompanies extends SuperAdminUser {
 }
 
 export default function SuperAdminUsersManagementPage() {
+  const { t } = useTranslation('common');
   const [users, setUsers] = useState<UserWithCompanies[]>([]);
   const [companies, setCompanies] = useState<SuperAdminCompany[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,10 +52,10 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handlePromote = async (userId: string) => {
-    if (!window.confirm('Promote this user to SUPER_ADMIN? This will grant them full system access.')) return;
+    if (!window.confirm(t('superAdmin.usersManagement.confirm.promote'))) return;
     try {
       await superAdminApi.promoteUser(userId);
-      errorHandler.showSuccess('User promoted to SUPER_ADMIN');
+      errorHandler.showSuccess(t('superAdmin.usersManagement.messages.promoted'));
       loadData();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -61,10 +63,10 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handleDemote = async (userId: string) => {
-    if (!window.confirm('Demote this SUPER_ADMIN to USER? They will lose all system admin privileges.')) return;
+    if (!window.confirm(t('superAdmin.usersManagement.confirm.demote'))) return;
     try {
       await superAdminApi.demoteUser(userId);
-      errorHandler.showSuccess('User demoted to USER');
+      errorHandler.showSuccess(t('superAdmin.usersManagement.messages.demoted'));
       loadData();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -72,12 +74,12 @@ export default function SuperAdminUsersManagementPage() {
   };
 
   const handleImpersonate = async (companyId: string) => {
-    if (!window.confirm('Start impersonation session for this company?')) return;
+    if (!window.confirm(t('superAdmin.usersManagement.confirm.startImpersonation'))) return;
     try {
       const { impersonationToken } = await superAdminApi.startImpersonation(companyId);
       // Store the impersonation token
       sessionStorage.setItem('impersonationToken', impersonationToken);
-      errorHandler.showSuccess('Impersonation session started. Reloading...');
+      errorHandler.showSuccess(t('superAdmin.usersManagement.messages.impersonationStarted'));
       window.location.reload();
     } catch (error: any) {
       errorHandler.showError(error);
@@ -98,25 +100,25 @@ export default function SuperAdminUsersManagementPage() {
 
   const statsCards = [
     {
-      title: 'Total Users',
+      title: t('superAdmin.usersManagement.stats.totalUsers'),
       value: users.length,
       icon: Users,
       gradient: 'from-blue-500 to-cyan-500',
     },
     {
-      title: 'Super Admins',
+      title: t('superAdmin.usersManagement.stats.superAdmins'),
       value: users.filter(u => u.globalRole === 'SUPER_ADMIN').length,
       icon: Crown,
       gradient: 'from-purple-500 to-pink-500',
     },
     {
-      title: 'Regular Users',
+      title: t('superAdmin.usersManagement.stats.regularUsers'),
       value: users.filter(u => u.globalRole === 'USER').length,
       icon: Shield,
       gradient: 'from-green-500 to-emerald-500',
     },
     {
-      title: 'Total Companies',
+      title: t('superAdmin.usersManagement.stats.totalCompanies'),
       value: companies.length,
       icon: Building2,
       gradient: 'from-orange-500 to-red-500',
@@ -130,9 +132,9 @@ export default function SuperAdminUsersManagementPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-              Users Management
+              {t('superAdmin.usersManagement.title')}
             </h1>
-            <p className="text-slate-600 mt-1">Manage all users and their associated companies</p>
+            <p className="text-slate-600 mt-1">{t('superAdmin.usersManagement.subtitle')}</p>
           </div>
           <Button 
             variant="ghost" 
@@ -144,10 +146,10 @@ export default function SuperAdminUsersManagementPage() {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
-                Refreshing...
+                {t('superAdmin.usersManagement.refreshing')}
               </>
             ) : (
-              'Refresh'
+              t('superAdmin.usersManagement.refresh')
             )}
           </Button>
         </div>
@@ -183,7 +185,7 @@ export default function SuperAdminUsersManagementPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by name, email, or ID..."
+                placeholder={t('superAdmin.usersManagement.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -198,9 +200,9 @@ export default function SuperAdminUsersManagementPage() {
                 onChange={(e) => setFilterRole(e.target.value as any)}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
               >
-                <option value="ALL">All Roles</option>
-                <option value="USER">Users Only</option>
-                <option value="SUPER_ADMIN">Super Admins Only</option>
+                <option value="ALL">{t('superAdmin.usersManagement.filters.allRoles')}</option>
+                <option value="USER">{t('superAdmin.usersManagement.filters.usersOnly')}</option>
+                <option value="SUPER_ADMIN">{t('superAdmin.usersManagement.filters.superAdminsOnly')}</option>
               </select>
             </div>
           </div>
@@ -212,13 +214,13 @@ export default function SuperAdminUsersManagementPage() {
             <div className="col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
               <div className="flex items-center justify-center gap-3 text-slate-500">
                 <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-500 border-t-transparent" />
-                <span className="text-lg">Loading users...</span>
+                <span className="text-lg">{t('superAdmin.usersManagement.loadingUsers')}</span>
               </div>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
               <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 text-lg">No users found matching your criteria</p>
+              <p className="text-slate-500 text-lg">{t('superAdmin.usersManagement.noUsers')}</p>
             </div>
           ) : (
             filteredUsers.map((user) => (
@@ -236,7 +238,7 @@ export default function SuperAdminUsersManagementPage() {
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-semibold text-slate-900 truncate">
-                        {user.name || 'Unnamed User'}
+                        {user.name || t('superAdmin.usersManagement.unnamedUser')}
                       </h3>
                       <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
                         <Mail className="w-4 h-4" />
@@ -245,7 +247,7 @@ export default function SuperAdminUsersManagementPage() {
                       {user.createdAt && (
                         <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                           <Calendar className="w-3 h-3" />
-                          <span>Joined {formatCompanyDate(user.createdAt, null)}</span>
+                          <span>{t('superAdmin.usersManagement.joinedOn', { date: formatCompanyDate(user.createdAt, null) })}</span>
                         </div>
                       )}
                     </div>
@@ -256,12 +258,12 @@ export default function SuperAdminUsersManagementPage() {
                     {user.globalRole === 'SUPER_ADMIN' ? (
                       <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                         <Crown className="w-3 h-3" />
-                        SUPER ADMIN
+                        {t('superAdmin.usersManagement.role.superAdmin')}
                       </div>
                     ) : (
                       <div className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
                         <Shield className="w-3 h-3" />
-                        USER
+                        {t('superAdmin.usersManagement.role.user')}
                       </div>
                     )}
                   </div>
@@ -271,7 +273,7 @@ export default function SuperAdminUsersManagementPage() {
                 <div className="mb-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
                     <Building2 className="w-4 h-4" />
-                    <span>Companies ({user.companiesCount || 0})</span>
+                    <span>{t('superAdmin.usersManagement.companiesCount', { count: user.companiesCount || 0 })}</span>
                   </div>
                   {user.companies && user.companies.length > 0 ? (
                     <div className="space-y-2">
@@ -290,7 +292,7 @@ export default function SuperAdminUsersManagementPage() {
                             onClick={() => handleImpersonate(company.id)}
                             className="opacity-0 group-hover/company:opacity-100 transition-opacity"
                           >
-                            Impersonate
+                            {t('superAdmin.usersManagement.actions.impersonate')}
                           </Button>
                         </div>
                       ))}
@@ -299,13 +301,13 @@ export default function SuperAdminUsersManagementPage() {
                           onClick={() => setSelectedUser(user)}
                           className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
                         >
-                          View all {user.companies.length} companies
+                          {t('superAdmin.usersManagement.actions.viewAllCompanies', { count: user.companies.length })}
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500 italic">No companies owned</p>
+                    <p className="text-sm text-slate-500 italic">{t('superAdmin.usersManagement.noCompaniesOwned')}</p>
                   )}
                 </div>
 
@@ -318,7 +320,7 @@ export default function SuperAdminUsersManagementPage() {
                       onClick={() => handleDemote(user.id)}
                       className="flex-1"
                     >
-                      Demote to User
+                      {t('superAdmin.usersManagement.actions.demoteToUser')}
                     </Button>
                   ) : (
                     <Button
@@ -326,7 +328,7 @@ export default function SuperAdminUsersManagementPage() {
                       onClick={() => handlePromote(user.id)}
                       className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                     >
-                      Promote to Super Admin
+                      {t('superAdmin.usersManagement.actions.promoteToSuperAdmin')}
                     </Button>
                   )}
                 </div>
@@ -348,7 +350,7 @@ export default function SuperAdminUsersManagementPage() {
           >
             <div className="sticky top-0 bg-white border-b border-slate-200 p-6 z-10">
               <h2 className="text-2xl font-bold text-slate-900">
-                {selectedUser.name || 'User'}'s Companies
+                {t('superAdmin.usersManagement.userCompaniesTitle', { name: selectedUser.name || t('superAdmin.usersManagement.userFallback') })}
               </h2>
               <p className="text-slate-600 text-sm mt-1">{selectedUser.email}</p>
             </div>
@@ -363,7 +365,7 @@ export default function SuperAdminUsersManagementPage() {
                     <p className="font-semibold text-slate-900 truncate">{company.name}</p>
                     <p className="text-sm text-slate-500 truncate">ID: {company.id}</p>
                     {company.baseCurrency && (
-                      <p className="text-xs text-slate-500 mt-1">Currency: {company.baseCurrency}</p>
+                      <p className="text-xs text-slate-500 mt-1">{t('superAdmin.usersManagement.currencyLabel', { currency: company.baseCurrency })}</p>
                     )}
                   </div>
                   <Button
@@ -373,7 +375,7 @@ export default function SuperAdminUsersManagementPage() {
                       setSelectedUser(null);
                     }}
                   >
-                    Impersonate
+                    {t('superAdmin.usersManagement.actions.impersonate')}
                   </Button>
                 </div>
               ))}
@@ -385,7 +387,7 @@ export default function SuperAdminUsersManagementPage() {
                 onClick={() => setSelectedUser(null)}
                 className="w-full"
               >
-                Close
+                {t('superAdmin.usersManagement.actions.close')}
               </Button>
             </div>
           </div>

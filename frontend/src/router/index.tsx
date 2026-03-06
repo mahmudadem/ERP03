@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { createHashRouter, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { AppShell } from '../layout/AppShell';
 import { SuperAdminShell } from '../layout/SuperAdminShell';
@@ -25,12 +26,15 @@ const CompanySelectorPageLazy = lazy(() => import('../modules/company-selector/C
 const NewCompanyWizardPage = lazy(() => import('../modules/onboarding/pages/NewCompanyWizardPage'));
 
 // Loading component
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-full min-h-[400px] text-gray-400">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-    <span>Loading resource...</span>
-  </div>
-);
+const PageLoader = () => {
+  const { t } = useTranslation('common');
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px] text-gray-400">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+      <span>{t('auth.loadingResource')}</span>
+    </div>
+  );
+};
 
 // Routes
 const routes = [

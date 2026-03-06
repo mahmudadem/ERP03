@@ -8,6 +8,7 @@ import { FieldDefinition } from '../../../../designer-engine/types/FieldDefiniti
 import { UIMode } from '../types';
 import { GenericVoucherRenderer } from '../../components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 /**
  * VoucherDesigner - Simplified for Canonical Schema V2
@@ -17,9 +18,9 @@ import { errorHandler } from '../../../../services/errorHandler';
  */
 
 const STEPS = [
-  { id: 1, title: 'Basic Info', icon: FileText },
-  { id: 2, title: 'Fields', icon: LayoutTemplate },
-  { id: 3, title: 'Review', icon: CheckCircle2 },
+  { id: 1, titleKey: 'formsVoucherDesigner.steps.basicInfo', icon: FileText },
+  { id: 2, titleKey: 'formsVoucherDesigner.steps.fields', icon: LayoutTemplate },
+  { id: 3, titleKey: 'formsVoucherDesigner.steps.review', icon: CheckCircle2 },
 ];
 
 interface VoucherDesignerProps {
@@ -33,6 +34,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   onSave, 
   onCancel 
 }) => {
+  const { t } = useTranslation('accounting');
   // GUARD: Validate if editing existing definition
   if (initialDefinition && initialDefinition.schemaVersion !== 2) {
     throw new Error('Cleanup violation: legacy view type detected. Only Schema V2 allowed.');
@@ -40,12 +42,12 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
   const [currentStep, setCurrentStep] = useState(1);
   const [definition, setDefinition] = useState<Partial<VoucherTypeDefinition>>(
-    initialDefinition || {
-      id: `voucher_${Date.now()}`,
-      companyId: '', // Will be set by context
-      name: 'New Voucher Type',
-      code: 'NEW_VOUCHER',
-      module: 'ACCOUNTING',
+      initialDefinition || {
+        id: `voucher_${Date.now()}`,
+        companyId: '', // Will be set by context
+        name: t('formsVoucherDesigner.newVoucherType'),
+        code: 'NEW_VOUCHER',
+        module: 'ACCOUNTING',
       schemaVersion: 2,
       headerFields: [],
       tableColumns: [],
@@ -72,7 +74,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     if (!definition.name || !definition.code) {
       errorHandler.showError({
         code: 'VAL_001',
-        message: 'Please fill in all required fields',
+        message: t('formsVoucherDesigner.errors.requiredFields'),
         severity: 'WARNING'
       } as any);
       return;
@@ -92,38 +94,37 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       case 1:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Basic Information</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('formsVoucherDesigner.basicInformation')}</h3>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Voucher Name *
+                {t('formsVoucherDesigner.voucherName')}
               </label>
               <input
                 type="text"
                 value={definition.name || ''}
                 onChange={(e) => setDefinition({ ...definition, name: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. Payment Voucher"
+                placeholder={t('formsVoucherDesigner.voucherNamePlaceholder')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Voucher Code *
+                {t('formsVoucherDesigner.voucherCode')}
               </label>
               <input
                 type="text"
                 value={definition.code || ''}
                 onChange={(e) => setDefinition({ ...definition, code: e.target.value.toUpperCase() })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. PAYMENT_VOUCHER"
+                placeholder={t('formsVoucherDesigner.voucherCodePlaceholder')}
               />
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                <strong>Schema V2:</strong> This voucher uses the canonical schema.
-                Additional fields and posting roles can be configured after creation.
+                <strong>{t('formsVoucherDesigner.schemaV2Prefix')}</strong> {t('formsVoucherDesigner.schemaV2Description')}
               </p>
             </div>
           </div>
@@ -132,27 +133,26 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       case 2:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Field Configuration</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('formsVoucherDesigner.fieldConfiguration')}</h3>
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
-                <strong>⚠️ Note:</strong> Field configuration is simplified in this version.
-                For advanced field setup, use more advanced admin tools or direct schema configuration.
+                <strong>{t('formsVoucherDesigner.notePrefix')}</strong> {t('formsVoucherDesigner.noteDescription')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fields: {definition.headerFields?.length || 0} configured
+                {t('formsVoucherDesigner.fieldsConfigured', { count: definition.headerFields?.length || 0 })}
               </label>
               <p className="text-xs text-gray-500">
-                Header fields will be configured based on your voucher type.
+                {t('formsVoucherDesigner.headerFieldsHint')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Table Type
+                {t('formsVoucherDesigner.tableType')}
               </label>
               <select
                 value={(definition.tableColumns?.length || 0) > 0 ? 'multi-line' : 'single-line'}
@@ -173,8 +173,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               >
-                <option value="single-line">Single Line</option>
-                <option value="multi-line">Multi-Line Table</option>
+                <option value="single-line">{t('formsVoucherDesigner.singleLine')}</option>
+                <option value="multi-line">{t('formsVoucherDesigner.multiLineTable')}</option>
               </select>
             </div>
           </div>
@@ -183,36 +183,36 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       case 3:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">Review & Save</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('formsVoucherDesigner.reviewAndSave')}</h3>
             
             <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Name:</span>
+                <span className="text-gray-600">{t('formsVoucherDesigner.nameLabel')}</span>
                 <span className="font-medium">{definition.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Code:</span>
+                <span className="text-gray-600">{t('formsVoucherDesigner.codeLabel')}</span>
                 <span className="font-medium">{definition.code}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Module:</span>
+                <span className="text-gray-600">{t('formsVoucherDesigner.moduleLabel')}</span>
                 <span className="font-medium">{definition.module}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Schema Version:</span>
+                <span className="text-gray-600">{t('formsVoucherDesigner.schemaVersionLabel')}</span>
                 <span className="font-medium">{definition.schemaVersion}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Type:</span>
+                <span className="text-gray-600">{t('formsVoucherDesigner.typeLabel')}</span>
                 <span className="font-medium">
-                  {(definition.tableColumns?.length || 0) > 0 ? 'Multi-Line' : 'Single-Line'}
+                  {(definition.tableColumns?.length || 0) > 0 ? t('formsVoucherDesigner.multiLine') : t('formsVoucherDesigner.singleLineShort')}
                 </span>
               </div>
             </div>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <p className="text-sm text-green-800">
-                <strong>Ready to save!</strong> This definition will be saved with Schema V2.
+                <strong>{t('formsVoucherDesigner.readyToSave')}</strong> {t('formsVoucherDesigner.saveSchemaHint')}
               </p>
             </div>
           </div>
@@ -229,7 +229,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       <div className="border-b border-gray-200 px-6 py-4 shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-900">
-            {initialDefinition ? 'Edit Voucher Type' : 'Create New Voucher Type'}
+            {initialDefinition ? t('formsVoucherDesigner.editVoucherType') : t('formsVoucherDesigner.createVoucherType')}
           </h2>
           {onCancel && (
             <button
@@ -255,7 +255,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 }`}
               >
                 <step.icon size={16} />
-                <span className="text-sm font-medium">{step.title}</span>
+                <span className="text-sm font-medium">{t(step.titleKey)}</span>
               </div>
               {index < STEPS.length - 1 && (
                 <ArrowRight size={16} className="text-gray-400" />
@@ -280,7 +280,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
           className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ArrowLeft size={16} />
-          Previous
+          {t('formsVoucherDesigner.previous')}
         </button>
 
         {currentStep < STEPS.length ? (
@@ -288,7 +288,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
             onClick={handleNext}
             className="flex items-center gap-2 px-4 py-2 text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
           >
-            Next
+            {t('formsVoucherDesigner.next')}
             <ArrowRight size={16} />
           </button>
         ) : (
@@ -297,7 +297,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
             className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
           >
             <Save size={16} />
-            Save Definition
+            {t('formsVoucherDesigner.saveDefinition')}
           </button>
         )}
       </div>

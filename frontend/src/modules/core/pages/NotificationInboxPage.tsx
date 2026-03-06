@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Check, Trash2, Filter, Loader2, Search } from 'lucide-react';
+import { Bell, Check, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { client } from '../../../api/client';
 import { useAuth } from '../../../hooks/useAuth';
@@ -121,6 +121,11 @@ export const NotificationInboxPage: React.FC = () => {
   });
 
   const unreadCount = notifications.filter(n => !n.readBy?.includes(user?.uid || '')).length;
+  const filterLabels: Record<'ALL' | 'UNREAD' | 'READ', string> = {
+    ALL: t('notifications.inbox.filters.all', { defaultValue: 'All' }),
+    UNREAD: t('notifications.inbox.filters.unread', { defaultValue: 'Unread' }),
+    READ: t('notifications.inbox.filters.read', { defaultValue: 'Read' }),
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
@@ -129,10 +134,13 @@ export const NotificationInboxPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Bell className="w-6 h-6 text-indigo-500" />
-            Notifications
+            {t('notifications.inbox.title', { defaultValue: 'Notifications' })}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+            {t('notifications.inbox.unreadCount', {
+              defaultValue: 'You have {{count}} unread notifications',
+              count: unreadCount,
+            })}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -142,7 +150,7 @@ export const NotificationInboxPage: React.FC = () => {
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-700 transition-colors"
           >
             <Check className="w-4 h-4" />
-            Mark all as read
+            {t('notifications.inbox.markAllAsRead', { defaultValue: 'Mark all as read' })}
           </button>
         </div>
       </div>
@@ -153,7 +161,7 @@ export const NotificationInboxPage: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search notifications..."
+            placeholder={t('notifications.inbox.searchPlaceholder', { defaultValue: 'Search notifications...' })}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700/50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -170,7 +178,7 @@ export const NotificationInboxPage: React.FC = () => {
                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-700'
               }`}
             >
-              {f}
+              {filterLabels[f]}
             </button>
           ))}
         </div>
@@ -181,13 +189,15 @@ export const NotificationInboxPage: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12 text-slate-400">
             <Loader2 className="w-8 h-8 animate-spin mb-4" />
-            <p>Loading notifications...</p>
+            <p>{t('notifications.inbox.loading', { defaultValue: 'Loading notifications...' })}</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-16 text-slate-400">
             <Bell className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-lg font-medium text-slate-600 dark:text-slate-300">All caught up!</p>
-            <p className="text-sm">No notifications found.</p>
+            <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
+              {t('notifications.inbox.emptyTitle', { defaultValue: 'All caught up!' })}
+            </p>
+            <p className="text-sm">{t('notifications.inbox.emptyBody', { defaultValue: 'No notifications found.' })}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">

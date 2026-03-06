@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface RequireModuleInitializedProps {
   moduleCode: string;
@@ -18,6 +19,7 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
   children,
   initializationPath,
 }) => {
+  const { t } = useTranslation('common');
   const { isModuleInitialized, getModuleStatus, loading } = useCompanyModules();
   const navigate = useNavigate();
 
@@ -45,7 +47,7 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-          <p className="text-sm text-gray-600">Checking module status...</p>
+          <p className="text-sm text-gray-600">{t('auth.moduleInit.checkingStatus')}</p>
         </div>
       </div>
     );
@@ -57,7 +59,7 @@ export const RequireModuleInitialized: React.FC<RequireModuleInitializedProps> =
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-          <p className="text-sm text-gray-600">Redirecting to setup wizard...</p>
+          <p className="text-sm text-gray-600">{t('auth.moduleInit.redirecting')}</p>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StickyNote } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface NotesWidgetProps {
   showBorder?: boolean;
@@ -11,6 +12,8 @@ export const NotesWidget: React.FC<NotesWidgetProps> = ({
   showBorder = true, 
   showBackground = true 
 }) => {
+  const { t } = useTranslation('common');
+
   return (
     <button 
       className={clsx(
@@ -18,10 +21,10 @@ export const NotesWidget: React.FC<NotesWidgetProps> = ({
         showBackground && "bg-amber-50 hover:bg-amber-100 shadow-sm",
         showBorder && "border border-amber-200"
       )}
-      onClick={() => alert('Notes widget clicked. Not fully implemented yet.')}
+      onClick={() => alert(t('widgets.notes.clickMessage', 'Notes widget clicked. Not fully implemented yet.'))}
     >
       <StickyNote className="w-3.5 h-3.5 shrink-0" />
-      NOTES
+      {t('widgets.notes.label', 'Notes')}
     </button>
   );
 };

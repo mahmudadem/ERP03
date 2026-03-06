@@ -6,6 +6,7 @@ import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Types
@@ -37,14 +38,14 @@ interface CCSummaryMeta {
   netBalance: number;
 }
 
-const ALL_COLUMNS = [
+const getAllColumns = (t: (key: string, options?: any) => string) => [
   { id: 'index', label: '#', permanent: true },
-  { id: 'accountCode', label: 'Account Code', sortable: true },
-  { id: 'accountName', label: 'Account Name', sortable: true },
-  { id: 'classification', label: 'Classification', sortable: true },
-  { id: 'totalDebit', label: 'Total Debit', sortable: true },
-  { id: 'totalCredit', label: 'Total Credit', sortable: true },
-  { id: 'netBalance', label: 'Net Balance', permanent: true },
+  { id: 'accountCode', label: t('costCenterSummary.accountCode', { defaultValue: 'Account Code' }), sortable: true },
+  { id: 'accountName', label: t('costCenterSummary.accountName', { defaultValue: 'Account Name' }), sortable: true },
+  { id: 'classification', label: t('costCenterSummary.classification', { defaultValue: 'Classification' }), sortable: true },
+  { id: 'totalDebit', label: t('costCenterSummary.totalDebit', { defaultValue: 'Total Debit' }), sortable: true },
+  { id: 'totalCredit', label: t('costCenterSummary.totalCredit', { defaultValue: 'Total Credit' }), sortable: true },
+  { id: 'netBalance', label: t('costCenterSummary.netBalance', { defaultValue: 'Net Balance' }), permanent: true },
 ];
 
 // ============================================================================
@@ -56,6 +57,7 @@ const CCSummaryInitiator: React.FC<{
   initialParams?: CCSummaryParams | null;
   isModal?: boolean;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('accounting');
   const [costCenterId, setCostCenterId] = useState(initialParams?.costCenterId || '');
   const [costCenterLabel, setCostCenterLabel] = useState(initialParams?.costCenterLabel || '');
   const [fromDate, setFromDate] = useState(() => {
@@ -75,7 +77,7 @@ const CCSummaryInitiator: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Cost Center <span className="text-red-500">*</span>
+            {t('costCenterSummary.costCenter', { defaultValue: 'Cost Center' })} <span className="text-red-500">*</span>
           </label>
           <div onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}>
             <CostCenterSelector
@@ -84,22 +86,26 @@ const CCSummaryInitiator: React.FC<{
                 if (cc) { setCostCenterId(cc.id); setCostCenterLabel(`${cc.code} - ${cc.name}`); }
                 else { setCostCenterId(''); setCostCenterLabel(''); }
               }}
-              placeholder="Select cost center..."
+              placeholder={t('costCenterSummary.selectCostCenter', { defaultValue: 'Select cost center...' })}
             />
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">From Date</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+            {t('costCenterSummary.fromDate', { defaultValue: 'From Date' })}
+          </label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full text-base" />
         </div>
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">To Date</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+            {t('costCenterSummary.toDate', { defaultValue: 'To Date' })}
+          </label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full text-base" />
         </div>
       </div>
       <div className="flex justify-start pt-6 border-t border-slate-100">
         <Button type="submit" disabled={!costCenterId} className="bg-slate-900 hover:bg-black text-white px-10 py-2.5 rounded text-xs font-bold uppercase tracking-widest">
-          Execute Analysis
+          {t('costCenterSummary.executeAnalysis', { defaultValue: 'Execute Analysis' })}
         </Button>
       </div>
     </form>
@@ -117,12 +123,13 @@ const CCSummaryContent: React.FC<{
   visibleColumns?: string[];
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, visibleColumns, density }) => {
+  const { t } = useTranslation('accounting');
   const [rows, setRows] = useState<CCSummaryRow[]>([]);
   const [meta, setMeta] = useState<CCSummaryMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const isCompact = density === 'compact';
 
-  const vis = visibleColumns || ALL_COLUMNS.map(c => c.id);
+  const vis = visibleColumns || getAllColumns(t).map(c => c.id);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,7 +156,9 @@ const CCSummaryContent: React.FC<{
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Processing...</p>
+          <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">
+            {t('costCenterSummary.processing', { defaultValue: 'Processing...' })}
+          </p>
         </div>
       </div>
     );
@@ -162,19 +171,25 @@ const CCSummaryContent: React.FC<{
       {/* Header Info Bar */}
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-8 text-xs print:text-[9px]">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Cost Center</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">
+            {t('costCenterSummary.costCenter', { defaultValue: 'Cost Center' })}
+          </span>
           <span className="font-bold text-slate-900">{params.costCenterLabel || meta?.costCenterCode}</span>
         </div>
         <div className="h-4 w-px bg-slate-200" />
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Period</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">
+            {t('costCenterSummary.period', { defaultValue: 'Period' })}
+          </span>
           <span className="font-mono text-slate-700">{params.fromDate}</span>
           <span className="mx-1 text-slate-400">→</span>
           <span className="font-mono text-slate-700">{params.toDate}</span>
         </div>
         <div className="h-4 w-px bg-slate-200" />
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">Entries</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mr-2">
+            {t('costCenterSummary.entries', { defaultValue: 'Entries' })}
+          </span>
           <span className="font-bold text-slate-900">{rows.length}</span>
         </div>
       </div>
@@ -185,20 +200,24 @@ const CCSummaryContent: React.FC<{
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-900 text-white">
               {vis.includes('index') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest w-10`}>#</th>}
-              {vis.includes('accountCode') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>Account Code</th>}
-              {vis.includes('accountName') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>Account Name</th>}
-              {vis.includes('classification') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>Classification</th>}
-              {vis.includes('totalDebit') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest`}>Total Debit</th>}
-              {vis.includes('totalCredit') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest`}>Total Credit</th>}
-              {vis.includes('netBalance') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest bg-slate-800`}>Net Balance</th>}
+              {vis.includes('accountCode') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>{t('costCenterSummary.accountCode', { defaultValue: 'Account Code' })}</th>}
+              {vis.includes('accountName') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>{t('costCenterSummary.accountName', { defaultValue: 'Account Name' })}</th>}
+              {vis.includes('classification') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-left text-[9px] font-black uppercase tracking-widest`}>{t('costCenterSummary.classification', { defaultValue: 'Classification' })}</th>}
+              {vis.includes('totalDebit') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest`}>{t('costCenterSummary.totalDebit', { defaultValue: 'Total Debit' })}</th>}
+              {vis.includes('totalCredit') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest`}>{t('costCenterSummary.totalCredit', { defaultValue: 'Total Credit' })}</th>}
+              {vis.includes('netBalance') && <th className={`px-3 ${isCompact ? 'py-1' : 'py-2'} text-right text-[9px] font-black uppercase tracking-widest bg-slate-800`}>{t('costCenterSummary.netBalance', { defaultValue: 'Net Balance' })}</th>}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={vis.length} className="px-6 py-12 text-center text-slate-400">
-                  <p className="text-sm font-bold mb-1">No entries found</p>
-                  <p className="text-xs">No ledger entries match the selected cost center and date range.</p>
+                  <p className="text-sm font-bold mb-1">{t('costCenterSummary.noEntries', { defaultValue: 'No entries found' })}</p>
+                  <p className="text-xs">
+                    {t('costCenterSummary.noEntriesHint', {
+                      defaultValue: 'No ledger entries match the selected cost center and date range.',
+                    })}
+                  </p>
                 </td>
               </tr>
             ) : (
@@ -232,15 +251,21 @@ const CCSummaryContent: React.FC<{
             </span>
           </div>
           <div className="p-4 border-l border-slate-100 text-right">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Debit</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">
+              {t('costCenterSummary.totalDebit', { defaultValue: 'Total Debit' })}
+            </span>
             <span className="font-mono text-sm font-black text-slate-900 tabular-nums">{fmt(meta.totalDebit)}</span>
           </div>
           <div className="p-4 border-l border-slate-100 text-right">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">Total Credit</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none mb-1">
+              {t('costCenterSummary.totalCredit', { defaultValue: 'Total Credit' })}
+            </span>
             <span className="font-mono text-sm font-black text-slate-900 tabular-nums">{fmt(meta.totalCredit)}</span>
           </div>
           <div className="p-4 border-l border-slate-300 bg-slate-50 text-right shadow-inner">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block leading-none mb-1">Net Balance</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block leading-none mb-1">
+              {t('costCenterSummary.netBalance', { defaultValue: 'Net Balance' })}
+            </span>
             <span className={`font-mono text-base font-black tabular-nums ${meta.netBalance >= 0 ? 'text-slate-900' : 'text-rose-700'}`}>
               {fmt(meta.netBalance)}
             </span>
@@ -256,15 +281,16 @@ const CCSummaryContent: React.FC<{
 // ============================================================================
 
 export default function CostCenterSummaryPage() {
+  const { t } = useTranslation('accounting');
   return (
     <ReportContainer<CCSummaryParams>
-      title="Cost Center Summary"
-      subtitle="Breakdown of accounts by cost center"
+      title={t('costCenterSummary.title', { defaultValue: 'Cost Center Summary' })}
+      subtitle={t('costCenterSummary.subtitle', { defaultValue: 'Breakdown of accounts by cost center' })}
       initiator={CCSummaryInitiator}
       ReportContent={CCSummaryContent}
       config={{
         paginated: false,
-        availableColumns: ALL_COLUMNS,
+        availableColumns: getAllColumns(t),
       }}
     />
   );

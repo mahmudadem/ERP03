@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Building2, ArrowRight, CheckCircle2, ShieldCheck, Globe } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
@@ -14,6 +15,7 @@ import { authApi } from '../../../api/auth';
 import { cn } from '../../../lib/utils';
 
 const LandingPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
@@ -87,7 +89,7 @@ const LandingPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      setError(err.response?.data?.message || err.message || 'Authentication failed');
+      setError(err.response?.data?.message || err.message || t('onboarding.landing.authFailed', { defaultValue: 'Authentication failed' }));
     } finally {
       setIsLoading(false);
     }
@@ -106,23 +108,23 @@ const LandingPage: React.FC = () => {
             <span className="font-extrabold text-xl text-[var(--color-text-primary)] tracking-tight">ERP<span className="text-primary-600">03</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-[var(--color-text-secondary)]">
-            <a href="#" className="hover:text-primary-500 transition-colors">Features</a>
-            <a href="#" className="hover:text-primary-500 transition-colors">Solutions</a>
-            <a href="#" className="hover:text-primary-500 transition-colors">Pricing</a>
-            <a href="#" className="hover:text-primary-500 transition-colors">Enterprise</a>
+            <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.features', { defaultValue: 'Features' })}</a>
+            <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.solutions', { defaultValue: 'Solutions' })}</a>
+            <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.pricing', { defaultValue: 'Pricing' })}</a>
+            <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.enterprise', { defaultValue: 'Enterprise' })}</a>
           </div>
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setAuthMode('login')}
               className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-primary-500 hidden md:block transition-colors"
             >
-              Log in
+              {t('onboarding.landing.nav.login', { defaultValue: 'Log in' })}
             </button>
             <button 
               onClick={() => setAuthMode('signup')}
               className="text-sm font-bold bg-primary-600 text-white px-6 py-2.5 rounded-full hover:bg-primary-700 shadow-lg shadow-primary-500/20 transition-all active:scale-[0.98]"
             >
-              Get Started
+              {t('onboarding.landing.nav.getStarted', { defaultValue: 'Get Started' })}
             </button>
           </div>
         </div>
@@ -144,25 +146,24 @@ const LandingPage: React.FC = () => {
             <div className="lg:col-span-6 text-center lg:text-left mb-12 lg:mb-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 text-xs font-bold uppercase tracking-widest mb-6">
                 <span className="flex h-2 w-2 rounded-full bg-primary-500 animate-pulse"></span>
-                New ERP System v3.0
+                {t('onboarding.landing.badge', { defaultValue: 'New ERP System v3.0' })}
               </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--color-text-primary)] tracking-tight mb-6 leading-[1.1]">
-                Everything you need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-indigo-500">manage</span> your business.
+                {t('onboarding.landing.hero.titlePrefix', { defaultValue: 'Everything you need to' })} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-indigo-500">{t('onboarding.landing.hero.titleHighlight', { defaultValue: 'manage' })}</span> {t('onboarding.landing.hero.titleSuffix', { defaultValue: 'your business.' })}
               </h1>
               <p className="text-lg md:text-xl text-[var(--color-text-secondary)] mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                The all-in-one platform built for modern enterprises. 
-                Seamlessly integrated accounting, operations, and HR tools.
+                {t('onboarding.landing.hero.subtitle', { defaultValue: 'The all-in-one platform built for modern enterprises. Seamlessly integrated accounting, operations, and HR tools.' })}
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10">
                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
                     <CheckCircle2 className="h-4 w-4 text-success-500" />
-                    <span>Free Trial</span>
+                    <span>{t('onboarding.landing.hero.freeTrial', { defaultValue: 'Free Trial' })}</span>
                  </div>
                  <div className="hidden sm:block h-4 w-px bg-[var(--color-border)]"></div>
                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] font-medium">
                     <CheckCircle2 className="h-4 w-4 text-success-500" />
-                    <span>No credit card required</span>
+                    <span>{t('onboarding.landing.hero.noCard', { defaultValue: 'No credit card required' })}</span>
                  </div>
               </div>
 
@@ -194,7 +195,7 @@ const LandingPage: React.FC = () => {
                           : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                       )}
                     >
-                      CREATE ACCOUNT
+                      {t('onboarding.landing.authTabs.createAccount', { defaultValue: 'CREATE ACCOUNT' })}
                     </button>
                     <button
                       onClick={() => setAuthMode('login')}
@@ -205,16 +206,16 @@ const LandingPage: React.FC = () => {
                           : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                       )}
                     >
-                      SIGN IN
+                      {t('onboarding.landing.authTabs.signIn', { defaultValue: 'SIGN IN' })}
                     </button>
                   </div>
 
                   <div className="mb-6 text-center">
                     <h2 className="text-2xl font-extrabold text-[var(--color-text-primary)] tracking-tight">
-                      {authMode === 'signup' ? 'Join ERP03' : 'Welcome back'}
+                      {authMode === 'signup' ? t('onboarding.landing.auth.joinTitle', { defaultValue: 'Join ERP03' }) : t('onboarding.landing.auth.welcomeTitle', { defaultValue: 'Welcome back' })}
                     </h2>
                     <p className="text-sm font-medium text-[var(--color-text-muted)] mt-2">
-                      {authMode === 'signup' ? 'Start your journey with us today.' : 'Please enter your credentials to continue.'}
+                      {authMode === 'signup' ? t('onboarding.landing.auth.joinSubtitle', { defaultValue: 'Start your journey with us today.' }) : t('onboarding.landing.auth.welcomeSubtitle', { defaultValue: 'Please enter your credentials to continue.' })}
                     </p>
                   </div>
 
@@ -228,43 +229,43 @@ const LandingPage: React.FC = () => {
                     {authMode === 'signup' && (
                        <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">First Name</label>
+                            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('onboarding.landing.form.firstName', { defaultValue: 'First Name' })}</label>
                             <input 
                               type="text" 
                               required 
                               value={firstName}
                               onChange={(e) => setFirstName(e.target.value)}
                               className="w-full px-4 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-[var(--color-text-muted)]"
-                              placeholder="First"
+                              placeholder={t('onboarding.landing.form.firstPlaceholder', { defaultValue: 'First' })}
                             />
                           </div>
                           <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Last Name</label>
+                            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('onboarding.landing.form.lastName', { defaultValue: 'Last Name' })}</label>
                             <input 
                               type="text" 
                               value={lastName}
                               onChange={(e) => setLastName(e.target.value)}
                               className="w-full px-4 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-[var(--color-text-muted)]"
-                              placeholder="Last"
+                              placeholder={t('onboarding.landing.form.lastPlaceholder', { defaultValue: 'Last' })}
                             />
                           </div>
                        </div>
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Email Address</label>
+                      <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('onboarding.landing.form.email', { defaultValue: 'Email Address' })}</label>
                       <input 
                         type="email" 
                         required 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-4 py-2.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all placeholder:text-[var(--color-text-muted)]"
-                        placeholder="email@company.com"
+                        placeholder={t('onboarding.landing.form.emailPlaceholder', { defaultValue: 'email@company.com' })}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Password</label>
+                      <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('onboarding.landing.form.password', { defaultValue: 'Password' })}</label>
                       <input 
                         type="password" 
                         required 
@@ -282,9 +283,9 @@ const LandingPage: React.FC = () => {
                     >
                       {isLoading ? (
                         <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : (
+                        ) : (
                         <>
-                          {authMode === 'signup' ? 'Create Account' : 'Sign In'}
+                          {authMode === 'signup' ? t('onboarding.landing.form.submitCreate', { defaultValue: 'Create Account' }) : t('onboarding.landing.form.submitSignIn', { defaultValue: 'Sign In' })}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </>
                       )}
@@ -297,12 +298,12 @@ const LandingPage: React.FC = () => {
                       href="/#/admin/login" 
                       className="text-xs font-bold text-[var(--color-text-muted)] hover:text-primary-500 transition-colors uppercase tracking-widest"
                     >
-                      System Admin? <span className="underline decoration-primary-500/30">Portal Access</span>
+                      {t('onboarding.landing.admin.prefix', { defaultValue: 'System Admin?' })} <span className="underline decoration-primary-500/30">{t('onboarding.landing.admin.portal', { defaultValue: 'Portal Access' })}</span>
                     </a>
                   </div>
                   
                   <p className="mt-8 text-center text-[10px] leading-relaxed font-bold text-[var(--color-text-muted)] uppercase tracking-tighter">
-                    By continuing, you agree to our <a href="#" className="underline hover:text-[var(--color-text-primary)]">Terms</a> & <a href="#" className="underline hover:text-[var(--color-text-primary)]">Privacy</a>.
+                    {t('onboarding.landing.legal.prefix', { defaultValue: 'By continuing, you agree to our' })} <a href="#" className="underline hover:text-[var(--color-text-primary)]">{t('onboarding.landing.legal.terms', { defaultValue: 'Terms' })}</a> & <a href="#" className="underline hover:text-[var(--color-text-primary)]">{t('onboarding.landing.legal.privacy', { defaultValue: 'Privacy' })}</a>.
                   </p>
                 </div>
               </div>
@@ -319,19 +320,19 @@ const LandingPage: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
                 <div className="group">
                    <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">20+</h4>
-                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">Industry Bundles</p>
+                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.industryBundles', { defaultValue: 'Industry Bundles' })}</p>
                 </div>
                 <div className="group">
                    <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">10k+</h4>
-                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">Active Orgs</p>
+                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.activeOrgs', { defaultValue: 'Active Orgs' })}</p>
                 </div>
                 <div className="group">
                    <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">99.9%</h4>
-                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">Uptime SLA</p>
+                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.uptimeSla', { defaultValue: 'Uptime SLA' })}</p>
                 </div>
                 <div className="group">
                    <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">24/7</h4>
-                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">Global Support</p>
+                   <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.globalSupport', { defaultValue: 'Global Support' })}</p>
                 </div>
             </div>
         </div>
@@ -341,15 +342,15 @@ const LandingPage: React.FC = () => {
       <div className="py-24 bg-[var(--color-bg-primary)] transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-20">
-               <h2 className="text-4xl font-extrabold text-[var(--color-text-primary)] tracking-tight">Everything you need to <span className="text-primary-600">scale</span></h2>
-               <p className="text-lg font-medium text-[var(--color-text-secondary)] mt-4">Modular, scalable, and easy to use. Choose the apps you need and add more as you grow.</p>
+               <h2 className="text-4xl font-extrabold text-[var(--color-text-primary)] tracking-tight">{t('onboarding.landing.features.titlePrefix', { defaultValue: 'Everything you need to' })} <span className="text-primary-600">{t('onboarding.landing.features.titleHighlight', { defaultValue: 'scale' })}</span></h2>
+               <p className="text-lg font-medium text-[var(--color-text-secondary)] mt-4">{t('onboarding.landing.features.subtitle', { defaultValue: 'Modular, scalable, and easy to use. Choose the apps you need and add more as you grow.' })}</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
                 {[
-                  { title: "Financials", desc: "Automate accounting, invoicing, and expenses.", icon: ShieldCheck },
-                  { title: "Human Capital", desc: "Manage payroll, attendance, and recruitment.", icon: Building2 },
-                  { title: "Global Ops", desc: "Multi-currency, multi-language, and multi-company.", icon: Globe },
+                  { title: t('onboarding.landing.cards.financials.title', { defaultValue: 'Financials' }), desc: t('onboarding.landing.cards.financials.desc', { defaultValue: 'Automate accounting, invoicing, and expenses.' }), icon: ShieldCheck },
+                  { title: t('onboarding.landing.cards.humanCapital.title', { defaultValue: 'Human Capital' }), desc: t('onboarding.landing.cards.humanCapital.desc', { defaultValue: 'Manage payroll, attendance, and recruitment.' }), icon: Building2 },
+                  { title: t('onboarding.landing.cards.globalOps.title', { defaultValue: 'Global Ops' }), desc: t('onboarding.landing.cards.globalOps.desc', { defaultValue: 'Multi-currency, multi-language, and multi-company.' }), icon: Globe },
                 ].map((feature, idx) => (
                   <div key={idx} className="p-8 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50 hover:bg-[var(--color-bg-tertiary)]/30 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                      <div className="h-14 w-14 rounded-xl bg-[var(--color-bg-primary)] border border-[var(--color-border)] flex items-center justify-center mb-6 text-primary-500 shadow-sm group-hover:scale-110 group-hover:bg-primary-500 group-hover:text-white transition-all duration-300">

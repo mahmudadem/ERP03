@@ -5,10 +5,10 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyFeatures } from '../../../hooks/useCompanyAdmin';
-
-const t = (key: string) => key;
+import { useTranslation } from 'react-i18next';
 
 export const FeaturesPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { features, activeFeatures, isLoading, toggleFeature, isToggling } = useCompanyFeatures();
 
   const handleToggle = (featureName: string, currentlyEnabled: boolean) => {
@@ -22,16 +22,16 @@ export const FeaturesPage: React.FC = () => {
     <CompanyAdminLayout>
       <PageHeader 
         title={t("companyAdmin.features.title")} 
-        breadcrumbs={[{ label: 'Company Admin' }, { label: 'Features' }]}
+        breadcrumbs={[{ label: t('companyAdmin.shared.companyAdmin') }, { label: t('companyAdmin.features.title') }]}
       />
 
       <div className="mb-6">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-gray-900">Active Features</h3>
+              <h3 className="text-sm font-medium text-gray-900">{t('companyAdmin.features.activeFeatures')}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                {isLoading ? 'Loading...' : `${activeFeatures.length} features currently enabled`}
+                {isLoading ? t('companyAdmin.features.loading') : t('companyAdmin.features.enabledCount', { count: activeFeatures.length })}
               </p>
             </div>
           </div>
@@ -44,8 +44,8 @@ export const FeaturesPage: React.FC = () => {
         </div>
       ) : features.length === 0 ? (
         <EmptyState 
-          title="No features available" 
-          description="No features are available for your subscription plan."
+          title={t('companyAdmin.features.noFeatures')} 
+          description={t('companyAdmin.features.noFeaturesDescription')}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -65,7 +65,7 @@ export const FeaturesPage: React.FC = () => {
                   <span className={`text-sm font-medium ${
                     isEnabled ? 'text-green-600' : 'text-gray-400'
                   }`}>
-                    {isEnabled ? 'Enabled' : 'Disabled'}
+                    {isEnabled ? t('companyAdmin.features.enabled') : t('companyAdmin.features.disabled')}
                   </span>
                   <button
                     onClick={() => handleToggle(feature.id, isEnabled)}

@@ -118,12 +118,15 @@ const AccountStatementInitiator: React.FC<{
               setAccountId(account?.id || '');
               setAccountName(account?.name || '');
             }}
-            placeholder="Select account to analyze..."
+            placeholder={t('accountStatement.selectAccountPlaceholder', { defaultValue: 'Select account to analyze...' })}
           />
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Cost Center <span className="text-[8px] text-slate-400 normal-case">(optional)</span>
+            {t('accountStatement.costCenter', { defaultValue: 'Cost Center' })}{' '}
+            <span className="text-[8px] text-slate-400 normal-case">
+              ({t('accountStatement.optional', { defaultValue: 'optional' })})
+            </span>
           </label>
           <CostCenterSelector
             value={costCenterId}
@@ -131,7 +134,7 @@ const AccountStatementInitiator: React.FC<{
               setCostCenterId(cc?.id || '');
               setCostCenterLabel(cc ? `${cc.code} - ${cc.name}` : '');
             }}
-            placeholder="All cost centers..."
+            placeholder={t('accountStatement.allCostCentersPlaceholder', { defaultValue: 'All cost centers...' })}
           />
         </div>
       </div>
@@ -151,10 +154,13 @@ const AccountStatementInitiator: React.FC<{
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Currency <span className="text-[8px] text-slate-400 normal-case">(optional)</span>
+            {t('accountStatement.currency', { defaultValue: 'Currency' })}{' '}
+            <span className="text-[8px] text-slate-400 normal-case">
+              ({t('accountStatement.optional', { defaultValue: 'optional' })})
+            </span>
           </label>
           <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={selectClass}>
-            <option value="">All Currencies</option>
+            <option value="">{t('accountStatement.allCurrencies', { defaultValue: 'All Currencies' })}</option>
             {companyCurrencies.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.code} — {c.name}
@@ -164,7 +170,7 @@ const AccountStatementInitiator: React.FC<{
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-            Options
+            {t('accountStatement.options', { defaultValue: 'Options' })}
           </label>
           <label className="flex items-start gap-2 text-xs font-semibold text-[var(--color-text-muted)] leading-tight border border-slate-200 rounded px-3 py-2.5 bg-slate-50">
             <input
@@ -185,7 +191,7 @@ const AccountStatementInitiator: React.FC<{
           disabled={!accountId}
         >
           <Search className="w-4 h-4" />
-          Execute Analysis
+          {t('accountStatement.executeAnalysis', { defaultValue: 'Execute Analysis' })}
         </Button>
       </div>
     </form>
@@ -441,17 +447,18 @@ const AccountStatementReportContent: React.FC<{
             <div className="mt-2 flex flex-wrap gap-2">
               {params.costCenterId && (
                 <span className="text-[11px] font-semibold text-slate-600 border border-slate-200 bg-white rounded-full px-2 py-1">
-                  Cost Center: {params.costCenterLabel || params.costCenterId}
+                  {t('accountStatement.costCenter', { defaultValue: 'Cost Center' })}:{' '}
+                  {params.costCenterLabel || params.costCenterId}
                 </span>
               )}
               {params.currency && (
                 <span className="text-[11px] font-semibold text-slate-600 border border-slate-200 bg-white rounded-full px-2 py-1">
-                  Currency: {params.currency}
+                  {t('accountStatement.currency', { defaultValue: 'Currency' })}: {params.currency}
                 </span>
               )}
               {params.includeUnposted && (
                 <span className="text-[11px] font-semibold text-slate-600 border border-slate-200 bg-white rounded-full px-2 py-1">
-                  Including unposted vouchers
+                  {t('accountStatement.includingUnposted', { defaultValue: 'Including unposted vouchers' })}
                 </span>
               )}
             </div>
@@ -674,7 +681,7 @@ const AccountStatementPage: React.FC = () => {
       } catch (error: any) {
         errorHandler.showError({
           code: 'EXPORT_FAILED',
-          message: error?.message || 'Failed to export account statement',
+          message: error?.message || t('accountStatement.exportFailed', { defaultValue: 'Failed to export account statement' }),
           severity: 'ERROR'
         } as any);
       }

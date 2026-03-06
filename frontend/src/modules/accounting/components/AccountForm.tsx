@@ -16,6 +16,7 @@ import { CurrencySelector } from './shared/CurrencySelector';
 import { useCompanyUsers, useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { Shield, UserCheck, Lock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AccountFormProps {
     mode: 'create' | 'edit';
@@ -87,6 +88,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     onSubmit,
     onCancel,
 }) => {
+    const { t } = useTranslation('accounting');
     // Determine defaults
     const defaultClassification = 'ASSET';
     
@@ -222,10 +224,10 @@ export const AccountForm: React.FC<AccountFormProps> = ({
             
             {/* --- Section 1: Identification --- */}
             <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Identification</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">{t('accountForm.identification', { defaultValue: 'Identification' })}</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Account Code</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.accountCode', { defaultValue: 'Account Code' })}</label>
                         <input
                             type="text"
                             value={userCode}
@@ -233,12 +235,12 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                             required
                             disabled={isLocked}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 uppercase"
-                            placeholder="e.g. 1001"
+                            placeholder={t('accountForm.accountCodePlaceholder', { defaultValue: 'e.g. 1001' })}
                         />
                     </div>
                     {mode === 'edit' && initialValues?.systemCode && (
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">System Code (Auto)</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.systemCodeAuto', { defaultValue: 'System Code (Auto)' })}</label>
                             <input
                                 type="text"
                                 value={initialValues.systemCode}
@@ -249,7 +251,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     )}
                 </div>
                 <div className="mt-4">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Account Name</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.accountName', { defaultValue: 'Account Name' })}</label>
                     <input
                         type="text"
                         value={name}
@@ -276,7 +278,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
             {/* --- Section 2: Semantics --- */}
             <div className="bg-white p-4 rounded-md border border-gray-200">
-                 <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Classification & Role</h3>
+                 <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">{t('accountForm.classificationAndRole', { defaultValue: 'Classification & Role' })}</h3>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">Classification</label>
@@ -309,7 +311,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                  <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Balance Nature</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.balanceNature', { defaultValue: 'Balance Nature' })}</label>
                         <select
                             value={balanceNature}
                             onChange={(e) => setBalanceNature(e.target.value as BalanceNature)}
@@ -321,7 +323,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     </div>
                     {accountRole === 'POSTING' && (
                         <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Validation Rule</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.validationRule', { defaultValue: 'Validation Rule' })}</label>
                             <select
                                 value={balanceEnforcement}
                                 onChange={(e) => setBalanceEnforcement(e.target.value as BalanceEnforcement)}
@@ -334,7 +336,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                  </div>
 
                  <div className="mt-4">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Cash Flow Category</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.cashFlowCategory', { defaultValue: 'Cash Flow Category' })}</label>
                     <select
                         value={cashFlowCategory}
                         onChange={(e) => setCashFlowCategory(e.target.value as CashFlowCategory | '')}
@@ -342,12 +344,12 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     >
                         {CASH_FLOW_CATEGORIES.map(c => <option key={c.value || 'AUTO'} value={c.value}>{c.label}</option>)}
                     </select>
-                    <p className="text-xs text-gray-400 mt-1">Optional override used by Cash Flow report classification.</p>
+                    <p className="text-xs text-gray-400 mt-1">{t('accountForm.cashFlowCategoryHint', { defaultValue: 'Optional override used by Cash Flow report classification.' })}</p>
                  </div>
 
                  {(classification === 'REVENUE' || classification === 'EXPENSE') && (
                     <div className="mt-4">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">P&L Subgroup</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.plSubgroup', { defaultValue: 'P&L Subgroup' })}</label>
                         <select
                             value={plSubgroup}
                             onChange={(e) => setPlSubgroup(e.target.value as PlSubgroup | '')}
@@ -367,7 +369,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                  {classification === 'EQUITY' && (
                     <div className="mt-4">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Equity Subgroup</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.equitySubgroup', { defaultValue: 'Equity Subgroup' })}</label>
                         <select
                             value={equitySubgroup}
                             onChange={(e) => setEquitySubgroup(e.target.value as EquitySubgroup | '')}
@@ -386,7 +388,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
             {/* --- Section 3: Currency & Hierarchy --- */}
             <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                 <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">Policy & Hierarchy</h3>
+                 <h3 className="text-sm font-semibold text-gray-700 mb-3 border-b pb-2">{t('accountForm.policyAndHierarchy', { defaultValue: 'Policy & Hierarchy' })}</h3>
                  
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
@@ -408,7 +410,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                 <CurrencySelector
                                     value={fixedCurrencyCode}
                                     onChange={setFixedCurrencyCode}
-                                    placeholder="Select Currency..."
+                                    placeholder={t('accountForm.selectCurrency', { defaultValue: 'Select Currency...' })}
                                     disabled={isUsed || (!parentId) || isParentForeign}
                                 />
                                 {(!parentId) && currencyPolicy === 'FIXED' && (
@@ -425,14 +427,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                  </div>
 
                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Parent Account</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">{t('accountForm.parentAccount', { defaultValue: 'Parent Account' })}</label>
                     <select
                         value={parentId}
                         onChange={(e) => setParentId(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         disabled={isLocked || isUsed} // Often safer to lock parent if used to avoid tree issues
                     >
-                        <option value="">(No Parent - Root Level)</option>
+                        <option value="">{t('accountForm.noParentRoot', { defaultValue: '(No Parent - Root Level)' })}</option>
                         {(() => {
                             // Find all descendants to prevent circular references
                             const getDescendantIds = (parentId: string, visited = new Set<string>()): string[] => {
@@ -460,7 +462,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                 ));
                         })()}
                     </select>
-                    <p className="text-xs text-gray-400 mt-1">Only accounts with matching Classification can be parents.</p>
+                    <p className="text-xs text-gray-400 mt-1">{t('accountForm.parentClassificationHint', { defaultValue: 'Only accounts with matching Classification can be parents.' })}</p>
                  </div>
             </div>
 
@@ -468,7 +470,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
             <div className="bg-blue-50/30 p-4 rounded-md border border-blue-100">
                 <div className="flex items-center gap-2 mb-3 border-b border-blue-100 pb-2">
                     <Shield className="w-4 h-4 text-blue-600" />
-                    <h3 className="text-sm font-semibold text-blue-800">Governance & Approval Gates</h3>
+                    <h3 className="text-sm font-semibold text-blue-800">{t('accountForm.governanceAndApproval', { defaultValue: 'Governance & Approval Gates' })}</h3>
                 </div>
 
                 <div className="space-y-4">
@@ -484,8 +486,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                             />
                         </div>
                         <label htmlFor="requiresApproval" className="flex flex-col cursor-pointer">
-                            <span className="text-sm font-medium text-gray-700">Financial Verification Required</span>
-                            <span className="text-xs text-gray-500">Enable this to force management approval for all vouchers touching this account (if FA Mode is 'Marked Only').</span>
+                            <span className="text-sm font-medium text-gray-700">{t('accountForm.financialVerificationRequired', { defaultValue: 'Financial Verification Required' })}</span>
+                            <span className="text-xs text-gray-500">{t('accountForm.financialVerificationHint', { defaultValue: "Enable this to force management approval for all vouchers touching this account (if FA Mode is 'Marked Only')." })}</span>
                         </label>
                     </div>
 
@@ -504,8 +506,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                 />
                             </div>
                             <label htmlFor="requiresCustodyConfirmation" className="flex flex-col cursor-pointer">
-                                <span className="text-sm font-medium text-gray-700">Custody Confirmation Required</span>
-                                <span className="text-xs text-gray-500">Ensures the physical custodian of this asset/fund confirms the transaction.</span>
+                                <span className="text-sm font-medium text-gray-700">{t('accountForm.custodyConfirmationRequired', { defaultValue: 'Custody Confirmation Required' })}</span>
+                                <span className="text-xs text-gray-500">{t('accountForm.custodyConfirmationHint', { defaultValue: 'Ensures the physical custodian of this asset/fund confirms the transaction.' })}</span>
                             </label>
                         </div>
 
@@ -521,14 +523,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     required={requiresCustodyConfirmation}
                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                                 >
-                                    <option value="">(Select Custodian...)</option>
+                                    <option value="">{t('accountForm.selectCustodian', { defaultValue: '(Select Custodian...)' })}</option>
                                     {!isLoadingUsers && companyUsers?.map((u: any) => (
                                         <option key={u.id} value={u.id}>
                                             {u.displayName || u.email || u.id}
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-[10px] text-gray-400 mt-1">Only this user can satisfy the Custody gate for transactions on this account.</p>
+                                <p className="text-[10px] text-gray-400 mt-1">{t('accountForm.custodyUserHint', { defaultValue: 'Only this user can satisfy the Custody gate for transactions on this account.' })}</p>
                             </div>
                         )}
                     </div>
@@ -549,7 +551,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                     disabled={isSubmitting}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                    {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Account' : 'Save Changes'}
+                    {isSubmitting ? t('accountForm.saving', { defaultValue: 'Saving...' }) : mode === 'create' ? t('accountForm.createAccount', { defaultValue: 'Create Account' }) : t('accountForm.saveChanges', { defaultValue: 'Save Changes' })}
                 </button>
             </div>
         </form>

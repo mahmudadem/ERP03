@@ -209,7 +209,9 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                   onClick={() => setDetailedView((prev) => !prev)}
                   className="text-xs font-bold uppercase tracking-widest px-3 py-2 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
                 >
-                  {detailedView ? 'Summary View' : 'Detailed View'}
+                  {detailedView
+                    ? t('profitLoss.summaryView', { defaultValue: 'Summary View' })
+                    : t('profitLoss.detailedView', { defaultValue: 'Detailed View' })}
                 </button>
               </div>
             )}
@@ -217,21 +219,29 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
             {data.structured ? (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Net Sales</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('profitLoss.netSales', { defaultValue: 'Net Sales' })}
+                  </div>
                   <div className="text-2xl font-bold text-emerald-700">{moneyFmt(data.structured.netSales, currency)}</div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">COGS</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('profitLoss.cogs', { defaultValue: 'COGS' })}
+                  </div>
                   <div className="text-2xl font-bold text-rose-700">{moneyFmt(data.structured.costOfSales, currency)}</div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Gross Profit</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('profitLoss.grossProfit', { defaultValue: 'Gross Profit' })}
+                  </div>
                   <div className={`text-2xl font-bold ${data.structured.grossProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                     {moneyFmt(Math.abs(data.structured.grossProfit), currency)}
                   </div>
                 </div>
                 <div className="bg-white border rounded-xl p-4 shadow-sm">
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Operating Profit</div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">
+                    {t('profitLoss.operatingProfit', { defaultValue: 'Operating Profit' })}
+                  </div>
                   <div className={`text-2xl font-bold ${data.structured.operatingProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                     {moneyFmt(Math.abs(data.structured.operatingProfit), currency)}
                   </div>
@@ -275,7 +285,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                 <div className="bg-white border rounded-xl p-5 shadow-sm space-y-4">
                   <div>
                     <div className="flex items-center justify-between py-1">
-                      <span className="font-semibold text-slate-900">Net Sales</span>
+                      <span className="font-semibold text-slate-900">{t('profitLoss.netSales', { defaultValue: 'Net Sales' })}</span>
                       <span className="font-mono font-bold text-emerald-700">{moneyFmt(data.structured.netSales, currency)}</span>
                     </div>
                     {data.structured.salesByAccount.length > 0 && (
@@ -292,7 +302,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
 
                   <div>
                     <div className="flex items-center justify-between py-1">
-                      <span className="font-semibold text-slate-900">Cost of Sales</span>
+                      <span className="font-semibold text-slate-900">{t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' })}</span>
                       <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.costOfSales, currency)}</span>
                     </div>
                     {data.structured.cogsByAccount.length > 0 && (
@@ -308,7 +318,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                   </div>
 
                   <div className="border-t border-slate-200 pt-3 flex items-center justify-between">
-                    <span className="text-base font-bold text-slate-900">Gross Profit</span>
+                    <span className="text-base font-bold text-slate-900">{t('profitLoss.grossProfit', { defaultValue: 'Gross Profit' })}</span>
                     <span className={`font-mono text-xl font-bold ${data.structured.grossProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                       {moneyFmt(Math.abs(data.structured.grossProfit), currency)}
                     </span>
@@ -316,7 +326,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
 
                   <div className="border-t border-slate-100 pt-3">
                     <div className="flex items-center justify-between py-1">
-                      <span className="font-semibold text-slate-900">Operating Expenses</span>
+                      <span className="font-semibold text-slate-900">{t('profitLoss.operatingExpenses', { defaultValue: 'Operating Expenses' })}</span>
                       <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.operatingExpenses, currency)}</span>
                     </div>
                     {data.structured.opexByAccount.length > 0 && (
@@ -332,7 +342,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                   </div>
 
                   <div className="border-t border-slate-200 pt-3 flex items-center justify-between">
-                    <span className="text-base font-bold text-slate-900">Operating Profit</span>
+                    <span className="text-base font-bold text-slate-900">{t('profitLoss.operatingProfit', { defaultValue: 'Operating Profit' })}</span>
                     <span className={`font-mono text-xl font-bold ${data.structured.operatingProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                       {moneyFmt(Math.abs(data.structured.operatingProfit), currency)}
                     </span>
@@ -340,16 +350,16 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
 
                   <div className="border-t border-slate-100 pt-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-900">Other Revenue</span>
+                      <span className="font-semibold text-slate-900">{t('profitLoss.otherRevenue', { defaultValue: 'Other Revenue' })}</span>
                       <span className="font-mono font-bold text-emerald-700">{moneyFmt(data.structured.otherRevenue, currency)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-900">Other Expenses</span>
+                      <span className="font-semibold text-slate-900">{t('profitLoss.otherExpenses', { defaultValue: 'Other Expenses' })}</span>
                       <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.otherExpenses, currency)}</span>
                     </div>
                     {data.structured.unclassifiedRevenueByAccount.length > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-900">Unclassified Revenue</span>
+                        <span className="font-semibold text-slate-900">{t('profitLoss.unclassifiedRevenue', { defaultValue: 'Unclassified Revenue' })}</span>
                         <span className="font-mono font-bold text-emerald-700">
                           {moneyFmt(data.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0), currency)}
                         </span>
@@ -357,7 +367,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                     )}
                     {data.structured.unclassifiedExpensesByAccount.length > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-slate-900">Unclassified Expenses</span>
+                        <span className="font-semibold text-slate-900">{t('profitLoss.unclassifiedExpenses', { defaultValue: 'Unclassified Expenses' })}</span>
                         <span className="font-mono font-bold text-rose-700">
                           {expenseFmt(data.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0), currency)}
                         </span>
@@ -366,7 +376,7 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                   </div>
 
                   <div className="border-t border-slate-300 pt-3 flex items-center justify-between">
-                    <span className="text-lg font-black text-slate-900">Net Profit</span>
+                    <span className="text-lg font-black text-slate-900">{t('profitLoss.netProfit', { defaultValue: 'Net Profit' })}</span>
                     <span className={`font-mono text-2xl font-black ${data.netProfit >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
                       {moneyFmt(Math.abs(data.netProfit), currency)}
                     </span>
@@ -375,53 +385,53 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <BreakdownCard
-                    title="Sales Breakdown"
+                    title={t('profitLoss.salesBreakdown', { defaultValue: 'Sales Breakdown' })}
                     rows={data.structured.salesByAccount}
-                    totalLabel="Net Sales"
+                    totalLabel={t('profitLoss.netSales', { defaultValue: 'Net Sales' })}
                     total={data.structured.netSales}
-                    emptyLabel="No sales accounts"
+                    emptyLabel={t('profitLoss.noSalesAccounts', { defaultValue: 'No sales accounts' })}
                     totalClassName="text-emerald-700"
                     currency={currency}
                   />
                   <BreakdownCard
-                    title="Cost of Sales Breakdown"
+                    title={t('profitLoss.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })}
                     rows={data.structured.cogsByAccount}
-                    totalLabel="Cost of Sales"
+                    totalLabel={t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' })}
                     total={data.structured.costOfSales}
-                    emptyLabel="No COGS accounts"
+                    emptyLabel={t('profitLoss.noCogsAccounts', { defaultValue: 'No COGS accounts' })}
                     totalClassName="text-rose-700"
                     currency={currency}
                   />
                   <BreakdownCard
-                    title="Operating Expenses Breakdown"
+                    title={t('profitLoss.operatingExpensesBreakdown', { defaultValue: 'Operating Expenses Breakdown' })}
                     rows={data.structured.opexByAccount}
-                    totalLabel="Operating Expenses"
+                    totalLabel={t('profitLoss.operatingExpenses', { defaultValue: 'Operating Expenses' })}
                     total={data.structured.operatingExpenses}
-                    emptyLabel="No operating expense accounts"
+                    emptyLabel={t('profitLoss.noOperatingExpenseAccounts', { defaultValue: 'No operating expense accounts' })}
                     totalClassName="text-rose-700"
                     currency={currency}
                   />
                   <BreakdownCard
-                    title="Other Revenue Breakdown"
+                    title={t('profitLoss.otherRevenueBreakdown', { defaultValue: 'Other Revenue Breakdown' })}
                     rows={data.structured.otherRevenueByAccount}
-                    totalLabel="Other Revenue"
+                    totalLabel={t('profitLoss.otherRevenue', { defaultValue: 'Other Revenue' })}
                     total={data.structured.otherRevenue}
-                    emptyLabel="No other revenue accounts"
+                    emptyLabel={t('profitLoss.noOtherRevenueAccounts', { defaultValue: 'No other revenue accounts' })}
                     totalClassName="text-emerald-700"
                     currency={currency}
                   />
                   <BreakdownCard
-                    title="Other Expenses Breakdown"
+                    title={t('profitLoss.otherExpensesBreakdown', { defaultValue: 'Other Expenses Breakdown' })}
                     rows={data.structured.otherExpensesByAccount}
-                    totalLabel="Other Expenses"
+                    totalLabel={t('profitLoss.otherExpenses', { defaultValue: 'Other Expenses' })}
                     total={data.structured.otherExpenses}
-                    emptyLabel="No other expense accounts"
+                    emptyLabel={t('profitLoss.noOtherExpenseAccounts', { defaultValue: 'No other expense accounts' })}
                     totalClassName="text-rose-700"
                     currency={currency}
                   />
                   {(data.structured.unclassifiedRevenueByAccount.length > 0 || data.structured.unclassifiedExpensesByAccount.length > 0) && (
                     <BreakdownCard
-                      title="Unclassified Accounts"
+                      title={t('profitLoss.unclassifiedAccounts', { defaultValue: 'Unclassified Accounts' })}
                       rows={[
                         ...data.structured.unclassifiedRevenueByAccount,
                         ...data.structured.unclassifiedExpensesByAccount.map((row) => ({
@@ -429,12 +439,12 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                           amount: -Math.abs(row.amount),
                         })),
                       ]}
-                      totalLabel="Net Unclassified Impact"
+                      totalLabel={t('profitLoss.netUnclassifiedImpact', { defaultValue: 'Net Unclassified Impact' })}
                       total={
                         data.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0) -
                         data.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0)
                       }
-                      emptyLabel="No unclassified accounts"
+                      emptyLabel={t('profitLoss.noUnclassifiedAccounts', { defaultValue: 'No unclassified accounts' })}
                       totalClassName="text-slate-700"
                       currency={currency}
                     />
@@ -493,39 +503,71 @@ const ProfitAndLossPage: React.FC = () => {
         rows.push({ section, account: subtotalLabel, amount: subtotalValue });
       };
 
-      pushSection('Net Sales', response.structured.salesByAccount, 'Net Sales Total', response.structured.netSales);
-      pushSection('Cost of Sales', response.structured.cogsByAccount, 'Cost of Sales Total', response.structured.costOfSales);
-      rows.push({ section: 'Summary', account: 'Gross Profit', amount: response.structured.grossProfit });
+      pushSection(
+        t('profitLoss.netSales', { defaultValue: 'Net Sales' }),
+        response.structured.salesByAccount,
+        t('profitLoss.netSalesTotal', { defaultValue: 'Net Sales Total' }),
+        response.structured.netSales
+      );
+      pushSection(
+        t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' }),
+        response.structured.cogsByAccount,
+        t('profitLoss.costOfSalesTotal', { defaultValue: 'Cost of Sales Total' }),
+        response.structured.costOfSales
+      );
+      rows.push({
+        section: t('profitLoss.summary', { defaultValue: 'Summary' }),
+        account: t('profitLoss.grossProfit', { defaultValue: 'Gross Profit' }),
+        amount: response.structured.grossProfit,
+      });
 
       pushSection(
-        'Operating Expenses',
+        t('profitLoss.operatingExpenses', { defaultValue: 'Operating Expenses' }),
         response.structured.opexByAccount,
-        'Operating Expenses Total',
+        t('profitLoss.operatingExpensesTotal', { defaultValue: 'Operating Expenses Total' }),
         response.structured.operatingExpenses
       );
-      rows.push({ section: 'Summary', account: 'Operating Profit', amount: response.structured.operatingProfit });
+      rows.push({
+        section: t('profitLoss.summary', { defaultValue: 'Summary' }),
+        account: t('profitLoss.operatingProfit', { defaultValue: 'Operating Profit' }),
+        amount: response.structured.operatingProfit,
+      });
 
-      pushSection('Other Revenue', response.structured.otherRevenueByAccount, 'Other Revenue Total', response.structured.otherRevenue);
-      pushSection('Other Expenses', response.structured.otherExpensesByAccount, 'Other Expenses Total', response.structured.otherExpenses);
+      pushSection(
+        t('profitLoss.otherRevenue', { defaultValue: 'Other Revenue' }),
+        response.structured.otherRevenueByAccount,
+        t('profitLoss.otherRevenueTotal', { defaultValue: 'Other Revenue Total' }),
+        response.structured.otherRevenue
+      );
+      pushSection(
+        t('profitLoss.otherExpenses', { defaultValue: 'Other Expenses' }),
+        response.structured.otherExpensesByAccount,
+        t('profitLoss.otherExpensesTotal', { defaultValue: 'Other Expenses Total' }),
+        response.structured.otherExpenses
+      );
 
       if (response.structured.unclassifiedRevenueByAccount.length > 0) {
         pushSection(
-          'Unclassified Revenue',
+          t('profitLoss.unclassifiedRevenue', { defaultValue: 'Unclassified Revenue' }),
           response.structured.unclassifiedRevenueByAccount,
-          'Unclassified Revenue Total',
+          t('profitLoss.unclassifiedRevenueTotal', { defaultValue: 'Unclassified Revenue Total' }),
           response.structured.unclassifiedRevenueByAccount.reduce((sum, row) => sum + row.amount, 0)
         );
       }
       if (response.structured.unclassifiedExpensesByAccount.length > 0) {
         pushSection(
-          'Unclassified Expenses',
+          t('profitLoss.unclassifiedExpenses', { defaultValue: 'Unclassified Expenses' }),
           response.structured.unclassifiedExpensesByAccount,
-          'Unclassified Expenses Total',
+          t('profitLoss.unclassifiedExpensesTotal', { defaultValue: 'Unclassified Expenses Total' }),
           response.structured.unclassifiedExpensesByAccount.reduce((sum, row) => sum + row.amount, 0)
         );
       }
 
-      rows.push({ section: 'Summary', account: 'Net Profit', amount: response.netProfit });
+      rows.push({
+        section: t('profitLoss.summary', { defaultValue: 'Summary' }),
+        account: t('profitLoss.netProfit', { defaultValue: 'Net Profit' }),
+        amount: response.netProfit,
+      });
     } else {
       response.revenueByAccount.forEach((acc) =>
         rows.push({ section: t('profitLoss.revenue'), account: acc.accountName || acc.accountId, amount: acc.amount })

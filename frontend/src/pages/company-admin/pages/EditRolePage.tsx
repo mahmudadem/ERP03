@@ -9,10 +9,10 @@ import { useCompanyRoles } from '../../../hooks/useCompanyAdmin';
 import { rbacApi, Permission, SystemRoleTemplate, CompanyRole } from '../../../api/rbac';
 import { errorHandler } from '../../../services/errorHandler';
 import { Search, ChevronDown, ChevronRight, Check, Square, CheckSquare } from 'lucide-react';
-
-const t = (key: string) => key;
+import { useTranslation } from 'react-i18next';
 
 export const EditRolePage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { roleId } = useParams<{ roleId: string }>();
   const isNew = roleId === 'new';
@@ -183,18 +183,18 @@ export const EditRolePage: React.FC = () => {
   return (
     <CompanyAdminLayout>
       <PageHeader 
-        title={isNew ? t("companyAdmin.roles.createTitle") : `Edit ${name}`} 
+        title={isNew ? t('companyAdmin.roles.createTitle', { defaultValue: 'Create Role' }) : t('companyAdmin.roles.editWithName', { defaultValue: 'Edit {{name}}', name })} 
         breadcrumbs={[
-          { label: 'Company Admin' }, 
-          { label: 'Roles', href: '/company-admin/roles' }, 
-          { label: isNew ? 'Create' : 'Edit' }
+          { label: t('companyAdmin.shared.companyAdmin', { defaultValue: 'Company Admin' }) }, 
+          { label: t('companyAdmin.shared.roles', { defaultValue: 'Roles' }), href: '/company-admin/roles' }, 
+          { label: isNew ? t('companyAdmin.shared.create', { defaultValue: 'Create' }) : t('companyAdmin.shared.edit', { defaultValue: 'Edit' }) }
         ]}
       />
 
       {isSystem && (
         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <p className="text-sm text-yellow-800">
-            ⚠️ This is a system role. Some permissions cannot be removed.
+            {t('companyAdmin.roles.systemWarning', { defaultValue: '⚠️ This is a system role. Some permissions cannot be removed.' })}
           </p>
         </div>
       )}
@@ -207,13 +207,13 @@ export const EditRolePage: React.FC = () => {
                   {isNew && (
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
                         <label className="block text-sm font-medium text-blue-900 mb-2">
-                          🚀 Quick Start from Template
+                          {t('companyAdmin.roles.quickStartTemplate', { defaultValue: '🚀 Quick Start from Template' })}
                         </label>
                         <select 
                             onChange={(e) => handleTemplateSelect(e.target.value)}
                             className="w-full border-blue-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="">-- Start from scratch --</option>
+                            <option value="">{t('companyAdmin.roles.startFromScratch', { defaultValue: '-- Start from scratch --' })}</option>
                             {templates.map(t => (
                                 <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
@@ -222,25 +222,25 @@ export const EditRolePage: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Role Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('companyAdmin.roles.roleNameRequired', { defaultValue: 'Role Name *' })}</label>
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g., Accountant"
+                      placeholder={t('companyAdmin.roles.accountantPlaceholder', { defaultValue: 'e.g., Accountant' })}
                       required
                       disabled={!!isSystem}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('companyAdmin.roles.description', { defaultValue: 'Description' })}</label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                       rows={3}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       disabled={!!isSystem}
-                      placeholder="What can this role do?"
+                      placeholder={t('companyAdmin.roles.whatCanDo', { defaultValue: 'What can this role do?' })}
                     />
                   </div>
                 </form>
@@ -250,7 +250,12 @@ export const EditRolePage: React.FC = () => {
               <Card className="p-4 bg-gradient-to-r from-slate-50 to-slate-100">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-slate-800">{totalSelected}</div>
-                  <div className="text-sm text-slate-500">of {totalAvailable} permissions selected</div>
+                  <div className="text-sm text-slate-500">
+                    {t('companyAdmin.roles.permissionsSelected', {
+                      defaultValue: 'of {{total}} permissions selected',
+                      total: totalAvailable,
+                    })}
+                  </div>
                 </div>
               </Card>
           </div>
@@ -261,16 +266,16 @@ export const EditRolePage: React.FC = () => {
                 {/* Header with Search */}
                 <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-white text-lg">Permissions</h3>
+                    <h3 className="font-semibold text-white text-lg">{t('companyAdmin.roles.permissions', { defaultValue: 'Permissions' })}</h3>
                     <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full">
-                      {totalSelected} selected
+                      {t('companyAdmin.roles.selectedCount', { defaultValue: '{{count}} selected', count: totalSelected })}
                     </span>
                   </div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                       type="text"
-                      placeholder="Search permissions..."
+                      placeholder={t('companyAdmin.roles.searchPermissions', { defaultValue: 'Search permissions...' })}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -362,7 +367,7 @@ export const EditRolePage: React.FC = () => {
 
                   {Object.keys(filteredPermissionsByCategory).length === 0 && (
                     <div className="p-8 text-center text-slate-500">
-                      <p>No permissions match your search.</p>
+                      <p>{t('companyAdmin.roles.noPermissionMatches', { defaultValue: 'No permissions match your search.' })}</p>
                     </div>
                   )}
                 </div>
@@ -378,14 +383,16 @@ export const EditRolePage: React.FC = () => {
             variant="secondary"
             onClick={() => navigate('/company-admin/roles')}
           >
-            Cancel
+            {t('companyAdmin.shared.cancel', { defaultValue: 'Cancel' })}
           </Button>
           <Button 
             type="submit" 
             form="role-form"
             disabled={isUpdating || isCreating || !name.trim()}
           >
-            {isUpdating || isCreating ? 'Saving...' : 'Save Role'}
+            {isUpdating || isCreating
+              ? t('companyAdmin.shared.saving', { defaultValue: 'Saving...' })
+              : t('companyAdmin.roles.saveRole', { defaultValue: 'Save Role' })}
           </Button>
         </div>
       </div>

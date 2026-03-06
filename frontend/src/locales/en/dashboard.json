@@ -9,5 +9,48 @@
   "createInvoice": "Create Invoice",
   "addInventory": "Add Inventory",
   "asOf": "As of {{date}}",
-  "currencyLabel": "USD"
+  "currencyLabel": "USD",
+  "overview": "Overview",
+  "customize": "Customize",
+  "newTransaction": "New Transaction",
+  "viewAll": "View All",
+  "recentTransactions": "Recent Transactions",
+  "systemUsage": "System Usage",
+  "stats": {
+    "totalRevenue": "Total Revenue",
+    "expenses": "Expenses",
+    "netProfit": "Net Profit",
+    "activeProjects": "Active Projects",
+    "onTrack": "On Track"
+  },
+  "actions": {
+    "newInvoice": "New Invoice",
+    "addVendor": "Add Vendor",
+    "recordExpense": "Record Expense",
+    "addProduct": "Add Product"
+  },
+  "transactions": {
+    "paymentFromAcme": "Payment from Acme Corp",
+    "invoiceRef": "Invoice #INV-2023-001",
+    "todayTime": "Today, 10:23 AM",
+    "officeSupplies": "Office Supplies",
+    "staplesInc": "Staples Inc.",
+    "yesterday": "Yesterday",
+    "subscriptionRenewal": "Subscription Renewal",
+    "adobe": "Adobe Creative Cloud",
+    "consultingFees": "Consulting Fees",
+    "techSolutions": "Tech Solutions Ltd",
+    "serverCosts": "Server Costs",
+    "aws": "AWS Web Services"
+  },
+  "usage": {
+    "storage": "Storage",
+    "apiCalls": "API Calls",
+    "users": "Users"
+  },
+  "upgrade": {
+    "title": "Upgrade to Pro",
+    "subtitle": "Unlock advanced analytics, custom reports, and unlimited user seats.",
+    "viewPlans": "View Plans"
+  }
 }

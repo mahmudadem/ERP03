@@ -422,7 +422,7 @@ export const CostCentersPage: React.FC = () => {
                           autoFocus
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          placeholder="e.g. MKT-01"
+                          placeholder={t('costCenters.codePlaceholder', { defaultValue: 'e.g. MKT-01' })}
                           value={form.code || ''}
                           onChange={(e) => setForm({ ...form, code: e.target.value })}
                         />
@@ -433,7 +433,7 @@ export const CostCentersPage: React.FC = () => {
                         <input
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          placeholder="e.g. Marketing Department"
+                          placeholder={t('costCenters.namePlaceholder', { defaultValue: 'e.g. Marketing Department' })}
                           value={form.name || ''}
                           onChange={(e) => setForm({ ...form, name: e.target.value })}
                         />
@@ -460,7 +460,7 @@ export const CostCentersPage: React.FC = () => {
                         <textarea
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          placeholder="Optional details about this cost center..."
+                          placeholder={t('costCenters.descriptionPlaceholder', { defaultValue: 'Optional details about this cost center...' })}
                           value={form.description || ''}
                           onChange={(e) => setForm({ ...form, description: e.target.value })}
                         />

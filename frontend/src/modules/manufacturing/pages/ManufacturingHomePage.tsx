@@ -1,33 +1,43 @@
 import React from 'react';
 import { Card } from '../../../components/ui/Card';
 import { Factory, PenTool, ClipboardCheck, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ManufacturingHomePage: React.FC = () => {
+  const { t } = useTranslation('common');
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">Manufacturing Overview</h1>
-          <p className="text-[var(--color-text-secondary)]">Monitor production lines and work orders.</p>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] tracking-tight">
+            {t('modulePlaceholders.manufacturing.title', { defaultValue: 'Manufacturing Overview' })}
+          </h1>
+          <p className="text-[var(--color-text-secondary)]">
+            {t('modulePlaceholders.manufacturing.subtitle', { defaultValue: 'Monitor production lines and work orders.' })}
+          </p>
         </div>
         <button className="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700 transition shadow-md shadow-primary-500/10 active:scale-[0.98]">
-          New Work Order
+          {t('modulePlaceholders.manufacturing.newWorkOrder', { defaultValue: 'New Work Order' })}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard icon={<Factory />} label="Active Jobs" value="0" />
-        <StatsCard icon={<PenTool />} label="Work Stations" value="0" />
-        <StatsCard icon={<ClipboardCheck />} label="Completed" value="0" />
-        <StatsCard icon={<AlertCircle />} label="Issues" value="0" />
+        <StatsCard icon={<Factory />} label={t('modulePlaceholders.manufacturing.stats.activeJobs', { defaultValue: 'Active Jobs' })} value="0" />
+        <StatsCard icon={<PenTool />} label={t('modulePlaceholders.manufacturing.stats.workStations', { defaultValue: 'Work Stations' })} value="0" />
+        <StatsCard icon={<ClipboardCheck />} label={t('modulePlaceholders.manufacturing.stats.completed', { defaultValue: 'Completed' })} value="0" />
+        <StatsCard icon={<AlertCircle />} label={t('modulePlaceholders.manufacturing.stats.issues', { defaultValue: 'Issues' })} value="0" />
       </div>
 
       <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl p-12 text-center shadow-inner transition-colors">
         <div className="mx-auto w-16 h-16 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center mb-4">
            <Factory className="w-8 h-8 text-primary-600" />
         </div>
-        <h3 className="text-xl font-bold text-[var(--color-text-primary)]">Module Under Construction</h3>
-        <p className="text-[var(--color-text-secondary)] mt-2 font-medium">The full Manufacturing module is coming in the next update. Module license is active.</p>
+        <h3 className="text-xl font-bold text-[var(--color-text-primary)]">
+          {t('modulePlaceholders.common.underConstruction', { defaultValue: 'Module Under Construction' })}
+        </h3>
+        <p className="text-[var(--color-text-secondary)] mt-2 font-medium">
+          {t('modulePlaceholders.manufacturing.message', { defaultValue: 'The full Manufacturing module is coming in the next update. Module license is active.' })}
+        </p>
       </div>
     </div>
   );
