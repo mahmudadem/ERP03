@@ -21,9 +21,22 @@ class InventoryModule {
         };
         this.permissions = [
             'inventory.view',
+            'inventory.settings.view',
+            'inventory.settings.manage',
             'inventory.items.view',
             'inventory.items.manage',
-            'inventory.stock.adjust'
+            'inventory.categories.view',
+            'inventory.categories.manage',
+            'inventory.warehouses.view',
+            'inventory.warehouses.manage',
+            'inventory.uom.view',
+            'inventory.uom.manage',
+            'inventory.stock.view',
+            'inventory.stock.adjust',
+            'inventory.movements.view',
+            'inventory.movements.record',
+            'inventory.valuation.view',
+            'inventory.reconcile.run'
         ];
     }
     async initialize() {

@@ -411,8 +411,11 @@ class AutoCreateRetainedEarningsUseCase {
     async execute(companyId, userId) {
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.settings.write');
         const accounts = await this.accountRepo.list(companyId);
-        // Idempotency Check: Look for existing "Retained Earnings"
-        const existing = accounts.find(a => a.name.trim().toLowerCase() === 'retained earnings');
+        // Idempotency Check: find existing retained earnings account
+        // Primary: field-based lookup (reliable)
+        // Fallback: name-based lookup (backward compat for old COA without tags)
+        const existing = accounts.find(a => a.equitySubgroup === 'RETAINED_EARNINGS')
+            || accounts.find(a => a.name.trim().toLowerCase() === 'retained earnings');
         if (existing) {
             return {
                 account: existing,
@@ -435,7 +438,8 @@ class AutoCreateRetainedEarningsUseCase {
             createdBy: userId,
             description: 'System-generated account for annual profit/loss retention.',
             balanceNature: 'CREDIT',
-            isProtected: true // Protect system account
+            isProtected: true,
+            equitySubgroup: 'RETAINED_EARNINGS'
         });
         return {
             account: newAccount,

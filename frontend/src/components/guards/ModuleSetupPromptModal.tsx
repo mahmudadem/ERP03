@@ -63,7 +63,7 @@ const getModuleInfo = (moduleCode: string, t: (key: string) => string): ModuleIn
     inventory: {
       name: t('moduleSetupModal.modules.inventory.name'),
       description: t('moduleSetupModal.modules.inventory.description'),
-      setupPath: '/inventory/setup',
+      setupPath: '/inventory',
       icon: Package,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',

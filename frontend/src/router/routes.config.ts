@@ -38,6 +38,16 @@ const CompanyAdminInitializationWizard = lazy(() => import('../modules/company-a
 // Inventory
 const InventoryHomePage = lazy(() => import('../modules/inventory/pages/InventoryHomePage'));
 const ItemsListPage = lazy(() => import('../modules/inventory/pages/ItemsListPage'));
+const ItemDetailPage = lazy(() => import('../modules/inventory/pages/ItemDetailPage'));
+const CategoriesPage = lazy(() => import('../modules/inventory/pages/CategoriesPage'));
+const WarehousesPage = lazy(() => import('../modules/inventory/pages/WarehousesPage'));
+const StockLevelsPage = lazy(() => import('../modules/inventory/pages/StockLevelsPage'));
+const StockMovementsPage = lazy(() => import('../modules/inventory/pages/StockMovementsPage'));
+const StockAdjustmentPage = lazy(() => import('../modules/inventory/pages/StockAdjustmentPage'));
+const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningStockPage'));
+const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
+const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
+const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
 
 // HR
 const HrHomePage = lazy(() => import('../modules/hr/pages/HrHomePage'));
@@ -149,6 +159,16 @@ export const routesConfig: AppRoute[] = [
   // INVENTORY
   { path: '/inventory', label: 'Overview', component: InventoryHomePage, section: 'INVENTORY', requiredModule: 'inventory' },
   { path: '/inventory/items', label: 'Items', component: ItemsListPage, section: 'INVENTORY', requiredPermission: 'inventory.items.manage', requiredModule: 'inventory' },
+  { path: '/inventory/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.items.manage', requiredModule: 'inventory' },
+  { path: '/inventory/categories', label: 'Categories', component: CategoriesPage, section: 'INVENTORY', requiredPermission: 'inventory.categories.view', requiredModule: 'inventory' },
+  { path: '/inventory/warehouses', label: 'Warehouses', component: WarehousesPage, section: 'INVENTORY', requiredPermission: 'inventory.warehouses.view', requiredModule: 'inventory' },
+  { path: '/inventory/stock-levels', label: 'Stock Levels', component: StockLevelsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
+  { path: '/inventory/movements', label: 'Movements', component: StockMovementsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/adjustments', label: 'Adjustments', component: StockAdjustmentPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/opening-stock', label: 'Opening Stock', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
 
   // HR
   { path: '/hr', label: 'Overview', component: HrHomePage, section: 'HR', requiredModule: 'hr' },

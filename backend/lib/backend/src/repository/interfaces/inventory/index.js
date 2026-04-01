@@ -17,4 +17,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./IItemRepository"), exports);
 __exportStar(require("./IWarehouseRepository"), exports);
 __exportStar(require("./IStockMovementRepository"), exports);
+__exportStar(require("./IStockLevelRepository"), exports);
+__exportStar(require("./IItemCategoryRepository"), exports);
+__exportStar(require("./IUomConversionRepository"), exports);
+__exportStar(require("./IInventorySettingsRepository"), exports);
+__exportStar(require("./IStockAdjustmentRepository"), exports);
+__exportStar(require("./IStockTransferRepository"), exports);
+__exportStar(require("./IInventoryPeriodSnapshotRepository"), exports);
 //# sourceMappingURL=index.js.map

@@ -38,7 +38,16 @@ import { FirestoreBudgetRepository } from '../firestore/repositories/accounting/
 import { FirestoreCompanyGroupRepository } from '../firestore/repositories/accounting/FirestoreCompanyGroupRepository';
 import { FirestoreRecurringVoucherTemplateRepository } from '../firestore/repositories/accounting/FirestoreRecurringVoucherTemplateRepository';
 import { AccountRepositoryFirestore } from '../firestore/accounting/AccountRepositoryFirestore';
-import { FirestoreItemRepository, FirestoreWarehouseRepository, FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreInventoryRepositories';
+import { FirestoreItemRepository } from '../firestore/repositories/inventory/FirestoreItemRepository';
+import { FirestoreWarehouseRepository } from '../firestore/repositories/inventory/FirestoreWarehouseRepository';
+import { FirestoreStockMovementRepository } from '../firestore/repositories/inventory/FirestoreStockMovementRepository';
+import { FirestoreStockLevelRepository } from '../firestore/repositories/inventory/FirestoreStockLevelRepository';
+import { FirestoreItemCategoryRepository } from '../firestore/repositories/inventory/FirestoreItemCategoryRepository';
+import { FirestoreUomConversionRepository } from '../firestore/repositories/inventory/FirestoreUomConversionRepository';
+import { FirestoreInventorySettingsRepository } from '../firestore/repositories/inventory/FirestoreInventorySettingsRepository';
+import { FirestoreStockAdjustmentRepository } from '../firestore/repositories/inventory/FirestoreStockAdjustmentRepository';
+import { FirestoreStockTransferRepository } from '../firestore/repositories/inventory/FirestoreStockTransferRepository';
+import { FirestoreInventoryPeriodSnapshotRepository } from '../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -159,6 +168,13 @@ export const diContainer = {
   get itemRepository(): InvRepo.IItemRepository { return new FirestoreItemRepository(getDb()); },
   get warehouseRepository(): InvRepo.IWarehouseRepository { return new FirestoreWarehouseRepository(getDb()); },
   get stockMovementRepository(): InvRepo.IStockMovementRepository { return new FirestoreStockMovementRepository(getDb()); },
+  get stockLevelRepository(): InvRepo.IStockLevelRepository { return new FirestoreStockLevelRepository(getDb()); },
+  get itemCategoryRepository(): InvRepo.IItemCategoryRepository { return new FirestoreItemCategoryRepository(getDb()); },
+  get uomConversionRepository(): InvRepo.IUomConversionRepository { return new FirestoreUomConversionRepository(getDb()); },
+  get inventorySettingsRepository(): InvRepo.IInventorySettingsRepository { return new FirestoreInventorySettingsRepository(getDb()); },
+  get stockAdjustmentRepository(): InvRepo.IStockAdjustmentRepository { return new FirestoreStockAdjustmentRepository(getDb()); },
+  get stockTransferRepository(): InvRepo.IStockTransferRepository { return new FirestoreStockTransferRepository(getDb()); },
+  get inventoryPeriodSnapshotRepository(): InvRepo.IInventoryPeriodSnapshotRepository { return new FirestoreInventoryPeriodSnapshotRepository(getDb()); },
 
   // HR
   get employeeRepository(): HrRepo.IEmployeeRepository { return new FirestoreEmployeeRepository(getDb()); },

@@ -48,10 +48,31 @@ export const moduleMenuMap: Record<
     label: 'Inventory',
     icon: 'Boxes',
     items: [
-      { label: 'Items', path: '/inventory/items', permission: 'item.list', icon: 'Package' },
-      { label: 'Warehouses', path: '/inventory/warehouses', permission: 'warehouse.list', icon: 'Warehouse' },
-      { label: 'Stock Movements', path: '/inventory/movements', permission: 'stockMovement.list', icon: 'Repeat' },
-      { label: 'Settings', path: '/inventory/settings', permission: 'inventory.settings', icon: 'Settings' }
+      { label: 'Overview', path: '/inventory', icon: 'LayoutDashboard' },
+      { label: 'Items', path: '/inventory/items', permission: 'inventory.items.view', icon: 'Package' },
+      { label: 'Categories', path: '/inventory/categories', permission: 'inventory.categories.view', icon: 'Tag' },
+      { label: 'Warehouses', path: '/inventory/warehouses', permission: 'inventory.warehouses.view', icon: 'Warehouse' },
+      { label: 'Stock Levels', path: '/inventory/stock-levels', permission: 'inventory.stock.view', icon: 'Layers' },
+      { label: 'Movements', path: '/inventory/movements', permission: 'inventory.movements.view', icon: 'Repeat' },
+      {
+        label: 'Operations',
+        icon: 'ClipboardList',
+        children: [
+          { label: 'Opening Stock', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
+          { label: 'Adjustments', path: '/inventory/adjustments', permission: 'inventory.stock.adjust', icon: 'SlidersHorizontal' },
+          { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.warehouses.view', icon: 'ArrowLeftRight' },
+        ]
+      },
+      {
+        label: 'Reports',
+        icon: 'BarChart3',
+        children: [
+          { label: 'Low Stock Alerts', path: '/inventory/alerts/low-stock', permission: 'inventory.stock.view', icon: 'AlertTriangle' },
+          { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'inventory.movements.view', icon: 'CircleDollarSign' },
+          { label: 'Valuation', path: '/inventory/valuation', permission: 'inventory.valuation.view', icon: 'PieChart' },
+        ]
+      },
+      { label: 'Settings', path: '/inventory/settings', permission: 'inventory.settings.view', icon: 'Settings' },
     ]
   },
   sales: {

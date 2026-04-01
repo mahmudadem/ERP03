@@ -25,7 +25,16 @@ const FirestoreBudgetRepository_1 = require("../firestore/repositories/accountin
 const FirestoreCompanyGroupRepository_1 = require("../firestore/repositories/accounting/FirestoreCompanyGroupRepository");
 const FirestoreRecurringVoucherTemplateRepository_1 = require("../firestore/repositories/accounting/FirestoreRecurringVoucherTemplateRepository");
 const AccountRepositoryFirestore_1 = require("../firestore/accounting/AccountRepositoryFirestore");
-const FirestoreInventoryRepositories_1 = require("../firestore/repositories/inventory/FirestoreInventoryRepositories");
+const FirestoreItemRepository_1 = require("../firestore/repositories/inventory/FirestoreItemRepository");
+const FirestoreWarehouseRepository_1 = require("../firestore/repositories/inventory/FirestoreWarehouseRepository");
+const FirestoreStockMovementRepository_1 = require("../firestore/repositories/inventory/FirestoreStockMovementRepository");
+const FirestoreStockLevelRepository_1 = require("../firestore/repositories/inventory/FirestoreStockLevelRepository");
+const FirestoreItemCategoryRepository_1 = require("../firestore/repositories/inventory/FirestoreItemCategoryRepository");
+const FirestoreUomConversionRepository_1 = require("../firestore/repositories/inventory/FirestoreUomConversionRepository");
+const FirestoreInventorySettingsRepository_1 = require("../firestore/repositories/inventory/FirestoreInventorySettingsRepository");
+const FirestoreStockAdjustmentRepository_1 = require("../firestore/repositories/inventory/FirestoreStockAdjustmentRepository");
+const FirestoreStockTransferRepository_1 = require("../firestore/repositories/inventory/FirestoreStockTransferRepository");
+const FirestoreInventoryPeriodSnapshotRepository_1 = require("../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository");
 const FirestoreHRRepositories_1 = require("../firestore/repositories/hr/FirestoreHRRepositories");
 const FirestorePOSRepositories_1 = require("../firestore/repositories/pos/FirestorePOSRepositories");
 const FirestoreDesignerRepositories_1 = require("../firestore/repositories/designer/FirestoreDesignerRepositories");
@@ -107,9 +116,16 @@ exports.diContainer = {
     get companyGroupRepository() { return new FirestoreCompanyGroupRepository_1.FirestoreCompanyGroupRepository(getDb()); },
     get recurringVoucherTemplateRepository() { return new FirestoreRecurringVoucherTemplateRepository_1.FirestoreRecurringVoucherTemplateRepository(getDb()); },
     // INVENTORY
-    get itemRepository() { return new FirestoreInventoryRepositories_1.FirestoreItemRepository(getDb()); },
-    get warehouseRepository() { return new FirestoreInventoryRepositories_1.FirestoreWarehouseRepository(getDb()); },
-    get stockMovementRepository() { return new FirestoreInventoryRepositories_1.FirestoreStockMovementRepository(getDb()); },
+    get itemRepository() { return new FirestoreItemRepository_1.FirestoreItemRepository(getDb()); },
+    get warehouseRepository() { return new FirestoreWarehouseRepository_1.FirestoreWarehouseRepository(getDb()); },
+    get stockMovementRepository() { return new FirestoreStockMovementRepository_1.FirestoreStockMovementRepository(getDb()); },
+    get stockLevelRepository() { return new FirestoreStockLevelRepository_1.FirestoreStockLevelRepository(getDb()); },
+    get itemCategoryRepository() { return new FirestoreItemCategoryRepository_1.FirestoreItemCategoryRepository(getDb()); },
+    get uomConversionRepository() { return new FirestoreUomConversionRepository_1.FirestoreUomConversionRepository(getDb()); },
+    get inventorySettingsRepository() { return new FirestoreInventorySettingsRepository_1.FirestoreInventorySettingsRepository(getDb()); },
+    get stockAdjustmentRepository() { return new FirestoreStockAdjustmentRepository_1.FirestoreStockAdjustmentRepository(getDb()); },
+    get stockTransferRepository() { return new FirestoreStockTransferRepository_1.FirestoreStockTransferRepository(getDb()); },
+    get inventoryPeriodSnapshotRepository() { return new FirestoreInventoryPeriodSnapshotRepository_1.FirestoreInventoryPeriodSnapshotRepository(getDb()); },
     // HR
     get employeeRepository() { return new FirestoreHRRepositories_1.FirestoreEmployeeRepository(getDb()); },
     get attendanceRepository() { return new FirestoreHRRepositories_1.FirestoreAttendanceRepository(getDb()); },

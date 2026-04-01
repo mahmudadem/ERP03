@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { ModuleSetupPromptModal } from './ModuleSetupPromptModal';
 
@@ -49,6 +49,7 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
 }) => {
   const { modules, loading } = useCompanyModules();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userSkipped, setUserSkipped] = useState(false);
 
   // Get module configuration
@@ -74,6 +75,15 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
 
   // If module is initialized, show content
   if (module.initialized) {
+    return <>{children}</>;
+  }
+
+  if (moduleCode === 'inventory') {
+    const path = location.pathname.toLowerCase();
+    const isOverviewRoute = path === '/inventory' || path === '/inventory/';
+    if (!isOverviewRoute) {
+      return <Navigate to="/inventory" replace />;
+    }
     return <>{children}</>;
   }
 

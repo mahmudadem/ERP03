@@ -51,7 +51,7 @@ export const ModuleSetupCard: React.FC = () => {
       inventory: {
         name: t('moduleSetupCard.modules.inventory.name'),
         description: t('moduleSetupCard.modules.inventory.description'),
-        path: '/inventory/setup',
+        path: '/inventory',
         icon: Package,
         iconBg: 'bg-blue-50',
         iconColor: 'text-blue-600',
