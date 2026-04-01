@@ -9,6 +9,7 @@ import { ModuleRegistry } from '../application/platform/ModuleRegistry';
 import { AccountingModule } from './accounting/AccountingModule';
 import { InventoryModule } from './inventory/InventoryModule';
 import { PurchaseModule } from './purchase/PurchaseModule';
+import { SalesModule } from './sales/SalesModule';
 
 export function registerAllModules(): void {
     const registry = ModuleRegistry.getInstance();
@@ -17,6 +18,7 @@ export function registerAllModules(): void {
     registry.register(new AccountingModule());
     registry.register(new InventoryModule());
     registry.register(new PurchaseModule());
+    registry.register(new SalesModule());
     // Add more modules here as they are created
 
     console.log(`Registered ${registry.getAllModules().length} modules`);

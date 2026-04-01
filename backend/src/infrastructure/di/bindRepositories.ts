@@ -10,6 +10,7 @@ import * as SysRepo from '../../repository/interfaces/system';
 import * as AccRepo from '../../repository/interfaces/accounting';
 import * as InvRepo from '../../repository/interfaces/inventory';
 import * as PurRepo from '../../repository/interfaces/purchases';
+import * as SalRepo from '../../repository/interfaces/sales';
 import * as HrRepo from '../../repository/interfaces/hr';
 import * as PosRepo from '../../repository/interfaces/pos';
 import * as DesRepo from '../../repository/interfaces/designer';
@@ -54,6 +55,11 @@ import { FirestorePurchaseOrderRepository } from '../firestore/repositories/purc
 import { FirestoreGoodsReceiptRepository } from '../firestore/repositories/purchases/FirestoreGoodsReceiptRepository';
 import { FirestorePurchaseInvoiceRepository } from '../firestore/repositories/purchases/FirestorePurchaseInvoiceRepository';
 import { FirestorePurchaseReturnRepository } from '../firestore/repositories/purchases/FirestorePurchaseReturnRepository';
+import { FirestoreSalesSettingsRepository } from '../firestore/repositories/sales/FirestoreSalesSettingsRepository';
+import { FirestoreSalesOrderRepository } from '../firestore/repositories/sales/FirestoreSalesOrderRepository';
+import { FirestoreDeliveryNoteRepository } from '../firestore/repositories/sales/FirestoreDeliveryNoteRepository';
+import { FirestoreSalesInvoiceRepository } from '../firestore/repositories/sales/FirestoreSalesInvoiceRepository';
+import { FirestoreSalesReturnRepository } from '../firestore/repositories/sales/FirestoreSalesReturnRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -192,6 +198,13 @@ export const diContainer = {
   get goodsReceiptRepository(): PurRepo.IGoodsReceiptRepository { return new FirestoreGoodsReceiptRepository(getDb()); },
   get purchaseInvoiceRepository(): PurRepo.IPurchaseInvoiceRepository { return new FirestorePurchaseInvoiceRepository(getDb()); },
   get purchaseReturnRepository(): PurRepo.IPurchaseReturnRepository { return new FirestorePurchaseReturnRepository(getDb()); },
+
+  // SALES
+  get salesSettingsRepository(): SalRepo.ISalesSettingsRepository { return new FirestoreSalesSettingsRepository(getDb()); },
+  get salesOrderRepository(): SalRepo.ISalesOrderRepository { return new FirestoreSalesOrderRepository(getDb()); },
+  get deliveryNoteRepository(): SalRepo.IDeliveryNoteRepository { return new FirestoreDeliveryNoteRepository(getDb()); },
+  get salesInvoiceRepository(): SalRepo.ISalesInvoiceRepository { return new FirestoreSalesInvoiceRepository(getDb()); },
+  get salesReturnRepository(): SalRepo.ISalesReturnRepository { return new FirestoreSalesReturnRepository(getDb()); },
 
   // HR
   get employeeRepository(): HrRepo.IEmployeeRepository { return new FirestoreEmployeeRepository(getDb()); },

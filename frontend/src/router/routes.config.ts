@@ -115,6 +115,18 @@ const PurchaseInvoicesListPage = lazy(() => import('../modules/purchases/pages/P
 const PurchaseInvoiceDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoiceDetailPage'));
 const PurchaseReturnsListPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnsListPage'));
 const PurchaseReturnDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnDetailPage'));
+const SalesHomePage = lazy(() => import('../modules/sales/pages/SalesHomePage'));
+const CustomersListPage = lazy(() => import('../modules/sales/pages/CustomersListPage'));
+const CustomerDetailPage = lazy(() => import('../modules/sales/pages/CustomerDetailPage'));
+const SalesOrdersListPage = lazy(() => import('../modules/sales/pages/SalesOrdersListPage'));
+const SalesOrderDetailPage = lazy(() => import('../modules/sales/pages/SalesOrderDetailPage'));
+const SalesSettingsPage = lazy(() => import('../modules/sales/pages/SalesSettingsPage'));
+const DeliveryNotesListPage = lazy(() => import('../modules/sales/pages/DeliveryNotesListPage'));
+const DeliveryNoteDetailPage = lazy(() => import('../modules/sales/pages/DeliveryNoteDetailPage'));
+const SalesInvoicesListPage = lazy(() => import('../modules/sales/pages/SalesInvoicesListPage'));
+const SalesInvoiceDetailPage = lazy(() => import('../modules/sales/pages/SalesInvoiceDetailPage'));
+const SalesReturnsListPage = lazy(() => import('../modules/sales/pages/SalesReturnsListPage'));
+const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesReturnDetailPage'));
 
 export interface AppRoute {
   path: string;
@@ -254,6 +266,23 @@ export const routesConfig: AppRoute[] = [
   // Projects
   { path: '/projects', label: 'Projects', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
   { path: '/projects/tasks', label: 'Tasks', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
+
+  // Sales
+  { path: '/sales', label: 'Sales Overview', component: SalesHomePage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/customers', label: 'Customers', component: CustomersListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/customers/:id', label: 'Customer Detail', component: CustomerDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/orders', label: 'Sales Orders', component: SalesOrdersListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/orders/:id', label: 'Sales Order Detail', component: SalesOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/delivery-notes', label: 'Delivery Notes', component: DeliveryNotesListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/delivery-notes/new', label: 'New Delivery Note', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/delivery-notes/:id', label: 'Delivery Note Detail', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/invoices', label: 'Sales Invoices', component: SalesInvoicesListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/invoices/new', label: 'New Sales Invoice', component: SalesInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/invoices/:id', label: 'Sales Invoice Detail', component: SalesInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/returns', label: 'Sales Returns', component: SalesReturnsListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/returns/new', label: 'New Sales Return', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Purchase
   { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },

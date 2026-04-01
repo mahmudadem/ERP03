@@ -1,4 +1,4 @@
-
+﻿
 import { roundMoney } from '../../accounting/entities/VoucherLineEntity';
 
 export type StockDirection = 'IN' | 'OUT';
@@ -19,7 +19,10 @@ export type ReferenceType =
   | 'PURCHASE_ORDER'
   | 'GOODS_RECEIPT'
   | 'PURCHASE_RETURN'
+  | 'SALES_ORDER'
+  | 'DELIVERY_NOTE'
   | 'SALES_INVOICE'
+  | 'SALES_RETURN'
   | 'STOCK_ADJUSTMENT'
   | 'STOCK_TRANSFER'
   | 'OPENING'
@@ -94,7 +97,10 @@ const REFERENCE_TYPES: ReferenceType[] = [
   'PURCHASE_ORDER',
   'GOODS_RECEIPT',
   'PURCHASE_RETURN',
+  'SALES_ORDER',
+  'DELIVERY_NOTE',
   'SALES_INVOICE',
+  'SALES_RETURN',
   'STOCK_ADJUSTMENT',
   'STOCK_TRANSFER',
   'OPENING',
@@ -392,3 +398,4 @@ export class StockMovement {
     });
   }
 }
+

@@ -79,9 +79,19 @@ export const moduleMenuMap: Record<
     label: 'Sales',
     icon: 'ShoppingCart',
     items: [
-      { label: 'Quotations', path: '/sales/quotations', permission: 'sales.quotation.list', icon: 'FilePlus' },
-      { label: 'Invoices', path: '/sales/invoices', permission: 'sales.invoice.list', icon: 'Receipt' },
-      { label: 'Customers', path: '/sales/customers', permission: 'customer.list', icon: 'Users' }
+      { label: 'Overview', path: '/sales', icon: 'LayoutDashboard' },
+      { label: 'Customers', path: '/sales/customers', icon: 'Users' },
+      { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
+      {
+        label: 'Operations',
+        icon: 'Layers',
+        children: [
+          { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
+          { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
+          { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
+        ]
+      },
+      { label: 'Settings', path: '/sales/settings', icon: 'Settings' }
     ]
   },
   purchase: {
