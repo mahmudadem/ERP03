@@ -33,6 +33,8 @@ export interface ItemDTO {
   revenueAccountId?: string;
   cogsAccountId?: string;
   inventoryAssetAccountId?: string;
+  defaultPurchaseTaxCodeId?: string;
+  defaultSalesTaxCodeId?: string;
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
@@ -240,6 +242,8 @@ export class InventoryDTOMapper {
       revenueAccountId: item.revenueAccountId,
       cogsAccountId: item.cogsAccountId,
       inventoryAssetAccountId: item.inventoryAssetAccountId,
+      defaultPurchaseTaxCodeId: item.defaultPurchaseTaxCodeId,
+      defaultSalesTaxCodeId: item.defaultSalesTaxCodeId,
       minStockLevel: item.minStockLevel,
       maxStockLevel: item.maxStockLevel,
       reorderPoint: item.reorderPoint,

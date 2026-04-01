@@ -20,6 +20,8 @@ export interface InventoryItemDTO {
   revenueAccountId?: string;
   cogsAccountId?: string;
   inventoryAssetAccountId?: string;
+  defaultPurchaseTaxCodeId?: string;
+  defaultSalesTaxCodeId?: string;
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;

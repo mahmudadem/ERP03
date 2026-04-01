@@ -9,6 +9,7 @@ import { IUserPreferencesRepository } from '../../repository/interfaces/core/IUs
 import * as SysRepo from '../../repository/interfaces/system';
 import * as AccRepo from '../../repository/interfaces/accounting';
 import * as InvRepo from '../../repository/interfaces/inventory';
+import * as PurRepo from '../../repository/interfaces/purchases';
 import * as HrRepo from '../../repository/interfaces/hr';
 import * as PosRepo from '../../repository/interfaces/pos';
 import * as DesRepo from '../../repository/interfaces/designer';
@@ -48,6 +49,11 @@ import { FirestoreInventorySettingsRepository } from '../firestore/repositories/
 import { FirestoreStockAdjustmentRepository } from '../firestore/repositories/inventory/FirestoreStockAdjustmentRepository';
 import { FirestoreStockTransferRepository } from '../firestore/repositories/inventory/FirestoreStockTransferRepository';
 import { FirestoreInventoryPeriodSnapshotRepository } from '../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository';
+import { FirestorePurchaseSettingsRepository } from '../firestore/repositories/purchases/FirestorePurchaseSettingsRepository';
+import { FirestorePurchaseOrderRepository } from '../firestore/repositories/purchases/FirestorePurchaseOrderRepository';
+import { FirestoreGoodsReceiptRepository } from '../firestore/repositories/purchases/FirestoreGoodsReceiptRepository';
+import { FirestorePurchaseInvoiceRepository } from '../firestore/repositories/purchases/FirestorePurchaseInvoiceRepository';
+import { FirestorePurchaseReturnRepository } from '../firestore/repositories/purchases/FirestorePurchaseReturnRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
@@ -106,7 +112,11 @@ import { PrismaVoucherRepository } from '../prisma/repositories/PrismaVoucherRep
 import { getPrismaClient } from '../prisma/prismaClient';
 
 import { ITransactionManager } from '../../repository/interfaces/shared/ITransactionManager';
+import { IPartyRepository } from '../../repository/interfaces/shared/IPartyRepository';
+import { ITaxCodeRepository } from '../../repository/interfaces/shared/ITaxCodeRepository';
 import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
+import { FirestorePartyRepository } from '../firestore/repositories/shared/FirestorePartyRepository';
+import { FirestoreTaxCodeRepository } from '../firestore/repositories/shared/FirestoreTaxCodeRepository';
 
 // AUTH
 import { ITokenVerifier } from '../../application/auth/interfaces/ITokenVerifier';
@@ -176,6 +186,13 @@ export const diContainer = {
   get stockTransferRepository(): InvRepo.IStockTransferRepository { return new FirestoreStockTransferRepository(getDb()); },
   get inventoryPeriodSnapshotRepository(): InvRepo.IInventoryPeriodSnapshotRepository { return new FirestoreInventoryPeriodSnapshotRepository(getDb()); },
 
+  // PURCHASES
+  get purchaseSettingsRepository(): PurRepo.IPurchaseSettingsRepository { return new FirestorePurchaseSettingsRepository(getDb()); },
+  get purchaseOrderRepository(): PurRepo.IPurchaseOrderRepository { return new FirestorePurchaseOrderRepository(getDb()); },
+  get goodsReceiptRepository(): PurRepo.IGoodsReceiptRepository { return new FirestoreGoodsReceiptRepository(getDb()); },
+  get purchaseInvoiceRepository(): PurRepo.IPurchaseInvoiceRepository { return new FirestorePurchaseInvoiceRepository(getDb()); },
+  get purchaseReturnRepository(): PurRepo.IPurchaseReturnRepository { return new FirestorePurchaseReturnRepository(getDb()); },
+
   // HR
   get employeeRepository(): HrRepo.IEmployeeRepository { return new FirestoreEmployeeRepository(getDb()); },
   get attendanceRepository(): HrRepo.IAttendanceRepository { return new FirestoreAttendanceRepository(getDb()); },
@@ -235,6 +252,8 @@ export const diContainer = {
   get roleTemplateRegistryRepository(): IRoleTemplateRegistryRepository { return new FirestoreRoleTemplateRegistryRepository(getDb()); },
 
   // SHARED
+  get partyRepository(): IPartyRepository { return new FirestorePartyRepository(getDb()); },
+  get taxCodeRepository(): ITaxCodeRepository { return new FirestoreTaxCodeRepository(getDb()); },
   get transactionManager(): ITransactionManager { return new FirestoreTransactionManager(getDb()); },
 
   // POLICY SYSTEM

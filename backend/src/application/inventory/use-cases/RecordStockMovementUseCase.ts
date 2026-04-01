@@ -35,6 +35,7 @@ interface BaseMovementInput {
   currentUser: string;
   notes?: string;
   metadata?: Record<string, any>;
+  transaction?: unknown;
 }
 
 export interface ProcessINInput extends BaseMovementInput {
@@ -97,7 +98,7 @@ export class RecordStockMovementUseCase {
       input.fxRateCCYToBase
     );
 
-    return this.deps.transactionManager.runTransaction(async (txn) => {
+    const execute = async (txn: unknown) => {
       const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
       const qtyBefore = level.qtyOnHand;
       const oldMaxBusinessDate = level.maxBusinessDate;
@@ -182,7 +183,13 @@ export class RecordStockMovementUseCase {
       await this.deps.stockMovementRepository.recordMovement(movement, txn);
 
       return movement;
-    });
+    };
+
+    if (input.transaction) {
+      return execute(input.transaction);
+    }
+
+    return this.deps.transactionManager.runTransaction(async (txn) => execute(txn));
   }
 
   async processOUT(input: ProcessOUTInput): Promise<StockMovement> {
@@ -192,7 +199,7 @@ export class RecordStockMovementUseCase {
     const { item } = await this.loadItemContext(input.companyId, input.itemId);
     await this.ensureWarehouseExists(input.warehouseId);
 
-    return this.deps.transactionManager.runTransaction(async (txn) => {
+    const execute = async (txn: unknown) => {
       const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
       const qtyBefore = level.qtyOnHand;
       const oldMaxBusinessDate = level.maxBusinessDate;
@@ -288,7 +295,13 @@ export class RecordStockMovementUseCase {
       await this.deps.stockMovementRepository.recordMovement(movement, txn);
 
       return movement;
-    });
+    };
+
+    if (input.transaction) {
+      return execute(input.transaction);
+    }
+
+    return this.deps.transactionManager.runTransaction(async (txn) => execute(txn));
   }
 
   async processTRANSFER(input: ProcessTRANSFERInput): Promise<TransferResult> {

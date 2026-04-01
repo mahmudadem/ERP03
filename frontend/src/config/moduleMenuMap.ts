@@ -84,12 +84,40 @@ export const moduleMenuMap: Record<
       { label: 'Customers', path: '/sales/customers', permission: 'customer.list', icon: 'Users' }
     ]
   },
+  purchase: {
+    label: 'Purchases',
+    icon: 'ClipboardList',
+    items: [
+      { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
+      { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
+      {
+        label: 'Operations',
+        icon: 'Layers',
+        children: [
+          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+          { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
+          { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
+        ]
+      },
+      { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
+    ]
+  },
   purchases: {
     label: 'Purchases',
     icon: 'ClipboardList',
     items: [
-      { label: 'Purchase Orders', path: '/purchases/orders', permission: 'purchase.order.list', icon: 'ShoppingCart' },
-      { label: 'Vendors', path: '/purchases/vendors', permission: 'vendor.list', icon: 'Store' }
+      { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
+      { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
+      {
+        label: 'Operations',
+        icon: 'Layers',
+        children: [
+          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+          { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
+          { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
+        ]
+      },
+      { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
     ]
   },
   hr: {

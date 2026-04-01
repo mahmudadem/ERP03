@@ -62,6 +62,7 @@ const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/Appe
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
 const NotificationSettingsPage = lazy(() => import('../modules/settings/pages/NotificationSettingsPage'));
+const TaxCodesPage = lazy(() => import('../modules/settings/pages/TaxCodesPage'));
 
 // Designer
 
@@ -102,6 +103,18 @@ const CompanyAdminModulesPage = lazy(() => import('../pages/company-admin/pages/
 const CompanyAdminFeaturesPage = lazy(() => import('../pages/company-admin/pages/FeaturesPage'));
 const CompanyAdminBundlesPage = lazy(() => import('../pages/company-admin/pages/BundlesPage'));
 const CompanyAdminSettingsPage = lazy(() => import('../pages/company-admin/pages/SettingsPage'));
+const PurchaseHomePage = lazy(() => import('../modules/purchase/pages/PurchaseHomePage'));
+const PurchaseOrdersListPage = lazy(() => import('../modules/purchases/pages/PurchaseOrdersListPage'));
+const PurchaseOrderDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseOrderDetailPage'));
+const PurchaseSettingsPage = lazy(() => import('../modules/purchases/pages/PurchaseSettingsPage'));
+const VendorsListPage = lazy(() => import('../modules/purchases/pages/VendorsListPage'));
+const VendorDetailPage = lazy(() => import('../modules/purchases/pages/VendorDetailPage'));
+const GoodsReceiptsListPage = lazy(() => import('../modules/purchases/pages/GoodsReceiptsListPage'));
+const GoodsReceiptDetailPage = lazy(() => import('../modules/purchases/pages/GoodsReceiptDetailPage'));
+const PurchaseInvoicesListPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoicesListPage'));
+const PurchaseInvoiceDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseInvoiceDetailPage'));
+const PurchaseReturnsListPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnsListPage'));
+const PurchaseReturnDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseReturnDetailPage'));
 
 export interface AppRoute {
   path: string;
@@ -183,6 +196,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/sidebar', label: 'Menu Config', component: SidebarSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
+  { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
 
   // RBAC
   { path: '/settings/rbac/roles', label: 'Roles', component: RolesListPage, section: 'SETTINGS', requiredPermission: 'system.roles.manage' },
@@ -242,8 +256,21 @@ export const routesConfig: AppRoute[] = [
   { path: '/projects/tasks', label: 'Tasks', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
 
   // Purchase
-  { path: '/purchases/orders', label: 'Purchase Orders', component: lazy(() => import('../modules/purchase/pages/PurchaseHomePage')), section: 'INVENTORY', requiredModule: 'purchase' },
-  { path: '/purchases/vendors', label: 'Vendors', component: lazy(() => import('../modules/purchase/pages/PurchaseHomePage')), section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/orders', label: 'Purchase Orders', component: PurchaseOrdersListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/orders/:id', label: 'Purchase Order Detail', component: PurchaseOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/goods-receipts', label: 'Goods Receipts', component: GoodsReceiptsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/goods-receipts/new', label: 'New Goods Receipt', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/goods-receipts/:id', label: 'Goods Receipt Detail', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/invoices', label: 'Purchase Invoices', component: PurchaseInvoicesListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/invoices/new', label: 'New Purchase Invoice', component: PurchaseInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/invoices/:id', label: 'Purchase Invoice Detail', component: PurchaseInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/returns', label: 'Purchase Returns', component: PurchaseReturnsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/returns/new', label: 'New Purchase Return', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/returns/:id', label: 'Purchase Return Detail', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   
   // USER PROFILE
   { path: '/profile', label: 'My Profile', component: lazy(() => import('../modules/core/pages/ProfilePage')), section: 'CORE', hideInMenu: true },

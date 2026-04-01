@@ -7,6 +7,16 @@ import { inventoryApi, InventoryItemDTO, InventoryCategoryDTO } from '../../../a
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 type ItemTab = 'GENERAL' | 'COST' | 'ACCOUNTING' | 'STOCK';
+type TaxCodeScope = 'PURCHASE' | 'SALES' | 'BOTH';
+
+interface TaxCodeDTO {
+  id: string;
+  code: string;
+  name: string;
+  rate: number;
+  scope: TaxCodeScope;
+  active: boolean;
+}
 
 const tabs: Array<{ id: ItemTab; label: string }> = [
   { id: 'GENERAL', label: 'General' },
@@ -23,6 +33,8 @@ const ItemDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ItemTab>('GENERAL');
   const [categories, setCategories] = useState<InventoryCategoryDTO[]>([]);
   const [currencies, setCurrencies] = useState<{ code: string; name: string }[]>([]);
+  const [purchaseTaxCodes, setPurchaseTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const [salesTaxCodes, setSalesTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [tagsText, setTagsText] = useState('');
 
   useEffect(() => {
@@ -39,6 +51,14 @@ const ItemDetailPage: React.FC = () => {
         setCurrencies(curList.map((c: any) => ({ code: c.code, name: c.name ?? c.code })));
       } catch (e) {
         console.error('Failed to load currencies', e);
+      }
+      try {
+        const purchaseResult = await client.get('/tenant/shared/tax-codes', { params: { scope: 'PURCHASE', active: true } });
+        const salesResult = await client.get('/tenant/shared/tax-codes', { params: { scope: 'SALES', active: true } });
+        setPurchaseTaxCodes(unwrap<TaxCodeDTO[]>(purchaseResult) || []);
+        setSalesTaxCodes(unwrap<TaxCodeDTO[]>(salesResult) || []);
+      } catch (e) {
+        console.error('Failed to load tax codes', e);
       }
       if (!id) return;
       try {
@@ -224,6 +244,48 @@ const ItemDetailPage: React.FC = () => {
                   value={item.salesUom || ''}
                   onChange={(e) => setItem((prev) => (prev ? { ...prev, salesUom: e.target.value } : prev))}
                 />
+              </label>
+              <label className="text-sm">
+                <div className="mb-1 font-medium">Purchase Tax</div>
+                <select
+                  className="w-full rounded border border-slate-300 px-3 py-2"
+                  value={item.defaultPurchaseTaxCodeId || ''}
+                  onChange={(e) =>
+                    setItem((prev) =>
+                      prev
+                        ? { ...prev, defaultPurchaseTaxCodeId: e.target.value || undefined }
+                        : prev
+                    )
+                  }
+                >
+                  <option value="">— None —</option>
+                  {purchaseTaxCodes.map((taxCode) => (
+                    <option key={taxCode.id} value={taxCode.id}>
+                      {taxCode.code} - {taxCode.name} ({(taxCode.rate * 100).toFixed(2)}%)
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <div className="mb-1 font-medium">Sales Tax</div>
+                <select
+                  className="w-full rounded border border-slate-300 px-3 py-2"
+                  value={item.defaultSalesTaxCodeId || ''}
+                  onChange={(e) =>
+                    setItem((prev) =>
+                      prev
+                        ? { ...prev, defaultSalesTaxCodeId: e.target.value || undefined }
+                        : prev
+                    )
+                  }
+                >
+                  <option value="">— None —</option>
+                  {salesTaxCodes.map((taxCode) => (
+                    <option key={taxCode.id} value={taxCode.id}>
+                      {taxCode.code} - {taxCode.name} ({(taxCode.rate * 100).toFixed(2)}%)
+                    </option>
+                  ))}
+                </select>
               </label>
             </>
           )}

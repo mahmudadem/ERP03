@@ -30,6 +30,7 @@ export interface InventoryProcessINContractInput {
   fxRateCCYToBase: number;
   notes?: string;
   metadata?: Record<string, any>;
+  transaction?: unknown;
 }
 
 export interface InventoryProcessOUTContractInput {
@@ -46,6 +47,7 @@ export interface InventoryProcessOUTContractInput {
   currentUser: string;
   notes?: string;
   metadata?: Record<string, any>;
+  transaction?: unknown;
 }
 
 export interface ISalesInventoryService {

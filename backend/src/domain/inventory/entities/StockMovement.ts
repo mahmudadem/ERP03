@@ -16,6 +16,9 @@ export type MovementType =
 
 export type ReferenceType =
   | 'PURCHASE_INVOICE'
+  | 'PURCHASE_ORDER'
+  | 'GOODS_RECEIPT'
+  | 'PURCHASE_RETURN'
   | 'SALES_INVOICE'
   | 'STOCK_ADJUSTMENT'
   | 'STOCK_TRANSFER'
@@ -88,6 +91,9 @@ const MOVEMENT_TYPES: MovementType[] = [
 
 const REFERENCE_TYPES: ReferenceType[] = [
   'PURCHASE_INVOICE',
+  'PURCHASE_ORDER',
+  'GOODS_RECEIPT',
+  'PURCHASE_RETURN',
   'SALES_INVOICE',
   'STOCK_ADJUSTMENT',
   'STOCK_TRANSFER',
