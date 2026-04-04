@@ -1,0 +1,258 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SalesDTOMapper = void 0;
+class SalesDTOMapper {
+    static toSettingsDTO(settings) {
+        return {
+            companyId: settings.companyId,
+            salesControlMode: settings.salesControlMode,
+            requireSOForStockItems: settings.requireSOForStockItems,
+            defaultARAccountId: settings.defaultARAccountId,
+            defaultRevenueAccountId: settings.defaultRevenueAccountId,
+            defaultCOGSAccountId: settings.defaultCOGSAccountId,
+            defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
+            allowOverDelivery: settings.allowOverDelivery,
+            overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
+            overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
+            defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
+            salesVoucherTypeId: settings.salesVoucherTypeId,
+            defaultWarehouseId: settings.defaultWarehouseId,
+            soNumberPrefix: settings.soNumberPrefix,
+            soNumberNextSeq: settings.soNumberNextSeq,
+            dnNumberPrefix: settings.dnNumberPrefix,
+            dnNumberNextSeq: settings.dnNumberNextSeq,
+            siNumberPrefix: settings.siNumberPrefix,
+            siNumberNextSeq: settings.siNumberNextSeq,
+            srNumberPrefix: settings.srNumberPrefix,
+            srNumberNextSeq: settings.srNumberNextSeq,
+        };
+    }
+    static toLineDTO(line) {
+        return {
+            lineId: line.lineId,
+            lineNo: line.lineNo,
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            itemType: line.itemType,
+            trackInventory: line.trackInventory,
+            orderedQty: line.orderedQty,
+            uom: line.uom,
+            deliveredQty: line.deliveredQty,
+            invoicedQty: line.invoicedQty,
+            returnedQty: line.returnedQty,
+            unitPriceDoc: line.unitPriceDoc,
+            lineTotalDoc: line.lineTotalDoc,
+            unitPriceBase: line.unitPriceBase,
+            lineTotalBase: line.lineTotalBase,
+            taxCodeId: line.taxCodeId,
+            taxRate: line.taxRate,
+            taxAmountDoc: line.taxAmountDoc,
+            taxAmountBase: line.taxAmountBase,
+            warehouseId: line.warehouseId,
+            description: line.description,
+        };
+    }
+    static toOrderDTO(order) {
+        var _a, _b;
+        return {
+            id: order.id,
+            companyId: order.companyId,
+            orderNumber: order.orderNumber,
+            customerId: order.customerId,
+            customerName: order.customerName,
+            orderDate: order.orderDate,
+            expectedDeliveryDate: order.expectedDeliveryDate,
+            currency: order.currency,
+            exchangeRate: order.exchangeRate,
+            lines: order.lines.map((line) => SalesDTOMapper.toLineDTO(line)),
+            subtotalBase: order.subtotalBase,
+            taxTotalBase: order.taxTotalBase,
+            grandTotalBase: order.grandTotalBase,
+            subtotalDoc: order.subtotalDoc,
+            taxTotalDoc: order.taxTotalDoc,
+            grandTotalDoc: order.grandTotalDoc,
+            status: order.status,
+            notes: order.notes,
+            internalNotes: order.internalNotes,
+            createdBy: order.createdBy,
+            createdAt: order.createdAt.toISOString(),
+            updatedAt: order.updatedAt.toISOString(),
+            confirmedAt: (_a = order.confirmedAt) === null || _a === void 0 ? void 0 : _a.toISOString(),
+            closedAt: (_b = order.closedAt) === null || _b === void 0 ? void 0 : _b.toISOString(),
+        };
+    }
+    static toDeliveryNoteLineDTO(line) {
+        var _a;
+        return {
+            lineId: line.lineId,
+            lineNo: line.lineNo,
+            soLineId: line.soLineId,
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            deliveredQty: line.deliveredQty,
+            uom: line.uom,
+            unitCostBase: line.unitCostBase,
+            lineCostBase: line.lineCostBase,
+            moveCurrency: line.moveCurrency,
+            fxRateMovToBase: line.fxRateMovToBase,
+            fxRateCCYToBase: line.fxRateCCYToBase,
+            stockMovementId: (_a = line.stockMovementId) !== null && _a !== void 0 ? _a : null,
+            description: line.description,
+        };
+    }
+    static toDeliveryNoteDTO(dn) {
+        var _a, _b;
+        return {
+            id: dn.id,
+            companyId: dn.companyId,
+            dnNumber: dn.dnNumber,
+            salesOrderId: dn.salesOrderId,
+            customerId: dn.customerId,
+            customerName: dn.customerName,
+            deliveryDate: dn.deliveryDate,
+            warehouseId: dn.warehouseId,
+            lines: dn.lines.map((line) => SalesDTOMapper.toDeliveryNoteLineDTO(line)),
+            status: dn.status,
+            notes: dn.notes,
+            cogsVoucherId: (_a = dn.cogsVoucherId) !== null && _a !== void 0 ? _a : null,
+            createdBy: dn.createdBy,
+            createdAt: dn.createdAt.toISOString(),
+            updatedAt: dn.updatedAt.toISOString(),
+            postedAt: (_b = dn.postedAt) === null || _b === void 0 ? void 0 : _b.toISOString(),
+        };
+    }
+    static toSalesInvoiceLineDTO(line) {
+        var _a;
+        return {
+            lineId: line.lineId,
+            lineNo: line.lineNo,
+            soLineId: line.soLineId,
+            dnLineId: line.dnLineId,
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            trackInventory: line.trackInventory,
+            invoicedQty: line.invoicedQty,
+            uom: line.uom,
+            unitPriceDoc: line.unitPriceDoc,
+            lineTotalDoc: line.lineTotalDoc,
+            unitPriceBase: line.unitPriceBase,
+            lineTotalBase: line.lineTotalBase,
+            taxCodeId: line.taxCodeId,
+            taxCode: line.taxCode,
+            taxRate: line.taxRate,
+            taxAmountDoc: line.taxAmountDoc,
+            taxAmountBase: line.taxAmountBase,
+            warehouseId: line.warehouseId,
+            revenueAccountId: line.revenueAccountId,
+            cogsAccountId: line.cogsAccountId,
+            inventoryAccountId: line.inventoryAccountId,
+            unitCostBase: line.unitCostBase,
+            lineCostBase: line.lineCostBase,
+            stockMovementId: (_a = line.stockMovementId) !== null && _a !== void 0 ? _a : null,
+            description: line.description,
+        };
+    }
+    static toSalesInvoiceDTO(si) {
+        var _a, _b, _c;
+        return {
+            id: si.id,
+            companyId: si.companyId,
+            invoiceNumber: si.invoiceNumber,
+            customerInvoiceNumber: si.customerInvoiceNumber,
+            salesOrderId: si.salesOrderId,
+            customerId: si.customerId,
+            customerName: si.customerName,
+            invoiceDate: si.invoiceDate,
+            dueDate: si.dueDate,
+            currency: si.currency,
+            exchangeRate: si.exchangeRate,
+            lines: si.lines.map((line) => SalesDTOMapper.toSalesInvoiceLineDTO(line)),
+            subtotalDoc: si.subtotalDoc,
+            taxTotalDoc: si.taxTotalDoc,
+            grandTotalDoc: si.grandTotalDoc,
+            subtotalBase: si.subtotalBase,
+            taxTotalBase: si.taxTotalBase,
+            grandTotalBase: si.grandTotalBase,
+            paymentTermsDays: si.paymentTermsDays,
+            paymentStatus: si.paymentStatus,
+            paidAmountBase: si.paidAmountBase,
+            outstandingAmountBase: si.outstandingAmountBase,
+            status: si.status,
+            voucherId: (_a = si.voucherId) !== null && _a !== void 0 ? _a : null,
+            cogsVoucherId: (_b = si.cogsVoucherId) !== null && _b !== void 0 ? _b : null,
+            notes: si.notes,
+            createdBy: si.createdBy,
+            createdAt: si.createdAt.toISOString(),
+            updatedAt: si.updatedAt.toISOString(),
+            postedAt: (_c = si.postedAt) === null || _c === void 0 ? void 0 : _c.toISOString(),
+        };
+    }
+    static toSalesReturnLineDTO(line) {
+        var _a;
+        return {
+            lineId: line.lineId,
+            lineNo: line.lineNo,
+            siLineId: line.siLineId,
+            dnLineId: line.dnLineId,
+            soLineId: line.soLineId,
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            returnQty: line.returnQty,
+            uom: line.uom,
+            unitPriceDoc: line.unitPriceDoc,
+            unitPriceBase: line.unitPriceBase,
+            unitCostBase: line.unitCostBase,
+            fxRateMovToBase: line.fxRateMovToBase,
+            fxRateCCYToBase: line.fxRateCCYToBase,
+            taxCodeId: line.taxCodeId,
+            taxRate: line.taxRate,
+            taxAmountDoc: line.taxAmountDoc,
+            taxAmountBase: line.taxAmountBase,
+            revenueAccountId: line.revenueAccountId,
+            cogsAccountId: line.cogsAccountId,
+            inventoryAccountId: line.inventoryAccountId,
+            stockMovementId: (_a = line.stockMovementId) !== null && _a !== void 0 ? _a : null,
+            description: line.description,
+        };
+    }
+    static toSalesReturnDTO(sr) {
+        var _a, _b, _c;
+        return {
+            id: sr.id,
+            companyId: sr.companyId,
+            returnNumber: sr.returnNumber,
+            salesInvoiceId: sr.salesInvoiceId,
+            deliveryNoteId: sr.deliveryNoteId,
+            salesOrderId: sr.salesOrderId,
+            customerId: sr.customerId,
+            customerName: sr.customerName,
+            returnContext: sr.returnContext,
+            returnDate: sr.returnDate,
+            warehouseId: sr.warehouseId,
+            currency: sr.currency,
+            exchangeRate: sr.exchangeRate,
+            lines: sr.lines.map((line) => SalesDTOMapper.toSalesReturnLineDTO(line)),
+            subtotalDoc: sr.subtotalDoc,
+            taxTotalDoc: sr.taxTotalDoc,
+            grandTotalDoc: sr.grandTotalDoc,
+            subtotalBase: sr.subtotalBase,
+            taxTotalBase: sr.taxTotalBase,
+            grandTotalBase: sr.grandTotalBase,
+            reason: sr.reason,
+            notes: sr.notes,
+            status: sr.status,
+            revenueVoucherId: (_a = sr.revenueVoucherId) !== null && _a !== void 0 ? _a : null,
+            cogsVoucherId: (_b = sr.cogsVoucherId) !== null && _b !== void 0 ? _b : null,
+            createdBy: sr.createdBy,
+            createdAt: sr.createdAt.toISOString(),
+            updatedAt: sr.updatedAt.toISOString(),
+            postedAt: (_c = sr.postedAt) === null || _c === void 0 ? void 0 : _c.toISOString(),
+        };
+    }
+}
+exports.SalesDTOMapper = SalesDTOMapper;
+//# sourceMappingURL=SalesDTOs.js.map

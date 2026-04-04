@@ -16,7 +16,7 @@ class RecordStockMovementUseCase {
         const { item, baseCurrency } = await this.loadItemContext(input.companyId, input.itemId);
         await this.ensureWarehouseExists(input.warehouseId);
         const converted = this.convertCosts(input.unitCostInMoveCurrency, input.moveCurrency, baseCurrency, item.costCurrency, input.fxRateMovToBase, input.fxRateCCYToBase);
-        return this.deps.transactionManager.runTransaction(async (txn) => {
+        const execute = async (txn) => {
             const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
             const qtyBefore = level.qtyOnHand;
             const oldMaxBusinessDate = level.maxBusinessDate;
@@ -86,14 +86,18 @@ class RecordStockMovementUseCase {
             await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, level);
             await this.deps.stockMovementRepository.recordMovement(movement, txn);
             return movement;
-        });
+        };
+        if (input.transaction) {
+            return execute(input.transaction);
+        }
+        return this.deps.transactionManager.runTransaction(async (txn) => execute(txn));
     }
     async processOUT(input) {
         this.validateDate(input.date);
         this.validateQty(input.qty);
         const { item } = await this.loadItemContext(input.companyId, input.itemId);
         await this.ensureWarehouseExists(input.warehouseId);
-        return this.deps.transactionManager.runTransaction(async (txn) => {
+        const execute = async (txn) => {
             var _a, _b;
             const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
             const qtyBefore = level.qtyOnHand;
@@ -180,7 +184,11 @@ class RecordStockMovementUseCase {
             await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, level);
             await this.deps.stockMovementRepository.recordMovement(movement, txn);
             return movement;
-        });
+        };
+        if (input.transaction) {
+            return execute(input.transaction);
+        }
+        return this.deps.transactionManager.runTransaction(async (txn) => execute(txn));
     }
     async processTRANSFER(input) {
         this.validateDate(input.date);

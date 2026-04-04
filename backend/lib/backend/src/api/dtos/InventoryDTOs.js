@@ -23,6 +23,8 @@ class InventoryDTOMapper {
             revenueAccountId: item.revenueAccountId,
             cogsAccountId: item.cogsAccountId,
             inventoryAssetAccountId: item.inventoryAssetAccountId,
+            defaultPurchaseTaxCodeId: item.defaultPurchaseTaxCodeId,
+            defaultSalesTaxCodeId: item.defaultSalesTaxCodeId,
             minStockLevel: item.minStockLevel,
             maxStockLevel: item.maxStockLevel,
             reorderPoint: item.reorderPoint,

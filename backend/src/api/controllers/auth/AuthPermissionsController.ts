@@ -19,12 +19,18 @@ export class AuthPermissionsController {
 
       const role = await diContainer.companyRoleRepository.getById(companyId, membership.roleId);
       const resolvedPermissions = role?.resolvedPermissions || role?.permissions || [];
+
+      // Read active modules from company document (source of truth)
+      // instead of role.moduleBundles which is stale after new modules are enabled
+      const company = await diContainer.companyRepository.findById(companyId);
+      const companyModules = company?.modules || role?.moduleBundles || [];
+
       return res.json({
         success: true,
         data: {
           roleId: membership.roleId,
           roleName: role?.name || null,
-          moduleBundles: role?.moduleBundles || [],
+          moduleBundles: companyModules,
           explicitPermissions: role?.explicitPermissions || role?.permissions || [],
           resolvedPermissions,
           isSuperAdmin,

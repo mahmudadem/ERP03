@@ -17,12 +17,16 @@ class AuthPermissionsController {
             }
             const role = await bindRepositories_1.diContainer.companyRoleRepository.getById(companyId, membership.roleId);
             const resolvedPermissions = (role === null || role === void 0 ? void 0 : role.resolvedPermissions) || (role === null || role === void 0 ? void 0 : role.permissions) || [];
+            // Read active modules from company document (source of truth)
+            // instead of role.moduleBundles which is stale after new modules are enabled
+            const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
+            const companyModules = (company === null || company === void 0 ? void 0 : company.modules) || (role === null || role === void 0 ? void 0 : role.moduleBundles) || [];
             return res.json({
                 success: true,
                 data: {
                     roleId: membership.roleId,
                     roleName: (role === null || role === void 0 ? void 0 : role.name) || null,
-                    moduleBundles: (role === null || role === void 0 ? void 0 : role.moduleBundles) || [],
+                    moduleBundles: companyModules,
                     explicitPermissions: (role === null || role === void 0 ? void 0 : role.explicitPermissions) || (role === null || role === void 0 ? void 0 : role.permissions) || [],
                     resolvedPermissions,
                     isSuperAdmin,

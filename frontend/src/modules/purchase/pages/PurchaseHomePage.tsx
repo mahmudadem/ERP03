@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ClipboardList, FileText, Settings, ShoppingCart, Undo2 } from 'lucide-react';
-import { AccountDTO, accountingApi } from '../../../api/accountingApi';
+import { AlertTriangle, ClipboardList, FileText, ShoppingCart, Undo2 } from 'lucide-react';
 import { companyModulesApi } from '../../../api/companyModules';
 import {
   GoodsReceiptDTO,
-  InitializePurchasesPayload,
   PurchaseInvoiceDTO,
   PurchaseOrderDTO,
   PurchaseReturnDTO,
@@ -14,12 +12,10 @@ import {
 } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import PurchaseInitializationWizard from '../wizards/PurchaseInitializationWizard';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
-
-const accountLabel = (account: AccountDTO): string =>
-  `${account.userCode || account.code || account.systemCode} - ${account.name}`;
 
 const StatsCard = ({
   icon,
@@ -42,267 +38,6 @@ const StatsCard = ({
     </div>
   </Card>
 );
-
-const PurchaseInitializationWizard: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const [step, setStep] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<AccountDTO[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
-
-  const [procurementControlMode, setProcurementControlMode] = useState<'SIMPLE' | 'CONTROLLED'>('SIMPLE');
-  const [defaultAPAccountId, setDefaultAPAccountId] = useState('');
-  const [defaultPurchaseExpenseAccountId, setDefaultPurchaseExpenseAccountId] = useState('');
-  const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(30);
-  const [poNumberPrefix, setPoNumberPrefix] = useState('PO');
-  const [grnNumberPrefix, setGrnNumberPrefix] = useState('GRN');
-  const [piNumberPrefix, setPiNumberPrefix] = useState('PI');
-  const [prNumberPrefix, setPrNumberPrefix] = useState('PR');
-
-  useEffect(() => {
-    const loadAccounts = async () => {
-      try {
-        setLoadingAccounts(true);
-        const result = await accountingApi.getAccounts();
-        const list = Array.isArray(result) ? result : unwrap<AccountDTO[]>(result);
-        setAccounts(list || []);
-      } catch (err) {
-        console.error('Failed to load accounts for purchases initialization', err);
-        setAccounts([]);
-      } finally {
-        setLoadingAccounts(false);
-      }
-    };
-
-    loadAccounts();
-  }, []);
-
-  const canContinue = useMemo(() => {
-    if (step === 1) return !!defaultAPAccountId;
-    return true;
-  }, [defaultAPAccountId, step]);
-
-  const nextStep = () => {
-    if (!canContinue) {
-      setError('Please fill required fields before continuing.');
-      return;
-    }
-    setError(null);
-    setStep((prev) => Math.min(prev + 1, 2));
-  };
-
-  const prevStep = () => {
-    setError(null);
-    setStep((prev) => Math.max(prev - 1, 0));
-  };
-
-  const initialize = async () => {
-    if (!defaultAPAccountId) {
-      setError('Default AP account is required.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setError(null);
-
-      const payload: InitializePurchasesPayload = {
-        procurementControlMode,
-        defaultAPAccountId,
-        defaultPurchaseExpenseAccountId: defaultPurchaseExpenseAccountId || undefined,
-        defaultPaymentTermsDays,
-        poNumberPrefix: poNumberPrefix || 'PO',
-        grnNumberPrefix: grnNumberPrefix || 'GRN',
-        piNumberPrefix: piNumberPrefix || 'PI',
-        prNumberPrefix: prNumberPrefix || 'PR',
-      };
-
-      await purchasesApi.initializePurchases(payload);
-      onComplete();
-    } catch (err: any) {
-      console.error('Purchases initialization failed', err);
-      setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Initialization failed. Please try again.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Setup</h1>
-      <Card className="p-6">
-        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <span className={step === 0 ? 'text-blue-700' : ''}>1. Mode</span>
-          <span>/</span>
-          <span className={step === 1 ? 'text-blue-700' : ''}>2. AP Account</span>
-          <span>/</span>
-          <span className={step === 2 ? 'text-blue-700' : ''}>3. Defaults</span>
-        </div>
-
-        {step === 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Procurement Control Mode</h2>
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4">
-              <input
-                type="radio"
-                name="procurementControlMode"
-                value="SIMPLE"
-                checked={procurementControlMode === 'SIMPLE'}
-                onChange={() => setProcurementControlMode('SIMPLE')}
-              />
-              <div>
-                <div className="font-medium text-slate-900 dark:text-slate-100">SIMPLE</div>
-                <div className="text-sm text-slate-600">PO is optional for stock items.</div>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-4">
-              <input
-                type="radio"
-                name="procurementControlMode"
-                value="CONTROLLED"
-                checked={procurementControlMode === 'CONTROLLED'}
-                onChange={() => setProcurementControlMode('CONTROLLED')}
-              />
-              <div>
-                <div className="font-medium text-slate-900 dark:text-slate-100">CONTROLLED</div>
-                <div className="text-sm text-slate-600">PO is mandatory for stock items.</div>
-              </div>
-            </label>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Default Accounts</h2>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Default AP Account</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                value={defaultAPAccountId}
-                onChange={(e) => setDefaultAPAccountId(e.target.value)}
-                disabled={loadingAccounts}
-              >
-                <option value="">{loadingAccounts ? 'Loading accounts...' : 'Select AP account'}</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {accountLabel(account)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Default Expense Account</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                value={defaultPurchaseExpenseAccountId}
-                onChange={(e) => setDefaultPurchaseExpenseAccountId(e.target.value)}
-                disabled={loadingAccounts}
-              >
-                <option value="">Optional</option>
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {accountLabel(account)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Numbering & Defaults</h2>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Default Payment Terms (Days)</label>
-              <input
-                type="number"
-                min={0}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                value={defaultPaymentTermsDays}
-                onChange={(e) => setDefaultPaymentTermsDays(Number(e.target.value))}
-              />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">PO Prefix</label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                  value={poNumberPrefix}
-                  onChange={(e) => setPoNumberPrefix(e.target.value.toUpperCase())}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">GRN Prefix</label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                  value={grnNumberPrefix}
-                  onChange={(e) => setGrnNumberPrefix(e.target.value.toUpperCase())}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">PI Prefix</label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                  value={piNumberPrefix}
-                  onChange={(e) => setPiNumberPrefix(e.target.value.toUpperCase())}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">PR Prefix</label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                  value={prNumberPrefix}
-                  onChange={(e) => setPrNumberPrefix(e.target.value.toUpperCase())}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            type="button"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium disabled:opacity-50"
-            onClick={prevStep}
-            disabled={step === 0 || submitting}
-          >
-            Back
-          </button>
-          {step < 2 ? (
-            <button
-              type="button"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={nextStep}
-              disabled={!canContinue || submitting}
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={initialize}
-              disabled={submitting}
-            >
-              {submitting ? 'Initializing...' : 'Initialize Purchases'}
-            </button>
-          )}
-        </div>
-      </Card>
-    </div>
-  );
-};
 
 const PurchaseHomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -463,7 +198,14 @@ const PurchaseHomePage: React.FC = () => {
   }
 
   if (initialized === false) {
-    return <PurchaseInitializationWizard onComplete={() => setReloadTick((prev) => prev + 1)} />;
+    return (
+      <PurchaseInitializationWizard
+        onComplete={() => {
+          setInitialized(true);
+          setReloadTick((prev) => prev + 1);
+        }}
+      />
+    );
   }
 
   return (
@@ -541,10 +283,14 @@ const PurchaseHomePage: React.FC = () => {
               onClick={() => navigate(activity.href)}
             >
               <div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{activity.label}</div>
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {activity.label}
+                </div>
                 <div className="text-xs text-slate-600">{activity.subtitle}</div>
               </div>
-              <div className="text-xs text-slate-500">{new Date(activity.date).toLocaleDateString()}</div>
+              <div className="text-xs text-slate-500">
+                {new Date(activity.date).toLocaleDateString()}
+              </div>
             </button>
           ))}
           {!loading && recentActivity.length === 0 && (

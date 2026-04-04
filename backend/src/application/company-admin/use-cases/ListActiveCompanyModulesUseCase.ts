@@ -21,9 +21,7 @@ export class ListActiveCompanyModulesUseCase {
         // Active modules array
         const active = company.modules || [];
 
-        // Return enriched output
-        return active.map(name => ({
-            moduleName: name
-        }));
+        // Return plain string array of active module IDs
+        return active;
     }
 }

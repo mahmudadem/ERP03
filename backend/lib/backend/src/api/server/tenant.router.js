@@ -20,6 +20,7 @@ const company_admin_routes_1 = __importDefault(require("../routes/company-admin.
 const system_rbac_routes_1 = __importDefault(require("../routes/system.rbac.routes"));
 const company_moduleSettings_routes_1 = __importDefault(require("../routes/company.moduleSettings.routes"));
 const notification_routes_1 = __importDefault(require("../routes/notification.routes"));
+const shared_routes_1 = __importDefault(require("../routes/shared.routes"));
 const router = (0, express_1.Router)();
 // Apply Auth & Tenant Context Middleware
 router.use(authMiddleware_1.authMiddleware);
@@ -35,6 +36,7 @@ for (const module of modules) {
     router.use(`/${module.metadata.id}`, (0, companyModuleGuard_1.companyModuleGuard)(module.metadata.id), moduleRouter);
     console.log(`Mounted module: ${module.metadata.id} at /${module.metadata.id}`);
 }
+router.use('/shared', shared_routes_1.default);
 router.use('/rbac', system_rbac_routes_1.default);
 router.use(company_moduleSettings_routes_1.default);
 router.use(notification_routes_1.default);

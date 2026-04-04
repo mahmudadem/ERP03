@@ -60,6 +60,8 @@ class Item {
         this.revenueAccountId = props.revenueAccountId;
         this.cogsAccountId = props.cogsAccountId;
         this.inventoryAssetAccountId = props.inventoryAssetAccountId;
+        this.defaultPurchaseTaxCodeId = props.defaultPurchaseTaxCodeId;
+        this.defaultSalesTaxCodeId = props.defaultSalesTaxCodeId;
         this.minStockLevel = props.minStockLevel;
         this.maxStockLevel = props.maxStockLevel;
         this.reorderPoint = props.reorderPoint;
@@ -98,6 +100,8 @@ class Item {
             revenueAccountId: this.revenueAccountId,
             cogsAccountId: this.cogsAccountId,
             inventoryAssetAccountId: this.inventoryAssetAccountId,
+            defaultPurchaseTaxCodeId: this.defaultPurchaseTaxCodeId,
+            defaultSalesTaxCodeId: this.defaultSalesTaxCodeId,
             minStockLevel: this.minStockLevel,
             maxStockLevel: this.maxStockLevel,
             reorderPoint: this.reorderPoint,
@@ -129,6 +133,8 @@ class Item {
             revenueAccountId: data.revenueAccountId,
             cogsAccountId: data.cogsAccountId,
             inventoryAssetAccountId: data.inventoryAssetAccountId,
+            defaultPurchaseTaxCodeId: data.defaultPurchaseTaxCodeId,
+            defaultSalesTaxCodeId: data.defaultSalesTaxCodeId,
             minStockLevel: data.minStockLevel,
             maxStockLevel: data.maxStockLevel,
             reorderPoint: data.reorderPoint,

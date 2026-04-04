@@ -35,6 +35,16 @@ const FirestoreInventorySettingsRepository_1 = require("../firestore/repositorie
 const FirestoreStockAdjustmentRepository_1 = require("../firestore/repositories/inventory/FirestoreStockAdjustmentRepository");
 const FirestoreStockTransferRepository_1 = require("../firestore/repositories/inventory/FirestoreStockTransferRepository");
 const FirestoreInventoryPeriodSnapshotRepository_1 = require("../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository");
+const FirestorePurchaseSettingsRepository_1 = require("../firestore/repositories/purchases/FirestorePurchaseSettingsRepository");
+const FirestorePurchaseOrderRepository_1 = require("../firestore/repositories/purchases/FirestorePurchaseOrderRepository");
+const FirestoreGoodsReceiptRepository_1 = require("../firestore/repositories/purchases/FirestoreGoodsReceiptRepository");
+const FirestorePurchaseInvoiceRepository_1 = require("../firestore/repositories/purchases/FirestorePurchaseInvoiceRepository");
+const FirestorePurchaseReturnRepository_1 = require("../firestore/repositories/purchases/FirestorePurchaseReturnRepository");
+const FirestoreSalesSettingsRepository_1 = require("../firestore/repositories/sales/FirestoreSalesSettingsRepository");
+const FirestoreSalesOrderRepository_1 = require("../firestore/repositories/sales/FirestoreSalesOrderRepository");
+const FirestoreDeliveryNoteRepository_1 = require("../firestore/repositories/sales/FirestoreDeliveryNoteRepository");
+const FirestoreSalesInvoiceRepository_1 = require("../firestore/repositories/sales/FirestoreSalesInvoiceRepository");
+const FirestoreSalesReturnRepository_1 = require("../firestore/repositories/sales/FirestoreSalesReturnRepository");
 const FirestoreHRRepositories_1 = require("../firestore/repositories/hr/FirestoreHRRepositories");
 const FirestorePOSRepositories_1 = require("../firestore/repositories/pos/FirestorePOSRepositories");
 const FirestoreDesignerRepositories_1 = require("../firestore/repositories/designer/FirestoreDesignerRepositories");
@@ -69,6 +79,8 @@ const FirestoreSystemMetadataRepository_1 = require("../repositories/FirestoreSy
 const PrismaCompanyRepository_1 = require("../prisma/repositories/PrismaCompanyRepository");
 const prismaClient_1 = require("../prisma/prismaClient");
 const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
+const FirestorePartyRepository_1 = require("../firestore/repositories/shared/FirestorePartyRepository");
+const FirestoreTaxCodeRepository_1 = require("../firestore/repositories/shared/FirestoreTaxCodeRepository");
 const FirebaseTokenVerifier_1 = require("../auth/FirebaseTokenVerifier");
 // Helper to get Firestore instance
 const getDb = () => firebaseAdmin_1.default.firestore();
@@ -126,6 +138,18 @@ exports.diContainer = {
     get stockAdjustmentRepository() { return new FirestoreStockAdjustmentRepository_1.FirestoreStockAdjustmentRepository(getDb()); },
     get stockTransferRepository() { return new FirestoreStockTransferRepository_1.FirestoreStockTransferRepository(getDb()); },
     get inventoryPeriodSnapshotRepository() { return new FirestoreInventoryPeriodSnapshotRepository_1.FirestoreInventoryPeriodSnapshotRepository(getDb()); },
+    // PURCHASES
+    get purchaseSettingsRepository() { return new FirestorePurchaseSettingsRepository_1.FirestorePurchaseSettingsRepository(getDb()); },
+    get purchaseOrderRepository() { return new FirestorePurchaseOrderRepository_1.FirestorePurchaseOrderRepository(getDb()); },
+    get goodsReceiptRepository() { return new FirestoreGoodsReceiptRepository_1.FirestoreGoodsReceiptRepository(getDb()); },
+    get purchaseInvoiceRepository() { return new FirestorePurchaseInvoiceRepository_1.FirestorePurchaseInvoiceRepository(getDb()); },
+    get purchaseReturnRepository() { return new FirestorePurchaseReturnRepository_1.FirestorePurchaseReturnRepository(getDb()); },
+    // SALES
+    get salesSettingsRepository() { return new FirestoreSalesSettingsRepository_1.FirestoreSalesSettingsRepository(getDb()); },
+    get salesOrderRepository() { return new FirestoreSalesOrderRepository_1.FirestoreSalesOrderRepository(getDb()); },
+    get deliveryNoteRepository() { return new FirestoreDeliveryNoteRepository_1.FirestoreDeliveryNoteRepository(getDb()); },
+    get salesInvoiceRepository() { return new FirestoreSalesInvoiceRepository_1.FirestoreSalesInvoiceRepository(getDb()); },
+    get salesReturnRepository() { return new FirestoreSalesReturnRepository_1.FirestoreSalesReturnRepository(getDb()); },
     // HR
     get employeeRepository() { return new FirestoreHRRepositories_1.FirestoreEmployeeRepository(getDb()); },
     get attendanceRepository() { return new FirestoreHRRepositories_1.FirestoreAttendanceRepository(getDb()); },
@@ -171,6 +195,8 @@ exports.diContainer = {
     get planRegistryRepository() { return new FirestorePlanRegistryRepository_1.FirestorePlanRegistryRepository(getDb()); },
     get roleTemplateRegistryRepository() { return new FirestoreRoleTemplateRegistryRepository_1.FirestoreRoleTemplateRegistryRepository(getDb()); },
     // SHARED
+    get partyRepository() { return new FirestorePartyRepository_1.FirestorePartyRepository(getDb()); },
+    get taxCodeRepository() { return new FirestoreTaxCodeRepository_1.FirestoreTaxCodeRepository(getDb()); },
     get transactionManager() { return new FirestoreTransactionManager_1.FirestoreTransactionManager(getDb()); },
     // POLICY SYSTEM
     get policyRegistry() {

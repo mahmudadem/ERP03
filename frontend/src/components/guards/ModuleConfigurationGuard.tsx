@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { ModuleSetupPromptModal } from './ModuleSetupPromptModal';
@@ -19,29 +19,20 @@ const MODULE_CONFIG: Record<string, { isRequired: boolean }> = {
   invoicing: { isRequired: false },
 };
 
+// Modules that have a dedicated initialization handler route
+const MODULE_INIT_PATHS: Record<string, string> = {
+  accounting: '/accounting/setup',
+  inventory: '/inventory',
+  purchase: '/purchases',
+  sales: '/sales',
+};
+
 /**
  * ModuleConfigurationGuard
- * 
- * Guards module routes and shows a setup prompt if the module is not initialized.
- * 
- * For REQUIRED modules (e.g., accounting):
- * - User MUST configure to access
- * - "Cancel" redirects to dashboard
- * - Cannot bypass setup
- * 
- * For OPTIONAL modules (e.g., inventory):
- * - User can skip configuration
- * - "Skip for Now" allows access
- * - Can configure later
- * 
- * Usage:
- * ```tsx
- * <Route path="/accounting/*" element={
- *   <ModuleConfigurationGuard moduleCode="accounting">
- *     <AccountingModule />
- *   </ModuleConfigurationGuard>
- * } />
- * ```
+ *
+ * Guards module routes and enforces initialization flow.
+ * - If a module has a configured initialization handler route, users are redirected there.
+ * - If not, fallback behavior uses setup prompt modal logic.
  */
 export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> = ({
   moduleCode,
@@ -67,8 +58,22 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   // Find the module
   const module = modules.find((m) => m.moduleCode === moduleCode);
 
-  // If module not found in company modules, allow access (shouldn't happen normally)
+  // If module not found, treat modules with initialization handlers as not initialized.
+  // This keeps routing strict even when installation records are missing.
   if (!module) {
+    const initializationPath = MODULE_INIT_PATHS[moduleCode];
+    if (initializationPath) {
+      const path = location.pathname.toLowerCase();
+      const targetPath = initializationPath.toLowerCase();
+      const isInitializationRoute = path === targetPath || path === `${targetPath}/`;
+
+      if (!isInitializationRoute) {
+        return <Navigate to={initializationPath} replace />;
+      }
+
+      return <>{children}</>;
+    }
+
     console.warn(`[ModuleConfigurationGuard] Module "${moduleCode}" not found in company modules`);
     return <>{children}</>;
   }
@@ -78,12 +83,17 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
     return <>{children}</>;
   }
 
-  if (moduleCode === 'inventory') {
+  // Direct redirect to module initialization handler when available
+  const initializationPath = MODULE_INIT_PATHS[moduleCode];
+  if (initializationPath) {
     const path = location.pathname.toLowerCase();
-    const isOverviewRoute = path === '/inventory' || path === '/inventory/';
-    if (!isOverviewRoute) {
-      return <Navigate to="/inventory" replace />;
+    const targetPath = initializationPath.toLowerCase();
+    const isInitializationRoute = path === targetPath || path === `${targetPath}/`;
+
+    if (!isInitializationRoute) {
+      return <Navigate to={initializationPath} replace />;
     }
+
     return <>{children}</>;
   }
 
