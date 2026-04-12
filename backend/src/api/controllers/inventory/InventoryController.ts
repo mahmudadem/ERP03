@@ -13,6 +13,7 @@ import {
 } from '../../../application/inventory/use-cases/ItemUseCases';
 import {
   CreateWarehouseUseCase,
+  GetWarehouseUseCase,
   ListWarehousesUseCase,
   UpdateWarehouseUseCase,
 } from '../../../application/inventory/use-cases/WarehouseUseCases';
@@ -415,6 +416,21 @@ export class InventoryController {
       (res as any).json({
         success: true,
         data: warehouses.map(InventoryDTOMapper.toWarehouseDTO),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getWarehouse(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new GetWarehouseUseCase(diContainer.warehouseRepository);
+      const warehouse = await useCase.execute(companyId, (req as any).params.id);
+
+      (res as any).json({
+        success: true,
+        data: warehouse ? InventoryDTOMapper.toWarehouseDTO(warehouse) : null,
       });
     } catch (error) {
       next(error);

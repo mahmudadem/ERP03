@@ -323,6 +323,20 @@ class InventoryController {
             next(error);
         }
     }
+    static async getWarehouse(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new WarehouseUseCases_1.GetWarehouseUseCase(bindRepositories_1.diContainer.warehouseRepository);
+            const warehouse = await useCase.execute(companyId, req.params.id);
+            res.json({
+                success: true,
+                data: warehouse ? InventoryDTOs_1.InventoryDTOMapper.toWarehouseDTO(warehouse) : null,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async updateWarehouse(req, res, next) {
         try {
             (0, inventory_validators_1.validateUpdateWarehouseInput)(req.body);

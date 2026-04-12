@@ -28,6 +28,7 @@ router.delete('/categories/:id', permissionGuard('inventory.categories.manage'),
 
 router.post('/warehouses', permissionGuard('inventory.warehouses.manage'), InventoryController.createWarehouse);
 router.get('/warehouses', permissionGuard('inventory.warehouses.view'), InventoryController.listWarehouses);
+router.get('/warehouses/:id', permissionGuard('inventory.warehouses.view'), InventoryController.getWarehouse);
 router.put('/warehouses/:id', permissionGuard('inventory.warehouses.manage'), InventoryController.updateWarehouse);
 
 router.post('/uom-conversions', permissionGuard('inventory.uom.manage'), InventoryController.createUomConversion);

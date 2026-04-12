@@ -952,5 +952,11 @@
       "createAnother": "Create Another Voucher",
       "close": "Close Window"
     }
+  },
+  "unsavedChangesModal": {
+    "title": "Unsaved Changes",
+    "description": "You have unsaved changes in this document. Are you sure you want to close without saving?",
+    "cancel": "Continue Editing",
+    "closeWithoutSaving": "Discard Changes"
   }
 }

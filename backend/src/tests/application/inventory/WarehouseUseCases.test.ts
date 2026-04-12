@@ -1,4 +1,4 @@
-import { CreateWarehouseUseCase, UpdateWarehouseUseCase } from '../../../application/inventory/use-cases/WarehouseUseCases';
+import { CreateWarehouseUseCase, GetWarehouseUseCase, UpdateWarehouseUseCase } from '../../../application/inventory/use-cases/WarehouseUseCases';
 import { Warehouse } from '../../../domain/inventory/entities/Warehouse';
 import { IWarehouseRepository, WarehouseListOptions } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 
@@ -119,5 +119,25 @@ describe('Warehouse hierarchy use cases', () => {
         parentId: child.id,
       } as Partial<Warehouse>)
     ).rejects.toThrow('Warehouse hierarchy cannot contain cycles');
+  });
+
+  it('returns a warehouse only within the same company scope', async () => {
+    const repo = new InMemoryWarehouseRepository();
+    const warehouse = makeWarehouse({
+      id: 'wh-main',
+      companyId,
+      code: 'MAIN',
+      name: 'Main Warehouse',
+    });
+
+    await repo.createWarehouse(warehouse);
+
+    const useCase = new GetWarehouseUseCase(repo);
+
+    await expect(useCase.execute(companyId, warehouse.id)).resolves.toMatchObject({
+      id: warehouse.id,
+      companyId,
+    });
+    await expect(useCase.execute('cmp-2', warehouse.id)).resolves.toBeNull();
   });
 });

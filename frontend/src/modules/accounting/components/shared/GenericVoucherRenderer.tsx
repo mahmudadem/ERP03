@@ -85,7 +85,7 @@ const stripSystemManagedSnapshotFields = (snapshot: any): any => {
   }, {} as Record<string, any>);
 };
 
-export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
+const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
   // GUARD: definition must be present
   if (!definition) return null;
 
@@ -2983,6 +2983,8 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         {renderActions()}
     </div>
   );
-}));
+});
+
+export const GenericVoucherRenderer = React.memo(_GenericVoucherRenderer);
 
 GenericVoucherRenderer.displayName = 'GenericVoucherRenderer';

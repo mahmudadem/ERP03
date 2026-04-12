@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ListWarehousesUseCase = exports.UpdateWarehouseUseCase = exports.CreateWarehouseUseCase = void 0;
+exports.GetWarehouseUseCase = exports.ListWarehousesUseCase = exports.UpdateWarehouseUseCase = exports.CreateWarehouseUseCase = void 0;
 const Warehouse_1 = require("../../../domain/inventory/entities/Warehouse");
 const crypto_1 = require("crypto");
 const normalizeParentId = (parentId) => {
@@ -102,4 +102,17 @@ class ListWarehousesUseCase {
     }
 }
 exports.ListWarehousesUseCase = ListWarehousesUseCase;
+class GetWarehouseUseCase {
+    constructor(repo) {
+        this.repo = repo;
+    }
+    async execute(companyId, warehouseId) {
+        const warehouse = await this.repo.getWarehouse(warehouseId);
+        if (!warehouse || warehouse.companyId !== companyId) {
+            return null;
+        }
+        return warehouse;
+    }
+}
+exports.GetWarehouseUseCase = GetWarehouseUseCase;
 //# sourceMappingURL=WarehouseUseCases.js.map

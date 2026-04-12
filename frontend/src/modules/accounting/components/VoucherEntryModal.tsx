@@ -11,7 +11,7 @@ import { X, Save, Loader2, Send, CheckCircle, Plus, RotateCcw, AlertTriangle, Ch
 import { VoucherFormConfig } from '../voucher-wizard/types';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIMode } from '../../../api/companyApi';
-import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { clsx } from 'clsx';
 import { useAuth } from '../../../hooks/useAuth';
@@ -720,46 +720,33 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         </div>
       </div>
       
-      <UnsavedChangesModal 
+      <ConfirmDialog
         isOpen={showUnsavedModal}
+        title={t('unsavedChangesModal.title')}
+        message={t('unsavedChangesModal.description')}
         onCancel={() => setShowUnsavedModal(false)}
         onConfirm={handleConfirmClose}
+        confirmLabel={t('unsavedChangesModal.closeWithoutSaving')}
+        cancelLabel={t('unsavedChangesModal.cancel')}
+        tone="danger"
       />
 
       {/* Confirmation Modal */}
-      {showConfirmSubmitModal && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg-primary)] rounded-xl shadow-2xl w-96 p-6 border border-[var(--color-border)] scale-100 animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-12 h-12 bg-primary-50 dark:bg-primary-900/20 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
-                <Send size={24} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Submit for Approval?</h3>
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1">This will lock the voucher and notify approvers. You cannot edit it afterwards.</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 w-full mt-2">
-                <button 
-                  onClick={() => setShowConfirmSubmitModal(false)}
-                  className="px-4 py-2 text-sm font-bold text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowConfirmSubmitModal(false);
-                    handleSaveVoucher('submitted');
-                  }}
-                  className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-md transition-all active:scale-[0.98]"
-                >
-                  Confirm Submit
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showConfirmSubmitModal}
+        title={t('voucherWindow.confirmSubmitTitle')}
+        message={t('voucherWindow.confirmSubmitBody')}
+        onCancel={() => setShowConfirmSubmitModal(false)}
+        onConfirm={() => {
+          setShowConfirmSubmitModal(false);
+          handleSaveVoucher('submitted');
+        }}
+        confirmLabel={t('voucherWindow.confirmSubmit')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        tone="warning"
+        isConfirming={isSubmitting}
+        icon={<Send size={24} />}
+      />
 
       {/* Success Modal */}
       {showSuccessModal && (

@@ -14,7 +14,7 @@ import { useWindowManager } from '../../../context/WindowManagerContext';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { clsx } from 'clsx';
-import { UnsavedChangesModal } from './shared/UnsavedChangesModal';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { VoucherCorrectionModal } from './VoucherCorrectionModal';
 import { RateDeviationDialog } from './shared/RateDeviationDialog';
 import { checkVoucherRateDeviations, RateDeviationResult } from '../utils/rateDeviationCheck';
@@ -42,7 +42,7 @@ interface VoucherWindowProps {
   onPrint?: (id: string) => void;
 }
 
-export const VoucherWindow: React.FC<VoucherWindowProps> = ({ 
+const _VoucherWindow: React.FC<VoucherWindowProps> = ({ 
   win, 
   onSave,
   onSubmit,
@@ -728,6 +728,34 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     return false;
   }, [win.data, settings, policyConfig]);
 
+  // Stabilize handlers for heavy renderer memoization
+  const handleRendererChange = React.useCallback((newData: any) => {
+    // Never set dirty for read-only vouchers - they cannot be edited
+    if (!isInitialLoadRef.current && !isVoucherReadOnly) {
+      setIsDirty(true);
+    }
+    if (newData) {
+       if (newData.currency) {
+         setLiveCurrency(newData.currency);
+       }
+       if (newData.lines && Array.isArray(newData.lines)) {
+          // Only update liveLines if the new lines have actual data
+          const hasRealData = newData.lines.some((l: any) => 
+            (parseFloat(l.debit) || 0) > 0 || 
+            (parseFloat(l.credit) || 0) > 0 || 
+            l.accountId
+          );
+          if (hasRealData) {
+            setLiveLines(newData.lines);
+          }
+       }
+    }
+  }, [isVoucherReadOnly]);
+
+  const handleRendererBlur = React.useCallback(() => {
+    forceUpdate(prev => prev + 1);
+  }, []);
+
   useEffect(() => {
     if (!settingsLoading && !policyLoading && settings) {
       console.log('[VoucherWindow] Active Settings:', {
@@ -741,6 +769,7 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
 
   if (win.isMinimized) return null;
 
+  // Use translate3d for GPU-accelerated dragging
   const style: React.CSSProperties = win.isMaximized
     ? {
         position: 'fixed',
@@ -754,11 +783,13 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       }
     : {
         position: 'fixed',
-        left: win.position.x,
-        top: win.position.y,
+        left: 0,
+        top: 0,
+        transform: `translate3d(${win.position.x}px, ${win.position.y}px, 0)`,
         width: win.size.width,
         height: win.size.height,
-        zIndex: win.isFocused ? 1000 : 999
+        zIndex: win.isFocused ? 1000 : 999,
+        willChange: (isDragging || isResizing) ? 'transform' : 'auto'
       };
 
   return (
@@ -774,9 +805,11 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       <div
         ref={windowRef}
         style={style}
-        className={`flex flex-col bg-[var(--color-bg-primary)] rounded-lg shadow-2xl overflow-hidden border transition-all duration-300 ${
+        className={clsx(
+          "flex flex-col bg-[var(--color-bg-primary)] rounded-lg shadow-2xl overflow-hidden border transition-colors",
+          !isDragging && !isResizing && "transition-all duration-300",
           win.isFocused ? 'border-primary-500/50 ring-1 ring-primary-500/20' : 'border-[var(--color-border)]'
-        }`}
+        )}
         onMouseDown={() => focusWindow(win.id)}
       >
       {/* Window Header */}
@@ -1017,38 +1050,18 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       )}
 
       {/* Voucher Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-auto custom-scroll transition-colors">
+      <div className={clsx(
+        "flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-auto custom-scroll transition-colors",
+        (isDragging || isResizing) && "pointer-events-none select-none overflow-hidden"
+      )}>
         <GenericVoucherRenderer
           ref={rendererRef}
           definition={win.data?.voucherConfig as any}
           mode="windows"
           initialData={win.data}
           readOnly={isVoucherReadOnly}
-          onChange={(newData: any) => {
-            // Never set dirty for read-only vouchers - they cannot be edited
-            if (!isInitialLoadRef.current && !isVoucherReadOnly) {
-              setIsDirty(true);
-            }
-            if (newData) {
-               if (newData.currency) {
-                 setLiveCurrency(newData.currency);
-               }
-               if (newData.lines && Array.isArray(newData.lines)) {
-                  // Only update liveLines if the new lines have actual data
-                  const hasRealData = newData.lines.some((l: any) => 
-                    (parseFloat(l.debit) || 0) > 0 || 
-                    (parseFloat(l.credit) || 0) > 0 || 
-                    l.accountId
-                  );
-                  if (hasRealData) {
-                    setLiveLines(newData.lines);
-                  }
-               }
-            }
-          }}
-          onBlur={() => {
-            forceUpdate(prev => prev + 1);
-          }}
+          onChange={handleRendererChange}
+          onBlur={handleRendererBlur}
         />
       </div>
 
@@ -1369,46 +1382,33 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
       )}
     </div>
     
-    <UnsavedChangesModal 
+    <ConfirmDialog
       isOpen={showUnsavedModal}
+      title={t('unsavedChangesModal.title')}
+      message={t('unsavedChangesModal.description')}
       onCancel={() => {
         setShowUnsavedModal(false);
         setIsPendingNew(false);
       }}
       onConfirm={handleConfirmClose}
+      confirmLabel={t('unsavedChangesModal.closeWithoutSaving')}
+      cancelLabel={t('unsavedChangesModal.cancel')}
+      tone="danger"
     />
 
     {/* Confirmation Modal */}
-    {showConfirmSubmitModal && (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
-        <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
-          <div className="flex flex-col items-center text-center gap-4">
-            <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
-              <Send size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{t('voucherWindow.confirmSubmitTitle', 'Submit for Approval?')}</h3>
-              <p className="text-sm text-gray-500 mt-1">{t('voucherWindow.confirmSubmitBody', 'This will lock the voucher and notify approvers. You cannot edit it afterwards.')}</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3 w-full mt-2">
-              <button 
-                onClick={() => setShowConfirmSubmitModal(false)}
-                className="px-4 py-2 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                {t('common.cancel', 'Cancel')}
-              </button>
-              <button 
-                onClick={handleConfirmSubmit}
-                className="px-4 py-2 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-lg shadow-md transition-all active:scale-[0.98]"
-              >
-                {t('voucherWindow.confirmSubmit', 'Confirm Submit')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
+    <ConfirmDialog
+      isOpen={showConfirmSubmitModal}
+      title={t('voucherWindow.confirmSubmitTitle')}
+      message={t('voucherWindow.confirmSubmitBody')}
+      onCancel={() => setShowConfirmSubmitModal(false)}
+      onConfirm={handleConfirmSubmit}
+      confirmLabel={t('voucherWindow.confirmSubmit')}
+      cancelLabel={t('common.cancel', 'Cancel')}
+      tone="warning"
+      isConfirming={isSubmitting}
+      icon={<Send size={24} />}
+    />
 
     {/* Success Modal */}
     {showSuccessModal && (
@@ -1495,3 +1495,5 @@ export const VoucherWindow: React.FC<VoucherWindowProps> = ({
     </>
   );
 };
+
+export const VoucherWindow = React.memo(_VoucherWindow);

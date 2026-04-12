@@ -65,6 +65,8 @@ class Item {
         this.minStockLevel = props.minStockLevel;
         this.maxStockLevel = props.maxStockLevel;
         this.reorderPoint = props.reorderPoint;
+        this.imageUrl = props.imageUrl;
+        this.metadata = props.metadata ? Object.assign({}, props.metadata) : undefined;
         this.active = props.active;
         this.createdBy = props.createdBy;
         this.createdAt = props.createdAt;
@@ -105,6 +107,8 @@ class Item {
             minStockLevel: this.minStockLevel,
             maxStockLevel: this.maxStockLevel,
             reorderPoint: this.reorderPoint,
+            imageUrl: this.imageUrl,
+            metadata: this.metadata ? Object.assign({}, this.metadata) : undefined,
             active: this.active,
             createdBy: this.createdBy,
             createdAt: this.createdAt,
@@ -138,6 +142,8 @@ class Item {
             minStockLevel: data.minStockLevel,
             maxStockLevel: data.maxStockLevel,
             reorderPoint: data.reorderPoint,
+            imageUrl: data.imageUrl,
+            metadata: data.metadata,
             active: (_b = data.active) !== null && _b !== void 0 ? _b : true,
             createdBy: data.createdBy || 'SYSTEM',
             createdAt: toDate(data.createdAt || new Date()),

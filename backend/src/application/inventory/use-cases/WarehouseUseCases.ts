@@ -126,3 +126,16 @@ export class ListWarehousesUseCase {
     return this.repo.getCompanyWarehouses(companyId, filters);
   }
 }
+
+export class GetWarehouseUseCase {
+  constructor(private readonly repo: IWarehouseRepository) {}
+
+  async execute(companyId: string, warehouseId: string): Promise<Warehouse | null> {
+    const warehouse = await this.repo.getWarehouse(warehouseId);
+    if (!warehouse || warehouse.companyId !== companyId) {
+      return null;
+    }
+
+    return warehouse;
+  }
+}

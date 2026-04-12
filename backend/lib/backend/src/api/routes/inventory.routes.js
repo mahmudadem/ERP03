@@ -23,6 +23,7 @@ router.put('/categories/:id', (0, permissionGuard_1.permissionGuard)('inventory.
 router.delete('/categories/:id', (0, permissionGuard_1.permissionGuard)('inventory.categories.manage'), InventoryController_1.InventoryController.deleteCategory);
 router.post('/warehouses', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.manage'), InventoryController_1.InventoryController.createWarehouse);
 router.get('/warehouses', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.view'), InventoryController_1.InventoryController.listWarehouses);
+router.get('/warehouses/:id', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.view'), InventoryController_1.InventoryController.getWarehouse);
 router.put('/warehouses/:id', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.manage'), InventoryController_1.InventoryController.updateWarehouse);
 router.post('/uom-conversions', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.createUomConversion);
 router.get('/uom-conversions/:itemId', (0, permissionGuard_1.permissionGuard)('inventory.uom.view'), InventoryController_1.InventoryController.listUomConversions);
