@@ -205,6 +205,56 @@ export default function ToolsFormsDesignerPage() {
     }
   };
 
+  // Define module-specific default rules and actions
+  const getDefaults = () => {
+    switch (activeModule) {
+      case 'ACCOUNTING':
+        return {
+          rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Vouchers must be approved by a supervisor.' },
+            { id: 'prevent_negative_cash', label: 'Prevent Negative Cash', enabled: false, description: 'Block saving if cash accounts go negative.' },
+            { id: 'allow_future_date', label: 'Allow Future Posting Dates', enabled: true, description: 'Users can select dates in the future.' },
+          ],
+          actions: [
+            { type: 'print', label: 'Print Voucher', enabled: true },
+            { type: 'email', label: 'Email PDF', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+          ]
+        };
+      case 'SALES':
+        return {
+          rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Documents must be approved by a manager.' },
+            { id: 'prevent_negative_qty', label: 'Prevent Negative Stock', enabled: true, description: 'Block saving if stock levels go below zero.' },
+            { id: 'validate_credit_limit', label: 'Check Credit Limit', enabled: true, description: 'Warn if customer exceeds their credit limit.' },
+          ],
+          actions: [
+            { type: 'print', label: 'Print Document', enabled: true },
+            { type: 'email', label: 'Email Customer', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+            { type: 'convert_to_receipt', label: 'Convert to Receipt', enabled: false },
+          ]
+        };
+      case 'PURCHASE':
+        return {
+          rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Documents must be approved.' },
+            { id: 'update_inventory', label: 'Auto-Update Stock', enabled: true, description: 'Update inventory levels on Goods Receipt.' },
+            { id: 'match_invoice_to_grn', label: 'Three-Way Match', enabled: false, description: 'Ensure Invoice/PO/GRN match perfectly.' },
+          ],
+          actions: [
+            { type: 'print', label: 'Print Document', enabled: true },
+            { type: 'email', label: 'Email Vendor', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+          ]
+        };
+      default:
+        return { rules: [], actions: [] };
+    }
+  };
+
+  const { rules: defaultRules, actions: defaultActions } = getDefaults();
+
   if (loading && forms.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
@@ -313,8 +363,8 @@ export default function ToolsFormsDesignerPage() {
             templates={templates as any}
             systemFields={systemFields}
             availableFields={availableFields}
-            defaultRules={[]}
-            defaultActions={[]}
+            defaultRules={defaultRules as any}
+            defaultActions={defaultActions as any}
             onDocumentSaved={handleSaveForm}
             onToggleEnabled={handleToggleEnabled}
             onDeleteForm={handleDeleteForm}

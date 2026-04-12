@@ -124,6 +124,7 @@ const SalesInvoicesListPage = lazy(() => import('../modules/sales/pages/SalesInv
 const SalesInvoiceDetailPage = lazy(() => import('../modules/sales/pages/SalesInvoiceDetailPage'));
 const SalesReturnsListPage = lazy(() => import('../modules/sales/pages/SalesReturnsListPage'));
 const SalesReturnDetailPage = lazy(() => import('../modules/sales/pages/SalesReturnDetailPage'));
+const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 
 export interface AppRoute {
   path: string;
@@ -277,6 +278,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/returns/:id', label: 'Sales Return Detail', component: SalesReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/settings', label: 'Sales Settings', component: SalesSettingsPage, section: 'INVENTORY', requiredModule: 'sales' },
 
+  // Dynamic Sales Documents (designed in Forms Designer)
+  { path: '/sales/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/:formCode/new', label: 'New Document', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/:formCode/:id', label: 'Document Detail', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+
   // Purchase
   { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/items', label: 'Products & Services', component: ItemsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
@@ -293,6 +299,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/returns/new', label: 'New Purchase Return', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/returns/:id', label: 'Purchase Return Detail', component: PurchaseReturnDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/settings', label: 'Purchase Settings', component: PurchaseSettingsPage, section: 'INVENTORY', requiredModule: 'purchase' },
+
+  // Dynamic Purchase Documents (designed in Forms Designer)
+  { path: '/purchases/:formCode', label: 'Documents', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/:formCode/new', label: 'New Document', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/:formCode/:id', label: 'Document Detail', component: DynamicDocumentPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   

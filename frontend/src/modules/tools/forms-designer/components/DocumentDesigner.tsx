@@ -163,13 +163,25 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       uiModeOverrides: null as any
     };
 
-    // Ensure uiModeOverrides is NEVER null
+    // Ensure uiModeOverrides is NEVER null and has both modes initialized
     if (!base.uiModeOverrides) {
-       base.uiModeOverrides = {
-         classic: { sections: { HEADER: { order: 0, fields: [] }, BODY: { order: 1, fields: [] }, EXTRA: { order: 2, fields: [] }, ACTIONS: { order: 3, fields: [] } } },
-         windows: { sections: { HEADER: { order: 0, fields: [] }, BODY: { order: 1, fields: [] }, EXTRA: { order: 2, fields: [] }, ACTIONS: { order: 3, fields: [] } } }
-       };
+       (base as any).uiModeOverrides = {};
     }
+    
+    const modes: UIMode[] = ['classic', 'windows'];
+    modes.forEach(mode => {
+      if (!base.uiModeOverrides[mode] || !base.uiModeOverrides[mode].sections) {
+        base.uiModeOverrides[mode] = {
+          sections: {
+            HEADER: { order: 0, fields: [] },
+            BODY: { order: 1, fields: [] },
+            EXTRA: { order: 2, fields: [] },
+            ACTIONS: { order: 3, fields: [] }
+          }
+        };
+      }
+    });
+
     return base as DocumentFormConfig;
   });
 
@@ -615,13 +627,15 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   };
 
 
-  const sortedSections = Object.entries(config.uiModeOverrides[previewMode].sections)
+  // Safely extract layout with fallback to prevent crashes
+  const currentModeConfig = config.uiModeOverrides?.[previewMode] || { sections: {} };
+  const sortedSections = Object.entries(currentModeConfig.sections || {})
     .sort(([, a], [, b]) => (a as SectionLayout).order - (b as SectionLayout).order);
 
   // --- RENDERERS ---
 
   const renderInteractiveGrid = (sectionName: string) => {
-    const layout = config.uiModeOverrides[previewMode].sections[sectionName as SectionType];
+    const layout = config.uiModeOverrides?.[previewMode]?.sections?.[sectionName as SectionType] || { order: 0, fields: [] };
     if (!layout) return null;
 
     const maxRow = layout.fields.reduce((max: number, f: FieldLayout) => Math.max(max, f.row), 0) + 1;
@@ -1168,7 +1182,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Custom Label</label>
                         <input 
                           type="text" 
-                          value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.labelOverride || ''}
+                          value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.labelOverride || ''}
                           onChange={(e) => updateSelectedField('labelOverride', e.target.value)}
                           placeholder="Default Label"
                           className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
@@ -1180,7 +1194,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="12"
-                             value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan || 1}
+                             value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan || 1}
                              onChange={(e) => updateSelectedField('colSpan', parseInt(e.target.value))}
                              className="flex-1 accent-indigo-600 bg-white"
                            />
@@ -1194,7 +1208,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="6"
-                             value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.rowSpan || 1}
+                             value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.rowSpan || 1}
                              onChange={(e) => updateSelectedField('rowSpan', parseInt(e.target.value))}
                              className="flex-1 accent-indigo-600 bg-white"
                            />
@@ -1205,7 +1219,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                      <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Component Type</label>
                         <select 
-                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.typeOverride || ''}
+                           value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.typeOverride || ''}
                            onChange={(e) => updateSelectedField('typeOverride', e.target.value)}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                         >
@@ -1220,7 +1234,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                      <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">Display Mode</label>
                         <select 
-                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.displayMode || 'standard'}
+                           value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.displayMode || 'standard'}
                            onChange={(e) => updateSelectedField('displayMode', e.target.value)}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                         >
@@ -1245,7 +1259,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                        <div className="mt-4">
                           <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Icon</label>
                           <select 
-                             value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.iconOverride || ''}
+                             value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.iconOverride || ''}
                              onChange={(e) => updateSelectedField('iconOverride', e.target.value)}
                              className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                           >
@@ -1270,7 +1284,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                          <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Row Index</label>
                          <input 
                            type="number" min="0"
-                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.row || 0}
+                           value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.row || 0}
                            onChange={(e) => updateSelectedField('row', Math.max(0, parseInt(e.target.value) || 0))}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900 font-mono"
                          />
@@ -1279,7 +1293,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                          <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Column Start</label>
                          <input 
                            type="number" min="0" max="11"
-                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.col || 0}
+                           value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.col || 0}
                            onChange={(e) => updateSelectedField('col', Math.max(0, Math.min(11, parseInt(e.target.value) || 0)))}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900 font-mono"
                          />
@@ -1321,7 +1335,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                           onChange={(e) => moveSelectedFieldSection(e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-slate-900"
                         >
-                           {Object.keys(config.uiModeOverrides[previewMode].sections).map(k => (
+                           {Object.keys(config.uiModeOverrides?.[previewMode]?.sections || {}).map(k => (
                               <option key={k} value={k}>{k}</option>
                            ))}
                         </select>

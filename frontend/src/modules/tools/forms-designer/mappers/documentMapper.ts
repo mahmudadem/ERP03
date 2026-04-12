@@ -61,10 +61,12 @@ export function documentUiToCanonical(
   // Maps rules to simple flags if they exist
   const getRuleFlag = (ruleId: string) => (uiConfig.rules || []).find(r => r.id === ruleId)?.enabled || false;
   
-  // Normalize uiModeOverrides to prevent null reference errors
-  const uiOverrides = uiConfig.uiModeOverrides || {
-    classic: { sections: { HEADER: { order: 0, fields: [] }, BODY: { order: 1, fields: [] }, EXTRA: { order: 2, fields: [] }, ACTIONS: { order: 3, fields: [] } } },
-    windows: { sections: { HEADER: { order: 0, fields: [] }, BODY: { order: 1, fields: [] }, EXTRA: { order: 2, fields: [] }, ACTIONS: { order: 3, fields: [] } } }
+  // Normalize uiModeOverrides to prevent null reference errors and handle missing modes
+  const emptyLayout = { sections: { HEADER: { order: 0, fields: [] }, BODY: { order: 1, fields: [] }, EXTRA: { order: 2, fields: [] }, ACTIONS: { order: 3, fields: [] } } };
+  
+  const uiOverrides = {
+    classic: uiConfig.uiModeOverrides?.classic || emptyLayout,
+    windows: uiConfig.uiModeOverrides?.windows || emptyLayout
   };
 
   // Layout transformation
@@ -169,6 +171,10 @@ function transformLayout(
   allFields: AvailableField[]
 ): LayoutSchema {
   const sections: any = {};
+  
+  if (!uiLayout?.sections) {
+    return { sections: {} } as any;
+  }
   
   Object.entries(uiLayout.sections).forEach(([sectionName, sectionData]) => {
     sections[sectionName] = {

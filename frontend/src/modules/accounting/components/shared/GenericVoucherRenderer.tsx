@@ -2799,9 +2799,11 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     
     // Format 1: VoucherFormConfig (designer) - uses uiModeOverrides.sections
     // PRIORITY: If custom layout exists, use it!
-    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
-      const sections = configDef.uiModeOverrides[mode].sections;
-      const headerSection = sections.HEADER;
+    if (configDef.uiModeOverrides) {
+      const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
+      if (modeConfig) {
+        const sections = modeConfig.sections || {};
+        const headerSection = sections.HEADER;
       
       if (headerSection && headerSection.fields && headerSection.fields.length > 0) {
         // Sort fields by row and col
@@ -2819,6 +2821,7 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
         );
       }
     }
+  }
 
     // Format 2: VoucherTypeDefinition (canonical system) - fallback if no UI override
     if (definition.headerFields && definition.headerFields.length > 0) {
@@ -2863,11 +2866,12 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   const renderSection = (sectionKey: string, title?: string) => {
     const configDef = definition as any;
     
-    if (!configDef.uiModeOverrides || !configDef.uiModeOverrides[mode]) {
+    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
+    if (!modeConfig) {
       return null;
     }
     
-    const sections = configDef.uiModeOverrides[mode].sections;
+    const sections = modeConfig.sections || {};
     const section = sections?.[sectionKey];
     
     if (!section || !section.fields || section.fields.length === 0) {
@@ -2893,8 +2897,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
   // Check if BODY section has lineItems to avoid rendering twice
   const bodyHasLineItems = () => {
     const configDef = definition as any;
-    if (!configDef.uiModeOverrides || !configDef.uiModeOverrides[mode]) return false;
-    const bodySection = configDef.uiModeOverrides[mode]?.sections?.BODY;
+    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
+    if (!modeConfig) return false;
+    const bodySection = modeConfig.sections?.BODY;
     return bodySection?.fields?.some((f: any) => f.fieldId === 'lineItems');
   };
 
@@ -2903,8 +2908,9 @@ export const GenericVoucherRenderer = React.memo(forwardRef<GenericVoucherRender
     const configDef = definition as any;
     // Try to get actions from ACTIONS section in uiModeOverrides (respects layout)
     let actionFields: any[] = [];
-    if (configDef.uiModeOverrides && configDef.uiModeOverrides[mode]) {
-      const actionsSection = configDef.uiModeOverrides[mode].sections?.ACTIONS;
+    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
+    if (modeConfig) {
+      const actionsSection = modeConfig.sections?.ACTIONS;
       if (actionsSection?.fields && actionsSection.fields.length > 0) {
         // Sort by row and col
         actionFields = [...actionsSection.fields].sort((a: any, b: any) => {
