@@ -27,6 +27,8 @@ export interface ItemProps {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  imageUrl?: string;
+  metadata?: Record<string, any>;
   active: boolean;
   createdBy: string;
   createdAt: Date;
@@ -66,6 +68,8 @@ export class Item {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  imageUrl?: string;
+  metadata?: Record<string, any>;
   active: boolean;
   readonly createdBy: string;
   readonly createdAt: Date;
@@ -124,6 +128,8 @@ export class Item {
     this.minStockLevel = props.minStockLevel;
     this.maxStockLevel = props.maxStockLevel;
     this.reorderPoint = props.reorderPoint;
+    this.imageUrl = props.imageUrl;
+    this.metadata = props.metadata ? { ...props.metadata } : undefined;
     this.active = props.active;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
@@ -167,6 +173,8 @@ export class Item {
       minStockLevel: this.minStockLevel,
       maxStockLevel: this.maxStockLevel,
       reorderPoint: this.reorderPoint,
+      imageUrl: this.imageUrl,
+      metadata: this.metadata ? { ...this.metadata } : undefined,
       active: this.active,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
@@ -200,6 +208,8 @@ export class Item {
       minStockLevel: data.minStockLevel,
       maxStockLevel: data.maxStockLevel,
       reorderPoint: data.reorderPoint,
+      imageUrl: data.imageUrl,
+      metadata: data.metadata,
       active: data.active ?? true,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt || new Date()),

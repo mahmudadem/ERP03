@@ -41,6 +41,12 @@ class FirestoreDeliveryNoteRepository {
             return null;
         return SalesMappers_1.DeliveryNoteMapper.toDomain(doc.data());
     }
+    async getByNumber(companyId, dnNumber) {
+        const snap = await this.collection(companyId).where('dnNumber', '==', dnNumber).limit(1).get();
+        if (snap.empty)
+            return null;
+        return SalesMappers_1.DeliveryNoteMapper.toDomain(snap.docs[0].data());
+    }
     async list(companyId, opts = {}) {
         let query = this.collection(companyId);
         if (opts.salesOrderId)

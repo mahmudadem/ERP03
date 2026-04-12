@@ -4,7 +4,7 @@ exports.CompanySettings = void 0;
 class CompanySettings {
     constructor(companyId, strictApprovalMode, uiMode, timezone, dateFormat, language = 'en', baseCurrency, fiscalYearStart, // Month-Day string (e.g. "01-01")
     fiscalYearEnd, // Month-Day string (e.g. "12-31")
-    disabledNotificationCategories = []) {
+    exchangeGainLossAccountId, disabledNotificationCategories = []) {
         this.companyId = companyId;
         this.strictApprovalMode = strictApprovalMode;
         this.uiMode = uiMode;
@@ -14,11 +14,12 @@ class CompanySettings {
         this.baseCurrency = baseCurrency;
         this.fiscalYearStart = fiscalYearStart;
         this.fiscalYearEnd = fiscalYearEnd;
+        this.exchangeGainLossAccountId = exchangeGainLossAccountId;
         this.disabledNotificationCategories = disabledNotificationCategories;
     }
     // Factory method for default settings
     static default(companyId) {
-        return new CompanySettings(companyId, false, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31', []);
+        return new CompanySettings(companyId, false, 'windows', 'UTC', 'YYYY-MM-DD', 'en', undefined, '01-01', '12-31', undefined, []);
     }
 }
 exports.CompanySettings = CompanySettings;

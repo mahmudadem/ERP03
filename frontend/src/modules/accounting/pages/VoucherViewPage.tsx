@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { accountingApi } from '../../../api/accountingApi';
+import { accountingApi, VoucherDetailDTO } from '../../../api/accountingApi';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useVoucherActions } from '../../../hooks/useVoucherActions';
 import { useAuth } from '../../../hooks/useAuth';
@@ -35,14 +35,80 @@ const fmt = (n: number | undefined | null) =>
     ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
-const statusConfig: Record<string, { labelKey: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
-  draft:     { labelKey: 'voucherView.status.draft', bg: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-200', icon: <FileText className="w-3.5 h-3.5" /> },
-  pending:   { labelKey: 'voucherView.status.pending', bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-200', icon: <Clock className="w-3.5 h-3.5" /> },
-  approved:  { labelKey: 'voucherView.status.approved', bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-200', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-  posted:    { labelKey: 'voucherView.status.posted', bg: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-200', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
-  locked:    { labelKey: 'voucherView.status.locked', bg: 'bg-indigo-50',   text: 'text-indigo-700',  border: 'border-indigo-200', icon: <Lock className="w-3.5 h-3.5" /> },
-  rejected:  { labelKey: 'voucherView.status.rejected', bg: 'bg-red-50',      text: 'text-red-600',     border: 'border-red-200', icon: <XCircle className="w-3.5 h-3.5" /> },
-  cancelled: { labelKey: 'voucherView.status.cancelled', bg: 'bg-red-50/60',   text: 'text-red-500',     border: 'border-red-100', icon: <XCircle className="w-3.5 h-3.5" /> },
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PREFIXED_UUID_PATTERN = /^([A-Za-z]+)-([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const formatShortRef = (value: string, prefix: string) => `${prefix}-${value.slice(0, 8).toUpperCase()}`;
+
+const normalizeReferenceLabel = (value: string | undefined | null, fallbackPrefix: string) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '—';
+
+  const prefixedUuidMatch = trimmed.match(PREFIXED_UUID_PATTERN);
+  if (prefixedUuidMatch) {
+    return `${prefixedUuidMatch[1].toUpperCase()}-${prefixedUuidMatch[2].toUpperCase()}`;
+  }
+
+  if (UUID_PATTERN.test(trimmed)) {
+    return formatShortRef(trimmed, fallbackPrefix);
+  }
+
+  return trimmed;
+};
+
+const shortenOpaqueValue = (value: string | undefined | null) => {
+  const trimmed = (value || '').trim();
+  if (!trimmed) return '—';
+  if (trimmed.includes('@') || trimmed.includes(' ')) return trimmed;
+  if (trimmed.length <= 18) return trimmed;
+  return `${trimmed.slice(0, 12)}...`;
+};
+
+const isOpeningStockVoucher = (voucher: any) =>
+  voucher?.metadata?.sourceType === 'OPENING_STOCK_DOCUMENT' ||
+  /^OS-/i.test(voucher?.voucherNo || '') ||
+  /^Opening Stock Document\b/i.test(voucher?.description || '');
+
+const normalizeVoucherLabel = (voucher: any) => {
+  const rawValue = voucher?.voucherNo || voucher?.id;
+  return normalizeReferenceLabel(rawValue, isOpeningStockVoucher(voucher) ? 'OS' : 'VCH');
+};
+
+const normalizeReferenceValue = (voucher: any) => {
+  const fallbackPrefix = isOpeningStockVoucher(voucher) ? 'OSD' : 'REF';
+  return normalizeReferenceLabel(voucher?.reference, fallbackPrefix);
+};
+
+const normalizeDescription = (voucher: any) => {
+  const description = (voucher?.description || '').trim();
+  if (!description) return '';
+
+  return description.replace(
+    /\bOpening Stock Document ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i,
+    (_match: string, documentId: string) => `Opening Stock Document ${formatShortRef(documentId, 'OSD')}`
+  );
+};
+
+const resolveActorLabel = (
+  displayName: string | undefined | null,
+  email: string | undefined | null,
+  actorId: string | undefined | null
+) => {
+  const friendlyName = (displayName || '').trim();
+  if (friendlyName) return friendlyName;
+  const friendlyEmail = (email || '').trim();
+  if (friendlyEmail) return friendlyEmail;
+  return shortenOpaqueValue(actorId);
+};
+
+const statusConfig: Record<string, { labelKey: string; defaultLabel: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
+  draft:     { labelKey: 'voucherView.status.draft', defaultLabel: 'Draft', bg: 'bg-slate-50',    text: 'text-slate-600',   border: 'border-slate-200', icon: <FileText className="w-3.5 h-3.5" /> },
+  pending:   { labelKey: 'voucherView.status.pending', defaultLabel: 'Pending', bg: 'bg-amber-50',    text: 'text-amber-700',   border: 'border-amber-200', icon: <Clock className="w-3.5 h-3.5" /> },
+  approved:  { labelKey: 'voucherView.status.approved', defaultLabel: 'Approved', bg: 'bg-emerald-50',  text: 'text-emerald-700', border: 'border-emerald-200', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  posted:    { labelKey: 'voucherView.status.posted', defaultLabel: 'Posted', bg: 'bg-blue-50',     text: 'text-blue-700',    border: 'border-blue-200', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+  locked:    { labelKey: 'voucherView.status.locked', defaultLabel: 'Locked', bg: 'bg-indigo-50',   text: 'text-indigo-700',  border: 'border-indigo-200', icon: <Lock className="w-3.5 h-3.5" /> },
+  rejected:  { labelKey: 'voucherView.status.rejected', defaultLabel: 'Rejected', bg: 'bg-red-50',      text: 'text-red-600',     border: 'border-red-200', icon: <XCircle className="w-3.5 h-3.5" /> },
+  cancelled: { labelKey: 'voucherView.status.cancelled', defaultLabel: 'Cancelled', bg: 'bg-red-50/60',   text: 'text-red-500',     border: 'border-red-100', icon: <XCircle className="w-3.5 h-3.5" /> },
 };
 
 /* ── Component ──────────────────────────────────────────── */
@@ -56,11 +122,16 @@ const VoucherViewPage: React.FC = () => {
   const { permissions, isSuperAdmin, permissionsLoaded } = useCompanyAccess();
   const { executeAction } = useVoucherActions();
 
-  const [voucher, setVoucher] = useState<any>(null);
+  const [voucher, setVoucher] = useState<VoucherDetailDTO | null>(null);
   const [accountMap, setAccountMap] = useState<Map<string, { code: string; name: string }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [runningAction, setRunningAction] = useState<VoucherActionType | null>(null);
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(key, { defaultValue, ...(options || {}) }),
+    [t]
+  );
 
   const loadVoucher = useCallback(async () => {
     if (!id) return;
@@ -84,12 +155,12 @@ const VoucherViewPage: React.FC = () => {
       });
       setAccountMap(map);
     } catch (err: any) {
-      setError(err?.message || t('voucherView.messages.loadFailed'));
+      setError(err?.message || tr('voucherView.messages.loadFailed', 'Failed to load voucher.'));
       errorHandler.showError(err);
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id, tr]);
 
   useEffect(() => {
     loadVoucher();
@@ -141,7 +212,7 @@ const VoucherViewPage: React.FC = () => {
 
     let extra: any;
     if (actionType === 'REJECT') {
-      const reason = window.prompt(t('voucherView.messages.rejectionReasonPrompt'));
+      const reason = window.prompt(tr('voucherView.messages.rejectionReasonPrompt', 'Enter rejection reason'));
       if (reason === null) return;
       extra = { reason: reason.trim() || undefined };
     }
@@ -163,7 +234,7 @@ const VoucherViewPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-slate-300 animate-spin mx-auto mb-4" />
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t('voucherView.loading')}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{tr('voucherView.loading', 'Loading voucher')}</p>
         </div>
       </div>
     );
@@ -175,9 +246,9 @@ const VoucherViewPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
-          <p className="text-sm text-red-600 font-medium">{error || t('voucherView.messages.notFound')}</p>
+          <p className="text-sm text-red-600 font-medium">{error || tr('voucherView.messages.notFound', 'Voucher not found.')}</p>
           <button onClick={() => navigate(-1)} className="text-xs text-indigo-600 hover:underline font-semibold">
-            {t('voucherView.actions.goBack')}
+            {tr('voucherView.actions.goBack', 'Go back')}
           </button>
         </div>
       </div>
@@ -214,6 +285,12 @@ const VoucherViewPage: React.FC = () => {
 
   const displayStatus = voucher.postedAt ? 'posted' : (voucher.status || 'draft');
   const sc = statusConfig[displayStatus] || statusConfig.draft;
+  const displayVoucherNo = normalizeVoucherLabel(voucher);
+  const displayReference = normalizeReferenceValue(voucher);
+  const displayDescription = normalizeDescription(voucher);
+  const displayCreatedBy = resolveActorLabel(voucher.createdByName, voucher.createdByEmail, voucher.createdBy);
+  const displayPostedBy = resolveActorLabel(voucher.postedByName, voucher.postedByEmail, voucher.postedBy);
+  const displayApprovedBy = resolveActorLabel(voucher.approvedByName, voucher.approvedByEmail, voucher.approvedBy);
 
   const typeName = (voucher.type || '')
     .replace(/_/g, ' ')
@@ -232,7 +309,7 @@ const VoucherViewPage: React.FC = () => {
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
-          {t('voucherView.actions.back')}
+          {tr('voucherView.actions.back', 'Back')}
         </button>
 
         <div className="flex items-center gap-2">
@@ -272,14 +349,14 @@ const VoucherViewPage: React.FC = () => {
               onClick={() => handleWorkflowAction('REJECT')}
               disabled={!rejectAction.isEnabled || !!runningAction}
               title={rejectAction.tooltip || rejectAction.label}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 border border-red-700 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-600 border border-red-700 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
               {runningAction === 'REJECT' ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Ban className="w-3.5 h-3.5" />
               )}
-              {t('voucherView.actions.reject')}
+              {tr('voucherView.actions.reject', 'Reject')}
             </button>
           )}
 
@@ -288,7 +365,7 @@ const VoucherViewPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
           >
             <Printer className="w-3.5 h-3.5" />
-            {t('voucherView.actions.print')}
+            {tr('voucherView.actions.print', 'Print')}
           </button>
         </div>
       </div>
@@ -303,7 +380,7 @@ const VoucherViewPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-800">
-                {voucher.voucherNo || voucher.id}
+                {displayVoucherNo}
               </h1>
               <p className="text-xs text-slate-400 font-medium">{typeName}</p>
             </div>
@@ -311,23 +388,23 @@ const VoucherViewPage: React.FC = () => {
 
           <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-full border ${sc.bg} ${sc.text} ${sc.border}`}>
             {sc.icon}
-            {t(sc.labelKey)}
+            {tr(sc.labelKey, sc.defaultLabel)}
           </span>
         </div>
 
         {/* Meta Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-slate-100">
-          <MetaCell icon={<CalendarDays className="w-4 h-4 text-slate-400" />} label={t('voucherView.meta.date')} value={formattedDate} />
-          <MetaCell icon={<Banknote className="w-4 h-4 text-slate-400" />} label={t('voucherView.meta.currency')} value={voucher.currency || settings?.baseCurrency || '—'} />
-          <MetaCell icon={<User className="w-4 h-4 text-slate-400" />} label={t('voucherView.meta.createdBy')} value={voucher.createdBy || '—'} />
-          <MetaCell icon={<Hash className="w-4 h-4 text-slate-400" />} label={t('voucherView.meta.reference')} value={voucher.reference || '—'} />
+          <MetaCell icon={<CalendarDays className="w-4 h-4 text-slate-400" />} label={tr('voucherView.meta.date', 'Date')} value={formattedDate} />
+          <MetaCell icon={<Banknote className="w-4 h-4 text-slate-400" />} label={tr('voucherView.meta.currency', 'Currency')} value={voucher.currency || settings?.baseCurrency || '—'} />
+          <MetaCell icon={<User className="w-4 h-4 text-slate-400" />} label={tr('voucherView.meta.createdBy', 'Created by')} value={displayCreatedBy} />
+          <MetaCell icon={<Hash className="w-4 h-4 text-slate-400" />} label={tr('voucherView.meta.reference', 'Reference')} value={displayReference} />
         </div>
 
         {/* Description */}
-        {voucher.description && (
+        {displayDescription && (
           <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-100">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-0.5">{t('voucherView.meta.description')}</p>
-            <p className="text-sm text-slate-700">{voucher.description}</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-0.5">{tr('voucherView.meta.description', 'Description')}</p>
+            <p className="text-sm text-slate-700">{displayDescription}</p>
           </div>
         )}
 
@@ -336,7 +413,7 @@ const VoucherViewPage: React.FC = () => {
           <div className="px-6 py-2.5 bg-amber-50/60 border-t border-amber-100/50 flex items-center gap-2">
             <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
             <p className="text-xs text-amber-700 font-medium">
-              {t('voucherView.meta.exchangeRate', { from: voucher.currency, rate: voucher.exchangeRate, to: voucher.baseCurrency })}
+              {tr('voucherView.meta.exchangeRate', '1 {{from}} = {{rate}} {{to}}', { from: voucher.currency, rate: voucher.exchangeRate, to: voucher.baseCurrency })}
             </p>
           </div>
         )}
@@ -346,7 +423,7 @@ const VoucherViewPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden print:shadow-none print:border-black/10">
         <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/70">
           <h2 className="text-[11px] font-black uppercase tracking-widest text-slate-500">
-            {t('voucherView.lineItems.title')}
+            {tr('voucherView.lineItems.title', 'Line items')}
             <span className="ml-2 text-slate-400 font-bold">({lines.length})</span>
           </h2>
         </div>
@@ -356,17 +433,17 @@ const VoucherViewPage: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-100">
                 <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-10">#</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-28">{t('voucherView.lineItems.code')}</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t('voucherView.lineItems.account')}</th>
-                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{t('voucherView.lineItems.notes')}</th>
-                <th className="text-right px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-32">{t('voucherView.lineItems.debit')}</th>
-                <th className="text-right px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-32">{t('voucherView.lineItems.credit')}</th>
+                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-28">{tr('voucherView.lineItems.code', 'Code')}</th>
+                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{tr('voucherView.lineItems.account', 'Account')}</th>
+                <th className="text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400">{tr('voucherView.lineItems.notes', 'Notes')}</th>
+                <th className="text-right px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-32">{tr('voucherView.lineItems.debit', 'Debit')}</th>
+                <th className="text-right px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 w-32">{tr('voucherView.lineItems.credit', 'Credit')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-sm text-slate-400">{t('voucherView.lineItems.empty')}</td>
+                  <td colSpan={6} className="text-center py-10 text-sm text-slate-400">{tr('voucherView.lineItems.empty', 'No line items.')}</td>
                 </tr>
               ) : (
                 lines.map((line: any, idx: number) => (
@@ -407,7 +484,7 @@ const VoucherViewPage: React.FC = () => {
               <tfoot>
                 <tr className="border-t-2 border-slate-200 bg-slate-50/80">
                   <td colSpan={4} className="px-4 py-3 text-right text-[11px] font-black uppercase tracking-widest text-slate-500">
-                    {t('voucherView.lineItems.totals', { currency: voucher.currency || '' })}
+                    {tr('voucherView.lineItems.totals', 'Totals {{currency}}', { currency: voucher.currency || '' })}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-sm font-bold text-slate-800 tabular-nums">
                     {fmt(totalDebit)}
@@ -419,7 +496,7 @@ const VoucherViewPage: React.FC = () => {
                 {Math.abs(totalDebit - totalCredit) > 0.005 && (
                   <tr className="bg-red-50/80">
                     <td colSpan={4} className="px-4 py-2 text-right text-[11px] font-black text-red-600 uppercase tracking-widest">
-                      {t('voucherView.lineItems.outOfBalance')}
+                      {tr('voucherView.lineItems.outOfBalance', 'Out of balance')}
                     </td>
                     <td colSpan={2} className="px-4 py-2 text-right font-mono text-sm font-bold text-red-600 tabular-nums">
                       {fmt(Math.abs(totalDebit - totalCredit))}
@@ -435,23 +512,23 @@ const VoucherViewPage: React.FC = () => {
       {/* ── Audit Trail ────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden print:shadow-none print:border-black/10">
         <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/70">
-          <h2 className="text-[11px] font-black uppercase tracking-widest text-slate-500">{t('voucherView.audit.title')}</h2>
+          <h2 className="text-[11px] font-black uppercase tracking-widest text-slate-500">{tr('voucherView.audit.title', 'Audit trail')}</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-slate-100">
-          <MetaCell label={t('voucherView.audit.created')} value={formatCompanyDate(voucher.createdAt, settings)} />
-          <MetaCell label={t('voucherView.audit.createdBy')} value={voucher.createdBy || '—'} />
-          <MetaCell label={t('voucherView.audit.posted')} value={voucher.postedAt ? formatCompanyDate(voucher.postedAt, settings) : '—'} />
-          <MetaCell label={t('voucherView.audit.postedBy')} value={voucher.postedBy || '—'} />
+          <MetaCell label={tr('voucherView.audit.created', 'Created')} value={formatCompanyDate(voucher.createdAt, settings)} />
+          <MetaCell label={tr('voucherView.audit.createdBy', 'Created by')} value={displayCreatedBy} />
+          <MetaCell label={tr('voucherView.audit.posted', 'Posted')} value={voucher.postedAt ? formatCompanyDate(voucher.postedAt, settings) : '—'} />
+          <MetaCell label={tr('voucherView.audit.postedBy', 'Posted by')} value={displayPostedBy} />
           {voucher.approvedAt && (
             <>
-              <MetaCell label={t('voucherView.audit.approved')} value={formatCompanyDate(voucher.approvedAt, settings)} />
-              <MetaCell label={t('voucherView.audit.approvedBy')} value={voucher.approvedBy || '—'} />
+              <MetaCell label={tr('voucherView.audit.approved', 'Approved')} value={formatCompanyDate(voucher.approvedAt, settings)} />
+              <MetaCell label={tr('voucherView.audit.approvedBy', 'Approved by')} value={displayApprovedBy} />
             </>
           )}
           {voucher.rejectedAt && (
             <>
-              <MetaCell label={t('voucherView.audit.rejected')} value={formatCompanyDate(voucher.rejectedAt, settings)} />
-              <MetaCell label={t('voucherView.audit.rejectionReason')} value={voucher.rejectionReason || '—'} />
+              <MetaCell label={tr('voucherView.audit.rejected', 'Rejected')} value={formatCompanyDate(voucher.rejectedAt, settings)} />
+              <MetaCell label={tr('voucherView.audit.rejectionReason', 'Rejection reason')} value={voucher.rejectionReason || '—'} />
             </>
           )}
         </div>
@@ -468,7 +545,7 @@ const MetaCell: React.FC<{ icon?: React.ReactNode; label: string; value: string 
       {icon}
       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
     </div>
-    <p className="text-sm font-semibold text-slate-700 truncate">{value}</p>
+    <p className="text-sm font-semibold text-slate-700 truncate" title={value}>{value}</p>
   </div>
 );
 

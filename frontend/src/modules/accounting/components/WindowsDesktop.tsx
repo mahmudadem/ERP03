@@ -10,6 +10,9 @@ import { useWindowManager } from '../../../context/WindowManagerContext';
 import { VoucherWindow } from './VoucherWindow';
 import { ReportWindow } from './ReportWindow';
 import { VoucherTaskbar } from './VoucherTaskbar';
+import { ItemCardWindow } from '../../inventory/components/ItemCardWindow';
+import { PartyCardWindow } from './PartyCardWindow';
+import { WarehouseCardWindow } from './WarehouseCardWindow';
 
 interface WindowsDesktopProps {
   onSaveVoucher: (windowId: string, data: any) => Promise<any>;
@@ -59,6 +62,27 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
         } else if (window.type === 'report') {
           return (
             <ReportWindow 
+              key={window.id}
+              win={window}
+            />
+          );
+        } else if (window.type === 'item') {
+          return (
+            <ItemCardWindow
+              key={window.id}
+              win={window}
+            />
+          );
+        } else if (window.type === 'party') {
+          return (
+            <PartyCardWindow
+              key={window.id}
+              win={window}
+            />
+          );
+        } else if (window.type === 'warehouse') {
+          return (
+            <WarehouseCardWindow
               key={window.id}
               win={window}
             />

@@ -64,6 +64,31 @@ const getApproverUserIdsForCompany = async (companyId: string): Promise<string[]
   );
 };
 
+const formatUserDisplayName = (user: any): string | null => {
+  if (!user) return null;
+  const trimmedName = typeof user.name === 'string' ? user.name.trim() : '';
+  if (trimmedName) return trimmedName;
+
+  const firstName = typeof user.firstName === 'string' ? user.firstName.trim() : '';
+  const lastName = typeof user.lastName === 'string' ? user.lastName.trim() : '';
+  const fullName = `${firstName} ${lastName}`.trim();
+  if (fullName) return fullName;
+
+  return typeof user.email === 'string' && user.email.trim() ? user.email.trim() : null;
+};
+
+const getUserAuditSnapshot = async (userId?: string | null) => {
+  if (!userId) {
+    return { name: null, email: null };
+  }
+
+  const user = await diContainer.userRepository.getUserById(userId).catch(() => null);
+  return {
+    name: formatUserDisplayName(user),
+    email: user?.email || null,
+  };
+};
+
 export class VoucherController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
@@ -106,7 +131,26 @@ export class VoucherController {
       const userId = (req as any).user.uid;
       const useCase = new GetVoucherUseCase(diContainer.voucherRepository as any, permissionChecker);
       const voucher = await useCase.execute(companyId, userId, req.params.id);
-      res.json({ success: true, data: voucher });
+      const voucherData = voucher.toJSON();
+
+      const [createdByAudit, approvedByAudit, postedByAudit] = await Promise.all([
+        getUserAuditSnapshot(voucherData.createdBy),
+        getUserAuditSnapshot(voucherData.approvedBy),
+        getUserAuditSnapshot(voucherData.postedBy),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          ...voucherData,
+          createdByName: createdByAudit.name,
+          createdByEmail: createdByAudit.email,
+          approvedByName: approvedByAudit.name,
+          approvedByEmail: approvedByAudit.email,
+          postedByName: postedByAudit.name,
+          postedByEmail: postedByAudit.email,
+        }
+      });
     } catch (err) {
       next(err);
     }

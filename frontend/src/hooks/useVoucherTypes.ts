@@ -1,6 +1,9 @@
 /**
  * Hook to load dynamic voucher types/forms for sidebar menu and rendering
  * 
+ * Loads forms from ALL modules and exposes them grouped by module.
+ * Each form carries its `module` and `sidebarGroup` for sidebar injection.
+ * 
  * MIGRATION NOTE:
  * - First tries to load from new voucherForms collection (Phase 3)
  * - Falls back to old voucherTypes collection for backward compatibility  
@@ -13,15 +16,28 @@ import { loadCompanyForms } from '../modules/accounting/voucher-wizard/services/
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 import { voucherFormApi } from '../api/voucherFormApi';
 
+export interface SidebarFormEntry {
+  id: string;
+  name: string;
+  code: string;
+  prefix: string;
+  module: string;          // e.g., 'ACCOUNTING', 'SALES', 'PURCHASE'
+  sidebarGroup?: string;   // e.g., 'Vouchers', 'Documents'. Null = top-level.
+  enabled: boolean;
+  baseType?: string;
+}
+
 export function useVoucherTypes() {
   const { companyId } = useCompanyAccess();
   const [voucherTypes, setVoucherTypes] = useState<VoucherFormConfig[]>([]);
+  const [allModuleForms, setAllModuleForms] = useState<SidebarFormEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadVouchers() {
       if (!companyId) {
         setVoucherTypes([]);
+        setAllModuleForms([]);
         setLoading(false);
         return;
       }
@@ -31,32 +47,49 @@ export function useVoucherTypes() {
         try {
           const forms = await voucherFormApi.list();
           if (forms && forms.length > 0) {
-            // Convert VoucherForm to VoucherFormConfig for backward compatibility
-            const configFromForms: VoucherFormConfig[] = forms
+            // Build sidebar entries for ALL modules
+            const sidebarEntries: SidebarFormEntry[] = forms
               .filter(f => f.enabled !== false)
-              .map(form => {
-                return {
-                  id: form.id,
-                  code: form.code,
-                  name: form.name,
-                  prefix: form.prefix || form.code?.slice(0, 3).toUpperCase() || 'V',
-                  module: 'ACCOUNTING',
-                  enabled: form.enabled,
-                  headerFields: form.headerFields || [],
-                  tableColumns: form.tableColumns || [],
-                  // Additional layout data
-                  uiModeOverrides: (form as any).uiModeOverrides || null,
-                  rules: (form as any).rules || [],
-                  actions: (form as any).actions || [],
-                  isMultiLine: (form as any).isMultiLine ?? true,
-                  tableStyle: (form as any).tableStyle || 'web',
-                  defaultCurrency: (form as any).defaultCurrency || '',
-                  // Keep typeId reference for backend operations
-                  _typeId: form.typeId,
-                  baseType: (form as any).baseType || form.typeId || form.code, // Base voucher type for backend
-                  _isForm: true
-                } as any;
-              });
+              .map(form => ({
+                id: form.id,
+                name: form.name,
+                code: form.code,
+                prefix: form.prefix || form.code?.slice(0, 3).toUpperCase() || 'V',
+                module: ((form as any).module || 'ACCOUNTING').toUpperCase(),
+                sidebarGroup: (form as any).sidebarGroup || null,
+                enabled: form.enabled,
+                baseType: (form as any).baseType || form.typeId || form.code,
+              }));
+
+            setAllModuleForms(sidebarEntries);
+
+            // BACKWARD COMPAT: Still provide accounting-only forms for existing consumers
+            const accountingForms = forms.filter(f => {
+              const mod = ((f as any).module || 'ACCOUNTING').toUpperCase();
+              return mod === 'ACCOUNTING' && f.enabled !== false;
+            });
+
+            const configFromForms: VoucherFormConfig[] = accountingForms
+              .map(form => ({
+                id: form.id,
+                code: form.code,
+                name: form.name,
+                prefix: form.prefix || form.code?.slice(0, 3).toUpperCase() || 'V',
+                module: ((form as any).module || 'ACCOUNTING').toUpperCase(),
+                enabled: form.enabled,
+                headerFields: form.headerFields || [],
+                tableColumns: form.tableColumns || [],
+                uiModeOverrides: (form as any).uiModeOverrides || null,
+                rules: (form as any).rules || [],
+                actions: (form as any).actions || [],
+                isMultiLine: (form as any).isMultiLine ?? true,
+                tableStyle: (form as any).tableStyle || 'web',
+                defaultCurrency: (form as any).defaultCurrency || '',
+                _typeId: form.typeId,
+                baseType: (form as any).baseType || form.typeId || form.code,
+                sidebarGroup: (form as any).sidebarGroup || 'Vouchers',
+                _isForm: true
+              } as any));
             
             setVoucherTypes(configFromForms);
             setLoading(false);
@@ -69,22 +102,32 @@ export function useVoucherTypes() {
         // FALLBACK: Load from legacy voucherTypes (Firebase direct)
         let vouchers = await loadCompanyForms(companyId);
 
-        
         // Only show enabled vouchers in sidebar
         const enabledVouchers = vouchers.filter((v: VoucherFormConfig) => v.enabled !== false);
         setVoucherTypes(enabledVouchers);
+
+        // Build sidebar entries from legacy too
+        setAllModuleForms(enabledVouchers.map((v: any) => ({
+          id: v.id,
+          name: v.name,
+          code: v.code || v.id,
+          prefix: v.prefix || 'V',
+          module: (v.module || 'ACCOUNTING').toUpperCase(),
+          sidebarGroup: v.sidebarGroup || 'Vouchers',
+          enabled: v.enabled !== false,
+          baseType: v.baseType || v.code || v.id,
+        })));
       } catch (error) {
         console.error('Failed to load voucher types for sidebar:', error);
         setVoucherTypes([]);
+        setAllModuleForms([]);
       } finally {
         setLoading(false);
       }
     }
 
-    // Load immediately
     loadVouchers();
   }, [companyId]);
 
-  return { voucherTypes, loading };
+  return { voucherTypes, allModuleForms, loading };
 }
-

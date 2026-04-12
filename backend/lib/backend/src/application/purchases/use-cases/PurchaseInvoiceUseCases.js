@@ -1,9 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ListPurchaseInvoicesUseCase = exports.GetPurchaseInvoiceUseCase = exports.UpdatePurchaseInvoiceUseCase = exports.PostPurchaseInvoiceUseCase = exports.CreatePurchaseInvoiceUseCase = void 0;
+exports.UnpostPurchaseInvoiceUseCase = exports.ListPurchaseInvoicesUseCase = exports.GetPurchaseInvoiceUseCase = exports.UpdatePurchaseInvoiceUseCase = exports.PostPurchaseInvoiceUseCase = exports.CreatePurchaseInvoiceUseCase = void 0;
 const crypto_1 = require("crypto");
-const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
-const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const PurchaseInvoice_1 = require("../../../domain/purchases/entities/PurchaseInvoice");
 const PurchasePostingHelpers_1 = require("./PurchasePostingHelpers");
@@ -58,7 +56,7 @@ class CreatePurchaseInvoiceUseCase {
         if (!currencyEnabled) {
             throw new Error(`Currency is not enabled for company: ${currency}`);
         }
-        const sourceLines = this.resolveSourceLines(input.lines, po, settings.procurementControlMode);
+        const sourceLines = this.resolveSourceLines(input.lines, po, settings.allowDirectInvoicing);
         if (!sourceLines.length) {
             throw new Error('Purchase invoice must contain at least one line');
         }
@@ -151,7 +149,7 @@ class CreatePurchaseInvoiceUseCase {
         await this.settingsRepo.saveSettings(settings);
         return invoice;
     }
-    resolveSourceLines(lines, po, mode) {
+    resolveSourceLines(lines, po, allowDirectInvoicing) {
         if (Array.isArray(lines) && lines.length > 0) {
             return lines;
         }
@@ -160,10 +158,10 @@ class CreatePurchaseInvoiceUseCase {
         return po.lines
             .map((line) => {
             let ceiling = 0;
-            if (mode === 'CONTROLLED' && line.trackInventory) {
+            if (!allowDirectInvoicing && line.trackInventory) {
                 ceiling = line.receivedQty - line.invoicedQty;
             }
-            else if (mode === 'CONTROLLED' && !line.trackInventory) {
+            else if (!allowDirectInvoicing && !line.trackInventory) {
                 ceiling = line.orderedQty - line.invoicedQty;
             }
             else {
@@ -199,8 +197,9 @@ class CreatePurchaseInvoiceUseCase {
 }
 exports.CreatePurchaseInvoiceUseCase = CreatePurchaseInvoiceUseCase;
 class PostPurchaseInvoiceUseCase {
-    constructor(settingsRepo, purchaseInvoiceRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, exchangeRateRepo, inventoryService, voucherRepo, ledgerRepo, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, purchaseInvoiceRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, exchangeRateRepo, inventoryService, accountingPostingService, accountRepo, transactionManager) {
         this.settingsRepo = settingsRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
         this.purchaseInvoiceRepo = purchaseInvoiceRepo;
         this.purchaseOrderRepo = purchaseOrderRepo;
         this.partyRepo = partyRepo;
@@ -212,14 +211,16 @@ class PostPurchaseInvoiceUseCase {
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.exchangeRateRepo = exchangeRateRepo;
         this.inventoryService = inventoryService;
-        this.voucherRepo = voucherRepo;
-        this.ledgerRepo = ledgerRepo;
+        this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
+        this.accountRepo = accountRepo;
     }
     async execute(companyId, id) {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
+        const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const isPerpetual = (invSettings === null || invSettings === void 0 ? void 0 : invSettings.inventoryAccountingMethod) === 'PERPETUAL';
         const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
         if (!pi)
             throw new Error(`Purchase invoice not found: ${id}`);
@@ -232,131 +233,104 @@ class PostPurchaseInvoiceUseCase {
         let po = null;
         if (isPOLinked) {
             po = await this.purchaseOrderRepo.getById(companyId, pi.purchaseOrderId);
-            if (!po)
-                throw new Error(`Purchase order not found: ${pi.purchaseOrderId}`);
-            if (po.status === 'CANCELLED')
-                throw new Error('Cannot post invoice for cancelled purchase order');
         }
         const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || pi.currency;
         const voucherLines = [];
-        const apAccountId = this.resolveAPAccount(vendor, settings.defaultAPAccountId);
+        const apAccountId = this.resolveAPAccount(vendor, settings);
+        // PHASE 1: PRE-FETCH (Safety first!)
+        const distinctItemIds = [...new Set(pi.lines.map(l => l.itemId))];
+        const distinctTaxCodeIds = [...new Set(pi.lines.filter(l => l.taxCodeId).map(l => l.taxCodeId))];
+        const distinctWarehouseIds = [...new Set(pi.lines.filter(l => l.warehouseId).map(l => l.warehouseId))];
+        if (settings.defaultWarehouseId)
+            distinctWarehouseIds.push(settings.defaultWarehouseId);
+        const [itemsMap, categoriesMap, taxCodesMap, warehousesMap] = await Promise.all([
+            Promise.all(distinctItemIds.map(id => this.itemRepo.getItem(id))).then(results => new Map(results.filter((i) => !!i && i.companyId === companyId).map(i => [i.id, i]))),
+            this.itemCategoryRepo.getCompanyCategories(companyId).then(results => new Map(results.map(c => [c.id, c]))),
+            Promise.all(distinctTaxCodeIds.map(id => this.taxCodeRepo.getById(companyId, id))).then(results => new Map(results.filter(t => !!t).map(t => [t.id, t]))),
+            Promise.all(distinctWarehouseIds.map(id => this.warehouseRepo.getWarehouse(id))).then(results => new Map(results.filter(w => !!w && w.companyId === companyId).map(w => [w.id, w])))
+        ]);
+        // PHASE 2: ATOMIC POSTING
         await this.transactionManager.runTransaction(async (transaction) => {
             for (const line of pi.lines) {
-                const item = await this.itemRepo.getItem(line.itemId);
-                if (!item || item.companyId !== companyId) {
+                const item = itemsMap.get(line.itemId);
+                if (!item)
                     throw new Error(`Item not found: ${line.itemId}`);
-                }
                 line.trackInventory = item.trackInventory;
                 const poLine = po ? findPOLine(po, line.poLineId, line.itemId) : null;
-                if (isPOLinked && !poLine) {
-                    throw new Error(`PO line not found for invoice line ${line.lineId}`);
-                }
-                this.validatePostingQuantity(line, poLine, settings.procurementControlMode, settings.overInvoiceTolerancePct, isPOLinked);
-                // Step 2: Freeze tax snapshot at posting time.
-                await this.freezeTaxSnapshot(companyId, line, pi.exchangeRate);
-                // Step 3: Resolve accounts with hierarchy.
-                line.accountId = await this.resolveDebitAccount(companyId, item, settings.defaultPurchaseExpenseAccountId);
-                // Step 4: Inventory movement for SIMPLE stock lines without GRN.
-                if (settings.procurementControlMode === 'SIMPLE' && item.trackInventory && !hasGRNForThisLine(line)) {
+                this.validatePostingQuantity(line, poLine, settings.allowDirectInvoicing, settings.overInvoiceTolerancePct, isPOLinked);
+                const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
+                this.freezeTaxSnapshotSync(line, pi.exchangeRate, taxCode || undefined);
+                line.accountId = this.resolveDebitAccountSync(companyId, item, isPerpetual, categoriesMap, settings.defaultPurchaseExpenseAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
+                if (settings.allowDirectInvoicing && item.trackInventory && !hasGRNForThisLine(line)) {
                     const warehouseId = line.warehouseId || settings.defaultWarehouseId;
-                    if (!warehouseId) {
-                        throw new Error(`Warehouse required for stock item ${line.itemName || item.name}`);
-                    }
-                    const warehouse = await this.warehouseRepo.getWarehouse(warehouseId);
-                    if (!warehouse || warehouse.companyId !== companyId) {
-                        throw new Error(`Warehouse not found: ${warehouseId}`);
-                    }
+                    const warehouse = warehouseId ? warehousesMap.get(warehouseId) : null;
+                    if (!warehouse)
+                        throw new Error(`Warehouse required for ${item.name}`);
                     const qtyInBaseUom = await this.convertToBaseUom(companyId, line.invoicedQty, line.uom, item.baseUom, item.id, item.code);
                     const fxRateCCYToBase = await this.resolveCCYToBaseRate(companyId, item.costCurrency, baseCurrency, pi.currency, pi.exchangeRate, pi.invoiceDate);
                     const movement = await this.inventoryService.processIN({
-                        companyId,
-                        itemId: line.itemId,
-                        warehouseId,
-                        qty: qtyInBaseUom,
-                        date: pi.invoiceDate,
+                        companyId, itemId: line.itemId, warehouseId, qty: qtyInBaseUom, date: pi.invoiceDate,
                         movementType: 'PURCHASE_RECEIPT',
-                        refs: {
-                            type: 'PURCHASE_INVOICE',
-                            docId: pi.id,
-                            lineId: line.lineId,
-                        },
-                        currentUser: pi.createdBy,
-                        unitCostInMoveCurrency: line.unitPriceDoc,
-                        moveCurrency: pi.currency,
-                        fxRateMovToBase: pi.exchangeRate,
-                        fxRateCCYToBase,
+                        refs: { type: 'PURCHASE_INVOICE', docId: pi.id, lineId: line.lineId },
+                        currentUser: pi.createdBy, unitCostInMoveCurrency: line.unitPriceDoc,
+                        moveCurrency: pi.currency, fxRateMovToBase: pi.exchangeRate, fxRateCCYToBase,
                         transaction,
                     });
                     line.stockMovementId = movement.id;
                     line.warehouseId = warehouseId;
                 }
-                if (settings.procurementControlMode === 'CONTROLLED' && !isPOLinked && item.trackInventory) {
-                    throw new Error(`CONTROLLED mode stock invoices require PO/GRN: ${line.itemName || item.name}`);
-                }
-                // Step 5: Debit line amount and tax.
+                // DEBIT RECORDING (UUID Normalization)
+                const resolvedDebitId = await this.resolveAccountId(companyId, line.accountId);
                 voucherLines.push({
-                    accountId: line.accountId,
-                    side: 'Debit',
-                    baseAmount: line.lineTotalBase,
-                    docAmount: line.lineTotalDoc,
+                    accountId: resolvedDebitId, side: 'Debit',
+                    baseAmount: line.lineTotalBase, docAmount: line.lineTotalDoc,
                     notes: `${line.itemName} x ${line.invoicedQty}`,
-                    metadata: {
-                        sourceModule: 'purchases',
-                        sourceType: 'PURCHASE_INVOICE',
-                        sourceId: pi.id,
-                        lineId: line.lineId,
-                        itemId: line.itemId,
-                    },
+                    metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, itemId: line.itemId }
                 });
-                if (line.taxAmountBase > 0) {
-                    const taxAccountId = await this.resolvePurchaseTaxAccount(companyId, line.taxCodeId);
-                    voucherLines.push({
-                        accountId: taxAccountId,
-                        side: 'Debit',
-                        baseAmount: line.taxAmountBase,
-                        docAmount: line.taxAmountDoc,
-                        notes: `Tax: ${line.taxCode || line.taxCodeId || ''} on ${line.itemName}`,
-                        metadata: {
-                            sourceModule: 'purchases',
-                            sourceType: 'PURCHASE_INVOICE',
-                            sourceId: pi.id,
-                            lineId: line.lineId,
-                            taxCodeId: line.taxCodeId,
-                        },
-                    });
+                if (line.taxAmountBase > 0 && line.taxCodeId) {
+                    const pTaxCode = taxCodesMap.get(line.taxCodeId);
+                    if (pTaxCode === null || pTaxCode === void 0 ? void 0 : pTaxCode.purchaseTaxAccountId) {
+                        const resolvedTaxId = await this.resolveAccountId(companyId, pTaxCode.purchaseTaxAccountId);
+                        voucherLines.push({
+                            accountId: resolvedTaxId, side: 'Debit',
+                            baseAmount: line.taxAmountBase, docAmount: line.taxAmountDoc,
+                            notes: `Tax: ${line.taxCode || line.taxCodeId} on ${line.itemName}`,
+                            metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, lineId: line.lineId, taxCodeId: line.taxCodeId }
+                        });
+                    }
                 }
-                if (poLine) {
+                if (poLine)
                     poLine.invoicedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.invoicedQty + line.invoicedQty);
-                }
             }
-            // Step 8 (part 1): freeze totals.
-            pi.subtotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
-            pi.taxTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
-            pi.grandTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.subtotalBase + pi.taxTotalBase);
-            pi.subtotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
-            pi.taxTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
-            pi.grandTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.subtotalDoc + pi.taxTotalDoc);
-            // Step 6: Credit AP total.
+            this.recalcInvoiceTotals(pi);
+            // CREDIT RECORDING (UUID Normalization)
+            const resolvedAPId = await this.resolveAccountId(companyId, apAccountId);
             voucherLines.push({
-                accountId: apAccountId,
-                side: 'Credit',
+                accountId: resolvedAPId, side: 'Credit',
                 baseAmount: pi.grandTotalBase,
                 docAmount: pi.grandTotalDoc,
                 notes: `AP - ${pi.vendorName} - ${pi.invoiceNumber}`,
+                metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId }
+            });
+            const voucher = await this.accountingPostingService.postInTransaction({
+                companyId,
+                voucherType: VoucherTypes_1.VoucherType.PURCHASE_INVOICE,
+                voucherNo: `PI-${pi.invoiceNumber}`,
+                date: pi.invoiceDate,
+                description: `PI ${pi.invoiceNumber} - ${pi.vendorName}`,
+                currency: pi.currency,
+                exchangeRate: pi.exchangeRate,
+                lines: voucherLines,
                 metadata: {
                     sourceModule: 'purchases',
                     sourceType: 'PURCHASE_INVOICE',
                     sourceId: pi.id,
-                    vendorId: pi.vendorId,
                 },
-            });
-            // Step 7: Create voucher.
-            const voucher = await this.createAccountingVoucherInTransaction(transaction, pi, baseCurrency, voucherLines);
-            // Step 8 (part 2): finalize.
+                createdBy: pi.createdBy,
+                postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                reference: pi.invoiceNumber,
+            }, transaction);
             pi.voucherId = voucher.id;
-            pi.paidAmountBase = 0;
-            pi.outstandingAmountBase = pi.grandTotalBase;
-            pi.paymentStatus = 'UNPAID';
             pi.status = 'POSTED';
             pi.postedAt = new Date();
             pi.updatedAt = new Date();
@@ -367,151 +341,91 @@ class PostPurchaseInvoiceUseCase {
                 await this.purchaseOrderRepo.update(po, transaction);
             }
         });
-        const posted = await this.purchaseInvoiceRepo.getById(companyId, id);
-        if (!posted)
-            throw new Error(`Purchase invoice not found after posting: ${id}`);
-        return posted;
+        return (await this.purchaseInvoiceRepo.getById(companyId, id));
     }
-    validatePostingQuantity(line, poLine, mode, overInvoiceTolerancePct, isPOLinked) {
-        if (!isPOLinked || !poLine) {
+    async resolveAccountId(companyId, idOrCode) {
+        if (!idOrCode)
+            return '';
+        if (!this.accountRepo)
+            return idOrCode;
+        const acc = (await this.accountRepo.getById(companyId, idOrCode)) || (await this.accountRepo.getByUserCode(companyId, idOrCode));
+        return acc ? acc.id : idOrCode;
+    }
+    validatePostingQuantity(line, poLine, allowDirect, tolerance, isPOLinked) {
+        if (!isPOLinked || !poLine)
             return;
-        }
-        if (mode === 'CONTROLLED' && line.trackInventory) {
-            const openInvoiceQty = poLine.receivedQty - poLine.invoicedQty;
-            if (line.invoicedQty > openInvoiceQty + 0.000001) {
-                throw new Error(`Invoiced qty exceeds received qty for item ${line.itemName}`);
+        const toleranceFactor = 1 + (tolerance / 100);
+        const eps = 0.000001;
+        if (!allowDirect && line.trackInventory) {
+            const maxByReceived = (poLine.receivedQty * toleranceFactor) - poLine.invoicedQty;
+            if (line.invoicedQty > maxByReceived + eps) {
+                throw new Error(`Invoiced qty exceeds received qty for ${line.itemName}`);
             }
             return;
         }
-        if (mode === 'CONTROLLED' && !line.trackInventory) {
-            const openInvoiceQty = poLine.orderedQty - poLine.invoicedQty;
-            if (line.invoicedQty > openInvoiceQty + 0.000001) {
-                throw new Error(`Invoiced qty exceeds ordered qty for service ${line.itemName}`);
-            }
-            return;
-        }
-        const maxQty = poLine.orderedQty * (1 + overInvoiceTolerancePct / 100);
-        const remaining = maxQty - poLine.invoicedQty;
-        if (line.invoicedQty > remaining + 0.000001) {
-            throw new Error(`Invoiced qty exceeds ordered qty for item ${line.itemName}`);
+        const maxByOrdered = (poLine.orderedQty * toleranceFactor) - poLine.invoicedQty;
+        if (line.invoicedQty > maxByOrdered + eps) {
+            throw new Error(`Invoiced qty exceeds ordered qty for ${line.itemName}`);
         }
     }
-    async freezeTaxSnapshot(companyId, line, exchangeRate) {
+    freezeTaxSnapshotSync(line, rate, tax) {
         line.lineTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.invoicedQty * line.unitPriceDoc);
-        line.unitPriceBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitPriceDoc * exchangeRate);
-        line.lineTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(line.lineTotalDoc * exchangeRate);
-        if (!line.taxCodeId) {
-            line.taxCode = undefined;
-            line.taxRate = 0;
-            line.taxAmountDoc = 0;
-            line.taxAmountBase = 0;
-            return;
-        }
-        const taxCode = await this.taxCodeRepo.getById(companyId, line.taxCodeId);
-        if (!taxCode)
-            throw new Error(`Tax code not found: ${line.taxCodeId}`);
-        assertValidPurchaseTaxCode(taxCode, line.taxCodeId);
-        line.taxCode = taxCode.code;
-        line.taxRate = taxCode.rate;
+        line.unitPriceBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitPriceDoc * rate);
+        line.lineTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(line.lineTotalDoc * rate);
+        line.taxCode = tax === null || tax === void 0 ? void 0 : tax.code;
+        line.taxRate = (tax === null || tax === void 0 ? void 0 : tax.rate) || 0;
         line.taxAmountDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.lineTotalDoc * line.taxRate);
         line.taxAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(line.lineTotalBase * line.taxRate);
     }
-    async resolveDebitAccount(companyId, item, defaultExpenseAccountId) {
+    recalcInvoiceTotals(pi) {
+        pi.subtotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
+        pi.taxTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
+        pi.grandTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(pi.subtotalDoc + pi.taxTotalDoc);
+        pi.subtotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+        pi.taxTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+        pi.grandTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.subtotalBase + pi.taxTotalBase);
+        pi.outstandingAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(Math.max(pi.grandTotalBase - (pi.paidAmountBase || 0), 0));
+    }
+    resolveDebitAccountSync(companyId, item, isPerpetual, cats, dExp, dInv) {
+        var _a;
         if (item.trackInventory) {
-            if (item.inventoryAssetAccountId)
-                return item.inventoryAssetAccountId;
-            if (item.categoryId) {
-                const category = await this.itemCategoryRepo.getCategory(item.categoryId);
-                if (category && category.companyId === companyId && category.defaultInventoryAssetAccountId) {
-                    return category.defaultInventoryAssetAccountId;
-                }
-            }
-            if (!defaultExpenseAccountId) {
-                throw new Error(`No inventory/expense account resolved for item ${item.code}`);
-            }
-            return defaultExpenseAccountId;
+            if (!isPerpetual)
+                return dExp || '';
+            return item.inventoryAssetAccountId || (item.categoryId ? (_a = cats.get(item.categoryId)) === null || _a === void 0 ? void 0 : _a.defaultInventoryAssetAccountId : null) || dInv || '';
         }
         if (item.cogsAccountId)
             return item.cogsAccountId;
-        if (item.categoryId) {
-            const category = await this.itemCategoryRepo.getCategory(item.categoryId);
-            if (category && category.companyId === companyId && category.defaultCogsAccountId) {
-                return category.defaultCogsAccountId;
-            }
-        }
-        if (!defaultExpenseAccountId) {
-            throw new Error(`No expense account resolved for item ${item.code}`);
-        }
-        return defaultExpenseAccountId;
+        const category = item.categoryId ? cats.get(item.categoryId) : null;
+        const resolved = (category === null || category === void 0 ? void 0 : category.defaultPurchaseExpenseAccountId) || dExp;
+        if (!resolved)
+            throw new Error(`No purchase expense account for item ${item.name}`);
+        return resolved;
     }
-    resolveAPAccount(vendor, defaultAPAccountId) {
-        return vendor.defaultAPAccountId || defaultAPAccountId;
+    resolveAPAccount(vendor, settings) {
+        const aid = vendor.defaultAPAccountId || settings.defaultAPAccountId;
+        if (!aid)
+            throw new Error(`No AP account for ${vendor.displayName}`);
+        return aid;
     }
-    async resolvePurchaseTaxAccount(companyId, taxCodeId) {
-        if (!taxCodeId) {
-            throw new Error('taxCodeId is required for tax line');
-        }
-        const taxCode = await this.taxCodeRepo.getById(companyId, taxCodeId);
-        if (!taxCode)
-            throw new Error(`Tax code not found: ${taxCodeId}`);
-        if (!taxCode.purchaseTaxAccountId) {
-            throw new Error(`TaxCode ${taxCode.code} has no purchase tax account`);
-        }
-        return taxCode.purchaseTaxAccountId;
-    }
-    async convertToBaseUom(companyId, qty, uom, baseUom, itemId, itemCode) {
-        if (uom.toUpperCase() === baseUom.toUpperCase()) {
+    async convertToBaseUom(cid, qty, uom, base, itemId, itemCode) {
+        if (uom.toUpperCase() === base.toUpperCase())
             return qty;
-        }
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-        const normalizedFrom = uom.toUpperCase();
-        const normalizedTo = baseUom.toUpperCase();
-        const direct = conversions.find((conversion) => conversion.active &&
-            conversion.fromUom.toUpperCase() === normalizedFrom &&
-            conversion.toUom.toUpperCase() === normalizedTo);
-        if (direct)
-            return (0, PurchasePostingHelpers_1.roundMoney)(qty * direct.factor);
-        const reverse = conversions.find((conversion) => conversion.active &&
-            conversion.fromUom.toUpperCase() === normalizedTo &&
-            conversion.toUom.toUpperCase() === normalizedFrom);
-        if (reverse)
-            return (0, PurchasePostingHelpers_1.roundMoney)(qty / reverse.factor);
-        throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+        const convs = await this.uomConversionRepo.getConversionsForItem(cid, itemId, { active: true });
+        const d = convs.find(c => c.fromUom.toUpperCase() === uom.toUpperCase() && c.toUom.toUpperCase() === base.toUpperCase());
+        if (d)
+            return (0, PurchasePostingHelpers_1.roundMoney)(qty * d.factor);
+        const r = convs.find(c => c.fromUom.toUpperCase() === base.toUpperCase() && c.toUom.toUpperCase() === uom.toUpperCase());
+        if (r)
+            return (0, PurchasePostingHelpers_1.roundMoney)(qty / r.factor);
+        throw new Error(`No UOM conversion for ${itemCode}`);
     }
-    async resolveCCYToBaseRate(companyId, costCurrency, baseCurrency, moveCurrency, fxRateMovToBase, invoiceDate) {
-        if (costCurrency.toUpperCase() === baseCurrency.toUpperCase()) {
+    async resolveCCYToBaseRate(cid, cost, base, move, rate, date) {
+        if (cost.toUpperCase() === base.toUpperCase())
             return 1;
-        }
-        if (costCurrency.toUpperCase() === moveCurrency.toUpperCase()) {
-            return fxRateMovToBase;
-        }
-        const rate = await this.exchangeRateRepo.getMostRecentRateBeforeDate(companyId, costCurrency, baseCurrency, new Date(invoiceDate));
-        if (rate)
-            return rate.rate;
-        return fxRateMovToBase;
-    }
-    async createAccountingVoucherInTransaction(transaction, pi, baseCurrency, lines) {
-        const isForeignCurrency = pi.currency.toUpperCase() !== baseCurrency.toUpperCase();
-        const voucherLines = lines.map((line, index) => {
-            const baseAmount = (0, PurchasePostingHelpers_1.roundMoney)(line.baseAmount);
-            const amount = isForeignCurrency ? (0, PurchasePostingHelpers_1.roundMoney)(line.docAmount) : baseAmount;
-            const rate = isForeignCurrency ? pi.exchangeRate : 1;
-            return new VoucherLineEntity_1.VoucherLineEntity(index + 1, line.accountId, line.side, baseAmount, baseCurrency, amount, pi.currency, rate, line.notes, undefined, line.metadata || {});
-        });
-        const totalDebit = (0, PurchasePostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-        const totalCredit = (0, PurchasePostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-        const now = new Date();
-        const voucher = new VoucherEntity_1.VoucherEntity((0, crypto_1.randomUUID)(), pi.companyId, `PI-${pi.invoiceNumber}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, pi.invoiceDate, `Purchase Invoice ${pi.invoiceNumber} - ${pi.vendorName}`, pi.currency, baseCurrency, isForeignCurrency ? pi.exchangeRate : 1, voucherLines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, {
-            sourceModule: 'purchases',
-            sourceType: 'PURCHASE_INVOICE',
-            sourceId: pi.id,
-            referenceType: 'PURCHASE_INVOICE',
-            referenceId: pi.id,
-        }, pi.createdBy, now, pi.createdBy, now);
-        const postedVoucher = voucher.post(pi.createdBy, now, VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-        await this.voucherRepo.save(postedVoucher, transaction);
-        return postedVoucher;
+        if (cost.toUpperCase() === move.toUpperCase())
+            return rate;
+        const r = await this.exchangeRateRepo.getMostRecentRateBeforeDate(cid, cost, base, new Date(date));
+        return r ? r.rate : rate;
     }
 }
 exports.PostPurchaseInvoiceUseCase = PostPurchaseInvoiceUseCase;
@@ -615,4 +529,64 @@ class ListPurchaseInvoicesUseCase {
     }
 }
 exports.ListPurchaseInvoicesUseCase = ListPurchaseInvoicesUseCase;
+class UnpostPurchaseInvoiceUseCase {
+    constructor(purchaseInvoiceRepo, purchaseOrderRepo, inventoryService, accountingPostingService, transactionManager) {
+        this.purchaseInvoiceRepo = purchaseInvoiceRepo;
+        this.purchaseOrderRepo = purchaseOrderRepo;
+        this.inventoryService = inventoryService;
+        this.accountingPostingService = accountingPostingService;
+        this.transactionManager = transactionManager;
+    }
+    async execute(companyId, id, currentUser) {
+        const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
+        if (!pi)
+            throw new Error(`Purchase invoice not found: ${id}`);
+        if (pi.status !== 'POSTED')
+            throw new Error('Only POSTED purchase invoices can be unposted');
+        if (pi.paidAmountBase > 0) {
+            throw new Error('Cannot unpost an invoice that has payments applied. Reverse the payments first.');
+        }
+        let po = null;
+        if (pi.purchaseOrderId) {
+            po = await this.purchaseOrderRepo.getById(companyId, pi.purchaseOrderId);
+        }
+        await this.transactionManager.runTransaction(async (transaction) => {
+            // 1. Reverse accounting voucher and ledger
+            if (pi.voucherId) {
+                await this.accountingPostingService.deleteVoucherInTransaction(companyId, pi.voucherId, transaction);
+                pi.voucherId = null;
+            }
+            // 2. Reverse inventory movements (direct invoicing lines)
+            for (const line of pi.lines) {
+                if (line.stockMovementId) {
+                    await this.inventoryService.deleteMovement(companyId, line.stockMovementId, transaction);
+                    line.stockMovementId = null;
+                }
+                // 3. Reverse PO invoicedQty
+                if (po) {
+                    const poLine = findPOLine(po, line.poLineId, line.itemId);
+                    if (poLine) {
+                        poLine.invoicedQty = (0, PurchasePostingHelpers_1.roundMoney)(Math.max(0, poLine.invoicedQty - line.invoicedQty));
+                    }
+                }
+            }
+            // 4. Update PO status
+            if (po) {
+                po.status = (0, PurchasePostingHelpers_1.updatePOStatus)(po);
+                po.updatedAt = new Date();
+                await this.purchaseOrderRepo.update(po, transaction);
+            }
+            // 5. Revert PI to DRAFT
+            pi.status = 'DRAFT';
+            pi.postedAt = undefined;
+            pi.updatedAt = new Date();
+            await this.purchaseInvoiceRepo.update(pi, transaction);
+        });
+        const unposted = await this.purchaseInvoiceRepo.getById(companyId, id);
+        if (!unposted)
+            throw new Error('Failed to retrieve invoice after unposting');
+        return unposted;
+    }
+}
+exports.UnpostPurchaseInvoiceUseCase = UnpostPurchaseInvoiceUseCase;
 //# sourceMappingURL=PurchaseInvoiceUseCases.js.map

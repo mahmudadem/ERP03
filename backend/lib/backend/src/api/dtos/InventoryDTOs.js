@@ -40,6 +40,7 @@ class InventoryDTOMapper {
             companyId: wh.companyId,
             name: wh.name,
             code: wh.code,
+            parentId: wh.parentId,
             address: wh.address,
             isDefault: wh.isDefault,
             active: wh.active,
@@ -74,13 +75,35 @@ class InventoryDTOMapper {
     static toSettingsDTO(settings) {
         return {
             companyId: settings.companyId,
+            inventoryAccountingMethod: settings.inventoryAccountingMethod,
             defaultCostingMethod: settings.defaultCostingMethod,
             defaultCostCurrency: settings.defaultCostCurrency,
+            defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId,
             allowNegativeStock: settings.allowNegativeStock,
             defaultWarehouseId: settings.defaultWarehouseId,
             autoGenerateItemCode: settings.autoGenerateItemCode,
             itemCodePrefix: settings.itemCodePrefix,
             itemCodeNextSeq: settings.itemCodeNextSeq,
+            defaultCOGSAccountId: settings.defaultCOGSAccountId,
+        };
+    }
+    static toOpeningStockDocumentDTO(document) {
+        var _a;
+        return {
+            id: document.id,
+            companyId: document.companyId,
+            warehouseId: document.warehouseId,
+            date: document.date,
+            notes: document.notes,
+            status: document.status,
+            createAccountingEffect: document.createAccountingEffect,
+            openingBalanceAccountId: document.openingBalanceAccountId,
+            voucherId: document.voucherId,
+            totalValueBase: document.totalValueBase,
+            createdBy: document.createdBy,
+            createdAt: document.createdAt.toISOString(),
+            postedAt: (_a = document.postedAt) === null || _a === void 0 ? void 0 : _a.toISOString(),
+            lines: document.lines.map((line) => (Object.assign({}, line))),
         };
     }
     static toStockLevelDTO(level) {

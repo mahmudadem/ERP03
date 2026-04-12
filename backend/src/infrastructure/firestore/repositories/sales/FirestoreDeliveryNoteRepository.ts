@@ -47,6 +47,12 @@ export class FirestoreDeliveryNoteRepository implements IDeliveryNoteRepository 
     return DeliveryNoteMapper.toDomain(doc.data());
   }
 
+  async getByNumber(companyId: string, dnNumber: string): Promise<DeliveryNote | null> {
+    const snap = await this.collection(companyId).where('dnNumber', '==', dnNumber).limit(1).get();
+    if (snap.empty) return null;
+    return DeliveryNoteMapper.toDomain(snap.docs[0].data());
+  }
+
   async list(companyId: string, opts: DeliveryNoteListOptions = {}): Promise<DeliveryNote[]> {
     let query: Query = this.collection(companyId);
     if (opts.salesOrderId) query = query.where('salesOrderId', '==', opts.salesOrderId);

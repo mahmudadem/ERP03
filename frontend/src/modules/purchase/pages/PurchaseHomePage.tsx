@@ -44,7 +44,6 @@ const PurchaseHomePage: React.FC = () => {
   const { companyId } = useCompanyAccess();
 
   const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [orders, setOrders] = useState<PurchaseOrderDTO[]>([]);
   const [receipts, setReceipts] = useState<GoodsReceiptDTO[]>([]);
   const [invoices, setInvoices] = useState<PurchaseInvoiceDTO[]>([]);
@@ -63,7 +62,6 @@ const PurchaseHomePage: React.FC = () => {
         const purchaseModule = modules.find((m) => m.moduleCode === 'purchase');
         if (purchaseModule && !purchaseModule.initialized) {
           setInitialized(false);
-          setSettings(null);
           setOrders([]);
           setReceipts([]);
           setInvoices([]);
@@ -77,7 +75,6 @@ const PurchaseHomePage: React.FC = () => {
 
       if (!currentSettings) {
         setInitialized(false);
-        setSettings(null);
         setOrders([]);
         setReceipts([]);
         setInvoices([]);
@@ -86,7 +83,6 @@ const PurchaseHomePage: React.FC = () => {
       }
 
       setInitialized(true);
-      setSettings(currentSettings);
 
       const [ordersResult, receiptsResult, invoicesResult, returnsResult] = await Promise.all([
         purchasesApi.listPOs({ limit: 100 }),
@@ -213,9 +209,6 @@ const PurchaseHomePage: React.FC = () => {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
-          <p className="text-sm text-slate-600">
-            Mode: <span className="font-semibold">{settings?.procurementControlMode || 'SIMPLE'}</span>
-          </p>
         </div>
         <div className="flex gap-2">
           <button

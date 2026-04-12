@@ -3,7 +3,7 @@
  * 
  * Firestore implementation of IVoucherFormRepository
  * 
- * Storage: companies/{companyId}/voucherForms/{formId}
+ * Modular Path: companies/{companyId}/{module}/Settings/voucherForms/{formId}
  */
 
 import * as admin from 'firebase-admin';
@@ -17,12 +17,16 @@ import { InfrastructureError } from '../../../errors/InfrastructureError';
 export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
   constructor(private db: admin.firestore.Firestore) {}
 
-  private getCollection(companyId: string) {
-    // MODULAR PATTERN: companies/{id}/accounting (coll) -> Settings (doc) -> voucherForms (coll)
+  private static readonly MODULES = ['accounting', 'sales', 'purchase', 'purchases', 'inventory', 'sales_module'];
+
+  private getCollection(companyId: string, moduleName?: string) {
+    const baseModule = (moduleName || 'ACCOUNTING').toLowerCase();
+    
+    // Standard modular pattern: companies/{id}/{module}/Settings/voucherForms
     return this.db
       .collection('companies')
       .doc(companyId)
-      .collection('accounting')
+      .collection(baseModule)
       .doc('Settings')
       .collection('voucherForms');
   }
@@ -31,6 +35,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
     return {
       id: data.id,
       companyId: data.companyId,
+      module: data.module || 'ACCOUNTING',
       typeId: data.typeId,
       name: data.name,
       code: data.code,
@@ -51,6 +56,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       tableStyle: data.tableStyle || 'web',
       defaultCurrency: data.defaultCurrency || null,
       baseType: data.baseType || null,
+      sidebarGroup: data.sidebarGroup || null,
       createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),
       updatedAt: data.updatedAt?.toDate?.() || data.updatedAt || new Date(),
       createdBy: data.createdBy || null
@@ -61,6 +67,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
     return {
       id: form.id,
       companyId: form.companyId,
+      module: form.module || 'ACCOUNTING',
       typeId: form.typeId,
       name: form.name,
       code: form.code,
@@ -81,6 +88,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       tableStyle: form.tableStyle || 'web',
       defaultCurrency: form.defaultCurrency || null,
       baseType: form.baseType || null,
+      sidebarGroup: form.sidebarGroup || null,
       createdAt: form.createdAt || FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       createdBy: form.createdBy || null
@@ -97,10 +105,50 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       .collection('items');
   }
 
+  private toSystemDomain(data: any): VoucherFormDefinition {
+    return this.toDomain({
+      ...data,
+      typeId: data.code || data.id,
+      isSystemGenerated: true
+    });
+  }
+
+  private mergeMissingSystemForms(
+    companyForms: VoucherFormDefinition[],
+    systemForms: VoucherFormDefinition[]
+  ): VoucherFormDefinition[] {
+    const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+    const seenKeys = new Set<string>();
+
+    companyForms.forEach((form) => {
+      [form.id, form.code, form.typeId].forEach((value) => {
+        const key = normalize(value);
+        if (key) seenKeys.add(key);
+      });
+    });
+
+    const merged = [...companyForms];
+
+    for (const form of systemForms) {
+      const candidateKeys = [form.id, form.code, form.typeId]
+        .map((value) => normalize(value))
+        .filter(Boolean);
+
+      if (candidateKeys.some((key) => seenKeys.has(key))) {
+        continue;
+      }
+
+      merged.push(form);
+      candidateKeys.forEach((key) => seenKeys.add(key));
+    }
+
+    return merged;
+  }
+
   async create(form: VoucherFormDefinition): Promise<VoucherFormDefinition> {
     try {
       const data = this.toPersistence(form);
-      await this.getCollection(form.companyId).doc(form.id).set(data);
+      await this.getCollection(form.companyId, form.module).doc(form.id).set(data);
       return form;
     } catch (error) {
       throw new InfrastructureError('Error creating voucher form', error);
@@ -109,23 +157,17 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async getById(companyId: string, formId: string): Promise<VoucherFormDefinition | null> {
     try {
-      let doc = await this.getCollection(companyId).doc(formId).get();
-      
-      if (doc.exists) {
-        return this.toDomain(doc.data());
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        let doc = await this.getCollection(companyId, mod).doc(formId).get();
+        if (doc.exists) {
+          return this.toDomain({ ...doc.data(), id: doc.id });
+        }
       }
 
       // Fallback to SYSTEM templates if not found in company collection
-      // Many system templates use their code/id interchangeably (e.g. fx_revaluation)
       const systemDoc = await this.getSystemCollection().doc(formId).get();
       if (systemDoc.exists) {
-        const sysData = systemDoc.data()!;
-        // Map VoucherTypeDefinition to VoucherFormDefinition
-        return this.toDomain({
-          ...sysData,
-          typeId: sysData.code || sysData.id,
-          isSystemGenerated: true
-        });
+        return this.toSystemDomain({ ...systemDoc.data(), id: systemDoc.id });
       }
 
       return null;
@@ -136,29 +178,30 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async getByTypeId(companyId: string, typeId: string): Promise<VoucherFormDefinition[]> {
     try {
-      const snapshot = await this.getCollection(companyId)
-        .where('typeId', '==', typeId)
-        .get();
+      const allForms: VoucherFormDefinition[] = [];
       
-      const forms = snapshot.docs.map(doc => this.toDomain(doc.data()));
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        const snapshot = await this.getCollection(companyId, mod)
+          .where('typeId', '==', typeId)
+          .get();
+        
+        snapshot.docs.forEach(doc => {
+          allForms.push(this.toDomain({ ...doc.data(), id: doc.id }));
+        });
+      }
 
       // If no company forms found for this type, check system
-      if (forms.length === 0) {
+      if (allForms.length === 0) {
         const systemSnapshot = await this.getSystemCollection()
           .where('code', '==', typeId)
           .get();
         
         systemSnapshot.docs.forEach(doc => {
-          const sysData = doc.data();
-          forms.push(this.toDomain({
-            ...sysData,
-            typeId: sysData.code || sysData.id,
-            isSystemGenerated: true
-          }));
+          allForms.push(this.toSystemDomain({ ...doc.data(), id: doc.id }));
         });
       }
 
-      return forms;
+      return allForms;
     } catch (error) {
       throw new InfrastructureError('Error getting voucher forms by type', error);
     }
@@ -166,13 +209,15 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async getDefaultForType(companyId: string, typeId: string): Promise<VoucherFormDefinition | null> {
     try {
-      const snapshot = await this.getCollection(companyId)
-        .where('typeId', '==', typeId)
-        .where('isDefault', '==', true)
-        .limit(1)
-        .get();
-      
-      if (!snapshot.empty) return this.toDomain(snapshot.docs[0].data());
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        const snapshot = await this.getCollection(companyId, mod)
+          .where('typeId', '==', typeId)
+          .where('isDefault', '==', true)
+          .limit(1)
+          .get();
+        
+        if (!snapshot.empty) return this.toDomain({ ...snapshot.docs[0].data(), id: snapshot.docs[0].id });
+      }
 
       // Fallback to system default
       const systemSnapshot = await this.getSystemCollection()
@@ -181,10 +226,10 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         .get();
       
       if (!systemSnapshot.empty) {
-        const sysData = systemSnapshot.docs[0].data();
         return this.toDomain({
-          ...sysData,
-          typeId: sysData.code || sysData.id,
+          ...systemSnapshot.docs[0].data(),
+          id: systemSnapshot.docs[0].id,
+          typeId: systemSnapshot.docs[0].data().code || systemSnapshot.docs[0].id,
           isDefault: true,
           isSystemGenerated: true
         });
@@ -198,25 +243,19 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async getAllByCompany(companyId: string): Promise<VoucherFormDefinition[]> {
     try {
-      const snapshot = await this.getCollection(companyId).get();
-      const companyForms = snapshot.docs.map(doc => this.toDomain(doc.data()));
-
-      // If company has explicit forms (created by accounting initialization / designer),
-      // return them as-is. This keeps sidebar aligned with selected voucher types.
-      if (companyForms.length > 0) {
-        return companyForms;
+      const companyForms: VoucherFormDefinition[] = [];
+      
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        const snapshot = await this.getCollection(companyId, mod).get();
+        snapshot.docs.forEach(doc => {
+          companyForms.push(this.toDomain({ ...doc.data(), id: doc.id }));
+        });
       }
 
-      // Legacy fallback: if no company forms exist, expose system templates.
       const systemSnapshot = await this.getSystemCollection().get();
-      return systemSnapshot.docs.map(doc => {
-        const sysData = doc.data();
-        return this.toDomain({
-          ...sysData,
-          typeId: sysData.code || sysData.id,
-          isSystemGenerated: true
-        });
-      });
+      const systemForms = systemSnapshot.docs.map(doc => this.toSystemDomain({ ...doc.data(), id: doc.id }));
+
+      return this.mergeMissingSystemForms(companyForms, systemForms);
     } catch (error) {
       throw new InfrastructureError('Error getting all voucher forms', error);
     }
@@ -224,7 +263,23 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async update(companyId: string, formId: string, updates: Partial<VoucherFormDefinition>): Promise<void> {
     try {
-      const ref = this.getCollection(companyId).doc(formId);
+      // Find where it is first
+      let targetRef: admin.firestore.DocumentReference | null = null;
+      
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        const ref = this.getCollection(companyId, mod).doc(formId);
+        const doc = await ref.get();
+        if (doc.exists) {
+          targetRef = ref;
+          break;
+        }
+      }
+
+      if (!targetRef) {
+          // If it doesn't exist, we fallback to default module or module specified in updates
+          targetRef = this.getCollection(companyId, updates.module).doc(formId);
+      }
+      
       const cleanUpdates: any = { ...updates };
       delete cleanUpdates.id;
       delete cleanUpdates.companyId;
@@ -236,7 +291,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         }
       });
       
-      await ref.set(cleanUpdates, { merge: true });
+      await targetRef.set(cleanUpdates, { merge: true });
     } catch (error) {
       throw new InfrastructureError('Error updating voucher form', error);
     }
@@ -244,7 +299,14 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
 
   async delete(companyId: string, formId: string): Promise<void> {
     try {
-      await this.getCollection(companyId).doc(formId).delete();
+      for (const mod of FirestoreVoucherFormRepository.MODULES) {
+        const ref = this.getCollection(companyId, mod).doc(formId);
+        const doc = await ref.get();
+        if (doc.exists) {
+          await ref.delete();
+          return;
+        }
+      }
     } catch (error) {
       throw new InfrastructureError('Error deleting voucher form', error);
     }

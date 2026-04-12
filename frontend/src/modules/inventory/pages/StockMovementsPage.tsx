@@ -1,31 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
-import { StockMovementDTO, inventoryApi } from '../../../api/inventoryApi';
+import { StockMovementDTO, InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const StockMovementsPage: React.FC = () => {
   const [movements, setMovements] = useState<StockMovementDTO[]>([]);
+  const [items, setItems] = useState<InventoryItemDTO[]>([]);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const loadData = async () => {
     try {
-      const result = await inventoryApi.getMovements({
-        from: from || undefined,
-        to: to || undefined,
-        limit: 300,
-        offset: 0,
-      });
-      setMovements(unwrap<StockMovementDTO[]>(result) || []);
+      setLoading(true);
+      const [movementsResult, itemsResult, warehousesResult] = await Promise.all([
+        inventoryApi.getMovements({
+          from: from || undefined,
+          to: to || undefined,
+          limit: 300,
+          offset: 0,
+        }),
+        inventoryApi.listItems({ active: true, limit: 1000 }),
+        inventoryApi.listWarehouses({ active: true }),
+      ]);
+      
+      setMovements(unwrap<StockMovementDTO[]>(movementsResult) || []);
+      setItems(unwrap<InventoryItemDTO[]>(itemsResult) || []);
+      setWarehouses(unwrap<InventoryWarehouseDTO[]>(warehousesResult) || []);
     } catch (error) {
-      console.error('Failed to load movements', error);
+      console.error('Failed to load movements data', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const getItemLabel = (itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    return item ? `${item.code} - ${item.name}` : itemId;
+  };
+
+  const getWarehouseName = (warehouseId: string) => {
+    const wh = warehouses.find((w) => w.id === warehouseId);
+    return wh ? wh.name : warehouseId;
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -45,8 +68,8 @@ const StockMovementsPage: React.FC = () => {
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />
-          <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white md:col-span-2" onClick={load}>
-            Apply Filters
+          <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white md:col-span-2 disabled:opacity-50" onClick={loadData} disabled={loading}>
+            {loading ? 'Applying...' : 'Apply Filters'}
           </button>
         </div>
       </Card>
@@ -67,10 +90,10 @@ const StockMovementsPage: React.FC = () => {
             </thead>
             <tbody>
               {movements.map((movement) => (
-                <tr key={movement.id} className="border-b border-slate-100">
-                  <td className="py-2">{movement.date}</td>
-                  <td className="py-2">{movement.itemId}</td>
-                  <td className="py-2">{movement.warehouseId}</td>
+                <tr key={movement.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="py-2 text-slate-600">{movement.date}</td>
+                  <td className="py-2 font-medium text-slate-900">{getItemLabel(movement.itemId)}</td>
+                  <td className="py-2 text-slate-700">{getWarehouseName(movement.warehouseId)}</td>
                   <td className="py-2">{movement.movementType}</td>
                   <td className="py-2">{movement.direction}</td>
                   <td className="py-2 text-right">{movement.qty}</td>

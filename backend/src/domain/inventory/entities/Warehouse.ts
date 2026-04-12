@@ -4,6 +4,7 @@ export interface WarehouseProps {
   companyId: string;
   name: string;
   code: string;
+  parentId?: string | null;
   address?: string;
   active: boolean;
   isDefault: boolean;
@@ -22,6 +23,7 @@ export class Warehouse {
   readonly companyId: string;
   name: string;
   code: string;
+  parentId: string | null;
   address?: string;
   active: boolean;
   isDefault: boolean;
@@ -38,6 +40,7 @@ export class Warehouse {
     this.companyId = props.companyId;
     this.name = props.name.trim();
     this.code = props.code.trim();
+    this.parentId = props.parentId?.trim() || null;
     this.address = props.address;
     this.active = props.active;
     this.isDefault = props.isDefault;
@@ -51,6 +54,7 @@ export class Warehouse {
       companyId: this.companyId,
       name: this.name,
       code: this.code,
+      parentId: this.parentId ?? null,
       address: this.address,
       active: this.active,
       isDefault: this.isDefault,
@@ -65,6 +69,7 @@ export class Warehouse {
       companyId: data.companyId,
       name: data.name,
       code: data.code || data.name,
+      parentId: data.parentId ?? null,
       address: data.address || data.location,
       active: data.active ?? true,
       isDefault: data.isDefault ?? false,

@@ -58,7 +58,7 @@ export const moduleMenuMap: Record<
         label: 'Operations',
         icon: 'ClipboardList',
         children: [
-          { label: 'Opening Stock', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
+    { label: 'Opening Stock Documents', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
           { label: 'Adjustments', path: '/inventory/adjustments', permission: 'inventory.stock.adjust', icon: 'SlidersHorizontal' },
           { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.warehouses.view', icon: 'ArrowLeftRight' },
         ]
@@ -80,17 +80,12 @@ export const moduleMenuMap: Record<
     icon: 'ShoppingCart',
     items: [
       { label: 'Overview', path: '/sales', icon: 'LayoutDashboard' },
+      { label: 'Products & Services', path: '/sales/items', icon: 'Package' },
       { label: 'Customers', path: '/sales/customers', icon: 'Users' },
       { label: 'Sales Orders', path: '/sales/orders', icon: 'ShoppingCart' },
-      {
-        label: 'Operations',
-        icon: 'Layers',
-        children: [
-          { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
-          { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
-          { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
-        ]
-      },
+      { label: 'Delivery Notes', path: '/sales/delivery-notes', icon: 'Truck' },
+      { label: 'Sales Invoices', path: '/sales/invoices', icon: 'Receipt' },
+      { label: 'Sales Returns', path: '/sales/returns', icon: 'Undo2' },
       { label: 'Settings', path: '/sales/settings', icon: 'Settings' }
     ]
   },
@@ -98,17 +93,12 @@ export const moduleMenuMap: Record<
     label: 'Purchases',
     icon: 'ClipboardList',
     items: [
+      { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
-      {
-        label: 'Operations',
-        icon: 'Layers',
-        children: [
-          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
-          { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
-          { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
-        ]
-      },
+      { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+      { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
+      { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
       { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
     ]
   },
@@ -116,17 +106,12 @@ export const moduleMenuMap: Record<
     label: 'Purchases',
     icon: 'ClipboardList',
     items: [
+      { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
-      {
-        label: 'Operations',
-        icon: 'Layers',
-        children: [
-          { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
-          { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
-          { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
-        ]
-      },
+      { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
+      { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
+      { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
       { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
     ]
   },
@@ -169,6 +154,13 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Projects', path: '/projects', permission: 'project.view', icon: 'Folder' },
       { label: 'Tasks', path: '/projects/tasks', permission: 'task.view', icon: 'CheckSquare' }
+    ]
+  },
+  tools: {
+    label: 'Tools',
+    icon: 'Wrench',
+    items: [
+      { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' }
     ]
   }
 };

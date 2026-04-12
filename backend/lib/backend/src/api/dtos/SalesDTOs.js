@@ -5,11 +5,12 @@ class SalesDTOMapper {
     static toSettingsDTO(settings) {
         return {
             companyId: settings.companyId,
-            salesControlMode: settings.salesControlMode,
+            allowDirectInvoicing: settings.allowDirectInvoicing,
             requireSOForStockItems: settings.requireSOForStockItems,
             defaultARAccountId: settings.defaultARAccountId,
             defaultRevenueAccountId: settings.defaultRevenueAccountId,
             defaultCOGSAccountId: settings.defaultCOGSAccountId,
+            defaultInventoryAccountId: settings.defaultInventoryAccountId,
             defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
             allowOverDelivery: settings.allowOverDelivery,
             overDeliveryTolerancePct: settings.overDeliveryTolerancePct,

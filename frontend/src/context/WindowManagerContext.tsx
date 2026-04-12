@@ -8,7 +8,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 
-export type UIWindowType = 'voucher' | 'report';
+export type UIWindowType = 'voucher' | 'report' | 'item' | 'party' | 'warehouse';
 
 export interface UIWindow {
   id: string;

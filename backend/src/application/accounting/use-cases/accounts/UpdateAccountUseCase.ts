@@ -152,6 +152,13 @@ export class UpdateAccountUseCase {
       if (!parent) {
         throw this.createError(`Parent account ${newParentId} not found`, 404);
       }
+      const parentIsUsed = await this.accountRepo.isUsed(companyId, parent.id);
+      if (parentIsUsed && parent.accountRole === 'POSTING') {
+        throw this.createError(
+          'Cannot add sub-accounts to a POSTING account that already has posted transactions. Please create a new HEADER account to group them instead.',
+          400
+        );
+      }
       
       const effectiveClassification = normalizeClassification(
         data.classification || data.type || existing.classification

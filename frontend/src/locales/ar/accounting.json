@@ -430,7 +430,9 @@
       "classic": "الكلاسيكي",
       "classicDesc": "واجهة مبوبة ومسطحة",
       "windows": "ويندوز (V3)",
-      "windowsDesc": "تعدد نوافذ مع مهام متعددة"
+      "windowsDesc": "تعدد نوافذ مع مهام متعددة",
+      "multiCurrencyDefaults": "إعدادات الصرف العالمية",
+      "fxAccountDesc": "الحساب الأساسي لفروقات الصرف.Pre-fills the wizard below and serves as a default for all modules."
     },
     "currencies": {
       "description": "إدارة قائمة عملات المؤسسة والعملة الأساس"
@@ -481,9 +483,14 @@
       "policies": "الاعتماد والترحيل",
       "paymentMethods": "طرق الدفع",
       "costCenter": "إلزام مراكز التكلفة",
+      "costCentersManage": "مراكز التكلفة",
       "errorMode": "وضع أخطاء السياسة",
       "fiscal": "السنة المالية",
-      "numbering": "ترقيم القيود"
+      "numbering": "ترقيم القيود",
+      "fxRevaluation": "إعادة تقييم العملات"
+    },
+    "fxRevaluation": {
+      "description": "إعداد إعادة تقييم سعر الصرف التلقائي للحسابات متعددة العملات"
     },
     "saving": "جارٍ الحفظ...",
     "saveLabel": "حفظ {{section}}",

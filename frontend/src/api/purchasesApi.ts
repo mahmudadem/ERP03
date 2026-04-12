@@ -1,6 +1,5 @@
 import client from './client';
 
-export type ProcurementControlMode = 'SIMPLE' | 'CONTROLLED';
 export type POStatus =
   | 'DRAFT'
   | 'CONFIRMED'
@@ -12,13 +11,13 @@ export type GRNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
-export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 
 export interface PurchaseSettingsDTO {
   companyId: string;
-  procurementControlMode: ProcurementControlMode;
+  allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  defaultAPAccountId: string;
+  defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -34,6 +33,7 @@ export interface PurchaseSettingsDTO {
   piNumberNextSeq: number;
   prNumberPrefix: string;
   prNumberNextSeq: number;
+  exchangeGainLossAccountId?: string;
 }
 
 export interface PurchaseOrderLineDTO {
@@ -239,8 +239,8 @@ export interface PurchaseReturnDTO {
 }
 
 export interface InitializePurchasesPayload {
-  defaultAPAccountId: string;
-  procurementControlMode: ProcurementControlMode;
+  defaultAPAccountId?: string;
+  allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;
   allowOverDelivery?: boolean;
@@ -257,6 +257,7 @@ export interface InitializePurchasesPayload {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  exchangeGainLossAccountId?: string;
 }
 
 export interface PurchaseOrderLineInputDTO {
@@ -325,6 +326,14 @@ export interface CreateGRNPayload {
   notes?: string;
 }
 
+export interface UpdateGRNPayload {
+  vendorId?: string;
+  receiptDate?: string;
+  warehouseId?: string;
+  lines?: GoodsReceiptLineInputDTO[];
+  notes?: string;
+}
+
 export interface ListGRNsOptions {
   purchaseOrderId?: string;
   status?: GRNStatus;
@@ -384,6 +393,9 @@ export interface PurchaseReturnLineInputDTO {
   poLineId?: string;
   itemId?: string;
   returnQty?: number;
+  unitCostDoc?: number;
+  uom?: string;
+  accountId?: string;
   description?: string;
 }
 
@@ -391,10 +403,13 @@ export interface CreatePurchaseReturnPayload {
   purchaseInvoiceId?: string;
   goodsReceiptId?: string;
   purchaseOrderId?: string;
+  vendorId?: string;
   returnDate: string;
   warehouseId?: string;
   reason: string;
   notes?: string;
+  currency?: string;
+  exchangeRate?: number;
   lines?: PurchaseReturnLineInputDTO[];
 }
 
@@ -449,8 +464,14 @@ export const purchasesApi = {
   getGRN: (id: string): Promise<GoodsReceiptDTO> =>
     client.get(`/tenant/purchase/goods-receipts/${id}`),
 
+  updateGRN: (id: string, payload: UpdateGRNPayload): Promise<GoodsReceiptDTO> =>
+    client.put(`/tenant/purchase/goods-receipts/${id}`, payload),
+
   postGRN: (id: string): Promise<GoodsReceiptDTO> =>
     client.post(`/tenant/purchase/goods-receipts/${id}/post`, {}),
+
+  unpostGRN: (id: string): Promise<GoodsReceiptDTO> =>
+    client.post(`/tenant/purchase/goods-receipts/${id}/unpost`, {}),
 
   createPI: (payload: CreatePurchaseInvoicePayload): Promise<PurchaseInvoiceDTO> =>
     client.post('/tenant/purchase/invoices', payload),
@@ -467,6 +488,9 @@ export const purchasesApi = {
   postPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/post`, {}),
 
+  unpostPI: (id: string): Promise<PurchaseInvoiceDTO> =>
+    client.post(`/tenant/purchase/invoices/${id}/unpost`, {}),
+
   updatePaymentStatus: (invoiceId: string, payload: UpdateInvoicePaymentStatusPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${invoiceId}/payment-update`, payload),
 
@@ -479,6 +503,12 @@ export const purchasesApi = {
   getReturn: (id: string): Promise<PurchaseReturnDTO> =>
     client.get(`/tenant/purchase/returns/${id}`),
 
+  updateReturn: (id: string, payload: Partial<CreatePurchaseReturnPayload>): Promise<PurchaseReturnDTO> =>
+    client.put(`/tenant/purchase/returns/${id}`, payload),
+
   postReturn: (id: string): Promise<PurchaseReturnDTO> =>
     client.post(`/tenant/purchase/returns/${id}/post`, {}),
+
+  unpostReturn: (id: string): Promise<PurchaseReturnDTO> =>
+    client.post(`/tenant/purchase/returns/${id}/unpost`, {}),
 };

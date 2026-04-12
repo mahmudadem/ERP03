@@ -21,6 +21,7 @@ export class FirestoreCompanySettingsRepository implements ICompanySettingsRepos
       data.baseCurrency,
       data.fiscalYearStart,
       data.fiscalYearEnd,
+      data.exchangeGainLossAccountId,
       data.disabledNotificationCategories || []
     );
   }
@@ -36,6 +37,7 @@ export class FirestoreCompanySettingsRepository implements ICompanySettingsRepos
       baseCurrency: entity.baseCurrency,
       fiscalYearStart: entity.fiscalYearStart,
       fiscalYearEnd: entity.fiscalYearEnd,
+      exchangeGainLossAccountId: entity.exchangeGainLossAccountId,
       disabledNotificationCategories: entity.disabledNotificationCategories || []
     };
   }

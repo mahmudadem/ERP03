@@ -19,12 +19,13 @@ const MODULE_CONFIG: Record<string, { isRequired: boolean }> = {
   invoicing: { isRequired: false },
 };
 
-// Modules that have a dedicated initialization handler route
-const MODULE_INIT_PATHS: Record<string, string> = {
-  accounting: '/accounting/setup',
-  inventory: '/inventory',
-  purchase: '/purchases',
-  sales: '/sales',
+// Modules that have dedicated setup/entry routes that should remain reachable
+// even before the module is fully initialized.
+const MODULE_INIT_ROUTES: Record<string, string[]> = {
+  accounting: ['/accounting/setup'],
+  inventory: ['/inventory'],
+  purchase: ['/purchases'],
+  sales: ['/sales', '/sales/settings'],
 };
 
 /**
@@ -42,6 +43,12 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   const navigate = useNavigate();
   const location = useLocation();
   const [userSkipped, setUserSkipped] = useState(false);
+
+  const isAllowedPreInitRoute = (path: string, routes: string[]): boolean =>
+    routes.some((route) => {
+      const normalizedRoute = route.toLowerCase();
+      return path === normalizedRoute || path === `${normalizedRoute}/`;
+    });
 
   // Get module configuration
   const moduleConfig = MODULE_CONFIG[moduleCode] || { isRequired: false };
@@ -61,14 +68,13 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   // If module not found, treat modules with initialization handlers as not initialized.
   // This keeps routing strict even when installation records are missing.
   if (!module) {
-    const initializationPath = MODULE_INIT_PATHS[moduleCode];
-    if (initializationPath) {
+    const initializationRoutes = MODULE_INIT_ROUTES[moduleCode];
+    if (initializationRoutes?.length) {
       const path = location.pathname.toLowerCase();
-      const targetPath = initializationPath.toLowerCase();
-      const isInitializationRoute = path === targetPath || path === `${targetPath}/`;
+      const isInitializationRoute = isAllowedPreInitRoute(path, initializationRoutes);
 
       if (!isInitializationRoute) {
-        return <Navigate to={initializationPath} replace />;
+        return <Navigate to={initializationRoutes[0]} replace />;
       }
 
       return <>{children}</>;
@@ -84,14 +90,13 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   }
 
   // Direct redirect to module initialization handler when available
-  const initializationPath = MODULE_INIT_PATHS[moduleCode];
-  if (initializationPath) {
+  const initializationRoutes = MODULE_INIT_ROUTES[moduleCode];
+  if (initializationRoutes?.length) {
     const path = location.pathname.toLowerCase();
-    const targetPath = initializationPath.toLowerCase();
-    const isInitializationRoute = path === targetPath || path === `${targetPath}/`;
+    const isInitializationRoute = isAllowedPreInitRoute(path, initializationRoutes);
 
     if (!isInitializationRoute) {
-      return <Navigate to={initializationPath} replace />;
+      return <Navigate to={initializationRoutes[0]} replace />;
     }
 
     return <>{children}</>;

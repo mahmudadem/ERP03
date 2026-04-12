@@ -2,8 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListSalesReturnsUseCase = exports.GetSalesReturnUseCase = exports.PostSalesReturnUseCase = exports.CreateSalesReturnUseCase = void 0;
 const crypto_1 = require("crypto");
-const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
-const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const SalesReturn_1 = require("../../../domain/sales/entities/SalesReturn");
 const SalesOrderUseCases_1 = require("./SalesOrderUseCases");
@@ -79,8 +77,8 @@ class CreateSalesReturnUseCase {
         if (!settings)
             throw new Error('Sales module is not initialized');
         const returnContext = determineReturnContext(input);
-        if (returnContext === 'BEFORE_INVOICE' && settings.salesControlMode !== 'CONTROLLED') {
-            throw new Error('BEFORE_INVOICE returns are only allowed in CONTROLLED mode');
+        if (returnContext === 'BEFORE_INVOICE' && !settings.requireSOForStockItems) {
+            throw new Error('BEFORE_INVOICE returns require "Require Sales Orders for Stock Items" to be enabled.');
         }
         let salesInvoice = null;
         let deliveryNote = null;
@@ -111,10 +109,11 @@ class CreateSalesReturnUseCase {
             throw new Error('warehouseId is required to create sales return');
         }
         const now = new Date();
+        const returnNumber = await (0, SalesOrderUseCases_1.generateUniqueDocumentNumber)(settings, 'SR', async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate)));
         const salesReturn = new SalesReturn_1.SalesReturn({
             id: (0, crypto_1.randomUUID)(),
             companyId: input.companyId,
-            returnNumber: (0, SalesOrderUseCases_1.generateDocumentNumber)(settings, 'SR'),
+            returnNumber,
             salesInvoiceId: salesInvoice === null || salesInvoice === void 0 ? void 0 : salesInvoice.id,
             deliveryNoteId: deliveryNote === null || deliveryNote === void 0 ? void 0 : deliveryNote.id,
             salesOrderId: input.salesOrderId || (salesInvoice === null || salesInvoice === void 0 ? void 0 : salesInvoice.salesOrderId) || (deliveryNote === null || deliveryNote === void 0 ? void 0 : deliveryNote.salesOrderId),
@@ -236,8 +235,9 @@ class CreateSalesReturnUseCase {
 }
 exports.CreateSalesReturnUseCase = CreateSalesReturnUseCase;
 class PostSalesReturnUseCase {
-    constructor(settingsRepo, salesReturnRepo, salesInvoiceRepo, deliveryNoteRepo, salesOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, voucherRepo, ledgerRepo, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, salesReturnRepo, salesInvoiceRepo, deliveryNoteRepo, salesOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
         this.salesReturnRepo = salesReturnRepo;
         this.salesInvoiceRepo = salesInvoiceRepo;
         this.deliveryNoteRepo = deliveryNoteRepo;
@@ -249,14 +249,15 @@ class PostSalesReturnUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
-        this.voucherRepo = voucherRepo;
-        this.ledgerRepo = ledgerRepo;
+        this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
     async execute(companyId, id) {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
+        const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const isPerpetual = (invSettings === null || invSettings === void 0 ? void 0 : invSettings.inventoryAccountingMethod) === 'PERPETUAL';
         const salesReturn = await this.salesReturnRepo.getById(companyId, id);
         if (!salesReturn)
             throw new Error(`Sales return not found: ${id}`);
@@ -264,8 +265,8 @@ class PostSalesReturnUseCase {
             throw new Error('Only DRAFT sales returns can be posted');
         }
         const isAfterInvoice = salesReturn.returnContext === 'AFTER_INVOICE';
-        if (!isAfterInvoice && settings.salesControlMode !== 'CONTROLLED') {
-            throw new Error('BEFORE_INVOICE returns are only allowed in CONTROLLED mode');
+        if (!isAfterInvoice && !settings.requireSOForStockItems) {
+            throw new Error('BEFORE_INVOICE returns require "Require Sales Orders for Stock Items" to be enabled.');
         }
         let salesInvoice = null;
         let deliveryNote = null;
@@ -385,6 +386,7 @@ class PostSalesReturnUseCase {
                     const unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(line.unitCostBase || 0);
                     line.unitCostBase = unitCostBase;
                     const lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * unitCostBase);
+                    this.assertPositiveTrackedCost(qtyInBaseUom, unitCostBase, line.itemName || item.name, `sales return ${salesReturn.returnNumber}`);
                     const fxRateMovToBase = line.fxRateMovToBase > 0 ? line.fxRateMovToBase : (salesReturn.exchangeRate || 1);
                     const fxRateCCYToBase = line.fxRateCCYToBase > 0 ? line.fxRateCCYToBase : (salesReturn.exchangeRate || 1);
                     const unitCostInMoveCurrency = (0, SalesPostingHelpers_1.roundMoney)(unitCostBase / fxRateMovToBase);
@@ -408,21 +410,23 @@ class PostSalesReturnUseCase {
                         transaction,
                     });
                     line.stockMovementId = movement.id;
-                    const accounts = await this.resolveCOGSAccounts(companyId, item, settings.defaultCOGSAccountId, false);
-                    if (accounts && lineCostBase > 0) {
-                        line.cogsAccountId = line.cogsAccountId || accounts.cogsAccountId;
-                        line.inventoryAccountId = line.inventoryAccountId || accounts.inventoryAccountId;
-                        const key = `${accounts.inventoryAccountId}|${accounts.cogsAccountId}`;
-                        const existing = cogsBucket.get(key);
-                        if (existing) {
-                            existing.amountBase = (0, SalesPostingHelpers_1.roundMoney)(existing.amountBase + lineCostBase);
-                        }
-                        else {
-                            cogsBucket.set(key, {
-                                inventoryAccountId: accounts.inventoryAccountId,
-                                cogsAccountId: accounts.cogsAccountId,
-                                amountBase: lineCostBase,
-                            });
+                    if (isPerpetual) {
+                        const accounts = await this.resolveCOGSAccounts(companyId, item, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultCOGSAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId, true);
+                        if (lineCostBase > 0) {
+                            line.cogsAccountId = line.cogsAccountId || accounts.cogsAccountId;
+                            line.inventoryAccountId = line.inventoryAccountId || accounts.inventoryAccountId;
+                            const key = `${accounts.inventoryAccountId}|${accounts.cogsAccountId}`;
+                            const existing = cogsBucket.get(key);
+                            if (existing) {
+                                existing.amountBase = (0, SalesPostingHelpers_1.roundMoney)(existing.amountBase + lineCostBase);
+                            }
+                            else {
+                                cogsBucket.set(key, {
+                                    inventoryAccountId: accounts.inventoryAccountId,
+                                    cogsAccountId: accounts.cogsAccountId,
+                                    amountBase: lineCostBase,
+                                });
+                            }
                         }
                     }
                 }
@@ -440,16 +444,80 @@ class PostSalesReturnUseCase {
                 }
             }
             recalcReturnTotals(salesReturn);
-            if (cogsBucket.size > 0) {
-                const cogsVoucher = await this.createCOGSReversalVoucherInTransaction(transaction, salesReturn, baseCurrency, Array.from(cogsBucket.values()));
+            if (isPerpetual && cogsBucket.size > 0) {
+                const cogsVoucherLines = [];
+                for (const line of Array.from(cogsBucket.values())) {
+                    const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
+                    cogsVoucherLines.push({
+                        accountId: line.inventoryAccountId,
+                        baseAmount: amount,
+                        docAmount: amount,
+                    });
+                    cogsVoucherLines.push({
+                        accountId: line.cogsAccountId,
+                        baseAmount: amount,
+                        docAmount: amount,
+                    });
+                }
+                const cogsVoucher = await this.accountingPostingService.postInTransaction({
+                    companyId,
+                    voucherType: VoucherTypes_1.VoucherType.SALES_RETURN,
+                    voucherNo: `SR-COGS-${salesReturn.returnNumber}`,
+                    date: salesReturn.returnDate,
+                    description: `Sales Return ${salesReturn.returnNumber} COGS Reversal`,
+                    currency: baseCurrency,
+                    exchangeRate: 1,
+                    lines: cogsVoucherLines.map((line, idx) => (Object.assign(Object.assign({}, line), { side: idx % 2 === 0 ? 'Debit' : 'Credit' }))),
+                    metadata: {
+                        sourceModule: 'sales',
+                        sourceType: 'SALES_RETURN',
+                        sourceId: salesReturn.id,
+                        referenceType: 'SALES_RETURN',
+                        referenceId: salesReturn.id,
+                        voucherPart: 'COGS',
+                    },
+                    createdBy: salesReturn.createdBy,
+                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                    reference: salesReturn.returnNumber,
+                }, transaction);
                 salesReturn.cogsVoucherId = cogsVoucher.id;
             }
             else {
                 salesReturn.cogsVoucherId = null;
             }
             if (isAfterInvoice) {
-                const arAccountId = this.resolveARAccount(customer, settings.defaultARAccountId);
-                const revenueVoucher = await this.createRevenueReversalVoucherInTransaction(transaction, salesReturn, baseCurrency, arAccountId, Array.from(revenueDebitBucket.values()), Array.from(taxDebitBucket.values()));
+                const arAccountId = this.resolveARAccount(customer);
+                const revenueVoucherLines = [
+                    ...Array.from(revenueDebitBucket.values()).map((line) => (Object.assign(Object.assign({}, line), { side: 'Debit' }))),
+                    ...Array.from(taxDebitBucket.values()).map((line) => (Object.assign(Object.assign({}, line), { side: 'Debit' }))),
+                    {
+                        accountId: arAccountId,
+                        side: 'Credit',
+                        baseAmount: (0, SalesPostingHelpers_1.roundMoney)(salesReturn.grandTotalBase),
+                        docAmount: (0, SalesPostingHelpers_1.roundMoney)(salesReturn.grandTotalDoc),
+                    },
+                ];
+                const revenueVoucher = await this.accountingPostingService.postInTransaction({
+                    companyId,
+                    voucherType: VoucherTypes_1.VoucherType.SALES_RETURN,
+                    voucherNo: `SR-REV-${salesReturn.returnNumber}`,
+                    date: salesReturn.returnDate,
+                    description: `Sales Return ${salesReturn.returnNumber} Revenue Reversal`,
+                    currency: salesReturn.currency,
+                    exchangeRate: salesReturn.exchangeRate,
+                    lines: revenueVoucherLines,
+                    metadata: {
+                        sourceModule: 'sales',
+                        sourceType: 'SALES_RETURN',
+                        sourceId: salesReturn.id,
+                        referenceType: 'SALES_RETURN',
+                        referenceId: salesReturn.id,
+                        voucherPart: 'REVENUE',
+                    },
+                    createdBy: salesReturn.createdBy,
+                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                    reference: salesReturn.returnNumber,
+                }, transaction);
                 salesReturn.revenueVoucherId = revenueVoucher.id;
                 const invoice = salesInvoice;
                 invoice.outstandingAmountBase = (0, SalesPostingHelpers_1.roundMoney)(invoice.outstandingAmountBase - salesReturn.grandTotalBase);
@@ -475,8 +543,11 @@ class PostSalesReturnUseCase {
             throw new Error(`Sales return not found after posting: ${id}`);
         return posted;
     }
-    resolveARAccount(customer, defaultARAccountId) {
-        return customer.defaultARAccountId || defaultARAccountId;
+    resolveARAccount(customer) {
+        if (!customer.defaultARAccountId) {
+            throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
+        }
+        return customer.defaultARAccountId;
     }
     async resolveRevenueAccount(companyId, item, defaultRevenueAccountId) {
         if (item.revenueAccountId)
@@ -492,7 +563,7 @@ class PostSalesReturnUseCase {
         }
         return defaultRevenueAccountId;
     }
-    async resolveCOGSAccounts(companyId, item, defaultCOGSAccountId, strict) {
+    async resolveCOGSAccounts(companyId, item, defaultCOGSAccountId, defaultInventoryAssetAccountId, strict) {
         let category = null;
         if (item.categoryId) {
             category = await this.itemCategoryRepo.getCategory(item.categoryId);
@@ -501,7 +572,7 @@ class PostSalesReturnUseCase {
             }
         }
         const cogsAccountId = item.cogsAccountId || (category === null || category === void 0 ? void 0 : category.defaultCogsAccountId) || defaultCOGSAccountId;
-        const inventoryAccountId = item.inventoryAssetAccountId || (category === null || category === void 0 ? void 0 : category.defaultInventoryAssetAccountId);
+        const inventoryAccountId = item.inventoryAssetAccountId || (category === null || category === void 0 ? void 0 : category.defaultInventoryAssetAccountId) || defaultInventoryAssetAccountId;
         if (!cogsAccountId || !inventoryAccountId) {
             if (strict) {
                 if (!cogsAccountId)
@@ -571,54 +642,10 @@ class PostSalesReturnUseCase {
             return sum + qty;
         }, 0));
     }
-    async createCOGSReversalVoucherInTransaction(transaction, salesReturn, baseCurrency, lines) {
-        const voucherLines = [];
-        let seq = 1;
-        for (const line of lines) {
-            const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.inventoryAccountId, 'Debit', amount, baseCurrency, amount, baseCurrency, 1, `Inventory return - ${salesReturn.returnNumber}`, undefined, { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }));
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.cogsAccountId, 'Credit', amount, baseCurrency, amount, baseCurrency, 1, `COGS reversal - ${salesReturn.returnNumber}`, undefined, { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }));
+    assertPositiveTrackedCost(qty, unitCostBase, itemName, documentLabel) {
+        if (qty > 0 && !(unitCostBase > 0)) {
+            throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}`);
         }
-        const totalDebit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-        const totalCredit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-        const now = new Date();
-        const voucher = new VoucherEntity_1.VoucherEntity((0, crypto_1.randomUUID)(), salesReturn.companyId, `SR-COGS-${salesReturn.returnNumber}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, salesReturn.returnDate, `Sales Return ${salesReturn.returnNumber} COGS Reversal`, baseCurrency, baseCurrency, 1, voucherLines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, {
-            sourceModule: 'sales',
-            sourceType: 'SALES_RETURN',
-            sourceId: salesReturn.id,
-            referenceType: 'SALES_RETURN',
-            referenceId: salesReturn.id,
-        }, salesReturn.createdBy, now, salesReturn.createdBy, now);
-        const postedVoucher = voucher.post(salesReturn.createdBy, now, VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-        await this.voucherRepo.save(postedVoucher, transaction);
-        return postedVoucher;
-    }
-    async createRevenueReversalVoucherInTransaction(transaction, salesReturn, baseCurrency, arAccountId, revenueDebits, taxDebits) {
-        const voucherLines = [];
-        const isForeignCurrency = salesReturn.currency.toUpperCase() !== baseCurrency.toUpperCase();
-        let seq = 1;
-        for (const line of revenueDebits) {
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.accountId, 'Debit', (0, SalesPostingHelpers_1.roundMoney)(line.baseAmount), baseCurrency, isForeignCurrency ? (0, SalesPostingHelpers_1.roundMoney)(line.docAmount) : (0, SalesPostingHelpers_1.roundMoney)(line.baseAmount), salesReturn.currency, isForeignCurrency ? salesReturn.exchangeRate : 1, `Revenue reversal - ${salesReturn.returnNumber}`, undefined, { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }));
-        }
-        for (const line of taxDebits) {
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.accountId, 'Debit', (0, SalesPostingHelpers_1.roundMoney)(line.baseAmount), baseCurrency, isForeignCurrency ? (0, SalesPostingHelpers_1.roundMoney)(line.docAmount) : (0, SalesPostingHelpers_1.roundMoney)(line.baseAmount), salesReturn.currency, isForeignCurrency ? salesReturn.exchangeRate : 1, `Sales tax reversal - ${salesReturn.returnNumber}`, undefined, { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }));
-        }
-        voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, arAccountId, 'Credit', (0, SalesPostingHelpers_1.roundMoney)(salesReturn.grandTotalBase), baseCurrency, isForeignCurrency ? (0, SalesPostingHelpers_1.roundMoney)(salesReturn.grandTotalDoc) : (0, SalesPostingHelpers_1.roundMoney)(salesReturn.grandTotalBase), salesReturn.currency, isForeignCurrency ? salesReturn.exchangeRate : 1, `AR reversal - ${salesReturn.customerName} - ${salesReturn.returnNumber}`, undefined, { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id, customerId: salesReturn.customerId }));
-        const totalDebit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-        const totalCredit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-        const now = new Date();
-        const voucher = new VoucherEntity_1.VoucherEntity((0, crypto_1.randomUUID)(), salesReturn.companyId, `SR-REV-${salesReturn.returnNumber}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, salesReturn.returnDate, `Sales Return ${salesReturn.returnNumber} Revenue Reversal`, salesReturn.currency, baseCurrency, isForeignCurrency ? salesReturn.exchangeRate : 1, voucherLines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, {
-            sourceModule: 'sales',
-            sourceType: 'SALES_RETURN',
-            sourceId: salesReturn.id,
-            referenceType: 'SALES_RETURN',
-            referenceId: salesReturn.id,
-        }, salesReturn.createdBy, now, salesReturn.createdBy, now);
-        const postedVoucher = voucher.post(salesReturn.createdBy, now, VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-        await this.voucherRepo.save(postedVoucher, transaction);
-        return postedVoucher;
     }
 }
 exports.PostSalesReturnUseCase = PostSalesReturnUseCase;

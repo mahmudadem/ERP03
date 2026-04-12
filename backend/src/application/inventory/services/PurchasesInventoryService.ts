@@ -43,4 +43,8 @@ export class PurchasesInventoryService implements IPurchasesInventoryService {
       transaction: input.transaction,
     });
   }
+
+  async deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
+    return this.movementUseCase.deleteMovement(companyId, id, transaction);
+  }
 }

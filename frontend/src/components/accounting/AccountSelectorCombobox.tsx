@@ -12,6 +12,8 @@ interface AccountSelectorProps {
   className?: string;
   placeholder?: string;
   noBorder?: boolean; // For use in table cells
+  allowHeaders?: boolean; // Whether header accounts can be selected
+  filterByRole?: 'HEADER' | 'POSTING'; // Filter results to only this role
 }
 
 export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({ 
@@ -19,7 +21,9 @@ export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({
   onChange, 
   className = "",
   placeholder = "Select account...",
-  noBorder = false
+  noBorder = false,
+  allowHeaders = false,
+  filterByRole
 }) => {
   const [query, setQuery] = useState('');
 
@@ -31,13 +35,17 @@ export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({
 
   const selectedAccount = accounts.find(a => a.id === value);
 
-  const filteredAccounts =
-    query === ''
-      ? accounts
-      : accounts.filter((account) => {
-          const searchStr = `${account.code} ${account.name}`.toLowerCase();
-          return searchStr.includes(query.toLowerCase());
-        });
+  const filteredAccounts = accounts
+    .filter((account) => {
+      // Apply role filter if provided
+      if (filterByRole && account.accountRole !== filterByRole) return false;
+      
+      // If query is empty, show all (that passed role filter)
+      if (query === '') return true;
+      
+      const searchStr = `${account.code} ${account.name}`.toLowerCase();
+      return searchStr.includes(query.toLowerCase());
+    });
 
   if (isLoading) {
     return <div className="animate-pulse h-9 bg-gray-100 rounded-md w-full"></div>;
@@ -87,18 +95,22 @@ export const AccountSelectorCombobox: React.FC<AccountSelectorProps> = ({
                 key={account.id}
                 className={({ active }) =>
                   `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                    active ? 'bg-blue-600 text-white' : 'text-gray-900'
+                    account.accountRole === 'HEADER' && !allowHeaders
+                      ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                      : active ? 'bg-blue-600 text-white' : 'text-gray-900'
                   }`
                 }
                 value={account}
+                disabled={account.accountRole === 'HEADER' && !allowHeaders}
               >
                 {({ selected, active }) => (
                   <>
                     <span
                       className={`block truncate ${
                         selected ? 'font-medium' : 'font-normal'
-                      }`}
+                      } ${account.accountRole === 'HEADER' ? 'text-gray-500 italic' : ''}`}
                     >
+                      {account.accountRole === 'HEADER' ? '[HEADER] ' : ''}
                       {account.code} - {account.name}
                     </span>
                     {selected ? (

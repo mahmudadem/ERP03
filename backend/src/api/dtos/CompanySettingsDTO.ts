@@ -11,6 +11,7 @@ export interface CompanySettingsDTO {
   baseCurrency?: string;
   fiscalYearStart?: string;
   fiscalYearEnd?: string;
+  exchangeGainLossAccountId?: string;
   disabledNotificationCategories?: string[];
 }
 
@@ -26,6 +27,7 @@ export class CompanySettingsDTOMapper {
       baseCurrency: settings.baseCurrency,
       fiscalYearStart: settings.fiscalYearStart,
       fiscalYearEnd: settings.fiscalYearEnd,
+      exchangeGainLossAccountId: settings.exchangeGainLossAccountId,
       disabledNotificationCategories: settings.disabledNotificationCategories || []
     };
   }

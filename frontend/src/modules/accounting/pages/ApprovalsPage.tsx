@@ -55,8 +55,25 @@ const ApprovalsPage: React.FC = () => {
   const handleRowClick = async (id: string) => {
     try {
       const fullVoucher = await accountingApi.getVoucher(id);
-      const formDef = voucherTypes.find(t => t.id === fullVoucher.formId) || 
-                      voucherTypes.find(t => t.code === fullVoucher.type);
+      const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+      const voucherType = normalize(fullVoucher.type);
+      const voucherFormId = normalize(fullVoucher.formId);
+
+      const formDef = voucherTypes.find((t: any) => normalize(t.id) === voucherFormId || normalize(t._typeId) === voucherFormId)
+        || voucherTypes.find((t: any) => normalize(t.code) === voucherType || normalize(t.baseType) === voucherType || normalize(t.id) === voucherType)
+        || voucherTypes.find((t: any) => {
+          const code = normalize(t.code);
+          const id = normalize(t.id);
+          const name = normalize(t.name);
+          const baseType = normalize(t.baseType);
+          return (
+            code.includes('journal') ||
+            code === 'jv' ||
+            id.includes('journal') ||
+            name.includes('journal') ||
+            baseType.includes('journal')
+          );
+        });
       
       if (formDef) {
         openWindow({

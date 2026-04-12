@@ -47,6 +47,7 @@ import { FirestoreStockLevelRepository } from '../firestore/repositories/invento
 import { FirestoreItemCategoryRepository } from '../firestore/repositories/inventory/FirestoreItemCategoryRepository';
 import { FirestoreUomConversionRepository } from '../firestore/repositories/inventory/FirestoreUomConversionRepository';
 import { FirestoreInventorySettingsRepository } from '../firestore/repositories/inventory/FirestoreInventorySettingsRepository';
+import { FirestoreOpeningStockDocumentRepository } from '../firestore/repositories/inventory/FirestoreOpeningStockDocumentRepository';
 import { FirestoreStockAdjustmentRepository } from '../firestore/repositories/inventory/FirestoreStockAdjustmentRepository';
 import { FirestoreStockTransferRepository } from '../firestore/repositories/inventory/FirestoreStockTransferRepository';
 import { FirestoreInventoryPeriodSnapshotRepository } from '../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository';
@@ -188,6 +189,7 @@ export const diContainer = {
   get itemCategoryRepository(): InvRepo.IItemCategoryRepository { return new FirestoreItemCategoryRepository(getDb()); },
   get uomConversionRepository(): InvRepo.IUomConversionRepository { return new FirestoreUomConversionRepository(getDb()); },
   get inventorySettingsRepository(): InvRepo.IInventorySettingsRepository { return new FirestoreInventorySettingsRepository(getDb()); },
+  get openingStockDocumentRepository(): InvRepo.IOpeningStockDocumentRepository { return new FirestoreOpeningStockDocumentRepository(getDb()); },
   get stockAdjustmentRepository(): InvRepo.IStockAdjustmentRepository { return new FirestoreStockAdjustmentRepository(getDb()); },
   get stockTransferRepository(): InvRepo.IStockTransferRepository { return new FirestoreStockTransferRepository(getDb()); },
   get inventoryPeriodSnapshotRepository(): InvRepo.IInventoryPeriodSnapshotRepository { return new FirestoreInventoryPeriodSnapshotRepository(getDb()); },

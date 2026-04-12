@@ -1,27 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalesSettings = void 0;
-const CONTROL_MODES = ['SIMPLE', 'CONTROLLED'];
 class SalesSettings {
     constructor(props) {
         var _a, _b, _c;
         if (!((_a = props.companyId) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('SalesSettings companyId is required');
-        if (!((_b = props.defaultARAccountId) === null || _b === void 0 ? void 0 : _b.trim()))
-            throw new Error('SalesSettings defaultARAccountId is required');
-        if (!((_c = props.defaultRevenueAccountId) === null || _c === void 0 ? void 0 : _c.trim()))
+        if (!((_b = props.defaultRevenueAccountId) === null || _b === void 0 ? void 0 : _b.trim()))
             throw new Error('SalesSettings defaultRevenueAccountId is required');
-        if (!CONTROL_MODES.includes(props.salesControlMode)) {
-            throw new Error(`Invalid salesControlMode: ${props.salesControlMode}`);
-        }
         this.companyId = props.companyId;
-        this.salesControlMode = props.salesControlMode;
-        this.requireSOForStockItems = props.salesControlMode === 'CONTROLLED'
-            ? true
-            : props.requireSOForStockItems;
-        this.defaultARAccountId = props.defaultARAccountId;
-        this.defaultRevenueAccountId = props.defaultRevenueAccountId;
+        this.allowDirectInvoicing = props.allowDirectInvoicing;
+        this.requireSOForStockItems = props.requireSOForStockItems;
+        this.defaultARAccountId = ((_c = props.defaultARAccountId) === null || _c === void 0 ? void 0 : _c.trim()) || undefined;
+        this.defaultRevenueAccountId = props.defaultRevenueAccountId.trim();
         this.defaultCOGSAccountId = props.defaultCOGSAccountId;
+        this.defaultInventoryAccountId = props.defaultInventoryAccountId;
         this.defaultSalesExpenseAccountId = props.defaultSalesExpenseAccountId;
         this.allowOverDelivery = props.allowOverDelivery;
         this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
@@ -41,7 +34,7 @@ class SalesSettings {
     static createDefault(companyId, defaultARAccountId, defaultRevenueAccountId) {
         return new SalesSettings({
             companyId,
-            salesControlMode: 'SIMPLE',
+            allowDirectInvoicing: true,
             requireSOForStockItems: false,
             defaultARAccountId,
             defaultRevenueAccountId,
@@ -62,11 +55,12 @@ class SalesSettings {
     toJSON() {
         return {
             companyId: this.companyId,
-            salesControlMode: this.salesControlMode,
+            allowDirectInvoicing: this.allowDirectInvoicing,
             requireSOForStockItems: this.requireSOForStockItems,
             defaultARAccountId: this.defaultARAccountId,
             defaultRevenueAccountId: this.defaultRevenueAccountId,
             defaultCOGSAccountId: this.defaultCOGSAccountId,
+            defaultInventoryAccountId: this.defaultInventoryAccountId,
             defaultSalesExpenseAccountId: this.defaultSalesExpenseAccountId,
             allowOverDelivery: this.allowOverDelivery,
             overDeliveryTolerancePct: this.overDeliveryTolerancePct,
@@ -85,29 +79,30 @@ class SalesSettings {
         };
     }
     static fromJSON(data) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         return new SalesSettings({
             companyId: data.companyId,
-            salesControlMode: data.salesControlMode || 'SIMPLE',
-            requireSOForStockItems: (_a = data.requireSOForStockItems) !== null && _a !== void 0 ? _a : false,
+            allowDirectInvoicing: (_a = data.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
+            requireSOForStockItems: (_b = data.requireSOForStockItems) !== null && _b !== void 0 ? _b : false,
             defaultARAccountId: data.defaultARAccountId,
             defaultRevenueAccountId: data.defaultRevenueAccountId,
             defaultCOGSAccountId: data.defaultCOGSAccountId,
+            defaultInventoryAccountId: data.defaultInventoryAccountId,
             defaultSalesExpenseAccountId: data.defaultSalesExpenseAccountId,
-            allowOverDelivery: (_b = data.allowOverDelivery) !== null && _b !== void 0 ? _b : false,
-            overDeliveryTolerancePct: (_c = data.overDeliveryTolerancePct) !== null && _c !== void 0 ? _c : 0,
-            overInvoiceTolerancePct: (_d = data.overInvoiceTolerancePct) !== null && _d !== void 0 ? _d : 0,
-            defaultPaymentTermsDays: (_e = data.defaultPaymentTermsDays) !== null && _e !== void 0 ? _e : 30,
+            allowOverDelivery: (_c = data.allowOverDelivery) !== null && _c !== void 0 ? _c : false,
+            overDeliveryTolerancePct: (_d = data.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
+            overInvoiceTolerancePct: (_e = data.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,
+            defaultPaymentTermsDays: (_f = data.defaultPaymentTermsDays) !== null && _f !== void 0 ? _f : 30,
             salesVoucherTypeId: data.salesVoucherTypeId,
             defaultWarehouseId: data.defaultWarehouseId,
             soNumberPrefix: data.soNumberPrefix || 'SO',
-            soNumberNextSeq: (_f = data.soNumberNextSeq) !== null && _f !== void 0 ? _f : 1,
+            soNumberNextSeq: (_g = data.soNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
             dnNumberPrefix: data.dnNumberPrefix || 'DN',
-            dnNumberNextSeq: (_g = data.dnNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
+            dnNumberNextSeq: (_h = data.dnNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
             siNumberPrefix: data.siNumberPrefix || 'SI',
-            siNumberNextSeq: (_h = data.siNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
+            siNumberNextSeq: (_j = data.siNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
             srNumberPrefix: data.srNumberPrefix || 'SR',
-            srNumberNextSeq: (_j = data.srNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
+            srNumberNextSeq: (_k = data.srNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
         });
     }
 }

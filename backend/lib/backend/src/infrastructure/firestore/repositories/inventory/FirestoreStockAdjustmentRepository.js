@@ -24,13 +24,28 @@ class FirestoreStockAdjustmentRepository {
             ref = ref.limit(opts.limit);
         return ref;
     }
-    async createAdjustment(adjustment) {
-        await this.collection(adjustment.companyId).doc(adjustment.id).set(InventoryMappers_1.StockAdjustmentMapper.toPersistence(adjustment));
+    asTransaction(transaction) {
+        if (!transaction)
+            return undefined;
+        return transaction;
     }
-    async updateAdjustment(id, data) {
-        const ref = await this.resolveRefById(id);
-        if (!ref)
+    async createAdjustment(adjustment, transaction) {
+        const ref = this.collection(adjustment.companyId).doc(adjustment.id);
+        const txn = this.asTransaction(transaction);
+        const payload = InventoryMappers_1.StockAdjustmentMapper.toPersistence(adjustment);
+        if (txn) {
+            txn.set(ref, payload);
             return;
+        }
+        await ref.set(payload);
+    }
+    async updateAdjustment(companyId, id, data, transaction) {
+        const ref = this.collection(companyId).doc(id);
+        const txn = this.asTransaction(transaction);
+        if (txn) {
+            txn.update(ref, data);
+            return;
+        }
         await ref.update(data);
     }
     async getAdjustment(id) {

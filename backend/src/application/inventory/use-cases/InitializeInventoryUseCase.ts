@@ -9,13 +9,16 @@ import { IWarehouseRepository } from '../../../repository/interfaces/inventory/I
 export interface InitializeInventoryInput {
   companyId: string;
   userId: string;
+  inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultWarehouseName?: string;
   defaultWarehouseCode?: string;
+  defaultInventoryAssetAccountId?: string;
   defaultCostCurrency?: string;
   allowNegativeStock?: boolean;
   autoGenerateItemCode?: boolean;
   itemCodePrefix?: string;
   itemCodeNextSeq?: number;
+  defaultCOGSAccountId?: string;
 }
 
 export class InitializeInventoryUseCase {
@@ -54,13 +57,19 @@ export class InitializeInventoryUseCase {
 
     const settings = new InventorySettings({
       companyId: input.companyId,
+      inventoryAccountingMethod: input.inventoryAccountingMethod || currentSettings?.inventoryAccountingMethod || 'PERPETUAL',
       defaultCostingMethod: 'MOVING_AVG',
       defaultCostCurrency: input.defaultCostCurrency || currentSettings?.defaultCostCurrency || company.baseCurrency,
+      defaultInventoryAssetAccountId:
+        input.defaultInventoryAssetAccountId
+        ?? currentSettings?.defaultInventoryAssetAccountId
+        ?? undefined,
       allowNegativeStock: input.allowNegativeStock ?? currentSettings?.allowNegativeStock ?? true,
       defaultWarehouseId: currentSettings?.defaultWarehouseId || defaultWarehouse.id,
       autoGenerateItemCode: input.autoGenerateItemCode ?? currentSettings?.autoGenerateItemCode ?? false,
       itemCodePrefix: input.itemCodePrefix ?? currentSettings?.itemCodePrefix,
       itemCodeNextSeq: input.itemCodeNextSeq ?? currentSettings?.itemCodeNextSeq ?? 1,
+      defaultCOGSAccountId: input.defaultCOGSAccountId ?? currentSettings?.defaultCOGSAccountId,
     });
 
     await this.settingsRepo.saveSettings(settings);

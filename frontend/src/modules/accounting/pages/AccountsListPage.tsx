@@ -6,7 +6,8 @@ import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPol
 import { AccountForm } from '../components/AccountForm';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
-import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe } from 'lucide-react';
+import { Folder, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle } from 'lucide-react';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 
 export default function AccountsListPage() {
     const { t } = useTranslation('accounting');
@@ -17,6 +18,8 @@ export default function AccountsListPage() {
     const [prePopulatedData, setPrePopulatedData] = useState<Partial<Account> | null>(null);
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
+    const [showPostingWarning, setShowPostingWarning] = useState(false);
+    const [warningParentName, setWarningParentName] = useState('');
 
     const toggleCollapse = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -390,6 +393,13 @@ export default function AccountsListPage() {
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         
+                                                        // Safety Check: Prevent creating children under Posting accounts
+                                                        if (account.accountRole === 'POSTING') {
+                                                            setWarningParentName(account.name);
+                                                            setShowPostingWarning(true);
+                                                            return;
+                                                        }
+
                                                         // Smart Code Suggestion Logic
                                                         const parentCode = account.userCode || '';
                                                         const children = safeAccounts.filter(a => a.parentId === account.id);
@@ -485,55 +495,62 @@ export default function AccountsListPage() {
 
             {/* Create Modal */}
             {isCreateModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="mb-4 pb-2 border-b flex justify-between items-center">
-                             <h2 className="text-xl font-bold text-gray-800">{t('accountsList.modals.createTitle', { defaultValue: 'Create New Account' })}</h2>
-                             <button onClick={() => {
-                                 setIsCreateModalOpen(false);
-                                 setPrePopulatedData(null);
-                             }} className="text-gray-400 hover:text-gray-600">
-                                 <span className="text-2xl">&times;</span>
-                             </button>
-                        </div>
-                        <AccountForm
-                            mode="create"
-                            initialValues={prePopulatedData as any}
-                            accounts={safeAccounts}
-                            onSubmit={(data) => {
-                                return createMutation.mutateAsync(data).then(() => {
-                                    setPrePopulatedData(null);
-                                });
-                            }}
-                            onCancel={() => {
-                                setIsCreateModalOpen(false);
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+                    <AccountForm
+                        mode="create"
+                        initialValues={prePopulatedData as any}
+                        accounts={safeAccounts}
+                        onSubmit={(data) => {
+                            return createMutation.mutateAsync(data).then(() => {
                                 setPrePopulatedData(null);
-                            }}
-                        />
-                    </div>
+                            });
+                        }}
+                        onCancel={() => {
+                            setIsCreateModalOpen(false);
+                            setPrePopulatedData(null);
+                        }}
+                    />
                 </div>
             )}
 
-            {/* Edit Modal */}
+             {/* Edit Modal */}
             {editingAccount && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="mb-4 pb-2 border-b flex justify-between items-center">
-                             <h2 className="text-xl font-bold text-gray-800">{t('accountsList.modals.editTitle', { name: editingAccount.name, defaultValue: `Edit Account: ${editingAccount.name}` })}</h2>
-                             <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600">
-                                 <span className="text-2xl">&times;</span>
-                             </button>
-                        </div>
-                        <AccountForm
-                            mode="edit"
-                            initialValues={editingAccount}
-                            accounts={safeAccounts}
-                            onSubmit={(data) => updateMutation.mutateAsync({ id: editingAccount.id, data })}
-                            onCancel={closeEditModal}
-                        />
-                    </div>
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+                    <AccountForm
+                        mode="edit"
+                        initialValues={editingAccount}
+                        accounts={safeAccounts}
+                        onSubmit={(data) => updateMutation.mutateAsync({ id: editingAccount.id, data })}
+                        onCancel={closeEditModal}
+                    />
                 </div>
             )}
+
+            {/* Posting Account Safety Overlay */}
+            <ConfirmDialog
+                isOpen={showPostingWarning}
+                title="Invalid Parent Selection"
+                tone="warning"
+                icon={<AlertCircle size={24} />}
+                message={
+                <div className="space-y-4">
+                    <p>You are attempting to create a new account as a child of <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
+                    <div className="bg-amber-100/50 p-4 rounded-xl border border-amber-200">
+                        <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">Accounting Rule Violation</h4>
+                        <p className="text-amber-700 text-xs leading-relaxed">
+                            Account <strong>"{warningParentName}"</strong> is a <span className="underline decoration-2">Posting Account</span> (Transaction level). 
+                            In a professional Chart of Accounts, only <strong>Header Accounts</strong> can have children.
+                        </p>
+                    </div>
+                    <p className="text-slate-500 italic text-[11px]">
+                        <strong>Instruction:</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
+                    </p>
+                </div>
+                }
+                confirmLabel="I Understand"
+                onConfirm={() => setShowPostingWarning(false)}
+                onCancel={() => setShowPostingWarning(false)}
+            />
         </div>
     );
 }

@@ -1,23 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PurchaseSettings = void 0;
-const CONTROL_MODES = ['SIMPLE', 'CONTROLLED'];
 class PurchaseSettings {
     constructor(props) {
         var _a, _b;
         if (!((_a = props.companyId) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('PurchaseSettings companyId is required');
-        if (!((_b = props.defaultAPAccountId) === null || _b === void 0 ? void 0 : _b.trim()))
-            throw new Error('PurchaseSettings defaultAPAccountId is required');
-        if (!CONTROL_MODES.includes(props.procurementControlMode)) {
-            throw new Error(`Invalid procurementControlMode: ${props.procurementControlMode}`);
-        }
         this.companyId = props.companyId;
-        this.procurementControlMode = props.procurementControlMode;
-        this.requirePOForStockItems = props.procurementControlMode === 'CONTROLLED'
-            ? true
-            : props.requirePOForStockItems;
-        this.defaultAPAccountId = props.defaultAPAccountId;
+        this.allowDirectInvoicing = props.allowDirectInvoicing;
+        this.requirePOForStockItems = props.requirePOForStockItems;
+        this.defaultAPAccountId = ((_b = props.defaultAPAccountId) === null || _b === void 0 ? void 0 : _b.trim()) || undefined;
         this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
         this.allowOverDelivery = props.allowOverDelivery;
         this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
@@ -33,11 +25,12 @@ class PurchaseSettings {
         this.piNumberNextSeq = props.piNumberNextSeq || 1;
         this.prNumberPrefix = props.prNumberPrefix || 'PR';
         this.prNumberNextSeq = props.prNumberNextSeq || 1;
+        this.exchangeGainLossAccountId = props.exchangeGainLossAccountId;
     }
     static createDefault(companyId, defaultAPAccountId) {
         return new PurchaseSettings({
             companyId,
-            procurementControlMode: 'SIMPLE',
+            allowDirectInvoicing: true,
             requirePOForStockItems: false,
             defaultAPAccountId,
             allowOverDelivery: false,
@@ -57,7 +50,7 @@ class PurchaseSettings {
     toJSON() {
         return {
             companyId: this.companyId,
-            procurementControlMode: this.procurementControlMode,
+            allowDirectInvoicing: this.allowDirectInvoicing,
             requirePOForStockItems: this.requirePOForStockItems,
             defaultAPAccountId: this.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
@@ -75,30 +68,31 @@ class PurchaseSettings {
             piNumberNextSeq: this.piNumberNextSeq,
             prNumberPrefix: this.prNumberPrefix,
             prNumberNextSeq: this.prNumberNextSeq,
+            exchangeGainLossAccountId: this.exchangeGainLossAccountId,
         };
     }
     static fromJSON(data) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         return new PurchaseSettings({
             companyId: data.companyId,
-            procurementControlMode: data.procurementControlMode || 'SIMPLE',
-            requirePOForStockItems: (_a = data.requirePOForStockItems) !== null && _a !== void 0 ? _a : false,
+            allowDirectInvoicing: (_a = data.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
+            requirePOForStockItems: (_b = data.requirePOForStockItems) !== null && _b !== void 0 ? _b : false,
             defaultAPAccountId: data.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
-            allowOverDelivery: (_b = data.allowOverDelivery) !== null && _b !== void 0 ? _b : false,
-            overDeliveryTolerancePct: (_c = data.overDeliveryTolerancePct) !== null && _c !== void 0 ? _c : 0,
-            overInvoiceTolerancePct: (_d = data.overInvoiceTolerancePct) !== null && _d !== void 0 ? _d : 0,
-            defaultPaymentTermsDays: (_e = data.defaultPaymentTermsDays) !== null && _e !== void 0 ? _e : 30,
+            allowOverDelivery: (_c = data.allowOverDelivery) !== null && _c !== void 0 ? _c : false,
+            overDeliveryTolerancePct: (_d = data.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
+            overInvoiceTolerancePct: (_e = data.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,
+            defaultPaymentTermsDays: (_f = data.defaultPaymentTermsDays) !== null && _f !== void 0 ? _f : 30,
             purchaseVoucherTypeId: data.purchaseVoucherTypeId,
             defaultWarehouseId: data.defaultWarehouseId,
             poNumberPrefix: data.poNumberPrefix || 'PO',
-            poNumberNextSeq: (_f = data.poNumberNextSeq) !== null && _f !== void 0 ? _f : 1,
+            poNumberNextSeq: (_g = data.poNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
             grnNumberPrefix: data.grnNumberPrefix || 'GRN',
-            grnNumberNextSeq: (_g = data.grnNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
+            grnNumberNextSeq: (_h = data.grnNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
             piNumberPrefix: data.piNumberPrefix || 'PI',
-            piNumberNextSeq: (_h = data.piNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
+            piNumberNextSeq: (_j = data.piNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
             prNumberPrefix: data.prNumberPrefix || 'PR',
-            prNumberNextSeq: (_j = data.prNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
+            prNumberNextSeq: (_k = data.prNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
         });
     }
 }

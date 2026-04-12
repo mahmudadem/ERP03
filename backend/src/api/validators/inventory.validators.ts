@@ -16,13 +16,41 @@ const ensurePositiveNumber = (value: any, fieldName: string) => {
   }
 };
 
+const ensureNonNegativeNumber = (value: any, fieldName: string) => {
+  if (typeof value !== 'number' || Number.isNaN(value) || value < 0) {
+    throw ApiError.badRequest(`${fieldName} must be a non-negative number`);
+  }
+};
+
 const ensureIsoDate = (value: any, fieldName: string) => {
   if (!value || typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw ApiError.badRequest(`${fieldName} must be in YYYY-MM-DD format`);
   }
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const ensureUuid = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+};
+
+const ensureInventoryAccountingMethod = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'PERIODIC' && value !== 'PERPETUAL') {
+    throw ApiError.badRequest(`${fieldName} must be PERIODIC or PERPETUAL`);
+  }
+};
+
 export const validateInitializeInventoryInput = (body: any) => {
+  ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
+  if (body.inventoryAccountingMethod === 'PERPETUAL') {
+    ensureUuid(body.defaultInventoryAssetAccountId, 'defaultInventoryAssetAccountId');
+  }
+
+  if (body.defaultCOGSAccountId !== undefined) {
+    ensureUuid(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  }
+
   if (body.defaultWarehouseCode && typeof body.defaultWarehouseCode !== 'string') {
     throw ApiError.badRequest('defaultWarehouseCode must be a string');
   }
@@ -83,11 +111,15 @@ export const validateUpdateCategoryInput = (body: any) => {
 export const validateCreateWarehouseInput = (body: any) => {
   ensureRequiredString(body.name, 'name');
   ensureRequiredString(body.code, 'code');
+  if (body.parentId !== undefined && body.parentId !== null) {
+    ensureRequiredString(body.parentId, 'parentId');
+  }
 };
 
 export const validateUpdateWarehouseInput = (body: any) => {
   if (body.name !== undefined) ensureRequiredString(body.name, 'name');
   if (body.code !== undefined) ensureRequiredString(body.code, 'code');
+  if (body.parentId !== undefined && body.parentId !== null) ensureRequiredString(body.parentId, 'parentId');
 };
 
 export const validateCreateUomConversionInput = (body: any) => {
@@ -196,9 +228,50 @@ export const validateMovementByReferenceQuery = (query: any) => {
 };
 
 export const validateUpdateSettingsInput = (body: any) => {
+  if (body.inventoryAccountingMethod !== undefined) {
+    ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
+  }
   if (body.defaultCostCurrency !== undefined) ensureRequiredString(body.defaultCostCurrency, 'defaultCostCurrency');
+  if (body.defaultInventoryAssetAccountId !== undefined) ensureUuid(body.defaultInventoryAssetAccountId, 'defaultInventoryAssetAccountId');
   if (body.defaultWarehouseId !== undefined) ensureRequiredString(body.defaultWarehouseId, 'defaultWarehouseId');
   if (body.itemCodePrefix !== undefined && typeof body.itemCodePrefix !== 'string') {
     throw ApiError.badRequest('itemCodePrefix must be a string');
   }
+  if (body.defaultCOGSAccountId !== undefined) {
+    ensureUuid(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  }
+};
+
+export const validateCreateOpeningStockDocumentInput = (body: any) => {
+  ensureRequiredString(body.warehouseId, 'warehouseId');
+  ensureIsoDate(body.date, 'date');
+
+  if (body.notes !== undefined && typeof body.notes !== 'string') {
+    throw ApiError.badRequest('notes must be a string');
+  }
+
+  if (body.createAccountingEffect !== undefined && typeof body.createAccountingEffect !== 'boolean') {
+    throw ApiError.badRequest('createAccountingEffect must be boolean');
+  }
+
+  if (body.createAccountingEffect === true) {
+    ensureRequiredString(body.openingBalanceAccountId, 'openingBalanceAccountId');
+  }
+
+  if (!Array.isArray(body.lines) || body.lines.length === 0) {
+    throw ApiError.badRequest('lines must be a non-empty array');
+  }
+
+  body.lines.forEach((line: any, index: number) => {
+    ensureRequiredString(line.itemId, `lines[${index}].itemId`);
+    ensurePositiveNumber(line.quantity, `lines[${index}].quantity`);
+    ensureNonNegativeNumber(line.unitCostInMoveCurrency, `lines[${index}].unitCostInMoveCurrency`);
+    ensureRequiredString(line.moveCurrency, `lines[${index}].moveCurrency`);
+    ensurePositiveNumber(line.fxRateMovToBase, `lines[${index}].fxRateMovToBase`);
+    ensurePositiveNumber(line.fxRateCCYToBase, `lines[${index}].fxRateCCYToBase`);
+  });
+};
+
+export const validateUpdateOpeningStockDocumentInput = (body: any) => {
+  validateCreateOpeningStockDocumentInput(body);
 };

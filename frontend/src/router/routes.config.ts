@@ -1,4 +1,3 @@
-
 import { lazy, ComponentType } from 'react';
 
 // Core
@@ -48,6 +47,7 @@ const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningSt
 const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
 const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
+const InventorySettingsPage = lazy(() => import('../modules/inventory/pages/InventorySettingsPage'));
 
 // HR
 const HrHomePage = lazy(() => import('../modules/hr/pages/HrHomePage'));
@@ -63,9 +63,6 @@ const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/Sidebar
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
 const NotificationSettingsPage = lazy(() => import('../modules/settings/pages/NotificationSettingsPage'));
 const TaxCodesPage = lazy(() => import('../modules/settings/pages/TaxCodesPage'));
-
-// Designer
-
 
 // RBAC
 const RolesListPage = lazy(() => import('../modules/settings/rbac/RolesListPage'));
@@ -132,7 +129,7 @@ export interface AppRoute {
   path: string;
   label: string;
   component: ComponentType<any>;
-  section: 'CORE' | 'ACCOUNTING' | 'INVENTORY' | 'HR' | 'POS' | 'SETTINGS' | 'SUPER_ADMIN' | 'SETUP';
+  section: 'CORE' | 'ACCOUNTING' | 'INVENTORY' | 'HR' | 'POS' | 'SETTINGS' | 'SUPER_ADMIN' | 'SETUP' | 'TOOLS';
   hideInMenu?: boolean;
   requiredPermission?: string;
   requiredGlobalRole?: 'SUPER_ADMIN';
@@ -193,7 +190,8 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
-  { path: '/inventory/opening-stock', label: 'Opening Stock', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
+  { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
+  { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },
 
   // HR
   { path: '/hr', label: 'Overview', component: HrHomePage, section: 'HR', requiredModule: 'hr' },
@@ -215,22 +213,15 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/rbac/roles/:roleId', label: 'Edit Role', component: EditRolePage, section: 'SETTINGS', hideInMenu: true, requiredPermission: 'system.roles.manage' },
   { path: '/settings/rbac/users', label: 'Assign Users', component: AssignUsersRolesPage, section: 'SETTINGS', requiredPermission: 'system.roles.manage' },
 
-  // DESIGNER
-
-
-  // SUPER ADMIN
+  // RBAC
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/users', label: 'Users Management', component: SuperAdminUsersManagementPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies', label: 'All Companies', component: CompaniesListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
-  
-  // Super Admin Registry
   { path: '/super-admin/business-domains', label: 'Business Domains', component: BusinessDomainsManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/bundles-manager', label: 'Bundles', component: BundlesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions-registry', label: 'Permissions Registry', component: PermissionsManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/modules-registry', label: 'Modules Registry', component: ModulesManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/plans', label: 'Plans', component: PlansManagerPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
-  
-  // Super Admin - Existing
   { path: '/super-admin/permissions', label: 'Module Permissions', component: ModulePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/permissions/:moduleId', label: 'Edit Module Permissions', component: EditModulePermissionsPage, section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/roles', label: 'Roles', component: RolePermissionsListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
@@ -244,7 +235,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/company-wizard/run', label: 'Run Company Wizard', component: DynamicWizardPage, section: 'CORE', hideInMenu: true },
   { path: '/company-selector', label: 'Select Company', component: CompanySelectorPage, section: 'CORE', hideInMenu: true },
 
-  // COMPANY ADMIN (UI-open; backend still enforces owner/permission)
+  // COMPANY ADMIN
   { path: '/company-admin/overview', label: 'Company Admin Overview', component: CompanyAdminOverviewPage, section: 'SETTINGS' },
   { path: '/company-admin/users', label: 'Company Users', component: CompanyAdminUsersPage, section: 'SETTINGS' },
   { path: '/company-admin/roles', label: 'Company Roles', component: CompanyAdminRolesPage, section: 'SETTINGS' },
@@ -269,6 +260,8 @@ export const routesConfig: AppRoute[] = [
 
   // Sales
   { path: '/sales', label: 'Sales Overview', component: SalesHomePage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/items', label: 'Products & Services', component: ItemsListPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/customers', label: 'Customers', component: CustomersListPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/customers/:id', label: 'Customer Detail', component: CustomerDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/orders', label: 'Sales Orders', component: SalesOrdersListPage, section: 'INVENTORY', requiredModule: 'sales' },
@@ -286,6 +279,8 @@ export const routesConfig: AppRoute[] = [
 
   // Purchase
   { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/items', label: 'Products & Services', component: ItemsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
+  { path: '/purchases/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/orders', label: 'Purchase Orders', component: PurchaseOrdersListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/orders/:id', label: 'Purchase Order Detail', component: PurchaseOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/goods-receipts', label: 'Goods Receipts', component: GoodsReceiptsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
@@ -301,6 +296,9 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases/vendors', label: 'Vendors', component: VendorsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/vendors/:id', label: 'Vendor Detail', component: VendorDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   
+  // TOOLS
+  { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
+
   // USER PROFILE
   { path: '/profile', label: 'My Profile', component: lazy(() => import('../modules/core/pages/ProfilePage')), section: 'CORE', hideInMenu: true },
 ];

@@ -21,6 +21,7 @@ __exportStar(require("./IStockLevelRepository"), exports);
 __exportStar(require("./IItemCategoryRepository"), exports);
 __exportStar(require("./IUomConversionRepository"), exports);
 __exportStar(require("./IInventorySettingsRepository"), exports);
+__exportStar(require("./IOpeningStockDocumentRepository"), exports);
 __exportStar(require("./IStockAdjustmentRepository"), exports);
 __exportStar(require("./IStockTransferRepository"), exports);
 __exportStar(require("./IInventoryPeriodSnapshotRepository"), exports);

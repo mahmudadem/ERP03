@@ -4,6 +4,10 @@ import { ReceiptVoucherStrategy } from '../strategies/implementations/ReceiptVou
 import { JournalEntryStrategy } from '../strategies/implementations/JournalEntryStrategy';
 import { OpeningBalanceStrategy } from '../strategies/implementations/OpeningBalanceStrategy';
 import { FXRevaluationStrategy } from '../strategies/implementations/FXRevaluationStrategy';
+import { PurchaseInvoiceStrategy } from '../strategies/implementations/PurchaseInvoiceStrategy';
+import { PurchaseReturnStrategy } from '../strategies/implementations/PurchaseReturnStrategy';
+import { SalesInvoiceStrategy } from '../strategies/implementations/SalesInvoiceStrategy';
+import { SalesReturnStrategy } from '../strategies/implementations/SalesReturnStrategy';
 
 /**
  * VoucherPostingStrategyFactory
@@ -19,6 +23,14 @@ import { FXRevaluationStrategy } from '../strategies/implementations/FXRevaluati
 export class VoucherPostingStrategyFactory {
   static getStrategy(typeCode: string): IVoucherPostingStrategy {
     switch (typeCode) {
+      case 'purchase_invoice':
+        return new PurchaseInvoiceStrategy();
+      case 'purchase_return':
+        return new PurchaseReturnStrategy();
+      case 'sales_invoice':
+        return new SalesInvoiceStrategy();
+      case 'sales_return':
+        return new SalesReturnStrategy();
       case 'payment':
         return new PaymentVoucherStrategy();
       case 'receipt':
@@ -31,7 +43,7 @@ export class VoucherPostingStrategyFactory {
         return new FXRevaluationStrategy();
       default:
         throw new Error(
-          `Unknown voucher type: ${typeCode}. Valid types: payment, receipt, journal_entry, opening_balance, fx_revaluation`
+          `Unknown voucher type: ${typeCode}. Valid types: purchase_invoice, purchase_return, sales_invoice, sales_return, payment, receipt, journal_entry, opening_balance, fx_revaluation`
         );
     }
   }

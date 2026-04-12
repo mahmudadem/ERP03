@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, Shield, Lock, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
+import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
 import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
 import FXRevaluationTab from './settings/FXRevaluationTab';
-import { AccountSelector } from '../components/shared/AccountSelector';
+import AccountSelector from '../components/shared/AccountSelector';
+import { Account } from '../../../context/AccountsContext';
 import { DatePicker } from '../components/shared/DatePicker';
 import client from '../../../api/client';
 import { AccountsProvider } from '../../../context/AccountsContext';
@@ -27,6 +28,7 @@ import {
   errorModeInstructions,
   fiscalYearInstructions
 } from '../../../components/instructions';
+import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 
 interface PolicyConfig {
   // Approval Policy V1 Toggles
@@ -70,37 +72,7 @@ interface PaymentMethodDefinition {
   isEnabled: boolean;
 }
 
-const SectionHeader: React.FC<{ 
-  title: string; 
-  description: string; 
-  onSave: () => void;
-  disabled: boolean;
-  saving: boolean;
-}> = ({ title, description, onSave, disabled, saving }) => {
-  const { t } = useTranslation('accounting');
-  return (
-    <div className="flex flex-col gap-4 mb-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{title}</h2>
-          <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{description}</p>
-        </div>
-        <button
-          onClick={onSave}
-          disabled={disabled}
-          className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm font-bold active:scale-95"
-        >
-          {saving ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Save size={18} />
-          )}
-          {saving ? t('settings.saving') : t('settings.saveLabel', { section: title })}
-        </button>
-      </div>
-    </div>
-  );
-};
+
 
 const AccountingSettingsPageContent: React.FC = () => {
   const { t, i18n } = useTranslation('accounting');
@@ -131,7 +103,8 @@ const AccountingSettingsPageContent: React.FC = () => {
     timezone: 'UTC',
     dateFormat: 'DD/MM/YYYY',
     uiMode: 'windows' as 'windows' | 'classic',
-    strictApprovalMode: true
+    strictApprovalMode: true,
+    exchangeGainLossAccountId: ''
   });
   const [originalCoreSettings, setOriginalCoreSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -160,6 +133,17 @@ const AccountingSettingsPageContent: React.FC = () => {
   const [pandLClearingAccountId, setPandLClearingAccountId] = useState<string>('');
   const [lastClosingVoucher, setLastClosingVoucher] = useState<any>(null);
   const [reopenVoucherDetails, setReopenVoucherDetails] = useState<any>(null);
+  
+  const [isFXAccountLocked, setIsFXAccountLocked] = useState(true);
+
+  // Sync lock status with settings when they load
+  useEffect(() => {
+    if (coreSettings?.exchangeGainLossAccountId) {
+      setIsFXAccountLocked(true);
+    } else {
+      setIsFXAccountLocked(false);
+    }
+  }, [coreSettings?.exchangeGainLossAccountId]);
   const [sequences, setSequences] = useState<any[]>([]);
   const [voucherForms, setVoucherForms] = useState<any[]>([]);
   const [editingSeq, setEditingSeq] = useState<{ prefix: string; year?: number; nextNumber: number } | null>(null);
@@ -199,7 +183,8 @@ const AccountingSettingsPageContent: React.FC = () => {
         timezone: coreSettings.timezone || 'UTC',
         dateFormat: coreSettings.dateFormat || 'DD/MM/YYYY',
         uiMode: coreSettings.uiMode || 'windows',
-        strictApprovalMode: coreSettings.strictApprovalMode !== false
+        strictApprovalMode: coreSettings.strictApprovalMode !== false,
+        exchangeGainLossAccountId: coreSettings.exchangeGainLossAccountId || ''
       };
       setLocalCoreSettings(newCore);
       setOriginalCoreSettings(newCore);
@@ -678,77 +663,93 @@ const AccountingSettingsPageContent: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-[var(--color-bg-primary)]">
-      {/* Header (Simplified - Save buttons moved to sections) */}
-      <div className="flex-none px-8 py-6 bg-white dark:bg-[var(--color-bg-secondary)] border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.title')}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-[var(--color-text-secondary)]">
-            {t('settings.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <InstructionsButton 
-            instructions={
-              activeTab === 'general' ? generalSettingsInstructions :
-              activeTab === 'currencies' ? currenciesInstructions :
-              activeTab === 'policies' ? policiesInstructions :
-              activeTab === 'payment-methods' ? paymentMethodsInstructions :
-              activeTab === 'cost-center' ? costCenterInstructions :
-              activeTab === 'error-mode' ? errorModeInstructions :
-              fiscalYearInstructions
-            } 
-          />
-        </div>
-      </div>
+    <ModuleSettingsLayout
+      title={t('settings.title')}
+      subtitle={t('settings.subtitle')}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={(id) => setActiveTab(id as any)}
+      topActions={
+        <InstructionsButton 
+          instructions={
+            activeTab === 'general' ? generalSettingsInstructions :
+            activeTab === 'currencies' ? currenciesInstructions :
+            activeTab === 'policies' ? policiesInstructions :
+            activeTab === 'payment-methods' ? paymentMethodsInstructions :
+            activeTab === 'cost-center' ? costCenterInstructions :
+            activeTab === 'error-mode' ? errorModeInstructions :
+            fiscalYearInstructions
+          } 
+        />
+      }
+    >
+      <div className="w-full">
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Vertical Sidebar Navigation */}
-        <aside className="w-64 border-r border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-primary)] overflow-y-auto block">
-          <nav className="p-4 space-y-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                    ${isActive
-                      ? 'bg-white dark:bg-[var(--color-bg-secondary)] text-indigo-700 dark:text-primary-400 shadow-sm ring-1 ring-gray-200 dark:ring-[var(--color-border)]'
-                      : 'text-gray-600 dark:text-[var(--color-text-secondary)] hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] hover:text-gray-900 dark:hover:text-[var(--color-text-primary)]'
-                    }
-                  `}
-                >
-                  <Icon 
-                    size={18} 
-                    className={isActive ? 'text-indigo-600 dark:text-primary-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'} 
+
+      {/* FX Revaluation Tab */}
+      {activeTab === 'fx-revaluation' && (
+        <SettingsSection 
+          title={t('settings.tabs.fxRevaluation')} 
+          description={t('settings.fxRevaluation.description')}
+          onSave={() => handleSave('general')}
+          disabled={!hasGeneralChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.fxRevaluation') })}
+        >
+          <div className="bg-white dark:bg-[var(--color-bg-secondary)] border border-slate-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm mb-6 transition-all duration-200">
+            <div className="flex items-start gap-4">
+              <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <ArrowLeftRight size={22} className="text-indigo-600 dark:text-primary-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-[15px] font-bold text-slate-800 dark:text-[var(--color-text-primary)]">
+                  {t('settings.general.multiCurrencyDefaults', { defaultValue: 'Global FX Configuration' })}
+                </h3>
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1 mb-5 leading-relaxed">
+                  {t('settings.general.fxAccountDesc', { defaultValue: 'Primary account for exchange differences. Pre-fills the wizard below and serves as a default for all modules.' })}
+                </p>
+                <div className="flex items-center gap-2 max-w-sm">
+                  <AccountSelector
+                    value={localCoreSettings.exchangeGainLossAccountId}
+                    onChange={(acct: Account | null) => setLocalCoreSettings({ ...localCoreSettings, exchangeGainLossAccountId: acct?.id || '' })}
+                    disabled={isFXAccountLocked}
                   />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
+                  {localCoreSettings.exchangeGainLossAccountId && (
+                    <button
+                      type="button"
+                      onClick={() => setIsFXAccountLocked(!isFXAccountLocked)}
+                      className={`p-2 rounded-lg transition-all duration-200 ${isFXAccountLocked 
+                        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 shadow-sm' 
+                        : 'bg-green-100 text-green-600 hover:bg-green-200 shadow-sm'}`}
+                      title={isFXAccountLocked ? t('settings.common.changeAccount', 'Change global default account') : t('settings.common.finishEdit', 'Lock selection')}
+                    >
+                      {isFXAccountLocked ? <Pencil size={16} /> : <Check size={16} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto bg-white dark:bg-[var(--color-bg-secondary)]">
-          <div className="p-8">
+            <div className="pt-6 mt-6 border-t border-slate-100">
+              <FXRevaluationTab 
+                defaultGainLossAccountId={localCoreSettings.exchangeGainLossAccountId}
+                isLocked={isFXAccountLocked}
+              />
+            </div>
+          </div>
+        </SettingsSection>
+      )}
+      {activeTab === 'general' && (
+        <SettingsSection 
+          title={t('settings.tabs.general')} 
+          description={t('settings.general.description')}
+          onSave={() => handleSave('general')}
+          disabled={!hasGeneralChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.general') })}
+        >
+          <div className="space-y-6">
 
-
-                  {/* General Settings Tab */}
-                  {activeTab === 'general' && (
-                    <div className="max-w-4xl mx-auto space-y-8">
-                      <SectionHeader 
-                        title={t('settings.tabs.general')} 
-                        description={t('settings.general.description')}
-                        onSave={() => handleSave('general')}
-                        disabled={!hasGeneralChanges || saving}
-                        saving={saving}
-                      />
-                      
-                      <div className="space-y-6">
                   {/* Timezone */}
                   <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
                     <label className="flex items-center gap-2 font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
@@ -851,35 +852,36 @@ const AccountingSettingsPageContent: React.FC = () => {
                         <div className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{t('settings.general.windowsDesc')}</div>
                       </button>
                     </div>
-                    </div>
                   </div>
                 </div>
-              )}
+        </SettingsSection>
+      )}
+         
+      {/* Currencies Tab */}
+      {activeTab === 'currencies' && (
+        <SettingsSection 
+          title={t('settings.tabs.currencies')} 
+          description={t('settings.currencies.description')}
+          onSave={() => handleSave('currencies')}
+          disabled={saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.currencies') })}
+        >
+          <CompanyCurrencySettings />
+        </SettingsSection>
+      )}
 
-                  {/* Currencies Tab */}
-                  {(activeTab as string) === 'currencies' && (
-                    <div className="max-w-6xl mx-auto space-y-8">
-                      <SectionHeader 
-                        title={t('settings.tabs.currencies')} 
-                        description={t('settings.currencies.description')}
-                        onSave={() => handleSave('currencies')}
-                        disabled={saving} // Currencies handled internally by CompanyCurrencySettings components
-                        saving={saving}
-                      />
-                      <CompanyCurrencySettings />
-                    </div>
-                  )}
-
-                  {/* Policy Configuration Tab (Merged: Approval & Posting) */}
-                  {(activeTab as string) === 'policies' && (
-                    <div className="w-full space-y-8">
-                      <SectionHeader 
-                        title={t('settings.tabs.policies')} 
-                        description={t('settings.policies.description')}
-                        onSave={() => handleSave('policies')}
-                        disabled={!hasPolicyChanges || saving}
-                        saving={saving}
-                      />
+      {/* Policies Tab */}
+      {activeTab === 'policies' && (
+        <SettingsSection 
+          title={t('settings.tabs.policies')} 
+          description={t('settings.policies.description')}
+          onSave={() => handleSave('policies')}
+          disabled={!hasPolicyChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.policies') })}
+        >
+          <div className="w-full space-y-8">
 
                 {/* Approval Gates Section */}
                 <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-xl p-6 shadow-sm">
@@ -1340,25 +1342,27 @@ const AccountingSettingsPageContent: React.FC = () => {
                         </p>
                       </div>
                     ) : null}
-              </div>
+                    </div>
+                  </div>
+                </div>
+          </SettingsSection>
+        )}
               
 
-            </div>
-          </div>
-        )}
 
-            {/* Payment Methods Tab */}
-            {(activeTab as string) === 'payment-methods' && (
-              <div className="max-w-4xl mx-auto space-y-8">
-                <SectionHeader 
-                  title={t('settings.tabs.paymentMethods', 'Payment Methods')} 
-                  description={t('settings.paymentMethods.description', 'Define and manage payment methods used across vouchers')}
-                  onSave={() => handleSave('payment-methods')}
-                  disabled={!hasMethodChanges || saving}
-                  saving={saving}
-                />
+      {/* Payment Methods Tab */}
+      {activeTab === 'payment-methods' && (
+        <SettingsSection 
+          title={t('settings.tabs.paymentMethods')} 
+          description={t('settings.paymentMethods.description')}
+          onSave={() => handleSave('payment-methods')}
+          disabled={!hasMethodChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.paymentMethods') })}
+        >
+          <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm uppercase font-bold text-xs">
+            {/* Payment methods content ... */}
 
-                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl overflow-hidden shadow-sm">
                   <div className="p-6 border-b border-gray-200 dark:border-[var(--color-border)] bg-gray-50/50 dark:bg-[var(--color-bg-tertiary)] flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.paymentMethods.configuredMethods', 'Configured Methods')}</h3>
@@ -1453,176 +1457,175 @@ const AccountingSettingsPageContent: React.FC = () => {
                     </p>
                   </div>
                 </div>
+          </SettingsSection>
+        )}
+
+
+      {/* Cost Center Required Tab */}
+      {activeTab === 'cost-center' && (
+        <SettingsSection 
+          title={t('settings.tabs.costCenter')} 
+          description={t('settings.costCenter.description')}
+          onSave={() => handleSave('cost-center')}
+          disabled={!hasCostCenterChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.costCenter') })}
+        >
+          <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
+            {/* Cost center content... */}
+            <div className="flex items-start gap-6 mb-4">
+              <div className="flex-1">
+                <label className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
+                  <DollarSign size={20} className="text-purple-500" />
+                  {t('settings.costCenter.title')}
+                </label>
+                <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
+                  {t('settings.costCenter.subtitle')}
+                </p>
               </div>
-              )}
-
-
-            {/* Cost Center Required Tab */}
-            {(activeTab as string) === 'cost-center' && (
-              <div className="max-w-4xl mx-auto space-y-8">
-                <SectionHeader 
-                  title={t('settings.tabs.costCenter')} 
-                  description={t('settings.costCenter.description')}
-                  onSave={() => handleSave('cost-center')}
-                  disabled={!hasCostCenterChanges || saving}
-                  saving={saving}
-                />
-
-                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
-                  <div className="flex items-start gap-6 mb-4">
-                    <div className="flex-1">
-                      <label className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-                        <DollarSign size={20} className="text-purple-500" />
-                        {t('settings.costCenter.title')}
-                      </label>
-                      <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-                        {t('settings.costCenter.subtitle')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${config.costCenterPolicy.enabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
-                        {config.costCenterPolicy.enabled ? t('settings.on') : t('settings.off')}
-                      </span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={config.costCenterPolicy.enabled}
-                          onChange={(e) => setConfig({
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`text-xs font-bold uppercase tracking-wider ${config.costCenterPolicy.enabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-[var(--color-text-muted)]'}`}>
+                  {config.costCenterPolicy.enabled ? t('settings.on') : t('settings.off')}
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={config.costCenterPolicy.enabled}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      costCenterPolicy: {
+                        ...config.costCenterPolicy,
+                        enabled: e.target.checked
+                      }
+                    })}
+                  />
+                  <div className="relative w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
+                    <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.costCenterPolicy.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            
+            {config.costCenterPolicy.enabled && (
+              <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-sm font-semibold text-gray-900 dark:text-[var(--color-text-primary)] mb-4">{t('settings.costCenter.requiredFor')}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  {['EXPENSE', 'ASSET', 'LIABILITY', 'REVENUE'].map((type) => (
+                    <label key={type} className="flex items-center p-3 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        checked={config.costCenterPolicy.requiredFor.accountTypes?.includes(type)}
+                        onChange={(e) => {
+                          const current = config.costCenterPolicy.requiredFor.accountTypes || [];
+                          const updated = e.target.checked
+                            ? [...current, type]
+                            : current.filter((t: string) => t !== type);
+                          setConfig({
                             ...config,
                             costCenterPolicy: {
                               ...config.costCenterPolicy,
-                              enabled: e.target.checked
+                              requiredFor: {
+                                ...config.costCenterPolicy.requiredFor,
+                                accountTypes: updated
+                              }
                             }
-                          })}
-                        />
-                        <div className="relative w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full transition-colors peer-checked:bg-indigo-600">
-                          <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${config.costCenterPolicy.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  {config.costCenterPolicy.enabled && (
-                    <div className="mt-6 pt-6 border-t border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900 mb-4">{t('settings.costCenter.requiredFor')}</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        {['EXPENSE', 'ASSET', 'LIABILITY', 'REVENUE'].map((type) => (
-                          <label key={type} className="flex items-center p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                              checked={config.costCenterPolicy.requiredFor.accountTypes?.includes(type)}
-                              onChange={(e) => {
-                                const current = config.costCenterPolicy.requiredFor.accountTypes || [];
-                                const updated = e.target.checked
-                                  ? [...current, type]
-                                  : current.filter((t: string) => t !== type);
-                                setConfig({
-                                  ...config,
-                                  costCenterPolicy: {
-                                    ...config.costCenterPolicy,
-                                    requiredFor: {
-                                      ...config.costCenterPolicy.requiredFor,
-                                      accountTypes: updated
-                                    }
-                                  }
-                                });
-                              }}
-                            />
-                            <span className="ml-3 text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)]">{type}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          });
+                        }}
+                      />
+                      <span className="ml-3 text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)]">{type}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
+          </div>
+        </SettingsSection>
+      )}
 
-            {/* Cost Centers Manage Tab */}
-            {(activeTab as string) === 'cost-centers-manage' && (
-                <div className="w-full min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900">
-                   <CostCentersPage />
-                </div>
-            )}
+      {/* Cost Centers Manage Tab */}
+      {activeTab === 'cost-centers-manage' && (
+        <div className="w-full min-h-[600px] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900">
+          <CostCentersPage />
+        </div>
+      )}
 
-            {/* Policy Error Mode Tab */}
-            {(activeTab as string) === 'error-mode' && (
-              <div className="max-w-4xl mx-auto space-y-8">
-                <SectionHeader 
-                  title={t('settings.errorMode.title')} 
-                  description={t('settings.errorMode.description')}
-                  onSave={() => handleSave('error-mode')}
-                  disabled={!hasErrorModeChanges || saving}
-                  saving={saving}
+
+      {/* Policy Error Mode Tab */}
+      {activeTab === 'error-mode' && (
+        <SettingsSection 
+          title={t('settings.errorMode.title')} 
+          description={t('settings.errorMode.description')}
+          onSave={() => handleSave('error-mode')}
+          disabled={!hasErrorModeChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.errorMode.title') })}
+        >
+          <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
+            {/* Error mode content... */}
+            <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
+              <AlertTriangle size={20} className="text-amber-500" />
+              {t('settings.errorMode.validationBehavior')}
+            </div>
+            <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-6">
+              {t('settings.errorMode.validationDesc')}
+            </p>
+            <div className="space-y-4">
+              <label className={`
+                flex items-start p-4 border rounded-xl cursor-pointer transition-all
+                ${config.policyErrorMode === 'FAIL_FAST' ? 'border-indigo-500 dark:border-primary-500 bg-indigo-50 dark:bg-primary-900/20 ring-2 ring-indigo-100 dark:ring-primary-900/30' : 'border-gray-200 dark:border-[var(--color-border)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'}
+              `}>
+                <input
+                  type="radio"
+                  className="sr-only"
+                  checked={config.policyErrorMode === 'FAIL_FAST'}
+                  onChange={() => setConfig({ ...config, policyErrorMode: 'FAIL_FAST' })}
                 />
-
-                <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-2">
-                    <AlertTriangle size={20} className="text-amber-500" />
-                    {t('settings.errorMode.validationBehavior')}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{t('settings.errorMode.failFast')}</span>
+                    {config.policyErrorMode === 'FAIL_FAST' && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{t('settings.errorMode.recommended')}</span>}
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-[var(--color-text-secondary)] mb-6">
-                    {t('settings.errorMode.validationDesc')}
+                  <p className="text-xs text-gray-600 dark:text-[var(--color-text-secondary)] leading-relaxed">
+                    {t('settings.errorMode.failFastDesc')}
                   </p>
-                  <div className="space-y-4">
-                    <label className={`
-                      flex items-start p-4 border rounded-xl cursor-pointer transition-all
-                      ${config.policyErrorMode === 'FAIL_FAST' ? 'border-indigo-500 dark:border-primary-500 bg-indigo-50 dark:bg-primary-900/20 ring-2 ring-indigo-100 dark:ring-primary-900/30' : 'border-gray-200 dark:border-[var(--color-border)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'}
-                    `}>
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        checked={config.policyErrorMode === 'FAIL_FAST'}
-                        onChange={() => setConfig({ ...config, policyErrorMode: 'FAIL_FAST' })}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-gray-900">{t('settings.errorMode.failFast')}</span>
-                          {config.policyErrorMode === 'FAIL_FAST' && <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{t('settings.errorMode.recommended')}</span>}
-                        </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {t('settings.errorMode.failFastDesc')}
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className={`
-                      flex items-start p-4 border rounded-xl cursor-pointer transition-all
-                      ${config.policyErrorMode === 'AGGREGATE' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-gray-200 hover:bg-gray-50'}
-                    `}>
-                      <input
-                        type="radio"
-                        className="sr-only"
-                        checked={config.policyErrorMode === 'AGGREGATE'}
-                        onChange={() => setConfig({ ...config, policyErrorMode: 'AGGREGATE' })}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-gray-900">{t('settings.errorMode.aggregate')}</span>
-                        </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {t('settings.errorMode.aggregateDesc')}
-                        </p>
-                      </div>
-                    </label>
-                  </div>
                 </div>
-              </div>
-            )}
+              </label>
 
-            {/* Fiscal Year Tab */}
-            {(activeTab as string) === 'fiscal' && (
-              <>
-              <div className="max-w-4xl mx-auto space-y-8">
-                <SectionHeader 
-                  title={t('settings.fiscal.title')} 
-                  description={t('settings.fiscal.description')}
-                  onSave={() => handleSave('fiscal')}
-                  disabled={!hasFiscalChanges || saving}
-                  saving={saving}
+              <label className={`
+                flex items-start p-4 border rounded-xl cursor-pointer transition-all
+                ${config.policyErrorMode === 'AGGREGATE' ? 'border-indigo-500 dark:border-primary-500 bg-indigo-50 dark:bg-primary-900/20 ring-2 ring-indigo-100 dark:ring-primary-900/30' : 'border-gray-200 dark:border-[var(--color-border)] hover:bg-gray-50 dark:hover:bg-[var(--color-bg-secondary)]'}
+              `}>
+                <input
+                  type="radio"
+                  className="sr-only"
+                  checked={config.policyErrorMode === 'AGGREGATE'}
+                  onChange={() => setConfig({ ...config, policyErrorMode: 'AGGREGATE' })}
                 />
+                <div className="flex-1">
+                  <div className="font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{t('settings.errorMode.aggregate')}</div>
+                  <p className="text-xs text-gray-600 dark:text-[var(--color-text-secondary)] leading-relaxed">
+                    {t('settings.errorMode.aggregateDesc')}
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </SettingsSection>
+      )}
+
+
+      {/* Fiscal Year Tab */}
+      {activeTab === 'fiscal' && (
+        <SettingsSection 
+          title={t('settings.fiscal.title')} 
+          description={t('settings.fiscal.description')}
+          onSave={() => handleSave('fiscal')}
+          disabled={!hasFiscalChanges || saving}
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.fiscal.title') })}
+        >
                   
                 {fiscalYears.length === 0 && (
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 flex items-start gap-3">
@@ -2342,19 +2345,20 @@ const AccountingSettingsPageContent: React.FC = () => {
                     </div>,
                     document.body
                   )}
-                </div>
-              </>
-            )}
+        </SettingsSection>
+      )}
 
-            {/* Voucher Numbering Tab */}
-            {(activeTab as string) === 'numbering' && (
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div className="flex flex-col gap-4 mb-8">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-1">{t('settings.numbering.title')}</h2>
-                    <p className="text-gray-600 dark:text-[var(--color-text-secondary)]">{t('settings.numbering.descriptionLong', 'Monitor active voucher sequences and override numbering for migration or corrections.')}</p>
-                  </div>
-                </div>
+      {/* Voucher Numbering Tab */}
+      {activeTab === 'numbering' && (
+        <SettingsSection 
+          title={t('settings.numbering.title')} 
+          description={t('settings.numbering.descriptionLong', 'Monitor active voucher sequences and override numbering for migration or corrections.')}
+          onSave={() => handleSave('numbering')}
+          disabled={saving} // Usually sequences are handled by individual Set Next buttons, but we follow layout
+          saving={saving}
+          saveLabel={t('settings.saveLabel', { section: t('settings.numbering.title') })}
+          hideSaveButton={true} // For this tab, save is done via individual actions
+        >
 
                 {/* How It Works */}
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/30 rounded-xl p-4">
@@ -2525,25 +2529,18 @@ const AccountingSettingsPageContent: React.FC = () => {
                     <p className="text-xs text-slate-500">{t('settings.numbering.example', 'Example')}: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>JE-2026-0042</strong></p>
                   </div>
                 </div>
-              </div>
-            )}
+        </SettingsSection>
+      )}
 
-            {/* ======= FX REVALUATION TAB ======= */}
-            {activeTab === 'fx-revaluation' && (
-              <FXRevaluationTab />
-            )}
-
-            {/* Metadata and Closing of IIFE */}
-            {config.updatedAt && (
-              <div className="mt-8 pt-4 border-t border-[var(--color-border)] text-sm text-[var(--color-text-muted)] italic">
-                {t('settings.metadata.lastUpdated', { value: new Date(config.updatedAt).toLocaleString(i18n.language) })}
-                {config.updatedBy && t('settings.metadata.updatedBy', { user: config.updatedBy })}
-              </div>
-            )}
-          </div>
-        </main>
+      {/* Metadata */}
+      {config.updatedAt && (
+        <div className="mt-8 pt-4 border-t border-[var(--color-border)] text-sm text-[var(--color-text-muted)] italic">
+          {t('settings.metadata.lastUpdated', { value: new Date(config.updatedAt).toLocaleString(i18n.language) })}
+          {config.updatedBy && t('settings.metadata.updatedBy', { user: config.updatedBy })}
+        </div>
+      )}
       </div>
-    </div>
+    </ModuleSettingsLayout>
   );
 };
 

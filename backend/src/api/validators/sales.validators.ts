@@ -56,11 +56,7 @@ const ensureIsoDate = (value: any, fieldName: string) => {
   }
 };
 
-const ensureControlMode = (value: any, fieldName: string) => {
-  if (value !== 'SIMPLE' && value !== 'CONTROLLED') {
-    throw ApiError.badRequest(`${fieldName} must be SIMPLE or CONTROLLED`);
-  }
-};
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const ensureOptionalNumber = (value: any, fieldName: string) => {
   if (value === undefined) return;
@@ -68,6 +64,11 @@ const ensureOptionalNumber = (value: any, fieldName: string) => {
 };
 
 const ensureOptionalString = (value: any, fieldName: string) => {
+  if (value === undefined) return;
+  ensureRequiredString(value, fieldName);
+};
+
+const ensureOptionalUuid = (value: any, fieldName: string) => {
   if (value === undefined) return;
   ensureRequiredString(value, fieldName);
 };
@@ -146,10 +147,9 @@ const validateSRLine = (line: any, index: number) => {
 };
 
 export const validateInitializeSalesInput = (body: any) => {
-  ensureRequiredString(body.defaultARAccountId, 'defaultARAccountId');
   ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
-  ensureControlMode(body.salesControlMode, 'salesControlMode');
 
+  if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
@@ -157,6 +157,7 @@ export const validateInitializeSalesInput = (body: any) => {
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
 
   ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
   ensureOptionalString(body.salesVoucherTypeId, 'salesVoucherTypeId');
   ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
@@ -172,11 +173,12 @@ export const validateInitializeSalesInput = (body: any) => {
 };
 
 export const validateUpdateSalesSettingsInput = (body: any) => {
-  if (body.salesControlMode !== undefined) ensureControlMode(body.salesControlMode, 'salesControlMode');
+  if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
-  if (body.defaultARAccountId !== undefined) ensureRequiredString(body.defaultARAccountId, 'defaultARAccountId');
+  if (body.defaultARAccountId !== undefined) ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');
   if (body.defaultRevenueAccountId !== undefined) ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
   if (body.defaultCOGSAccountId !== undefined) ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
+  if (body.defaultInventoryAccountId !== undefined) ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
   if (body.defaultSalesExpenseAccountId !== undefined) ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');

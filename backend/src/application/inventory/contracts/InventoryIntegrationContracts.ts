@@ -53,10 +53,11 @@ export interface InventoryProcessOUTContractInput {
 export interface ISalesInventoryService {
   processOUT(input: InventoryProcessOUTContractInput): Promise<StockMovement>;
   processIN(input: InventoryProcessINContractInput): Promise<StockMovement>;
+  deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
 }
 
 export interface IPurchasesInventoryService {
   processIN(input: InventoryProcessINContractInput): Promise<StockMovement>;
   processOUT(input: InventoryProcessOUTContractInput): Promise<StockMovement>;
+  deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
 }
-

@@ -1,4 +1,4 @@
-import { DocumentReference, Firestore, Query } from 'firebase-admin/firestore';
+import { DocumentReference, Firestore, Query, Transaction } from 'firebase-admin/firestore';
 import {
   StockAdjustment,
   StockAdjustmentStatus,
@@ -30,13 +30,34 @@ export class FirestoreStockAdjustmentRepository implements IStockAdjustmentRepos
     return ref;
   }
 
-  async createAdjustment(adjustment: StockAdjustment): Promise<void> {
-    await this.collection(adjustment.companyId).doc(adjustment.id).set(StockAdjustmentMapper.toPersistence(adjustment));
+  private asTransaction(transaction?: unknown): Transaction | undefined {
+    if (!transaction) return undefined;
+    return transaction as Transaction;
   }
 
-  async updateAdjustment(id: string, data: Partial<StockAdjustment>): Promise<void> {
-    const ref = await this.resolveRefById(id);
-    if (!ref) return;
+  async createAdjustment(adjustment: StockAdjustment, transaction?: unknown): Promise<void> {
+    const ref = this.collection(adjustment.companyId).doc(adjustment.id);
+    const txn = this.asTransaction(transaction);
+    const payload = StockAdjustmentMapper.toPersistence(adjustment);
+    if (txn) {
+      txn.set(ref, payload);
+      return;
+    }
+    await ref.set(payload);
+  }
+
+  async updateAdjustment(
+    companyId: string,
+    id: string,
+    data: Partial<StockAdjustment>,
+    transaction?: unknown
+  ): Promise<void> {
+    const ref = this.collection(companyId).doc(id);
+    const txn = this.asTransaction(transaction);
+    if (txn) {
+      txn.update(ref, data as any);
+      return;
+    }
     await ref.update(data as any);
   }
 

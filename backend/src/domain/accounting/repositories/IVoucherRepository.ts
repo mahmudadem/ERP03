@@ -104,7 +104,7 @@ export interface IVoucherRepository {
    * @param voucherId Voucher ID
    * @returns true if deleted, false if not found
    */
-  delete(companyId: string, voucherId: string): Promise<boolean>;
+  delete(companyId: string, voucherId: string, transaction?: any): Promise<boolean>;
 
   /**
    * Check if a voucher number already exists

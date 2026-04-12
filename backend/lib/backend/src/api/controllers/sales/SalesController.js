@@ -11,6 +11,8 @@ const SalesSettingsUseCases_1 = require("../../../application/sales/use-cases/Sa
 const SalesReturnUseCases_1 = require("../../../application/sales/use-cases/SalesReturnUseCases");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const SalesDTOs_1 = require("../../dtos/SalesDTOs");
+const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
+const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
 const sales_validators_1 = require("../../validators/sales.validators");
 const SO_STATUSES = [
     'DRAFT',
@@ -86,12 +88,18 @@ class SalesController {
     static buildSalesInventoryService() {
         return new SalesInventoryService_1.SalesInventoryService(SalesController.buildMovementUseCase());
     }
+    static buildAccountingPostingService(validateAccounts = false) {
+        if (validateAccounts) {
+            return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, new VoucherValidationService_1.VoucherValidationService());
+        }
+        return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
+    }
     static async initializeSales(req, res, next) {
         try {
             (0, sales_validators_1.validateInitializeSalesInput)(req.body);
             const companyId = SalesController.getCompanyId(req);
             const userId = SalesController.getUserId(req);
-            const useCase = new SalesSettingsUseCases_1.InitializeSalesUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const useCase = new SalesSettingsUseCases_1.InitializeSalesUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
                 userId }));
             res.status(200).json({
@@ -106,7 +114,7 @@ class SalesController {
     static async getSettings(req, res, next) {
         try {
             const companyId = SalesController.getCompanyId(req);
-            const useCase = new SalesSettingsUseCases_1.GetSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository);
+            const useCase = new SalesSettingsUseCases_1.GetSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(companyId);
             res.json({
                 success: true,
@@ -121,7 +129,7 @@ class SalesController {
         try {
             (0, sales_validators_1.validateUpdateSalesSettingsInput)(req.body);
             const companyId = SalesController.getCompanyId(req);
-            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository);
+            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -302,7 +310,8 @@ class SalesController {
             const companyId = SalesController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
-            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager);
+            const accountingPostingService = SalesController.buildAccountingPostingService();
+            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const dn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -387,7 +396,8 @@ class SalesController {
             const companyId = SalesController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
-            const useCase = new SalesInvoiceUseCases_1.PostSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager);
+            const accountingPostingService = SalesController.buildAccountingPostingService(true);
+            const useCase = new SalesInvoiceUseCases_1.PostSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const si = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -454,7 +464,8 @@ class SalesController {
             const companyId = SalesController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
-            const useCase = new SalesReturnUseCases_1.PostSalesReturnUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.salesReturnRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager);
+            const accountingPostingService = SalesController.buildAccountingPostingService();
+            const useCase = new SalesReturnUseCases_1.PostSalesReturnUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesReturnRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const salesReturn = await useCase.execute(companyId, id);
             res.json({
                 success: true,

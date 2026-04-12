@@ -1,38 +1,95 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesInvoicePayload,
   SalesInvoiceDTO,
+  SalesInvoiceLineInputDTO,
+  SalesOrderDTO,
   salesApi,
   SalesSettingsDTO,
 } from '../../../api/salesApi';
-import { PartyDTO, sharedApi } from '../../../api/sharedApi';
+import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
+const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
 
+interface EditableLine {
+  lineId?: string;
+  soLineId?: string;
+  dnLineId?: string;
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  invoicedQty: number;
+  uom: string;
+  unitPriceDoc: number;
+  taxCodeId?: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+interface EditableForm {
+  salesOrderId: string;
+  customerId: string;
+  customerInvoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  currency: string;
+  exchangeRate: number;
+  notes: string;
+  lines: EditableLine[];
+}
+
+const createEmptyLine = (): EditableLine => ({
+  itemId: '',
+  invoicedQty: 1,
+  uom: '',
+  unitPriceDoc: 0,
+  taxCodeId: undefined,
+  warehouseId: undefined,
+  description: '',
+});
+
+const createEmptyForm = (salesOrderId = '', customerId = ''): EditableForm => ({
+  salesOrderId,
+  customerId,
+  customerInvoiceNumber: '',
+  invoiceDate: todayIso(),
+  dueDate: '',
+  currency: 'USD',
+  exchangeRate: 1,
+  notes: '',
+  lines: [createEmptyLine()],
+});
+
 const SalesInvoiceDetailPage: React.FC = () => {
+  const { company } = useCompanyAccess();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isCreateMode = !params.id || params.id === 'new';
 
+  const initialSalesOrderId = searchParams.get('salesOrderId') || '';
+  const initialCustomerId = searchParams.get('customerId') || '';
+
   const [invoice, setInvoice] = useState<SalesInvoiceDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
-
-  const [salesOrderId, setSalesOrderId] = useState(searchParams.get('salesOrderId') || '');
-  const [customerId, setCustomerId] = useState(searchParams.get('customerId') || '');
-  const [customerInvoiceNumber, setCustomerInvoiceNumber] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(todayIso());
-  const [dueDate, setDueDate] = useState('');
-  const [currency, setCurrency] = useState('USD');
-  const [exchangeRate, setExchangeRate] = useState(1);
-  const [notes, setNotes] = useState('');
+  const [items, setItems] = useState<InventoryItemDTO[]>([]);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
+  const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const customerNameById = useMemo(
@@ -44,19 +101,156 @@ const SalesInvoiceDetailPage: React.FC = () => {
     [customers]
   );
 
+  const itemById = useMemo(
+    () =>
+      items.reduce<Record<string, InventoryItemDTO>>((acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      }, {}),
+    [items]
+  );
+
+  const salesOrderLabelById = useMemo(
+    () =>
+      salesOrders.reduce<Record<string, string>>((acc, order) => {
+        acc[order.id] = `${order.orderNumber} - ${order.customerName}`;
+        return acc;
+      }, {}),
+    [salesOrders]
+  );
+
+  const taxById = useMemo(
+    () =>
+      taxCodes.reduce<Record<string, TaxCodeDTO>>((acc, taxCode) => {
+        acc[taxCode.id] = taxCode;
+        return acc;
+      }, {}),
+    [taxCodes]
+  );
+
+  const salesTaxCodes = useMemo(
+    () => taxCodes.filter((taxCode) => taxCode.scope === 'SALES' || taxCode.scope === 'BOTH'),
+    [taxCodes]
+  );
+
+  const computedLines = useMemo(() => {
+    return form.lines.map((line) => {
+      const taxRate = line.taxCodeId ? taxById[line.taxCodeId]?.rate ?? 0 : 0;
+      const lineTotalDoc = roundMoney((line.invoicedQty || 0) * (line.unitPriceDoc || 0));
+      const lineTotalBase = roundMoney(lineTotalDoc * (form.exchangeRate || 0));
+      const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
+      const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+
+      return {
+        lineTotalDoc,
+        lineTotalBase,
+        taxAmountDoc,
+        taxAmountBase,
+      };
+    });
+  }, [form.exchangeRate, form.lines, taxById]);
+
+  const totals = useMemo(() => {
+    const subtotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
+    const subtotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+    const taxTotalDoc = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
+    const taxTotalBase = roundMoney(computedLines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+
+    return {
+      subtotalDoc,
+      subtotalBase,
+      taxTotalDoc,
+      taxTotalBase,
+      grandTotalDoc: roundMoney(subtotalDoc + taxTotalDoc),
+      grandTotalBase: roundMoney(subtotalBase + taxTotalBase),
+    };
+  }, [computedLines]);
+
+  const toEditableLinesFromSalesOrder = (so: SalesOrderDTO): EditableLine[] => {
+    return so.lines
+      .map((line) => {
+        const remainingQty = Math.max(line.orderedQty - line.invoicedQty, 0);
+        if (remainingQty <= 0) return null;
+
+        return {
+          soLineId: line.lineId,
+          itemId: line.itemId,
+          itemCode: line.itemCode,
+          itemName: line.itemName,
+          invoicedQty: remainingQty,
+          uom: line.uom,
+          unitPriceDoc: line.unitPriceDoc,
+          taxCodeId: line.taxCodeId,
+          warehouseId: line.warehouseId,
+          description: line.description,
+        } as EditableLine;
+      })
+      .filter((line): line is EditableLine => line !== null);
+  };
+
+  const loadReferenceData = async () => {
+    const [settingsResult, customerResult, itemResult, taxResult, warehouseResult, salesOrderResult] = await Promise.all([
+      salesApi.getSettings(),
+      sharedApi.listParties({ role: 'CUSTOMER', active: true }),
+      inventoryApi.listItems({ active: true, limit: 500 }),
+      sharedApi.listTaxCodes({ active: true }),
+      inventoryApi.listWarehouses({ active: true }),
+      salesApi.listSOs({ limit: 500 }),
+    ]);
+
+    const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
+    const customerList = unwrap<PartyDTO[]>(customerResult);
+    const itemList = unwrap<InventoryItemDTO[]>(itemResult);
+    const taxCodeList = unwrap<TaxCodeDTO[]>(taxResult);
+    const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
+    const salesOrderList = unwrap<SalesOrderDTO[]>(salesOrderResult);
+
+    setSettings(currentSettings);
+    setCustomers(Array.isArray(customerList) ? customerList : []);
+    setItems(Array.isArray(itemList) ? itemList : []);
+    setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
+    setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+    setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
+  };
+
+  const loadSalesOrderLines = async (orderId: string) => {
+    const trimmedOrderId = orderId.trim();
+    if (!trimmedOrderId) return;
+
+    try {
+      setOrderLineLoading(true);
+      setError(null);
+
+      const orderResult = await salesApi.getSO(trimmedOrderId);
+      const so = unwrap<SalesOrderDTO>(orderResult);
+      const nextLines = toEditableLinesFromSalesOrder(so);
+
+      setForm((prev) => ({
+        ...prev,
+        salesOrderId: trimmedOrderId,
+        customerId: so.customerId,
+        currency: so.currency,
+        exchangeRate: so.exchangeRate,
+        lines: nextLines.length ? nextLines : [createEmptyLine()],
+      }));
+    } catch (err: any) {
+      console.error('Failed to load sales order lines', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to load sales order lines.'
+      );
+    } finally {
+      setOrderLineLoading(false);
+    }
+  };
+
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const [settingsResult, customerResult] = await Promise.all([
-        salesApi.getSettings(),
-        sharedApi.listParties({ role: 'CUSTOMER', active: true }),
-      ]);
-      const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
-      const customerList = unwrap<PartyDTO[]>(customerResult);
-      setSettings(currentSettings);
-      setCustomers(Array.isArray(customerList) ? customerList : []);
+      await loadReferenceData();
 
       if (!isCreateMode && params.id) {
         const result = await salesApi.getSI(params.id);
@@ -64,6 +258,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
         setInvoice(loaded);
       } else {
         setInvoice(null);
+        setForm(createEmptyForm(initialSalesOrderId, initialCustomerId));
+        if (initialSalesOrderId) {
+          await loadSalesOrderLines(initialSalesOrderId);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load sales invoice detail', err);
@@ -82,37 +280,112 @@ const SalesInvoiceDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const setLine = (index: number, patch: Partial<EditableLine>) => {
+    setForm((prev) => {
+      const lines = [...prev.lines];
+      const current = lines[index];
+      const next: EditableLine = { ...current, ...patch };
+
+      if (patch.itemId !== undefined) {
+        const item = itemById[patch.itemId];
+        if (item) {
+          next.itemCode = item.code;
+          next.itemName = item.name;
+          next.uom = next.uom || item.salesUom || item.baseUom;
+          if (!next.warehouseId && settings?.defaultWarehouseId) {
+            next.warehouseId = settings.defaultWarehouseId;
+          }
+          if (!next.taxCodeId && item.defaultSalesTaxCodeId) {
+            const defaultTax = salesTaxCodes.find((taxCode) => taxCode.id === item.defaultSalesTaxCodeId);
+            if (defaultTax) next.taxCodeId = defaultTax.id;
+          }
+        } else {
+          next.itemCode = undefined;
+          next.itemName = undefined;
+          next.taxCodeId = undefined;
+        }
+      }
+
+      lines[index] = next;
+      return { ...prev, lines };
+    });
+  };
+
+  const addLine = () => {
+    setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] }));
+  };
+
+  const removeLine = (index: number) => {
+    setForm((prev) => {
+      if (prev.lines.length <= 1) return prev;
+      return {
+        ...prev,
+        lines: prev.lines.filter((_, idx) => idx !== index),
+      };
+    });
+  };
+
+  const validateBeforeSave = (): string | null => {
+    if (!form.customerId) return 'Customer is required.';
+    if (!form.invoiceDate) return 'Invoice date is required.';
+    if (!form.currency.trim()) return 'Currency is required.';
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return 'Exchange rate must be greater than 0.';
+    if (!form.lines.length) return 'At least one line is required.';
+
+    for (let i = 0; i < form.lines.length; i += 1) {
+      const line = form.lines[i];
+      if (!line.itemId) return `Line ${i + 1}: item is required.`;
+      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) {
+        return `Line ${i + 1}: unit price must be greater than or equal to 0.`;
+      }
+
+      const item = itemById[line.itemId];
+      if (item?.trackInventory && !line.warehouseId) {
+        return `Line ${i + 1}: warehouse is required for stock item ${item.name}.`;
+      }
+    }
+
+    return null;
+  };
+
+  const buildLinePayload = (line: EditableLine, index: number): SalesInvoiceLineInputDTO => {
+    const item = itemById[line.itemId];
+    return {
+      lineId: line.lineId,
+      lineNo: index + 1,
+      soLineId: line.soLineId || undefined,
+      dnLineId: line.dnLineId || undefined,
+      itemId: line.itemId || undefined,
+      invoicedQty: line.invoicedQty,
+      uom: line.uom || item?.salesUom || item?.baseUom || 'EA',
+      unitPriceDoc: line.unitPriceDoc,
+      taxCodeId: line.taxCodeId || undefined,
+      warehouseId: line.warehouseId || undefined,
+      description: line.description || undefined,
+    };
+  };
+
   const createDraft = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setBusy(true);
       setError(null);
 
-      if (!customerId) {
-        setError('Customer is required.');
-        return;
-      }
-      if (!invoiceDate) {
-        setError('Invoice date is required.');
-        return;
-      }
-      if (!currency) {
-        setError('Currency is required.');
-        return;
-      }
-      if (!exchangeRate || Number.isNaN(exchangeRate) || exchangeRate <= 0) {
-        setError('Exchange rate must be greater than 0.');
-        return;
-      }
-
       const payload: CreateSalesInvoicePayload = {
-        salesOrderId: salesOrderId || undefined,
-        customerId,
-        customerInvoiceNumber: customerInvoiceNumber || undefined,
-        invoiceDate,
-        dueDate: dueDate || undefined,
-        currency,
-        exchangeRate,
-        notes: notes || undefined,
+        salesOrderId: form.salesOrderId || undefined,
+        customerId: form.customerId,
+        customerInvoiceNumber: form.customerInvoiceNumber || undefined,
+        invoiceDate: form.invoiceDate,
+        dueDate: form.dueDate || undefined,
+        currency: form.currency.toUpperCase(),
+        exchangeRate: form.exchangeRate,
+        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        notes: form.notes || undefined,
       };
 
       const created = await salesApi.createSI(payload);
@@ -179,21 +452,36 @@ const SalesInvoiceDetailPage: React.FC = () => {
         <Card className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order ID (optional)</label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={salesOrderId}
-                onChange={(e) => setSalesOrderId(e.target.value)}
-                placeholder="salesOrderId"
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional)</label>
+              <div className="flex gap-2">
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.salesOrderId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
+                >
+                  <option value="">No sales order</option>
+                  {salesOrders.map((order) => (
+                    <option key={order.id} value={order.id}>
+                      {order.orderNumber} - {order.customerName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                  onClick={() => loadSalesOrderLines(form.salesOrderId)}
+                  disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+                >
+                  {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
+                </button>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
+                value={form.customerId}
+                onChange={(e) => setForm((prev) => ({ ...prev, customerId: e.target.value }))}
               >
                 <option value="">Select customer</option>
                 {customers.map((customer) => (
@@ -208,8 +496,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
               <input
                 type="text"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={customerInvoiceNumber}
-                onChange={(e) => setCustomerInvoiceNumber(e.target.value)}
+                value={form.customerInvoiceNumber}
+                onChange={(e) => setForm((prev) => ({ ...prev, customerInvoiceNumber: e.target.value }))}
               />
             </div>
             <div>
@@ -217,8 +505,8 @@ const SalesInvoiceDetailPage: React.FC = () => {
               <input
                 type="date"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
+                value={form.invoiceDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, invoiceDate: e.target.value }))}
               />
             </div>
             <div>
@@ -226,28 +514,27 @@ const SalesInvoiceDetailPage: React.FC = () => {
               <input
                 type="date"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                value={form.dueDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-slate-700">Currency</label>
+              <CurrencySelector
+                value={form.currency}
+                onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+                disabled={busy}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
-              <input
-                type="number"
-                min={0.000001}
-                step={0.000001}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(Number(e.target.value))}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-slate-700">Exchange Rate</label>
+              <CurrencyExchangeWidget
+                currency={form.currency}
+                baseCurrency={company?.baseCurrency || 'USD'}
+                voucherDate={form.invoiceDate}
+                value={form.exchangeRate}
+                onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+                disabled={busy}
               />
             </div>
           </div>
@@ -257,13 +544,181 @@ const SalesInvoiceDetailPage: React.FC = () => {
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
           </div>
 
           <div className="mt-4 text-xs text-slate-500">
-            If salesOrderId is provided, invoice lines are pre-filled by server quantity rules.
+            If a Sales Order is selected, you can load the remaining order lines into this draft.
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+              onClick={addLine}
+              disabled={busy}
+            >
+              Add Item
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="py-2 text-left">Item</th>
+                  <th className="py-2 text-right">Qty</th>
+                  <th className="py-2 text-left">UOM</th>
+                  <th className="py-2 text-right">Unit Price</th>
+                  <th className="py-2 text-left">Tax Code</th>
+                  <th className="py-2 text-left">Warehouse</th>
+                  <th className="py-2 text-right">Line Total</th>
+                  <th className="py-2 text-right">Tax</th>
+                  <th className="py-2 text-right">Line Base</th>
+                  <th className="py-2 text-right" />
+                </tr>
+              </thead>
+              <tbody>
+                {form.lines.map((line, index) => (
+                  <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
+                    <td className="py-2 pr-2">
+                      <select
+                        className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
+                        value={line.itemId}
+                        onChange={(e) => setLine(index, { itemId: e.target.value })}
+                      >
+                        <option value="">Select item</option>
+                        {items.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.code} - {item.name}
+                          </option>
+                        ))}
+                      </select>
+                      {(line.itemCode || line.itemName) && (
+                        <div className="mt-1 text-xs text-slate-500">
+                          {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0.000001}
+                        step={0.000001}
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                        value={line.invoicedQty}
+                        onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                        value={line.uom}
+                        onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                        value={line.unitPriceDoc}
+                        onChange={(e) => setLine(index, { unitPriceDoc: Number(e.target.value) })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
+                        value={line.taxCodeId || ''}
+                        onChange={(e) => setLine(index, { taxCodeId: e.target.value || undefined })}
+                      >
+                        <option value="">No Tax</option>
+                        {salesTaxCodes.map((taxCode) => (
+                          <option key={taxCode.id} value={taxCode.id}>
+                            {taxCode.code} ({Math.round(taxCode.rate * 100)}%)
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
+                        value={line.warehouseId || ''}
+                        disabled={busy}
+                        onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
+                      >
+                        <option value="">Select Warehouse</option>
+                        {warehouses.map((warehouse) => (
+                          <option key={warehouse.id} value={warehouse.id}>
+                            {warehouse.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      {form.currency} {computedLines[index]?.taxAmountDoc.toFixed(2)}
+                    </td>
+                    <td className="py-2 pr-2 text-right">{computedLines[index]?.lineTotalBase.toFixed(2)}</td>
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
+                        onClick={() => removeLine(index)}
+                        disabled={busy || form.lines.length <= 1}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Totals</h3>
+          <div className="grid gap-2 text-sm md:grid-cols-2">
+            <div className="flex justify-between">
+              <span className="text-slate-600">Subtotal ({form.currency})</span>
+              <span className="font-medium">
+                {form.currency} {totals.subtotalDoc.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Subtotal (Base)</span>
+              <span className="font-medium">{totals.subtotalBase.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Tax ({form.currency})</span>
+              <span className="font-medium">
+                {form.currency} {totals.taxTotalDoc.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600">Tax (Base)</span>
+              <span className="font-medium">{totals.taxTotalBase.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-2">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total ({form.currency})</span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {form.currency} {totals.grandTotalDoc.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-2">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total (Base)</span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">{totals.grandTotalBase.toFixed(2)}</span>
+            </div>
           </div>
         </Card>
 
@@ -271,7 +726,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
           type="button"
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           onClick={createDraft}
-          disabled={busy}
+          disabled={busy || orderLineLoading}
         >
           {busy ? 'Creating...' : 'Create Draft Invoice'}
         </button>
@@ -321,7 +776,9 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">SO Reference</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.salesOrderId || '-'}</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {(invoice.salesOrderId && salesOrderLabelById[invoice.salesOrderId]) || invoice.salesOrderId || '-'}
+            </div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Currency</div>
@@ -332,8 +789,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{invoice.exchangeRate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Sales Mode</div>
-            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{settings?.salesControlMode || '-'}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">Direct Invoicing</div>
+            <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+              {settings ? (settings.allowDirectInvoicing ? 'Enabled' : 'Disabled') : '-'}
+            </div>
           </div>
         </div>
       </Card>
@@ -435,3 +894,4 @@ const SalesInvoiceDetailPage: React.FC = () => {
 };
 
 export default SalesInvoiceDetailPage;
+

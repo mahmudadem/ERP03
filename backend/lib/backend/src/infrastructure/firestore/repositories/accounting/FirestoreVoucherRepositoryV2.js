@@ -177,14 +177,20 @@ class FirestoreVoucherRepositoryV2 {
         })
             .slice(offset, offset + limit);
     }
-    async delete(companyId, voucherId) {
+    async delete(companyId, voucherId, transaction) {
         const docRef = this.getCollection(companyId).doc(voucherId);
-        const snapshot = await docRef.get();
-        if (!snapshot.exists) {
-            return false;
+        if (transaction) {
+            transaction.delete(docRef);
+            return true;
         }
-        await docRef.delete();
-        return true;
+        else {
+            const snapshot = await docRef.get();
+            if (!snapshot.exists) {
+                return false;
+            }
+            await docRef.delete();
+            return true;
+        }
     }
     async existsByNumber(companyId, voucherNo) {
         const snapshot = await this.getCollection(companyId)

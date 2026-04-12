@@ -208,6 +208,13 @@ class InMemoryStockMovementRepository implements IStockMovementRepository {
   async getMovement(id: string): Promise<StockMovement | null> {
     return this.movements.find((movement) => movement.id === id) || null;
   }
+
+  async deleteMovement(companyId: string, id: string): Promise<void> {
+    const index = this.movements.findIndex((movement) => movement.companyId === companyId && movement.id === id);
+    if (index >= 0) {
+      this.movements.splice(index, 1);
+    }
+  }
 }
 
 class InMemoryStockLevelRepository implements IStockLevelRepository {
@@ -654,5 +661,65 @@ describe('RecordStockMovementUseCase', () => {
 
     expect(result.outMov.unitCostBase).toBe(320);
     expect(result.outMov.unsettledCostBasis).toBe('LAST_KNOWN');
+  });
+
+  it('Delete #17: deleting an inbound movement rebuilds qty, avg cost, and movement metadata', async () => {
+    addDefaultContext('USD');
+
+    await useCase.processIN({
+      companyId, itemId, warehouseId: whA, qty: 10, date: '2026-01-10',
+      movementType: 'OPENING_STOCK', refs: { type: 'OPENING', docId: 'opn-del-1' }, currentUser: 'user-1',
+      unitCostInMoveCurrency: 5, moveCurrency: 'USD', fxRateMovToBase: 32, fxRateCCYToBase: 32,
+    });
+
+    const secondIn = await useCase.processIN({
+      companyId, itemId, warehouseId: whA, qty: 10, date: '2026-01-11',
+      movementType: 'PURCHASE_RECEIPT', refs: { type: 'PURCHASE_INVOICE', docId: 'pinv-del-1' }, currentUser: 'user-1',
+      unitCostInMoveCurrency: 7, moveCurrency: 'USD', fxRateMovToBase: 32, fxRateCCYToBase: 32,
+    });
+
+    const out = await useCase.processOUT({
+      companyId, itemId, warehouseId: whA, qty: 5, date: '2026-01-12',
+      movementType: 'SALES_DELIVERY', refs: { type: 'SALES_INVOICE', docId: 'sinv-del-1' }, currentUser: 'user-1',
+    });
+
+    await useCase.deleteMovement(companyId, secondIn.id);
+
+    const level = await levelRepo.getLevel(companyId, itemId, whA);
+    expect(level?.qtyOnHand).toBe(5);
+    expect(level?.avgCostCCY).toBe(5);
+    expect(level?.avgCostBase).toBe(160);
+    expect(level?.lastCostCCY).toBe(5);
+    expect(level?.lastCostBase).toBe(160);
+    expect(level?.totalMovements).toBe(2);
+    expect(level?.lastMovementId).toBe(out.id);
+    expect(level?.maxBusinessDate).toBe('2026-01-12');
+    expect(level?.postingSeq).toBe(4);
+    expect(level?.version).toBe(4);
+    expect(await movementRepo.getMovement(secondIn.id)).toBeNull();
+  });
+
+  it('Delete #18: deleting the last remaining movement resets stock cost metadata', async () => {
+    addDefaultContext('USD');
+
+    const movement = await useCase.processIN({
+      companyId, itemId, warehouseId: whA, qty: 3, date: '2026-01-10',
+      movementType: 'OPENING_STOCK', refs: { type: 'OPENING', docId: 'opn-del-2' }, currentUser: 'user-1',
+      unitCostInMoveCurrency: 4, moveCurrency: 'USD', fxRateMovToBase: 32, fxRateCCYToBase: 32,
+    });
+
+    await useCase.deleteMovement(companyId, movement.id);
+
+    const level = await levelRepo.getLevel(companyId, itemId, whA);
+    expect(level?.qtyOnHand).toBe(0);
+    expect(level?.avgCostCCY).toBe(0);
+    expect(level?.avgCostBase).toBe(0);
+    expect(level?.lastCostCCY).toBe(0);
+    expect(level?.lastCostBase).toBe(0);
+    expect(level?.totalMovements).toBe(0);
+    expect(level?.lastMovementId).toBe('');
+    expect(level?.maxBusinessDate).toBe('1970-01-01');
+    expect(level?.postingSeq).toBe(2);
+    expect(level?.version).toBe(2);
   });
 });

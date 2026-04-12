@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Calculator,
   CheckCircle,
@@ -9,55 +9,95 @@ import {
   Settings,
   ShoppingCart,
 } from 'lucide-react';
-import { AccountDTO, accountingApi } from '../../../api/accountingApi';
-import { InitializeSalesPayload, salesApi, SalesControlMode } from '../../../api/salesApi';
+import { useAccounts, Account } from '../../../context/AccountsContext';
+import { inventoryApi } from '../../../api/inventoryApi';
+import { InitializeSalesPayload, salesApi } from '../../../api/salesApi';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 
 interface SalesInitializationWizardProps {
   onComplete: () => void;
 }
 
-const accountLabel = (account: AccountDTO): string =>
-  `${account.userCode || account.code || account.systemCode} - ${account.name}`;
+const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
-const stepTitles = ['Welcome', 'Sales Mode', 'Default Accounts', 'Defaults & Numbering', 'Review'];
+const stepTitles = ['Welcome', 'Sales Policy', 'Default Accounts', 'Defaults & Numbering', 'Review'];
 
 const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<AccountDTO[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const { validAccounts, isLoading: loadingAccountsContext, getAccountById, refreshAccounts } = useAccounts();
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
-  const [salesControlMode, setSalesControlMode] = useState<SalesControlMode>('SIMPLE');
-  const [defaultARAccountId, setDefaultARAccountId] = useState('');
+  const [allowDirectInvoicing, setAllowDirectInvoicing] = useState(true);
+  const [requireSOForStockItems, setRequireSOForStockItems] = useState(false);
+  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
   const [defaultRevenueAccountId, setDefaultRevenueAccountId] = useState('');
-  const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
   const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(30);
   const [soNumberPrefix, setSoNumberPrefix] = useState('SO');
   const [dnNumberPrefix, setDnNumberPrefix] = useState('DN');
   const [siNumberPrefix, setSiNumberPrefix] = useState('SI');
   const [srNumberPrefix, setSrNumberPrefix] = useState('SR');
+  const [inventorySettings, setInventorySettings] = useState<{
+    defaultInventoryAssetAccountId?: string;
+    defaultCOGSAccountId?: string;
+    inventoryAccountingMethod?: 'PERIODIC' | 'PERPETUAL';
+  } | null>(null);
 
   useEffect(() => {
-    const loadAccounts = async () => {
+    const loadData = async () => {
       try {
-        setLoadingAccounts(true);
-        const result = await accountingApi.getAccounts();
-        setAccounts(Array.isArray(result) ? result : []);
+        setLoadingSettings(true);
+        const inventorySettingsResult = await inventoryApi.getSettings().catch(() => null);
+
+        const invSettingsData = inventorySettingsResult
+          ? unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult)
+          : null;
+
+        setInventorySettings(invSettingsData);
+        if (invSettingsData?.inventoryAccountingMethod) {
+          setInventoryAccountingMethod(invSettingsData.inventoryAccountingMethod);
+        }
       } catch (err) {
-        console.error('Failed to load accounts for sales initialization', err);
-        setAccounts([]);
+        console.error('Failed to load dependencies for sales initialization', err);
       } finally {
-        setLoadingAccounts(false);
+        setLoadingSettings(false);
       }
     };
 
-    loadAccounts();
+    loadData();
   }, []);
+
+  const hasRefreshed = useRef(false);
+  // Force refresh accounts once on mount to catch newly created ones
+  useEffect(() => {
+    if (!hasRefreshed.current) {
+      refreshAccounts();
+      hasRefreshed.current = true;
+    }
+  }, [refreshAccounts]);
+
+  const revenueAccounts = useMemo(
+    () =>
+      validAccounts.filter(
+        (account) => {
+          const classification = String(account.classification || account.type || '').toUpperCase();
+          return (classification === 'REVENUE' || classification === 'INCOME');
+        }
+      ),
+    [validAccounts]
+  );
+
+  const getAccountLabel = (accountId?: string) => {
+    if (!accountId) return 'Not Configured';
+    const account = getAccountById(accountId);
+    return account ? `${account.code} - ${account.name}` : accountId;
+  };
+
+  const isLoading = loadingAccountsContext || loadingSettings;
 
   const stepError = useMemo(() => {
     if (currentStep === 2) {
-      if (!defaultARAccountId) return 'Default AR account is required.';
       if (!defaultRevenueAccountId) return 'Default Revenue account is required.';
     }
 
@@ -68,7 +108,12 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     }
 
     return null;
-  }, [currentStep, defaultARAccountId, defaultPaymentTermsDays, defaultRevenueAccountId]);
+  }, [
+    currentStep,
+    defaultPaymentTermsDays,
+    defaultRevenueAccountId,
+    inventoryAccountingMethod,
+  ]);
 
   const goNext = () => {
     if (stepError) {
@@ -95,10 +140,9 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       setError(null);
 
       const payload: InitializeSalesPayload = {
-        salesControlMode,
-        defaultARAccountId,
+        allowDirectInvoicing,
+        requireSOForStockItems,
         defaultRevenueAccountId,
-        defaultCOGSAccountId: defaultCOGSAccountId || undefined,
         defaultPaymentTermsDays,
         soNumberPrefix: soNumberPrefix || 'SO',
         dnNumberPrefix: dnNumberPrefix || 'DN',
@@ -135,13 +179,13 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Calculator className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Sales Mode</h3>
-              <p className="text-sm text-gray-600">Choose SIMPLE or CONTROLLED policy.</p>
+              <h3 className="font-semibold text-gray-900 mb-1">Sales Policy</h3>
+              <p className="text-sm text-gray-600">Configure direct invoicing and stock-item order requirements.</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
               <h3 className="font-semibold text-gray-900 mb-1">Default Accounts</h3>
-              <p className="text-sm text-gray-600">Set AR, Revenue, and optional COGS accounts.</p>
+              <p className="text-sm text-gray-600">Set Revenue defaults and perpetual-only COGS/Inventory controls.</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Settings className="w-8 h-8 text-primary-600 mb-3" />
@@ -156,36 +200,32 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     if (currentStep === 1) {
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Select Sales Control Mode</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center">Configure Sales Policy</h2>
           <p className="text-gray-600 text-center mb-6">
-            This controls stock flow between Sales Order, Delivery Note, and Sales Invoice.
+            These toggles control document requirements for stock flow and invoicing behavior.
           </p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
-              type="radio"
-              name="salesControlMode"
-              value="SIMPLE"
-              checked={salesControlMode === 'SIMPLE'}
-              onChange={() => setSalesControlMode('SIMPLE')}
+              type="checkbox"
+              checked={allowDirectInvoicing}
+              onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
             />
             <div>
-              <div className="font-semibold text-gray-900">SIMPLE</div>
-              <div className="text-sm text-gray-600">Sales invoices can handle stock delivery directly.</div>
+              <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
+              <div className="text-sm text-gray-600">When enabled, invoices can post stock directly without a delivery note path.</div>
             </div>
           </label>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
-              type="radio"
-              name="salesControlMode"
-              value="CONTROLLED"
-              checked={salesControlMode === 'CONTROLLED'}
-              onChange={() => setSalesControlMode('CONTROLLED')}
+              type="checkbox"
+              checked={requireSOForStockItems}
+              onChange={(e) => setRequireSOForStockItems(e.target.checked)}
             />
             <div>
-              <div className="font-semibold text-gray-900">CONTROLLED</div>
-              <div className="text-sm text-gray-600">Stock items must flow through SO → DN → SI.</div>
+              <div className="font-semibold text-gray-900">Require Sales Orders for Stock Items</div>
+              <div className="text-sm text-gray-600">When enabled, delivery and stock-item flows require a Sales Order reference.</div>
             </div>
           </label>
         </div>
@@ -196,57 +236,46 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-5">
           <h2 className="text-2xl font-bold text-gray-900 text-center">Default Accounts</h2>
-          <p className="text-gray-600 text-center mb-4">Required accounts must be set before initialization.</p>
+          <p className="text-gray-600 text-center mb-4 text-sm px-6">
+            Pick a <b>Posting</b> Revenue account to serve as the global fallback.
+          </p>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default AR Account</label>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={defaultARAccountId}
-              onChange={(e) => setDefaultARAccountId(e.target.value)}
-              disabled={loadingAccounts}
-            >
-              <option value="">{loadingAccounts ? 'Loading accounts...' : 'Select AR account'}</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {accountLabel(account)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default Revenue Account</label>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Default Revenue Account</label>
+            <AccountSelector
               value={defaultRevenueAccountId}
-              onChange={(e) => setDefaultRevenueAccountId(e.target.value)}
-              disabled={loadingAccounts}
-            >
-              <option value="">Select Revenue account</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {accountLabel(account)}
-                </option>
-              ))}
-            </select>
+              onChange={(account: any) => setDefaultRevenueAccountId(account?.id || '')}
+              accounts={revenueAccounts}
+              placeholder="Select REVENUE POSTING account"
+              disabled={isLoading}
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              Only Posting accounts with classification "REVENUE" are shown here.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default COGS Account (Optional)</label>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={defaultCOGSAccountId}
-              onChange={(e) => setDefaultCOGSAccountId(e.target.value)}
-              disabled={loadingAccounts}
-            >
-              <option value="">Optional</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {accountLabel(account)}
-                </option>
-              ))}
-            </select>
+          <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Settings className="w-3.5 h-3.5 text-gray-400" />
+              Related Inventory Accounts (View Only)
+            </h4>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">Default Inventory Asset</span>
+                <span className="text-sm font-medium text-gray-600 truncate block mt-1 py-1 px-2 bg-white rounded border border-gray-100">
+                  {getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">Default COGS Account</span>
+                <span className="text-sm font-medium text-gray-600 truncate block mt-1 py-1 px-2 bg-white rounded border border-gray-100">
+                  {getAccountLabel(inventorySettings?.defaultCOGSAccountId)}
+                </span>
+              </div>
+            </div>
+            <p className="mt-4 text-[11px] text-gray-400 italic">
+              These were configured during Inventory initialization and will be used for Perpetual stock movements.
+            </p>
           </div>
         </div>
       );
@@ -317,15 +346,33 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
 
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-1">Sales Mode</h3>
-            <p className="text-lg font-semibold text-gray-900">{salesControlMode}</p>
+            <h3 className="text-sm text-gray-600 mb-1">Sales Policy</h3>
+            <p className="text-sm text-gray-900">Allow Direct Invoicing: {allowDirectInvoicing ? 'Yes' : 'No'}</p>
+            <p className="text-sm text-gray-900">Require SO for Stock Items: {requireSOForStockItems ? 'Yes' : 'No'}</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2">Accounts</h3>
-            <p className="text-sm text-gray-900">AR: {defaultARAccountId || 'Not selected'}</p>
-            <p className="text-sm text-gray-900">Revenue: {defaultRevenueAccountId || 'Not selected'}</p>
-            <p className="text-sm text-gray-900">COGS: {defaultCOGSAccountId || 'Not selected'}</p>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Finance & Accounts</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                <span className="text-gray-500">Default Revenue Account</span>
+                <span className="font-semibold text-gray-900">{getAccountLabel(defaultRevenueAccountId)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 text-gray-400 italic">
+                <span className="flex items-center gap-1.5 opacity-70">
+                  <Settings className="w-3 h-3" />
+                  Default Inventory Asset (From Inventory)
+                </span>
+                <span className="text-xs truncate max-w-[200px]">{getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm text-gray-400 italic">
+                <span className="flex items-center gap-1.5 opacity-70">
+                  <Settings className="w-3 h-3" />
+                  Default COGS Account (From Inventory)
+                </span>
+                <span className="text-xs truncate max-w-[200px]">{getAccountLabel(inventorySettings?.defaultCOGSAccountId)}</span>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">

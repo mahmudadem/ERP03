@@ -442,6 +442,65 @@ class RecordStockMovementUseCase {
     maxDate(a, b) {
         return b > a ? b : a;
     }
+    rebuildLevelFromMovements(currentLevel, remainingMovements, baseCurrency, costCurrency) {
+        const rebuilt = StockLevel_1.StockLevel.createNew(currentLevel.companyId, currentLevel.itemId, currentLevel.warehouseId);
+        rebuilt.reservedQty = currentLevel.reservedQty;
+        for (const entry of remainingMovements) {
+            if (entry.direction === 'IN') {
+                const qtyBefore = rebuilt.qtyOnHand;
+                if (qtyBefore > 0) {
+                    const newQty = qtyBefore + entry.qty;
+                    rebuilt.avgCostBase = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(((rebuilt.avgCostBase * qtyBefore) + (entry.unitCostBase * entry.qty)) / newQty, baseCurrency);
+                    rebuilt.avgCostCCY = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(((rebuilt.avgCostCCY * qtyBefore) + (entry.unitCostCCY * entry.qty)) / newQty, costCurrency);
+                }
+                else {
+                    rebuilt.avgCostBase = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(entry.unitCostBase, baseCurrency);
+                    rebuilt.avgCostCCY = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(entry.unitCostCCY, costCurrency);
+                }
+                rebuilt.qtyOnHand += entry.qty;
+                rebuilt.lastCostBase = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(entry.unitCostBase, baseCurrency);
+                rebuilt.lastCostCCY = (0, CurrencyPrecisionHelpers_1.roundByCurrency)(entry.unitCostCCY, costCurrency);
+            }
+            else {
+                rebuilt.qtyOnHand -= entry.qty;
+            }
+            rebuilt.totalMovements += 1;
+            rebuilt.maxBusinessDate = this.maxDate(rebuilt.maxBusinessDate, entry.date);
+            rebuilt.lastMovementId = entry.id;
+        }
+        return rebuilt;
+    }
+    async deleteMovement(companyId, id, transaction) {
+        const movement = await this.deps.stockMovementRepository.getMovement(id);
+        if (!movement || movement.companyId !== companyId)
+            return;
+        const { item, baseCurrency } = await this.loadItemContext(companyId, movement.itemId);
+        const execute = async (txn) => {
+            const currentLevel = await this.getOrCreateStockLevel(txn, companyId, movement.itemId, movement.warehouseId);
+            const remainingMovements = (await this.deps.stockMovementRepository.getItemMovements(companyId, movement.itemId))
+                .filter((entry) => entry.warehouseId === movement.warehouseId && entry.id !== id)
+                .sort((a, b) => {
+                if (a.postingSeq !== b.postingSeq)
+                    return a.postingSeq - b.postingSeq;
+                const dateCmp = a.date.localeCompare(b.date);
+                if (dateCmp !== 0)
+                    return dateCmp;
+                return a.id.localeCompare(b.id);
+            });
+            const rebuiltLevel = this.rebuildLevelFromMovements(currentLevel, remainingMovements, baseCurrency, item.costCurrency);
+            rebuiltLevel.postingSeq = currentLevel.postingSeq + 1;
+            rebuiltLevel.version = currentLevel.version + 1;
+            rebuiltLevel.updatedAt = new Date();
+            await this.deps.stockLevelRepository.upsertLevelInTransaction(txn, rebuiltLevel);
+            await this.deps.stockMovementRepository.deleteMovement(companyId, id, txn);
+        };
+        if (transaction) {
+            await execute(transaction);
+        }
+        else {
+            await this.deps.transactionManager.runTransaction(async (txn) => execute(txn));
+        }
+    }
 }
 exports.RecordStockMovementUseCase = RecordStockMovementUseCase;
 //# sourceMappingURL=RecordStockMovementUseCase.js.map

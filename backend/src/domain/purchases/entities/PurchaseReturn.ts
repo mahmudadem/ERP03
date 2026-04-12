@@ -1,5 +1,5 @@
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 
 export interface PurchaseReturnLine {
   lineId: string;
@@ -58,7 +58,7 @@ export interface PurchaseReturnProps {
 }
 
 const PR_STATUSES: PRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
-const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE'];
+const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: any): Date => {

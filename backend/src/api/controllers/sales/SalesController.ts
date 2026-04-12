@@ -41,6 +41,8 @@ import { SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SRStatus } from '../../../domain/sales/entities/SalesReturn';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { SalesDTOMapper } from '../../dtos/SalesDTOs';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import {
   validateCreateDeliveryNoteInput,
   validateCreateSalesReturnInput,
@@ -135,6 +137,24 @@ export class SalesController {
     return new SalesInventoryService(SalesController.buildMovementUseCase());
   }
 
+  private static buildAccountingPostingService(validateAccounts: boolean = false): SubledgerVoucherPostingService {
+    if (validateAccounts) {
+      return new SubledgerVoucherPostingService(
+        diContainer.voucherRepository,
+        diContainer.ledgerRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.accountRepository,
+        new VoucherValidationService()
+      );
+    }
+
+    return new SubledgerVoucherPostingService(
+      diContainer.voucherRepository,
+      diContainer.ledgerRepository,
+      diContainer.companyCurrencyRepository
+    );
+  }
+
   static async initializeSales(req: Request, res: Response, next: NextFunction) {
     try {
       validateInitializeSalesInput((req as any).body);
@@ -144,7 +164,9 @@ export class SalesController {
       const useCase = new InitializeSalesUseCase(
         diContainer.salesSettingsRepository,
         diContainer.accountRepository,
-        diContainer.companyModuleRepository
+        diContainer.companyModuleRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
 
       const settings = await useCase.execute({
@@ -165,7 +187,11 @@ export class SalesController {
   static async getSettings(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesController.getCompanyId(req);
-      const useCase = new GetSalesSettingsUseCase(diContainer.salesSettingsRepository);
+      const useCase = new GetSalesSettingsUseCase(
+        diContainer.salesSettingsRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
       const settings = await useCase.execute(companyId);
 
       (res as any).json({
@@ -184,7 +210,9 @@ export class SalesController {
 
       const useCase = new UpdateSalesSettingsUseCase(
         diContainer.salesSettingsRepository,
-        diContainer.accountRepository
+        diContainer.accountRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
 
       const settings = await useCase.execute({
@@ -418,6 +446,7 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const inventoryService = SalesController.buildSalesInventoryService();
+      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const useCase = new PostDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
@@ -429,8 +458,7 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
-        diContainer.voucherRepository,
-        diContainer.ledgerRepository,
+        accountingPostingService,
         diContainer.transactionManager
       );
 
@@ -546,9 +574,11 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const inventoryService = SalesController.buildSalesInventoryService();
+      const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
       const useCase = new PostSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.salesInvoiceRepository,
         diContainer.salesOrderRepository,
         diContainer.deliveryNoteRepository,
@@ -560,8 +590,8 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
-        diContainer.voucherRepository,
-        diContainer.ledgerRepository,
+        accountingPostingService,
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 
@@ -646,9 +676,11 @@ export class SalesController {
       const companyId = SalesController.getCompanyId(req);
       const id = String((req as any).params.id);
       const inventoryService = SalesController.buildSalesInventoryService();
+      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const useCase = new PostSalesReturnUseCase(
         diContainer.salesSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.salesReturnRepository,
         diContainer.salesInvoiceRepository,
         diContainer.deliveryNoteRepository,
@@ -660,8 +692,7 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
-        diContainer.voucherRepository,
-        diContainer.ledgerRepository,
+        accountingPostingService,
         diContainer.transactionManager
       );
 

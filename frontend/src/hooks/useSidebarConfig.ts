@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useRBAC } from '../api/rbac/useRBAC';
 import { moduleMenuMap } from '../config/moduleMenuMap';
-import { useVoucherTypes } from './useVoucherTypes';
+import { useVoucherTypes, SidebarFormEntry } from './useVoucherTypes';
 import { useTranslation } from 'react-i18next';
 
 type SidebarItem = {
@@ -12,10 +12,17 @@ type SidebarItem = {
   children?: SidebarItem[];
 };
 
+// Maps module IDs to their base route and permission prefix
+const MODULE_ROUTE_MAP: Record<string, { baseRoute: string; permission: string; icon: string }> = {
+  accounting: { baseRoute: '/accounting/vouchers', permission: 'accounting.vouchers.view', icon: 'File' },
+  sales:      { baseRoute: '/sales',               permission: 'sales.view',               icon: 'File' },
+  purchase:   { baseRoute: '/purchases',            permission: 'purchase.view',            icon: 'File' },
+};
+
 export const useSidebarConfig = () => {
   const { isSuperAdmin, moduleBundles, resolvedPermissions } = useCompanyAccess();
   const { hasPermission } = useRBAC();
-  const { voucherTypes } = useVoucherTypes();
+  const { voucherTypes, allModuleForms } = useVoucherTypes();
   const { t } = useTranslation('common');
 
   const labelKeyMap: Record<string, string> = {
@@ -33,6 +40,7 @@ export const useSidebarConfig = () => {
     'Subgroup Tagging': 'sidebar.subgroupTagging',
     'Approval Center': 'sidebar.approvalCenter',
     Vouchers: 'sidebar.vouchers',
+    Documents: 'sidebar.documents',
     'All Vouchers': 'sidebar.allVouchers',
     'Forms Designer': 'sidebar.formsDesigner',
     'Window Designer': 'sidebar.windowDesigner',
@@ -76,6 +84,79 @@ export const useSidebarConfig = () => {
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
 
+  /**
+   * Build dynamic form groups for a given module from allModuleForms.
+   * Groups forms by their sidebarGroup. If sidebarGroup is null, they become top-level items.
+   */
+  const buildDynamicFormGroups = (moduleId: string): SidebarItem[] => {
+    const moduleKey = moduleId.toUpperCase();
+    const moduleForms = allModuleForms.filter(f => f.module === moduleKey && f.enabled);
+    if (moduleForms.length === 0) return [];
+
+    const routeConfig = MODULE_ROUTE_MAP[moduleId];
+    if (!routeConfig) return [];
+
+    // Group by sidebarGroup
+    const groups = new Map<string, SidebarFormEntry[]>();
+    const topLevel: SidebarFormEntry[] = [];
+
+    moduleForms.forEach(form => {
+      if (form.sidebarGroup) {
+        if (!groups.has(form.sidebarGroup)) {
+          groups.set(form.sidebarGroup, []);
+        }
+        groups.get(form.sidebarGroup)!.push(form);
+      } else {
+        topLevel.push(form);
+      }
+    });
+
+    const result: SidebarItem[] = [];
+
+    // Add grouped items as submenus
+    groups.forEach((forms, groupName) => {
+      const children: SidebarItem[] = [];
+
+      // For accounting, add "All Vouchers" link at the top
+      if (moduleId === 'accounting' && groupName === 'Vouchers') {
+        children.push({
+          label: translateLabel('All Vouchers'),
+          path: '/accounting/vouchers',
+          icon: 'FileSearch'
+        });
+      }
+
+      forms.forEach(form => {
+        children.push({
+          label: form.name,
+          path: moduleId === 'accounting' 
+            ? `${routeConfig.baseRoute}?type=${form.id}`
+            : `${routeConfig.baseRoute}/${form.code.replace(/_/g, '-')}`,
+          icon: routeConfig.icon
+        });
+      });
+
+      result.push({
+        label: translateLabel(groupName),
+        icon: groupName === 'Vouchers' ? 'FileText' : 'FolderOpen',
+        children
+      });
+    });
+
+    // Add top-level items (no submenu)
+    topLevel.forEach(form => {
+      result.push({
+        label: form.name,
+        path: moduleId === 'accounting'
+          ? `${routeConfig.baseRoute}?type=${form.id}`
+          : `${routeConfig.baseRoute}/${form.code.replace(/_/g, '-')}`,
+        icon: routeConfig.icon
+      });
+    });
+
+    return result;
+  };
+
   const sidebarSections = useMemo(() => {
     const sections: Record<string, { icon: string; items: SidebarItem[] }> = {};
 
@@ -108,7 +189,7 @@ export const useSidebarConfig = () => {
       if (m === 'financial') return ['accounting'];
       return [m];
     });
-    const activeModules: string[] = Array.from(new Set(mapped));
+    const activeModules: string[] = Array.from(new Set([...mapped, 'tools']));
 
     activeModules.forEach((moduleId) => {
       const def = moduleMenuMap[moduleId] || {
@@ -118,56 +199,45 @@ export const useSidebarConfig = () => {
       };
       let items = def.items.filter((item) => hasPermission(item.permission));
       
-      if (moduleId === 'accounting') {
-        items = items.filter(item => item.label !== 'Vouchers');
+      // === DYNAMIC FORM INJECTION ===
+      // For modules with dynamic forms (accounting, sales, purchase),
+      // inject form entries grouped by sidebarGroup
+      
+      const dynamicModuleId = moduleId === 'purchases' ? 'purchase' : moduleId;
+      
+      if (MODULE_ROUTE_MAP[dynamicModuleId]) {
+        const dynamicGroups = buildDynamicFormGroups(dynamicModuleId);
         
-        const voucherChildren = [
-          { 
-            label: translateLabel('All Vouchers'), 
-            path: '/accounting/vouchers', 
-            permission: 'accounting.vouchers.view',
-            icon: 'FileSearch'
-          },
-          ...voucherTypes
-            .filter(vt => vt.enabled !== false)
-            .map(vt => ({
-              label: vt.name,
-              path: `/accounting/vouchers?type=${vt.id}`,
-              permission: 'accounting.vouchers.view',
-              icon: 'File'
-            }))
-        ];
-        
-        const vouchersGroup = {
-          label: translateLabel('Vouchers'),
-          icon: 'FileText',
-          children: voucherChildren.filter(item => hasPermission(item.permission))
-        } as any;
-        
-        const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
-        if (coaIndex >= 0) {
-          items = [
-            ...items.slice(0, coaIndex + 1),
-            vouchersGroup,
-            { 
-              label: translateLabel('Window Designer'), 
-              path: '/accounting/window-config-test',
-              permission: 'accounting.settings.manage',
-              icon: 'DraftingCompass'
-            },
-            ...items.slice(coaIndex + 1)
-          ];
-        } else {
-          items = [
-            vouchersGroup,
-            { 
-              label: translateLabel('Window Designer'), 
-              path: '/accounting/window-config-test',
-              permission: 'accounting.settings.manage',
-              icon: 'DraftingCompass'
-            },
-            ...items
-          ];
+        if (dynamicGroups.length > 0) {
+          if (moduleId === 'accounting') {
+            // ACCOUNTING: Remove hardcoded "Vouchers" and inject dynamic groups after COA
+            items = items.filter(item => item.label !== 'Vouchers');
+            
+            const coaIndex = items.findIndex(item => item.label === 'Chart of Accounts');
+            const insertIndex = coaIndex >= 0 ? coaIndex + 1 : 0;
+            
+            items = [
+              ...items.slice(0, insertIndex),
+              ...dynamicGroups as any[],
+              { 
+                label: translateLabel('Window Designer'), 
+                path: '/accounting/window-config-test',
+                permission: 'accounting.settings.manage',
+                icon: 'DraftingCompass'
+              },
+              ...items.slice(insertIndex)
+            ] as any;
+          } else {
+            // SALES / PURCHASE: Inject dynamic groups before Settings
+            const settingsIndex = items.findIndex(item => item.label === 'Settings');
+            const insertIndex = settingsIndex >= 0 ? settingsIndex : items.length;
+            
+            items = [
+              ...items.slice(0, insertIndex),
+              ...dynamicGroups as any[],
+              ...items.slice(insertIndex)
+            ] as any;
+          }
         }
       }
       
@@ -193,7 +263,7 @@ export const useSidebarConfig = () => {
     });
 
     return sections;
-  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions, voucherTypes, t]);
+  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions, allModuleForms, voucherTypes, t]);
 
   return sidebarSections;
 };

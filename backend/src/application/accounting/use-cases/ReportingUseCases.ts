@@ -243,7 +243,12 @@ export class GetGeneralLedgerUseCase {
 
       const role = String(account?.accountRole || '').toUpperCase();
       const isHeader = role === 'HEADER' || account?.hasChildren === true;
-      if (!isHeader) scoped.add(id);
+      
+      // Always include the account itself if it was the one explicitly requested, 
+      // or if it is a posting account.
+      if (id === accountId || !isHeader) {
+        scoped.add(id);
+      }
 
       const children = childrenMap.get(id) || [];
       children.forEach((child: any) => {

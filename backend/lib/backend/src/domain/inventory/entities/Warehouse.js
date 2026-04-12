@@ -10,7 +10,7 @@ const toDate = (value) => {
 };
 class Warehouse {
     constructor(props) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         if (!((_a = props.id) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('Warehouse id is required');
         if (!((_b = props.companyId) === null || _b === void 0 ? void 0 : _b.trim()))
@@ -23,6 +23,7 @@ class Warehouse {
         this.companyId = props.companyId;
         this.name = props.name.trim();
         this.code = props.code.trim();
+        this.parentId = ((_e = props.parentId) === null || _e === void 0 ? void 0 : _e.trim()) || null;
         this.address = props.address;
         this.active = props.active;
         this.isDefault = props.isDefault;
@@ -30,11 +31,13 @@ class Warehouse {
         this.updatedAt = props.updatedAt;
     }
     toJSON() {
+        var _a;
         return {
             id: this.id,
             companyId: this.companyId,
             name: this.name,
             code: this.code,
+            parentId: (_a = this.parentId) !== null && _a !== void 0 ? _a : null,
             address: this.address,
             active: this.active,
             isDefault: this.isDefault,
@@ -43,15 +46,16 @@ class Warehouse {
         };
     }
     static fromJSON(data) {
-        var _a, _b;
+        var _a, _b, _c;
         return new Warehouse({
             id: data.id,
             companyId: data.companyId,
             name: data.name,
             code: data.code || data.name,
+            parentId: (_a = data.parentId) !== null && _a !== void 0 ? _a : null,
             address: data.address || data.location,
-            active: (_a = data.active) !== null && _a !== void 0 ? _a : true,
-            isDefault: (_b = data.isDefault) !== null && _b !== void 0 ? _b : false,
+            active: (_b = data.active) !== null && _b !== void 0 ? _b : true,
+            isDefault: (_c = data.isDefault) !== null && _c !== void 0 ? _c : false,
             createdAt: toDate(data.createdAt || new Date()),
             updatedAt: toDate(data.updatedAt || new Date()),
         });

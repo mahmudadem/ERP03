@@ -21,7 +21,6 @@ const SalesHomePage: React.FC = () => {
   const { companyId } = useCompanyAccess();
 
   const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [orders, setOrders] = useState<SalesOrderDTO[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +37,6 @@ const SalesHomePage: React.FC = () => {
         const salesModule = modules.find((module) => module.moduleCode === 'sales');
         if (salesModule && !salesModule.initialized) {
           setInitialized(false);
-          setSettings(null);
           setOrders([]);
           setInvoices([]);
           return;
@@ -50,14 +48,12 @@ const SalesHomePage: React.FC = () => {
 
       if (!currentSettings) {
         setInitialized(false);
-        setSettings(null);
         setOrders([]);
         setInvoices([]);
         return;
       }
 
       setInitialized(true);
-      setSettings(currentSettings);
 
       const [ordersResult, invoicesResult] = await Promise.all([
         salesApi.listSOs({ limit: 200 }),
@@ -148,9 +144,6 @@ const SalesHomePage: React.FC = () => {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Overview</h1>
-          <p className="text-sm text-slate-600">
-            Mode: <span className="font-semibold">{settings?.salesControlMode || 'SIMPLE'}</span>
-          </p>
         </div>
         <div className="flex gap-2">
           <button

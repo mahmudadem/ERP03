@@ -25,6 +25,8 @@ export interface InventoryItemDTO {
   minStockLevel?: number;
   maxStockLevel?: number;
   reorderPoint?: number;
+  imageUrl?: string;
+  metadata?: Record<string, any>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -48,6 +50,7 @@ export interface InventoryWarehouseDTO {
   companyId: string;
   name: string;
   code: string;
+  parentId?: string | null;
   address?: string;
   isDefault: boolean;
   active: boolean;
@@ -67,13 +70,59 @@ export interface UomConversionDTO {
 
 export interface InventorySettingsDTO {
   companyId: string;
+  inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
+  defaultInventoryAssetAccountId?: string;
+  defaultCOGSAccountId?: string;
   allowNegativeStock: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
   itemCodeNextSeq: number;
+}
+
+export interface OpeningStockDocumentDTO {
+  id: string;
+  companyId: string;
+  warehouseId: string;
+  date: string;
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  createAccountingEffect: boolean;
+  openingBalanceAccountId?: string;
+  voucherId?: string;
+  totalValueBase: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: Array<{
+    lineId: string;
+    itemId: string;
+    quantity: number;
+    unitCostInMoveCurrency: number;
+    moveCurrency: string;
+    fxRateMovToBase: number;
+    fxRateCCYToBase: number;
+    unitCostBase: number;
+    totalValueBase: number;
+  }>;
+}
+
+export interface OpeningStockDocumentUpsertPayload {
+  warehouseId: string;
+  date: string;
+  notes?: string;
+  createAccountingEffect?: boolean;
+  openingBalanceAccountId?: string;
+  lines: Array<{
+    itemId: string;
+    quantity: number;
+    unitCostInMoveCurrency: number;
+    moveCurrency: string;
+    fxRateMovToBase: number;
+    fxRateCCYToBase: number;
+  }>;
 }
 
 export interface StockLevelDTO {
@@ -266,8 +315,11 @@ export interface ReconcileResultDTO {
 
 export const inventoryApi = {
   initialize: (payload: {
+    inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
     defaultWarehouseName?: string;
     defaultWarehouseCode?: string;
+    defaultInventoryAssetAccountId?: string;
+    defaultCOGSAccountId?: string;
     defaultCostCurrency?: string;
     allowNegativeStock?: boolean;
     autoGenerateItemCode?: boolean;
@@ -285,7 +337,7 @@ export const inventoryApi = {
   createItem: (payload: Partial<InventoryItemDTO>): Promise<InventoryItemDTO> =>
     client.post('/tenant/inventory/items', payload),
 
-  listItems: (filters?: { type?: string; categoryId?: string; active?: boolean; limit?: number; offset?: number }): Promise<InventoryItemDTO[]> =>
+  listItems: (filters?: { type?: string; categoryId?: string; active?: boolean; trackInventory?: boolean; limit?: number; offset?: number }): Promise<InventoryItemDTO[]> =>
     client.get('/tenant/inventory/items', { params: filters }),
 
   getItem: (id: string): Promise<InventoryItemDTO | null> =>
@@ -297,8 +349,15 @@ export const inventoryApi = {
   deleteItem: (id: string): Promise<{ success: boolean }> =>
     client.delete(`/tenant/inventory/items/${id}`),
 
-  searchItems: (q: string, limit?: number, offset?: number): Promise<InventoryItemDTO[]> =>
-    client.get('/tenant/inventory/items/search', { params: { q, limit, offset } }),
+  searchItems: (
+    q: string,
+    limit?: number,
+    offset?: number,
+    filters?: { trackInventory?: boolean }
+  ): Promise<InventoryItemDTO[]> =>
+    client.get('/tenant/inventory/items/search', {
+      params: { q, limit, offset, ...(filters || {}) },
+    }),
 
   createCategory: (payload: Partial<InventoryCategoryDTO>): Promise<InventoryCategoryDTO> =>
     client.post('/tenant/inventory/categories', payload),
@@ -317,6 +376,9 @@ export const inventoryApi = {
 
   listWarehouses: (filters?: { active?: boolean; limit?: number; offset?: number }): Promise<InventoryWarehouseDTO[]> =>
     client.get('/tenant/inventory/warehouses', { params: filters }),
+
+  getWarehouse: (id: string): Promise<InventoryWarehouseDTO> =>
+    client.get(`/tenant/inventory/warehouses/${id}`),
 
   updateWarehouse: (id: string, payload: Partial<InventoryWarehouseDTO>): Promise<InventoryWarehouseDTO> =>
     client.put(`/tenant/inventory/warehouses/${id}`, payload),
@@ -359,6 +421,21 @@ export const inventoryApi = {
     fxRateCCYToBase: number;
     notes?: string;
   }): Promise<StockMovementDTO> => client.post('/tenant/inventory/movements/opening', payload),
+
+  createOpeningStockDocument: (payload: OpeningStockDocumentUpsertPayload): Promise<OpeningStockDocumentDTO> =>
+    client.post('/tenant/inventory/opening-stock-documents', payload),
+
+  listOpeningStockDocuments: (status?: 'DRAFT' | 'POSTED'): Promise<OpeningStockDocumentDTO[]> =>
+    client.get('/tenant/inventory/opening-stock-documents', { params: { status } }),
+
+  updateOpeningStockDocument: (id: string, payload: OpeningStockDocumentUpsertPayload): Promise<OpeningStockDocumentDTO> =>
+    client.put(`/tenant/inventory/opening-stock-documents/${id}`, payload),
+
+  deleteOpeningStockDocument: (id: string): Promise<{ success: boolean }> =>
+    client.delete(`/tenant/inventory/opening-stock-documents/${id}`),
+
+  postOpeningStockDocument: (id: string): Promise<OpeningStockDocumentDTO> =>
+    client.post(`/tenant/inventory/opening-stock-documents/${id}/post`, {}),
 
   processReturn: (payload: {
     itemId: string;

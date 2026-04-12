@@ -10,37 +10,85 @@ import {
   Wand2,
 } from 'lucide-react';
 import { inventoryApi } from '../../../api/inventoryApi';
+import { Account, useAccounts } from '../../../context/AccountsContext';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 
 interface InventoryInitializationWizardProps {
   onComplete: () => void;
 }
 
-const stepTitles = ['Welcome', 'Default Warehouse', 'Inventory Settings', 'Confirm & Initialize'];
+const stepTitles = ['Welcome', 'Accounting Method', 'Default Warehouse', 'Inventory Settings', 'Confirm & Initialize'];
+
+const accountLabel = (account: Account): string =>
+  `${account.code} - ${account.name}`;
 
 export const InventoryInitializationWizard: React.FC<InventoryInitializationWizardProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { accounts, isLoading: loadingAccounts } = useAccounts();
 
   const [defaultWarehouseName, setDefaultWarehouseName] = useState('Main Warehouse');
   const [defaultWarehouseCode, setDefaultWarehouseCode] = useState('MAIN');
   const [defaultWarehouseAddress, setDefaultWarehouseAddress] = useState('');
 
+  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
   const [defaultCostCurrency, setDefaultCostCurrency] = useState('');
+  const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
+  const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
   const [allowNegativeStock, setAllowNegativeStock] = useState(true);
   const [autoGenerateItemCode, setAutoGenerateItemCode] = useState(false);
   const [itemCodePrefix, setItemCodePrefix] = useState('ITM');
   const [itemCodeNextSeq, setItemCodeNextSeq] = useState(1);
 
+  const inventoryAssetAccounts = useMemo(
+    () =>
+      accounts.filter(
+        (account) =>
+          String(account.accountRole || '').toUpperCase() === 'POSTING' &&
+          String(account.classification || '').toUpperCase() === 'ASSET' &&
+          String(account.status || '').toUpperCase() === 'ACTIVE' &&
+          !account.hasChildren
+      ),
+    [accounts]
+  );
+
+  const cogsAccounts = useMemo(
+    () =>
+      accounts.filter(
+        (account) =>
+          String(account.accountRole || '').toUpperCase() === 'POSTING' &&
+          String(account.classification || '').toUpperCase() === 'EXPENSE' &&
+          String(account.status || '').toUpperCase() === 'ACTIVE' &&
+          !account.hasChildren
+      ),
+    [accounts]
+  );
+
+  const selectedInventoryAssetAccount = useMemo(
+    () => inventoryAssetAccounts.find((account) => account.id === defaultInventoryAssetAccountId),
+    [defaultInventoryAssetAccountId, inventoryAssetAccounts]
+  );
+
+  const selectedCOGSAccount = useMemo(
+    () => accounts.find((account) => account.id === defaultCOGSAccountId),
+    [defaultCOGSAccountId, accounts]
+  );
+
   const stepError = useMemo(() => {
-    if (currentStep === 1) {
+    if (currentStep === 2) {
       if (!defaultWarehouseName.trim()) return 'Warehouse name is required.';
       if (!defaultWarehouseCode.trim()) return 'Warehouse code is required.';
     }
 
-    if (currentStep === 2 && autoGenerateItemCode) {
-      if (itemCodeNextSeq <= 0 || Number.isNaN(itemCodeNextSeq)) {
-        return 'Starting number must be greater than 0.';
+    if (currentStep === 3) {
+      if (inventoryAccountingMethod === 'PERPETUAL') {
+        if (!defaultInventoryAssetAccountId) return 'Default Inventory Asset Account is required.';
+      }
+      if (autoGenerateItemCode) {
+        if (itemCodeNextSeq <= 0 || Number.isNaN(itemCodeNextSeq)) {
+          return 'Starting number must be greater than 0.';
+        }
       }
     }
 
@@ -48,8 +96,11 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   }, [
     autoGenerateItemCode,
     currentStep,
+    defaultInventoryAssetAccountId,
+    defaultCOGSAccountId,
     defaultWarehouseCode,
     defaultWarehouseName,
+    inventoryAccountingMethod,
     itemCodeNextSeq,
   ]);
 
@@ -79,8 +130,13 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       setError(null);
 
       await inventoryApi.initialize({
+        inventoryAccountingMethod,
         defaultWarehouseName: defaultWarehouseName.trim(),
         defaultWarehouseCode: defaultWarehouseCode.trim(),
+        defaultInventoryAssetAccountId:
+          inventoryAccountingMethod === 'PERPETUAL' ? (defaultInventoryAssetAccountId || undefined) : undefined,
+        defaultCOGSAccountId:
+          inventoryAccountingMethod === 'PERPETUAL' ? (defaultCOGSAccountId || undefined) : undefined,
         defaultCostCurrency: defaultCostCurrency.trim() || undefined,
         allowNegativeStock,
         autoGenerateItemCode,
@@ -110,7 +166,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome to Inventory Setup</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-            Complete this 4-step wizard to create your first warehouse and baseline inventory settings.
+            Complete this guided wizard to create your first warehouse and baseline inventory settings.
           </p>
           <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -134,6 +190,41 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     }
 
     if (currentStep === 1) {
+      return (
+        <div className="py-6 max-w-2xl mx-auto space-y-5">
+          <h2 className="text-2xl font-bold text-gray-900">Inventory Accounting Method</h2>
+          <p className="text-sm text-gray-600">Choose how inventory should be accounted for in financial postings.</p>
+
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
+            <input
+              type="radio"
+              name="inventory-accounting-method"
+              checked={inventoryAccountingMethod === 'PERIODIC'}
+              onChange={() => setInventoryAccountingMethod('PERIODIC')}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Periodic</div>
+              <div className="text-sm text-gray-600">Calculate inventory value at month/year end and skip real-time COGS posting.</div>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
+            <input
+              type="radio"
+              name="inventory-accounting-method"
+              checked={inventoryAccountingMethod === 'PERPETUAL'}
+              onChange={() => setInventoryAccountingMethod('PERPETUAL')}
+            />
+            <div>
+              <div className="font-semibold text-gray-900">Perpetual</div>
+              <div className="text-sm text-gray-600">Post inventory and COGS in real-time as transactions are posted.</div>
+            </div>
+          </label>
+        </div>
+      );
+    }
+
+    if (currentStep === 2) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
           <h2 className="text-2xl font-bold text-gray-900">Default Warehouse</h2>
@@ -177,7 +268,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       );
     }
 
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-6">
           <h2 className="text-2xl font-bold text-gray-900">Inventory Settings</h2>
@@ -192,6 +283,43 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               placeholder="Leave blank to use company base currency"
             />
           </div>
+
+          {inventoryAccountingMethod === 'PERPETUAL' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+                <AccountSelector
+                  value={defaultInventoryAssetAccountId}
+                  onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
+                  placeholder="Select inventory asset account"
+                  disabled={loadingAccounts}
+                  accounts={inventoryAssetAccounts as any}
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+                <AccountSelector
+                  value={defaultCOGSAccountId}
+                  onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
+                  placeholder="Select COGS account"
+                  disabled={loadingAccounts}
+                  accounts={cogsAccounts as any}
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  Optional fallback. Used when sold stock needs a cost posting and the item or category does not have its own COGS account yet.
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist yet.
+                </p>
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <div>
@@ -255,6 +383,10 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
+            <span className="font-semibold text-gray-900">Accounting Method:</span>{' '}
+            <span className="text-gray-700">{inventoryAccountingMethod}</span>
+          </div>
+          <div className="text-sm">
             <span className="font-semibold text-gray-900">Warehouse:</span>{' '}
             <span className="text-gray-700">{defaultWarehouseName} ({defaultWarehouseCode})</span>
           </div>
@@ -265,6 +397,22 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Default Cost Currency:</span>{' '}
             <span className="text-gray-700">{defaultCostCurrency || 'Company base currency'}</span>
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold text-gray-900">Default Inventory Asset Account:</span>{' '}
+            <span className="text-gray-700">
+              {inventoryAccountingMethod === 'PERPETUAL'
+                ? (selectedInventoryAssetAccount ? accountLabel(selectedInventoryAssetAccount) : 'Not selected')
+                : 'Not required for PERIODIC'}
+            </span>
+          </div>
+          <div className="text-sm">
+            <span className="font-semibold text-gray-900">Default COGS Account:</span>{' '}
+            <span className="text-gray-700">
+              {inventoryAccountingMethod === 'PERPETUAL'
+                ? (selectedCOGSAccount ? accountLabel(selectedCOGSAccount) : 'Not selected (optional)')
+                : 'Not required for PERIODIC'}
+            </span>
           </div>
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Allow Negative Stock:</span>{' '}
@@ -341,42 +489,39 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
             <ChevronLeft className="w-4 h-4" />
             Back
           </button>
-
-          {currentStep < stepTitles.length - 1 ? (
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium disabled:opacity-50"
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={initialize}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Initializing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Initialize
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {currentStep < stepTitles.length - 1 ? (
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 transition"
+              >
+                Next Step
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={initialize}
+                disabled={submitting}
+                className="flex items-center gap-2 rounded-lg bg-primary-600 px-8 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50 transition"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Initializing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Start Inventory
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
-export default InventoryInitializationWizard;
-

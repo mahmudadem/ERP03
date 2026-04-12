@@ -56,18 +56,17 @@ const ensureIsoDate = (value: any, fieldName: string) => {
   }
 };
 
-const ensureControlMode = (value: any, fieldName: string) => {
-  if (value !== 'SIMPLE' && value !== 'CONTROLLED') {
-    throw ApiError.badRequest(`${fieldName} must be SIMPLE or CONTROLLED`);
-  }
-};
-
 const ensureOptionalNumber = (value: any, fieldName: string) => {
   if (value === undefined) return;
   ensureNumber(value, fieldName);
 };
 
 const ensureOptionalString = (value: any, fieldName: string) => {
+  if (value === undefined) return;
+  ensureRequiredString(value, fieldName);
+};
+
+const ensureOptionalUuid = (value: any, fieldName: string) => {
   if (value === undefined) return;
   ensureRequiredString(value, fieldName);
 };
@@ -157,9 +156,7 @@ const validatePRLine = (line: any, index: number) => {
 };
 
 export const validateInitializePurchasesInput = (body: any) => {
-  ensureRequiredString(body.defaultAPAccountId, 'defaultAPAccountId');
-  ensureControlMode(body.procurementControlMode, 'procurementControlMode');
-
+  if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
@@ -181,9 +178,9 @@ export const validateInitializePurchasesInput = (body: any) => {
 };
 
 export const validateUpdatePurchaseSettingsInput = (body: any) => {
-  if (body.procurementControlMode !== undefined) ensureControlMode(body.procurementControlMode, 'procurementControlMode');
+  if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
-  if (body.defaultAPAccountId !== undefined) ensureRequiredString(body.defaultAPAccountId, 'defaultAPAccountId');
+  if (body.defaultAPAccountId !== undefined) ensureOptionalString(body.defaultAPAccountId, 'defaultAPAccountId');
   if (body.defaultPurchaseExpenseAccountId !== undefined) ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
@@ -361,8 +358,10 @@ export const validateListPurchaseInvoicesQuery = (query: any) => {
 export const validateCreatePurchaseReturnInput = (body: any) => {
   if (body.purchaseInvoiceId !== undefined) ensureOptionalString(body.purchaseInvoiceId, 'purchaseInvoiceId');
   if (body.goodsReceiptId !== undefined) ensureOptionalString(body.goodsReceiptId, 'goodsReceiptId');
-  if (!body.purchaseInvoiceId && !body.goodsReceiptId) {
-    throw ApiError.badRequest('purchaseInvoiceId or goodsReceiptId is required');
+  if (body.vendorId !== undefined) ensureOptionalString(body.vendorId, 'vendorId');
+
+  if (!body.purchaseInvoiceId && !body.goodsReceiptId && !body.vendorId) {
+    throw ApiError.badRequest('purchaseInvoiceId, goodsReceiptId or vendorId is required');
   }
 
   if (body.purchaseOrderId !== undefined) ensureOptionalString(body.purchaseOrderId, 'purchaseOrderId');

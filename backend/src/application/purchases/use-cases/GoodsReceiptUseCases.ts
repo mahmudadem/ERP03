@@ -44,6 +44,16 @@ export interface ListGoodsReceiptsFilters {
   limit?: number;
 }
 
+export interface UpdateGoodsReceiptInput {
+  companyId: string;
+  id: string;
+  vendorId?: string;
+  receiptDate?: string;
+  warehouseId?: string;
+  lines?: GoodsReceiptLineInput[];
+  notes?: string;
+}
+
 const validatePOLinkedForReceipt = (po: PurchaseOrder): void => {
   if (!['CONFIRMED', 'PARTIALLY_RECEIVED'].includes(po.status)) {
     throw new Error(`Purchase order must be CONFIRMED or PARTIALLY_RECEIVED. Current: ${po.status}`);
@@ -75,8 +85,8 @@ export class CreateGoodsReceiptUseCase {
       throw new Error('Purchases module is not initialized');
     }
 
-    if (settings.procurementControlMode === 'CONTROLLED' && !input.purchaseOrderId) {
-      throw new Error('purchaseOrderId is required in CONTROLLED mode');
+    if (settings.requirePOForStockItems && !input.purchaseOrderId) {
+      throw new Error('A Purchase Order reference is required to create a goods receipt.');
     }
 
     let po: PurchaseOrder | null = null;
@@ -214,16 +224,16 @@ export class PostGoodsReceiptUseCase {
     }
 
     let po: PurchaseOrder | null = null;
-    if (settings.procurementControlMode === 'CONTROLLED') {
+    if (settings.requirePOForStockItems) {
       if (!grn.purchaseOrderId) {
-        throw new Error('purchaseOrderId is required in CONTROLLED mode');
+        throw new Error('A Purchase Order reference is required to post a goods receipt.');
       }
     }
 
     if (grn.purchaseOrderId) {
       po = await this.purchaseOrderRepo.getById(companyId, grn.purchaseOrderId);
       if (!po) throw new Error(`Purchase order not found: ${grn.purchaseOrderId}`);
-      if (settings.procurementControlMode === 'CONTROLLED') {
+      if (settings.requirePOForStockItems) {
         validatePOLinkedForReceipt(po);
       }
     }
@@ -241,6 +251,16 @@ export class PostGoodsReceiptUseCase {
         const poLine = po ? findPOLine(po, line.poLineId, line.itemId) : null;
         if (po && !poLine) {
           throw new Error(`PO line not found for GRN line ${line.lineId}`);
+        }
+
+        // Guarantee a meaningful inbound cost so stock valuation and gross profit stay reliable.
+        if (line.unitCostDoc <= 0) {
+          if (poLine && poLine.unitPriceDoc > 0) {
+            line.unitCostDoc = poLine.unitPriceDoc;
+            line.unitCostBase = roundMoney(line.unitCostDoc * line.fxRateMovToBase);
+          } else {
+            throw new Error(`Unit cost must be greater than 0 for stock item ${line.itemCode || item.code}`);
+          }
         }
 
         if (poLine) {
@@ -356,5 +376,115 @@ export class ListGoodsReceiptsUseCase {
       status: filters.status,
       limit: filters.limit,
     });
+  }
+}
+
+export class UpdateGoodsReceiptUseCase {
+  constructor(private readonly goodsReceiptRepo: IGoodsReceiptRepository, private readonly partyRepo: IPartyRepository) {}
+
+  async execute(input: UpdateGoodsReceiptInput): Promise<GoodsReceipt> {
+    const current = await this.goodsReceiptRepo.getById(input.companyId, input.id);
+    if (!current) throw new Error(`Goods receipt not found: ${input.id}`);
+    if (current.status !== 'DRAFT') {
+      throw new Error('Only draft goods receipts can be updated');
+    }
+
+    if (input.vendorId !== undefined) {
+      if (!input.vendorId) throw new Error('vendorId is required');
+      const vendor = await this.partyRepo.getById(input.companyId, input.vendorId);
+      if (!vendor) throw new Error(`Vendor not found: ${input.vendorId}`);
+      if (!vendor.roles.includes('VENDOR')) throw new Error(`Party is not a vendor: ${input.vendorId}`);
+      current.vendorId = vendor.id;
+      current.vendorName = vendor.displayName;
+    }
+
+    if (input.receiptDate !== undefined) current.receiptDate = input.receiptDate;
+    if (input.warehouseId !== undefined) current.warehouseId = input.warehouseId;
+    if (input.notes !== undefined) current.notes = input.notes;
+
+    if (input.lines) {
+      const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
+      const mappedLines: GoodsReceiptLine[] = input.lines.map((line, index) => {
+        const existing = line.lineId ? existingById.get(line.lineId) : undefined;
+        return {
+          lineId: line.lineId || randomUUID(),
+          lineNo: line.lineNo ?? existing?.lineNo ?? index + 1,
+          poLineId: line.poLineId ?? existing?.poLineId,
+          itemId: line.itemId || existing?.itemId || '',
+          itemCode: existing?.itemCode || '',
+          itemName: existing?.itemName || '',
+          receivedQty: line.receivedQty,
+          uom: line.uom || existing?.uom || 'EA',
+          unitCostDoc: line.unitCostDoc ?? existing?.unitCostDoc ?? 0,
+          unitCostBase: existing?.unitCostBase ?? 0,
+          moveCurrency: line.moveCurrency || existing?.moveCurrency || 'USD',
+          fxRateMovToBase: line.fxRateMovToBase ?? existing?.fxRateMovToBase ?? 1,
+          fxRateCCYToBase: line.fxRateCCYToBase ?? existing?.fxRateCCYToBase ?? 1,
+          stockMovementId: existing?.stockMovementId ?? null,
+          description: line.description ?? existing?.description,
+        };
+      });
+      current.lines = mappedLines;
+    }
+
+    current.updatedAt = new Date();
+    const updated = new GoodsReceipt(current.toJSON() as any);
+    await this.goodsReceiptRepo.update(updated);
+    return updated;
+  }
+}
+
+export class UnpostGoodsReceiptUseCase {
+  constructor(
+    private readonly goodsReceiptRepo: IGoodsReceiptRepository,
+    private readonly purchaseOrderRepo: IPurchaseOrderRepository,
+    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly transactionManager: ITransactionManager
+  ) {}
+
+  async execute(companyId: string, id: string): Promise<GoodsReceipt> {
+    const grn = await this.goodsReceiptRepo.getById(companyId, id);
+    if (!grn) throw new Error(`Goods receipt not found: ${id}`);
+    if (grn.status !== 'POSTED') throw new Error('Only POSTED goods receipts can be unposted');
+
+    let po: PurchaseOrder | null = null;
+    if (grn.purchaseOrderId) {
+      po = await this.purchaseOrderRepo.getById(companyId, grn.purchaseOrderId);
+    }
+
+    await this.transactionManager.runTransaction(async (transaction) => {
+      // 1. Reverse inventory movements
+      for (const line of grn.lines) {
+        if (line.stockMovementId) {
+          await this.inventoryService.deleteMovement(companyId, line.stockMovementId, transaction);
+          line.stockMovementId = null;
+        }
+
+        // 2. Reverse PO receivedQty
+        if (po) {
+          const poLine = findPOLine(po, line.poLineId, line.itemId);
+          if (poLine) {
+            poLine.receivedQty = roundMoney(Math.max(0, poLine.receivedQty - line.receivedQty));
+          }
+        }
+      }
+
+      // 3. Update PO status
+      if (po) {
+        po.status = updatePOStatus(po);
+        po.updatedAt = new Date();
+        await this.purchaseOrderRepo.update(po, transaction);
+      }
+
+      // 4. Revert GRN to DRAFT
+      grn.status = 'DRAFT';
+      grn.postedAt = undefined;
+      grn.updatedAt = new Date();
+      await this.goodsReceiptRepo.update(grn, transaction);
+    });
+
+    const unposted = await this.goodsReceiptRepo.getById(companyId, id);
+    if (!unposted) throw new Error('Failed to retrieve goods receipt after unposting');
+    return unposted;
   }
 }

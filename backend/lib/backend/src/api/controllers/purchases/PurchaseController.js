@@ -11,6 +11,8 @@ const PurchasesInventoryService_1 = require("../../../application/inventory/serv
 const RecordStockMovementUseCase_1 = require("../../../application/inventory/use-cases/RecordStockMovementUseCase");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const PurchaseDTOs_1 = require("../../dtos/PurchaseDTOs");
+const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
+const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
 const purchases_validators_1 = require("../../validators/purchases.validators");
 const PO_STATUSES = [
     'DRAFT',
@@ -86,12 +88,18 @@ class PurchaseController {
     static buildPurchasesInventoryService() {
         return new PurchasesInventoryService_1.PurchasesInventoryService(PurchaseController.buildMovementUseCase());
     }
+    static buildAccountingPostingService(validateAccounts = false) {
+        if (validateAccounts) {
+            return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, new VoucherValidationService_1.VoucherValidationService());
+        }
+        return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
+    }
     static async initializePurchases(req, res, next) {
         try {
             (0, purchases_validators_1.validateInitializePurchasesInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
             const userId = PurchaseController.getUserId(req);
-            const useCase = new PurchaseSettingsUseCases_1.InitializePurchasesUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const useCase = new PurchaseSettingsUseCases_1.InitializePurchasesUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
                 userId }));
             res.status(200).json({
@@ -106,7 +114,7 @@ class PurchaseController {
     static async getSettings(req, res, next) {
         try {
             const companyId = PurchaseController.getCompanyId(req);
-            const useCase = new PurchaseSettingsUseCases_1.GetPurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository);
+            const useCase = new PurchaseSettingsUseCases_1.GetPurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(companyId);
             res.json({
                 success: true,
@@ -121,7 +129,7 @@ class PurchaseController {
         try {
             (0, purchases_validators_1.validateUpdatePurchaseSettingsInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
-            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository);
+            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -297,12 +305,44 @@ class PurchaseController {
             next(error);
         }
     }
+    static async updateGRN(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const useCase = new GoodsReceiptUseCases_1.UpdateGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.partyRepository);
+            const grn = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
+                id }));
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toGoodsReceiptDTO(grn),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async postGRN(req, res, next) {
         try {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, inventoryService, bindRepositories_1.diContainer.transactionManager);
+            const grn = await useCase.execute(companyId, id);
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toGoodsReceiptDTO(grn),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async unpostGRN(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const inventoryService = PurchaseController.buildPurchasesInventoryService();
+            const useCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -387,8 +427,27 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager);
+            const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
+            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const pi = await useCase.execute(companyId, id);
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async unpostPI(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const userId = PurchaseController.getUserId(req);
+            const inventoryService = PurchaseController.buildPurchasesInventoryService();
+            const accountingPostingService = PurchaseController.buildAccountingPostingService();
+            const useCase = new PurchaseInvoiceUseCases_1.UnpostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const pi = await useCase.execute(companyId, id, userId);
             res.json({
                 success: true,
                 data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
@@ -420,7 +479,7 @@ class PurchaseController {
             (0, purchases_validators_1.validateCreatePurchaseReturnInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
             const userId = PurchaseController.getUserId(req);
-            const useCase = new PurchaseReturnUseCases_1.CreatePurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository);
+            const useCase = new PurchaseReturnUseCases_1.CreatePurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.itemRepository);
             const purchaseReturn = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId, createdBy: userId }));
             res.status(201).json({
                 success: true,
@@ -460,10 +519,27 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const useCase = new PurchaseReturnUseCases_1.GetPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository);
-            const purchaseReturn = await useCase.execute(companyId, id);
+            const pr = await useCase.execute(companyId, id);
             res.json({
                 success: true,
-                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(purchaseReturn),
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(pr),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateReturn(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const userId = PurchaseController.getUserId(req);
+            const useCase = new PurchaseReturnUseCases_1.UpdatePurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.itemRepository);
+            const pr = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
+                id, updatedBy: userId }));
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(pr),
             });
         }
         catch (error) {
@@ -474,12 +550,32 @@ class PurchaseController {
         try {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
+            const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.transactionManager);
-            const purchaseReturn = await useCase.execute(companyId, id);
+            const accountingPostingService = PurchaseController.buildAccountingPostingService();
+            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const pr = await useCase.execute(companyId, id);
             res.json({
                 success: true,
-                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(purchaseReturn),
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(pr),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async unpostReturn(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const userId = PurchaseController.getUserId(req);
+            const inventoryService = PurchaseController.buildPurchasesInventoryService();
+            const accountingPostingService = PurchaseController.buildAccountingPostingService();
+            const useCase = new PurchaseReturnUseCases_1.UnpostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const pr = await useCase.execute(companyId, id, userId);
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseReturnDTO(pr),
             });
         }
         catch (error) {

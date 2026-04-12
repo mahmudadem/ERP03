@@ -47,6 +47,12 @@ export class FirestoreSalesReturnRepository implements ISalesReturnRepository {
     return SalesReturnMapper.toDomain(doc.data());
   }
 
+  async getByNumber(companyId: string, returnNumber: string): Promise<SalesReturn | null> {
+    const snap = await this.collection(companyId).where('returnNumber', '==', returnNumber).limit(1).get();
+    if (snap.empty) return null;
+    return SalesReturnMapper.toDomain(snap.docs[0].data());
+  }
+
   async list(companyId: string, opts: SalesReturnListOptions = {}): Promise<SalesReturn[]> {
     let query: Query = this.collection(companyId);
     if (opts.customerId) query = query.where('customerId', '==', opts.customerId);

@@ -9,59 +9,101 @@ import {
   Settings,
   ShoppingCart,
 } from 'lucide-react';
-import { AccountDTO, accountingApi } from '../../../api/accountingApi';
 import {
   InitializePurchasesPayload,
-  ProcurementControlMode,
   purchasesApi,
 } from '../../../api/purchasesApi';
+import { inventoryApi } from '../../../api/inventoryApi';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { useAccounts, Account } from '../../../context/AccountsContext';
+import { useRef } from 'react';
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
 }
 
-const accountLabel = (account: AccountDTO): string =>
-  `${account.userCode || account.code || account.systemCode} - ${account.name}`;
+const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
-const stepTitles = ['Welcome', 'Procurement Mode', 'Default Accounts', 'Defaults & Numbering', 'Review'];
+const stepTitles = ['Welcome', 'Purchasing Policy', 'Default Accounts', 'Defaults & Numbering', 'Review'];
 
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<AccountDTO[]>([]);
-  const [loadingAccounts, setLoadingAccounts] = useState(true);
-
-  const [procurementControlMode, setProcurementControlMode] =
-    useState<ProcurementControlMode>('SIMPLE');
+  const { validAccounts, isLoading: loadingAccountsContext, getAccountById, refreshAccounts } = useAccounts();
+  const [loadingSettings, setLoadingSettings] = useState(true);
   const [defaultAPAccountId, setDefaultAPAccountId] = useState('');
+
+  const [allowDirectInvoicing, setAllowDirectInvoicing] = useState(true);
+  const [requirePOForStockItems, setRequirePOForStockItems] = useState(false);
+  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
   const [defaultPurchaseExpenseAccountId, setDefaultPurchaseExpenseAccountId] = useState('');
   const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(30);
   const [poNumberPrefix, setPoNumberPrefix] = useState('PO');
   const [grnNumberPrefix, setGrnNumberPrefix] = useState('GRN');
   const [piNumberPrefix, setPiNumberPrefix] = useState('PI');
   const [prNumberPrefix, setPrNumberPrefix] = useState('PR');
+  const [inventorySettings, setInventorySettings] = useState<{
+    defaultInventoryAssetAccountId?: string;
+  } | null>(null);
 
   useEffect(() => {
-    const loadAccounts = async () => {
+    const loadData = async () => {
       try {
-        setLoadingAccounts(true);
-        const result = await accountingApi.getAccounts();
-        setAccounts(Array.isArray(result) ? result : []);
+        setLoadingSettings(true);
+        const inventorySettings = await inventoryApi.getSettings().catch(() => null);
+        const invSettings = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
+        
+        setInventorySettings(invSettings);
+        setInventoryAccountingMethod(invSettings?.inventoryAccountingMethod === 'PERIODIC' ? 'PERIODIC' : 'PERPETUAL');
+        
+        refreshAccounts();
       } catch (err) {
         console.error('Failed to load accounts for purchases initialization', err);
-        setAccounts([]);
       } finally {
-        setLoadingAccounts(false);
+        setLoadingSettings(false);
       }
     };
 
-    loadAccounts();
+    loadData();
   }, []);
 
+  const hasRefreshed = useRef(false);
+  useEffect(() => {
+    if (!hasRefreshed.current) {
+      refreshAccounts();
+      hasRefreshed.current = true;
+    }
+  }, [refreshAccounts]);
+
+  const liabilityAccounts = useMemo(
+    () =>
+      validAccounts.filter(
+        (account) => {
+          const classification = String(account.classification || account.type || '').toUpperCase();
+          return (classification === 'LIABILITY');
+        }
+      ),
+    [validAccounts]
+  );
+
+  const expenseAccounts = useMemo(
+    () =>
+      validAccounts.filter(
+        (account) => {
+          const classification = String(account.classification || account.type || '').toUpperCase();
+          return (classification === 'EXPENSE');
+        }
+      ),
+    [validAccounts]
+  );
+
   const stepError = useMemo(() => {
-    if (currentStep === 2 && !defaultAPAccountId) {
-      return 'Default AP account is required.';
+    if (currentStep === 2) {
+      if (!defaultAPAccountId) return 'Default Accounts Payable (Liability) account is required.';
+      if (inventoryAccountingMethod === 'PERIODIC' && !defaultPurchaseExpenseAccountId) {
+        return 'Default Purchase Expense Account is required for PERIODIC inventory accounting.';
+      }
     }
 
     if (currentStep === 3) {
@@ -71,7 +113,13 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     return null;
-  }, [currentStep, defaultAPAccountId, defaultPaymentTermsDays]);
+  }, [
+    currentStep,
+    defaultPaymentTermsDays,
+    defaultPurchaseExpenseAccountId,
+    defaultAPAccountId,
+    inventoryAccountingMethod,
+  ]);
 
   const goNext = () => {
     if (stepError) {
@@ -87,6 +135,14 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
+  const getAccountLabel = (accountId?: string) => {
+    if (!accountId) return 'Not Configured';
+    const account = getAccountById(accountId);
+    return account ? `${account.code} - ${account.name}` : accountId;
+  };
+
+  const isLoading = loadingAccountsContext || loadingSettings;
+
   const initialize = async () => {
     if (stepError) {
       setError(stepError);
@@ -98,7 +154,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       setError(null);
 
       const payload: InitializePurchasesPayload = {
-        procurementControlMode,
+        allowDirectInvoicing,
+        requirePOForStockItems,
         defaultAPAccountId,
         defaultPurchaseExpenseAccountId: defaultPurchaseExpenseAccountId || undefined,
         defaultPaymentTermsDays,
@@ -137,13 +194,13 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Calculator className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Procurement Mode</h3>
-              <p className="text-sm text-gray-600">Choose SIMPLE or CONTROLLED policy.</p>
+              <h3 className="font-semibold text-gray-900 mb-1">Purchasing Policy</h3>
+              <p className="text-sm text-gray-600">Configure direct invoicing and stock-item order requirements.</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
               <h3 className="font-semibold text-gray-900 mb-1">Default Accounts</h3>
-              <p className="text-sm text-gray-600">Set AP and optional purchase expense accounts.</p>
+              <p className="text-sm text-gray-600">Set periodic purchase expense or rely on perpetual inventory asset routing.</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Settings className="w-8 h-8 text-primary-600 mb-3" />
@@ -158,36 +215,32 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     if (currentStep === 1) {
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Select Procurement Control Mode</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center">Configure Purchasing Policy</h2>
           <p className="text-gray-600 text-center mb-6">
-            This controls document flow between Purchase Order, Goods Receipt, and Purchase Invoice.
+            These toggles control document requirements for stock flow and invoicing behavior.
           </p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
-              type="radio"
-              name="procurementControlMode"
-              value="SIMPLE"
-              checked={procurementControlMode === 'SIMPLE'}
-              onChange={() => setProcurementControlMode('SIMPLE')}
+              type="checkbox"
+              checked={allowDirectInvoicing}
+              onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
             />
             <div>
-              <div className="font-semibold text-gray-900">SIMPLE</div>
-              <div className="text-sm text-gray-600">PO is optional for stock items.</div>
+              <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
+              <div className="text-sm text-gray-600">When enabled, invoices can be posted without a PO/GRN path.</div>
             </div>
           </label>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
-              type="radio"
-              name="procurementControlMode"
-              value="CONTROLLED"
-              checked={procurementControlMode === 'CONTROLLED'}
-              onChange={() => setProcurementControlMode('CONTROLLED')}
+              type="checkbox"
+              checked={requirePOForStockItems}
+              onChange={(e) => setRequirePOForStockItems(e.target.checked)}
             />
             <div>
-              <div className="font-semibold text-gray-900">CONTROLLED</div>
-              <div className="text-sm text-gray-600">Stock items must flow through PO → GRN → PI.</div>
+              <div className="font-semibold text-gray-900">Require Purchase Orders for Stock Items</div>
+              <div className="text-sm text-gray-600">When enabled, goods receipts and stock-item flows require a PO reference.</div>
             </div>
           </label>
         </div>
@@ -199,39 +252,43 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         <div className="py-8 max-w-3xl mx-auto space-y-5">
           <h2 className="text-2xl font-bold text-gray-900 text-center">Default Accounts</h2>
           <p className="text-gray-600 text-center mb-4">Required accounts must be set before initialization.</p>
+          <div className="space-y-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Default Accounts Payable (Liability)</label>
+              <AccountSelector
+                value={defaultAPAccountId}
+                onChange={(acc: any) => setDefaultAPAccountId(acc?.id || '')}
+                accounts={liabilityAccounts}
+                placeholder="Select AP Liability Account"
+                disabled={isLoading}
+              />
+              <p className="mt-2 text-xs text-gray-500 italic">
+                Purchases are credited to this account. Usually "Accounts Payable".
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default AP Account</label>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={defaultAPAccountId}
-              onChange={(e) => setDefaultAPAccountId(e.target.value)}
-              disabled={loadingAccounts}
-            >
-              <option value="">{loadingAccounts ? 'Loading accounts...' : 'Select AP account'}</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {accountLabel(account)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default Purchase Expense Account (Optional)</label>
-            <select
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              value={defaultPurchaseExpenseAccountId}
-              onChange={(e) => setDefaultPurchaseExpenseAccountId(e.target.value)}
-              disabled={loadingAccounts}
-            >
-              <option value="">Optional</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {accountLabel(account)}
-                </option>
-              ))}
-            </select>
+            {inventoryAccountingMethod === 'PERIODIC' ? (
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Default Purchase Expense Account</label>
+                <AccountSelector
+                  value={defaultPurchaseExpenseAccountId}
+                  onChange={(acc: any) => setDefaultPurchaseExpenseAccountId(acc?.id || '')}
+                  accounts={expenseAccounts}
+                  placeholder="Select expense account"
+                  disabled={isLoading}
+                />
+                <p className="mt-2 text-xs text-gray-500 italic">
+                  Purchases are debited to this account in Periodic mode.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <p className="text-sm text-blue-700 font-medium mb-1">Perpetual Stock Integration</p>
+                <p className="text-sm text-blue-600/80">
+                  Stock purchases are automatically debited to your <strong>Inventory Asset</strong> account.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -239,17 +296,19 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
     if (currentStep === 3) {
       return (
-        <div className="py-8 max-w-3xl mx-auto space-y-5">
+        <div className="py-8 max-w-3xl mx-auto space-y-6">
           <h2 className="text-2xl font-bold text-gray-900 text-center">Defaults & Numbering</h2>
+          <p className="text-gray-600 text-center mb-4">Set default terms and document prefixes.</p>
 
-          <div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Default Payment Terms (Days)</label>
             <input
               type="number"
-              min={0}
               value={defaultPaymentTermsDays}
-              onChange={(e) => setDefaultPaymentTermsDays(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              onChange={(e) => setDefaultPaymentTermsDays(parseInt(e.target.value) || 0)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm"
+              placeholder="e.g. 30"
+              disabled={isLoading}
             />
           </div>
 
@@ -261,6 +320,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 value={poNumberPrefix}
                 onChange={(e) => setPoNumberPrefix(e.target.value.toUpperCase())}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -270,6 +330,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 value={grnNumberPrefix}
                 onChange={(e) => setGrnNumberPrefix(e.target.value.toUpperCase())}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -279,6 +340,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 value={piNumberPrefix}
                 onChange={(e) => setPiNumberPrefix(e.target.value.toUpperCase())}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -288,6 +350,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 value={prNumberPrefix}
                 onChange={(e) => setPrNumberPrefix(e.target.value.toUpperCase())}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -302,20 +365,38 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-1">Procurement Mode</h3>
-            <p className="text-lg font-semibold text-gray-900">{procurementControlMode}</p>
+            <h3 className="text-sm text-gray-600 mb-1 font-semibold">Purchasing Policy</h3>
+            <p className="text-sm text-gray-900">Allow Direct Invoicing: {allowDirectInvoicing ? 'Yes' : 'No'}</p>
+            <p className="text-sm text-gray-900">Require PO for Stock Items: {requirePOForStockItems ? 'Yes' : 'No'}</p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2">Accounts</h3>
-            <p className="text-sm text-gray-900">AP: {defaultAPAccountId || 'Not selected'}</p>
-            <p className="text-sm text-gray-900">
-              Expense: {defaultPurchaseExpenseAccountId || 'Not selected'}
-            </p>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Finance & Accounts</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                <span className="text-gray-500">Default Accounts Payable (Liability)</span>
+                <span className="font-semibold text-gray-900">{getAccountLabel(defaultAPAccountId)}</span>
+              </div>
+              
+              {inventoryAccountingMethod === 'PERIODIC' ? (
+                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                  <span className="text-gray-500">Default Purchase Expense</span>
+                  <span className="font-semibold text-gray-900">{getAccountLabel(defaultPurchaseExpenseAccountId)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 text-gray-400 italic">
+                  <span className="flex items-center gap-1.5 opacity-70">
+                    <Settings className="w-3 h-3" />
+                    Default Inventory Asset (From Inventory)
+                  </span>
+                  <span className="text-xs truncate max-w-[200px]">{getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2">Defaults</h3>
+            <h3 className="text-sm text-gray-600 mb-2 font-semibold">Defaults</h3>
             <p className="text-sm text-gray-900">Payment Terms: {defaultPaymentTermsDays} days</p>
             <p className="text-sm text-gray-900">
               Prefixes: {poNumberPrefix || 'PO'} / {grnNumberPrefix || 'GRN'} / {piNumberPrefix || 'PI'} / {prNumberPrefix || 'PR'}

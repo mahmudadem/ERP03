@@ -5,6 +5,7 @@
 import { Item } from '../../domain/inventory/entities/Item';
 import { ItemCategory } from '../../domain/inventory/entities/ItemCategory';
 import { InventorySettings } from '../../domain/inventory/entities/InventorySettings';
+import { OpeningStockDocument } from '../../domain/inventory/entities/OpeningStockDocument';
 import { InventoryPeriodSnapshot } from '../../domain/inventory/entities/InventoryPeriodSnapshot';
 import { StockAdjustment } from '../../domain/inventory/entities/StockAdjustment';
 import { StockLevel } from '../../domain/inventory/entities/StockLevel';
@@ -49,6 +50,7 @@ export interface WarehouseDTO {
   companyId: string;
   name: string;
   code: string;
+  parentId?: string | null;
   address?: string;
   isDefault: boolean;
   active: boolean;
@@ -80,13 +82,43 @@ export interface UomConversionDTO {
 
 export interface InventorySettingsDTO {
   companyId: string;
+  inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
+  defaultInventoryAssetAccountId?: string;
   allowNegativeStock: boolean;
   defaultWarehouseId?: string;
   autoGenerateItemCode: boolean;
   itemCodePrefix?: string;
   itemCodeNextSeq: number;
+  defaultCOGSAccountId?: string;
+}
+
+export interface OpeningStockDocumentDTO {
+  id: string;
+  companyId: string;
+  warehouseId: string;
+  date: string;
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  createAccountingEffect: boolean;
+  openingBalanceAccountId?: string;
+  voucherId?: string;
+  totalValueBase: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: Array<{
+    lineId: string;
+    itemId: string;
+    quantity: number;
+    unitCostInMoveCurrency: number;
+    moveCurrency: string;
+    fxRateMovToBase: number;
+    fxRateCCYToBase: number;
+    unitCostBase: number;
+    totalValueBase: number;
+  }>;
 }
 
 export interface StockLevelDTO {
@@ -260,6 +292,7 @@ export class InventoryDTOMapper {
       companyId: wh.companyId,
       name: wh.name,
       code: wh.code,
+      parentId: wh.parentId,
       address: wh.address,
       isDefault: wh.isDefault,
       active: wh.active,
@@ -297,13 +330,35 @@ export class InventoryDTOMapper {
   static toSettingsDTO(settings: InventorySettings): InventorySettingsDTO {
     return {
       companyId: settings.companyId,
+      inventoryAccountingMethod: settings.inventoryAccountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
       defaultCostCurrency: settings.defaultCostCurrency,
+      defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId,
       allowNegativeStock: settings.allowNegativeStock,
       defaultWarehouseId: settings.defaultWarehouseId,
       autoGenerateItemCode: settings.autoGenerateItemCode,
       itemCodePrefix: settings.itemCodePrefix,
       itemCodeNextSeq: settings.itemCodeNextSeq,
+      defaultCOGSAccountId: settings.defaultCOGSAccountId,
+    };
+  }
+
+  static toOpeningStockDocumentDTO(document: OpeningStockDocument): OpeningStockDocumentDTO {
+    return {
+      id: document.id,
+      companyId: document.companyId,
+      warehouseId: document.warehouseId,
+      date: document.date,
+      notes: document.notes,
+      status: document.status,
+      createAccountingEffect: document.createAccountingEffect,
+      openingBalanceAccountId: document.openingBalanceAccountId,
+      voucherId: document.voucherId,
+      totalValueBase: document.totalValueBase,
+      createdBy: document.createdBy,
+      createdAt: document.createdAt.toISOString(),
+      postedAt: document.postedAt?.toISOString(),
+      lines: document.lines.map((line) => ({ ...line })),
     };
   }
 

@@ -2,8 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListDeliveryNotesUseCase = exports.GetDeliveryNoteUseCase = exports.PostDeliveryNoteUseCase = exports.CreateDeliveryNoteUseCase = void 0;
 const crypto_1 = require("crypto");
-const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
-const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const DeliveryNote_1 = require("../../../domain/sales/entities/DeliveryNote");
 const SalesOrderUseCases_1 = require("./SalesOrderUseCases");
@@ -31,8 +29,8 @@ class CreateDeliveryNoteUseCase {
         if (!settings) {
             throw new Error('Sales module is not initialized');
         }
-        if (settings.salesControlMode === 'CONTROLLED' && !input.salesOrderId) {
-            throw new Error('salesOrderId is required in CONTROLLED mode');
+        if (settings.requireSOForStockItems && !input.salesOrderId) {
+            throw new Error('A Sales Order reference is required to create a delivery note.');
         }
         let so = null;
         if (input.salesOrderId) {
@@ -92,10 +90,11 @@ class CreateDeliveryNoteUseCase {
             });
         }
         const now = new Date();
+        const dnNumber = await (0, SalesOrderUseCases_1.generateUniqueDocumentNumber)(settings, 'DN', async (candidate) => !!(await this.deliveryNoteRepo.getByNumber(input.companyId, candidate)));
         const dn = new DeliveryNote_1.DeliveryNote({
             id: (0, crypto_1.randomUUID)(),
             companyId: input.companyId,
-            dnNumber: (0, SalesOrderUseCases_1.generateDocumentNumber)(settings, 'DN'),
+            dnNumber,
             salesOrderId: so === null || so === void 0 ? void 0 : so.id,
             customerId,
             customerName,
@@ -133,7 +132,7 @@ class CreateDeliveryNoteUseCase {
 }
 exports.CreateDeliveryNoteUseCase = CreateDeliveryNoteUseCase;
 class PostDeliveryNoteUseCase {
-    constructor(settingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, voucherRepo, ledgerRepo, transactionManager) {
+    constructor(settingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.deliveryNoteRepo = deliveryNoteRepo;
         this.salesOrderRepo = salesOrderRepo;
@@ -143,8 +142,7 @@ class PostDeliveryNoteUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
-        this.voucherRepo = voucherRepo;
-        this.ledgerRepo = ledgerRepo;
+        this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
     async execute(companyId, id) {
@@ -218,10 +216,11 @@ class PostDeliveryNoteUseCase {
                 line.stockMovementId = movement.id;
                 line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(movement.unitCostBase || 0);
                 line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase);
+                this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
                 line.moveCurrency = movement.movementCurrency;
                 line.fxRateMovToBase = movement.fxRateMovToBase;
                 line.fxRateCCYToBase = movement.fxRateCCYToBase;
-                const accounts = await this.resolveCOGSAccounts(companyId, item.id, settings.defaultCOGSAccountId);
+                const accounts = await this.resolveCOGSAccounts(companyId, item.id, settings.defaultCOGSAccountId, settings.defaultInventoryAccountId);
                 if (accounts.cogsAccountId && accounts.inventoryAccountId && line.lineCostBase > 0) {
                     const key = `${accounts.cogsAccountId}|${accounts.inventoryAccountId}`;
                     const existing = cogsBucket.get(key);
@@ -241,7 +240,44 @@ class PostDeliveryNoteUseCase {
                 }
             }
             if (cogsBucket.size > 0) {
-                const voucher = await this.createCOGSVoucherInTransaction(transaction, dn, baseCurrency, Array.from(cogsBucket.values()));
+                const cogsVoucherLines = [];
+                for (const line of Array.from(cogsBucket.values())) {
+                    const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
+                    cogsVoucherLines.push({
+                        accountId: line.cogsAccountId,
+                        side: 'Debit',
+                        amount,
+                        baseAmount: amount,
+                        docAmount: amount,
+                    });
+                    cogsVoucherLines.push({
+                        accountId: line.inventoryAccountId,
+                        side: 'Credit',
+                        amount,
+                        baseAmount: amount,
+                        docAmount: amount,
+                    });
+                }
+                const voucher = await this.accountingPostingService.postInTransaction({
+                    companyId,
+                    voucherType: VoucherTypes_1.VoucherType.JOURNAL_ENTRY,
+                    voucherNo: `DN-${dn.dnNumber}`,
+                    date: dn.deliveryDate,
+                    description: `Delivery Note ${dn.dnNumber} COGS`,
+                    currency: baseCurrency,
+                    exchangeRate: 1,
+                    lines: cogsVoucherLines,
+                    metadata: {
+                        sourceModule: 'sales',
+                        sourceType: 'DELIVERY_NOTE',
+                        sourceId: dn.id,
+                        referenceType: 'DELIVERY_NOTE',
+                        referenceId: dn.id,
+                    },
+                    createdBy: dn.createdBy,
+                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                    reference: dn.dnNumber,
+                }, transaction);
                 dn.cogsVoucherId = voucher.id;
             }
             if (so) {
@@ -259,7 +295,7 @@ class PostDeliveryNoteUseCase {
             throw new Error(`Delivery note not found after posting: ${id}`);
         return posted;
     }
-    async resolveCOGSAccounts(companyId, itemId, defaultCOGSAccountId) {
+    async resolveCOGSAccounts(companyId, itemId, defaultCOGSAccountId, defaultInventoryAccountId) {
         const item = await this.itemRepo.getItem(itemId);
         if (!item)
             throw new Error(`Item not found while resolving COGS accounts: ${itemId}`);
@@ -274,7 +310,8 @@ class PostDeliveryNoteUseCase {
             || (category === null || category === void 0 ? void 0 : category.defaultCogsAccountId)
             || defaultCOGSAccountId;
         const inventoryAccountId = item.inventoryAssetAccountId
-            || (category === null || category === void 0 ? void 0 : category.defaultInventoryAssetAccountId);
+            || (category === null || category === void 0 ? void 0 : category.defaultInventoryAssetAccountId)
+            || defaultInventoryAccountId;
         if (!cogsAccountId) {
             throw new Error(`No COGS account configured for item ${item.code}`);
         }
@@ -282,37 +319,6 @@ class PostDeliveryNoteUseCase {
             throw new Error(`No inventory account configured for item ${item.code}`);
         }
         return { cogsAccountId, inventoryAccountId };
-    }
-    async createCOGSVoucherInTransaction(transaction, dn, baseCurrency, lines) {
-        const now = new Date();
-        const voucherLines = [];
-        let seq = 1;
-        for (const line of lines) {
-            const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.cogsAccountId, 'Debit', amount, baseCurrency, amount, baseCurrency, 1, `COGS - DN ${dn.dnNumber}`, undefined, {
-                sourceModule: 'sales',
-                sourceType: 'DELIVERY_NOTE',
-                sourceId: dn.id,
-            }));
-            voucherLines.push(new VoucherLineEntity_1.VoucherLineEntity(seq++, line.inventoryAccountId, 'Credit', amount, baseCurrency, amount, baseCurrency, 1, `Inventory reduction - DN ${dn.dnNumber}`, undefined, {
-                sourceModule: 'sales',
-                sourceType: 'DELIVERY_NOTE',
-                sourceId: dn.id,
-            }));
-        }
-        const totalDebit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-        const totalCredit = (0, SalesPostingHelpers_1.roundMoney)(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-        const voucher = new VoucherEntity_1.VoucherEntity((0, crypto_1.randomUUID)(), dn.companyId, `DN-${dn.dnNumber}`, VoucherTypes_1.VoucherType.JOURNAL_ENTRY, dn.deliveryDate, `Delivery Note ${dn.dnNumber} COGS`, baseCurrency, baseCurrency, 1, voucherLines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, {
-            sourceModule: 'sales',
-            sourceType: 'DELIVERY_NOTE',
-            sourceId: dn.id,
-            referenceType: 'DELIVERY_NOTE',
-            referenceId: dn.id,
-        }, dn.createdBy, now, dn.createdBy, now);
-        const postedVoucher = voucher.post(dn.createdBy, now, VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
-        await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-        await this.voucherRepo.save(postedVoucher, transaction);
-        return postedVoucher;
     }
     async convertToBaseUom(companyId, qty, uom, baseUom, itemId, itemCode) {
         if (uom.toUpperCase() === baseUom.toUpperCase()) {
@@ -332,6 +338,11 @@ class PostDeliveryNoteUseCase {
         if (reverse)
             return (0, SalesPostingHelpers_1.roundMoney)(qty / reverse.factor);
         throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    }
+    assertPositiveTrackedCost(qty, unitCostBase, itemName, documentLabel) {
+        if (qty > 0 && !(unitCostBase > 0)) {
+            throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}`);
+        }
     }
 }
 exports.PostDeliveryNoteUseCase = PostDeliveryNoteUseCase;

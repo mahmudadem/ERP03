@@ -1,0 +1,1 @@
+{"version":3,"file":"SalesReturnStrategy.js","sourceRoot":"","sources":["../../../../../../../src/domain/accounting/strategies/implementations/SalesReturnStrategy.ts"],"names":[],"mappings":";;;AAEA,uFAAmF;AAEnF,MAAa,mBAAmB;IAC9B,KAAK,CAAC,aAAa,CAAC,MAAW,EAAE,SAAiB,EAAE,YAAoB;QACtE,OAAO,IAAA,gEAA8B,EAAC,MAAM,EAAE,YAAY,CAAC,CAAC;IAC9D,CAAC;CACF;AAJD,kDAIC"}

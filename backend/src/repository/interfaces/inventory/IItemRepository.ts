@@ -10,6 +10,7 @@ export interface ItemListOptions {
   active?: boolean;
   type?: Item['type'];
   categoryId?: string;
+  trackInventory?: boolean;
 }
 
 export interface IItemRepository {

@@ -10,6 +10,7 @@ const templates = [
     name: "Payment Voucher",
     code: "PAYMENT",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { 
         id: "date", 
@@ -104,6 +105,7 @@ const templates = [
     name: "Receipt Voucher",
     code: "RECEIPT",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { 
         id: "date", 
@@ -198,6 +200,7 @@ const templates = [
     name: "Currency Exchange",
     code: "FX",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { id: "buyAccountId", label: "Buy Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
       { id: "sellAccountId", label: "Sell Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
@@ -220,6 +223,7 @@ const templates = [
     name: "Bank Transfer",
     code: "TRANSFER",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { id: "fromAccountId", label: "From Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
       { id: "toAccountId", label: "To Account", type: "ACCOUNT_SELECT", required: true, isPosting: true, postingRole: PostingRole.ACCOUNT },
@@ -239,6 +243,7 @@ const templates = [
     name: "Journal Entry",
     code: "JOURNAL",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { 
         id: "date", 
@@ -309,9 +314,290 @@ const templates = [
     workflow: { approvalRequired: true }
   },
   {
+    name: "Sales Invoice",
+    code: "sales_invoice",
+    module: "SALES",
+    sidebarGroup: "Documents",
+    headerFields: [
+      {
+        id: "date",
+        label: "Date",
+        type: "DATE",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      {
+        id: "customerName",
+        label: "Customer",
+        type: "TEXT",
+        required: false,
+        isPosting: false,
+        postingRole: null
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        type: "CURRENCY_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      {
+        id: "exchangeRate",
+        label: "Exchange Rate",
+        type: "NUMBER",
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      {
+        id: "totalAmount",
+        label: "Total Amount",
+        type: "NUMBER",
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "description",
+        label: "Description",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "accountId", width: "220px" },
+      { fieldId: "debit", width: "120px" },
+      { fieldId: "credit", width: "120px" },
+      { fieldId: "description", width: "220px" }
+    ],
+    layout: {
+      sections: [
+        { id: "header", title: "Sales Invoice Header", fieldIds: ["date", "customerName", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "lines", title: "Voucher Lines", fieldIds: ["lineItems"] }
+      ]
+    },
+    workflow: { approvalRequired: true }
+  },
+  {
+    name: "Sales Return",
+    code: "sales_return",
+    module: "SALES",
+    sidebarGroup: "Documents",
+    headerFields: [
+      {
+        id: "date",
+        label: "Date",
+        type: "DATE",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      {
+        id: "customerName",
+        label: "Customer",
+        type: "TEXT",
+        required: false,
+        isPosting: false,
+        postingRole: null
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        type: "CURRENCY_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      {
+        id: "exchangeRate",
+        label: "Exchange Rate",
+        type: "NUMBER",
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      {
+        id: "totalAmount",
+        label: "Total Amount",
+        type: "NUMBER",
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "description",
+        label: "Description",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "accountId", width: "220px" },
+      { fieldId: "debit", width: "120px" },
+      { fieldId: "credit", width: "120px" },
+      { fieldId: "description", width: "220px" }
+    ],
+    layout: {
+      sections: [
+        { id: "header", title: "Sales Return Header", fieldIds: ["date", "customerName", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "lines", title: "Voucher Lines", fieldIds: ["lineItems"] }
+      ]
+    },
+    workflow: { approvalRequired: true }
+  },
+  {
+    name: "Purchase Invoice",
+    code: "purchase_invoice",
+    module: "PURCHASE",
+    sidebarGroup: "Documents",
+    headerFields: [
+      {
+        id: "date",
+        label: "Date",
+        type: "DATE",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      {
+        id: "supplierName",
+        label: "Supplier",
+        type: "TEXT",
+        required: false,
+        isPosting: false,
+        postingRole: null
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        type: "CURRENCY_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      {
+        id: "exchangeRate",
+        label: "Exchange Rate",
+        type: "NUMBER",
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      {
+        id: "totalAmount",
+        label: "Total Amount",
+        type: "NUMBER",
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "description",
+        label: "Description",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "accountId", width: "220px" },
+      { fieldId: "debit", width: "120px" },
+      { fieldId: "credit", width: "120px" },
+      { fieldId: "description", width: "220px" }
+    ],
+    layout: {
+      sections: [
+        { id: "header", title: "Purchase Invoice Header", fieldIds: ["date", "supplierName", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "lines", title: "Voucher Lines", fieldIds: ["lineItems"] }
+      ]
+    },
+    workflow: { approvalRequired: true }
+  },
+  {
+    name: "Purchase Return",
+    code: "purchase_return",
+    module: "PURCHASE",
+    sidebarGroup: "Documents",
+    headerFields: [
+      {
+        id: "date",
+        label: "Date",
+        type: "DATE",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.DATE
+      },
+      {
+        id: "supplierName",
+        label: "Supplier",
+        type: "TEXT",
+        required: false,
+        isPosting: false,
+        postingRole: null
+      },
+      {
+        id: "currency",
+        label: "Currency",
+        type: "CURRENCY_SELECT",
+        required: true,
+        isPosting: true,
+        postingRole: PostingRole.CURRENCY
+      },
+      {
+        id: "exchangeRate",
+        label: "Exchange Rate",
+        type: "NUMBER",
+        defaultValue: 1,
+        isPosting: true,
+        postingRole: PostingRole.EXCHANGE_RATE
+      },
+      {
+        id: "totalAmount",
+        label: "Total Amount",
+        type: "NUMBER",
+        required: false,
+        readOnly: true,
+        calculated: true,
+        isPosting: true,
+        postingRole: PostingRole.AMOUNT
+      },
+      {
+        id: "description",
+        label: "Description",
+        type: "TEXT",
+        isPosting: false,
+        postingRole: null
+      }
+    ],
+    tableColumns: [
+      { fieldId: "accountId", width: "220px" },
+      { fieldId: "debit", width: "120px" },
+      { fieldId: "credit", width: "120px" },
+      { fieldId: "description", width: "220px" }
+    ],
+    layout: {
+      sections: [
+        { id: "header", title: "Purchase Return Header", fieldIds: ["date", "supplierName", "currency", "exchangeRate", "totalAmount", "description"] },
+        { id: "lines", title: "Voucher Lines", fieldIds: ["lineItems"] }
+      ]
+    },
+    workflow: { approvalRequired: true }
+  },
+  {
     name: "FX Revaluation",
     code: "fx_revaluation",
     module: "ACCOUNTING",
+    sidebarGroup: "Vouchers",
     headerFields: [
       { 
         id: "date", 

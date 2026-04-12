@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostStockAdjustmentUseCase = exports.CreateStockAdjustmentUseCase = void 0;
 const crypto_1 = require("crypto");
+const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const StockAdjustment_1 = require("../../../domain/inventory/entities/StockAdjustment");
-const VoucherUseCases_1 = require("../../accounting/use-cases/VoucherUseCases");
 class CreateStockAdjustmentUseCase {
     constructor(adjustmentRepo) {
         this.adjustmentRepo = adjustmentRepo;
@@ -38,11 +38,12 @@ class CreateStockAdjustmentUseCase {
 }
 exports.CreateStockAdjustmentUseCase = CreateStockAdjustmentUseCase;
 class PostStockAdjustmentUseCase {
-    constructor(adjustmentRepo, itemRepo, movementUseCase, voucherDeps) {
+    constructor(adjustmentRepo, itemRepo, movementUseCase, transactionManager, accountingPostingService) {
         this.adjustmentRepo = adjustmentRepo;
         this.itemRepo = itemRepo;
         this.movementUseCase = movementUseCase;
-        this.voucherDeps = voucherDeps;
+        this.transactionManager = transactionManager;
+        this.accountingPostingService = accountingPostingService;
     }
     async execute(companyId, adjustmentId, userId) {
         const adjustment = await this.adjustmentRepo.getAdjustment(adjustmentId);
@@ -61,63 +62,72 @@ class PostStockAdjustmentUseCase {
                 throw new Error(`Item not found for adjustment line: ${line.itemId}`);
             }
             itemCache.set(line.itemId, item);
-            if (line.adjustmentQty > 0) {
-                const fxRate = line.unitCostCCY > 0 ? line.unitCostBase / line.unitCostCCY : 1;
-                const inInput = {
-                    companyId,
-                    itemId: line.itemId,
-                    warehouseId: adjustment.warehouseId,
-                    qty: line.adjustmentQty,
-                    date: adjustment.date,
-                    movementType: 'ADJUSTMENT_IN',
-                    refs: {
-                        type: 'STOCK_ADJUSTMENT',
-                        docId: adjustment.id,
-                    },
-                    currentUser: userId,
-                    notes: adjustment.notes,
-                    unitCostInMoveCurrency: line.unitCostCCY,
-                    moveCurrency: item.costCurrency,
-                    fxRateMovToBase: fxRate,
-                    fxRateCCYToBase: fxRate,
-                };
-                await this.movementUseCase.processIN(inInput);
-            }
-            else {
-                const outInput = {
-                    companyId,
-                    itemId: line.itemId,
-                    warehouseId: adjustment.warehouseId,
-                    qty: Math.abs(line.adjustmentQty),
-                    date: adjustment.date,
-                    movementType: 'ADJUSTMENT_OUT',
-                    refs: {
-                        type: 'STOCK_ADJUSTMENT',
-                        docId: adjustment.id,
-                    },
-                    currentUser: userId,
-                    notes: adjustment.notes,
-                };
-                await this.movementUseCase.processOUT(outInput);
-            }
         }
-        const voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache);
-        const updatePatch = {
-            status: 'POSTED',
-            postedAt: new Date(),
-        };
-        if (voucherId) {
-            updatePatch.voucherId = voucherId;
-        }
-        await this.adjustmentRepo.updateAdjustment(adjustment.id, updatePatch);
+        await this.transactionManager.runTransaction(async (transaction) => {
+            for (const line of adjustment.lines) {
+                if (line.adjustmentQty === 0)
+                    continue;
+                const item = itemCache.get(line.itemId);
+                if (line.adjustmentQty > 0) {
+                    const fxRate = line.unitCostCCY > 0 ? line.unitCostBase / line.unitCostCCY : 1;
+                    const inInput = {
+                        companyId,
+                        itemId: line.itemId,
+                        warehouseId: adjustment.warehouseId,
+                        qty: line.adjustmentQty,
+                        date: adjustment.date,
+                        movementType: 'ADJUSTMENT_IN',
+                        refs: {
+                            type: 'STOCK_ADJUSTMENT',
+                            docId: adjustment.id,
+                        },
+                        currentUser: userId,
+                        notes: adjustment.notes,
+                        unitCostInMoveCurrency: line.unitCostCCY,
+                        moveCurrency: item.costCurrency,
+                        fxRateMovToBase: fxRate,
+                        fxRateCCYToBase: fxRate,
+                        transaction,
+                    };
+                    await this.movementUseCase.processIN(inInput);
+                }
+                else {
+                    const outInput = {
+                        companyId,
+                        itemId: line.itemId,
+                        warehouseId: adjustment.warehouseId,
+                        qty: Math.abs(line.adjustmentQty),
+                        date: adjustment.date,
+                        movementType: 'ADJUSTMENT_OUT',
+                        refs: {
+                            type: 'STOCK_ADJUSTMENT',
+                            docId: adjustment.id,
+                        },
+                        currentUser: userId,
+                        notes: adjustment.notes,
+                        transaction,
+                    };
+                    await this.movementUseCase.processOUT(outInput);
+                }
+            }
+            const voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction);
+            const updatePatch = {
+                status: 'POSTED',
+                postedAt: new Date(),
+            };
+            if (voucherId) {
+                updatePatch.voucherId = voucherId;
+            }
+            await this.adjustmentRepo.updateAdjustment(companyId, adjustment.id, updatePatch, transaction);
+        });
         const posted = await this.adjustmentRepo.getAdjustment(adjustment.id);
         if (!posted) {
             throw new Error(`Stock adjustment not found after posting: ${adjustment.id}`);
         }
         return posted;
     }
-    async createVoucherForAdjustment(companyId, userId, adjustment, itemCache) {
-        if (!this.voucherDeps) {
+    async createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction) {
+        if (!this.accountingPostingService) {
             console.warn(`[Inventory][PostStockAdjustmentUseCase] Accounting dependencies not provided; skipping GL voucher for adjustment ${adjustment.id}.`);
             return undefined;
         }
@@ -145,7 +155,8 @@ class PostStockAdjustmentUseCase {
             voucherLines.push({
                 accountId: debitAccountId,
                 side: 'Debit',
-                amount: amountBase,
+                baseAmount: amountBase,
+                docAmount: amountBase,
                 notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
                 metadata: {
                     source: 'inventory-adjustment',
@@ -158,7 +169,8 @@ class PostStockAdjustmentUseCase {
             voucherLines.push({
                 accountId: creditAccountId,
                 side: 'Credit',
-                amount: amountBase,
+                baseAmount: amountBase,
+                docAmount: amountBase,
                 notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
                 metadata: {
                     source: 'inventory-adjustment',
@@ -177,17 +189,16 @@ class PostStockAdjustmentUseCase {
         if (Math.abs(computedAmountBase - expectedAmount) > 0.01) {
             console.warn(`[Inventory][PostStockAdjustmentUseCase] Adjustment amount mismatch for ${adjustment.id}: expected=${expectedAmount}, computed=${computedAmountBase}.`);
         }
-        const createVoucherUseCase = new VoucherUseCases_1.CreateVoucherUseCase(this.voucherDeps.voucherRepository, this.voucherDeps.accountRepository, this.voucherDeps.companyModuleSettingsRepository, this.voucherDeps.permissionChecker, this.voucherDeps.transactionManager, this.voucherDeps.voucherTypeDefinitionRepository, this.voucherDeps.accountingPolicyConfigProvider, this.voucherDeps.ledgerRepository, this.voucherDeps.policyRegistry, this.voucherDeps.companyCurrencyRepository, this.voucherDeps.voucherSequenceRepository);
         try {
-            const voucher = await createVoucherUseCase.execute(companyId, userId, {
-                type: 'JV',
+            const voucher = await this.accountingPostingService.postInTransaction({
+                companyId,
+                voucherType: VoucherTypes_1.VoucherType.JOURNAL_ENTRY,
+                voucherNo: `ADJ-${adjustment.id}`,
                 date: adjustment.date,
                 description: `Inventory adjustment ${adjustment.id} (${adjustment.reason})`,
-                sourceModule: 'inventory',
-                reference: {
-                    type: 'STOCK_ADJUSTMENT',
-                    id: adjustment.id,
-                },
+                currency: '',
+                exchangeRate: 1,
+                lines: voucherLines,
                 metadata: {
                     sourceModule: 'inventory',
                     referenceType: 'STOCK_ADJUSTMENT',
@@ -196,13 +207,15 @@ class PostStockAdjustmentUseCase {
                     adjustmentReason: adjustment.reason,
                     adjustmentValueBase: expectedAmount,
                 },
-                lines: voucherLines,
-            });
+                createdBy: userId,
+                postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                reference: adjustment.id,
+            }, transaction);
             return voucher.id;
         }
         catch (error) {
-            console.warn(`[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}:`, error);
-            return undefined;
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}: ${message}`);
         }
     }
 }

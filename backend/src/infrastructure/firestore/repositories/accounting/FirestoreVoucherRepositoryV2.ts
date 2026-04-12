@@ -217,16 +217,20 @@ export class FirestoreVoucherRepositoryV2 implements IVoucherRepository {
       .slice(offset, offset + limit);
   }
 
-  async delete(companyId: string, voucherId: string): Promise<boolean> {
+  async delete(companyId: string, voucherId: string, transaction?: any): Promise<boolean> {
     const docRef = this.getCollection(companyId).doc(voucherId);
-    const snapshot = await docRef.get();
-
-    if (!snapshot.exists) {
-      return false;
-    }
     
-    await docRef.delete();
-    return true;
+    if (transaction) {
+      transaction.delete(docRef);
+      return true;
+    } else {
+      const snapshot = await docRef.get();
+      if (!snapshot.exists) {
+        return false;
+      }
+      await docRef.delete();
+      return true;
+    }
   }
 
   async existsByNumber(companyId: string, voucherNo: string): Promise<boolean> {

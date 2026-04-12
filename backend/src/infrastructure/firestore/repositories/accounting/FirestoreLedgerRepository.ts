@@ -93,10 +93,17 @@ const getAmountsBySide = (entry: any, targetAccountCurrency: string | undefined,
   if (isReval) {
     accountAmount = 0;
   } else if (targetCurrency && entryCurrency && entryCurrency !== targetCurrency) {
-    // If the ledger stored amount in a different currency than the account (e.g., base),
-    // convert from baseAmount using exchangeRate when possible.
-    if (baseAmount && entry.exchangeRate) {
-      accountAmount = baseAmount / entry.exchangeRate;
+    // If we are looking at a statement for a target currency (e.g. SYP) but the entry is in USD
+    // we need to show the amount in the TARGET currency.
+    if (targetCurrency === baseCur) {
+      // If target is base currency, use the stored baseAmount
+      accountAmount = baseAmount || (entry.amount * (entry.exchangeRate || 1));
+    } else if (entryCurrency === baseCur && targetCurrency !== baseCur) {
+       // Entry is in base, but target account is foreign? 
+       // This happens during manual adjustments. Convert back.
+       if (entry.exchangeRate) {
+         accountAmount = baseAmount / entry.exchangeRate;
+       }
     }
   }
 

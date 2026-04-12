@@ -5,7 +5,7 @@ class PurchaseDTOMapper {
     static toSettingsDTO(settings) {
         return {
             companyId: settings.companyId,
-            procurementControlMode: settings.procurementControlMode,
+            allowDirectInvoicing: settings.allowDirectInvoicing,
             requirePOForStockItems: settings.requirePOForStockItems,
             defaultAPAccountId: settings.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId,

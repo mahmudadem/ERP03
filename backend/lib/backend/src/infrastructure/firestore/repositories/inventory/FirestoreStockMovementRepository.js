@@ -112,6 +112,15 @@ class FirestoreStockMovementRepository {
             return null;
         return InventoryMappers_1.StockMovementMapper.toDomain(doc.data());
     }
+    async deleteMovement(companyId, id, transaction) {
+        const ref = this.collection(companyId).doc(id);
+        const txn = this.asTransaction(transaction);
+        if (txn) {
+            txn.delete(ref);
+            return;
+        }
+        await ref.delete();
+    }
 }
 exports.FirestoreStockMovementRepository = FirestoreStockMovementRepository;
 //# sourceMappingURL=FirestoreStockMovementRepository.js.map

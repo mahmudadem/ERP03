@@ -11,5 +11,6 @@ export interface ISalesReturnRepository {
   create(sr: SalesReturn, transaction?: unknown): Promise<void>;
   update(sr: SalesReturn, transaction?: unknown): Promise<void>;
   getById(companyId: string, id: string): Promise<SalesReturn | null>;
+  getByNumber(companyId: string, returnNumber: string): Promise<SalesReturn | null>;
   list(companyId: string, opts?: SalesReturnListOptions): Promise<SalesReturn[]>;
 }

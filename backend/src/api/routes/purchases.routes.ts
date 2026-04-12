@@ -24,18 +24,23 @@ router.post('/orders/:id/close', PurchaseController.closePO);
 router.post('/goods-receipts', PurchaseController.createGRN);
 router.get('/goods-receipts', PurchaseController.listGRNs);
 router.get('/goods-receipts/:id', PurchaseController.getGRN);
+router.put('/goods-receipts/:id', PurchaseController.updateGRN);
 router.post('/goods-receipts/:id/post', PurchaseController.postGRN);
+router.post('/goods-receipts/:id/unpost', PurchaseController.unpostGRN);
 
 router.post('/invoices', PurchaseController.createPI);
 router.get('/invoices', PurchaseController.listPIs);
 router.get('/invoices/:id', PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController.updatePI);
 router.post('/invoices/:id/post', PurchaseController.postPI);
+router.post('/invoices/:id/unpost', PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStatus);
 
 router.post('/returns', PurchaseController.createReturn);
 router.get('/returns', PurchaseController.listReturns);
 router.get('/returns/:id', PurchaseController.getReturn);
+router.put('/returns/:id', PurchaseController.updateReturn);
 router.post('/returns/:id/post', PurchaseController.postReturn);
+router.post('/returns/:id/unpost', PurchaseController.unpostReturn);
 
 export default router;

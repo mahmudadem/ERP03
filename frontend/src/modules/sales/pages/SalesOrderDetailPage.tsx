@@ -14,6 +14,9 @@ import {
 } from '../../../api/salesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -85,6 +88,7 @@ const statusBadgeClass = (status: SOStatus): string => {
 };
 
 const SalesOrderDetailPage: React.FC = () => {
+  const { company } = useCompanyAccess();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
@@ -509,24 +513,21 @@ const SalesOrderDetailPage: React.FC = () => {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
+            <CurrencySelector
               value={form.currency}
-              disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+              onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+              disabled={isReadOnly || saving || actionBusy}
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
-            <input
-              type="number"
-              min={0.000001}
-              step={0.000001}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <CurrencyExchangeWidget
+              currency={form.currency}
+              baseCurrency={company?.baseCurrency || 'USD'}
+              voucherDate={form.orderDate}
               value={form.exchangeRate}
-              disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, exchangeRate: Number(e.target.value) }))}
+              onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+              disabled={isReadOnly || saving || actionBusy}
             />
           </div>
         </div>

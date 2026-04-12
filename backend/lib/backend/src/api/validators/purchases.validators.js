@@ -46,17 +46,17 @@ const ensureIsoDate = (value, fieldName) => {
         throw ApiError_1.ApiError.badRequest(`${fieldName} must be in YYYY-MM-DD format`);
     }
 };
-const ensureControlMode = (value, fieldName) => {
-    if (value !== 'SIMPLE' && value !== 'CONTROLLED') {
-        throw ApiError_1.ApiError.badRequest(`${fieldName} must be SIMPLE or CONTROLLED`);
-    }
-};
 const ensureOptionalNumber = (value, fieldName) => {
     if (value === undefined)
         return;
     ensureNumber(value, fieldName);
 };
 const ensureOptionalString = (value, fieldName) => {
+    if (value === undefined)
+        return;
+    ensureRequiredString(value, fieldName);
+};
+const ensureOptionalUuid = (value, fieldName) => {
     if (value === undefined)
         return;
     ensureRequiredString(value, fieldName);
@@ -152,8 +152,8 @@ const validatePRLine = (line, index) => {
     }
 };
 const validateInitializePurchasesInput = (body) => {
-    ensureRequiredString(body.defaultAPAccountId, 'defaultAPAccountId');
-    ensureControlMode(body.procurementControlMode, 'procurementControlMode');
+    if (body.allowDirectInvoicing !== undefined)
+        ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requirePOForStockItems !== undefined)
         ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
     if (body.allowOverDelivery !== undefined)
@@ -178,12 +178,12 @@ const validateInitializePurchasesInput = (body) => {
 };
 exports.validateInitializePurchasesInput = validateInitializePurchasesInput;
 const validateUpdatePurchaseSettingsInput = (body) => {
-    if (body.procurementControlMode !== undefined)
-        ensureControlMode(body.procurementControlMode, 'procurementControlMode');
+    if (body.allowDirectInvoicing !== undefined)
+        ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requirePOForStockItems !== undefined)
         ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
     if (body.defaultAPAccountId !== undefined)
-        ensureRequiredString(body.defaultAPAccountId, 'defaultAPAccountId');
+        ensureOptionalString(body.defaultAPAccountId, 'defaultAPAccountId');
     if (body.defaultPurchaseExpenseAccountId !== undefined)
         ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
     if (body.allowOverDelivery !== undefined)
@@ -384,8 +384,10 @@ const validateCreatePurchaseReturnInput = (body) => {
         ensureOptionalString(body.purchaseInvoiceId, 'purchaseInvoiceId');
     if (body.goodsReceiptId !== undefined)
         ensureOptionalString(body.goodsReceiptId, 'goodsReceiptId');
-    if (!body.purchaseInvoiceId && !body.goodsReceiptId) {
-        throw ApiError_1.ApiError.badRequest('purchaseInvoiceId or goodsReceiptId is required');
+    if (body.vendorId !== undefined)
+        ensureOptionalString(body.vendorId, 'vendorId');
+    if (!body.purchaseInvoiceId && !body.goodsReceiptId && !body.vendorId) {
+        throw ApiError_1.ApiError.badRequest('purchaseInvoiceId, goodsReceiptId or vendorId is required');
     }
     if (body.purchaseOrderId !== undefined)
         ensureOptionalString(body.purchaseOrderId, 'purchaseOrderId');

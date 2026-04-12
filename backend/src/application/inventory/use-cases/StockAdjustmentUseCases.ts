@@ -1,21 +1,11 @@
 import { randomUUID } from 'crypto';
+import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { StockAdjustment, StockAdjustmentLine } from '../../../domain/inventory/entities/StockAdjustment';
-import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
-import {
-  IAccountRepository,
-  ICompanyCurrencyRepository,
-  ILedgerRepository,
-  IVoucherSequenceRepository,
-} from '../../../repository/interfaces/accounting';
-import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IStockAdjustmentRepository } from '../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { ICompanyModuleSettingsRepository } from '../../../repository/interfaces/system/ICompanyModuleSettingsRepository';
-import { CreateVoucherUseCase } from '../../accounting/use-cases/VoucherUseCases';
-import { PermissionChecker } from '../../rbac/PermissionChecker';
+import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { ProcessINInput, ProcessOUTInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 
 export interface CreateStockAdjustmentInput {
@@ -32,20 +22,6 @@ export interface CreateStockAdjustmentInput {
     unitCostCCY: number;
   }>;
   createdBy: string;
-}
-
-export interface StockAdjustmentVoucherDependencies {
-  voucherRepository: IVoucherRepository;
-  accountRepository: IAccountRepository;
-  companyModuleSettingsRepository: ICompanyModuleSettingsRepository;
-  permissionChecker: PermissionChecker;
-  transactionManager: ITransactionManager;
-  voucherTypeDefinitionRepository: IVoucherTypeDefinitionRepository;
-  accountingPolicyConfigProvider?: IAccountingPolicyConfigProvider;
-  ledgerRepository?: ILedgerRepository;
-  policyRegistry?: any;
-  companyCurrencyRepository?: ICompanyCurrencyRepository;
-  voucherSequenceRepository?: IVoucherSequenceRepository;
 }
 
 export class CreateStockAdjustmentUseCase {
@@ -92,7 +68,8 @@ export class PostStockAdjustmentUseCase {
     private readonly adjustmentRepo: IStockAdjustmentRepository,
     private readonly itemRepo: IItemRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
-    private readonly voucherDeps?: StockAdjustmentVoucherDependencies
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountingPostingService?: SubledgerVoucherPostingService
   ) {}
 
   async execute(companyId: string, adjustmentId: string, userId: string): Promise<StockAdjustment> {
@@ -106,70 +83,83 @@ export class PostStockAdjustmentUseCase {
     }
 
     const itemCache = new Map<string, any>();
-
     for (const line of adjustment.lines) {
       if (line.adjustmentQty === 0) continue;
-
       const item = await this.itemRepo.getItem(line.itemId);
       if (!item || item.companyId !== companyId) {
         throw new Error(`Item not found for adjustment line: ${line.itemId}`);
       }
       itemCache.set(line.itemId, item);
+    }
 
-      if (line.adjustmentQty > 0) {
-        const fxRate = line.unitCostCCY > 0 ? line.unitCostBase / line.unitCostCCY : 1;
-        const inInput: ProcessINInput = {
-          companyId,
-          itemId: line.itemId,
-          warehouseId: adjustment.warehouseId,
-          qty: line.adjustmentQty,
-          date: adjustment.date,
-          movementType: 'ADJUSTMENT_IN',
-          refs: {
-            type: 'STOCK_ADJUSTMENT',
-            docId: adjustment.id,
-          },
-          currentUser: userId,
-          notes: adjustment.notes,
-          unitCostInMoveCurrency: line.unitCostCCY,
-          moveCurrency: item.costCurrency,
-          fxRateMovToBase: fxRate,
-          fxRateCCYToBase: fxRate,
-        };
+    await this.transactionManager.runTransaction(async (transaction) => {
+      for (const line of adjustment.lines) {
+        if (line.adjustmentQty === 0) continue;
+        const item = itemCache.get(line.itemId);
 
-        await this.movementUseCase.processIN(inInput);
-      } else {
-        const outInput: ProcessOUTInput = {
-          companyId,
-          itemId: line.itemId,
-          warehouseId: adjustment.warehouseId,
-          qty: Math.abs(line.adjustmentQty),
-          date: adjustment.date,
-          movementType: 'ADJUSTMENT_OUT',
-          refs: {
-            type: 'STOCK_ADJUSTMENT',
-            docId: adjustment.id,
-          },
-          currentUser: userId,
-          notes: adjustment.notes,
-        };
+        if (line.adjustmentQty > 0) {
+          const fxRate = line.unitCostCCY > 0 ? line.unitCostBase / line.unitCostCCY : 1;
+          const inInput: ProcessINInput = {
+            companyId,
+            itemId: line.itemId,
+            warehouseId: adjustment.warehouseId,
+            qty: line.adjustmentQty,
+            date: adjustment.date,
+            movementType: 'ADJUSTMENT_IN',
+            refs: {
+              type: 'STOCK_ADJUSTMENT',
+              docId: adjustment.id,
+            },
+            currentUser: userId,
+            notes: adjustment.notes,
+            unitCostInMoveCurrency: line.unitCostCCY,
+            moveCurrency: item.costCurrency,
+            fxRateMovToBase: fxRate,
+            fxRateCCYToBase: fxRate,
+            transaction,
+          };
 
-        await this.movementUseCase.processOUT(outInput);
+          await this.movementUseCase.processIN(inInput);
+        } else {
+          const outInput: ProcessOUTInput = {
+            companyId,
+            itemId: line.itemId,
+            warehouseId: adjustment.warehouseId,
+            qty: Math.abs(line.adjustmentQty),
+            date: adjustment.date,
+            movementType: 'ADJUSTMENT_OUT',
+            refs: {
+              type: 'STOCK_ADJUSTMENT',
+              docId: adjustment.id,
+            },
+            currentUser: userId,
+            notes: adjustment.notes,
+            transaction,
+          };
+
+          await this.movementUseCase.processOUT(outInput);
+        }
       }
-    }
 
-    const voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache);
+      const voucherId = await this.createVoucherForAdjustment(
+        companyId,
+        userId,
+        adjustment,
+        itemCache,
+        transaction
+      );
 
-    const updatePatch: Partial<StockAdjustment> = {
-      status: 'POSTED',
-      postedAt: new Date(),
-    };
+      const updatePatch: Partial<StockAdjustment> = {
+        status: 'POSTED',
+        postedAt: new Date(),
+      };
 
-    if (voucherId) {
-      updatePatch.voucherId = voucherId;
-    }
+      if (voucherId) {
+        updatePatch.voucherId = voucherId;
+      }
 
-    await this.adjustmentRepo.updateAdjustment(adjustment.id, updatePatch);
+      await this.adjustmentRepo.updateAdjustment(companyId, adjustment.id, updatePatch, transaction);
+    });
 
     const posted = await this.adjustmentRepo.getAdjustment(adjustment.id);
     if (!posted) {
@@ -183,9 +173,10 @@ export class PostStockAdjustmentUseCase {
     companyId: string,
     userId: string,
     adjustment: StockAdjustment,
-    itemCache: Map<string, any>
+    itemCache: Map<string, any>,
+    transaction?: unknown
   ): Promise<string | undefined> {
-    if (!this.voucherDeps) {
+    if (!this.accountingPostingService) {
       console.warn(
         `[Inventory][PostStockAdjustmentUseCase] Accounting dependencies not provided; skipping GL voucher for adjustment ${adjustment.id}.`
       );
@@ -195,7 +186,8 @@ export class PostStockAdjustmentUseCase {
     const voucherLines: Array<{
       accountId: string;
       side: 'Debit' | 'Credit';
-      amount: number;
+      baseAmount: number;
+      docAmount: number;
       notes: string;
       metadata: Record<string, any>;
     }> = [];
@@ -232,7 +224,8 @@ export class PostStockAdjustmentUseCase {
       voucherLines.push({
         accountId: debitAccountId,
         side: 'Debit',
-        amount: amountBase,
+        baseAmount: amountBase,
+        docAmount: amountBase,
         notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
         metadata: {
           source: 'inventory-adjustment',
@@ -246,7 +239,8 @@ export class PostStockAdjustmentUseCase {
       voucherLines.push({
         accountId: creditAccountId,
         side: 'Credit',
-        amount: amountBase,
+        baseAmount: amountBase,
+        docAmount: amountBase,
         notes: `Stock adjustment ${adjustment.id} (${line.itemId})`,
         metadata: {
           source: 'inventory-adjustment',
@@ -272,30 +266,16 @@ export class PostStockAdjustmentUseCase {
       );
     }
 
-    const createVoucherUseCase = new CreateVoucherUseCase(
-      this.voucherDeps.voucherRepository,
-      this.voucherDeps.accountRepository,
-      this.voucherDeps.companyModuleSettingsRepository,
-      this.voucherDeps.permissionChecker,
-      this.voucherDeps.transactionManager,
-      this.voucherDeps.voucherTypeDefinitionRepository,
-      this.voucherDeps.accountingPolicyConfigProvider,
-      this.voucherDeps.ledgerRepository,
-      this.voucherDeps.policyRegistry,
-      this.voucherDeps.companyCurrencyRepository,
-      this.voucherDeps.voucherSequenceRepository
-    );
-
     try {
-      const voucher = await createVoucherUseCase.execute(companyId, userId, {
-        type: 'JV',
+      const voucher = await this.accountingPostingService.postInTransaction({
+        companyId,
+        voucherType: VoucherType.JOURNAL_ENTRY,
+        voucherNo: `ADJ-${adjustment.id}`,
         date: adjustment.date,
         description: `Inventory adjustment ${adjustment.id} (${adjustment.reason})`,
-        sourceModule: 'inventory',
-        reference: {
-          type: 'STOCK_ADJUSTMENT',
-          id: adjustment.id,
-        },
+        currency: '',
+        exchangeRate: 1,
+        lines: voucherLines,
         metadata: {
           sourceModule: 'inventory',
           referenceType: 'STOCK_ADJUSTMENT',
@@ -304,16 +284,17 @@ export class PostStockAdjustmentUseCase {
           adjustmentReason: adjustment.reason,
           adjustmentValueBase: expectedAmount,
         },
-        lines: voucherLines,
-      });
+        createdBy: userId,
+        postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+        reference: adjustment.id,
+      }, transaction);
 
       return voucher.id;
     } catch (error) {
-      console.warn(
-        `[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}:`,
-        error
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}: ${message}`
       );
-      return undefined;
     }
   }
 }

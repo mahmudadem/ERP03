@@ -9,9 +9,12 @@ import {
   Building2,
   FileText,
   ArrowRight,
-  Clock
+  Clock,
+  ClipboardList
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useCompanyAccess } from '../../context/CompanyAccessContext';
+import { useMemo } from 'react';
 
 /**
  * Module Setup Card - Shows on Dashboard
@@ -20,10 +23,36 @@ import { useTranslation } from 'react-i18next';
 export const ModuleSetupCard: React.FC = () => {
   const { t } = useTranslation('common');
   const { modules, loading } = useCompanyModules();
+  const { moduleBundles } = useCompanyAccess();
   const navigate = useNavigate();
 
-  // Filter uninitialized modules, excluding companyAdmin (owner user is sufficient)
-  const uninitializedModules = modules.filter((m) => !m.initialized && m.moduleCode !== 'companyAdmin');
+  // Filter uninitialized modules
+  const uninitializedModules = useMemo(() => {
+    // 1. Get modules from bundles that are either missing from status list OR have initialized set to false
+    return moduleBundles
+      .filter(code => code !== 'companyAdmin')
+      .map(code => {
+        const status = modules.find(m => m.moduleCode === code);
+        return {
+          moduleCode: code,
+          initialized: status?.initialized ?? false,
+          initializationStatus: status?.initializationStatus ?? 'pending'
+        };
+      })
+      .filter(m => !m.initialized);
+  }, [modules, moduleBundles]);
+
+  // Calculate progress percentage based on enabled modules (excluding companyAdmin)
+  const progressPercentage = useMemo(() => {
+    const activeBundles = moduleBundles.filter(b => b !== 'companyAdmin');
+    if (activeBundles.length === 0) return 100;
+    
+    const initializedCount = activeBundles.filter(code => 
+      modules.some(m => m.moduleCode === code && m.initialized)
+    ).length;
+    
+    return Math.round((initializedCount / activeBundles.length) * 100);
+  }, [modules, moduleBundles]);
 
   // Don't show card if loading or all modules are initialized
   if (loading || uninitializedModules.length === 0) {
@@ -96,6 +125,30 @@ export const ModuleSetupCard: React.FC = () => {
         iconBg: 'bg-orange-50',
         iconColor: 'text-orange-600',
       },
+      purchase: {
+        name: t('moduleSetupCard.modules.purchase.name'),
+        description: t('moduleSetupCard.modules.purchase.description'),
+        path: '/purchases',
+        icon: ClipboardList,
+        iconBg: 'bg-indigo-50',
+        iconColor: 'text-indigo-600',
+      },
+      purchases: {
+        name: t('moduleSetupCard.modules.purchase.name'),
+        description: t('moduleSetupCard.modules.purchase.description'),
+        path: '/purchases',
+        icon: ClipboardList,
+        iconBg: 'bg-indigo-50',
+        iconColor: 'text-indigo-600',
+      },
+      sales: {
+        name: t('moduleSetupCard.modules.sales.name'),
+        description: t('moduleSetupCard.modules.sales.description'),
+        path: '/sales',
+        icon: ShoppingCart,
+        iconBg: 'bg-rose-50',
+        iconColor: 'text-rose-600',
+      },
     };
 
     return (
@@ -111,7 +164,6 @@ export const ModuleSetupCard: React.FC = () => {
   };
 
   // Calculate progress percentage
-  const progressPercentage = Math.round((modules.filter(m => m.initialized).length / modules.length) * 100);
 
   return (
     <div className="bg-gray-50 rounded-lg p-6">

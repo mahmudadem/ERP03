@@ -6,11 +6,12 @@ import { SalesSettings } from '../../domain/sales/entities/SalesSettings';
 
 export interface SalesSettingsDTO {
   companyId: string;
-  salesControlMode: 'SIMPLE' | 'CONTROLLED';
+  allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  defaultARAccountId: string;
+  defaultARAccountId?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
+  defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -258,11 +259,12 @@ export class SalesDTOMapper {
   static toSettingsDTO(settings: SalesSettings): SalesSettingsDTO {
     return {
       companyId: settings.companyId,
-      salesControlMode: settings.salesControlMode,
+      allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
       defaultRevenueAccountId: settings.defaultRevenueAccountId,
       defaultCOGSAccountId: settings.defaultCOGSAccountId,
+      defaultInventoryAccountId: settings.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: settings.defaultSalesExpenseAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,

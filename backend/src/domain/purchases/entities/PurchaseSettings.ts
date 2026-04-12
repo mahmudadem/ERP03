@@ -1,10 +1,8 @@
-export type ProcurementControlMode = 'SIMPLE' | 'CONTROLLED';
-
 export interface PurchaseSettingsProps {
   companyId: string;
-  procurementControlMode: ProcurementControlMode;
+  allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  defaultAPAccountId: string;
+  defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -20,15 +18,14 @@ export interface PurchaseSettingsProps {
   piNumberNextSeq: number;
   prNumberPrefix: string;
   prNumberNextSeq: number;
+  exchangeGainLossAccountId?: string;
 }
-
-const CONTROL_MODES: ProcurementControlMode[] = ['SIMPLE', 'CONTROLLED'];
 
 export class PurchaseSettings {
   readonly companyId: string;
-  procurementControlMode: ProcurementControlMode;
+  allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  defaultAPAccountId: string;
+  defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -42,22 +39,17 @@ export class PurchaseSettings {
   grnNumberNextSeq: number;
   piNumberPrefix: string;
   piNumberNextSeq: number;
-  prNumberPrefix: string;
-  prNumberNextSeq: number;
+  prNumberPrefix?: string;
+  prNumberNextSeq?: number;
+  exchangeGainLossAccountId?: string;
 
   constructor(props: PurchaseSettingsProps) {
     if (!props.companyId?.trim()) throw new Error('PurchaseSettings companyId is required');
-    if (!props.defaultAPAccountId?.trim()) throw new Error('PurchaseSettings defaultAPAccountId is required');
-    if (!CONTROL_MODES.includes(props.procurementControlMode)) {
-      throw new Error(`Invalid procurementControlMode: ${props.procurementControlMode}`);
-    }
 
     this.companyId = props.companyId;
-    this.procurementControlMode = props.procurementControlMode;
-    this.requirePOForStockItems = props.procurementControlMode === 'CONTROLLED'
-      ? true
-      : props.requirePOForStockItems;
-    this.defaultAPAccountId = props.defaultAPAccountId;
+    this.allowDirectInvoicing = props.allowDirectInvoicing;
+    this.requirePOForStockItems = props.requirePOForStockItems;
+    this.defaultAPAccountId = props.defaultAPAccountId?.trim() || undefined;
     this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
     this.allowOverDelivery = props.allowOverDelivery;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
@@ -73,12 +65,13 @@ export class PurchaseSettings {
     this.piNumberNextSeq = props.piNumberNextSeq || 1;
     this.prNumberPrefix = props.prNumberPrefix || 'PR';
     this.prNumberNextSeq = props.prNumberNextSeq || 1;
+    this.exchangeGainLossAccountId = props.exchangeGainLossAccountId;
   }
 
-  static createDefault(companyId: string, defaultAPAccountId: string): PurchaseSettings {
+  static createDefault(companyId: string, defaultAPAccountId?: string): PurchaseSettings {
     return new PurchaseSettings({
       companyId,
-      procurementControlMode: 'SIMPLE',
+      allowDirectInvoicing: true,
       requirePOForStockItems: false,
       defaultAPAccountId,
       allowOverDelivery: false,
@@ -99,7 +92,7 @@ export class PurchaseSettings {
   toJSON(): Record<string, any> {
     return {
       companyId: this.companyId,
-      procurementControlMode: this.procurementControlMode,
+      allowDirectInvoicing: this.allowDirectInvoicing,
       requirePOForStockItems: this.requirePOForStockItems,
       defaultAPAccountId: this.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
@@ -117,13 +110,14 @@ export class PurchaseSettings {
       piNumberNextSeq: this.piNumberNextSeq,
       prNumberPrefix: this.prNumberPrefix,
       prNumberNextSeq: this.prNumberNextSeq,
+      exchangeGainLossAccountId: this.exchangeGainLossAccountId,
     };
   }
 
   static fromJSON(data: any): PurchaseSettings {
     return new PurchaseSettings({
       companyId: data.companyId,
-      procurementControlMode: data.procurementControlMode || 'SIMPLE',
+      allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requirePOForStockItems: data.requirePOForStockItems ?? false,
       defaultAPAccountId: data.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,

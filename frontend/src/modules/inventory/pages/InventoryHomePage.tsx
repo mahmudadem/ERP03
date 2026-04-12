@@ -5,7 +5,7 @@ import { Card } from '../../../components/ui/Card';
 import { InventoryDashboardDTO, InventorySettingsDTO, inventoryApi } from '../../../api/inventoryApi';
 import { companyModulesApi } from '../../../api/companyModules';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
-import InventoryInitializationWizard from '../wizards/InventoryInitializationWizard';
+import { InventoryInitializationWizard } from '../wizards/InventoryInitializationWizard';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -18,6 +18,8 @@ const InventoryHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reloadTick, setReloadTick] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [itemsMap, setItemsMap] = useState<Record<string, string>>({});
+  const [warehousesMap, setWarehousesMap] = useState<Record<string, string>>({});
 
   const load = async () => {
     try {
@@ -44,7 +46,23 @@ const InventoryHomePage: React.FC = () => {
       }
 
       setInitialized(true);
-      const dashboardResult = await inventoryApi.getDashboard();
+      const [dashboardResult, itemsResult, warehousesResult] = await Promise.all([
+        inventoryApi.getDashboard(),
+        inventoryApi.listItems(),
+        inventoryApi.listWarehouses()
+      ]);
+
+      const items = unwrap<any[]>(itemsResult) || [];
+      const warehouses = unwrap<any[]>(warehousesResult) || [];
+      
+      const iMap: Record<string, string> = {};
+      items.forEach(i => iMap[i.id] = `${i.name} (${i.code})`);
+      setItemsMap(iMap);
+
+      const wMap: Record<string, string> = {};
+      warehouses.forEach(w => wMap[w.id] = w.name);
+      setWarehousesMap(wMap);
+
       setDashboard(unwrap<InventoryDashboardDTO>(dashboardResult));
     } catch (error: any) {
       console.error('Failed to load inventory dashboard', error);
@@ -159,14 +177,24 @@ const InventoryHomePage: React.FC = () => {
             </thead>
             <tbody>
               {(dashboard?.recentMovements || []).map((movement) => (
-                <tr key={movement.id} className="border-b border-slate-100">
-                  <td className="py-2">{movement.date}</td>
-                  <td className="py-2">{movement.itemId}</td>
-                  <td className="py-2">{movement.warehouseId}</td>
-                  <td className="py-2">{movement.movementType}</td>
-                  <td className="py-2">{movement.direction}</td>
-                  <td className="py-2 text-right">{movement.qty}</td>
-                  <td className="py-2 text-right">{movement.totalCostBase.toFixed(2)}</td>
+                <tr key={movement.id} className="border-b border-slate-100 transition hover:bg-slate-50/50">
+                  <td className="py-2 text-slate-600 font-mono text-[11px]">{movement.date}</td>
+                  <td className="py-2 font-medium text-slate-900">{itemsMap[movement.itemId] || movement.itemId}</td>
+                  <td className="py-2 text-slate-600">{warehousesMap[movement.warehouseId] || movement.warehouseId}</td>
+                  <td className="py-2">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tighter uppercase ${
+                      movement.movementType.includes('STOCK') ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {movement.movementType.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="py-2">
+                    <span className={`font-bold ${movement.direction === 'IN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {movement.direction}
+                    </span>
+                  </td>
+                  <td className="py-2 text-right font-mono font-bold text-slate-900">{movement.qty}</td>
+                  <td className="py-2 text-right font-mono text-slate-600">{movement.totalCostBase.toFixed(2)}</td>
                 </tr>
               ))}
               {!loading && (dashboard?.recentMovements?.length ?? 0) === 0 && (

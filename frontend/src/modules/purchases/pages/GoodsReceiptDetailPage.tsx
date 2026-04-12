@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
-  CreateGRNPayload,
   GoodsReceiptDTO,
+  GoodsReceiptLineInputDTO,
   PurchaseInvoiceDTO,
+  PurchaseOrderDTO,
   PurchaseSettingsDTO,
   purchasesApi,
 } from '../../../api/purchasesApi';
@@ -13,24 +14,65 @@ import { Card } from '../../../components/ui/Card';
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
 
+interface EditableLine {
+  lineId?: string;
+  poLineId?: string;
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  receivedQty: number;
+  uom: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+interface EditableForm {
+  purchaseOrderId: string;
+  vendorId: string;
+  receiptDate: string;
+  warehouseId: string;
+  notes: string;
+  lines: EditableLine[];
+}
+
+const createEmptyLine = (): EditableLine => ({
+  itemId: '',
+  receivedQty: 1,
+  uom: '',
+  warehouseId: undefined,
+  description: '',
+});
+
+const createEmptyForm = (purchaseOrderId = '', vendorId = '', warehouseId = ''): EditableForm => ({
+  purchaseOrderId,
+  vendorId,
+  receiptDate: todayIso(),
+  warehouseId,
+  notes: '',
+  lines: [createEmptyLine()],
+});
+
 const GoodsReceiptDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isCreateMode = !params.id || params.id === 'new';
 
+  const initialPurchaseOrderId = searchParams.get('purchaseOrderId') || '';
+  const initialVendorId = searchParams.get('vendorId') || '';
+
   const [grn, setGrn] = useState<GoodsReceiptDTO | null>(null);
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
-  const [purchaseOrderId, setPurchaseOrderId] = useState(searchParams.get('purchaseOrderId') || '');
-  const [vendorId, setVendorId] = useState(searchParams.get('vendorId') || '');
-  const [receiptDate, setReceiptDate] = useState(todayIso());
-  const [warehouseId, setWarehouseId] = useState('');
-  const [notes, setNotes] = useState('');
+  const [items, setItems] = useState<InventoryItemDTO[]>([]);
+  const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialPurchaseOrderId, initialVendorId));
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [loadingPOLines, setLoadingPOLines] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasLinkedInvoiceLine, setHasLinkedInvoiceLine] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [linkedPO, setLinkedPO] = useState<PurchaseOrderDTO | null>(null);
 
   const warehouseLabelById = useMemo(
     () =>
@@ -41,35 +83,123 @@ const GoodsReceiptDetailPage: React.FC = () => {
     [warehouses]
   );
 
+  const itemById = useMemo(
+    () =>
+      items.reduce<Record<string, InventoryItemDTO>>((acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      }, {}),
+    [items]
+  );
+
+  const roundQty = (value: number): number => Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+
+  const getLineItemLabel = (line: { itemId: string; itemCode?: string; itemName?: string }): string => {
+    const code = line.itemCode || itemById[line.itemId]?.code;
+    const name = line.itemName || itemById[line.itemId]?.name;
+    if (code && name) return `${code} - ${name}`;
+    return name || code || line.itemId;
+  };
+
+  const mapOpenPOLinesToEditable = (
+    po: PurchaseOrderDTO,
+    fallbackWarehouseId?: string
+  ): EditableLine[] =>
+    po.lines
+      .filter((line) => line.trackInventory && line.orderedQty - line.receivedQty > 0)
+      .map((line) => ({
+        poLineId: line.lineId,
+        itemId: line.itemId,
+        itemCode: line.itemCode,
+        itemName: line.itemName,
+        receivedQty: roundQty(Math.max(line.orderedQty - line.receivedQty, 0)),
+        uom: line.uom || itemById[line.itemId]?.purchaseUom || itemById[line.itemId]?.baseUom || 'EA',
+        warehouseId: line.warehouseId || fallbackWarehouseId,
+        description: line.description,
+      }));
+
+  const loadOpenLinesFromPO = async (poId?: string, silent = false, fallbackWarehouseId?: string) => {
+    const targetPOId = (poId || form.purchaseOrderId || '').trim();
+    if (!targetPOId) {
+      if (!silent) setError('Please enter a PO reference first.');
+      return;
+    }
+
+    try {
+      setLoadingPOLines(true);
+      setError(null);
+
+      const result = await purchasesApi.getPO(targetPOId);
+      const po = unwrap<PurchaseOrderDTO>(result);
+      const mappedLines = mapOpenPOLinesToEditable(
+        po,
+        fallbackWarehouseId || form.warehouseId || settings?.defaultWarehouseId
+      );
+
+      setForm((prev) => ({
+        ...prev,
+        purchaseOrderId: targetPOId,
+        vendorId: po.vendorId || prev.vendorId,
+        lines: mappedLines.length > 0 ? mappedLines : [createEmptyLine()],
+      }));
+
+      if (!mappedLines.length && !silent) {
+        setError('No open stock lines found on this PO.');
+      }
+    } catch (err: any) {
+      console.error('Failed to load PO lines', err);
+      if (!silent) {
+        setError(
+          err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            'Failed to load lines from PO.'
+        );
+      }
+    } finally {
+      setLoadingPOLines(false);
+    }
+  };
+
+  const loadReferenceData = async () => {
+    const [settingsResult, warehouseResult, itemResult] = await Promise.all([
+      purchasesApi.getSettings(),
+      inventoryApi.listWarehouses({ active: true, limit: 200 }),
+      inventoryApi.listItems({ limit: 1000 }),
+    ]);
+
+    const currentSettings = unwrap<PurchaseSettingsDTO | null>(settingsResult);
+    const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
+    const itemList = unwrap<InventoryItemDTO[]>(itemResult);
+
+    setSettings(currentSettings);
+    setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+    setItems(Array.isArray(itemList) ? itemList : []);
+
+    return currentSettings;
+  };
+
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [settingsResult, warehouseResult] = await Promise.all([
-        purchasesApi.getSettings(),
-        inventoryApi.listWarehouses({ active: true, limit: 200 }),
-      ]);
-
-      const currentSettings = unwrap<PurchaseSettingsDTO | null>(settingsResult);
-      const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
-      setSettings(currentSettings);
-      setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
-
-      if (!warehouseId && currentSettings?.defaultWarehouseId) {
-        setWarehouseId(currentSettings.defaultWarehouseId);
-      }
+      const currentSettings = await loadReferenceData();
+      const defaultWarehouseId = currentSettings?.defaultWarehouseId || '';
 
       if (!isCreateMode && params.id) {
         const result = await purchasesApi.getGRN(params.id);
         const loaded = unwrap<GoodsReceiptDTO>(result);
         setGrn(loaded);
-        setPurchaseOrderId(loaded.purchaseOrderId || '');
-        setReceiptDate(loaded.receiptDate);
-        setWarehouseId(loaded.warehouseId);
-        setNotes(loaded.notes || '');
 
         if (loaded.purchaseOrderId) {
+          try {
+            const poResult = await purchasesApi.getPO(loaded.purchaseOrderId);
+            setLinkedPO(unwrap<PurchaseOrderDTO>(poResult));
+          } catch {
+            setLinkedPO(null);
+          }
+
           const invoicesResult = await purchasesApi.listPIs({
             purchaseOrderId: loaded.purchaseOrderId,
             limit: 200,
@@ -81,11 +211,17 @@ const GoodsReceiptDetailPage: React.FC = () => {
           );
           setHasLinkedInvoiceLine(linked);
         } else {
+          setLinkedPO(null);
           setHasLinkedInvoiceLine(false);
         }
       } else {
         setGrn(null);
+        setLinkedPO(null);
         setHasLinkedInvoiceLine(false);
+        setForm(createEmptyForm(initialPurchaseOrderId, initialVendorId, defaultWarehouseId));
+        if (initialPurchaseOrderId) {
+          await loadOpenLinesFromPO(initialPurchaseOrderId, true);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load goods receipt detail', err);
@@ -104,41 +240,174 @@ const GoodsReceiptDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const createDraft = async () => {
+  useEffect(() => {
+    if ((isCreateMode || isEditMode) && form.lines.length === 0) {
+      setForm((prev) => ({ ...prev, lines: [createEmptyLine()] }));
+    }
+  }, [form.lines.length, isCreateMode, isEditMode]);
+
+  const setLine = (index: number, patch: Partial<EditableLine>) => {
+    setForm((prev) => {
+      const lines = [...prev.lines];
+      const current = lines[index];
+      const next: EditableLine = { ...current, ...patch };
+
+      if (patch.itemId !== undefined) {
+        const item = itemById[patch.itemId];
+        if (item) {
+          next.itemCode = item.code;
+          next.itemName = item.name;
+          next.uom = next.uom || item.purchaseUom || item.baseUom;
+          if (!next.warehouseId && settings?.defaultWarehouseId) {
+            next.warehouseId = settings.defaultWarehouseId;
+          }
+        } else {
+          next.itemCode = undefined;
+          next.itemName = undefined;
+        }
+      }
+
+      lines[index] = next;
+      return { ...prev, lines };
+    });
+  };
+
+  const addLine = () => {
+    setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] }));
+  };
+
+  const removeLine = (index: number) => {
+    setForm((prev) => {
+      if (prev.lines.length <= 1) return prev;
+      return {
+        ...prev,
+        lines: prev.lines.filter((_, idx) => idx !== index),
+      };
+    });
+  };
+
+  const validateBeforeSave = (): string | null => {
+    if (!form.receiptDate) return 'Receipt date is required.';
+    if (!form.warehouseId) return 'Warehouse is required.';
+    if (!form.purchaseOrderId && !form.vendorId) return 'Vendor is required when PO is not provided.';
+
+    const activeLines = form.lines.filter((line) => line.itemId || line.poLineId);
+
+    if (!form.purchaseOrderId) {
+      if (!activeLines.length) return 'At least one line is required for direct goods receipts.';
+      for (let i = 0; i < form.lines.length; i += 1) {
+        const line = form.lines[i];
+        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (Number.isNaN(line.receivedQty) || line.receivedQty <= 0) {
+          return `Line ${i + 1}: received quantity must be greater than 0.`;
+        }
+      }
+    } else if (activeLines.length > 0) {
+      for (let i = 0; i < form.lines.length; i += 1) {
+        const line = form.lines[i];
+        if (!line.itemId && !line.poLineId) continue;
+        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (Number.isNaN(line.receivedQty) || line.receivedQty <= 0) {
+          return `Line ${i + 1}: received quantity must be greater than 0.`;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const buildLinePayload = (line: EditableLine, index: number): GoodsReceiptLineInputDTO => {
+    const item = itemById[line.itemId];
+    const payload = {
+      lineId: line.lineId,
+      lineNo: index + 1,
+      poLineId: line.poLineId || undefined,
+      itemId: line.itemId || undefined,
+      receivedQty: line.receivedQty,
+      uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
+      warehouseId: line.warehouseId || undefined,
+      description: line.description || undefined,
+    };
+    return payload;
+  };
+
+  const saveDraft = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setBusy(true);
       setError(null);
 
-      if (!receiptDate) {
-        setError('Receipt date is required.');
-        return;
-      }
-      if (!warehouseId) {
-        setError('Warehouse is required.');
-        return;
-      }
+      const mappedLines = form.lines
+        .filter((line) => line.itemId && line.receivedQty > 0)
+        .map((line, index) => buildLinePayload(line, index));
 
-      const payload: CreateGRNPayload = {
-        purchaseOrderId: purchaseOrderId || undefined,
-        vendorId: vendorId || undefined,
-        receiptDate,
-        warehouseId,
-        notes: notes || undefined,
-      };
+      if (isCreateMode) {
+        const created = await purchasesApi.createGRN({
+          purchaseOrderId: form.purchaseOrderId || undefined,
+          vendorId: form.purchaseOrderId ? undefined : form.vendorId || undefined,
+          receiptDate: form.receiptDate,
+          warehouseId: form.warehouseId,
+          lines: mappedLines.length ? mappedLines : undefined,
+          notes: form.notes || undefined,
+        });
 
-      const created = await purchasesApi.createGRN(payload);
-      const dto = unwrap<GoodsReceiptDTO>(created);
-      navigate(`/purchases/goods-receipts/${dto.id}`, { replace: true });
+        const dto = unwrap<GoodsReceiptDTO>(created);
+        navigate(`/purchases/goods-receipts/${dto.id}`, { replace: true });
+      } else if (grn?.id) {
+        const updated = await purchasesApi.updateGRN(grn.id, {
+          vendorId: form.purchaseOrderId ? undefined : form.vendorId || undefined,
+          receiptDate: form.receiptDate,
+          warehouseId: form.warehouseId,
+          lines: mappedLines.length ? mappedLines : undefined,
+          notes: form.notes || undefined,
+        });
+        setGrn(unwrap<GoodsReceiptDTO>(updated));
+        setIsEditMode(false);
+      }
     } catch (err: any) {
-      console.error('Failed to create goods receipt', err);
+      console.error('Failed to save goods receipt', err);
       setError(
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to create draft GRN.'
+          'Failed to save draft GRN.'
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const toggleEdit = () => {
+    if (!grn) return;
+    const editableLines = grn.lines.map((l) => ({
+      lineId: l.lineId,
+      poLineId: l.poLineId,
+      itemId: l.itemId,
+      itemCode: l.itemCode,
+      itemName: l.itemName,
+      receivedQty: l.receivedQty,
+      uom: l.uom,
+      warehouseId: grn.warehouseId,
+      description: l.description,
+    }));
+
+    setForm({
+      purchaseOrderId: grn.purchaseOrderId || '',
+      vendorId: grn.vendorId || '',
+      receiptDate: grn.receiptDate,
+      warehouseId: grn.warehouseId,
+      notes: grn.notes || '',
+      lines: editableLines.length > 0 ? editableLines : [createEmptyLine()],
+    });
+    setIsEditMode(true);
+
+    if (grn.purchaseOrderId && editableLines.length === 0) {
+      void loadOpenLinesFromPO(grn.purchaseOrderId, true, grn.warehouseId);
     }
   };
 
@@ -162,6 +431,27 @@ const GoodsReceiptDetailPage: React.FC = () => {
     }
   };
 
+  const unpostGRN = async () => {
+    if (!grn?.id) return;
+    if (!window.confirm('Are you sure you want to unpost this goods receipt? This will reverse all inventory movements.')) return;
+    try {
+      setBusy(true);
+      setError(null);
+      const unposted = await purchasesApi.unpostGRN(grn.id);
+      setGrn(unwrap<GoodsReceiptDTO>(unposted));
+    } catch (err: any) {
+      console.error('Failed to unpost goods receipt', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to unpost goods receipt.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 p-4">
@@ -171,17 +461,19 @@ const GoodsReceiptDetailPage: React.FC = () => {
     );
   }
 
-  if (isCreateMode) {
+  if (isCreateMode || isEditMode) {
     return (
       <div className="space-y-6 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Goods Receipt</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {isCreateMode ? 'New Goods Receipt' : `Edit ${grn?.grnNumber}`}
+          </h1>
           <button
             type="button"
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-            onClick={() => navigate('/purchases/goods-receipts')}
+            onClick={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
           >
-            Back to List
+            {isEditMode ? 'Cancel' : 'Back to List'}
           </button>
         </div>
 
@@ -190,24 +482,24 @@ const GoodsReceiptDetailPage: React.FC = () => {
         <Card className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">PO Reference (Optional in SIMPLE)</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">PO Reference (optional unless PO is required for stock items)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={purchaseOrderId}
-                onChange={(e) => setPurchaseOrderId(e.target.value)}
+                value={form.purchaseOrderId}
+                onChange={(e) => setForm((prev) => ({ ...prev, purchaseOrderId: e.target.value }))}
                 placeholder="purchaseOrderId"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (Standalone only)</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (standalone only)</label>
               <input
                 type="text"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={vendorId}
-                onChange={(e) => setVendorId(e.target.value)}
+                value={form.vendorId}
+                onChange={(e) => setForm((prev) => ({ ...prev, vendorId: e.target.value }))}
                 placeholder="vendorId"
-                disabled={!!purchaseOrderId}
+                disabled={!!form.purchaseOrderId}
               />
             </div>
             <div>
@@ -215,16 +507,16 @@ const GoodsReceiptDetailPage: React.FC = () => {
               <input
                 type="date"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={receiptDate}
-                onChange={(e) => setReceiptDate(e.target.value)}
+                value={form.receiptDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, receiptDate: e.target.value }))}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
+                value={form.warehouseId}
+                onChange={(e) => setForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
               >
                 <option value="">Select warehouse</option>
                 {warehouses.map((warehouse) => (
@@ -235,17 +527,128 @@ const GoodsReceiptDetailPage: React.FC = () => {
               </select>
             </div>
           </div>
+
           <div className="mt-4">
             <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
           </div>
+
           <div className="mt-4 text-xs text-slate-500">
             If PO is provided, lines are pre-filled from open stock lines using server-side rules.
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
+            <div className="flex items-center gap-2">
+              {form.purchaseOrderId && (
+                <button
+                  type="button"
+                  className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 disabled:opacity-50"
+                  onClick={() => loadOpenLinesFromPO()}
+                  disabled={busy || loadingPOLines}
+                >
+                  {loadingPOLines ? 'Loading PO Lines...' : 'Load PO Lines'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+                onClick={addLine}
+                disabled={busy}
+              >
+                Add Item
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="py-2 text-left">Item</th>
+                  <th className="py-2 text-right">Received Qty</th>
+                  <th className="py-2 text-left">UOM</th>
+                  <th className="py-2 text-left">Warehouse</th>
+                  <th className="py-2 text-right" />
+                </tr>
+              </thead>
+              <tbody>
+                {form.lines.map((line, index) => (
+                  <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
+                    <td className="py-2 pr-2">
+                      <select
+                        className="w-52 rounded-lg border border-slate-300 px-2 py-1.5 disabled:bg-slate-100 disabled:text-slate-500"
+                        value={line.itemId}
+                        onChange={(e) => setLine(index, { itemId: e.target.value })}
+                        disabled={!!form.purchaseOrderId}
+                      >
+                        <option value="">Select item</option>
+                        {items.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.code} - {item.name}
+                          </option>
+                        ))}
+                      </select>
+                      {(line.itemCode || line.itemName) && (
+                        <div className="mt-1 text-xs text-slate-500">
+                          {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="number"
+                        min={0.000001}
+                        step={0.000001}
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                        value={line.receivedQty}
+                        onChange={(e) => setLine(index, { receivedQty: Number(e.target.value) })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                        value={line.uom}
+                        onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                        value={line.warehouseId || ''}
+                        disabled={busy}
+                        onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
+                      >
+                        <option value="">Select Warehouse</option>
+                        {warehouses.map((warehouse) => (
+                          <option key={warehouse.id} value={warehouse.id}>
+                            {warehouse.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 text-right">
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
+                        onClick={() => removeLine(index)}
+                        disabled={busy || form.lines.length <= 1}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
 
@@ -253,10 +656,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
           <button
             type="button"
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={createDraft}
+            onClick={saveDraft}
             disabled={busy}
           >
-            {busy ? 'Creating...' : 'Create Draft GRN'}
+            {busy ? 'Saving...' : (isCreateMode ? 'Create Draft GRN' : 'Update Draft')}
           </button>
         </div>
       </div>
@@ -273,7 +676,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
   }
 
   const canCreateReturn = grn.status === 'POSTED'
-    && settings?.procurementControlMode === 'CONTROLLED'
+    && !!settings?.requirePOForStockItems
     && !hasLinkedInvoiceLine;
   const createReturnHref = `/purchases/returns/new?goodsReceiptId=${encodeURIComponent(grn.id)}${
     grn.purchaseOrderId ? `&purchaseOrderId=${encodeURIComponent(grn.purchaseOrderId)}` : ''
@@ -286,7 +689,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{grn.grnNumber}</h1>
           <p className="text-sm text-slate-600">
             Vendor: <span className="font-medium">{grn.vendorName}</span>
-            {grn.purchaseOrderId ? ` • PO: ${grn.purchaseOrderId}` : ''}
+            {grn.purchaseOrderId ? ` • PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
@@ -333,7 +736,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             <tbody>
               {grn.lines.map((line) => (
                 <tr key={line.lineId} className="border-b border-slate-100">
-                  <td className="py-2">{line.itemCode ? `${line.itemCode} - ${line.itemName}` : line.itemName}</td>
+                  <td className="py-2">{getLineItemLabel(line)}</td>
                   <td className="py-2 text-right">{line.receivedQty}</td>
                   <td className="py-2">{line.uom}</td>
                   <td className="py-2 text-right">{line.unitCostDoc.toFixed(2)}</td>
@@ -356,6 +759,16 @@ const GoodsReceiptDetailPage: React.FC = () => {
         {grn.status === 'DRAFT' && (
           <button
             type="button"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            onClick={toggleEdit}
+            disabled={busy}
+          >
+            Edit Draft
+          </button>
+        )}
+        {grn.status === 'DRAFT' && (
+          <button
+            type="button"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             onClick={postDraft}
             disabled={busy}
@@ -373,9 +786,21 @@ const GoodsReceiptDetailPage: React.FC = () => {
             Create Return
           </button>
         )}
+        {grn.status === 'POSTED' && (
+          <button
+            type="button"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+            onClick={unpostGRN}
+            disabled={busy || hasLinkedInvoiceLine}
+            title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
+          >
+            {busy ? 'Unposting...' : 'Unpost GRN'}
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
 export default GoodsReceiptDetailPage;
+

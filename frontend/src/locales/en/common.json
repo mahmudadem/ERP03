@@ -1287,6 +1287,14 @@
         "name": "Invoicing",
         "description": "Tax Rules, Payment Terms, Templates"
       },
+      "purchase": {
+        "name": "Purchases",
+        "description": "Vendors, Purchase Orders, Goods Receipts"
+      },
+      "sales": {
+        "name": "Sales",
+        "description": "Customers, Sales Orders, Tax Rules"
+      },
       "defaultDescription": "Complete module setup"
     }
   },

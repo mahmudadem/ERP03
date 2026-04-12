@@ -312,9 +312,9 @@ export class Account {
   
   setHasChildren(value: boolean): void {
     this._hasChildren = value;
-    // If has children, must be HEADER
+    // If has children, must be HEADER role
     if (value && this.accountRole !== 'HEADER') {
-      console.warn(`Account ${this.userCode} has children but role is ${this.accountRole}. Should be HEADER.`);
+      this.accountRole = 'HEADER';
     }
   }
   

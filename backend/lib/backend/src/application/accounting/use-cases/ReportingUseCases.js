@@ -168,8 +168,11 @@ class GetGeneralLedgerUseCase {
                 continue;
             const role = String((account === null || account === void 0 ? void 0 : account.accountRole) || '').toUpperCase();
             const isHeader = role === 'HEADER' || (account === null || account === void 0 ? void 0 : account.hasChildren) === true;
-            if (!isHeader)
+            // Always include the account itself if it was the one explicitly requested, 
+            // or if it is a posting account.
+            if (id === accountId || !isHeader) {
                 scoped.add(id);
+            }
             const children = childrenMap.get(id) || [];
             children.forEach((child) => {
                 if ((child === null || child === void 0 ? void 0 : child.id) && !visited.has(child.id))

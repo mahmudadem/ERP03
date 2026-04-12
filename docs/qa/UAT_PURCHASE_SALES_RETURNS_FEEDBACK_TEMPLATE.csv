@@ -1,0 +1,13 @@
+Case ID,Scenario,Result (Pass/Fail/Blocked),Observed Behavior,Expected Behavior,Evidence Paths,Severity (Low/Medium/High/Critical),Owner,Retest Result,Notes
+PI-01,Purchase Invoice voucher type,,,,,,,,
+PI-02,Controlled purchase qty guard,,,,,,,,
+PR-01,Purchase Return AFTER_INVOICE (same rate),,,,,,,,
+PR-02,Purchase Return AFTER_INVOICE (FX diff critical),,,,,,,,
+PR-03,Purchase Return BEFORE_INVOICE,,,,,,,,
+PR-04,Return > invoiced guard,,,,,,,,
+PR-05,Return > received guard,,,,,,,,
+PR-06,FX account missing rollback,,,,,,,,
+SI-01,Sales Invoice voucher type(s),,,,,,,,
+SI-02,Controlled sales qty guard,,,,,,,,
+SR-01,Sales Return AFTER_INVOICE,,,,,,,,
+SR-02,Sales Return BEFORE_INVOICE,,,,,,,,

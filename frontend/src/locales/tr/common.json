@@ -1287,6 +1287,14 @@
         "name": "Faturalama",
         "description": "Vergi Kurallari, Vade Kosullari, Sablonlar"
       },
+      "purchase": {
+        "name": "Satın Alma",
+        "description": "Tedarikçiler, Satın Alma Siparişleri, Mal Kabul"
+      },
+      "sales": {
+        "name": "Satış",
+        "description": "Müşteriler, Satış Siparişleri, Vergi Kuralları"
+      },
       "defaultDescription": "Modul kurulumunu tamamlayin"
     }
   },

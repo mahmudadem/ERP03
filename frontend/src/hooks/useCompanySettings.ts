@@ -1,6 +1,12 @@
-
 import { useContext } from 'react';
 import { CompanySettingsContext } from '../context/CompanySettingsContext';
+
+export interface CompanySettings {
+  fiscalYearStart?: string;
+  fiscalYearEnd?: string;
+  exchangeGainLossAccountId?: string;
+  disabledNotificationCategories: string[];
+}
 
 export const useCompanySettings = () => {
   const context = useContext(CompanySettingsContext);

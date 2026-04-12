@@ -14,6 +14,9 @@ import {
 } from '../../../api/purchasesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -85,6 +88,7 @@ const statusBadgeClass = (status: POStatus): string => {
 };
 
 const PurchaseOrderDetailPage: React.FC = () => {
+  const { company } = useCompanyAccess();
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
@@ -259,11 +263,16 @@ const PurchaseOrderDetailPage: React.FC = () => {
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDraft = form.status === 'DRAFT';
-  const isConfirmed = form.status === 'CONFIRMED';
   const isReadOnly = !isDraft;
   const downstreamActionQuery = form.id
     ? `purchaseOrderId=${encodeURIComponent(form.id)}&vendorId=${encodeURIComponent(form.vendorId || '')}`
     : '';
+  const canReceiveGoods = form.status === 'CONFIRMED' || form.status === 'PARTIALLY_RECEIVED';
+  const canCreateInvoice =
+    form.status === 'CONFIRMED' || form.status === 'PARTIALLY_RECEIVED' || form.status === 'FULLY_RECEIVED';
+  const canCloseOrder =
+    form.status === 'CONFIRMED' || form.status === 'PARTIALLY_RECEIVED' || form.status === 'FULLY_RECEIVED';
+  const canCancelOrder = form.status === 'CONFIRMED';
 
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
@@ -516,24 +525,21 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase"
+            <CurrencySelector
               value={form.currency}
-              disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+              onChange={(code) => setForm((prev) => ({ ...prev, currency: code }))}
+              disabled={isReadOnly || saving || actionBusy}
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
-            <input
-              type="number"
-              min={0.000001}
-              step={0.000001}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <CurrencyExchangeWidget
+              currency={form.currency}
+              baseCurrency={company?.baseCurrency || 'USD'}
+              voucherDate={form.orderDate}
               value={form.exchangeRate}
-              disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, exchangeRate: Number(e.target.value) }))}
+              onChange={(rate) => setForm((prev) => ({ ...prev, exchangeRate: rate }))}
+              disabled={isReadOnly || saving || actionBusy}
             />
           </div>
         </div>
@@ -813,44 +819,52 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </div>
         )}
 
-        {isConfirmed && (
+        {!isDraft && (canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-              onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
-              disabled={!form.id}
-            >
-              Receive Goods
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-              onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
-              disabled={!form.id}
-            >
-              Create Invoice
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 disabled:opacity-50"
-              onClick={cancelOrder}
-              disabled={saving || actionBusy}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              onClick={closeOrder}
-              disabled={saving || actionBusy}
-            >
-              Close
-            </button>
+            {canReceiveGoods && (
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
+                disabled={!form.id}
+              >
+                Receive Goods
+              </button>
+            )}
+            {canCreateInvoice && (
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+                onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
+                disabled={!form.id}
+              >
+                Create Invoice
+              </button>
+            )}
+            {canCancelOrder && (
+              <button
+                type="button"
+                className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-medium text-rose-700 disabled:opacity-50"
+                onClick={cancelOrder}
+                disabled={saving || actionBusy}
+              >
+                Cancel
+              </button>
+            )}
+            {canCloseOrder && (
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                onClick={closeOrder}
+                disabled={saving || actionBusy}
+              >
+                Close
+              </button>
+            )}
           </div>
         )}
 
-        {!isDraft && !isConfirmed && (
+        {!isDraft && !(canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
           <div className="text-sm text-slate-500">This purchase order is read-only in status: {form.status}.</div>
         )}
       </Card>

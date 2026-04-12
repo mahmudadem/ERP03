@@ -6,8 +6,8 @@ export interface StockAdjustmentListOptions {
 }
 
 export interface IStockAdjustmentRepository {
-  createAdjustment(adjustment: StockAdjustment): Promise<void>;
-  updateAdjustment(id: string, data: Partial<StockAdjustment>): Promise<void>;
+  createAdjustment(adjustment: StockAdjustment, transaction?: unknown): Promise<void>;
+  updateAdjustment(companyId: string, id: string, data: Partial<StockAdjustment>, transaction?: unknown): Promise<void>;
   getAdjustment(id: string): Promise<StockAdjustment | null>;
   getCompanyAdjustments(companyId: string, opts?: StockAdjustmentListOptions): Promise<StockAdjustment[]>;
   getByStatus(companyId: string, status: StockAdjustmentStatus, opts?: StockAdjustmentListOptions): Promise<StockAdjustment[]>;

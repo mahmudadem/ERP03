@@ -24,9 +24,10 @@ interface AccountsContextValue {
   validAccounts: Account[];  // Accounts eligible for voucher entry
   isLoading: boolean;
   error: Error | null;
-  refreshAccounts: () => void;
+  refreshAccounts: () => Promise<void>;
   getAccountByCode: (code: string) => Account | undefined;
   getAccountById: (id: string) => Account | undefined;
+  createAccount: (data: any) => Promise<Account>;
 }
 
 const AccountsContext = createContext<AccountsContextValue | null>(null);
@@ -107,8 +108,8 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     }
   }, [fetchAccounts, hasFetched]);
 
-  const refreshAccounts = useCallback(() => {
-    fetchAccounts(true);
+  const refreshAccounts = useCallback(async () => {
+    await fetchAccounts(true);
   }, [fetchAccounts]);
 
   const getAccountByCode = useCallback((code: string): Account | undefined => {
@@ -148,9 +149,44 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
       console.warn(`[AccountsContext] getAccountById("${id}") FAILED. Available IDs:`, 
         accounts.slice(0, 5).map(a => a.id));
     }
-    
     return result;
   }, [accounts, validAccounts]);
+
+  const createAccount = useCallback(async (data: any): Promise<Account> => {
+    try {
+      const response = await accountingApi.createAccount(data);
+      // Map DTO to local Account type
+      const newAcc: Account = {
+        id: response.id,
+        code: response.userCode || response.code || '',
+        name: response.name || 'Unnamed Account',
+        type: response.classification || response.type || 'Account',
+        classification: response.classification || response.type || '',
+        accountRole: (response.accountRole as any) || 'POSTING',
+        status: (response.status as any) || 'ACTIVE',
+        currency: response.fixedCurrencyCode || response.currency,
+        currencyPolicy: response.currencyPolicy,
+        fixedCurrencyCode: response.fixedCurrencyCode,
+        isActive: response.status === 'ACTIVE',
+        parentId: response.parentId,
+        hasChildren: response.hasChildren,
+        canPost: response.canPost
+      };
+      
+      // Update local state IMMEDIATELY for snappy UI
+      setAccounts(prev => [...prev, newAcc]);
+      if (newAcc.accountRole === 'POSTING' && newAcc.status === 'ACTIVE' && !newAcc.hasChildren) {
+        setValidAccounts(prev => [...prev, newAcc]);
+      }
+      
+      // Still refresh from server to be sure
+      refreshAccounts();
+      return newAcc;
+    } catch (err) {
+      console.error('Failed to create account:', err);
+      throw err;
+    }
+  }, [refreshAccounts]);
 
   const value: AccountsContextValue = {
     accounts,
@@ -159,7 +195,8 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     error,
     refreshAccounts,
     getAccountByCode,
-    getAccountById
+    getAccountById,
+    createAccount
   };
 
   return (

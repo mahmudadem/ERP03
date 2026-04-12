@@ -12,6 +12,17 @@ export type { VoucherListItem };
 export interface VoucherDetailDTO extends VoucherListItem {
   lines?: any[];
   metadata?: Record<string, any>;
+  baseCurrency?: string;
+  exchangeRate?: number;
+  createdByName?: string;
+  createdByEmail?: string;
+  approvedAt?: string;
+  approvedByName?: string;
+  approvedByEmail?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  postedByName?: string;
+  postedByEmail?: string;
 }
 
 export interface TrialBalanceLine {
@@ -278,7 +289,7 @@ export const accountingApi = {
     return client.post('/tenant/accounting/accounts/batch-update-subgroups', { updates });
   },
 
-  listVouchers: (filters: VoucherListFilters): Promise<VoucherListResponse> => {
+  listVouchers: (filters: VoucherListFilters, config?: any): Promise<VoucherListResponse> => {
     // Construct Query String
     const params = new URLSearchParams();
     
@@ -293,7 +304,7 @@ export const accountingApi = {
     params.append('page', filters.page.toString());
     params.append('pageSize', filters.pageSize.toString());
 
-    return client.get(`/tenant/accounting/vouchers?${params.toString()}`);
+    return client.get(`/tenant/accounting/vouchers?${params.toString()}`, config || {});
   },
 
   getVoucher: (id: string): Promise<VoucherDetailDTO> => {
@@ -706,6 +717,9 @@ export const accountingApi = {
   fxGenerateVoucher: (calculationResult: any, targetGainLossAccountId: string): Promise<any> => {
     return client.post('/tenant/accounting/fx-revaluation/generate-voucher', { calculationResult, targetGainLossAccountId })
       .then((r: any) => r?.data?.data ?? r?.data ?? r);
+  },
+  createAccount: (payload: any): Promise<any> => {
+    return client.post('/tenant/accounting/accounts', payload).then((r: any) => r?.data?.data ?? r?.data ?? r);
   },
 };
 

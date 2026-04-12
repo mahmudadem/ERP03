@@ -6,7 +6,8 @@ import AccountSelector from '../../components/shared/AccountSelector';
 import { DatePicker } from '../../components/shared/DatePicker';
 
 interface FXRevaluationTabProps {
-  // No props needed — AccountSelector fetches accounts from context
+  defaultGainLossAccountId?: string;
+  isLocked?: boolean;
 }
 
 interface DetectedCurrency {
@@ -37,14 +38,21 @@ interface CalculationResult {
 
 type WizardStep = 'SCOPE' | 'PREVIEW' | 'DONE';
 
-const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
+const FXRevaluationTab: React.FC<FXRevaluationTabProps> = ({ defaultGainLossAccountId, isLocked = false }) => {
   const { t } = useTranslation('accounting');
 
   // Step 1: Scope & Rates
   const [step, setStep] = useState<WizardStep>('SCOPE');
   const [asOfDate, setAsOfDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterAccountIds, setFilterAccountIds] = useState<string[]>([]);
-  const [targetGainLossAccountId, setTargetGainLossAccountId] = useState('');
+  const [targetGainLossAccountId, setTargetGainLossAccountId] = useState(defaultGainLossAccountId || '');
+
+  // Sync when default changes
+  React.useEffect(() => {
+    if (defaultGainLossAccountId) {
+      setTargetGainLossAccountId(defaultGainLossAccountId);
+    }
+  }, [defaultGainLossAccountId]);
 
   // Detected currencies & rates
   const [detectedCurrencies, setDetectedCurrencies] = useState<DetectedCurrency[]>([]);
@@ -212,6 +220,8 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = () => {
                 <AccountSelector
                   value={filterAccountIds[0] || ''}
                   onChange={(acct: any) => setFilterAccountIds(acct?.id ? [acct.id] : [])}
+                  allowHeaders={true}
+                  scope="all"
                 />
               </div>
             </div>

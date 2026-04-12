@@ -432,7 +432,9 @@
       "classic": "Classic",
       "classicDesc": "Tabbed, flat interface",
       "windows": "Windows (V3)",
-      "windowsDesc": "Multi-window multitasking"
+      "windowsDesc": "Multi-window multitasking",
+      "multiCurrencyDefaults": "Global FX Configuration",
+      "fxAccountDesc": "Primary account for exchange differences. Pre-fills the wizard below and serves as a default for all modules."
     },
     "currencies": {
       "description": "Manage your enterprise currency list and base currency"
@@ -483,9 +485,14 @@
       "policies": "Approval Workflow",
       "paymentMethods": "Payment Methods",
       "costCenter": "Cost Center Required",
+      "costCentersManage": "Cost Centers",
       "errorMode": "Policy Error Mode",
       "fiscal": "Accounting Periods",
-      "numbering": "Voucher Numbering"
+      "numbering": "Voucher Numbering",
+      "fxRevaluation": "FX Revaluation"
+    },
+    "fxRevaluation": {
+      "description": "Configure automatic exchange rate revaluation for multi-currency accounts"
     },
     "saving": "Saving...",
     "saveLabel": "Save {{section}}",

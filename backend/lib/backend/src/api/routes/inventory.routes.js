@@ -35,6 +35,11 @@ router.get('/movements/by-reference', (0, permissionGuard_1.permissionGuard)('in
 router.get('/movements/:itemId', (0, permissionGuard_1.permissionGuard)('inventory.movements.view'), InventoryController_1.InventoryController.getMovementsByItem);
 router.post('/movements/opening', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.recordOpeningStock);
 router.post('/movements/return', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.processReturn);
+router.post('/opening-stock-documents', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.createOpeningStockDocument);
+router.get('/opening-stock-documents', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.listOpeningStockDocuments);
+router.put('/opening-stock-documents/:id', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.updateOpeningStockDocument);
+router.delete('/opening-stock-documents/:id', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.deleteOpeningStockDocument);
+router.post('/opening-stock-documents/:id/post', (0, permissionGuard_1.permissionGuard)('inventory.movements.record'), InventoryController_1.InventoryController.postOpeningStockDocument);
 router.post('/adjustments', (0, permissionGuard_1.permissionGuard)('inventory.stock.adjust'), InventoryController_1.InventoryController.createAdjustment);
 router.get('/adjustments', (0, permissionGuard_1.permissionGuard)('inventory.stock.adjust'), InventoryController_1.InventoryController.listAdjustments);
 router.post('/adjustments/:id/post', (0, permissionGuard_1.permissionGuard)('inventory.stock.adjust'), InventoryController_1.InventoryController.postAdjustment);

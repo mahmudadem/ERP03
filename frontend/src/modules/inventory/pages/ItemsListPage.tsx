@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
+import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useWindowManager } from '../../../context/WindowManagerContext';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const ItemsListPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { uiMode } = useUserPreferences();
+  const { openWindow } = useWindowManager();
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [search, setSearch] = useState('');
   const [type, setType] = useState<string>('');
@@ -28,6 +34,11 @@ const ItemsListPage: React.FC = () => {
     baseUom: 'pcs',
     costCurrency: 'USD',
   });
+  const itemsBasePath = pathname.startsWith('/sales/')
+    ? '/sales/items'
+    : pathname.startsWith('/purchases/')
+      ? '/purchases/items'
+      : '/inventory/items';
 
   const loadItems = async (targetPage = 0) => {
     try {
@@ -46,9 +57,8 @@ const ItemsListPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadItems(0);
-  }, [type]); // eslint-disable-line react-hooks/exhaustive-deps
+  // useEffect removed to prevent auto-loading and save traffic. 
+  // Items will only load when the user clicks "Search" or adds a new item.
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,10 +75,29 @@ const ItemsListPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-        {t('modulePlaceholders.inventory.itemsTitle', { defaultValue: 'Inventory Items' })}
-      </h1>
+    <div className="space-y-6 p-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          {t('modulePlaceholders.inventory.itemsTitle', { defaultValue: 'Inventory Items' })}
+        </h1>
+        <button 
+          onClick={() => {
+            if (uiMode === 'windows') {
+              openWindow({ 
+                type: 'item', 
+                title: 'New Item Master', 
+                data: { id: 'new' },
+                size: { width: 900, height: 700 }
+              });
+            } else {
+              navigate(`${itemsBasePath}/new`);
+            }
+          }}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-md transform active:scale-95 transition-all text-[10px] tracking-wider uppercase"
+        >
+          CREATE NEW ITEM
+        </button>
+      </div>
 
       <Card className="p-6">
         <form className="grid gap-3 md:grid-cols-6" onSubmit={handleCreate}>
@@ -144,12 +173,33 @@ const ItemsListPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
+              {items.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500 italic bg-slate-50/30 rounded-lg">
+                    No items displayed. Use search above to load items.
+                  </td>
+                </tr>
+              )}
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="py-2">
-                    <Link className="text-blue-600 hover:underline" to={`/inventory/items/${item.id}`}>
-                      {item.code}
-                    </Link>
+                    <button 
+                        onClick={() => {
+                            if (uiMode === 'windows') {
+                                openWindow({ 
+                                    type: 'item', 
+                                    title: item.name, 
+                                    data: { id: item.id },
+                                    size: { width: 900, height: 700 }
+                                });
+                            } else {
+                                navigate(`${itemsBasePath}/${item.id}`);
+                            }
+                        }}
+                        className="font-mono text-blue-600 hover:underline text-left"
+                    >
+                        {item.code}
+                    </button>
                   </td>
                   <td className="py-2">{item.name}</td>
                   <td className="py-2">{item.type}</td>

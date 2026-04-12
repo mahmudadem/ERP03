@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, jest } from '@jest/globals';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
@@ -8,6 +8,7 @@ import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PostSalesReturnUseCase } from '../../../application/sales/use-cases/SalesReturnUseCases';
+import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 
 const COMPANY_ID = 'cmp-1';
 const USER_ID = 'u-1';
@@ -20,7 +21,7 @@ const makeSettings = (
 ): SalesSettings =>
   new SalesSettings({
     companyId: COMPANY_ID,
-    salesControlMode: mode,
+    allowDirectInvoicing: mode === 'SIMPLE',
     requireSOForStockItems: mode === 'CONTROLLED',
     defaultARAccountId: 'AR-100',
     defaultRevenueAccountId: 'REV-100',
@@ -345,12 +346,19 @@ const makeBeforeInvoiceReturn = (): SalesReturn =>
   });
 
 const makeTransactionManager = () => ({
-  runTransaction: vi.fn(async (operation: (transaction: any) => Promise<any>) => operation({ id: 'txn-1' })),
+  runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => operation({ id: 'txn-1' })),
 });
 
 const makeInventoryService = () => ({
-  processIN: vi.fn(async () => ({ id: 'mov-return-1' })),
-  processOUT: vi.fn(async () => ({ id: 'mov-out-unused' })),
+  processIN: jest.fn(async () => ({ id: 'mov-return-1' })),
+  processOUT: jest.fn(async () => ({ id: 'mov-out-unused' })),
+});
+
+const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL') => ({
+  getSettings: jest.fn(async () => ({
+    inventoryAccountingMethod: method,
+    defaultInventoryAssetAccountId: 'INV-100',
+  })),
 });
 
 describe('SalesReturn posting use-case (Phase 3)', () => {
@@ -364,29 +372,33 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     const salesReturn = makeAfterInvoiceReturn();
 
     const returnStore = new Map([[salesReturn.id, salesReturn]]);
-    const voucherRepo = { save: vi.fn(async (voucher: any) => voucher) };
-    const ledgerRepo = { recordForVoucher: vi.fn(async () => undefined) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
     const inventoryService = makeInventoryService();
 
     const useCase = new PostSalesReturnUseCase(
-      { getSettings: vi.fn(async () => settings) } as any,
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       {
-        getById: vi.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
-        list: vi.fn(async () => []),
-        update: vi.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
+        getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
       } as any,
-      { getById: vi.fn(async () => si), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => null), list: vi.fn(async () => []) } as any,
-      { getById: vi.fn(async () => so), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => customer) } as any,
-      { getById: vi.fn(async () => taxCode) } as any,
-      { getItem: vi.fn(async () => item) } as any,
-      { getCategory: vi.fn(async () => null) } as any,
-      { getConversionsForItem: vi.fn(async () => []) } as any,
-      { getBaseCurrency: vi.fn(async () => 'USD') } as any,
+      { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => taxCode) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
-      voucherRepo as any,
-      ledgerRepo as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
       makeTransactionManager() as any
     );
 
@@ -414,29 +426,33 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     const salesReturn = makeBeforeInvoiceReturn();
 
     const returnStore = new Map([[salesReturn.id, salesReturn]]);
-    const voucherRepo = { save: vi.fn(async (voucher: any) => voucher) };
-    const ledgerRepo = { recordForVoucher: vi.fn(async () => undefined) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
     const inventoryService = makeInventoryService();
 
     const useCase = new PostSalesReturnUseCase(
-      { getSettings: vi.fn(async () => settings) } as any,
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       {
-        getById: vi.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
-        list: vi.fn(async () => []),
-        update: vi.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
+        getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: SalesReturn) => { returnStore.set(entity.id, entity); }),
       } as any,
-      { getById: vi.fn(async () => null), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => dn), list: vi.fn(async () => []) } as any,
-      { getById: vi.fn(async () => so), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => customer) } as any,
-      { getById: vi.fn(async () => makeTaxCode()) } as any,
-      { getItem: vi.fn(async () => item) } as any,
-      { getCategory: vi.fn(async () => null) } as any,
-      { getConversionsForItem: vi.fn(async () => []) } as any,
-      { getBaseCurrency: vi.fn(async () => 'USD') } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => dn), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
-      voucherRepo as any,
-      ledgerRepo as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
       makeTransactionManager() as any
     );
 
@@ -457,23 +473,27 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     salesReturn.lines[0].returnQty = 6;
 
     const inventoryService = makeInventoryService();
-    const voucherRepo = { save: vi.fn(async (voucher: any) => voucher) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
 
     const useCase = new PostSalesReturnUseCase(
-      { getSettings: vi.fn(async () => settings) } as any,
-      { getById: vi.fn(async () => salesReturn), list: vi.fn(async () => []), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => si), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => null), list: vi.fn(async () => []) } as any,
-      { getById: vi.fn(async () => so), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => customer) } as any,
-      { getById: vi.fn(async () => makeTaxCode()) } as any,
-      { getItem: vi.fn(async () => item) } as any,
-      { getCategory: vi.fn(async () => null) } as any,
-      { getConversionsForItem: vi.fn(async () => []) } as any,
-      { getBaseCurrency: vi.fn(async () => 'USD') } as any,
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      { getById: jest.fn(async () => salesReturn), list: jest.fn(async () => []), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
-      voucherRepo as any,
-      { recordForVoucher: vi.fn(async () => undefined) } as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
       makeTransactionManager() as any
     );
 
@@ -491,20 +511,24 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     const salesReturn = makeBeforeInvoiceReturn();
 
     const useCase = new PostSalesReturnUseCase(
-      { getSettings: vi.fn(async () => settings) } as any,
-      { getById: vi.fn(async () => salesReturn), list: vi.fn(async () => []), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => null), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => dn), list: vi.fn(async () => []) } as any,
-      { getById: vi.fn(async () => so), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => customer) } as any,
-      { getById: vi.fn(async () => makeTaxCode()) } as any,
-      { getItem: vi.fn(async () => item) } as any,
-      { getCategory: vi.fn(async () => null) } as any,
-      { getConversionsForItem: vi.fn(async () => []) } as any,
-      { getBaseCurrency: vi.fn(async () => 'USD') } as any,
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      { getById: jest.fn(async () => salesReturn), list: jest.fn(async () => []), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => dn), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
-      { save: vi.fn(async (voucher: any) => voucher) } as any,
-      { recordForVoucher: vi.fn(async () => undefined) } as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
       makeTransactionManager() as any
     );
 
@@ -520,25 +544,29 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     const si = makePostedSI();
     const salesReturn = makeAfterInvoiceReturn();
     const salesInvoiceRepo = {
-      getById: vi.fn(async () => si),
-      update: vi.fn(async () => undefined),
+      getById: jest.fn(async () => si),
+      update: jest.fn(async () => undefined),
     };
 
     const useCase = new PostSalesReturnUseCase(
-      { getSettings: vi.fn(async () => settings) } as any,
-      { getById: vi.fn(async () => salesReturn), list: vi.fn(async () => []), update: vi.fn(async () => undefined) } as any,
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      { getById: jest.fn(async () => salesReturn), list: jest.fn(async () => []), update: jest.fn(async () => undefined) } as any,
       salesInvoiceRepo as any,
-      { getById: vi.fn(async () => null), list: vi.fn(async () => []) } as any,
-      { getById: vi.fn(async () => so), update: vi.fn(async () => undefined) } as any,
-      { getById: vi.fn(async () => customer) } as any,
-      { getById: vi.fn(async () => makeTaxCode()) } as any,
-      { getItem: vi.fn(async () => item) } as any,
-      { getCategory: vi.fn(async () => null) } as any,
-      { getConversionsForItem: vi.fn(async () => []) } as any,
-      { getBaseCurrency: vi.fn(async () => 'USD') } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
-      { save: vi.fn(async (voucher: any) => voucher) } as any,
-      { recordForVoucher: vi.fn(async () => undefined) } as any,
+      new SubledgerVoucherPostingService(
+        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
       makeTransactionManager() as any
     );
 
@@ -546,5 +574,160 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
     expect(si.outstandingAmountBase).toBe(33);
     expect(salesInvoiceRepo.update).toHaveBeenCalled();
   });
+
+  it('16) inventory failure does not create return vouchers or persist posted return', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    const salesReturn = makeAfterInvoiceReturn();
+    const salesReturnRepo = {
+      getById: jest.fn(async () => salesReturn),
+      list: jest.fn(async () => []),
+      update: jest.fn(async () => undefined),
+    };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const inventoryService = {
+      ...makeInventoryService(),
+      processIN: jest.fn(async () => {
+        throw new Error('Inventory failed');
+      }),
+    };
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      salesReturnRepo as any,
+      { getById: jest.fn(async () => si), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      makeTransactionManager() as any
+    );
+
+    await expect(useCase.execute(COMPANY_ID, salesReturn.id)).rejects.toThrow('Inventory failed');
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(salesReturnRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('17) accounting failure does not persist posted return, SI, or SO updates', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    const salesReturn = makeAfterInvoiceReturn();
+    const salesReturnRepo = {
+      getById: jest.fn(async () => salesReturn),
+      list: jest.fn(async () => []),
+      update: jest.fn(async () => undefined),
+    };
+    const salesInvoiceRepo = {
+      getById: jest.fn(async () => si),
+      update: jest.fn(async () => undefined),
+    };
+    const salesOrderRepo = {
+      getById: jest.fn(async () => so),
+      update: jest.fn(async () => undefined),
+    };
+    const voucherRepo = {
+      save: jest.fn(async () => {
+        throw new Error('Accounting failed');
+      }),
+    };
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      salesReturnRepo as any,
+      salesInvoiceRepo as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      salesOrderRepo as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      makeTransactionManager() as any
+    );
+
+    await expect(useCase.execute(COMPANY_ID, salesReturn.id)).rejects.toThrow('Accounting failed');
+    expect(salesReturnRepo.update).not.toHaveBeenCalled();
+    expect(salesInvoiceRepo.update).not.toHaveBeenCalled();
+    expect(salesOrderRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('18) AFTER_INVOICE: missing cost basis aborts posting before inventory or vouchers are created', async () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const item = makeItem();
+    const so = makeSO();
+    const si = makePostedSI();
+    si.lines[0].unitCostBase = 0;
+    si.lines[0].lineCostBase = 0;
+    const salesReturn = makeAfterInvoiceReturn();
+    salesReturn.lines[0].unitCostBase = 0;
+
+    const salesReturnRepo = {
+      getById: jest.fn(async () => salesReturn),
+      list: jest.fn(async () => []),
+      update: jest.fn(async () => undefined),
+    };
+    const salesInvoiceRepo = {
+      getById: jest.fn(async () => si),
+      update: jest.fn(async () => undefined),
+    };
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+
+    const useCase = new PostSalesReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      salesReturnRepo as any,
+      salesInvoiceRepo as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => makeTaxCode()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      makeTransactionManager() as any
+    );
+
+    await expect(useCase.execute(COMPANY_ID, salesReturn.id)).rejects.toThrow('Missing positive inventory cost');
+    expect(inventoryService.processIN).not.toHaveBeenCalled();
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(salesReturnRepo.update).not.toHaveBeenCalled();
+    expect(salesInvoiceRepo.update).not.toHaveBeenCalled();
+  });
 });
+
+
 

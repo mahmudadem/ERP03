@@ -429,7 +429,9 @@
       "classic": "Klasik",
       "classicDesc": "Sekmeli, düz arayüz",
       "windows": "Windows (V3)",
-      "windowsDesc": "Çok pencereli çoklu görev"
+      "windowsDesc": "Çok pencereli çoklu görev",
+      "multiCurrencyDefaults": "Küresel Döviz Yapılandırması",
+      "fxAccountDesc": "Kur farkları için birincil hesap. Aşağıdaki sihirbazı önceden doldurur ve tüm modüller için varsayılan görevi görür."
     },
     "currencies": {
       "description": "Kur listesi ve baz para birimini yönetin"
@@ -480,9 +482,14 @@
       "policies": "Onay & İşleme",
       "paymentMethods": "Ödeme Yöntemleri",
       "costCenter": "Maliyet Merkezi Zorunluluğu",
+      "costCentersManage": "Maliyet Merkezleri",
       "errorMode": "Politika Hata Modu",
       "fiscal": "Mali Yıl",
-      "numbering": "Fiş Numaralama"
+      "numbering": "Fiş Numaralama",
+      "fxRevaluation": "Kur Değerleme"
+    },
+    "fxRevaluation": {
+      "description": "Çok para birimli hesaplar için otomatik döviz kuru değerlemesini yapılandırın"
     },
     "saving": "Kaydediliyor...",
     "saveLabel": "{{section}} kaydet",

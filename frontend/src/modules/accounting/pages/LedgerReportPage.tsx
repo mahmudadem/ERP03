@@ -6,6 +6,7 @@ import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { DatePicker } from '../components/shared/DatePicker';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { AccountSelector } from '../components/shared/AccountSelector';
+import { useAccounts } from '../../../context/AccountsContext';
 import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { 
   ArrowRight, 
@@ -64,6 +65,13 @@ const LedgerInitiator: React.FC<{
   isModal?: boolean;
 }> = ({ onSubmit, initialParams }) => {
   const { t } = useTranslation('accounting');
+  const { refreshAccounts } = useAccounts();
+
+  useEffect(() => {
+    // Ensure latest accounts are visible on search.
+    // We only trigger this once on mount to avoid infinite loops.
+    refreshAccounts();
+  }, []); // Empty dependency array means this runs only ONCE on component mount.
   const [accountId, setAccountId] = useState(initialParams?.accountId || '');
   const [accountName, setAccountName] = useState(initialParams?.accountName || ''); 
   const [costCenterId, setCostCenterId] = useState(initialParams?.costCenterId || '');

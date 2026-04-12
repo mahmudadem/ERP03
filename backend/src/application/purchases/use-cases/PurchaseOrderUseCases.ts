@@ -128,7 +128,7 @@ export class CreatePurchaseOrderUseCase {
       lines.push(line);
     }
 
-    const orderNumber = generateDocumentNumber(settings, 'PO');
+    const orderNumber = await this.reserveUniqueOrderNumber(input.companyId, settings);
     const now = new Date();
     const po = new PurchaseOrder({
       id: randomUUID(),
@@ -158,6 +158,18 @@ export class CreatePurchaseOrderUseCase {
     await this.purchaseOrderRepo.create(po);
     await this.settingsRepo.saveSettings(settings);
     return po;
+  }
+
+  private async reserveUniqueOrderNumber(companyId: string, settings: PurchaseSettings): Promise<string> {
+    const MAX_ATTEMPTS = 100;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      const candidate = generateDocumentNumber(settings, 'PO');
+      const existing = await this.purchaseOrderRepo.getByNumber(companyId, candidate);
+      if (!existing) return candidate;
+    }
+
+    throw new Error('Failed to generate a unique purchase order number. Please retry.');
   }
 
   private assertVendor(vendor: Party | null, vendorId: string): void {

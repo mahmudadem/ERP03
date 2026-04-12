@@ -29,6 +29,8 @@ export interface VoucherFormResponse {
   tableStyle?: 'web' | 'classic';
   defaultCurrency?: string;
   baseType?: string; // Base voucher type for backend
+  module?: string; // Module this form belongs to (ACCOUNTING, SALES, PURCHASE)
+  sidebarGroup?: string; // Sidebar submenu group (Vouchers, Documents, etc.)
   createdAt: string;
   updatedAt: string;
   createdBy?: string;

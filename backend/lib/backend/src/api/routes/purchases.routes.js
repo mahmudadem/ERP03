@@ -20,16 +20,21 @@ router.post('/orders/:id/close', PurchaseController_1.PurchaseController.closePO
 router.post('/goods-receipts', PurchaseController_1.PurchaseController.createGRN);
 router.get('/goods-receipts', PurchaseController_1.PurchaseController.listGRNs);
 router.get('/goods-receipts/:id', PurchaseController_1.PurchaseController.getGRN);
+router.put('/goods-receipts/:id', PurchaseController_1.PurchaseController.updateGRN);
 router.post('/goods-receipts/:id/post', PurchaseController_1.PurchaseController.postGRN);
+router.post('/goods-receipts/:id/unpost', PurchaseController_1.PurchaseController.unpostGRN);
 router.post('/invoices', PurchaseController_1.PurchaseController.createPI);
 router.get('/invoices', PurchaseController_1.PurchaseController.listPIs);
 router.get('/invoices/:id', PurchaseController_1.PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController_1.PurchaseController.updatePI);
 router.post('/invoices/:id/post', PurchaseController_1.PurchaseController.postPI);
+router.post('/invoices/:id/unpost', PurchaseController_1.PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController_1.PurchaseController.updatePaymentStatus);
 router.post('/returns', PurchaseController_1.PurchaseController.createReturn);
 router.get('/returns', PurchaseController_1.PurchaseController.listReturns);
 router.get('/returns/:id', PurchaseController_1.PurchaseController.getReturn);
+router.put('/returns/:id', PurchaseController_1.PurchaseController.updateReturn);
 router.post('/returns/:id/post', PurchaseController_1.PurchaseController.postReturn);
+router.post('/returns/:id/unpost', PurchaseController_1.PurchaseController.unpostReturn);
 exports.default = router;
 //# sourceMappingURL=purchases.routes.js.map

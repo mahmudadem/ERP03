@@ -57,6 +57,29 @@ const getApproverUserIdsForCompany = async (companyId) => {
         .filter((m) => !m.isDisabled && (m.isOwner || approverRoleIds.has(m.roleId)))
         .map((m) => m.userId)));
 };
+const formatUserDisplayName = (user) => {
+    if (!user)
+        return null;
+    const trimmedName = typeof user.name === 'string' ? user.name.trim() : '';
+    if (trimmedName)
+        return trimmedName;
+    const firstName = typeof user.firstName === 'string' ? user.firstName.trim() : '';
+    const lastName = typeof user.lastName === 'string' ? user.lastName.trim() : '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName)
+        return fullName;
+    return typeof user.email === 'string' && user.email.trim() ? user.email.trim() : null;
+};
+const getUserAuditSnapshot = async (userId) => {
+    if (!userId) {
+        return { name: null, email: null };
+    }
+    const user = await bindRepositories_1.diContainer.userRepository.getUserById(userId).catch(() => null);
+    return {
+        name: formatUserDisplayName(user),
+        email: (user === null || user === void 0 ? void 0 : user.email) || null,
+    };
+};
 class VoucherController {
     static async list(req, res, next) {
         try {
@@ -97,7 +120,16 @@ class VoucherController {
             const userId = req.user.uid;
             const useCase = new VoucherUseCases_1.GetVoucherUseCase(bindRepositories_1.diContainer.voucherRepository, permissionChecker);
             const voucher = await useCase.execute(companyId, userId, req.params.id);
-            res.json({ success: true, data: voucher });
+            const voucherData = voucher.toJSON();
+            const [createdByAudit, approvedByAudit, postedByAudit] = await Promise.all([
+                getUserAuditSnapshot(voucherData.createdBy),
+                getUserAuditSnapshot(voucherData.approvedBy),
+                getUserAuditSnapshot(voucherData.postedBy),
+            ]);
+            res.json({
+                success: true,
+                data: Object.assign(Object.assign({}, voucherData), { createdByName: createdByAudit.name, createdByEmail: createdByAudit.email, approvedByName: approvedByAudit.name, approvedByEmail: approvedByAudit.email, postedByName: postedByAudit.name, postedByEmail: postedByAudit.email })
+            });
         }
         catch (err) {
             next(err);

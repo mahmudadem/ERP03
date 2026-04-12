@@ -6,7 +6,6 @@ import {
   ErrorViolation, 
   createPostingError, 
   createAggregatedPolicyError,
-  PostingError
 } from '../../shared/errors/AppError';
 
 /**
@@ -86,8 +85,6 @@ export class VoucherValidationService {
       }
 
       // 4.1 Exchange Rate Sanity Check (The "Bomb" Defuser)
-      // If currency is different from base currency, exchange rate should not be exactly 1.0
-      // unless clearly intended. This catches cases where the rate was defaulted to 1.
       if (line.currency !== line.baseCurrency && line.exchangeRate === 1) {
         throw createPostingError(
           'SUSPICIOUS_EXCHANGE_RATE',
@@ -100,16 +97,19 @@ export class VoucherValidationService {
       }
     }
     
-    // 5. Currency consistency (skip for journal entries and reversals which support multi-currency lines)
-    // Journal entries allow different transaction currencies per line, but base currency must balance
-    // Reversals MUST mirror the original voucher structure, so they must support whatever the original supported.
+    this.validateCurrencies(voucher, correlationId);
+  }
+
+  /**
+   * Currency consistency check
+   */
+  private validateCurrencies(voucher: VoucherEntity, correlationId?: string): void {
     const isMultiCurrencySupported = 
       voucher.type.toLowerCase() === 'journal_entry' || 
       voucher.type.toLowerCase() === 'journalentry' ||
       voucher.type.toLowerCase() === 'reversal';
     
     if (!isMultiCurrencySupported) {
-      // For other voucher types, enforce same currency as header
       const invalidLines = voucher.lines.filter(
         line => line.currency !== voucher.currency || line.baseCurrency !== voucher.baseCurrency
       );
@@ -124,7 +124,6 @@ export class VoucherValidationService {
         );
       }
     } else {
-      // For journal entries: only check that base currency matches across all lines
       const invalidBaseLines = voucher.lines.filter(
         line => line.baseCurrency !== voucher.baseCurrency
       );
@@ -142,20 +141,54 @@ export class VoucherValidationService {
   }
 
   /**
+   * Mandatory Account Postability Check (The Financial Shield)
+   * Ensures that all accounts in the voucher are POSTING roles and ACTIVE.
+   */
+  async validateAccounts(
+    voucher: VoucherEntity, 
+    accountRepository: { getById(companyId: string, id: string): Promise<any> },
+    correlationId?: string
+  ): Promise<void> {
+    for (const line of voucher.lines) {
+      const account = await accountRepository.getById(voucher.companyId, line.accountId);
+      
+      if (!account) {
+        throw createPostingError(
+          'ACCOUNT_NOT_FOUND',
+          `Line ${line.id}: Account ID "${line.accountId}" does not exist for company ${voucher.companyId}`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].accountId`],
+          undefined,
+          correlationId
+        );
+      }
+
+      if (account.accountRole !== 'POSTING') {
+        throw createPostingError(
+          'NON_POSTABLE_ACCOUNT',
+          `Line ${line.id}: Account "${account.userCode || account.code} - ${account.name}" is a ${account.accountRole} account. Direct posting to non-POSTING accounts is forbidden.`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].accountId`],
+          undefined,
+          correlationId
+        );
+      }
+
+      if (account.status !== 'ACTIVE') {
+        throw createPostingError(
+          'INACTIVE_ACCOUNT',
+          `Line ${line.id}: Account "${account.userCode || account.code} - ${account.name}" is INACTIVE.`,
+          ErrorCategory.CORE_INVARIANT,
+          [`lines[${line.id - 1}].accountId`],
+          undefined,
+          correlationId
+        );
+      }
+    }
+  }
+
+  /**
    * Optional Policies (Feature-driven)
-   * 
-   * These rules depend on company settings, voucher types, or other features.
-   * Wiring is handled at the application/infrastructure layer.
-   * 
-   * Supports two modes:
-   * - FAIL_FAST: Return on first policy failure (default)
-   * - AGGREGATE: Collect all policy failures before throwing
-   * 
-   * @param context - Posting context with voucher data
-   * @param policies - List of enabled policies to check
-   * @param mode - Error handling mode
-   * @param correlationId - Request correlation ID
-   * @throws PostingError with structured policy error details
    */
   async validatePolicies(
     context: PostingPolicyContext,
@@ -165,12 +198,10 @@ export class VoucherValidationService {
   ): Promise<void> {
     const violations: ErrorViolation[] = [];
 
-    // Run all policies in registry order
     for (const policy of policies) {
       const result = await policy.validate(context);
       
       if (!result.ok) {
-        // Type guard: result is now PolicyError type
         const policyError = result as { ok: false; error: { code: string; message: string; fieldHints?: string[] } };
         
         const violation: ErrorViolation = {
@@ -181,7 +212,6 @@ export class VoucherValidationService {
         };
 
         if (mode === 'FAIL_FAST') {
-          // Fail immediately on first violation
           throw createPostingError(
             policyError.error.code,
             policyError.error.message,
@@ -191,13 +221,11 @@ export class VoucherValidationService {
             correlationId
           );
         } else {
-          // Collect violation for later
           violations.push(violation);
         }
       }
     }
 
-    // If in AGGREGATE mode and violations were collected, throw them all
     if (violations.length > 0) {
       throw createAggregatedPolicyError(violations, correlationId);
     }

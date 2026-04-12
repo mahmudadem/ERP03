@@ -32,6 +32,7 @@ const FirestoreStockLevelRepository_1 = require("../firestore/repositories/inven
 const FirestoreItemCategoryRepository_1 = require("../firestore/repositories/inventory/FirestoreItemCategoryRepository");
 const FirestoreUomConversionRepository_1 = require("../firestore/repositories/inventory/FirestoreUomConversionRepository");
 const FirestoreInventorySettingsRepository_1 = require("../firestore/repositories/inventory/FirestoreInventorySettingsRepository");
+const FirestoreOpeningStockDocumentRepository_1 = require("../firestore/repositories/inventory/FirestoreOpeningStockDocumentRepository");
 const FirestoreStockAdjustmentRepository_1 = require("../firestore/repositories/inventory/FirestoreStockAdjustmentRepository");
 const FirestoreStockTransferRepository_1 = require("../firestore/repositories/inventory/FirestoreStockTransferRepository");
 const FirestoreInventoryPeriodSnapshotRepository_1 = require("../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository");
@@ -135,6 +136,7 @@ exports.diContainer = {
     get itemCategoryRepository() { return new FirestoreItemCategoryRepository_1.FirestoreItemCategoryRepository(getDb()); },
     get uomConversionRepository() { return new FirestoreUomConversionRepository_1.FirestoreUomConversionRepository(getDb()); },
     get inventorySettingsRepository() { return new FirestoreInventorySettingsRepository_1.FirestoreInventorySettingsRepository(getDb()); },
+    get openingStockDocumentRepository() { return new FirestoreOpeningStockDocumentRepository_1.FirestoreOpeningStockDocumentRepository(getDb()); },
     get stockAdjustmentRepository() { return new FirestoreStockAdjustmentRepository_1.FirestoreStockAdjustmentRepository(getDb()); },
     get stockTransferRepository() { return new FirestoreStockTransferRepository_1.FirestoreStockTransferRepository(getDb()); },
     get inventoryPeriodSnapshotRepository() { return new FirestoreInventoryPeriodSnapshotRepository_1.FirestoreInventoryPeriodSnapshotRepository(getDb()); },

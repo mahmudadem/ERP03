@@ -54,6 +54,7 @@ export class FirestoreItemRepository implements IItemRepository {
     if (opts?.type) query = query.where('type', '==', opts.type);
     if (opts?.categoryId) query = query.where('categoryId', '==', opts.categoryId);
     if (opts?.active !== undefined) query = query.where('active', '==', opts.active);
+    if (opts?.trackInventory !== undefined) query = query.where('trackInventory', '==', opts.trackInventory);
 
     query = query.orderBy('code', 'asc');
     query = this.applyListOptions(query, opts);

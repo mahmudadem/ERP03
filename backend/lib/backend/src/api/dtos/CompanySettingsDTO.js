@@ -13,6 +13,7 @@ class CompanySettingsDTOMapper {
             baseCurrency: settings.baseCurrency,
             fiscalYearStart: settings.fiscalYearStart,
             fiscalYearEnd: settings.fiscalYearEnd,
+            exchangeGainLossAccountId: settings.exchangeGainLossAccountId,
             disabledNotificationCategories: settings.disabledNotificationCategories || []
         };
     }

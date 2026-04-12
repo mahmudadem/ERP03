@@ -4,6 +4,8 @@ import {
   GetGoodsReceiptUseCase,
   ListGoodsReceiptsUseCase,
   PostGoodsReceiptUseCase,
+  UpdateGoodsReceiptUseCase,
+  UnpostGoodsReceiptUseCase,
 } from '../../../application/purchases/use-cases/GoodsReceiptUseCases';
 import {
   CancelPurchaseOrderUseCase,
@@ -19,6 +21,7 @@ import {
   GetPurchaseInvoiceUseCase,
   ListPurchaseInvoicesUseCase,
   PostPurchaseInvoiceUseCase,
+  UnpostPurchaseInvoiceUseCase,
   UpdatePurchaseInvoiceUseCase,
 } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import {
@@ -26,7 +29,10 @@ import {
   GetPurchaseReturnUseCase,
   ListPurchaseReturnsUseCase,
   PostPurchaseReturnUseCase,
+  UpdatePurchaseReturnUseCase,
+  UnpostPurchaseReturnUseCase,
 } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
+import { IPurchasesInventoryService } from '../../../application/inventory/contracts/InventoryIntegrationContracts';
 import {
   GetPurchaseSettingsUseCase,
   InitializePurchasesUseCase,
@@ -41,6 +47,8 @@ import { POStatus } from '../../../domain/purchases/entities/PurchaseOrder';
 import { PRStatus } from '../../../domain/purchases/entities/PurchaseReturn';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PurchaseDTOMapper } from '../../dtos/PurchaseDTOs';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import {
   validateCreatePurchaseReturnInput,
   validateCreateGoodsReceiptInput,
@@ -136,6 +144,24 @@ export class PurchaseController {
     return new PurchasesInventoryService(PurchaseController.buildMovementUseCase());
   }
 
+  private static buildAccountingPostingService(validateAccounts: boolean = false): SubledgerVoucherPostingService {
+    if (validateAccounts) {
+      return new SubledgerVoucherPostingService(
+        diContainer.voucherRepository,
+        diContainer.ledgerRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.accountRepository,
+        new VoucherValidationService()
+      );
+    }
+
+    return new SubledgerVoucherPostingService(
+      diContainer.voucherRepository,
+      diContainer.ledgerRepository,
+      diContainer.companyCurrencyRepository
+    );
+  }
+
   static async initializePurchases(req: Request, res: Response, next: NextFunction) {
     try {
       validateInitializePurchasesInput((req as any).body);
@@ -145,7 +171,9 @@ export class PurchaseController {
       const useCase = new InitializePurchasesUseCase(
         diContainer.purchaseSettingsRepository,
         diContainer.accountRepository,
-        diContainer.companyModuleRepository
+        diContainer.companyModuleRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
 
       const settings = await useCase.execute({
@@ -166,7 +194,11 @@ export class PurchaseController {
   static async getSettings(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PurchaseController.getCompanyId(req);
-      const useCase = new GetPurchaseSettingsUseCase(diContainer.purchaseSettingsRepository);
+      const useCase = new GetPurchaseSettingsUseCase(
+        diContainer.purchaseSettingsRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
       const settings = await useCase.execute(companyId);
 
       (res as any).json({
@@ -185,7 +217,9 @@ export class PurchaseController {
 
       const useCase = new UpdatePurchaseSettingsUseCase(
         diContainer.purchaseSettingsRepository,
-        diContainer.accountRepository
+        diContainer.accountRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
 
       const settings = await useCase.execute({
@@ -414,6 +448,28 @@ export class PurchaseController {
     }
   }
 
+  static async updateGRN(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const useCase = new UpdateGoodsReceiptUseCase(diContainer.goodsReceiptRepository, diContainer.partyRepository);
+
+      const grn = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        id,
+      });
+
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toGoodsReceiptDTO(grn),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async postGRN(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PurchaseController.getCompanyId(req);
@@ -427,6 +483,29 @@ export class PurchaseController {
         diContainer.itemRepository,
         diContainer.warehouseRepository,
         diContainer.uomConversionRepository,
+        inventoryService,
+        diContainer.transactionManager
+      );
+
+      const grn = await useCase.execute(companyId, id);
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toGoodsReceiptDTO(grn),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unpostGRN(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const inventoryService = PurchaseController.buildPurchasesInventoryService();
+
+      const useCase = new UnpostGoodsReceiptUseCase(
+        diContainer.goodsReceiptRepository,
+        diContainer.purchaseOrderRepository,
         inventoryService,
         diContainer.transactionManager
       );
@@ -542,9 +621,11 @@ export class PurchaseController {
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
       const inventoryService = PurchaseController.buildPurchasesInventoryService();
+      const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
 
       const useCase = new PostPurchaseInvoiceUseCase(
         diContainer.purchaseSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.purchaseInvoiceRepository,
         diContainer.purchaseOrderRepository,
         diContainer.partyRepository,
@@ -556,12 +637,38 @@ export class PurchaseController {
         diContainer.companyCurrencyRepository,
         diContainer.exchangeRateRepository,
         inventoryService,
-        diContainer.voucherRepository,
-        diContainer.ledgerRepository,
+        accountingPostingService,
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 
       const pi = await useCase.execute(companyId, id);
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unpostPI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+      const inventoryService = PurchaseController.buildPurchasesInventoryService();
+      const accountingPostingService = PurchaseController.buildAccountingPostingService();
+
+      const useCase = new UnpostPurchaseInvoiceUseCase(
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        inventoryService,
+        accountingPostingService,
+        diContainer.transactionManager
+      );
+
+      const pi = await useCase.execute(companyId, id, userId);
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
@@ -600,7 +707,9 @@ export class PurchaseController {
         diContainer.purchaseSettingsRepository,
         diContainer.purchaseReturnRepository,
         diContainer.purchaseInvoiceRepository,
-        diContainer.goodsReceiptRepository
+        diContainer.goodsReceiptRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository
       );
 
       const purchaseReturn = await useCase.execute({
@@ -648,12 +757,41 @@ export class PurchaseController {
     try {
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
+
       const useCase = new GetPurchaseReturnUseCase(diContainer.purchaseReturnRepository);
-      const purchaseReturn = await useCase.execute(companyId, id);
+      const pr = await useCase.execute(companyId, id);
 
       (res as any).json({
         success: true,
-        data: PurchaseDTOMapper.toPurchaseReturnDTO(purchaseReturn),
+        data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+
+      const useCase = new UpdatePurchaseReturnUseCase(
+        diContainer.purchaseReturnRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository
+      );
+
+      const pr = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        id,
+        updatedBy: userId,
+      });
+
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
       });
     } catch (error) {
       next(error);
@@ -664,11 +802,15 @@ export class PurchaseController {
     try {
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+
       const inventoryService = PurchaseController.buildPurchasesInventoryService();
+      const accountingPostingService = PurchaseController.buildAccountingPostingService();
 
       const useCase = new PostPurchaseReturnUseCase(
         diContainer.purchaseSettingsRepository,
         diContainer.purchaseReturnRepository,
+        diContainer.companySettingsRepository,
         diContainer.purchaseInvoiceRepository,
         diContainer.goodsReceiptRepository,
         diContainer.purchaseOrderRepository,
@@ -678,15 +820,45 @@ export class PurchaseController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
-        diContainer.voucherRepository,
-        diContainer.ledgerRepository,
+        accountingPostingService,
         diContainer.transactionManager
       );
 
-      const purchaseReturn = await useCase.execute(companyId, id);
+      const pr = await useCase.execute(companyId, id);
+
       (res as any).json({
         success: true,
-        data: PurchaseDTOMapper.toPurchaseReturnDTO(purchaseReturn),
+        data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async unpostReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = PurchaseController.getUserId(req);
+
+      const inventoryService = PurchaseController.buildPurchasesInventoryService();
+      const accountingPostingService = PurchaseController.buildAccountingPostingService();
+
+      const useCase = new UnpostPurchaseReturnUseCase(
+        diContainer.purchaseReturnRepository,
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        diContainer.goodsReceiptRepository,
+        inventoryService,
+        accountingPostingService,
+        diContainer.transactionManager
+      );
+
+      const pr = await useCase.execute(companyId, id, userId);
+
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
       });
     } catch (error) {
       next(error);

@@ -36,6 +36,7 @@ export class CompanySettingsController {
         baseCurrency,
         fiscalYearStart,
         fiscalYearEnd,
+        exchangeGainLossAccountId,
         disabledNotificationCategories
       } = (req as any).body;
       
@@ -48,6 +49,7 @@ export class CompanySettingsController {
         baseCurrency,
         fiscalYearStart,
         fiscalYearEnd,
+        exchangeGainLossAccountId,
         disabledNotificationCategories
       });
 

@@ -1,4 +1,4 @@
-﻿import {
+import {
   InventoryProcessINContractInput,
   InventoryProcessOUTContractInput,
   ISalesInventoryService,
@@ -43,4 +43,9 @@ export class SalesInventoryService implements ISalesInventoryService {
       transaction: input.transaction,
     });
   }
+
+  deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
+    return this.movementUseCase.deleteMovement(companyId, id, transaction);
+  }
 }
+

@@ -56,6 +56,8 @@ class FirestoreItemRepository {
             query = query.where('categoryId', '==', opts.categoryId);
         if ((opts === null || opts === void 0 ? void 0 : opts.active) !== undefined)
             query = query.where('active', '==', opts.active);
+        if ((opts === null || opts === void 0 ? void 0 : opts.trackInventory) !== undefined)
+            query = query.where('trackInventory', '==', opts.trackInventory);
         query = query.orderBy('code', 'asc');
         query = this.applyListOptions(query, opts);
         const snap = await query.get();

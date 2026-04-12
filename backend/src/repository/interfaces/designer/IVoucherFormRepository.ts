@@ -12,6 +12,7 @@
 export interface VoucherFormDefinition {
   id: string;                    // Unique form ID
   companyId: string;             // Company that owns this form
+  module?: string;                // Module this form belongs to (e.g., 'ACCOUNTING', 'PURCHASE')
   typeId: string;                // Links to VoucherType (backend type)
   
   // Metadata
@@ -45,6 +46,7 @@ export interface VoucherFormDefinition {
   tableStyle?: 'web' | 'classic'; // Line items table style
   defaultCurrency?: string;      // Default currency
   baseType?: string;             // Base voucher type for backend compatibility
+  sidebarGroup?: string;         // Sidebar submenu group (e.g., "Vouchers", "Documents"). Null = top-level.
   
   // Timestamps
   createdAt: Date;

@@ -114,6 +114,14 @@ const normalizeVoucherTypeCode = (rawType, fallback = VoucherTypes_1.VoucherType
         return VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
     if (normalized === 'journal_entry')
         return VoucherTypes_1.VoucherType.JOURNAL_ENTRY;
+    if (normalized === 'purchase_invoice' || normalized === 'pi' || normalized === 'ap_invoice')
+        return VoucherTypes_1.VoucherType.PURCHASE_INVOICE;
+    if (normalized === 'purchase_return' || normalized === 'pr' || normalized === 'ap_return')
+        return VoucherTypes_1.VoucherType.PURCHASE_RETURN;
+    if (normalized === 'sales_invoice' || normalized === 'si' || normalized === 'ar_invoice')
+        return VoucherTypes_1.VoucherType.SALES_INVOICE;
+    if (normalized === 'sales_return' || normalized === 'sr' || normalized === 'ar_return')
+        return VoucherTypes_1.VoucherType.SALES_RETURN;
     if (normalized === 'receipt')
         return VoucherTypes_1.VoucherType.RECEIPT;
     if (normalized === 'payment')
@@ -417,6 +425,7 @@ class CreateVoucherUseCase {
             // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
             // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
             this.validationService.validateCore(voucher);
+            await this.validationService.validateAccounts(voucher, this.accountRepo);
             await this.voucherRepo.save(voucher, transaction);
             if (!approvalRequired && this.ledgerRepo) {
                 // Flexible Mode (Mode A): Auto-approve, then post inline

@@ -39,6 +39,9 @@ class SalesInventoryService {
             transaction: input.transaction,
         });
     }
+    deleteMovement(companyId, id, transaction) {
+        return this.movementUseCase.deleteMovement(companyId, id, transaction);
+    }
 }
 exports.SalesInventoryService = SalesInventoryService;
 //# sourceMappingURL=SalesInventoryService.js.map

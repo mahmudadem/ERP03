@@ -86,6 +86,10 @@ const normalizeVoucherTypeCode = (rawType: any, fallback: VoucherType = VoucherT
   if (!normalized) return fallback;
   if (normalized === 'jv' || normalized === 'journal') return VoucherType.JOURNAL_ENTRY;
   if (normalized === 'journal_entry') return VoucherType.JOURNAL_ENTRY;
+  if (normalized === 'purchase_invoice' || normalized === 'pi' || normalized === 'ap_invoice') return VoucherType.PURCHASE_INVOICE;
+  if (normalized === 'purchase_return' || normalized === 'pr' || normalized === 'ap_return') return VoucherType.PURCHASE_RETURN;
+  if (normalized === 'sales_invoice' || normalized === 'si' || normalized === 'ar_invoice') return VoucherType.SALES_INVOICE;
+  if (normalized === 'sales_return' || normalized === 'sr' || normalized === 'ar_return') return VoucherType.SALES_RETURN;
   if (normalized === 'receipt') return VoucherType.RECEIPT;
   if (normalized === 'payment') return VoucherType.PAYMENT;
   if (normalized === 'opening' || normalized === 'opening_balance') return VoucherType.OPENING_BALANCE;
@@ -490,6 +494,7 @@ export class CreateVoucherUseCase {
       // Mode A/B Cleanup: Even if auto-posting, we MUST validate the voucher first
       // This is the "Bomb Defusal" - no voucher reaches the ledger without validation
       this.validationService.validateCore(voucher);
+      await this.validationService.validateAccounts(voucher, this.accountRepo);
 
       await this.voucherRepo.save(voucher, transaction);
 

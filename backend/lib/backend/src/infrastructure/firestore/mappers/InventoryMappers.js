@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InventoryPeriodSnapshotMapper = exports.StockTransferMapper = exports.StockAdjustmentMapper = exports.InventorySettingsMapper = exports.UomConversionMapper = exports.ItemCategoryMapper = exports.StockLevelMapper = exports.StockMovementMapper = exports.WarehouseMapper = exports.ItemMapper = void 0;
+exports.InventoryPeriodSnapshotMapper = exports.StockTransferMapper = exports.StockAdjustmentMapper = exports.OpeningStockDocumentMapper = exports.InventorySettingsMapper = exports.UomConversionMapper = exports.ItemCategoryMapper = exports.StockLevelMapper = exports.StockMovementMapper = exports.WarehouseMapper = exports.ItemMapper = void 0;
 const firestore_1 = require("firebase-admin/firestore");
 const Item_1 = require("../../../domain/inventory/entities/Item");
 const Warehouse_1 = require("../../../domain/inventory/entities/Warehouse");
@@ -9,6 +9,7 @@ const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
 const ItemCategory_1 = require("../../../domain/inventory/entities/ItemCategory");
 const UomConversion_1 = require("../../../domain/inventory/entities/UomConversion");
 const InventorySettings_1 = require("../../../domain/inventory/entities/InventorySettings");
+const OpeningStockDocument_1 = require("../../../domain/inventory/entities/OpeningStockDocument");
 const StockAdjustment_1 = require("../../../domain/inventory/entities/StockAdjustment");
 const InventoryPeriodSnapshot_1 = require("../../../domain/inventory/entities/InventoryPeriodSnapshot");
 const StockTransfer_1 = require("../../../domain/inventory/entities/StockTransfer");
@@ -118,6 +119,16 @@ class InventorySettingsMapper {
     }
 }
 exports.InventorySettingsMapper = InventorySettingsMapper;
+class OpeningStockDocumentMapper {
+    static toDomain(data) {
+        return OpeningStockDocument_1.OpeningStockDocument.fromJSON(Object.assign(Object.assign({}, data), { createdAt: toDate(data.createdAt), postedAt: toDate(data.postedAt) }));
+    }
+    static toPersistence(entity) {
+        const data = entity.toJSON();
+        return stripUndefinedDeep(Object.assign(Object.assign({}, data), { createdAt: toTimestamp(entity.createdAt), postedAt: toTimestamp(entity.postedAt) }));
+    }
+}
+exports.OpeningStockDocumentMapper = OpeningStockDocumentMapper;
 class StockAdjustmentMapper {
     static toDomain(data) {
         return StockAdjustment_1.StockAdjustment.fromJSON(Object.assign(Object.assign({}, data), { createdAt: toDate(data.createdAt), postedAt: toDate(data.postedAt) }));

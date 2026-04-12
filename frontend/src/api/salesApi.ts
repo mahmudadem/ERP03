@@ -1,6 +1,5 @@
 import client from './client';
 
-export type SalesControlMode = 'SIMPLE' | 'CONTROLLED';
 export type SOStatus =
   | 'DRAFT'
   | 'CONFIRMED'
@@ -16,11 +15,12 @@ export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 
 export interface SalesSettingsDTO {
   companyId: string;
-  salesControlMode: SalesControlMode;
+  allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  defaultARAccountId: string;
+  defaultARAccountId?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
+  defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -250,11 +250,12 @@ export interface SalesReturnDTO {
 }
 
 export interface InitializeSalesPayload {
-  defaultARAccountId: string;
+  defaultARAccountId?: string;
   defaultRevenueAccountId: string;
-  salesControlMode: SalesControlMode;
+  allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
   defaultCOGSAccountId?: string;
+  defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery?: boolean;
   overDeliveryTolerancePct?: number;

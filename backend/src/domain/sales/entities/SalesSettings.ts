@@ -1,12 +1,11 @@
-﻿export type SalesControlMode = 'SIMPLE' | 'CONTROLLED';
-
 export interface SalesSettingsProps {
   companyId: string;
-  salesControlMode: SalesControlMode;
+  allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  defaultARAccountId: string;
+  defaultARAccountId?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
+  defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -24,15 +23,14 @@ export interface SalesSettingsProps {
   srNumberNextSeq: number;
 }
 
-const CONTROL_MODES: SalesControlMode[] = ['SIMPLE', 'CONTROLLED'];
-
 export class SalesSettings {
   readonly companyId: string;
-  salesControlMode: SalesControlMode;
+  allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
-  defaultARAccountId: string;
+  defaultARAccountId?: string;
   defaultRevenueAccountId: string;
   defaultCOGSAccountId?: string;
+  defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -51,20 +49,15 @@ export class SalesSettings {
 
   constructor(props: SalesSettingsProps) {
     if (!props.companyId?.trim()) throw new Error('SalesSettings companyId is required');
-    if (!props.defaultARAccountId?.trim()) throw new Error('SalesSettings defaultARAccountId is required');
     if (!props.defaultRevenueAccountId?.trim()) throw new Error('SalesSettings defaultRevenueAccountId is required');
-    if (!CONTROL_MODES.includes(props.salesControlMode)) {
-      throw new Error(`Invalid salesControlMode: ${props.salesControlMode}`);
-    }
 
     this.companyId = props.companyId;
-    this.salesControlMode = props.salesControlMode;
-    this.requireSOForStockItems = props.salesControlMode === 'CONTROLLED'
-      ? true
-      : props.requireSOForStockItems;
-    this.defaultARAccountId = props.defaultARAccountId;
-    this.defaultRevenueAccountId = props.defaultRevenueAccountId;
+    this.allowDirectInvoicing = props.allowDirectInvoicing;
+    this.requireSOForStockItems = props.requireSOForStockItems;
+    this.defaultARAccountId = props.defaultARAccountId?.trim() || undefined;
+    this.defaultRevenueAccountId = props.defaultRevenueAccountId.trim();
     this.defaultCOGSAccountId = props.defaultCOGSAccountId;
+    this.defaultInventoryAccountId = props.defaultInventoryAccountId;
     this.defaultSalesExpenseAccountId = props.defaultSalesExpenseAccountId;
     this.allowOverDelivery = props.allowOverDelivery;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
@@ -84,12 +77,12 @@ export class SalesSettings {
 
   static createDefault(
     companyId: string,
-    defaultARAccountId: string,
+    defaultARAccountId: string | undefined,
     defaultRevenueAccountId: string
   ): SalesSettings {
     return new SalesSettings({
       companyId,
-      salesControlMode: 'SIMPLE',
+      allowDirectInvoicing: true,
       requireSOForStockItems: false,
       defaultARAccountId,
       defaultRevenueAccountId,
@@ -111,11 +104,12 @@ export class SalesSettings {
   toJSON(): Record<string, any> {
     return {
       companyId: this.companyId,
-      salesControlMode: this.salesControlMode,
+      allowDirectInvoicing: this.allowDirectInvoicing,
       requireSOForStockItems: this.requireSOForStockItems,
       defaultARAccountId: this.defaultARAccountId,
       defaultRevenueAccountId: this.defaultRevenueAccountId,
       defaultCOGSAccountId: this.defaultCOGSAccountId,
+      defaultInventoryAccountId: this.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: this.defaultSalesExpenseAccountId,
       allowOverDelivery: this.allowOverDelivery,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
@@ -137,11 +131,12 @@ export class SalesSettings {
   static fromJSON(data: any): SalesSettings {
     return new SalesSettings({
       companyId: data.companyId,
-      salesControlMode: data.salesControlMode || 'SIMPLE',
+      allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requireSOForStockItems: data.requireSOForStockItems ?? false,
       defaultARAccountId: data.defaultARAccountId,
       defaultRevenueAccountId: data.defaultRevenueAccountId,
       defaultCOGSAccountId: data.defaultCOGSAccountId,
+      defaultInventoryAccountId: data.defaultInventoryAccountId,
       defaultSalesExpenseAccountId: data.defaultSalesExpenseAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,

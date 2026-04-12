@@ -108,6 +108,13 @@ export class CreateAccountUseCase {
       if (!parent) {
         throw this.createError(`Parent account ${data.parentId} not found`, 404);
       }
+      const parentIsUsed = await this.accountRepo.isUsed(companyId, parent.id);
+      if (parentIsUsed && parent.accountRole === 'POSTING') {
+        throw this.createError(
+          'Cannot add sub-accounts to a POSTING account that already has posted transactions. Please create a new HEADER account to group them instead.',
+          400
+        );
+      }
       if (parent.classification !== classification) {
         throw this.createError(
           `Child classification (${classification}) must match parent classification (${parent.classification})`,

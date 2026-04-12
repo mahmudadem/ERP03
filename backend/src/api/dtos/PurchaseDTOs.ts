@@ -6,9 +6,9 @@ import { PurchaseSettings } from '../../domain/purchases/entities/PurchaseSettin
 
 export interface PurchaseSettingsDTO {
   companyId: string;
-  procurementControlMode: 'SIMPLE' | 'CONTROLLED';
+  allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
-  defaultAPAccountId: string;
+  defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
@@ -206,7 +206,7 @@ export interface PurchaseReturnDTO {
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
-  returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+  returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
   returnDate: string;
   warehouseId: string;
   currency: string;
@@ -247,7 +247,7 @@ export class PurchaseDTOMapper {
   static toSettingsDTO(settings: PurchaseSettings): PurchaseSettingsDTO {
     return {
       companyId: settings.companyId,
-      procurementControlMode: settings.procurementControlMode,
+      allowDirectInvoicing: settings.allowDirectInvoicing,
       requirePOForStockItems: settings.requirePOForStockItems,
       defaultAPAccountId: settings.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId,

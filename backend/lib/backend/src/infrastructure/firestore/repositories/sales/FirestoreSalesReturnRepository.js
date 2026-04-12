@@ -41,6 +41,12 @@ class FirestoreSalesReturnRepository {
             return null;
         return SalesMappers_1.SalesReturnMapper.toDomain(doc.data());
     }
+    async getByNumber(companyId, returnNumber) {
+        const snap = await this.collection(companyId).where('returnNumber', '==', returnNumber).limit(1).get();
+        if (snap.empty)
+            return null;
+        return SalesMappers_1.SalesReturnMapper.toDomain(snap.docs[0].data());
+    }
     async list(companyId, opts = {}) {
         let query = this.collection(companyId);
         if (opts.customerId)

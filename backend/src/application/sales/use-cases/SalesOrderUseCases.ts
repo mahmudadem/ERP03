@@ -41,6 +41,21 @@ export const generateDocumentNumber = (
   return `${prefix}-${String(seq).padStart(5, '0')}`;
 };
 
+export const generateUniqueDocumentNumber = async (
+  settings: SalesSettings,
+  docType: 'SO' | 'DN' | 'SI' | 'SR',
+  exists: (candidate: string) => Promise<boolean>
+): Promise<string> => {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const candidate = generateDocumentNumber(settings, docType);
+    if (!(await exists(candidate))) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Unable to allocate a unique ${docType} document number`);
+};
+
 export interface SalesOrderLineInput {
   lineId?: string;
   lineNo?: number;
@@ -126,10 +141,15 @@ export class CreateSalesOrderUseCase {
     }
 
     const now = new Date();
+    const orderNumber = await generateUniqueDocumentNumber(
+      settings,
+      'SO',
+      async (candidate) => !!(await this.salesOrderRepo.getByNumber(input.companyId, candidate))
+    );
     const so = new SalesOrder({
       id: randomUUID(),
       companyId: input.companyId,
-      orderNumber: generateDocumentNumber(settings, 'SO'),
+      orderNumber,
       customerId: customer!.id,
       customerName: customer!.displayName,
       orderDate: input.orderDate,

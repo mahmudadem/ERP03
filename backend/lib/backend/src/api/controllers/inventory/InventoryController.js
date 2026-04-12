@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InventoryController = void 0;
+const ApiError_1 = require("../../errors/ApiError");
 const ItemUseCases_1 = require("../../../application/inventory/use-cases/ItemUseCases");
 const WarehouseUseCases_1 = require("../../../application/inventory/use-cases/WarehouseUseCases");
 const CategoryUseCases_1 = require("../../../application/inventory/use-cases/CategoryUseCases");
 const UomConversionUseCases_1 = require("../../../application/inventory/use-cases/UomConversionUseCases");
+const OpeningStockDocumentUseCases_1 = require("../../../application/inventory/use-cases/OpeningStockDocumentUseCases");
 const StockAdjustmentUseCases_1 = require("../../../application/inventory/use-cases/StockAdjustmentUseCases");
 const StockLevelUseCases_1 = require("../../../application/inventory/use-cases/StockLevelUseCases");
 const MovementHistoryUseCases_1 = require("../../../application/inventory/use-cases/MovementHistoryUseCases");
@@ -18,13 +20,12 @@ const DashboardUseCases_1 = require("../../../application/inventory/use-cases/Da
 const StockReservationUseCases_1 = require("../../../application/inventory/use-cases/StockReservationUseCases");
 const CostQueryUseCases_1 = require("../../../application/inventory/use-cases/CostQueryUseCases");
 const ReferenceQueryUseCases_1 = require("../../../application/inventory/use-cases/ReferenceQueryUseCases");
+const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const InventoryDTOs_1 = require("../../dtos/InventoryDTOs");
-const PermissionChecker_1 = require("../../../application/rbac/PermissionChecker");
-const GetCurrentUserPermissionsForCompanyUseCase_1 = require("../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase");
+const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
 const inventory_validators_1 = require("../../validators/inventory.validators");
 const InventorySettings_1 = require("../../../domain/inventory/entities/InventorySettings");
-const accountingPermissionChecker = new PermissionChecker_1.PermissionChecker(new GetCurrentUserPermissionsForCompanyUseCase_1.GetCurrentUserPermissionsForCompanyUseCase(bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository));
 class InventoryController {
     static getCompanyId(req) {
         var _a;
@@ -48,6 +49,9 @@ class InventoryController {
             transactionManager: bindRepositories_1.diContainer.transactionManager,
         });
     }
+    static buildAccountingPostingService() {
+        return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, new VoucherValidationService_1.VoucherValidationService());
+    }
     static async initialize(req, res, next) {
         try {
             (0, inventory_validators_1.validateInitializeInventoryInput)(req.body);
@@ -64,6 +68,9 @@ class InventoryController {
                 autoGenerateItemCode: req.body.autoGenerateItemCode,
                 itemCodePrefix: req.body.itemCodePrefix,
                 itemCodeNextSeq: req.body.itemCodeNextSeq,
+                defaultCOGSAccountId: req.body.defaultCOGSAccountId,
+                inventoryAccountingMethod: req.body.inventoryAccountingMethod,
+                defaultInventoryAssetAccountId: req.body.defaultInventoryAssetAccountId,
             });
             res.status(200).json({
                 success: true,
@@ -91,7 +98,7 @@ class InventoryController {
         }
     }
     static async updateSettings(req, res, next) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
         try {
             (0, inventory_validators_1.validateUpdateSettingsInput)(req.body);
             const companyId = InventoryController.getCompanyId(req);
@@ -99,15 +106,25 @@ class InventoryController {
             const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
             if (!company)
                 throw new Error(`Company not found: ${companyId}`);
+            if (req.body.inventoryAccountingMethod &&
+                (current === null || current === void 0 ? void 0 : current.inventoryAccountingMethod) &&
+                req.body.inventoryAccountingMethod !== current.inventoryAccountingMethod) {
+                throw ApiError_1.ApiError.badRequest('The inventory accounting method (PERIODIC / PERPETUAL) cannot be changed after initialization.');
+            }
             const settings = new InventorySettings_1.InventorySettings({
                 companyId,
+                inventoryAccountingMethod: (current === null || current === void 0 ? void 0 : current.inventoryAccountingMethod) || 'PERPETUAL',
                 defaultCostingMethod: 'MOVING_AVG',
                 defaultCostCurrency: req.body.defaultCostCurrency || (current === null || current === void 0 ? void 0 : current.defaultCostCurrency) || company.baseCurrency,
-                allowNegativeStock: (_b = (_a = req.body.allowNegativeStock) !== null && _a !== void 0 ? _a : current === null || current === void 0 ? void 0 : current.allowNegativeStock) !== null && _b !== void 0 ? _b : true,
-                defaultWarehouseId: (_c = req.body.defaultWarehouseId) !== null && _c !== void 0 ? _c : current === null || current === void 0 ? void 0 : current.defaultWarehouseId,
-                autoGenerateItemCode: (_e = (_d = req.body.autoGenerateItemCode) !== null && _d !== void 0 ? _d : current === null || current === void 0 ? void 0 : current.autoGenerateItemCode) !== null && _e !== void 0 ? _e : false,
-                itemCodePrefix: (_f = req.body.itemCodePrefix) !== null && _f !== void 0 ? _f : current === null || current === void 0 ? void 0 : current.itemCodePrefix,
-                itemCodeNextSeq: (_h = (_g = req.body.itemCodeNextSeq) !== null && _g !== void 0 ? _g : current === null || current === void 0 ? void 0 : current.itemCodeNextSeq) !== null && _h !== void 0 ? _h : 1,
+                defaultInventoryAssetAccountId: (_a = req.body.defaultInventoryAssetAccountId) !== null && _a !== void 0 ? _a : current === null || current === void 0 ? void 0 : current.defaultInventoryAssetAccountId,
+                allowNegativeStock: (_c = (_b = req.body.allowNegativeStock) !== null && _b !== void 0 ? _b : current === null || current === void 0 ? void 0 : current.allowNegativeStock) !== null && _c !== void 0 ? _c : true,
+                defaultWarehouseId: (_d = req.body.defaultWarehouseId) !== null && _d !== void 0 ? _d : current === null || current === void 0 ? void 0 : current.defaultWarehouseId,
+                autoGenerateItemCode: (_f = (_e = req.body.autoGenerateItemCode) !== null && _e !== void 0 ? _e : current === null || current === void 0 ? void 0 : current.autoGenerateItemCode) !== null && _f !== void 0 ? _f : false,
+                itemCodePrefix: (_g = req.body.itemCodePrefix) !== null && _g !== void 0 ? _g : current === null || current === void 0 ? void 0 : current.itemCodePrefix,
+                itemCodeNextSeq: (_j = (_h = req.body.itemCodeNextSeq) !== null && _h !== void 0 ? _h : current === null || current === void 0 ? void 0 : current.itemCodeNextSeq) !== null && _j !== void 0 ? _j : 1,
+                defaultCOGSAccountId: req.body.defaultCOGSAccountId !== undefined
+                    ? req.body.defaultCOGSAccountId
+                    : current === null || current === void 0 ? void 0 : current.defaultCOGSAccountId,
             });
             await bindRepositories_1.diContainer.inventorySettingsRepository.saveSettings(settings);
             res.json({
@@ -145,6 +162,9 @@ class InventoryController {
                 active: req.query.active === undefined
                     ? undefined
                     : String(req.query.active) === 'true',
+                trackInventory: req.query.trackInventory === undefined
+                    ? undefined
+                    : String(req.query.trackInventory) === 'true',
                 limit: req.query.limit ? Number(req.query.limit) : undefined,
                 offset: req.query.offset ? Number(req.query.offset) : undefined,
             });
@@ -162,6 +182,9 @@ class InventoryController {
             const companyId = InventoryController.getCompanyId(req);
             const query = String(req.query.q || '');
             const items = await bindRepositories_1.diContainer.itemRepository.searchItems(companyId, query, {
+                trackInventory: req.query.trackInventory === undefined
+                    ? undefined
+                    : String(req.query.trackInventory) === 'true',
                 limit: req.query.limit ? Number(req.query.limit) : 50,
                 offset: req.query.offset ? Number(req.query.offset) : 0,
             });
@@ -269,7 +292,8 @@ class InventoryController {
             (0, inventory_validators_1.validateCreateWarehouseInput)(req.body);
             const companyId = InventoryController.getCompanyId(req);
             const useCase = new WarehouseUseCases_1.CreateWarehouseUseCase(bindRepositories_1.diContainer.warehouseRepository);
-            const warehouse = await useCase.execute(Object.assign({ companyId }, req.body));
+            const body = req.body || {};
+            const warehouse = await useCase.execute(Object.assign(Object.assign({ companyId }, body), { parentId: body.parentId ? String(body.parentId) : undefined }));
             res.status(201).json({
                 success: true,
                 data: InventoryDTOs_1.InventoryDTOMapper.toWarehouseDTO(warehouse),
@@ -303,7 +327,11 @@ class InventoryController {
         try {
             (0, inventory_validators_1.validateUpdateWarehouseInput)(req.body);
             const useCase = new WarehouseUseCases_1.UpdateWarehouseUseCase(bindRepositories_1.diContainer.warehouseRepository);
-            const warehouse = await useCase.execute(req.params.id, req.body);
+            const body = req.body || {};
+            const updateInput = Object.assign(Object.assign({}, body), (Object.prototype.hasOwnProperty.call(body, 'parentId')
+                ? { parentId: body.parentId ? String(body.parentId) : null }
+                : {}));
+            const warehouse = await useCase.execute(req.params.id, updateInput);
             res.json({
                 success: true,
                 data: InventoryDTOs_1.InventoryDTOMapper.toWarehouseDTO(warehouse),
@@ -505,6 +533,91 @@ class InventoryController {
             next(error);
         }
     }
+    static async createOpeningStockDocument(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateCreateOpeningStockDocumentInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const userId = InventoryController.getUserId(req);
+            const useCase = new OpeningStockDocumentUseCases_1.CreateOpeningStockDocumentUseCase(bindRepositories_1.diContainer.openingStockDocumentRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.accountRepository);
+            const document = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId, createdBy: userId }));
+            res.status(201).json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toOpeningStockDocumentDTO(document),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listOpeningStockDocuments(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const status = req.query.status;
+            const useCase = new OpeningStockDocumentUseCases_1.ListOpeningStockDocumentsUseCase(bindRepositories_1.diContainer.openingStockDocumentRepository);
+            const documents = await useCase.execute(companyId, status);
+            res.json({
+                success: true,
+                data: documents.map(InventoryDTOs_1.InventoryDTOMapper.toOpeningStockDocumentDTO),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateOpeningStockDocument(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateUpdateOpeningStockDocumentInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new OpeningStockDocumentUseCases_1.UpdateOpeningStockDocumentUseCase(bindRepositories_1.diContainer.openingStockDocumentRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.accountRepository);
+            const document = await useCase.execute({
+                companyId,
+                documentId: req.params.id,
+                warehouseId: req.body.warehouseId,
+                date: req.body.date,
+                notes: req.body.notes,
+                createAccountingEffect: req.body.createAccountingEffect,
+                openingBalanceAccountId: req.body.openingBalanceAccountId,
+                lines: req.body.lines || [],
+            });
+            res.json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toOpeningStockDocumentDTO(document),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async deleteOpeningStockDocument(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new OpeningStockDocumentUseCases_1.DeleteOpeningStockDocumentUseCase(bindRepositories_1.diContainer.openingStockDocumentRepository);
+            await useCase.execute(companyId, req.params.id);
+            res.json({
+                success: true,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async postOpeningStockDocument(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const userId = InventoryController.getUserId(req);
+            const movementUseCase = InventoryController.buildMovementUseCase();
+            const accountingPostingService = InventoryController.buildAccountingPostingService();
+            const useCase = new OpeningStockDocumentUseCases_1.PostOpeningStockDocumentUseCase(bindRepositories_1.diContainer.openingStockDocumentRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.accountRepository, movementUseCase, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const document = await useCase.execute(companyId, req.params.id, userId);
+            res.json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toOpeningStockDocumentDTO(document),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async processReturn(req, res, next) {
         try {
             (0, inventory_validators_1.validateProcessReturnInput)(req.body);
@@ -572,19 +685,8 @@ class InventoryController {
             const companyId = InventoryController.getCompanyId(req);
             const userId = InventoryController.getUserId(req);
             const movementUseCase = InventoryController.buildMovementUseCase();
-            const useCase = new StockAdjustmentUseCases_1.PostStockAdjustmentUseCase(bindRepositories_1.diContainer.stockAdjustmentRepository, bindRepositories_1.diContainer.itemRepository, movementUseCase, {
-                voucherRepository: bindRepositories_1.diContainer.voucherRepository,
-                accountRepository: bindRepositories_1.diContainer.accountRepository,
-                companyModuleSettingsRepository: bindRepositories_1.diContainer.companyModuleSettingsRepository,
-                permissionChecker: accountingPermissionChecker,
-                transactionManager: bindRepositories_1.diContainer.transactionManager,
-                voucherTypeDefinitionRepository: bindRepositories_1.diContainer.voucherTypeDefinitionRepository,
-                accountingPolicyConfigProvider: bindRepositories_1.diContainer.accountingPolicyConfigProvider,
-                ledgerRepository: bindRepositories_1.diContainer.ledgerRepository,
-                policyRegistry: bindRepositories_1.diContainer.policyRegistry,
-                companyCurrencyRepository: bindRepositories_1.diContainer.companyCurrencyRepository,
-                voucherSequenceRepository: bindRepositories_1.diContainer.voucherSequenceRepository,
-            });
+            const accountingPostingService = InventoryController.buildAccountingPostingService();
+            const useCase = new StockAdjustmentUseCases_1.PostStockAdjustmentUseCase(bindRepositories_1.diContainer.stockAdjustmentRepository, bindRepositories_1.diContainer.itemRepository, movementUseCase, bindRepositories_1.diContainer.transactionManager, accountingPostingService);
             const adjustment = await useCase.execute(companyId, req.params.id, userId);
             res.json({
                 success: true,

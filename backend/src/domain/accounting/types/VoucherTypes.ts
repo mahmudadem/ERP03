@@ -11,6 +11,30 @@
  */
 export enum VoucherType {
   /**
+   * Purchase Invoice Voucher
+   * Used for: Posting purchase invoices (Dr Inventory/Expense/Tax, Cr AP)
+   */
+  PURCHASE_INVOICE = 'purchase_invoice',
+
+  /**
+   * Purchase Return Voucher
+   * Used for: Posting purchase returns (Dr AP, Cr Inventory/Expense/Tax)
+   */
+  PURCHASE_RETURN = 'purchase_return',
+
+  /**
+   * Sales Invoice Voucher
+   * Used for: Posting sales invoices and related COGS effects
+   */
+  SALES_INVOICE = 'sales_invoice',
+
+  /**
+   * Sales Return Voucher
+   * Used for: Posting sales returns and related COGS reversals
+   */
+  SALES_RETURN = 'sales_return',
+
+  /**
    * Payment Voucher
    * Used for: Payments to suppliers, expenses, etc.
    * Posting: Debit Expense/Payable, Credit Cash/Bank

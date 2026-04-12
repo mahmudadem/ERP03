@@ -24,7 +24,7 @@ export const useFormUsageCheck = (formId: string | undefined) => {
           formId,
           page: 1,
           pageSize: 1, // Just need to know if any exist
-        });
+        }, { headers: { 'X-Silent-Error': 'true' } } as any);
         
         // Handle response structure (it returns { items: [], total: 0 } or just array)
         const vouchers = (response as any).items || (Array.isArray(response) ? response : []);

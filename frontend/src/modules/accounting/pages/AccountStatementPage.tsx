@@ -20,6 +20,7 @@ import { VoucherFormConfig } from '../voucher-wizard/types';
 import { VoucherEntryModal } from '../components/VoucherEntryModal';
 import { useVoucherActions } from '../../../hooks/useVoucherActions';
 import { errorHandler } from '../../../services/errorHandler';
+import { useAccounts } from '../../../context/AccountsContext';
 import { AccountsProvider } from '../../../context/AccountsContext';
 import { CostCentersProvider } from '../../../context/CostCentersContext';
 
@@ -73,6 +74,12 @@ const AccountStatementInitiator: React.FC<{
   isModal?: boolean;
 }> = ({ onSubmit, initialParams }) => {
   const { t } = useTranslation('accounting');
+  const { refreshAccounts } = useAccounts();
+
+  useEffect(() => {
+    // Force a fresh fetch of accounts when this page opens (ensuring 20103 is visible)
+    refreshAccounts();
+  }, []); // Only run once on mount.
   const [accountId, setAccountId] = useState(initialParams?.accountId || '');
   const [accountName, setAccountName] = useState(initialParams?.accountName || '');
   const [costCenterId, setCostCenterId] = useState(initialParams?.costCenterId || '');
@@ -270,15 +277,44 @@ const AccountStatementReportContent: React.FC<{
   );
 
   const resolveVoucherForm = (voucherLike: any) => {
+    const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+
     const matchByFormId = (formId?: string | null) =>
       voucherTypes.find((type) => formId && (type.id === formId || (type as any)._typeId === formId));
+
+    const getJournalFallbackForm = () =>
+      voucherTypes.find((type) => {
+        const baseType = normalize((type as any)?.baseType);
+        const code = normalize(type?.code);
+        const id = normalize(type?.id);
+        const name = normalize(type?.name);
+        return (
+          baseType.includes('journal') ||
+          code.includes('journal') ||
+          code === 'jv' ||
+          id.includes('journal') ||
+          id.includes('jv') ||
+          name.includes('journal')
+        );
+      });
 
     let formDefinition = matchByFormId(voucherLike?.formId);
 
     if (!formDefinition) {
-      const rawType = (voucherLike?.type || '').toLowerCase();
-      const originType = (voucherLike?.metadata?.originType || '').toLowerCase();
+      const rawType = normalize(voucherLike?.type);
+      const originType = normalize(voucherLike?.metadata?.originType);
       const candidateTypes = [rawType, originType].filter(Boolean);
+
+      formDefinition = voucherTypes.find((type) => {
+        const code = normalize(type.code);
+        const id = normalize(type.id);
+        const baseType = normalize((type as any)?.baseType);
+        return candidateTypes.some((candidate) => candidate === code || candidate === id || candidate === baseType);
+      });
+
+      if (formDefinition) {
+        return formDefinition;
+      }
 
       const typeKeywords: Record<string, string[]> = {
         journal_entry: ['journal', 'journal_entry', 'jv'],
@@ -289,7 +325,11 @@ const AccountStatementReportContent: React.FC<{
         receipt_voucher: ['receipt', 'rv'],
         opening_balance: ['opening', 'balance'],
         fx_revaluation: ['fx_revaluation', 'revaluation', 'journal'],
-        reversal: ['reversal', 'reverse', 'rv']
+        reversal: ['reversal', 'reverse', 'rv'],
+        purchase_invoice: ['purchase_invoice', 'purchase', 'invoice', 'pinv', 'ap_invoice', 'journal'],
+        purchase_return: ['purchase_return', 'purchase', 'return', 'pr', 'journal'],
+        sales_invoice: ['sales_invoice', 'sales', 'invoice', 'sinv', 'ar_invoice', 'journal'],
+        sales_return: ['sales_return', 'sales', 'return', 'sr', 'journal']
       };
 
       const keywords = Array.from(
@@ -314,7 +354,7 @@ const AccountStatementReportContent: React.FC<{
       });
     }
 
-    return formDefinition;
+    return formDefinition || getJournalFallbackForm();
   };
 
   const handleOpenVoucher = async (voucherId: string) => {

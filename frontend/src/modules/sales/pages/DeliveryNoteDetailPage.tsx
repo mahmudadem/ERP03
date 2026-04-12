@@ -1,12 +1,56 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
-import { DeliveryNoteDTO, salesApi, SalesSettingsDTO } from '../../../api/salesApi';
+import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import {
+  DeliveryNoteDTO,
+  DeliveryNoteLineInputDTO,
+  SalesOrderDTO,
+  salesApi,
+  SalesSettingsDTO,
+} from '../../../api/salesApi';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
+
+interface EditableLine {
+  lineId?: string;
+  soLineId?: string;
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  deliveredQty: number;
+  uom: string;
+  warehouseId?: string;
+  description?: string;
+}
+
+interface EditableForm {
+  salesOrderId: string;
+  customerId: string;
+  deliveryDate: string;
+  warehouseId: string;
+  notes: string;
+  lines: EditableLine[];
+}
+
+const createEmptyLine = (): EditableLine => ({
+  itemId: '',
+  deliveredQty: 1,
+  uom: '',
+  warehouseId: undefined,
+  description: '',
+});
+
+const createEmptyForm = (salesOrderId = '', customerId = '', warehouseId = ''): EditableForm => ({
+  salesOrderId,
+  customerId,
+  deliveryDate: todayIso(),
+  warehouseId,
+  notes: '',
+  lines: [createEmptyLine()],
+});
 
 const DeliveryNoteDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,19 +58,20 @@ const DeliveryNoteDetailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isCreateMode = !params.id || params.id === 'new';
 
+  const initialSalesOrderId = searchParams.get('salesOrderId') || '';
+  const initialCustomerId = searchParams.get('customerId') || '';
+
   const [deliveryNote, setDeliveryNote] = useState<DeliveryNoteDTO | null>(null);
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
-
-  const [salesOrderId, setSalesOrderId] = useState(searchParams.get('salesOrderId') || '');
-  const [customerId, setCustomerId] = useState(searchParams.get('customerId') || '');
-  const [deliveryDate, setDeliveryDate] = useState(todayIso());
-  const [warehouseId, setWarehouseId] = useState('');
-  const [notes, setNotes] = useState('');
+  const [items, setItems] = useState<InventoryItemDTO[]>([]);
+  const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
+  const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const warehouseLabelById = useMemo(
@@ -38,28 +83,106 @@ const DeliveryNoteDetailPage: React.FC = () => {
     [warehouses]
   );
 
+  const itemById = useMemo(
+    () =>
+      items.reduce<Record<string, InventoryItemDTO>>((acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      }, {}),
+    [items]
+  );
+
+  const salesOrderLabelById = useMemo(
+    () =>
+      salesOrders.reduce<Record<string, string>>((acc, order) => {
+        acc[order.id] = `${order.orderNumber} - ${order.customerName}`;
+        return acc;
+      }, {}),
+    [salesOrders]
+  );
+
+  const toEditableLinesFromSalesOrder = (so: SalesOrderDTO): EditableLine[] => {
+    return so.lines
+      .map((line) => {
+        const remainingQty = Math.max(line.orderedQty - line.deliveredQty, 0);
+        if (remainingQty <= 0) return null;
+
+        return {
+          soLineId: line.lineId,
+          itemId: line.itemId,
+          itemCode: line.itemCode,
+          itemName: line.itemName,
+          deliveredQty: remainingQty,
+          uom: line.uom,
+          warehouseId: line.warehouseId,
+          description: line.description,
+        } as EditableLine;
+      })
+      .filter((line): line is EditableLine => line !== null);
+  };
+
+  const loadReferenceData = async () => {
+    const [settingsResult, warehouseResult, customerResult, itemResult, salesOrderResult] = await Promise.all([
+      salesApi.getSettings(),
+      inventoryApi.listWarehouses({ active: true, limit: 200 }),
+      sharedApi.listParties({ role: 'CUSTOMER', active: true }),
+      inventoryApi.listItems({ active: true, limit: 500 }),
+      salesApi.listSOs({ limit: 500 }),
+    ]);
+
+    const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
+    const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
+    const customerList = unwrap<PartyDTO[]>(customerResult);
+    const itemList = unwrap<InventoryItemDTO[]>(itemResult);
+    const salesOrderList = unwrap<SalesOrderDTO[]>(salesOrderResult);
+
+    setSettings(currentSettings);
+    setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+    setCustomers(Array.isArray(customerList) ? customerList : []);
+    setItems(Array.isArray(itemList) ? itemList : []);
+    setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
+
+    return currentSettings;
+  };
+
+  const loadSalesOrderLines = async (orderId: string) => {
+    const trimmedOrderId = orderId.trim();
+    if (!trimmedOrderId) return;
+
+    try {
+      setOrderLineLoading(true);
+      setError(null);
+
+      const orderResult = await salesApi.getSO(trimmedOrderId);
+      const so = unwrap<SalesOrderDTO>(orderResult);
+      const nextLines = toEditableLinesFromSalesOrder(so);
+
+      setForm((prev) => ({
+        ...prev,
+        salesOrderId: trimmedOrderId,
+        customerId: so.customerId,
+        lines: nextLines.length ? nextLines : [createEmptyLine()],
+      }));
+    } catch (err: any) {
+      console.error('Failed to load sales order lines', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to load sales order lines.'
+      );
+    } finally {
+      setOrderLineLoading(false);
+    }
+  };
+
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [settingsResult, warehouseResult, customersResult] = await Promise.all([
-        salesApi.getSettings(),
-        inventoryApi.listWarehouses({ active: true, limit: 200 }),
-        sharedApi.listParties({ role: 'CUSTOMER', active: true }),
-      ]);
-
-      const currentSettings = unwrap<SalesSettingsDTO | null>(settingsResult);
-      const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
-      const customerList = unwrap<PartyDTO[]>(customersResult);
-
-      setSettings(currentSettings);
-      setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
-      setCustomers(Array.isArray(customerList) ? customerList : []);
-
-      if (!warehouseId && currentSettings?.defaultWarehouseId) {
-        setWarehouseId(currentSettings.defaultWarehouseId);
-      }
+      const currentSettings = await loadReferenceData();
+      const defaultWarehouseId = currentSettings?.defaultWarehouseId || '';
 
       if (!isCreateMode && params.id) {
         const result = await salesApi.getDN(params.id);
@@ -67,6 +190,10 @@ const DeliveryNoteDetailPage: React.FC = () => {
         setDeliveryNote(loaded);
       } else {
         setDeliveryNote(null);
+        setForm(createEmptyForm(initialSalesOrderId, initialCustomerId, defaultWarehouseId));
+        if (initialSalesOrderId) {
+          await loadSalesOrderLines(initialSalesOrderId);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load delivery note detail', err);
@@ -85,30 +212,102 @@ const DeliveryNoteDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const setLine = (index: number, patch: Partial<EditableLine>) => {
+    setForm((prev) => {
+      const lines = [...prev.lines];
+      const current = lines[index];
+      const next: EditableLine = { ...current, ...patch };
+
+      if (patch.itemId !== undefined) {
+        const item = itemById[patch.itemId];
+        if (item) {
+          next.itemCode = item.code;
+          next.itemName = item.name;
+          next.uom = next.uom || item.salesUom || item.baseUom;
+          if (!next.warehouseId && settings?.defaultWarehouseId) {
+            next.warehouseId = settings.defaultWarehouseId;
+          }
+        } else {
+          next.itemCode = undefined;
+          next.itemName = undefined;
+        }
+      }
+
+      lines[index] = next;
+      return { ...prev, lines };
+    });
+  };
+
+  const addLine = () => {
+    setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] }));
+  };
+
+  const removeLine = (index: number) => {
+    setForm((prev) => {
+      if (prev.lines.length <= 1) return prev;
+      return {
+        ...prev,
+        lines: prev.lines.filter((_, idx) => idx !== index),
+      };
+    });
+  };
+
+  const validateBeforeSave = (): string | null => {
+    if (!form.deliveryDate) return 'Delivery date is required.';
+    if (!form.warehouseId) return 'Warehouse is required.';
+    if (!form.salesOrderId && !form.customerId) return 'Customer is required when sales order is not provided.';
+
+    if (!form.salesOrderId) {
+      if (!form.lines.length) return 'At least one line is required for direct delivery notes.';
+      for (let i = 0; i < form.lines.length; i += 1) {
+        const line = form.lines[i];
+        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (Number.isNaN(line.deliveredQty) || line.deliveredQty <= 0) {
+          return `Line ${i + 1}: delivered quantity must be greater than 0.`;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const buildLinePayload = (line: EditableLine, index: number): DeliveryNoteLineInputDTO => {
+    const item = itemById[line.itemId];
+    const payload = {
+      lineId: line.lineId,
+      lineNo: index + 1,
+      soLineId: line.soLineId || undefined,
+      itemId: line.itemId || undefined,
+      deliveredQty: line.deliveredQty,
+      uom: line.uom || item?.salesUom || item?.baseUom || 'EA',
+      warehouseId: line.warehouseId || undefined,
+      description: line.description || undefined,
+    };
+    return payload;
+  };
+
   const createDraft = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setBusy(true);
       setError(null);
 
-      if (!deliveryDate) {
-        setError('Delivery date is required.');
-        return;
-      }
-      if (!warehouseId) {
-        setError('Warehouse is required.');
-        return;
-      }
-      if (!salesOrderId && !customerId) {
-        setError('Customer is required when sales order is not provided.');
-        return;
-      }
+      const mappedLines = form.lines
+        .filter((line) => line.itemId && line.deliveredQty > 0)
+        .map((line, index) => buildLinePayload(line, index));
 
       const created = await salesApi.createDN({
-        salesOrderId: salesOrderId || undefined,
-        customerId: salesOrderId ? undefined : customerId || undefined,
-        deliveryDate,
-        warehouseId,
-        notes: notes || undefined,
+        salesOrderId: form.salesOrderId || undefined,
+        customerId: form.salesOrderId ? undefined : form.customerId || undefined,
+        deliveryDate: form.deliveryDate,
+        warehouseId: form.warehouseId,
+        lines: mappedLines.length ? mappedLines : undefined,
+        notes: form.notes || undefined,
       });
 
       const dto = unwrap<DeliveryNoteDTO>(created);
@@ -174,22 +373,37 @@ const DeliveryNoteDetailPage: React.FC = () => {
         <Card className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order ID (optional in SIMPLE)</label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={salesOrderId}
-                onChange={(e) => setSalesOrderId(e.target.value)}
-                placeholder="salesOrderId"
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Sales Order (optional unless SO is required for stock items)</label>
+              <div className="flex gap-2">
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={form.salesOrderId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, salesOrderId: e.target.value }))}
+                >
+                  <option value="">No sales order</option>
+                  {salesOrders.map((order) => (
+                    <option key={order.id} value={order.id}>
+                      {order.orderNumber} - {order.customerName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                  onClick={() => loadSalesOrderLines(form.salesOrderId)}
+                  disabled={busy || orderLineLoading || !form.salesOrderId.trim()}
+                >
+                  {orderLineLoading ? 'Loading...' : 'Load SO Lines'}
+                </button>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer (standalone)</label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={customerId}
-                disabled={!!salesOrderId}
-                onChange={(e) => setCustomerId(e.target.value)}
+                value={form.customerId}
+                disabled={!!form.salesOrderId}
+                onChange={(e) => setForm((prev) => ({ ...prev, customerId: e.target.value }))}
               >
                 <option value="">Select customer</option>
                 {customers.map((customer) => (
@@ -204,16 +418,16 @@ const DeliveryNoteDetailPage: React.FC = () => {
               <input
                 type="date"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
+                value={form.deliveryDate}
+                onChange={(e) => setForm((prev) => ({ ...prev, deliveryDate: e.target.value }))}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Warehouse</label>
               <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
+                value={form.warehouseId}
+                onChange={(e) => setForm((prev) => ({ ...prev, warehouseId: e.target.value }))}
               >
                 <option value="">Select warehouse</option>
                 {warehouses.map((warehouse) => (
@@ -230,27 +444,125 @@ const DeliveryNoteDetailPage: React.FC = () => {
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={form.notes}
+              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             />
           </div>
 
-          {settings?.salesControlMode === 'CONTROLLED' && !salesOrderId && (
+          {settings?.requireSOForStockItems && !form.salesOrderId && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              CONTROLLED mode requires a sales order when creating delivery notes.
+              This company requires a Sales Order reference for stock-item delivery flow.
             </div>
           )}
 
           <div className="mt-4 text-xs text-slate-500">
-            When salesOrderId is provided, lines are pre-filled by server rules.
+            When a Sales Order is selected, lines can be loaded from the order or pre-filled by server rules.
           </div>
         </Card>
+
+        {!form.salesOrderId && (
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Line Items</h2>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+                onClick={addLine}
+                disabled={busy}
+              >
+                Add Item
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="py-2 text-left">Item</th>
+                    <th className="py-2 text-right">Delivered Qty</th>
+                    <th className="py-2 text-left">UOM</th>
+                    <th className="py-2 text-left">Warehouse</th>
+                    <th className="py-2 text-right" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {form.lines.map((line, index) => (
+                    <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
+                      <td className="py-2 pr-2">
+                        <select
+                          className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
+                          value={line.itemId}
+                          onChange={(e) => setLine(index, { itemId: e.target.value })}
+                        >
+                          <option value="">Select item</option>
+                          {items.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.code} - {item.name}
+                            </option>
+                          ))}
+                        </select>
+                        {(line.itemCode || line.itemName) && (
+                          <div className="mt-1 text-xs text-slate-500">
+                            {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input
+                          type="number"
+                          min={0.000001}
+                          step={0.000001}
+                          className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                          value={line.deliveredQty}
+                          onChange={(e) => setLine(index, { deliveredQty: Number(e.target.value) })}
+                        />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <input
+                          type="text"
+                          className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                          value={line.uom}
+                          onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
+                        />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <select
+                          className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                          value={line.warehouseId || ''}
+                          disabled={busy}
+                          onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
+                        >
+                          <option value="">Select Warehouse</option>
+                          {warehouses.map((warehouse) => (
+                            <option key={warehouse.id} value={warehouse.id}>
+                              {warehouse.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
+                          onClick={() => removeLine(index)}
+                          disabled={busy || form.lines.length <= 1}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
         <button
           type="button"
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           onClick={createDraft}
-          disabled={busy}
+          disabled={busy || orderLineLoading}
         >
           {busy ? 'Creating...' : 'Create Draft Delivery Note'}
         </button>
@@ -267,7 +579,7 @@ const DeliveryNoteDetailPage: React.FC = () => {
     );
   }
 
-  const canCreateReturn = deliveryNote.status === 'POSTED' && settings?.salesControlMode === 'CONTROLLED';
+  const canCreateReturn = deliveryNote.status === 'POSTED' && !!settings?.requireSOForStockItems;
   const createReturnHref = `/sales/returns/new?deliveryNoteId=${encodeURIComponent(deliveryNote.id)}${deliveryNote.salesOrderId ? `&salesOrderId=${encodeURIComponent(deliveryNote.salesOrderId)}` : ''}`;
 
   return (
@@ -277,7 +589,9 @@ const DeliveryNoteDetailPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{deliveryNote.dnNumber}</h1>
           <p className="text-sm text-slate-600">
             Customer: <span className="font-medium">{deliveryNote.customerName}</span>
-            {deliveryNote.salesOrderId ? ` • SO: ${deliveryNote.salesOrderId}` : ''}
+            {deliveryNote.salesOrderId
+              ? ` • SO: ${salesOrderLabelById[deliveryNote.salesOrderId] || deliveryNote.salesOrderId}`
+              : ''}
           </p>
         </div>
         <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
@@ -369,3 +683,4 @@ const DeliveryNoteDetailPage: React.FC = () => {
 };
 
 export default DeliveryNoteDetailPage;
+

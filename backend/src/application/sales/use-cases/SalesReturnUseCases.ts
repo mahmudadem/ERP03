@@ -1,9 +1,6 @@
 
 import { randomUUID } from 'crypto';
-import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
-import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
-import { PostingLockPolicy, VoucherStatus, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
+import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import { PaymentStatus, SalesInvoice, SalesInvoiceLine } from '../../../domain/sales/entities/SalesInvoice';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
@@ -16,9 +13,9 @@ import {
 import { Party } from '../../../domain/shared/entities/Party';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
-import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IUomConversionRepository } from '../../../repository/interfaces/inventory/IUomConversionRepository';
 import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/IDeliveryNoteRepository';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
@@ -28,7 +25,8 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { generateDocumentNumber } from './SalesOrderUseCases';
+import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { roundMoney, updateSOStatus } from './SalesPostingHelpers';
 
 export interface SalesReturnLineInput {
@@ -163,8 +161,8 @@ export class CreateSalesReturnUseCase {
     if (!settings) throw new Error('Sales module is not initialized');
 
     const returnContext = determineReturnContext(input);
-    if (returnContext === 'BEFORE_INVOICE' && settings.salesControlMode !== 'CONTROLLED') {
-      throw new Error('BEFORE_INVOICE returns are only allowed in CONTROLLED mode');
+    if (returnContext === 'BEFORE_INVOICE' && !settings.requireSOForStockItems) {
+      throw new Error('BEFORE_INVOICE returns require "Require Sales Orders for Stock Items" to be enabled.');
     }
 
     let salesInvoice: SalesInvoice | null = null;
@@ -197,10 +195,15 @@ export class CreateSalesReturnUseCase {
     }
 
     const now = new Date();
+    const returnNumber = await generateUniqueDocumentNumber(
+      settings,
+      'SR',
+      async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate))
+    );
     const salesReturn = new SalesReturn({
       id: randomUUID(),
       companyId: input.companyId,
-      returnNumber: generateDocumentNumber(settings, 'SR'),
+      returnNumber,
       salesInvoiceId: salesInvoice?.id,
       deliveryNoteId: deliveryNote?.id,
       salesOrderId: input.salesOrderId || salesInvoice?.salesOrderId || deliveryNote?.salesOrderId,
@@ -350,6 +353,7 @@ export class CreateSalesReturnUseCase {
 export class PostSalesReturnUseCase {
   constructor(
     private readonly settingsRepo: ISalesSettingsRepository,
+    private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
@@ -361,14 +365,15 @@ export class PostSalesReturnUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: ISalesInventoryService,
-    private readonly voucherRepo: IVoucherRepository,
-    private readonly ledgerRepo: ILedgerRepository,
+    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
   async execute(companyId: string, id: string): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
+    const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+    const isPerpetual = invSettings?.inventoryAccountingMethod === 'PERPETUAL';
 
     const salesReturn = await this.salesReturnRepo.getById(companyId, id);
     if (!salesReturn) throw new Error(`Sales return not found: ${id}`);
@@ -377,8 +382,8 @@ export class PostSalesReturnUseCase {
     }
 
     const isAfterInvoice = salesReturn.returnContext === 'AFTER_INVOICE';
-    if (!isAfterInvoice && settings.salesControlMode !== 'CONTROLLED') {
-      throw new Error('BEFORE_INVOICE returns are only allowed in CONTROLLED mode');
+    if (!isAfterInvoice && !settings.requireSOForStockItems) {
+      throw new Error('BEFORE_INVOICE returns require "Require Sales Orders for Stock Items" to be enabled.');
     }
 
     let salesInvoice: SalesInvoice | null = null;
@@ -523,6 +528,12 @@ export class PostSalesReturnUseCase {
           const unitCostBase = roundMoney(line.unitCostBase || 0);
           line.unitCostBase = unitCostBase;
           const lineCostBase = roundMoney(qtyInBaseUom * unitCostBase);
+          this.assertPositiveTrackedCost(
+            qtyInBaseUom,
+            unitCostBase,
+            line.itemName || item.name,
+            `sales return ${salesReturn.returnNumber}`
+          );
 
           const fxRateMovToBase = line.fxRateMovToBase > 0 ? line.fxRateMovToBase : (salesReturn.exchangeRate || 1);
           const fxRateCCYToBase = line.fxRateCCYToBase > 0 ? line.fxRateCCYToBase : (salesReturn.exchangeRate || 1);
@@ -550,20 +561,28 @@ export class PostSalesReturnUseCase {
 
           line.stockMovementId = movement.id;
 
-          const accounts = await this.resolveCOGSAccounts(companyId, item, settings.defaultCOGSAccountId, false);
-          if (accounts && lineCostBase > 0) {
-            line.cogsAccountId = line.cogsAccountId || accounts.cogsAccountId;
-            line.inventoryAccountId = line.inventoryAccountId || accounts.inventoryAccountId;
-            const key = `${accounts.inventoryAccountId}|${accounts.cogsAccountId}`;
-            const existing = cogsBucket.get(key);
-            if (existing) {
-              existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
-            } else {
-              cogsBucket.set(key, {
-                inventoryAccountId: accounts.inventoryAccountId,
-                cogsAccountId: accounts.cogsAccountId,
-                amountBase: lineCostBase,
-              });
+          if (isPerpetual) {
+            const accounts = await this.resolveCOGSAccounts(
+              companyId,
+              item,
+              invSettings?.defaultCOGSAccountId,
+              invSettings?.defaultInventoryAssetAccountId,
+              true
+            );
+            if (lineCostBase > 0) {
+              line.cogsAccountId = line.cogsAccountId || accounts.cogsAccountId;
+              line.inventoryAccountId = line.inventoryAccountId || accounts.inventoryAccountId;
+              const key = `${accounts.inventoryAccountId}|${accounts.cogsAccountId}`;
+              const existing = cogsBucket.get(key);
+              if (existing) {
+                existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
+              } else {
+                cogsBucket.set(key, {
+                  inventoryAccountId: accounts.inventoryAccountId,
+                  cogsAccountId: accounts.cogsAccountId,
+                  amountBase: lineCostBase,
+                });
+              }
             }
           }
         }
@@ -583,12 +602,48 @@ export class PostSalesReturnUseCase {
 
       recalcReturnTotals(salesReturn);
 
-      if (cogsBucket.size > 0) {
-        const cogsVoucher = await this.createCOGSReversalVoucherInTransaction(
-          transaction,
-          salesReturn,
-          baseCurrency,
-          Array.from(cogsBucket.values())
+      if (isPerpetual && cogsBucket.size > 0) {
+        const cogsVoucherLines: VoucherBucketLine[] = [];
+        for (const line of Array.from(cogsBucket.values())) {
+          const amount = roundMoney(line.amountBase);
+          cogsVoucherLines.push({
+            accountId: line.inventoryAccountId,
+            baseAmount: amount,
+            docAmount: amount,
+          });
+          cogsVoucherLines.push({
+            accountId: line.cogsAccountId,
+            baseAmount: amount,
+            docAmount: amount,
+          });
+        }
+
+        const cogsVoucher = await this.accountingPostingService.postInTransaction(
+          {
+            companyId,
+            voucherType: VoucherType.SALES_RETURN,
+            voucherNo: `SR-COGS-${salesReturn.returnNumber}`,
+            date: salesReturn.returnDate,
+            description: `Sales Return ${salesReturn.returnNumber} COGS Reversal`,
+            currency: baseCurrency,
+            exchangeRate: 1,
+            lines: cogsVoucherLines.map((line, idx) => ({
+              ...line,
+              side: idx % 2 === 0 ? 'Debit' : 'Credit',
+            })),
+            metadata: {
+              sourceModule: 'sales',
+              sourceType: 'SALES_RETURN',
+              sourceId: salesReturn.id,
+              referenceType: 'SALES_RETURN',
+              referenceId: salesReturn.id,
+              voucherPart: 'COGS',
+            },
+            createdBy: salesReturn.createdBy,
+            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+            reference: salesReturn.returnNumber,
+          },
+          transaction
         );
         salesReturn.cogsVoucherId = cogsVoucher.id;
       } else {
@@ -596,14 +651,41 @@ export class PostSalesReturnUseCase {
       }
 
       if (isAfterInvoice) {
-        const arAccountId = this.resolveARAccount(customer, settings.defaultARAccountId);
-        const revenueVoucher = await this.createRevenueReversalVoucherInTransaction(
-          transaction,
-          salesReturn,
-          baseCurrency,
-          arAccountId,
-          Array.from(revenueDebitBucket.values()),
-          Array.from(taxDebitBucket.values())
+        const arAccountId = this.resolveARAccount(customer);
+        const revenueVoucherLines = [
+          ...Array.from(revenueDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
+          ...Array.from(taxDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
+          {
+            accountId: arAccountId,
+            side: 'Credit' as const,
+            baseAmount: roundMoney(salesReturn.grandTotalBase),
+            docAmount: roundMoney(salesReturn.grandTotalDoc),
+          },
+        ];
+
+        const revenueVoucher = await this.accountingPostingService.postInTransaction(
+          {
+            companyId,
+            voucherType: VoucherType.SALES_RETURN,
+            voucherNo: `SR-REV-${salesReturn.returnNumber}`,
+            date: salesReturn.returnDate,
+            description: `Sales Return ${salesReturn.returnNumber} Revenue Reversal`,
+            currency: salesReturn.currency,
+            exchangeRate: salesReturn.exchangeRate,
+            lines: revenueVoucherLines,
+            metadata: {
+              sourceModule: 'sales',
+              sourceType: 'SALES_RETURN',
+              sourceId: salesReturn.id,
+              referenceType: 'SALES_RETURN',
+              referenceId: salesReturn.id,
+              voucherPart: 'REVENUE',
+            },
+            createdBy: salesReturn.createdBy,
+            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+            reference: salesReturn.returnNumber,
+          },
+          transaction
         );
         salesReturn.revenueVoucherId = revenueVoucher.id;
 
@@ -633,8 +715,11 @@ export class PostSalesReturnUseCase {
     return posted;
   }
 
-  private resolveARAccount(customer: Party, defaultARAccountId: string): string {
-    return customer.defaultARAccountId || defaultARAccountId;
+  private resolveARAccount(customer: Party): string {
+    if (!customer.defaultARAccountId) {
+      throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
+    }
+    return customer.defaultARAccountId;
   }
 
   private async resolveRevenueAccount(
@@ -661,6 +746,7 @@ export class PostSalesReturnUseCase {
     companyId: string,
     item: any,
     defaultCOGSAccountId: string | undefined,
+    defaultInventoryAssetAccountId: string | undefined,
     strict: boolean
   ): Promise<{ cogsAccountId: string; inventoryAccountId: string } | null> {
     let category: any = null;
@@ -672,7 +758,7 @@ export class PostSalesReturnUseCase {
     }
 
     const cogsAccountId = item.cogsAccountId || category?.defaultCogsAccountId || defaultCOGSAccountId;
-    const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId;
+    const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId || defaultInventoryAssetAccountId;
 
     if (!cogsAccountId || !inventoryAccountId) {
       if (strict) {
@@ -777,180 +863,11 @@ export class PostSalesReturnUseCase {
       }, 0)
     );
   }
-  private async createCOGSReversalVoucherInTransaction(
-    transaction: unknown,
-    salesReturn: SalesReturn,
-    baseCurrency: string,
-    lines: COGSBucketLine[]
-  ): Promise<VoucherEntity> {
-    const voucherLines: VoucherLineEntity[] = [];
-    let seq = 1;
 
-    for (const line of lines) {
-      const amount = roundMoney(line.amountBase);
-      voucherLines.push(
-        new VoucherLineEntity(
-          seq++,
-          line.inventoryAccountId,
-          'Debit',
-          amount,
-          baseCurrency,
-          amount,
-          baseCurrency,
-          1,
-          `Inventory return - ${salesReturn.returnNumber}`,
-          undefined,
-          { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }
-        )
-      );
-
-      voucherLines.push(
-        new VoucherLineEntity(
-          seq++,
-          line.cogsAccountId,
-          'Credit',
-          amount,
-          baseCurrency,
-          amount,
-          baseCurrency,
-          1,
-          `COGS reversal - ${salesReturn.returnNumber}`,
-          undefined,
-          { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }
-        )
-      );
+  private assertPositiveTrackedCost(qty: number, unitCostBase: number, itemName: string, documentLabel: string): void {
+    if (qty > 0 && !(unitCostBase > 0)) {
+      throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}`);
     }
-
-    const totalDebit = roundMoney(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-    const totalCredit = roundMoney(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-    const now = new Date();
-
-    const voucher = new VoucherEntity(
-      randomUUID(),
-      salesReturn.companyId,
-      `SR-COGS-${salesReturn.returnNumber}`,
-      VoucherType.JOURNAL_ENTRY,
-      salesReturn.returnDate,
-      `Sales Return ${salesReturn.returnNumber} COGS Reversal`,
-      baseCurrency,
-      baseCurrency,
-      1,
-      voucherLines,
-      totalDebit,
-      totalCredit,
-      VoucherStatus.APPROVED,
-      {
-        sourceModule: 'sales',
-        sourceType: 'SALES_RETURN',
-        sourceId: salesReturn.id,
-        referenceType: 'SALES_RETURN',
-        referenceId: salesReturn.id,
-      },
-      salesReturn.createdBy,
-      now,
-      salesReturn.createdBy,
-      now
-    );
-
-    const postedVoucher = voucher.post(salesReturn.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
-    await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-    await this.voucherRepo.save(postedVoucher, transaction);
-    return postedVoucher;
-  }
-
-  private async createRevenueReversalVoucherInTransaction(
-    transaction: unknown,
-    salesReturn: SalesReturn,
-    baseCurrency: string,
-    arAccountId: string,
-    revenueDebits: VoucherBucketLine[],
-    taxDebits: VoucherBucketLine[]
-  ): Promise<VoucherEntity> {
-    const voucherLines: VoucherLineEntity[] = [];
-    const isForeignCurrency = salesReturn.currency.toUpperCase() !== baseCurrency.toUpperCase();
-    let seq = 1;
-
-    for (const line of revenueDebits) {
-      voucherLines.push(new VoucherLineEntity(
-        seq++,
-        line.accountId,
-        'Debit',
-        roundMoney(line.baseAmount),
-        baseCurrency,
-        isForeignCurrency ? roundMoney(line.docAmount) : roundMoney(line.baseAmount),
-        salesReturn.currency,
-        isForeignCurrency ? salesReturn.exchangeRate : 1,
-        `Revenue reversal - ${salesReturn.returnNumber}`,
-        undefined,
-        { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }
-      ));
-    }
-
-    for (const line of taxDebits) {
-      voucherLines.push(new VoucherLineEntity(
-        seq++,
-        line.accountId,
-        'Debit',
-        roundMoney(line.baseAmount),
-        baseCurrency,
-        isForeignCurrency ? roundMoney(line.docAmount) : roundMoney(line.baseAmount),
-        salesReturn.currency,
-        isForeignCurrency ? salesReturn.exchangeRate : 1,
-        `Sales tax reversal - ${salesReturn.returnNumber}`,
-        undefined,
-        { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id }
-      ));
-    }
-
-    voucherLines.push(new VoucherLineEntity(
-      seq++,
-      arAccountId,
-      'Credit',
-      roundMoney(salesReturn.grandTotalBase),
-      baseCurrency,
-      isForeignCurrency ? roundMoney(salesReturn.grandTotalDoc) : roundMoney(salesReturn.grandTotalBase),
-      salesReturn.currency,
-      isForeignCurrency ? salesReturn.exchangeRate : 1,
-      `AR reversal - ${salesReturn.customerName} - ${salesReturn.returnNumber}`,
-      undefined,
-      { sourceModule: 'sales', sourceType: 'SALES_RETURN', sourceId: salesReturn.id, customerId: salesReturn.customerId }
-    ));
-
-    const totalDebit = roundMoney(voucherLines.reduce((sum, line) => sum + line.debitAmount, 0));
-    const totalCredit = roundMoney(voucherLines.reduce((sum, line) => sum + line.creditAmount, 0));
-    const now = new Date();
-
-    const voucher = new VoucherEntity(
-      randomUUID(),
-      salesReturn.companyId,
-      `SR-REV-${salesReturn.returnNumber}`,
-      VoucherType.JOURNAL_ENTRY,
-      salesReturn.returnDate,
-      `Sales Return ${salesReturn.returnNumber} Revenue Reversal`,
-      salesReturn.currency,
-      baseCurrency,
-      isForeignCurrency ? salesReturn.exchangeRate : 1,
-      voucherLines,
-      totalDebit,
-      totalCredit,
-      VoucherStatus.APPROVED,
-      {
-        sourceModule: 'sales',
-        sourceType: 'SALES_RETURN',
-        sourceId: salesReturn.id,
-        referenceType: 'SALES_RETURN',
-        referenceId: salesReturn.id,
-      },
-      salesReturn.createdBy,
-      now,
-      salesReturn.createdBy,
-      now
-    );
-
-    const postedVoucher = voucher.post(salesReturn.createdBy, now, PostingLockPolicy.FLEXIBLE_LOCKED);
-    await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
-    await this.voucherRepo.save(postedVoucher, transaction);
-    return postedVoucher;
   }
 }
 
