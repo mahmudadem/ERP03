@@ -29,6 +29,7 @@ import { PostingLockPolicy } from '../../../types/accounting/PostingLockPolicy';
 
 import { getCompanyToday } from '../../../utils/dateUtils';
 import { isActionAvailable, VoucherActionContext } from '../utils/voucherActions';
+import { useDocumentValidation, isValidationEnabled } from '../validation';
 
 interface VoucherWindowProps {
   win: UIWindowType;
@@ -173,6 +174,17 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     isBalanced: isBalancedVoucher, 
     differenceVoucher 
   } = useVoucherTotals(calculationLines, headerRate, isPosted, (isSemanticAmountType || isEffectivelySemantic) ? 'semantic' : 'journal');
+
+  // NEW: Two-Layer Validation Hook (with feature flag for rollback)
+  const validationEnabled = isValidationEnabled(normalizedTypeKey);
+  const newValidation = useDocumentValidation(
+    win.data?.voucherConfig,
+    rendererRef.current?.getData() || win.data,
+    {
+      enabled: validationEnabled,
+      parallelRun: true, // Log both old and new results in development
+    }
+  );
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;
@@ -850,9 +862,9 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                             
     const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
     
+    // OLD validation logic (kept for fallback when new validation is disabled)
     const semanticLineCount = isSemanticAmountType
       ? currentRows.filter((r: any) => {
-          // Broad array of possible identifiers in custom forms
           const accountVal = r?.[semanticLineAccountKey || ''] || r?.accountId || r?.account || r?.itemId || r?.item || r?.productId || r?.product || r?.serviceId || r?.service || r?.description || r?.name;
           const amountVal = Number(r?.amount) || Number(r?.lineTotalDoc) || Number(r?.total) || Number(r?.rowTotal) || 0;
           return !!accountVal && amountVal > 0;
@@ -867,7 +879,12 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
       ? currentRows.filter((r: any) => (Number(r?.amount) || Number(r?.total) || Number(r?.lineTotalDoc) || Number(r?.lineTotal) || Number(r?.rowTotal) || 0) > 0).length >= 1
       : hasLines;
 
-    const canSave = isBalancedVoucher && finalHasLines;
+    const oldCanSave = isBalancedVoucher && finalHasLines;
+    
+    // NEW validation (from two-layer system)
+    const canSave = validationEnabled ? newValidation.canSave : oldCanSave;
+    const validationErrors = validationEnabled ? newValidation.structuralErrors.concat(newValidation.businessErrors) : (oldCanSave ? [] : ['Voucher must balance and have lines']);
+    const validationWarnings = validationEnabled ? newValidation.businessWarnings.concat(newValidation.systemWarnings) : [];
 
     return (
       <>
@@ -964,13 +981,19 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 )}
                 disabled={isSaving || settingsLoading || policyLoading || !canSave}
                 title={
-                  !isBalancedVoucher
-                    ? t('voucherWindow.mustBalance', 'Voucher must be balanced')
-                    : !hasLines
-                      ? (isSemanticAmountType
-                        ? t('voucherWindow.mustSemanticLines', 'Voucher needs header account + at least 1 amount line')
-                        : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines'))
-                      : ""
+                  validationEnabled
+                    ? (validationErrors.length > 0
+                        ? validationErrors.join(', ')
+                        : validationWarnings.length > 0
+                          ? validationWarnings.join(', ')
+                          : '')
+                    : (!isBalancedVoucher
+                        ? t('voucherWindow.mustBalance', 'Voucher must be balanced')
+                        : !hasLines
+                          ? (isSemanticAmountType
+                            ? t('voucherWindow.mustSemanticLines', 'Voucher needs header account + at least 1 amount line')
+                            : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines'))
+                          : "")
                 }
               >
                 {isSaving || settingsLoading || policyLoading ? (
@@ -980,7 +1003,15 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                   </>
                 ) : (
                   <>
-                    {!forceStrictMode ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {!forceStrictMode ? (
+                      validationWarnings.length > 0 ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-300" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4" />
+                      )
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     {(() => {
                       if (!forceStrictMode) {
                         return win.data?.postedAt ? t('voucherWindow.updatePost', 'Update & Post') : t('voucherWindow.savePost', 'Save & Post');
@@ -1001,8 +1032,12 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
               <button
                 onClick={handleSubmit}
                 className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-[0.98]"
-                disabled={isSubmitting || !isBalancedVoucher}
-                title={!isBalancedVoucher ? t('voucherWindow.mustBalance', 'Voucher must be balanced') : ""}
+                disabled={isSubmitting || !canSave}
+                title={
+                  validationEnabled
+                    ? (validationErrors.length > 0 ? validationErrors.join(', ') : '')
+                    : (!isBalancedVoucher ? t('voucherWindow.mustBalance', 'Voucher must be balanced') : "")
+                }
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

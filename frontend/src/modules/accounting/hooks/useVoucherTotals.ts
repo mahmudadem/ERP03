@@ -22,10 +22,13 @@ export const useVoucherTotals = (
         const val = (row as any)?.amount ?? (row as any)?.lineTotalDoc ?? (row as any)?.total ?? (row as any)?.lineTotal ?? (row as any)?.rowTotal ?? 0;
         return sum + (parseFloat(val as string) || 0);
       }, 0);
+      // FIX: isBalanced for semantic forms = structurally valid (has lines), NOT total > 0
+      // The "total must be > 0" check belongs in Layer 2 business validation, not structural balance
+      const hasLines = rows.length > 0 && totalAmount >= 0; // $0 total is structurally valid
       return {
         totalDebitVoucher: totalAmount,
         totalCreditVoucher: totalAmount,
-        isBalanced: totalAmount > 0,
+        isBalanced: hasLines,
         differenceVoucher: 0
       };
     }
