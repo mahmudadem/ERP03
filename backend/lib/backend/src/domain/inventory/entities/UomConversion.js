@@ -20,7 +20,9 @@ class UomConversion {
         this.id = props.id;
         this.companyId = props.companyId;
         this.itemId = props.itemId;
+        this.fromUomId = props.fromUomId;
         this.fromUom = props.fromUom.trim();
+        this.toUomId = props.toUomId;
         this.toUom = props.toUom.trim();
         this.factor = props.factor;
         this.active = props.active;
@@ -30,7 +32,9 @@ class UomConversion {
             id: this.id,
             companyId: this.companyId,
             itemId: this.itemId,
+            fromUomId: this.fromUomId,
             fromUom: this.fromUom,
+            toUomId: this.toUomId,
             toUom: this.toUom,
             factor: this.factor,
             active: this.active,
@@ -42,7 +46,9 @@ class UomConversion {
             id: data.id,
             companyId: data.companyId,
             itemId: data.itemId,
+            fromUomId: data.fromUomId,
             fromUom: data.fromUom,
+            toUomId: data.toUomId,
             toUom: data.toUom,
             factor: data.factor,
             active: (_a = data.active) !== null && _a !== void 0 ? _a : true,

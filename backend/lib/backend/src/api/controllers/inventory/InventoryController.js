@@ -3,9 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InventoryController = void 0;
 const ApiError_1 = require("../../errors/ApiError");
 const ItemUseCases_1 = require("../../../application/inventory/use-cases/ItemUseCases");
+const UomUseCases_1 = require("../../../application/inventory/use-cases/UomUseCases");
 const WarehouseUseCases_1 = require("../../../application/inventory/use-cases/WarehouseUseCases");
 const CategoryUseCases_1 = require("../../../application/inventory/use-cases/CategoryUseCases");
 const UomConversionUseCases_1 = require("../../../application/inventory/use-cases/UomConversionUseCases");
+const UomConversionGovernanceUseCases_1 = require("../../../application/inventory/use-cases/UomConversionGovernanceUseCases");
 const OpeningStockDocumentUseCases_1 = require("../../../application/inventory/use-cases/OpeningStockDocumentUseCases");
 const StockAdjustmentUseCases_1 = require("../../../application/inventory/use-cases/StockAdjustmentUseCases");
 const StockLevelUseCases_1 = require("../../../application/inventory/use-cases/StockLevelUseCases");
@@ -21,11 +23,16 @@ const StockReservationUseCases_1 = require("../../../application/inventory/use-c
 const CostQueryUseCases_1 = require("../../../application/inventory/use-cases/CostQueryUseCases");
 const ReferenceQueryUseCases_1 = require("../../../application/inventory/use-cases/ReferenceQueryUseCases");
 const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
+const PurchasesInventoryService_1 = require("../../../application/inventory/services/PurchasesInventoryService");
+const GoodsReceiptUseCases_1 = require("../../../application/purchases/use-cases/GoodsReceiptUseCases");
+const PurchaseInvoiceUseCases_1 = require("../../../application/purchases/use-cases/PurchaseInvoiceUseCases");
+const PurchaseReturnUseCases_1 = require("../../../application/purchases/use-cases/PurchaseReturnUseCases");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const InventoryDTOs_1 = require("../../dtos/InventoryDTOs");
 const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
 const inventory_validators_1 = require("../../validators/inventory.validators");
 const InventorySettings_1 = require("../../../domain/inventory/entities/InventorySettings");
+const DocumentPolicyResolver_1 = require("../../../application/common/services/DocumentPolicyResolver");
 class InventoryController {
     static getCompanyId(req) {
         var _a;
@@ -52,12 +59,18 @@ class InventoryController {
     static buildAccountingPostingService() {
         return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, new VoucherValidationService_1.VoucherValidationService());
     }
+    static buildPurchasesInventoryService() {
+        return new PurchasesInventoryService_1.PurchasesInventoryService(InventoryController.buildMovementUseCase());
+    }
+    static buildUomImpactUseCase() {
+        return new UomConversionGovernanceUseCases_1.AnalyzeUomConversionImpactUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.stockMovementRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesReturnRepository);
+    }
     static async initialize(req, res, next) {
         try {
             (0, inventory_validators_1.validateInitializeInventoryInput)(req.body);
             const companyId = InventoryController.getCompanyId(req);
             const userId = InventoryController.getUserId(req);
-            const useCase = new InitializeInventoryUseCase_1.InitializeInventoryUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const useCase = new InitializeInventoryUseCase_1.InitializeInventoryUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomRepository, bindRepositories_1.diContainer.companyModuleRepository);
             const result = await useCase.execute({
                 companyId,
                 userId,
@@ -69,6 +82,7 @@ class InventoryController {
                 itemCodePrefix: req.body.itemCodePrefix,
                 itemCodeNextSeq: req.body.itemCodeNextSeq,
                 defaultCOGSAccountId: req.body.defaultCOGSAccountId,
+                accountingMode: req.body.accountingMode,
                 inventoryAccountingMethod: req.body.inventoryAccountingMethod,
                 defaultInventoryAssetAccountId: req.body.defaultInventoryAssetAccountId,
             });
@@ -106,14 +120,22 @@ class InventoryController {
             const company = await bindRepositories_1.diContainer.companyRepository.findById(companyId);
             if (!company)
                 throw new Error(`Company not found: ${companyId}`);
-            if (req.body.inventoryAccountingMethod &&
-                (current === null || current === void 0 ? void 0 : current.inventoryAccountingMethod) &&
-                req.body.inventoryAccountingMethod !== current.inventoryAccountingMethod) {
-                throw ApiError_1.ApiError.badRequest('The inventory accounting method (PERIODIC / PERPETUAL) cannot be changed after initialization.');
+            const requestedAccountingMode = req.body.accountingMode
+                || (req.body.inventoryAccountingMethod
+                    ? DocumentPolicyResolver_1.DocumentPolicyResolver.legacyInventoryMethodToAccountingMode(req.body.inventoryAccountingMethod)
+                    : undefined);
+            if (requestedAccountingMode &&
+                current &&
+                requestedAccountingMode !== DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(current)) {
+                throw ApiError_1.ApiError.badRequest('The inventory accounting mode cannot be changed after initialization.');
             }
+            const effectiveAccountingMode = current
+                ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(current)
+                : requestedAccountingMode || 'PERPETUAL';
             const settings = new InventorySettings_1.InventorySettings({
                 companyId,
-                inventoryAccountingMethod: (current === null || current === void 0 ? void 0 : current.inventoryAccountingMethod) || 'PERPETUAL',
+                accountingMode: effectiveAccountingMode,
+                inventoryAccountingMethod: DocumentPolicyResolver_1.DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(effectiveAccountingMode),
                 defaultCostingMethod: 'MOVING_AVG',
                 defaultCostCurrency: req.body.defaultCostCurrency || (current === null || current === void 0 ? void 0 : current.defaultCostCurrency) || company.baseCurrency,
                 defaultInventoryAssetAccountId: (_a = req.body.defaultInventoryAssetAccountId) !== null && _a !== void 0 ? _a : current === null || current === void 0 ? void 0 : current.defaultInventoryAssetAccountId,
@@ -141,7 +163,7 @@ class InventoryController {
             (0, inventory_validators_1.validateCreateItemInput)(req.body);
             const companyId = InventoryController.getCompanyId(req);
             const userId = InventoryController.getUserId(req);
-            const useCase = new ItemUseCases_1.CreateItemUseCase(bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository);
+            const useCase = new ItemUseCases_1.CreateItemUseCase(bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomRepository);
             const item = await useCase.execute(Object.assign(Object.assign({}, req.body), { companyId, createdBy: userId }));
             res.status(201).json({
                 success: true,
@@ -213,7 +235,7 @@ class InventoryController {
     static async updateItem(req, res, next) {
         try {
             (0, inventory_validators_1.validateUpdateItemInput)(req.body);
-            const useCase = new ItemUseCases_1.UpdateItemUseCase(bindRepositories_1.diContainer.itemRepository);
+            const useCase = new ItemUseCases_1.UpdateItemUseCase(bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomRepository);
             const item = await useCase.execute(req.params.id, req.body);
             res.json({
                 success: true,
@@ -355,11 +377,84 @@ class InventoryController {
             next(error);
         }
     }
+    static async createUom(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateCreateUomInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const userId = InventoryController.getUserId(req);
+            const useCase = new UomUseCases_1.CreateUomUseCase(bindRepositories_1.diContainer.uomRepository);
+            const uom = await useCase.execute(Object.assign({ companyId, createdBy: userId }, (req.body || {})));
+            res.status(201).json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toUomDTO(uom),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async listUoms(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new UomUseCases_1.ListUomsUseCase(bindRepositories_1.diContainer.uomRepository);
+            const uoms = await useCase.execute(companyId, {
+                active: req.query.active === undefined
+                    ? undefined
+                    : String(req.query.active) === 'true',
+                limit: req.query.limit ? Number(req.query.limit) : undefined,
+                offset: req.query.offset ? Number(req.query.offset) : undefined,
+            });
+            res.json({
+                success: true,
+                data: uoms.map(InventoryDTOs_1.InventoryDTOMapper.toUomDTO),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getUom(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new UomUseCases_1.GetUomUseCase(bindRepositories_1.diContainer.uomRepository);
+            const uom = await useCase.execute(req.params.id);
+            if (uom && uom.companyId !== companyId) {
+                throw ApiError_1.ApiError.notFound('UOM not found');
+            }
+            res.json({
+                success: true,
+                data: uom ? InventoryDTOs_1.InventoryDTOMapper.toUomDTO(uom) : null,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateUom(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateUpdateUomInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const getUseCase = new UomUseCases_1.GetUomUseCase(bindRepositories_1.diContainer.uomRepository);
+            const current = await getUseCase.execute(req.params.id);
+            if (!current || current.companyId !== companyId) {
+                throw ApiError_1.ApiError.notFound('UOM not found');
+            }
+            const useCase = new UomUseCases_1.UpdateUomUseCase(bindRepositories_1.diContainer.uomRepository);
+            const uom = await useCase.execute(req.params.id, req.body);
+            res.json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toUomDTO(uom),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     static async createUomConversion(req, res, next) {
         try {
             (0, inventory_validators_1.validateCreateUomConversionInput)(req.body);
             const companyId = InventoryController.getCompanyId(req);
-            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository);
+            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
             const conversion = await useCase.create(Object.assign({ companyId }, req.body));
             res.status(201).json({
                 success: true,
@@ -374,11 +469,203 @@ class InventoryController {
         try {
             const companyId = InventoryController.getCompanyId(req);
             const itemId = req.params.itemId;
-            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository);
+            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
             const conversions = await useCase.listForItem(companyId, itemId);
             res.json({
                 success: true,
                 data: conversions.map(InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getUomConversionImpact(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateUomConversionImpactQuery)(req.query);
+            const companyId = InventoryController.getCompanyId(req);
+            const conversionId = String(req.params.id);
+            const proposedFactorRaw = req.query.proposedFactor;
+            const proposedFactor = proposedFactorRaw === undefined ? undefined : Number(proposedFactorRaw);
+            const useCase = InventoryController.buildUomImpactUseCase();
+            const report = await useCase.execute({
+                companyId,
+                conversionId,
+                proposedFactor,
+            });
+            res.json({
+                success: true,
+                data: report,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateUomConversion(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateUpdateUomConversionInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const conversionId = String(req.params.id);
+            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
+            const current = await useCase.get(conversionId);
+            if (!current || current.companyId !== companyId) {
+                throw ApiError_1.ApiError.notFound('UOM conversion not found');
+            }
+            const impactUseCase = InventoryController.buildUomImpactUseCase();
+            const impact = await impactUseCase.execute({
+                companyId,
+                conversionId,
+            });
+            if (impact.used) {
+                throw ApiError_1.ApiError.conflict('This conversion is already used in posted stock movements and cannot be edited directly. '
+                    + 'Use impact analysis and smart correction, or manually reverse related documents first.');
+            }
+            const conversion = await useCase.update(conversionId, req.body);
+            res.json({
+                success: true,
+                data: InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO(conversion),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async deleteUomConversion(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const conversionId = String(req.params.id);
+            const useCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
+            const current = await useCase.get(conversionId);
+            if (!current || current.companyId !== companyId) {
+                throw ApiError_1.ApiError.notFound('UOM conversion not found');
+            }
+            const impactUseCase = InventoryController.buildUomImpactUseCase();
+            const impact = await impactUseCase.execute({
+                companyId,
+                conversionId,
+            });
+            if (impact.used) {
+                throw ApiError_1.ApiError.conflict('This conversion is already used in posted stock movements and cannot be deleted. '
+                    + 'Use impact analysis and smart correction, or manually reverse related documents first.');
+            }
+            await useCase.delete(conversionId);
+            res.json({ success: true });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async applyUomConversionCorrection(req, res, next) {
+        try {
+            (0, inventory_validators_1.validateApplyUomConversionCorrectionInput)(req.body);
+            const companyId = InventoryController.getCompanyId(req);
+            const userId = InventoryController.getUserId(req);
+            const conversionId = String(req.params.id);
+            const newFactor = Number(req.body.newFactor);
+            const manageUseCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
+            const current = await manageUseCase.get(conversionId);
+            if (!current || current.companyId !== companyId) {
+                throw ApiError_1.ApiError.notFound('UOM conversion not found');
+            }
+            const impactUseCase = InventoryController.buildUomImpactUseCase();
+            const impact = await impactUseCase.execute({
+                companyId,
+                conversionId,
+                proposedFactor: newFactor,
+            });
+            if (Math.abs(current.factor - newFactor) < 0.0000001) {
+                res.json({
+                    success: true,
+                    data: {
+                        conversion: InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO(current),
+                        impact,
+                        noChanges: true,
+                    },
+                });
+                return;
+            }
+            if (!impact.used) {
+                const updated = await manageUseCase.update(conversionId, { factor: newFactor });
+                res.json({
+                    success: true,
+                    data: {
+                        conversion: InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO(updated),
+                        impact,
+                        autoFix: {
+                            mode: 'NONE',
+                            unposted: { purchaseReturns: 0, purchaseInvoices: 0, goodsReceipts: 0 },
+                            reposted: { goodsReceipts: 0, purchaseInvoices: 0, purchaseReturns: 0 },
+                        },
+                    },
+                });
+                return;
+            }
+            if (impact.hasSalesUsage) {
+                throw ApiError_1.ApiError.conflict('This conversion has posted sales usage. Smart auto-fix currently supports purchases only. '
+                    + 'Reverse/cleanup sales documents first, then retry.');
+            }
+            const purchaseBlockers = impact.impactedReferences.filter((entry) => entry.module === 'purchases' && !entry.canAutoFix);
+            if (purchaseBlockers.length > 0) {
+                const first = purchaseBlockers[0];
+                throw ApiError_1.ApiError.conflict(`Auto-fix blocked by ${first.referenceType} ${first.referenceId}: ${first.autoFixReason || 'document is not auto-fix eligible.'}`);
+            }
+            const uniqueIds = (ids) => Array.from(new Set(ids.filter(Boolean)));
+            const purchaseReferences = impact.impactedReferences.filter((entry) => entry.module === 'purchases');
+            const purchaseReturnIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'PURCHASE_RETURN').map((entry) => entry.referenceId));
+            const purchaseInvoiceIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'PURCHASE_INVOICE').map((entry) => entry.referenceId));
+            const goodsReceiptIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'GOODS_RECEIPT').map((entry) => entry.referenceId));
+            const purchasesInventoryService = InventoryController.buildPurchasesInventoryService();
+            const accountingPostingService = InventoryController.buildAccountingPostingService();
+            const unpostGoodsReceiptUseCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const unpostPurchaseInvoiceUseCase = new PurchaseInvoiceUseCases_1.UnpostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const unpostPurchaseReturnUseCase = new PurchaseReturnUseCases_1.UnpostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const postGoodsReceiptUseCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const postPurchaseInvoiceUseCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
+            const postPurchaseReturnUseCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            for (const referenceId of purchaseReturnIds) {
+                await unpostPurchaseReturnUseCase.execute(companyId, referenceId, userId);
+            }
+            for (const referenceId of purchaseInvoiceIds) {
+                await unpostPurchaseInvoiceUseCase.execute(companyId, referenceId, userId);
+            }
+            for (const referenceId of goodsReceiptIds) {
+                await unpostGoodsReceiptUseCase.execute(companyId, referenceId);
+            }
+            const updatedConversion = await manageUseCase.update(conversionId, { factor: newFactor });
+            for (const referenceId of goodsReceiptIds) {
+                await postGoodsReceiptUseCase.execute(companyId, referenceId);
+            }
+            for (const referenceId of purchaseInvoiceIds) {
+                await postPurchaseInvoiceUseCase.execute(companyId, referenceId);
+            }
+            for (const referenceId of purchaseReturnIds) {
+                await postPurchaseReturnUseCase.execute(companyId, referenceId);
+            }
+            const afterImpact = await impactUseCase.execute({
+                companyId,
+                conversionId,
+            });
+            res.json({
+                success: true,
+                data: {
+                    conversion: InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO(updatedConversion),
+                    impactBefore: impact,
+                    impactAfter: afterImpact,
+                    autoFix: {
+                        mode: 'PURCHASES_REVERSE_REPOST',
+                        unposted: {
+                            purchaseReturns: purchaseReturnIds.length,
+                            purchaseInvoices: purchaseInvoiceIds.length,
+                            goodsReceipts: goodsReceiptIds.length,
+                        },
+                        reposted: {
+                            goodsReceipts: goodsReceiptIds.length,
+                            purchaseInvoices: purchaseInvoiceIds.length,
+                            purchaseReturns: purchaseReturnIds.length,
+                        },
+                    },
+                },
             });
         }
         catch (error) {

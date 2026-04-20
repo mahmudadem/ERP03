@@ -166,7 +166,8 @@ export class SalesController {
         diContainer.accountRepository,
         diContainer.companyModuleRepository,
         diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository
+        diContainer.voucherFormRepository,
+        diContainer.inventorySettingsRepository
       );
 
       const settings = await useCase.execute({
@@ -212,7 +213,8 @@ export class SalesController {
         diContainer.salesSettingsRepository,
         diContainer.accountRepository,
         diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository
+        diContainer.voucherFormRepository,
+        diContainer.inventorySettingsRepository
       );
 
       const settings = await useCase.execute({
@@ -450,6 +452,7 @@ export class SalesController {
 
       const useCase = new PostDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.deliveryNoteRepository,
         diContainer.salesOrderRepository,
         diContainer.itemRepository,

@@ -12,12 +12,14 @@ import {
 import { inventoryApi } from '../../../api/inventoryApi';
 import { Account, useAccounts } from '../../../context/AccountsContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { getAccountingModeLabel } from '../../../utils/documentPolicy';
+import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 
 interface InventoryInitializationWizardProps {
   onComplete: () => void;
 }
 
-const stepTitles = ['Welcome', 'Accounting Method', 'Default Warehouse', 'Inventory Settings', 'Confirm & Initialize'];
+const stepTitles = ['Welcome', 'Accounting Mode', 'Default Warehouse', 'Inventory Settings', 'Confirm & Initialize'];
 
 const accountLabel = (account: Account): string =>
   `${account.code} - ${account.name}`;
@@ -32,7 +34,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   const [defaultWarehouseCode, setDefaultWarehouseCode] = useState('MAIN');
   const [defaultWarehouseAddress, setDefaultWarehouseAddress] = useState('');
 
-  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
+  const [accountingMode, setAccountingMode] = useState<'INVOICE_DRIVEN' | 'PERPETUAL'>('INVOICE_DRIVEN');
   const [defaultCostCurrency, setDefaultCostCurrency] = useState('');
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
@@ -82,7 +84,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     }
 
     if (currentStep === 3) {
-      if (inventoryAccountingMethod === 'PERPETUAL') {
+      if (accountingMode === 'PERPETUAL') {
         if (!defaultInventoryAssetAccountId) return 'Default Inventory Asset Account is required.';
       }
       if (autoGenerateItemCode) {
@@ -100,7 +102,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     defaultCOGSAccountId,
     defaultWarehouseCode,
     defaultWarehouseName,
-    inventoryAccountingMethod,
+    accountingMode,
     itemCodeNextSeq,
   ]);
 
@@ -130,13 +132,14 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       setError(null);
 
       await inventoryApi.initialize({
-        inventoryAccountingMethod,
+        accountingMode,
+        inventoryAccountingMethod: accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
         defaultWarehouseName: defaultWarehouseName.trim(),
         defaultWarehouseCode: defaultWarehouseCode.trim(),
         defaultInventoryAssetAccountId:
-          inventoryAccountingMethod === 'PERPETUAL' ? (defaultInventoryAssetAccountId || undefined) : undefined,
+          defaultInventoryAssetAccountId || undefined,
         defaultCOGSAccountId:
-          inventoryAccountingMethod === 'PERPETUAL' ? (defaultCOGSAccountId || undefined) : undefined,
+          defaultCOGSAccountId || undefined,
         defaultCostCurrency: defaultCostCurrency.trim() || undefined,
         allowNegativeStock,
         autoGenerateItemCode,
@@ -144,6 +147,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
         itemCodeNextSeq: autoGenerateItemCode ? itemCodeNextSeq : undefined,
       });
 
+      emitCompanyModulesRefresh({ moduleCode: 'inventory' });
       onComplete();
     } catch (err: any) {
       console.error('Inventory initialization failed', err);
@@ -192,32 +196,32 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     if (currentStep === 1) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900">Inventory Accounting Method</h2>
-          <p className="text-sm text-gray-600">Choose how inventory should be accounted for in financial postings.</p>
+          <h2 className="text-2xl font-bold text-gray-900">Inventory Accounting Mode</h2>
+          <p className="text-sm text-gray-600">Choose when stock-related accounting should be recognized.</p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
               type="radio"
-              name="inventory-accounting-method"
-              checked={inventoryAccountingMethod === 'PERIODIC'}
-              onChange={() => setInventoryAccountingMethod('PERIODIC')}
+              name="inventory-accounting-mode"
+              checked={accountingMode === 'INVOICE_DRIVEN'}
+              onChange={() => setAccountingMode('INVOICE_DRIVEN')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Periodic</div>
-              <div className="text-sm text-gray-600">Calculate inventory value at month/year end and skip real-time COGS posting.</div>
+              <div className="font-semibold text-gray-900">Invoice-driven</div>
+              <div className="text-sm text-gray-600">Operational stock documents stay non-financial. Sales and purchase invoices create the accounting effect.</div>
             </div>
           </label>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
               type="radio"
-              name="inventory-accounting-method"
-              checked={inventoryAccountingMethod === 'PERPETUAL'}
-              onChange={() => setInventoryAccountingMethod('PERPETUAL')}
+              name="inventory-accounting-mode"
+              checked={accountingMode === 'PERPETUAL'}
+              onChange={() => setAccountingMode('PERPETUAL')}
             />
             <div>
               <div className="font-semibold text-gray-900">Perpetual</div>
-              <div className="text-sm text-gray-600">Post inventory and COGS in real-time as transactions are posted.</div>
+              <div className="text-sm text-gray-600">Delivery and receipt posting can create real-time inventory and COGS accounting.</div>
             </div>
           </label>
         </div>
@@ -284,42 +288,42 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
             />
           </div>
 
-          {inventoryAccountingMethod === 'PERPETUAL' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
-                <AccountSelector
-                  value={defaultInventoryAssetAccountId}
-                  onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
-                  placeholder="Select inventory asset account"
-                  disabled={loadingAccounts}
-                  accounts={inventoryAssetAccounts as any}
-                />
-                <p className="mt-1 text-xs text-gray-600">
-                  Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
-                <AccountSelector
-                  value={defaultCOGSAccountId}
-                  onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
-                  placeholder="Select COGS account"
-                  disabled={loadingAccounts}
-                  accounts={cogsAccounts as any}
-                />
-                <p className="mt-1 text-xs text-gray-600">
-                  Optional fallback. Used when sold stock needs a cost posting and the item or category does not have its own COGS account yet.
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist yet.
-                </p>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+              <AccountSelector
+                value={defaultInventoryAssetAccountId}
+                onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
+                placeholder="Select inventory asset account"
+                disabled={loadingAccounts}
+                accounts={inventoryAssetAccounts as any}
+              />
+              <p className="mt-1 text-xs text-gray-600">
+                {accountingMode === 'PERPETUAL'
+                  ? 'Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.'
+                  : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.
+              </p>
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+              <AccountSelector
+                value={defaultCOGSAccountId}
+                onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
+                placeholder="Select COGS account"
+                disabled={loadingAccounts}
+                accounts={cogsAccounts as any}
+              />
+              <p className="mt-1 text-xs text-gray-600">
+                Optional fallback. Used when sold stock needs a cost posting and the item or category does not have its own COGS account yet.
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist yet.
+              </p>
+            </div>
+          </div>
 
           <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <div>
@@ -384,7 +388,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Accounting Method:</span>{' '}
-            <span className="text-gray-700">{inventoryAccountingMethod}</span>
+            <span className="text-gray-700">{getAccountingModeLabel(accountingMode)}</span>
           </div>
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Warehouse:</span>{' '}
@@ -401,17 +405,13 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Default Inventory Asset Account:</span>{' '}
             <span className="text-gray-700">
-              {inventoryAccountingMethod === 'PERPETUAL'
-                ? (selectedInventoryAssetAccount ? accountLabel(selectedInventoryAssetAccount) : 'Not selected')
-                : 'Not required for PERIODIC'}
+              {selectedInventoryAssetAccount ? accountLabel(selectedInventoryAssetAccount) : (accountingMode === 'PERPETUAL' ? 'Not selected' : 'Not selected (recommended)')}
             </span>
           </div>
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Default COGS Account:</span>{' '}
             <span className="text-gray-700">
-              {inventoryAccountingMethod === 'PERPETUAL'
-                ? (selectedCOGSAccount ? accountLabel(selectedCOGSAccount) : 'Not selected (optional)')
-                : 'Not required for PERIODIC'}
+              {selectedCOGSAccount ? accountLabel(selectedCOGSAccount) : 'Not selected (optional)'}
             </span>
           </div>
           <div className="text-sm">

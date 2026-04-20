@@ -72,6 +72,7 @@ export const moduleMenuMap: Record<
           { label: 'Valuation', path: '/inventory/valuation', permission: 'inventory.valuation.view', icon: 'PieChart' },
         ]
       },
+      { label: 'UOM Master', path: '/inventory/uoms', permission: 'inventory.uom.view', icon: 'Ruler' },
       { label: 'Settings', path: '/inventory/settings', permission: 'inventory.settings.view', icon: 'Settings' },
     ]
   },

@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { PurchaseSettingsDTO, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
@@ -8,36 +7,38 @@ import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { errorHandler } from '../../../services/errorHandler';
+import {
+  getAccountingModeLabel,
+  getWorkflowModeLabel,
+  resolveInventoryAccountingMode,
+} from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 type TabId = 'policy' | 'accounts' | 'numbering';
 
 const PurchaseSettingsPage: React.FC = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<PurchaseSettingsDTO | null>(null);
-  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
   const [invSettings, setInvSettings] = useState<any>(null);
-  const { getAccountById } = useAccounts();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { validAccounts, getAccountById } = useAccounts();
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         const settingsResult = await purchasesApi.getSettings();
-        const inventorySettings = await inventoryApi.getSettings().catch(() => null);
+        const inventorySettingsResult = await inventoryApi.getSettings().catch(() => null);
 
         const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult);
-        const invSettingsData = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
-        
+        const invSettingsData = unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult);
+
         setSettings(currentSettings);
         setOriginalSettings(currentSettings);
         setInvSettings(invSettingsData);
-        setInventoryAccountingMethod(invSettingsData?.inventoryAccountingMethod === 'PERIODIC' ? 'PERIODIC' : 'PERPETUAL');
       } catch (err: any) {
         console.error('Failed to load purchase settings', err);
         errorHandler.showError('Failed to load purchase settings.');
@@ -45,14 +46,47 @@ const PurchaseSettingsPage: React.FC = () => {
         setLoading(false);
       }
     };
-    load();
+
+    void load();
   }, []);
 
   const updateSetting = <K extends keyof PurchaseSettingsDTO>(field: K, value: PurchaseSettingsDTO[K]) => {
     setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
+  const applyWorkflowMode = (mode: 'SIMPLE' | 'OPERATIONAL') => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        workflowMode: mode,
+        allowDirectInvoicing: mode === 'SIMPLE' ? true : prev.allowDirectInvoicing,
+        requirePOForStockItems: mode === 'SIMPLE' ? false : prev.requirePOForStockItems,
+      };
+    });
+  };
+
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  const accountingMode = resolveInventoryAccountingMode(invSettings);
+  const simpleWorkflowDisabled = accountingMode === 'PERPETUAL';
+
+  const liabilityAccounts = useMemo(
+    () =>
+      validAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'LIABILITY';
+      }),
+    [validAccounts]
+  );
+
+  const expenseAccounts = useMemo(
+    () =>
+      validAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'EXPENSE';
+      }),
+    [validAccounts]
+  );
 
   const handleSave = async () => {
     if (!settings) return;
@@ -60,18 +94,20 @@ const PurchaseSettingsPage: React.FC = () => {
       errorHandler.showError('Default Accounts Payable account is required.');
       return;
     }
-    if (inventoryAccountingMethod === 'PERIODIC' && !settings.defaultPurchaseExpenseAccountId) {
-      errorHandler.showError('Default Purchase Expense Account is required for PERIODIC inventory accounting.');
+    if (accountingMode === 'PERPETUAL' && !settings.defaultGRNIAccountId) {
+      errorHandler.showError('Default GRNI account is required for perpetual purchasing workflows.');
       return;
     }
 
     try {
       setSaving(true);
       const payload: Partial<PurchaseSettingsDTO> = {
-        allowDirectInvoicing: settings.allowDirectInvoicing,
-        requirePOForStockItems: settings.requirePOForStockItems,
+        workflowMode: settings.workflowMode,
+        allowDirectInvoicing: settings.workflowMode === 'SIMPLE' ? true : settings.allowDirectInvoicing,
+        requirePOForStockItems: settings.workflowMode === 'SIMPLE' ? false : settings.requirePOForStockItems,
         defaultAPAccountId: settings.defaultAPAccountId,
         defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId || undefined,
+        defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? settings.defaultGRNIAccountId || undefined : undefined,
         allowOverDelivery: settings.allowOverDelivery,
         overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
         overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
@@ -121,53 +157,98 @@ const PurchaseSettingsPage: React.FC = () => {
   return (
     <ModuleSettingsLayout
       title="Purchase Settings"
-      subtitle="Control purchasing policy, defaults, tolerances, and numbering."
+      subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
       tabs={tabs as any}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as TabId)}
     >
-      {/* Policy Tab */}
       {activeTab === 'policy' && (
         <SettingsSection
           title="Procurement Policy"
-          description="Define how your organization acquires goods and handles variances."
+          description="Define which purchasing documents users can work with and how operational controls behave."
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
         >
           <Card className="p-6">
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid gap-8 md:grid-cols-2">
               <div className="space-y-4">
-                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:border-indigo-200 transition bg-white shadow-sm">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">Allow Direct Invoicing</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-tight">Invoice vendors without a preceding PO/GRN.</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.allowDirectInvoicing}
-                    onChange={(e) => updateSetting('allowDirectInvoicing', e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                </label>
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <div className="mb-3 text-sm font-bold text-gray-900">Workflow Mode</div>
+                  <div className="space-y-3">
+                    <label className={`flex items-start gap-3 rounded-lg border p-4 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${settings.workflowMode === 'SIMPLE' ? 'border-indigo-500' : 'border-gray-200 hover:border-indigo-200'}`}>
+                      <input
+                        type="radio"
+                        name="purchase-settings-workflow"
+                        checked={settings.workflowMode === 'SIMPLE'}
+                        onChange={() => applyWorkflowMode('SIMPLE')}
+                        disabled={simpleWorkflowDisabled}
+                      />
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">Simple</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">Show invoices and returns only.</div>
+                      </div>
+                    </label>
 
-                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50 cursor-pointer hover:border-indigo-200 transition bg-white shadow-sm">
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">Require PO for Stock Items</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-tight">Force Purchase Order workflow for inventory.</div>
+                    <label className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer ${settings.workflowMode === 'OPERATIONAL' ? 'border-indigo-500' : 'border-gray-200 hover:border-indigo-200'}`}>
+                      <input
+                        type="radio"
+                        name="purchase-settings-workflow"
+                        checked={settings.workflowMode === 'OPERATIONAL'}
+                        onChange={() => applyWorkflowMode('OPERATIONAL')}
+                      />
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">Operational</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">Expose orders and goods receipts.</div>
+                      </div>
+                    </label>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.requirePOForStockItems}
-                    onChange={(e) => updateSetting('requirePOForStockItems', e.target.checked)}
-                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                </label>
+
+                  {simpleWorkflowDisabled && (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Perpetual accounting requires the operational workflow because Goods Receipts create inventory accounting.
+                    </div>
+                  )}
+                </div>
+
+                {settings.workflowMode === 'OPERATIONAL' ? (
+                  <>
+                    <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">Allow Direct Invoicing</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">Invoice vendors without a preceding PO/GRN.</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.allowDirectInvoicing}
+                        onChange={(e) => updateSetting('allowDirectInvoicing', e.target.checked)}
+                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </label>
+
+                    <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">Require PO For Stock Items</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">Force stock-item procurement to start from a Purchase Order.</div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.requirePOForStockItems}
+                        onChange={(e) => updateSetting('requirePOForStockItems', e.target.checked)}
+                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
+                    Simple workflow automatically enables direct invoicing and hides Purchase Orders and Goods Receipts from end users.
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Payment Terms (Days)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Default Payment Terms (Days)</label>
                   <input
                     type="number"
                     min={0}
@@ -176,10 +257,10 @@ const PurchaseSettingsPage: React.FC = () => {
                     onChange={(e) => updateSetting('defaultPaymentTermsDays', Number(e.target.value))}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Over-delivery (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-delivery (%)</label>
                     <input
                       type="number"
                       step={0.01}
@@ -189,7 +270,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Over-invoice (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-invoice (%)</label>
                     <input
                       type="number"
                       step={0.01}
@@ -205,7 +286,6 @@ const PurchaseSettingsPage: React.FC = () => {
         </SettingsSection>
       )}
 
-      {/* Account Defaults Tab */}
       {activeTab === 'accounts' && (
         <SettingsSection
           title="Account Defaults"
@@ -216,65 +296,85 @@ const PurchaseSettingsPage: React.FC = () => {
         >
           <Card className="p-6">
             <div className="space-y-8">
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Accounts Payable</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Accounts Payable</label>
                     <AccountSelector
                       value={settings.defaultAPAccountId || ''}
                       onChange={(account: any) => updateSetting('defaultAPAccountId', account?.id || '')}
+                      accounts={liabilityAccounts}
                       placeholder="Select AP account"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Centralized liability account for vendors.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">Primary vendor liability account.</p>
                   </div>
 
-                  {inventoryAccountingMethod === 'PERIODIC' && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Purchase Expense</label>
+                    <AccountSelector
+                      value={settings.defaultPurchaseExpenseAccountId || ''}
+                      onChange={(account: any) => updateSetting('defaultPurchaseExpenseAccountId', account?.id || undefined)}
+                      accounts={expenseAccounts}
+                      placeholder="Select expense fallback for non-stock items"
+                    />
+                    <p className="mt-1.5 text-xs italic text-gray-500">Optional fallback for service and non-stock posting.</p>
+                  </div>
+
+                  {accountingMode === 'PERPETUAL' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Default Purchase Expense</label>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">Default GRNI</label>
                       <AccountSelector
-                        value={settings.defaultPurchaseExpenseAccountId || ''}
-                        onChange={(account: any) => updateSetting('defaultPurchaseExpenseAccountId', account?.id || undefined)}
-                        placeholder="Select Purchases account"
+                        value={settings.defaultGRNIAccountId || ''}
+                        onChange={(account: any) => updateSetting('defaultGRNIAccountId', account?.id || undefined)}
+                        accounts={liabilityAccounts}
+                        placeholder="Select GRNI account"
                       />
+                      <p className="mt-1.5 text-xs italic text-gray-500">Required for perpetual receipt accrual posting.</p>
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">FX Gain/Loss Account</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">FX Gain/Loss Account</label>
                     <AccountSelector
                       value={settings.exchangeGainLossAccountId || ''}
                       onChange={(account: any) => updateSetting('exchangeGainLossAccountId', account?.id || undefined)}
                       placeholder="Select FX account"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Used for posting rate differences.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">Used for posting supplier exchange differences.</p>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/30 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm self-start">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
-                      <Settings size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <div className="self-start rounded-xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <div className="rounded-lg bg-indigo-50 p-1.5">
+                      <Settings size={14} className="text-indigo-600" />
                     </div>
-                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">Linked Inventory Context</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-800">Linked Inventory Context</h3>
                   </div>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Method:</span>
-                      <span className="font-bold text-indigo-700 dark:text-indigo-400">{inventoryAccountingMethod}</span>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Mode:</span>
+                      <span className="font-bold text-indigo-700">{getAccountingModeLabel(accountingMode)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-500">Inventory Asset:</span>
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
-                        {invSettings?.defaultInventoryAssetAccountId ? (getAccountById(invSettings.defaultInventoryAssetAccountId)?.name || 'Account Assigned') : 'Not Assigned'}
+                      <span className="font-medium text-slate-700">
+                        {invSettings?.defaultInventoryAssetAccountId
+                          ? getAccountById(invSettings.defaultInventoryAssetAccountId)?.name || 'Account Assigned'
+                          : 'Not Assigned'}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Workflow:</span>
+                      <span className="font-medium text-slate-700">{getWorkflowModeLabel(settings.workflowMode)}</span>
+                    </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="mt-4 border-t border-slate-100 pt-4">
                     <div className="flex gap-2">
-                       <Info size={14} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                       <p className="text-[10px] leading-relaxed text-slate-500 italic">
-                        In Perpetual mode, purchases debited to inventory occur automatically via inventory settings.
-                       </p>
+                      <Info size={14} className="mt-0.5 flex-shrink-0 text-slate-400" />
+                      <p className="text-[10px] italic leading-relaxed text-slate-500">
+                        Purchase posting follows the inventory accounting mode chosen during inventory setup. Perpetual mode requires GRNI for receipt accruals.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -284,7 +384,6 @@ const PurchaseSettingsPage: React.FC = () => {
         </SettingsSection>
       )}
 
-      {/* Numbering Tab */}
       {activeTab === 'numbering' && (
         <SettingsSection
           title="Document Numbering"
@@ -294,39 +393,42 @@ const PurchaseSettingsPage: React.FC = () => {
           saving={saving}
         >
           <Card className="p-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-               {[
-                 { id: 'po', label: 'Purchase Orders', prefix: 'poNumberPrefix', seq: 'poNumberNextSeq' },
-                 { id: 'grn', label: 'Receipts (GRN)', prefix: 'grnNumberPrefix', seq: 'grnNumberNextSeq' },
-                 { id: 'pi', label: 'Invoices (PI)', prefix: 'piNumberPrefix', seq: 'piNumberNextSeq' },
-                 { id: 'pr', label: 'Returns (PR)', prefix: 'prNumberPrefix', seq: 'prNumberNextSeq' }
-               ].map(doc => (
-                 <div key={doc.id} className="space-y-4 p-4 rounded-xl border border-slate-100 bg-slate-50 shadow-sm transition hover:shadow-md hover:border-indigo-100">
-                   <div className="bg-white px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase tracking-widest w-fit mb-1 border border-slate-100 shadow-sm">
-                     {doc.label}
-                   </div>
-                   <div>
-                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Prefix</label>
-                     <input
-                       type="text"
-                       className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold uppercase focus:ring-1 focus:ring-indigo-500"
-                       value={(settings as any)[doc.prefix]}
-                       onChange={(e) => updateSetting(doc.prefix as any, e.target.value.toUpperCase())}
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Next Number</label>
-                     <input
-                       type="number"
-                       min={1}
-                       className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-mono focus:ring-1 focus:ring-indigo-500"
-                       value={(settings as any)[doc.seq]}
-                       onChange={(e) => updateSetting(doc.seq as any, Number(e.target.value))}
-                     />
-                   </div>
-                 </div>
-               ))}
-             </div>
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
+            </div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                { id: 'po', label: 'Purchase Orders', prefix: 'poNumberPrefix', seq: 'poNumberNextSeq' },
+                { id: 'grn', label: 'Receipts (GRN)', prefix: 'grnNumberPrefix', seq: 'grnNumberNextSeq' },
+                { id: 'pi', label: 'Invoices (PI)', prefix: 'piNumberPrefix', seq: 'piNumberNextSeq' },
+                { id: 'pr', label: 'Returns (PR)', prefix: 'prNumberPrefix', seq: 'prNumberNextSeq' },
+              ].map((doc) => (
+                <div key={doc.id} className="space-y-4 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm transition hover:border-indigo-100 hover:shadow-md">
+                  <div className="mb-1 w-fit rounded border border-slate-100 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 shadow-sm">
+                    {doc.label}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Prefix</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold uppercase focus:ring-1 focus:ring-indigo-500"
+                      value={(settings as any)[doc.prefix]}
+                      onChange={(e) => updateSetting(doc.prefix as any, e.target.value.toUpperCase())}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Next Number</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-mono focus:ring-1 focus:ring-indigo-500"
+                      value={(settings as any)[doc.seq]}
+                      onChange={(e) => updateSetting(doc.seq as any, Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
         </SettingsSection>
       )}

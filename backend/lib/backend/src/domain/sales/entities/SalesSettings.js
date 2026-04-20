@@ -9,6 +9,7 @@ class SalesSettings {
         if (!((_b = props.defaultRevenueAccountId) === null || _b === void 0 ? void 0 : _b.trim()))
             throw new Error('SalesSettings defaultRevenueAccountId is required');
         this.companyId = props.companyId;
+        this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
         this.allowDirectInvoicing = props.allowDirectInvoicing;
         this.requireSOForStockItems = props.requireSOForStockItems;
         this.defaultARAccountId = ((_c = props.defaultARAccountId) === null || _c === void 0 ? void 0 : _c.trim()) || undefined;
@@ -34,6 +35,7 @@ class SalesSettings {
     static createDefault(companyId, defaultARAccountId, defaultRevenueAccountId) {
         return new SalesSettings({
             companyId,
+            workflowMode: 'OPERATIONAL',
             allowDirectInvoicing: true,
             requireSOForStockItems: false,
             defaultARAccountId,
@@ -55,6 +57,7 @@ class SalesSettings {
     toJSON() {
         return {
             companyId: this.companyId,
+            workflowMode: this.workflowMode,
             allowDirectInvoicing: this.allowDirectInvoicing,
             requireSOForStockItems: this.requireSOForStockItems,
             defaultARAccountId: this.defaultARAccountId,
@@ -82,6 +85,7 @@ class SalesSettings {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         return new SalesSettings({
             companyId: data.companyId,
+            workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
             allowDirectInvoicing: (_a = data.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
             requireSOForStockItems: (_b = data.requireSOForStockItems) !== null && _b !== void 0 ? _b : false,
             defaultARAccountId: data.defaultARAccountId,

@@ -13,8 +13,11 @@ export interface ItemProps {
   categoryId?: string;
   brand?: string;
   tags?: string[];
+  baseUomId?: string;
   baseUom: string;
+  purchaseUomId?: string;
   purchaseUom?: string;
+  salesUomId?: string;
   salesUom?: string;
   costCurrency: string;
   costingMethod: ItemCostingMethod;
@@ -54,8 +57,11 @@ export class Item {
   categoryId?: string;
   brand?: string;
   tags?: string[];
+  baseUomId?: string;
   baseUom: string;
+  purchaseUomId?: string;
   purchaseUom?: string;
+  salesUomId?: string;
   salesUom?: string;
   costCurrency: string;
   costingMethod: ItemCostingMethod;
@@ -114,8 +120,11 @@ export class Item {
     this.categoryId = props.categoryId;
     this.brand = props.brand;
     this.tags = props.tags ? [...props.tags] : undefined;
+    this.baseUomId = props.baseUomId;
     this.baseUom = props.baseUom.trim();
+    this.purchaseUomId = props.purchaseUomId;
     this.purchaseUom = props.purchaseUom;
+    this.salesUomId = props.salesUomId;
     this.salesUom = props.salesUom;
     this.costCurrency = props.costCurrency.toUpperCase().trim();
     this.costingMethod = props.costingMethod;
@@ -159,8 +168,11 @@ export class Item {
       categoryId: this.categoryId,
       brand: this.brand,
       tags: this.tags ? [...this.tags] : undefined,
+      baseUomId: this.baseUomId,
       baseUom: this.baseUom,
+      purchaseUomId: this.purchaseUomId,
       purchaseUom: this.purchaseUom,
+      salesUomId: this.salesUomId,
       salesUom: this.salesUom,
       costCurrency: this.costCurrency,
       costingMethod: this.costingMethod,
@@ -194,8 +206,11 @@ export class Item {
       categoryId: data.categoryId,
       brand: data.brand,
       tags: data.tags,
+      baseUomId: data.baseUomId,
       baseUom: data.baseUom || data.unit,
+      purchaseUomId: data.purchaseUomId,
       purchaseUom: data.purchaseUom,
+      salesUomId: data.salesUomId,
       salesUom: data.salesUom,
       costCurrency: data.costCurrency,
       costingMethod: data.costingMethod || 'MOVING_AVG',

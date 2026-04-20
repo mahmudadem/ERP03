@@ -30,6 +30,7 @@ const FirestoreWarehouseRepository_1 = require("../firestore/repositories/invent
 const FirestoreStockMovementRepository_1 = require("../firestore/repositories/inventory/FirestoreStockMovementRepository");
 const FirestoreStockLevelRepository_1 = require("../firestore/repositories/inventory/FirestoreStockLevelRepository");
 const FirestoreItemCategoryRepository_1 = require("../firestore/repositories/inventory/FirestoreItemCategoryRepository");
+const FirestoreUomRepository_1 = require("../firestore/repositories/inventory/FirestoreUomRepository");
 const FirestoreUomConversionRepository_1 = require("../firestore/repositories/inventory/FirestoreUomConversionRepository");
 const FirestoreInventorySettingsRepository_1 = require("../firestore/repositories/inventory/FirestoreInventorySettingsRepository");
 const FirestoreOpeningStockDocumentRepository_1 = require("../firestore/repositories/inventory/FirestoreOpeningStockDocumentRepository");
@@ -134,6 +135,7 @@ exports.diContainer = {
     get stockMovementRepository() { return new FirestoreStockMovementRepository_1.FirestoreStockMovementRepository(getDb()); },
     get stockLevelRepository() { return new FirestoreStockLevelRepository_1.FirestoreStockLevelRepository(getDb()); },
     get itemCategoryRepository() { return new FirestoreItemCategoryRepository_1.FirestoreItemCategoryRepository(getDb()); },
+    get uomRepository() { return new FirestoreUomRepository_1.FirestoreUomRepository(getDb()); },
     get uomConversionRepository() { return new FirestoreUomConversionRepository_1.FirestoreUomConversionRepository(getDb()); },
     get inventorySettingsRepository() { return new FirestoreInventorySettingsRepository_1.FirestoreInventorySettingsRepository(getDb()); },
     get openingStockDocumentRepository() { return new FirestoreOpeningStockDocumentRepository_1.FirestoreOpeningStockDocumentRepository(getDb()); },

@@ -8,9 +8,8 @@ class InventorySettings {
             throw new Error('InventorySettings companyId is required');
         if (!((_b = props.defaultCostCurrency) === null || _b === void 0 ? void 0 : _b.trim()))
             throw new Error('InventorySettings defaultCostCurrency is required');
-        if (props.inventoryAccountingMethod !== 'PERIODIC' && props.inventoryAccountingMethod !== 'PERPETUAL') {
-            throw new Error(`Invalid inventoryAccountingMethod: ${props.inventoryAccountingMethod}`);
-        }
+        const accountingMode = InventorySettings.normalizeAccountingMode(props.accountingMode, props.inventoryAccountingMethod);
+        const inventoryAccountingMethod = InventorySettings.normalizeLegacyMethod(props.inventoryAccountingMethod, accountingMode);
         // Note: Requiredness for defaultInventoryAssetAccountId in PERPETUAL mode 
         // is enforced at the Use Case and Validator level to allow hydration of partial legacy data.
         if (props.defaultCostingMethod !== 'MOVING_AVG') {
@@ -20,7 +19,8 @@ class InventorySettings {
             throw new Error('InventorySettings itemCodeNextSeq must be greater than 0');
         }
         this.companyId = props.companyId;
-        this.inventoryAccountingMethod = props.inventoryAccountingMethod;
+        this.inventoryAccountingMethod = inventoryAccountingMethod;
+        this.accountingMode = accountingMode;
         this.defaultCostingMethod = props.defaultCostingMethod;
         this.defaultCostCurrency = props.defaultCostCurrency.toUpperCase().trim();
         this.defaultInventoryAssetAccountId = ((_c = props.defaultInventoryAssetAccountId) === null || _c === void 0 ? void 0 : _c.trim()) || undefined;
@@ -35,6 +35,7 @@ class InventorySettings {
         return new InventorySettings({
             companyId,
             inventoryAccountingMethod,
+            accountingMode: inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN',
             defaultCostingMethod: 'MOVING_AVG',
             defaultCostCurrency: baseCurrency.toUpperCase(),
             defaultInventoryAssetAccountId,
@@ -46,6 +47,7 @@ class InventorySettings {
     toJSON() {
         return {
             companyId: this.companyId,
+            accountingMode: this.accountingMode,
             inventoryAccountingMethod: this.inventoryAccountingMethod,
             defaultCostingMethod: this.defaultCostingMethod,
             defaultCostCurrency: this.defaultCostCurrency,
@@ -62,7 +64,8 @@ class InventorySettings {
         var _a, _b, _c;
         return new InventorySettings({
             companyId: data.companyId,
-            inventoryAccountingMethod: data.inventoryAccountingMethod || 'PERPETUAL',
+            accountingMode: InventorySettings.normalizeAccountingMode(data.accountingMode, data.inventoryAccountingMethod),
+            inventoryAccountingMethod: InventorySettings.normalizeLegacyMethod(data.inventoryAccountingMethod, InventorySettings.normalizeAccountingMode(data.accountingMode, data.inventoryAccountingMethod)),
             defaultCostingMethod: data.defaultCostingMethod || 'MOVING_AVG',
             defaultCostCurrency: data.defaultCostCurrency,
             defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
@@ -73,6 +76,22 @@ class InventorySettings {
             itemCodeNextSeq: (_c = data.itemCodeNextSeq) !== null && _c !== void 0 ? _c : 1,
             defaultCOGSAccountId: data.defaultCOGSAccountId,
         });
+    }
+    static normalizeAccountingMode(accountingMode, inventoryAccountingMethod) {
+        if (accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL') {
+            return accountingMode;
+        }
+        if (inventoryAccountingMethod === 'PERIODIC')
+            return 'INVOICE_DRIVEN';
+        if (inventoryAccountingMethod === 'PERPETUAL')
+            return 'PERPETUAL';
+        return 'PERPETUAL';
+    }
+    static normalizeLegacyMethod(inventoryAccountingMethod, accountingMode) {
+        if (inventoryAccountingMethod === 'PERIODIC' || inventoryAccountingMethod === 'PERPETUAL') {
+            return inventoryAccountingMethod;
+        }
+        return accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC';
     }
 }
 exports.InventorySettings = InventorySettings;

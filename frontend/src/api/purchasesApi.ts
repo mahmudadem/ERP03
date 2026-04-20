@@ -1,4 +1,5 @@
 import client from './client';
+import { WorkflowMode } from './salesApi';
 
 export type POStatus =
   | 'DRAFT'
@@ -15,10 +16,12 @@ export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 
 export interface PurchaseSettingsDTO {
   companyId: string;
+  workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -45,6 +48,7 @@ export interface PurchaseOrderLineDTO {
   itemType: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   receivedQty: number;
   invoicedQty: number;
@@ -96,6 +100,7 @@ export interface GoodsReceiptLineDTO {
   itemCode: string;
   itemName: string;
   receivedQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -117,6 +122,7 @@ export interface GoodsReceiptDTO {
   warehouseId: string;
   lines: GoodsReceiptLineDTO[];
   status: GRNStatus;
+  voucherId?: string | null;
   notes?: string;
   createdBy: string;
   createdAt: string;
@@ -134,6 +140,7 @@ export interface PurchaseInvoiceLineDTO {
   itemName: string;
   trackInventory: boolean;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   lineTotalDoc: number;
@@ -192,6 +199,7 @@ export interface PurchaseReturnLineDTO {
   itemCode: string;
   itemName: string;
   returnQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -239,10 +247,12 @@ export interface PurchaseReturnDTO {
 }
 
 export interface InitializePurchasesPayload {
+  workflowMode?: WorkflowMode;
   defaultAPAccountId?: string;
   allowDirectInvoicing?: boolean;
   requirePOForStockItems?: boolean;
   defaultPurchaseExpenseAccountId?: string;
+  defaultGRNIAccountId?: string;
   allowOverDelivery?: boolean;
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
@@ -265,6 +275,7 @@ export interface PurchaseOrderLineInputDTO {
   lineNo?: number;
   itemId: string;
   orderedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -309,6 +320,7 @@ export interface GoodsReceiptLineInputDTO {
   poLineId?: string;
   itemId?: string;
   receivedQty: number;
+  uomId?: string;
   uom?: string;
   unitCostDoc?: number;
   moveCurrency?: string;
@@ -347,6 +359,7 @@ export interface PurchaseInvoiceLineInputDTO {
   grnLineId?: string;
   itemId?: string;
   invoicedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
   taxCodeId?: string;
@@ -394,6 +407,7 @@ export interface PurchaseReturnLineInputDTO {
   itemId?: string;
   returnQty?: number;
   unitCostDoc?: number;
+  uomId?: string;
   uom?: string;
   accountId?: string;
   description?: string;

@@ -2,13 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializeInventoryUseCase = void 0;
 const crypto_1 = require("crypto");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const InventorySettings_1 = require("../../../domain/inventory/entities/InventorySettings");
+const Uom_1 = require("../../../domain/inventory/entities/Uom");
 const Warehouse_1 = require("../../../domain/inventory/entities/Warehouse");
 class InitializeInventoryUseCase {
-    constructor(companyRepo, settingsRepo, warehouseRepo, companyModuleRepo) {
+    constructor(companyRepo, settingsRepo, warehouseRepo, uomRepo, companyModuleRepo) {
         this.companyRepo = companyRepo;
         this.settingsRepo = settingsRepo;
         this.warehouseRepo = warehouseRepo;
+        this.uomRepo = uomRepo;
         this.companyModuleRepo = companyModuleRepo;
     }
     async execute(input) {
@@ -36,7 +39,12 @@ class InitializeInventoryUseCase {
         }
         const settings = new InventorySettings_1.InventorySettings({
             companyId: input.companyId,
-            inventoryAccountingMethod: input.inventoryAccountingMethod || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.inventoryAccountingMethod) || 'PERPETUAL',
+            accountingMode: input.accountingMode
+                || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.accountingMode)
+                || DocumentPolicyResolver_1.DocumentPolicyResolver.legacyInventoryMethodToAccountingMode(input.inventoryAccountingMethod || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.inventoryAccountingMethod) || 'PERPETUAL'),
+            inventoryAccountingMethod: input.inventoryAccountingMethod
+                || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.inventoryAccountingMethod)
+                || DocumentPolicyResolver_1.DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(input.accountingMode || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.accountingMode) || 'PERPETUAL'),
             defaultCostingMethod: 'MOVING_AVG',
             defaultCostCurrency: input.defaultCostCurrency || (currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.defaultCostCurrency) || company.baseCurrency,
             defaultInventoryAssetAccountId: (_b = (_a = input.defaultInventoryAssetAccountId) !== null && _a !== void 0 ? _a : currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.defaultInventoryAssetAccountId) !== null && _b !== void 0 ? _b : undefined,
@@ -48,6 +56,7 @@ class InitializeInventoryUseCase {
             defaultCOGSAccountId: (_k = input.defaultCOGSAccountId) !== null && _k !== void 0 ? _k : currentSettings === null || currentSettings === void 0 ? void 0 : currentSettings.defaultCOGSAccountId,
         });
         await this.settingsRepo.saveSettings(settings);
+        await this.ensureDefaultUoms(input.companyId, input.userId);
         const now = new Date();
         const inventoryModule = await this.companyModuleRepo.get(input.companyId, 'inventory');
         if (inventoryModule) {
@@ -69,6 +78,40 @@ class InitializeInventoryUseCase {
             });
         }
         return { settings, defaultWarehouse };
+    }
+    async ensureDefaultUoms(companyId, userId) {
+        const existing = await this.uomRepo.getCompanyUoms(companyId, { limit: 1 });
+        if (existing.length > 0)
+            return;
+        const now = new Date();
+        const defaults = [
+            { code: 'EA', name: 'Each', dimension: 'COUNT', decimalPlaces: 0, isSystem: true },
+            { code: 'PCS', name: 'Pieces', dimension: 'COUNT', decimalPlaces: 0, isSystem: true },
+            { code: 'BOX', name: 'Box', dimension: 'COUNT', decimalPlaces: 0 },
+            { code: 'PACK', name: 'Pack', dimension: 'COUNT', decimalPlaces: 0 },
+            { code: 'KG', name: 'Kilogram', dimension: 'WEIGHT', decimalPlaces: 3, isSystem: true },
+            { code: 'G', name: 'Gram', dimension: 'WEIGHT', decimalPlaces: 0, isSystem: true },
+            { code: 'L', name: 'Litre', dimension: 'VOLUME', decimalPlaces: 3, isSystem: true },
+            { code: 'ML', name: 'Millilitre', dimension: 'VOLUME', decimalPlaces: 0, isSystem: true },
+            { code: 'M', name: 'Meter', dimension: 'LENGTH', decimalPlaces: 3, isSystem: true },
+            { code: 'CM', name: 'Centimeter', dimension: 'LENGTH', decimalPlaces: 2, isSystem: true },
+        ];
+        await Promise.all(defaults.map((entry) => {
+            var _a;
+            return this.uomRepo.createUom(new Uom_1.Uom({
+                id: (0, crypto_1.randomUUID)(),
+                companyId,
+                code: entry.code,
+                name: entry.name,
+                dimension: entry.dimension,
+                decimalPlaces: entry.decimalPlaces,
+                active: true,
+                isSystem: (_a = entry.isSystem) !== null && _a !== void 0 ? _a : false,
+                createdBy: userId,
+                createdAt: now,
+                updatedAt: now,
+            }));
+        }));
     }
 }
 exports.InitializeInventoryUseCase = InitializeInventoryUseCase;

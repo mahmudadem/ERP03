@@ -14,7 +14,7 @@ const toDate = (value) => {
 };
 class GoodsReceipt {
     constructor(props) {
-        var _a, _b, _c, _d, _e, _f, _g;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         if (!((_a = props.id) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('GoodsReceipt id is required');
         if (!((_b = props.companyId) === null || _b === void 0 ? void 0 : _b.trim()))
@@ -47,6 +47,7 @@ class GoodsReceipt {
         }
         this.status = status;
         this.notes = props.notes;
+        this.voucherId = (_h = props.voucherId) !== null && _h !== void 0 ? _h : null;
         this.createdBy = props.createdBy;
         this.createdAt = props.createdAt;
         this.updatedAt = props.updatedAt;
@@ -82,6 +83,7 @@ class GoodsReceipt {
             itemCode: line.itemCode || '',
             itemName: line.itemName || '',
             receivedQty: line.receivedQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase: roundMoney(line.unitCostBase),
@@ -105,6 +107,7 @@ class GoodsReceipt {
             lines: this.lines.map((line) => (Object.assign({}, line))),
             status: this.status,
             notes: this.notes,
+            voucherId: this.voucherId,
             createdBy: this.createdBy,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt,
@@ -112,6 +115,7 @@ class GoodsReceipt {
         };
     }
     static fromJSON(data) {
+        var _a;
         return new GoodsReceipt({
             id: data.id,
             companyId: data.companyId,
@@ -124,6 +128,7 @@ class GoodsReceipt {
             lines: data.lines || [],
             status: data.status || 'DRAFT',
             notes: data.notes,
+            voucherId: (_a = data.voucherId) !== null && _a !== void 0 ? _a : null,
             createdBy: data.createdBy || 'SYSTEM',
             createdAt: toDate(data.createdAt),
             updatedAt: toDate(data.updatedAt),

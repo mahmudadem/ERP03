@@ -296,7 +296,7 @@ export async function cloneVoucherForm(
   try {
     let sourceDoc;
     if (isSystemDefault) {
-      sourceDoc = await getDoc(doc(db, 'systemVoucherTemplates', sourceFormId));
+      sourceDoc = await getDoc(doc(db, 'system_metadata', 'voucher_types', 'items', sourceFormId));
     } else {
       sourceDoc = await getDoc(doc(db, `companies/${companyId}/accounting/Settings/voucherForms`, sourceFormId));
     }

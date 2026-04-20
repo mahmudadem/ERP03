@@ -101,6 +101,7 @@ class SalesReturn {
             itemCode: line.itemCode || '',
             itemName: line.itemName || '',
             returnQty: line.returnQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitPriceDoc: line.unitPriceDoc,
             unitPriceBase: line.unitPriceBase,

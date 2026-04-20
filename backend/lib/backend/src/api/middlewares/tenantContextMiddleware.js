@@ -23,10 +23,12 @@ const tenantContextMiddleware = async (req, res, next) => {
         }
         // 2. Load Permissions from User's Role
         let permissions = [];
+        let roleModuleBundles = [];
         if (user.roleId) {
             const role = await bindRepositories_1.diContainer.companyRoleRepository.getById(companyId, user.roleId);
             if (role) {
                 permissions = role.resolvedPermissions || role.permissions || [];
+                roleModuleBundles = role.moduleBundles || [];
             }
         }
         // NOTE: Features were part of the old bundle structure
@@ -35,12 +37,23 @@ const tenantContextMiddleware = async (req, res, next) => {
         // 4. Set Tenant Context with ALL required fields
         console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);
         console.log(`[TenantContext] Permissions: ${JSON.stringify(permissions)}`);
+        const companyModules = Array.isArray(company.modules) ? company.modules : [];
+        const normalizedCompanyModules = companyModules
+            .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+            .filter(Boolean);
+        const normalizedRoleModuleBundles = roleModuleBundles
+            .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+            .filter(Boolean);
+        const modules = Array.from(new Set([
+            ...normalizedCompanyModules,
+            ...normalizedRoleModuleBundles
+        ]));
         req.tenantContext = {
             userId: user.uid,
             companyId: companyId,
             roleId: user.roleId,
             permissions: permissions,
-            modules: company.modules || [],
+            modules,
             features: features
         };
         next();

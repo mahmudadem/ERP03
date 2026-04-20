@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { InventoryItemDTO, inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreatePurchaseOrderPayload,
   GoodsReceiptDTO,
@@ -17,6 +17,9 @@ import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -28,6 +31,7 @@ interface EditableLine {
   itemCode?: string;
   itemName?: string;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -56,6 +60,7 @@ interface EditableForm {
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
   orderedQty: 1,
+  uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
   taxCodeId: undefined,
@@ -97,6 +102,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const [vendors, setVendors] = useState<PartyDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -179,6 +185,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
       itemCode: line.itemCode,
       itemName: line.itemName,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
       taxCodeId: line.taxCodeId,
@@ -204,6 +211,24 @@ const PurchaseOrderDetailPage: React.FC = () => {
     setVendors(Array.isArray(vendorList) ? vendorList : []);
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
+  };
+
+  const ensureItemUomOptions = async (itemId: string) => {
+    if (!itemId || uomOptionsByItemId[itemId] || !itemById[itemId]) return;
+    try {
+      const result = await inventoryApi.listUomConversions(itemId);
+      const conversions = unwrap<UomConversionDTO[]>(result) || [];
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], conversions),
+      }));
+    } catch (loadError) {
+      console.error('Failed to load UOM conversions', loadError);
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], []),
+      }));
+    }
   };
 
   const loadOrder = async (id: string) => {
@@ -262,6 +287,13 @@ const PurchaseOrderDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const ids = Array.from(new Set(form.lines.map((line) => line.itemId).filter(Boolean)));
+    ids.forEach((itemId) => {
+      void ensureItemUomOptions(itemId);
+    });
+  }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isDraft = form.status === 'DRAFT';
   const isReadOnly = !isDraft;
   const downstreamActionQuery = form.id
@@ -283,9 +315,11 @@ const PurchaseOrderDetailPage: React.FC = () => {
       if (patch.itemId !== undefined) {
         const item = itemById[patch.itemId];
         if (item) {
+          const defaultUom = getDefaultItemUomOption(item, 'purchase');
           next.itemCode = item.code;
           next.itemName = item.name;
-          next.uom = next.uom || item.purchaseUom || item.baseUom;
+          next.uomId = next.uomId || defaultUom?.uomId;
+          next.uom = next.uom || defaultUom?.code || item.purchaseUom || item.baseUom;
           if (!next.taxCodeId && item.defaultPurchaseTaxCodeId) {
             const defaultTax = purchaseTaxCodes.find((taxCode) => taxCode.id === item.defaultPurchaseTaxCodeId);
             if (defaultTax) next.taxCodeId = defaultTax.id;
@@ -334,6 +368,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
       lineNo: index + 1,
       itemId: line.itemId,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
       taxCodeId: line.taxCodeId || undefined,
@@ -480,47 +515,33 @@ const PurchaseOrderDetailPage: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Vendor</label>
-            <select
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <PartySelector 
               value={form.vendorId}
               disabled={isReadOnly}
-              onChange={(e) => {
-                const nextVendorId = e.target.value;
-                const vendor = vendors.find((entry) => entry.id === nextVendorId);
+              onChange={(party) => {
                 setForm((prev) => ({
                   ...prev,
-                  vendorId: nextVendorId,
-                  vendorName: vendor?.displayName,
-                  currency: vendor?.defaultCurrency || prev.currency,
+                  vendorId: party?.id || '',
+                  vendorName: party?.displayName || '',
+                  currency: party?.defaultCurrency || prev.currency,
                 }));
               }}
-            >
-              <option value="">Select vendor</option>
-              {vendors.map((vendor) => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.displayName}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Order Date</label>
-            <input
-              type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <DatePicker 
               value={form.orderDate}
               disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, orderDate: e.target.value }))}
+              onChange={(val) => setForm((prev) => ({ ...prev, orderDate: val }))}
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Expected Delivery</label>
-            <input
-              type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            <DatePicker 
               value={form.expectedDeliveryDate}
               disabled={isReadOnly}
-              onChange={(e) => setForm((prev) => ({ ...prev, expectedDeliveryDate: e.target.value }))}
+              onChange={(val) => setForm((prev) => ({ ...prev, expectedDeliveryDate: val }))}
             />
           </div>
           <div>
@@ -609,13 +630,28 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     />
                   </td>
                   <td className="py-2 pr-2">
-                    <input
-                      type="text"
-                      className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                      value={line.uom}
-                      disabled={isReadOnly}
-                      onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
-                    />
+                    <select
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                      value={
+                        findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                        line.uomId ||
+                        line.uom
+                      }
+                      disabled={isReadOnly || !line.itemId}
+                      onChange={(e) => {
+                        const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                          (option) => (option.uomId || option.code) === e.target.value
+                        );
+                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                      }}
+                    >
+                      <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                        <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                          {option.code}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="py-2 pr-2">
                     <input

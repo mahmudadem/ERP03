@@ -79,6 +79,12 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
 
   const isSuperAdmin = isSuperAdminState || permissions.includes('*') || resolvedPermissions.includes('*');
   const isOwnerOrWildcard = isSuperAdmin || isOwner;
+  const normalizeModuleList = (modules: unknown): string[] => {
+    if (!Array.isArray(modules)) return [];
+    return modules
+      .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+      .filter(Boolean);
+  };
 
   const setCompanyId = (newCompanyId: string) => setCompanyIdState(newCompanyId);
 
@@ -91,14 +97,17 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const data = await authApi.getMyPermissions();
+      const normalizedBundles = normalizeModuleList(data.moduleBundles);
       setPermissions(data.resolvedPermissions || []);
       setResolvedPermissions(data.resolvedPermissions || []);
       setIsOwner(!!data.isOwner);
       setIsSuperAdminState(!!data.isSuperAdmin);
-      setModuleBundles((prev) => (data.moduleBundles && data.moduleBundles.length ? data.moduleBundles : prev));
+      setModuleBundles(normalizedBundles);
       localStorage.setItem('resolvedPermissions', JSON.stringify(data.resolvedPermissions || []));
-      if (data.moduleBundles && data.moduleBundles.length) {
-        localStorage.setItem('activeModules', JSON.stringify(data.moduleBundles));
+      if (normalizedBundles.length > 0) {
+        localStorage.setItem('activeModules', JSON.stringify(normalizedBundles));
+      } else {
+        localStorage.removeItem('activeModules');
       }
       setPermissionsLoaded(true);
     } catch (err) {
@@ -126,6 +135,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     
     setLoading(true);
     setPermissionsLoaded(false);
+    setModuleBundles([]);
+    localStorage.removeItem('activeModules');
     
     try {
       const permData = await authApi.getMyPermissions();
@@ -164,9 +175,12 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       const isOwnerFlag = !!(data as any).isOwner;
       setIsOwner(isOwnerFlag);
       const modules = (data.company && Array.isArray((data.company as any).modules)) ? (data.company as any).modules : [];
-      setModuleBundles(modules);
-      if (modules.length) {
-        localStorage.setItem('activeModules', JSON.stringify(modules));
+      const normalizedModules = normalizeModuleList(modules);
+      setModuleBundles(normalizedModules);
+      if (normalizedModules.length > 0) {
+        localStorage.setItem('activeModules', JSON.stringify(normalizedModules));
+      } else {
+        localStorage.removeItem('activeModules');
       }
       if (activeId) {
         await loadPermissionsForActiveCompany();

@@ -1,6 +1,10 @@
+export type LegacyInventoryAccountingMethod = 'PERIODIC' | 'PERPETUAL';
+export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+
 export interface InventorySettingsProps {
   companyId: string;
-  inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
+  inventoryAccountingMethod?: LegacyInventoryAccountingMethod;
+  accountingMode?: InventoryAccountingMode;
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
@@ -14,7 +18,8 @@ export interface InventorySettingsProps {
 
 export class InventorySettings {
   readonly companyId: string;
-  inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
+  inventoryAccountingMethod: LegacyInventoryAccountingMethod;
+  accountingMode: InventoryAccountingMode;
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
   defaultInventoryAssetAccountId?: string;
@@ -28,9 +33,14 @@ export class InventorySettings {
   constructor(props: InventorySettingsProps) {
     if (!props.companyId?.trim()) throw new Error('InventorySettings companyId is required');
     if (!props.defaultCostCurrency?.trim()) throw new Error('InventorySettings defaultCostCurrency is required');
-    if (props.inventoryAccountingMethod !== 'PERIODIC' && props.inventoryAccountingMethod !== 'PERPETUAL') {
-      throw new Error(`Invalid inventoryAccountingMethod: ${props.inventoryAccountingMethod}`);
-    }
+    const accountingMode = InventorySettings.normalizeAccountingMode(
+      props.accountingMode,
+      props.inventoryAccountingMethod
+    );
+    const inventoryAccountingMethod = InventorySettings.normalizeLegacyMethod(
+      props.inventoryAccountingMethod,
+      accountingMode
+    );
     // Note: Requiredness for defaultInventoryAssetAccountId in PERPETUAL mode 
     // is enforced at the Use Case and Validator level to allow hydration of partial legacy data.
     if (props.defaultCostingMethod !== 'MOVING_AVG') {
@@ -41,7 +51,8 @@ export class InventorySettings {
     }
 
     this.companyId = props.companyId;
-    this.inventoryAccountingMethod = props.inventoryAccountingMethod;
+    this.inventoryAccountingMethod = inventoryAccountingMethod;
+    this.accountingMode = accountingMode;
     this.defaultCostingMethod = props.defaultCostingMethod;
     this.defaultCostCurrency = props.defaultCostCurrency.toUpperCase().trim();
     this.defaultInventoryAssetAccountId = props.defaultInventoryAssetAccountId?.trim() || undefined;
@@ -56,12 +67,13 @@ export class InventorySettings {
   static createDefault(
     companyId: string,
     baseCurrency: string,
-    inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL' = 'PERPETUAL',
+    inventoryAccountingMethod: LegacyInventoryAccountingMethod = 'PERPETUAL',
     defaultInventoryAssetAccountId?: string
   ): InventorySettings {
     return new InventorySettings({
       companyId,
       inventoryAccountingMethod,
+      accountingMode: inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN',
       defaultCostingMethod: 'MOVING_AVG',
       defaultCostCurrency: baseCurrency.toUpperCase(),
       defaultInventoryAssetAccountId,
@@ -74,6 +86,7 @@ export class InventorySettings {
   toJSON(): Record<string, any> {
     return {
       companyId: this.companyId,
+      accountingMode: this.accountingMode,
       inventoryAccountingMethod: this.inventoryAccountingMethod,
       defaultCostingMethod: this.defaultCostingMethod,
       defaultCostCurrency: this.defaultCostCurrency,
@@ -90,7 +103,11 @@ export class InventorySettings {
   static fromJSON(data: any): InventorySettings {
     return new InventorySettings({
       companyId: data.companyId,
-      inventoryAccountingMethod: data.inventoryAccountingMethod || 'PERPETUAL',
+      accountingMode: InventorySettings.normalizeAccountingMode(data.accountingMode, data.inventoryAccountingMethod),
+      inventoryAccountingMethod: InventorySettings.normalizeLegacyMethod(
+        data.inventoryAccountingMethod,
+        InventorySettings.normalizeAccountingMode(data.accountingMode, data.inventoryAccountingMethod)
+      ),
       defaultCostingMethod: data.defaultCostingMethod || 'MOVING_AVG',
       defaultCostCurrency: data.defaultCostCurrency,
       defaultInventoryAssetAccountId: data.defaultInventoryAssetAccountId,
@@ -101,5 +118,29 @@ export class InventorySettings {
       itemCodeNextSeq: data.itemCodeNextSeq ?? 1,
       defaultCOGSAccountId: data.defaultCOGSAccountId,
     });
+  }
+
+  private static normalizeAccountingMode(
+    accountingMode?: InventoryAccountingMode,
+    inventoryAccountingMethod?: LegacyInventoryAccountingMethod
+  ): InventoryAccountingMode {
+    if (accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL') {
+      return accountingMode;
+    }
+
+    if (inventoryAccountingMethod === 'PERIODIC') return 'INVOICE_DRIVEN';
+    if (inventoryAccountingMethod === 'PERPETUAL') return 'PERPETUAL';
+
+    return 'PERPETUAL';
+  }
+
+  private static normalizeLegacyMethod(
+    inventoryAccountingMethod: LegacyInventoryAccountingMethod | undefined,
+    accountingMode: InventoryAccountingMode
+  ): LegacyInventoryAccountingMethod {
+    if (inventoryAccountingMethod === 'PERIODIC' || inventoryAccountingMethod === 'PERPETUAL') {
+      return inventoryAccountingMethod;
+    }
+    return accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC';
   }
 }

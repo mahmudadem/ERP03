@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateUpdateOpeningStockDocumentInput = exports.validateCreateOpeningStockDocumentInput = exports.validateUpdateSettingsInput = exports.validateMovementByReferenceQuery = exports.validateCreateStockReservationInput = exports.validateCreateSnapshotInput = exports.validateProcessReturnInput = exports.validateCreateStockTransferInput = exports.validateCreateStockAdjustmentInput = exports.validateOpeningMovementInput = exports.validateCreateUomConversionInput = exports.validateUpdateWarehouseInput = exports.validateCreateWarehouseInput = exports.validateUpdateCategoryInput = exports.validateCreateCategoryInput = exports.validateUpdateItemInput = exports.validateCreateItemInput = exports.validateInitializeInventoryInput = void 0;
+exports.validateUpdateOpeningStockDocumentInput = exports.validateCreateOpeningStockDocumentInput = exports.validateUpdateSettingsInput = exports.validateMovementByReferenceQuery = exports.validateCreateStockReservationInput = exports.validateCreateSnapshotInput = exports.validateProcessReturnInput = exports.validateCreateStockTransferInput = exports.validateCreateStockAdjustmentInput = exports.validateOpeningMovementInput = exports.validateApplyUomConversionCorrectionInput = exports.validateUomConversionImpactQuery = exports.validateUpdateUomConversionInput = exports.validateCreateUomConversionInput = exports.validateUpdateWarehouseInput = exports.validateCreateWarehouseInput = exports.validateUpdateUomInput = exports.validateCreateUomInput = exports.validateUpdateCategoryInput = exports.validateCreateCategoryInput = exports.validateUpdateItemInput = exports.validateCreateItemInput = exports.validateInitializeInventoryInput = void 0;
 /**
  * inventory.validators.ts
  */
@@ -29,15 +29,45 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 const ensureUuid = (value, fieldName) => {
     ensureRequiredString(value, fieldName);
 };
+const ensureOptionalString = (value, fieldName) => {
+    if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be a non-empty string`);
+    }
+};
+const ensureBoolean = (value, fieldName) => {
+    if (typeof value !== 'boolean') {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be boolean`);
+    }
+};
+const ensureUomDimension = (value, fieldName) => {
+    ensureRequiredString(value, fieldName);
+    const allowed = ['COUNT', 'WEIGHT', 'VOLUME', 'LENGTH', 'AREA', 'TIME', 'OTHER'];
+    if (!allowed.includes(value)) {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be one of ${allowed.join(', ')}`);
+    }
+};
 const ensureInventoryAccountingMethod = (value, fieldName) => {
     ensureRequiredString(value, fieldName);
     if (value !== 'PERIODIC' && value !== 'PERPETUAL') {
         throw ApiError_1.ApiError.badRequest(`${fieldName} must be PERIODIC or PERPETUAL`);
     }
 };
+const ensureAccountingMode = (value, fieldName) => {
+    ensureRequiredString(value, fieldName);
+    if (value !== 'INVOICE_DRIVEN' && value !== 'PERPETUAL') {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be INVOICE_DRIVEN or PERPETUAL`);
+    }
+};
 const validateInitializeInventoryInput = (body) => {
-    ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
-    if (body.inventoryAccountingMethod === 'PERPETUAL') {
+    if (body.accountingMode !== undefined) {
+        ensureAccountingMode(body.accountingMode, 'accountingMode');
+    }
+    if (body.inventoryAccountingMethod !== undefined) {
+        ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
+    }
+    const effectiveAccountingMode = body.accountingMode
+        || (body.inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN');
+    if (effectiveAccountingMode === 'PERPETUAL') {
         ensureUuid(body.defaultInventoryAssetAccountId, 'defaultInventoryAssetAccountId');
     }
     if (body.defaultCOGSAccountId !== undefined) {
@@ -52,12 +82,10 @@ const validateInitializeInventoryInput = (body) => {
     if (body.defaultCostCurrency !== undefined && typeof body.defaultCostCurrency !== 'string') {
         throw ApiError_1.ApiError.badRequest('defaultCostCurrency must be a string');
     }
-    if (body.allowNegativeStock !== undefined && typeof body.allowNegativeStock !== 'boolean') {
-        throw ApiError_1.ApiError.badRequest('allowNegativeStock must be boolean');
-    }
-    if (body.autoGenerateItemCode !== undefined && typeof body.autoGenerateItemCode !== 'boolean') {
-        throw ApiError_1.ApiError.badRequest('autoGenerateItemCode must be boolean');
-    }
+    if (body.allowNegativeStock !== undefined)
+        ensureBoolean(body.allowNegativeStock, 'allowNegativeStock');
+    if (body.autoGenerateItemCode !== undefined)
+        ensureBoolean(body.autoGenerateItemCode, 'autoGenerateItemCode');
     if (body.itemCodePrefix !== undefined && typeof body.itemCodePrefix !== 'string') {
         throw ApiError_1.ApiError.badRequest('itemCodePrefix must be a string');
     }
@@ -72,11 +100,19 @@ const validateCreateItemInput = (body) => {
     ensureRequiredString(body.code, 'code');
     ensureRequiredString(body.name, 'name');
     ensureRequiredString(body.type, 'type');
-    ensureRequiredString(body.baseUom, 'baseUom');
-    ensureRequiredString(body.costCurrency, 'costCurrency');
-    if (typeof body.trackInventory !== 'boolean') {
-        throw ApiError_1.ApiError.badRequest('trackInventory must be boolean');
+    if (body.baseUomId === undefined && body.baseUom === undefined) {
+        throw ApiError_1.ApiError.badRequest('baseUom or baseUomId is required');
     }
+    if (body.baseUom !== undefined)
+        ensureRequiredString(body.baseUom, 'baseUom');
+    if (body.baseUomId !== undefined)
+        ensureRequiredString(body.baseUomId, 'baseUomId');
+    ensureOptionalString(body.purchaseUom, 'purchaseUom');
+    ensureOptionalString(body.purchaseUomId, 'purchaseUomId');
+    ensureOptionalString(body.salesUom, 'salesUom');
+    ensureOptionalString(body.salesUomId, 'salesUomId');
+    ensureRequiredString(body.costCurrency, 'costCurrency');
+    ensureBoolean(body.trackInventory, 'trackInventory');
 };
 exports.validateCreateItemInput = validateCreateItemInput;
 const validateUpdateItemInput = (body) => {
@@ -84,8 +120,18 @@ const validateUpdateItemInput = (body) => {
         ensureRequiredString(body.code, 'code');
     if (body.name !== undefined)
         ensureRequiredString(body.name, 'name');
+    if (body.baseUom !== undefined)
+        ensureRequiredString(body.baseUom, 'baseUom');
+    if (body.baseUomId !== undefined)
+        ensureRequiredString(body.baseUomId, 'baseUomId');
+    ensureOptionalString(body.purchaseUom, 'purchaseUom');
+    ensureOptionalString(body.purchaseUomId, 'purchaseUomId');
+    ensureOptionalString(body.salesUom, 'salesUom');
+    ensureOptionalString(body.salesUomId, 'salesUomId');
     if (body.costCurrency !== undefined)
         ensureRequiredString(body.costCurrency, 'costCurrency');
+    if (body.trackInventory !== undefined)
+        ensureBoolean(body.trackInventory, 'trackInventory');
 };
 exports.validateUpdateItemInput = validateUpdateItemInput;
 const validateCreateCategoryInput = (body) => {
@@ -97,6 +143,35 @@ const validateUpdateCategoryInput = (body) => {
         ensureRequiredString(body.name, 'name');
 };
 exports.validateUpdateCategoryInput = validateUpdateCategoryInput;
+const validateCreateUomInput = (body) => {
+    ensureRequiredString(body.code, 'code');
+    ensureRequiredString(body.name, 'name');
+    ensureUomDimension(body.dimension, 'dimension');
+    if (body.decimalPlaces !== undefined) {
+        if (!Number.isInteger(body.decimalPlaces) || body.decimalPlaces < 0 || body.decimalPlaces > 6) {
+            throw ApiError_1.ApiError.badRequest('decimalPlaces must be an integer between 0 and 6');
+        }
+    }
+    if (body.active !== undefined)
+        ensureBoolean(body.active, 'active');
+};
+exports.validateCreateUomInput = validateCreateUomInput;
+const validateUpdateUomInput = (body) => {
+    if (body.code !== undefined)
+        ensureRequiredString(body.code, 'code');
+    if (body.name !== undefined)
+        ensureRequiredString(body.name, 'name');
+    if (body.dimension !== undefined)
+        ensureUomDimension(body.dimension, 'dimension');
+    if (body.decimalPlaces !== undefined) {
+        if (!Number.isInteger(body.decimalPlaces) || body.decimalPlaces < 0 || body.decimalPlaces > 6) {
+            throw ApiError_1.ApiError.badRequest('decimalPlaces must be an integer between 0 and 6');
+        }
+    }
+    if (body.active !== undefined)
+        ensureBoolean(body.active, 'active');
+};
+exports.validateUpdateUomInput = validateUpdateUomInput;
 const validateCreateWarehouseInput = (body) => {
     ensureRequiredString(body.name, 'name');
     ensureRequiredString(body.code, 'code');
@@ -116,11 +191,56 @@ const validateUpdateWarehouseInput = (body) => {
 exports.validateUpdateWarehouseInput = validateUpdateWarehouseInput;
 const validateCreateUomConversionInput = (body) => {
     ensureRequiredString(body.itemId, 'itemId');
-    ensureRequiredString(body.fromUom, 'fromUom');
-    ensureRequiredString(body.toUom, 'toUom');
+    if (body.fromUomId === undefined && body.fromUom === undefined) {
+        throw ApiError_1.ApiError.badRequest('fromUom or fromUomId is required');
+    }
+    if (body.toUomId === undefined && body.toUom === undefined) {
+        throw ApiError_1.ApiError.badRequest('toUom or toUomId is required');
+    }
+    if (body.fromUom !== undefined)
+        ensureRequiredString(body.fromUom, 'fromUom');
+    if (body.fromUomId !== undefined)
+        ensureRequiredString(body.fromUomId, 'fromUomId');
+    if (body.toUom !== undefined)
+        ensureRequiredString(body.toUom, 'toUom');
+    if (body.toUomId !== undefined)
+        ensureRequiredString(body.toUomId, 'toUomId');
     ensurePositiveNumber(body.factor, 'factor');
 };
 exports.validateCreateUomConversionInput = validateCreateUomConversionInput;
+const validateUpdateUomConversionInput = (body) => {
+    if (body.itemId !== undefined)
+        ensureRequiredString(body.itemId, 'itemId');
+    if (body.fromUom !== undefined)
+        ensureRequiredString(body.fromUom, 'fromUom');
+    if (body.fromUomId !== undefined)
+        ensureRequiredString(body.fromUomId, 'fromUomId');
+    if (body.toUom !== undefined)
+        ensureRequiredString(body.toUom, 'toUom');
+    if (body.toUomId !== undefined)
+        ensureRequiredString(body.toUomId, 'toUomId');
+    if (body.factor !== undefined)
+        ensurePositiveNumber(body.factor, 'factor');
+    if (body.active !== undefined)
+        ensureBoolean(body.active, 'active');
+};
+exports.validateUpdateUomConversionInput = validateUpdateUomConversionInput;
+const validateUomConversionImpactQuery = (query) => {
+    if (query.proposedFactor === undefined)
+        return;
+    const proposedFactor = Number(query.proposedFactor);
+    if (!Number.isFinite(proposedFactor) || proposedFactor <= 0) {
+        throw ApiError_1.ApiError.badRequest('proposedFactor must be a positive number');
+    }
+};
+exports.validateUomConversionImpactQuery = validateUomConversionImpactQuery;
+const validateApplyUomConversionCorrectionInput = (body) => {
+    const newFactor = Number(body.newFactor);
+    if (!Number.isFinite(newFactor) || newFactor <= 0) {
+        throw ApiError_1.ApiError.badRequest('newFactor must be a positive number');
+    }
+};
+exports.validateApplyUomConversionCorrectionInput = validateApplyUomConversionCorrectionInput;
 const validateOpeningMovementInput = (body) => {
     ensureRequiredString(body.itemId, 'itemId');
     ensureRequiredString(body.warehouseId, 'warehouseId');
@@ -211,6 +331,9 @@ const validateMovementByReferenceQuery = (query) => {
 };
 exports.validateMovementByReferenceQuery = validateMovementByReferenceQuery;
 const validateUpdateSettingsInput = (body) => {
+    if (body.accountingMode !== undefined) {
+        ensureAccountingMode(body.accountingMode, 'accountingMode');
+    }
     if (body.inventoryAccountingMethod !== undefined) {
         ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
     }
@@ -234,9 +357,8 @@ const validateCreateOpeningStockDocumentInput = (body) => {
     if (body.notes !== undefined && typeof body.notes !== 'string') {
         throw ApiError_1.ApiError.badRequest('notes must be a string');
     }
-    if (body.createAccountingEffect !== undefined && typeof body.createAccountingEffect !== 'boolean') {
-        throw ApiError_1.ApiError.badRequest('createAccountingEffect must be boolean');
-    }
+    if (body.createAccountingEffect !== undefined)
+        ensureBoolean(body.createAccountingEffect, 'createAccountingEffect');
     if (body.createAccountingEffect === true) {
         ensureRequiredString(body.openingBalanceAccountId, 'openingBalanceAccountId');
     }

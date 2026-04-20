@@ -15,6 +15,9 @@ export type FieldType =
   | 'TEXTAREA' 
   | 'RELATION' // For picking a Customer, Item, etc.
   | 'account-selector' // Custom business component
+  | 'party-selector' // New premium party selector
+  | 'item-selector' // New item selector
+  | 'warehouse-selector' // New warehouse selector
   | 'cost-center-selector' // Custom business component
   | 'currency-exchange'; // Custom business component
 

@@ -12,6 +12,12 @@ import {
   UpdateItemUseCase,
 } from '../../../application/inventory/use-cases/ItemUseCases';
 import {
+  CreateUomUseCase,
+  GetUomUseCase,
+  ListUomsUseCase,
+  UpdateUomUseCase,
+} from '../../../application/inventory/use-cases/UomUseCases';
+import {
   CreateWarehouseUseCase,
   GetWarehouseUseCase,
   ListWarehousesUseCase,
@@ -19,6 +25,7 @@ import {
 } from '../../../application/inventory/use-cases/WarehouseUseCases';
 import { ManageCategoriesUseCase } from '../../../application/inventory/use-cases/CategoryUseCases';
 import { ManageUomConversionsUseCase } from '../../../application/inventory/use-cases/UomConversionUseCases';
+import { AnalyzeUomConversionImpactUseCase } from '../../../application/inventory/use-cases/UomConversionGovernanceUseCases';
 import {
   CreateOpeningStockDocumentUseCase,
   DeleteOpeningStockDocumentUseCase,
@@ -61,6 +68,7 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import {
+  validateApplyUomConversionCorrectionInput,
   validateCreateCategoryInput,
   validateCreateItemInput,
   validateCreateOpeningStockDocumentInput,
@@ -68,9 +76,11 @@ import {
   validateCreateStockAdjustmentInput,
   validateCreateStockReservationInput,
   validateCreateStockTransferInput,
+  validateCreateUomInput,
   validateCreateUomConversionInput,
   validateCreateWarehouseInput,
   validateInitializeInventoryInput,
+  validateUomConversionImpactQuery,
   validateMovementByReferenceQuery,
   validateOpeningMovementInput,
   validateProcessReturnInput,
@@ -78,9 +88,12 @@ import {
   validateUpdateItemInput,
   validateUpdateOpeningStockDocumentInput,
   validateUpdateSettingsInput,
+  validateUpdateUomConversionInput,
+  validateUpdateUomInput,
   validateUpdateWarehouseInput,
 } from '../../validators/inventory.validators';
 import { InventorySettings } from '../../../domain/inventory/entities/InventorySettings';
+import { DocumentPolicyResolver } from '../../../application/common/services/DocumentPolicyResolver';
 
 export class InventoryController {
   private static getCompanyId(req: Request): string {
@@ -117,6 +130,20 @@ export class InventoryController {
     );
   }
 
+  private static buildUomImpactUseCase(): AnalyzeUomConversionImpactUseCase {
+    return new AnalyzeUomConversionImpactUseCase(
+      diContainer.uomConversionRepository,
+      diContainer.itemRepository,
+      diContainer.stockMovementRepository,
+      diContainer.goodsReceiptRepository,
+      diContainer.purchaseInvoiceRepository,
+      diContainer.purchaseReturnRepository,
+      diContainer.deliveryNoteRepository,
+      diContainer.salesInvoiceRepository,
+      diContainer.salesReturnRepository
+    );
+  }
+
   static async initialize(req: Request, res: Response, next: NextFunction) {
     try {
       validateInitializeInventoryInput((req as any).body);
@@ -127,6 +154,7 @@ export class InventoryController {
         diContainer.companyRepository,
         diContainer.inventorySettingsRepository,
         diContainer.warehouseRepository,
+        diContainer.uomRepository,
         diContainer.companyModuleRepository
       );
 
@@ -141,6 +169,7 @@ export class InventoryController {
         itemCodePrefix: (req as any).body.itemCodePrefix,
         itemCodeNextSeq: (req as any).body.itemCodeNextSeq,
         defaultCOGSAccountId: (req as any).body.defaultCOGSAccountId,
+        accountingMode: (req as any).body.accountingMode,
         inventoryAccountingMethod: (req as any).body.inventoryAccountingMethod,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId,
       });
@@ -179,19 +208,31 @@ export class InventoryController {
       const company = await diContainer.companyRepository.findById(companyId);
       if (!company) throw new Error(`Company not found: ${companyId}`);
 
+      const requestedAccountingMode = (req as any).body.accountingMode
+        || (
+          (req as any).body.inventoryAccountingMethod
+            ? DocumentPolicyResolver.legacyInventoryMethodToAccountingMode((req as any).body.inventoryAccountingMethod)
+            : undefined
+        );
+
       if (
-        (req as any).body.inventoryAccountingMethod &&
-        current?.inventoryAccountingMethod &&
-        (req as any).body.inventoryAccountingMethod !== current.inventoryAccountingMethod
+        requestedAccountingMode &&
+        current &&
+        requestedAccountingMode !== DocumentPolicyResolver.resolveAccountingMode(current)
       ) {
         throw ApiError.badRequest(
-          'The inventory accounting method (PERIODIC / PERPETUAL) cannot be changed after initialization.'
+          'The inventory accounting mode cannot be changed after initialization.'
         );
       }
 
+      const effectiveAccountingMode = current
+        ? DocumentPolicyResolver.resolveAccountingMode(current)
+        : requestedAccountingMode || 'PERPETUAL';
+
       const settings = new InventorySettings({
         companyId,
-        inventoryAccountingMethod: current?.inventoryAccountingMethod || 'PERPETUAL',
+        accountingMode: effectiveAccountingMode,
+        inventoryAccountingMethod: DocumentPolicyResolver.accountingModeToLegacyInventoryMethod(effectiveAccountingMode),
         defaultCostingMethod: 'MOVING_AVG',
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId ?? current?.defaultInventoryAssetAccountId,
@@ -222,7 +263,11 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
 
-      const useCase = new CreateItemUseCase(diContainer.itemRepository, diContainer.itemCategoryRepository);
+      const useCase = new CreateItemUseCase(
+        diContainer.itemRepository,
+        diContainer.itemCategoryRepository,
+        diContainer.uomRepository
+      );
       const item = await useCase.execute({
         ...(req as any).body,
         companyId,
@@ -301,7 +346,7 @@ export class InventoryController {
   static async updateItem(req: Request, res: Response, next: NextFunction) {
     try {
       validateUpdateItemInput((req as any).body);
-      const useCase = new UpdateItemUseCase(diContainer.itemRepository);
+      const useCase = new UpdateItemUseCase(diContainer.itemRepository, diContainer.uomRepository);
       const item = await useCase.execute((req as any).params.id, (req as any).body);
       (res as any).json({
         success: true,
@@ -458,11 +503,94 @@ export class InventoryController {
     }
   }
 
+  static async createUom(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateCreateUomInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+      const useCase = new CreateUomUseCase(diContainer.uomRepository);
+      const uom = await useCase.execute({
+        companyId,
+        createdBy: userId,
+        ...((req as any).body || {}),
+      });
+
+      (res as any).status(201).json({
+        success: true,
+        data: InventoryDTOMapper.toUomDTO(uom),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listUoms(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new ListUomsUseCase(diContainer.uomRepository);
+      const uoms = await useCase.execute(companyId, {
+        active: (req as any).query.active === undefined
+          ? undefined
+          : String((req as any).query.active) === 'true',
+        limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
+        offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
+      });
+
+      (res as any).json({
+        success: true,
+        data: uoms.map(InventoryDTOMapper.toUomDTO),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUom(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new GetUomUseCase(diContainer.uomRepository);
+      const uom = await useCase.execute((req as any).params.id);
+
+      if (uom && uom.companyId !== companyId) {
+        throw ApiError.notFound('UOM not found');
+      }
+
+      (res as any).json({
+        success: true,
+        data: uom ? InventoryDTOMapper.toUomDTO(uom) : null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateUom(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateUomInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const getUseCase = new GetUomUseCase(diContainer.uomRepository);
+      const current = await getUseCase.execute((req as any).params.id);
+      if (!current || current.companyId !== companyId) {
+        throw ApiError.notFound('UOM not found');
+      }
+
+      const useCase = new UpdateUomUseCase(diContainer.uomRepository);
+      const uom = await useCase.execute((req as any).params.id, (req as any).body);
+
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toUomDTO(uom),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async createUomConversion(req: Request, res: Response, next: NextFunction) {
     try {
       validateCreateUomConversionInput((req as any).body);
       const companyId = InventoryController.getCompanyId(req);
-      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository);
+      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
       const conversion = await useCase.create({
         companyId,
         ...(req as any).body,
@@ -481,12 +609,287 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const itemId = (req as any).params.itemId;
-      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository);
+      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
       const conversions = await useCase.listForItem(companyId, itemId);
 
       (res as any).json({
         success: true,
         data: conversions.map(InventoryDTOMapper.toUomConversionDTO),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getUomConversionImpact(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUomConversionImpactQuery((req as any).query);
+      const companyId = InventoryController.getCompanyId(req);
+      const conversionId = String((req as any).params.id);
+      const proposedFactorRaw = (req as any).query.proposedFactor;
+      const proposedFactor = proposedFactorRaw === undefined ? undefined : Number(proposedFactorRaw);
+
+      const useCase = InventoryController.buildUomImpactUseCase();
+      const report = await useCase.execute({
+        companyId,
+        conversionId,
+        proposedFactor,
+      });
+
+      (res as any).json({
+        success: true,
+        data: report,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateUomConversion(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateUomConversionInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const conversionId = String((req as any).params.id);
+      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
+      const current = await useCase.get(conversionId);
+      if (!current || current.companyId !== companyId) {
+        throw ApiError.notFound('UOM conversion not found');
+      }
+
+      const impactUseCase = InventoryController.buildUomImpactUseCase();
+      const impact = await impactUseCase.execute({
+        companyId,
+        conversionId,
+      });
+      if (impact.used) {
+        throw ApiError.conflict(
+          'This conversion is already used in posted stock movements and cannot be edited directly. '
+          + 'Use impact analysis and smart correction, or manually reverse related documents first.'
+        );
+      }
+
+      const conversion = await useCase.update(conversionId, (req as any).body);
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toUomConversionDTO(conversion),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteUomConversion(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const conversionId = String((req as any).params.id);
+      const useCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
+      const current = await useCase.get(conversionId);
+      if (!current || current.companyId !== companyId) {
+        throw ApiError.notFound('UOM conversion not found');
+      }
+
+      const impactUseCase = InventoryController.buildUomImpactUseCase();
+      const impact = await impactUseCase.execute({
+        companyId,
+        conversionId,
+      });
+      if (impact.used) {
+        throw ApiError.conflict(
+          'This conversion is already used in posted stock movements and cannot be deleted. '
+          + 'Use impact analysis and smart correction, or manually reverse related documents first.'
+        );
+      }
+
+      await useCase.delete(conversionId);
+      (res as any).json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async applyUomConversionCorrection(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateApplyUomConversionCorrectionInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+      const conversionId = String((req as any).params.id);
+      const newFactor = Number((req as any).body.newFactor);
+      const effectiveDate = String((req as any).body.effectiveDate || new Date().toISOString().slice(0, 10));
+
+      const roundQty = (value: number): number => Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+      const signedQty = (direction: 'IN' | 'OUT', qty: number): number => (direction === 'IN' ? qty : -qty);
+
+      const manageUseCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
+      const current = await manageUseCase.get(conversionId);
+      if (!current || current.companyId !== companyId) {
+        throw ApiError.notFound('UOM conversion not found');
+      }
+
+      const impactUseCase = InventoryController.buildUomImpactUseCase();
+      const impact = await impactUseCase.execute({
+        companyId,
+        conversionId,
+        proposedFactor: newFactor,
+      });
+
+      const correctedMovements = impact.impactedMovements.filter((entry) => (
+        typeof entry.projectedBaseQty === 'number'
+        && Math.abs((entry.projectedBaseQty || 0) - entry.currentBaseQty) > 0.0000001
+      ));
+
+      if (Math.abs(current.factor - newFactor) < 0.0000001 && correctedMovements.length === 0) {
+        (res as any).json({
+          success: true,
+          data: {
+            conversion: InventoryDTOMapper.toUomConversionDTO(current),
+            impact,
+            noChanges: true,
+          },
+        });
+        return;
+      }
+
+      const correctionMetadataRows = await diContainer.stockMovementRepository.getItemMovements(
+        companyId,
+        current.itemId
+      );
+      const appliedDeltaBySourceMovement = new Map<string, number>();
+      correctionMetadataRows.forEach((movement) => {
+        if (movement.referenceType !== 'MANUAL') return;
+        const meta = (movement.metadata?.uomCorrection || {}) as Record<string, any>;
+        if (meta.conversionId !== conversionId) return;
+        const sourceMovementId = typeof meta.sourceMovementId === 'string' ? meta.sourceMovementId : '';
+        if (!sourceMovementId) return;
+        const existing = appliedDeltaBySourceMovement.get(sourceMovementId) || 0;
+        appliedDeltaBySourceMovement.set(
+          sourceMovementId,
+          roundQty(existing + signedQty(movement.direction, movement.qty))
+        );
+      });
+
+      const movementUseCase = InventoryController.buildMovementUseCase();
+      const correctionRunId = `UOM_CORR_${conversionId}_${Date.now()}`;
+
+      let generatedIn = 0;
+      let generatedOut = 0;
+      let generatedNetDeltaBaseQty = 0;
+
+      for (const impacted of correctedMovements) {
+        const sourceMovement = await diContainer.stockMovementRepository.getMovement(impacted.movementId);
+        if (!sourceMovement || sourceMovement.companyId !== companyId) {
+          throw ApiError.notFound(`Source stock movement not found: ${impacted.movementId}`);
+        }
+
+        const projectedBaseQty = impacted.projectedBaseQty as number;
+        const desiredDelta = roundQty(
+          signedQty(sourceMovement.direction, projectedBaseQty) - signedQty(sourceMovement.direction, sourceMovement.qty)
+        );
+        const alreadyAppliedDelta = appliedDeltaBySourceMovement.get(sourceMovement.id) || 0;
+        const remainingDelta = roundQty(desiredDelta - alreadyAppliedDelta);
+        if (Math.abs(remainingDelta) <= 0.0000001) {
+          continue;
+        }
+
+        const correctionMetadata = {
+          conversionId,
+          sourceMovementId: sourceMovement.id,
+          sourceReferenceType: sourceMovement.referenceType,
+          sourceReferenceId: sourceMovement.referenceId,
+          sourceReferenceLineId: sourceMovement.referenceLineId,
+          sourceDirection: sourceMovement.direction,
+          sourceQty: sourceMovement.qty,
+          desiredQty: projectedBaseQty,
+          desiredDeltaBaseQty: desiredDelta,
+          appliedDeltaBaseQty: remainingDelta,
+          effectiveDate,
+          fromFactor: current.factor,
+          toFactor: newFactor,
+          correctedAt: new Date().toISOString(),
+          module: impacted.module,
+        };
+
+        if (remainingDelta > 0) {
+          const fxRateMovToBase = sourceMovement.fxRateMovToBase > 0 ? sourceMovement.fxRateMovToBase : 1;
+          const fxRateCCYToBase = sourceMovement.fxRateCCYToBase > 0 ? sourceMovement.fxRateCCYToBase : fxRateMovToBase;
+          const unitCostInMoveCurrency = sourceMovement.unitCostBase / fxRateMovToBase;
+
+          await movementUseCase.processIN({
+            companyId,
+            itemId: sourceMovement.itemId,
+            warehouseId: sourceMovement.warehouseId,
+            qty: remainingDelta,
+            date: effectiveDate,
+            movementType: 'ADJUSTMENT_IN',
+            refs: {
+              type: 'MANUAL',
+              docId: correctionRunId,
+              lineId: sourceMovement.id,
+            },
+            currentUser: userId,
+            unitCostInMoveCurrency,
+            moveCurrency: sourceMovement.movementCurrency,
+            fxRateMovToBase,
+            fxRateCCYToBase,
+            notes: `UOM correction delta for movement ${sourceMovement.id}`,
+            metadata: {
+              uomCorrection: correctionMetadata,
+            },
+          });
+          generatedIn += 1;
+        } else {
+          await movementUseCase.processOUT({
+            companyId,
+            itemId: sourceMovement.itemId,
+            warehouseId: sourceMovement.warehouseId,
+            qty: Math.abs(remainingDelta),
+            date: effectiveDate,
+            movementType: 'ADJUSTMENT_OUT',
+            refs: {
+              type: 'MANUAL',
+              docId: correctionRunId,
+              lineId: sourceMovement.id,
+            },
+            currentUser: userId,
+            forcedUnitCostBase: sourceMovement.unitCostBase,
+            forcedUnitCostCCY: sourceMovement.unitCostCCY,
+            notes: `UOM correction delta for movement ${sourceMovement.id}`,
+            metadata: {
+              uomCorrection: correctionMetadata,
+            },
+          });
+          generatedOut += 1;
+        }
+
+        generatedNetDeltaBaseQty = roundQty(generatedNetDeltaBaseQty + remainingDelta);
+        appliedDeltaBySourceMovement.set(sourceMovement.id, roundQty(alreadyAppliedDelta + remainingDelta));
+      }
+
+      const updatedConversion = Math.abs(current.factor - newFactor) < 0.0000001
+        ? current
+        : await manageUseCase.update(conversionId, { factor: newFactor });
+
+      const afterImpact = await impactUseCase.execute({
+        companyId,
+        conversionId,
+      });
+
+      (res as any).json({
+        success: true,
+        data: {
+          conversion: InventoryDTOMapper.toUomConversionDTO(updatedConversion),
+          impactBefore: impact,
+          impactAfter: afterImpact,
+          autoFix: {
+            mode: 'STOCK_ONLY_DELTA',
+            correctionRunId,
+            generatedAdjustments: {
+              in: generatedIn,
+              out: generatedOut,
+              netDeltaBaseQty: generatedNetDeltaBaseQty,
+            },
+            notes: 'Commercial invoice/payment values are not modified. Stock is corrected via adjustment delta movements.',
+          },
+        },
       });
     } catch (error) {
       next(error);

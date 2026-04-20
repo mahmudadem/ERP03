@@ -10,7 +10,7 @@ const makeRepo = <T>(data: any) => ({
 });
 
 describe('CloseYearUseCase', () => {
-  it('creates balanced closing entry and marks year closed', async () => {
+  it('creates a draft closing voucher and links it to the fiscal year', async () => {
     const fy = new FiscalYear(
       'FY2026',
       'c1',
@@ -52,7 +52,11 @@ describe('CloseYearUseCase', () => {
 
     const result = await useCase.execute('c1', 'u1', 'FY2026', { retainedEarningsAccountId: 're' });
     expect(result.voucherId).toBeDefined();
-    expect(ledgerRepo.recordForVoucher).toHaveBeenCalled();
+    expect(voucherRepo.save).toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
     expect(fiscalYearRepo.update).toHaveBeenCalled();
+    const updatedFy = fiscalYearRepo.update.mock.calls[0][0];
+    expect(updatedFy.closingVoucherId).toBe(result.voucherId);
+    expect(updatedFy.status).toBe(FiscalYearStatus.OPEN);
   });
 });

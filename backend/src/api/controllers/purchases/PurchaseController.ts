@@ -173,7 +173,8 @@ export class PurchaseController {
         diContainer.accountRepository,
         diContainer.companyModuleRepository,
         diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository
+        diContainer.voucherFormRepository,
+        diContainer.inventorySettingsRepository
       );
 
       const settings = await useCase.execute({
@@ -219,7 +220,8 @@ export class PurchaseController {
         diContainer.purchaseSettingsRepository,
         diContainer.accountRepository,
         diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository
+        diContainer.voucherFormRepository,
+        diContainer.inventorySettingsRepository
       );
 
       const settings = await useCase.execute({
@@ -478,12 +480,15 @@ export class PurchaseController {
 
       const useCase = new PostGoodsReceiptUseCase(
         diContainer.purchaseSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.goodsReceiptRepository,
         diContainer.purchaseOrderRepository,
         diContainer.itemRepository,
         diContainer.warehouseRepository,
         diContainer.uomConversionRepository,
+        diContainer.companyCurrencyRepository,
         inventoryService,
+        PurchaseController.buildAccountingPostingService(),
         diContainer.transactionManager
       );
 
@@ -507,6 +512,7 @@ export class PurchaseController {
         diContainer.goodsReceiptRepository,
         diContainer.purchaseOrderRepository,
         inventoryService,
+        PurchaseController.buildAccountingPostingService(),
         diContainer.transactionManager
       );
 
@@ -809,6 +815,7 @@ export class PurchaseController {
 
       const useCase = new PostPurchaseReturnUseCase(
         diContainer.purchaseSettingsRepository,
+        diContainer.inventorySettingsRepository,
         diContainer.purchaseReturnRepository,
         diContainer.companySettingsRepository,
         diContainer.purchaseInvoiceRepository,

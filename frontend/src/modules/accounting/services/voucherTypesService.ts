@@ -9,17 +9,18 @@ export interface SystemVoucherType {
   name: string;
   code: string;
   prefix: string;
+  module: string;
   description?: string;
   schemaVersion: number;
   isRecommended?: boolean;
 }
 
-export async function loadSystemVoucherTypes(): Promise<SystemVoucherType[]> {
+export async function loadSystemVoucherTypes(moduleFilter?: string): Promise<SystemVoucherType[]> {
   try {
     const vouchersRef = collection(db, 'system_metadata', 'voucher_types', 'items');
     const snapshot = await getDocs(vouchersRef);
     
-    const vouchers: SystemVoucherType[] = [];
+    let vouchers: SystemVoucherType[] = [];
     
     snapshot.forEach(doc => {
       const data = doc.data();
@@ -28,11 +29,17 @@ export async function loadSystemVoucherTypes(): Promise<SystemVoucherType[]> {
         name: data.name || doc.id,
         code: data.code || doc.id.toUpperCase(),
         prefix: data.prefix || '',
+        module: data.module || 'ACCOUNTING',
         description: data.description,
         schemaVersion: data.schemaVersion || 2,
         isRecommended: data.isRecommended || false,
       });
     });
+
+    if (moduleFilter) {
+      vouchers = vouchers.filter(v => v.module === moduleFilter);
+    }
+
     return vouchers;
   } catch (error) {
     console.error('Failed to load system voucher types:', error);

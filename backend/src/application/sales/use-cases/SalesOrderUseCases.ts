@@ -61,6 +61,7 @@ export interface SalesOrderLineInput {
   lineNo?: number;
   itemId: string;
   orderedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -223,6 +224,7 @@ export class CreateSalesOrderUseCase {
       itemType: item.type,
       trackInventory: item.trackInventory,
       orderedQty: lineInput.orderedQty,
+      uomId: lineInput.uomId || item.salesUomId || item.baseUomId,
       uom: lineInput.uom || item.salesUom || item.baseUom,
       deliveredQty: 0,
       invoicedQty: 0,
@@ -270,6 +272,7 @@ export class UpdateSalesOrderUseCase {
           lineNo: line.lineNo,
           itemId: line.itemId,
           orderedQty: line.orderedQty,
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -347,6 +350,7 @@ export class UpdateSalesOrderUseCase {
       itemType: item.type,
       trackInventory: item.trackInventory,
       orderedQty: lineInput.orderedQty,
+      uomId: lineInput.uomId || currentLine?.uomId || item.salesUomId || item.baseUomId,
       uom: lineInput.uom || item.salesUom || item.baseUom,
       deliveredQty: currentLine?.deliveredQty ?? 0,
       invoicedQty: currentLine?.invoicedQty ?? 0,

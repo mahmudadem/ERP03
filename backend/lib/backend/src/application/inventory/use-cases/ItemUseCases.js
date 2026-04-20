@@ -3,10 +3,66 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeleteItemUseCase = exports.ListItemsUseCase = exports.GetItemUseCase = exports.UpdateItemUseCase = exports.CreateItemUseCase = void 0;
 const Item_1 = require("../../../domain/inventory/entities/Item");
 const crypto_1 = require("crypto");
+const trimOrUndefined = (value) => {
+    if (typeof value !== 'string')
+        return undefined;
+    const trimmed = value.trim();
+    return trimmed || undefined;
+};
+const stripUndefined = (value) => {
+    Object.keys(value).forEach((key) => {
+        if (value[key] === undefined) {
+            delete value[key];
+        }
+    });
+    return value;
+};
+const resolveManagedUom = async (companyId, repo, fieldName, uomId, uomCode, required = false) => {
+    var _a;
+    const normalizedId = trimOrUndefined(uomId);
+    const normalizedCode = (_a = trimOrUndefined(uomCode)) === null || _a === void 0 ? void 0 : _a.toUpperCase();
+    if (repo) {
+        if (normalizedId) {
+            const selected = await repo.getUom(normalizedId);
+            if (!selected || selected.companyId !== companyId) {
+                throw new Error(`${fieldName} UOM not found: ${normalizedId}`);
+            }
+            return { uomId: selected.id, uom: selected.code };
+        }
+        if (normalizedCode) {
+            const selected = await repo.getUomByCode(companyId, normalizedCode);
+            if (!selected) {
+                throw new Error(`${fieldName} UOM not found: ${normalizedCode}`);
+            }
+            return { uomId: selected.id, uom: selected.code };
+        }
+    }
+    if (normalizedCode) {
+        return { uomId: normalizedId, uom: normalizedCode };
+    }
+    if (required) {
+        throw new Error(`${fieldName} UOM is required`);
+    }
+    return { uomId: normalizedId };
+};
+const resolveItemUomFields = async (companyId, data, repo) => {
+    const base = await resolveManagedUom(companyId, repo, 'base', data.baseUomId, data.baseUom, true);
+    const purchase = await resolveManagedUom(companyId, repo, 'purchase', data.purchaseUomId, data.purchaseUom, false);
+    const sales = await resolveManagedUom(companyId, repo, 'sales', data.salesUomId, data.salesUom, false);
+    return stripUndefined({
+        baseUomId: base.uomId,
+        baseUom: base.uom,
+        purchaseUomId: purchase.uomId,
+        purchaseUom: purchase.uom,
+        salesUomId: sales.uomId,
+        salesUom: sales.uom,
+    });
+};
 class CreateItemUseCase {
-    constructor(itemRepo, categoryRepo) {
+    constructor(itemRepo, categoryRepo, uomRepo) {
         this.itemRepo = itemRepo;
         this.categoryRepo = categoryRepo;
+        this.uomRepo = uomRepo;
     }
     async execute(data) {
         const existing = await this.itemRepo.getItemByCode(data.companyId, data.code);
@@ -24,6 +80,10 @@ class CreateItemUseCase {
                 inventoryAssetAccountId = inventoryAssetAccountId || category.defaultInventoryAssetAccountId;
             }
         }
+        const uomFields = await resolveItemUomFields(data.companyId, data, this.uomRepo);
+        if (!uomFields.baseUom) {
+            throw new Error('base UOM is required');
+        }
         const now = new Date();
         const item = new Item_1.Item({
             id: (0, crypto_1.randomUUID)(),
@@ -36,9 +96,12 @@ class CreateItemUseCase {
             categoryId: data.categoryId,
             brand: data.brand,
             tags: data.tags,
-            baseUom: data.baseUom,
-            purchaseUom: data.purchaseUom,
-            salesUom: data.salesUom,
+            baseUomId: uomFields.baseUomId,
+            baseUom: uomFields.baseUom,
+            purchaseUomId: uomFields.purchaseUomId,
+            purchaseUom: uomFields.purchaseUom,
+            salesUomId: uomFields.salesUomId,
+            salesUom: uomFields.salesUom,
             costCurrency: data.costCurrency,
             costingMethod: 'MOVING_AVG',
             trackInventory: data.trackInventory,
@@ -59,8 +122,9 @@ class CreateItemUseCase {
 }
 exports.CreateItemUseCase = CreateItemUseCase;
 class UpdateItemUseCase {
-    constructor(repo) {
+    constructor(repo, uomRepo) {
         this.repo = repo;
+        this.uomRepo = uomRepo;
     }
     async execute(id, data) {
         const current = await this.repo.getItem(id);
@@ -71,7 +135,16 @@ class UpdateItemUseCase {
             const hasMovements = await this.repo.hasMovements(current.companyId, current.id);
             current.assertCostCurrencyChangeAllowed(data.costCurrency, hasMovements);
         }
-        await this.repo.updateItem(id, data);
+        const hasAnyUomField = data.baseUom !== undefined
+            || data.baseUomId !== undefined
+            || data.purchaseUom !== undefined
+            || data.purchaseUomId !== undefined
+            || data.salesUom !== undefined
+            || data.salesUomId !== undefined;
+        const uomFields = hasAnyUomField
+            ? await resolveItemUomFields(current.companyId, Object.assign(Object.assign({}, current), data), this.uomRepo)
+            : {};
+        await this.repo.updateItem(id, stripUndefined(Object.assign(Object.assign(Object.assign({}, data), uomFields), { updatedAt: new Date() })));
         const updated = await this.repo.getItem(id);
         if (!updated)
             throw new Error(`Item not found after update: ${id}`);

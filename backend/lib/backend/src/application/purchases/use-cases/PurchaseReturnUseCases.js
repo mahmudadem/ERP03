@@ -2,9 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListPurchaseReturnsUseCase = exports.GetPurchaseReturnUseCase = exports.UnpostPurchaseReturnUseCase = exports.UpdatePurchaseReturnUseCase = exports.PostPurchaseReturnUseCase = exports.CreatePurchaseReturnUseCase = void 0;
 const crypto_1 = require("crypto");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const PurchaseReturn_1 = require("../../../domain/purchases/entities/PurchaseReturn");
+const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const PurchaseOrderUseCases_1 = require("./PurchaseOrderUseCases");
 const PurchasePostingHelpers_1 = require("./PurchasePostingHelpers");
 const determineReturnContext = (input) => {
@@ -191,7 +193,8 @@ class CreatePurchaseReturnUseCase {
             itemCode: invoiceLine.itemCode,
             itemName: invoiceLine.itemName,
             returnQty,
-            uom: invoiceLine.uom,
+            uomId: (inputLine === null || inputLine === void 0 ? void 0 : inputLine.uomId) || invoiceLine.uomId,
+            uom: (inputLine === null || inputLine === void 0 ? void 0 : inputLine.uom) || invoiceLine.uom,
             unitCostDoc: invoiceLine.unitPriceDoc,
             unitCostBase: invoiceLine.unitPriceBase,
             fxRateMovToBase: exchangeRate,
@@ -218,7 +221,8 @@ class CreatePurchaseReturnUseCase {
             itemCode: grnLine.itemCode,
             itemName: grnLine.itemName,
             returnQty,
-            uom: grnLine.uom,
+            uomId: (inputLine === null || inputLine === void 0 ? void 0 : inputLine.uomId) || grnLine.uomId,
+            uom: (inputLine === null || inputLine === void 0 ? void 0 : inputLine.uom) || grnLine.uom,
             unitCostDoc: grnLine.unitCostDoc,
             unitCostBase: grnLine.unitCostBase,
             fxRateMovToBase: grnLine.fxRateMovToBase,
@@ -251,6 +255,7 @@ class CreatePurchaseReturnUseCase {
                 itemCode: item.code,
                 itemName: item.name,
                 returnQty: qty,
+                uomId: input.uomId || item.purchaseUomId || item.baseUomId,
                 uom: input.uom || item.purchaseUom || item.baseUom,
                 unitCostDoc: unitCost,
                 unitCostBase: 0,
@@ -267,8 +272,9 @@ class CreatePurchaseReturnUseCase {
 }
 exports.CreatePurchaseReturnUseCase = CreatePurchaseReturnUseCase;
 class PostPurchaseReturnUseCase {
-    constructor(settingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
         this.purchaseReturnRepo = purchaseReturnRepo;
         this.companySettingsRepo = companySettingsRepo;
         this.purchaseInvoiceRepo = purchaseInvoiceRepo;
@@ -287,6 +293,8 @@ class PostPurchaseReturnUseCase {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
+        const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
         const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
         if (!purchaseReturn)
             throw new Error(`Purchase return not found: ${id}`);
@@ -295,6 +303,7 @@ class PostPurchaseReturnUseCase {
         }
         const isAfterInvoice = purchaseReturn.returnContext === 'AFTER_INVOICE';
         const isDirect = purchaseReturn.returnContext === 'DIRECT';
+        const shouldCreateVoucher = DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPurchaseReturnCreateVoucher(accountingMode, purchaseReturn.returnContext);
         let purchaseInvoice = null;
         let goodsReceipt = null;
         let purchaseOrder = null;
@@ -390,6 +399,8 @@ class PostPurchaseReturnUseCase {
                     line.unitCostDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc || sourceLine.unitCostDoc);
                     line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostBase || sourceLine.unitCostBase);
                     line.taxRate = 0;
+                    line.taxCodeId = undefined;
+                    line.taxCode = undefined;
                 }
                 else if (isDirect) {
                     line.accountId = line.accountId || settings.defaultPurchaseExpenseAccountId;
@@ -404,7 +415,8 @@ class PostPurchaseReturnUseCase {
                 line.taxAmountDoc = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalDoc * (line.taxRate || 0));
                 line.taxAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalBase * (line.taxRate || 0));
                 if (item.trackInventory) {
-                    const qtyInBaseUom = await this.convertToBaseUom(companyId, line.returnQty, line.uom, item.baseUom, item.id, item.code);
+                    const conversionResult = await this.convertToBaseUom(companyId, line.returnQty, line.uomId, line.uom, item);
+                    const qtyInBaseUom = conversionResult.qtyInBaseUom;
                     const reversesMovementId = this.findOriginalMovementId(line, purchaseInvoice, goodsReceipt, originalMovementByGRNLineId);
                     const movement = await this.inventoryService.processOUT({
                         companyId,
@@ -420,16 +432,31 @@ class PostPurchaseReturnUseCase {
                             reversesMovementId,
                         },
                         currentUser: purchaseReturn.createdBy,
+                        metadata: {
+                            uomConversion: {
+                                conversionId: conversionResult.trace.conversionId,
+                                mode: conversionResult.trace.mode,
+                                appliedFactor: conversionResult.trace.factor,
+                                sourceQty: line.returnQty,
+                                sourceUomId: line.uomId,
+                                sourceUom: line.uom,
+                                baseUomId: item.baseUomId,
+                                baseUom: item.baseUom,
+                            },
+                        },
                         transaction,
                     });
                     line.stockMovementId = movement.id;
                 }
-                if (isAfterInvoice) {
-                    if (!line.accountId) {
+                if (isAfterInvoice && shouldCreateVoucher) {
+                    const creditAccountId = item.trackInventory
+                        ? this.resolveInventoryAccount(item, inventorySettings === null || inventorySettings === void 0 ? void 0 : inventorySettings.defaultInventoryAssetAccountId)
+                        : line.accountId;
+                    if (!creditAccountId) {
                         throw new Error(`accountId is required for AFTER_INVOICE return line ${line.lineId}`);
                     }
                     voucherLines.push({
-                        accountId: line.accountId,
+                        accountId: creditAccountId,
                         side: 'Credit',
                         baseAmount: lineTotalBase,
                         docAmount: lineTotalDoc,
@@ -462,7 +489,24 @@ class PostPurchaseReturnUseCase {
                         });
                     }
                 }
-                else if (isDirect) {
+                else if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && shouldCreateVoucher) {
+                    const inventoryAccountId = this.resolveInventoryAccount(item, inventorySettings === null || inventorySettings === void 0 ? void 0 : inventorySettings.defaultInventoryAssetAccountId);
+                    voucherLines.push({
+                        accountId: inventoryAccountId,
+                        side: 'Credit',
+                        baseAmount: lineTotalBase,
+                        docAmount: lineTotalDoc,
+                        notes: `Return before invoice: ${line.itemName} x ${line.returnQty}`,
+                        metadata: {
+                            sourceModule: 'purchases',
+                            sourceType: 'PURCHASE_RETURN',
+                            sourceId: purchaseReturn.id,
+                            lineId: line.lineId,
+                            itemId: line.itemId,
+                        },
+                    });
+                }
+                else if (isDirect && shouldCreateVoucher) {
                     if (!line.accountId)
                         throw new Error(`Account is required for direct return line ${line.lineId}`);
                     voucherLines.push({
@@ -565,6 +609,44 @@ class PostPurchaseReturnUseCase {
                     await this.purchaseInvoiceRepo.update(invoice, transaction);
                 }
             }
+            else if (shouldCreateVoucher) {
+                if (!settings.defaultGRNIAccountId) {
+                    throw new Error('Default GRNI account is required for perpetual goods-return reversals before invoice.');
+                }
+                voucherLines.push({
+                    accountId: settings.defaultGRNIAccountId,
+                    side: 'Debit',
+                    baseAmount: purchaseReturn.grandTotalBase,
+                    docAmount: purchaseReturn.grandTotalDoc,
+                    notes: `GRNI reversal - ${purchaseReturn.vendorName} - Return ${purchaseReturn.returnNumber}`,
+                    metadata: {
+                        sourceModule: 'purchases',
+                        sourceType: 'PURCHASE_RETURN',
+                        sourceId: purchaseReturn.id,
+                        vendorId: purchaseReturn.vendorId,
+                    },
+                });
+                const voucher = await this.accountingPostingService.postInTransaction({
+                    companyId,
+                    voucherType: VoucherTypes_1.VoucherType.PURCHASE_RETURN,
+                    voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+                    date: purchaseReturn.returnDate,
+                    description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+                    currency: purchaseReturn.currency,
+                    exchangeRate: purchaseReturn.exchangeRate,
+                    lines: voucherLines,
+                    metadata: {
+                        sourceModule: 'purchases',
+                        sourceType: 'PURCHASE_RETURN',
+                        sourceId: purchaseReturn.id,
+                        originType: 'purchase_return',
+                    },
+                    createdBy: purchaseReturn.createdBy,
+                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
+                    reference: purchaseReturn.returnNumber,
+                }, transaction);
+                purchaseReturn.voucherId = voucher.id;
+            }
             else {
                 purchaseReturn.voucherId = null;
             }
@@ -586,6 +668,13 @@ class PostPurchaseReturnUseCase {
     resolveAPAccount(vendor, defaultAPAccountId) {
         return vendor.defaultAPAccountId || defaultAPAccountId;
     }
+    resolveInventoryAccount(item, defaultInventoryAccountId) {
+        const inventoryAccountId = item.inventoryAssetAccountId || defaultInventoryAccountId;
+        if (!inventoryAccountId) {
+            throw new Error(`No inventory account configured for item ${item.code}`);
+        }
+        return inventoryAccountId;
+    }
     async resolvePurchaseTaxAccount(companyId, taxCodeId) {
         if (!taxCodeId)
             throw new Error('taxCodeId is required for tax reversal line');
@@ -597,24 +686,17 @@ class PostPurchaseReturnUseCase {
         }
         return taxCode.purchaseTaxAccountId;
     }
-    async convertToBaseUom(companyId, qty, uom, baseUom, itemId, itemCode) {
-        if (uom.toUpperCase() === baseUom.toUpperCase()) {
-            return qty;
-        }
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-        const normalizedFrom = uom.toUpperCase();
-        const normalizedTo = baseUom.toUpperCase();
-        const direct = conversions.find((conversion) => conversion.active
-            && conversion.fromUom.toUpperCase() === normalizedFrom
-            && conversion.toUom.toUpperCase() === normalizedTo);
-        if (direct)
-            return (0, VoucherLineEntity_1.roundMoney)(qty * direct.factor);
-        const reverse = conversions.find((conversion) => conversion.active
-            && conversion.fromUom.toUpperCase() === normalizedTo
-            && conversion.toUom.toUpperCase() === normalizedFrom);
-        if (reverse)
-            return (0, VoucherLineEntity_1.roundMoney)(qty / reverse.factor);
-        throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    async convertToBaseUom(companyId, qty, uomId, uom, item) {
+        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+            qty,
+            item,
+            conversions,
+            fromUomId: uomId,
+            fromUom: uom,
+            round: VoucherLineEntity_1.roundMoney,
+            itemCode: item.code,
+        });
     }
     async getPreviouslyReturnedQtyForPILine(companyId, purchaseInvoiceId, piLineId, excludeReturnId) {
         const returns = await this.purchaseReturnRepo.list(companyId, {
@@ -713,6 +795,7 @@ class UpdatePurchaseReturnUseCase {
                     itemCode: item.code,
                     itemName: item.name,
                     returnQty,
+                    uomId: lineInput.uomId || item.purchaseUomId || item.baseUomId,
                     uom: lineInput.uom || item.purchaseUom || item.baseUom,
                     unitCostDoc,
                     unitCostBase,

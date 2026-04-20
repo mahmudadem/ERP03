@@ -65,6 +65,7 @@ class MemoryLedgerRepo implements ILedgerRepository {
     return this.entries;
   }
   async markReconciled(): Promise<void> {}
+  async getForeignBalances(): Promise<any[]> { return []; }
 }
 
 const emptyVoucherRepo = { save: async () => {}, findById: async () => null } as unknown as IVoucherRepository;

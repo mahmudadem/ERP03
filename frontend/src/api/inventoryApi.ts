@@ -1,5 +1,7 @@
 import client from './client';
 
+export type InventoryAccountingMode = 'INVOICE_DRIVEN' | 'PERPETUAL';
+
 export interface InventoryItemDTO {
   id: string;
   companyId: string;
@@ -11,8 +13,11 @@ export interface InventoryItemDTO {
   categoryId?: string;
   brand?: string;
   tags?: string[];
+  baseUomId?: string;
   baseUom: string;
+  purchaseUomId?: string;
   purchaseUom?: string;
+  salesUomId?: string;
   salesUom?: string;
   costCurrency: string;
   costingMethod: 'MOVING_AVG';
@@ -62,14 +67,132 @@ export interface UomConversionDTO {
   id: string;
   companyId: string;
   itemId: string;
+  fromUomId?: string;
   fromUom: string;
+  toUomId?: string;
   toUom: string;
   factor: number;
   active: boolean;
 }
 
+export type UomConversionReferenceType =
+  | 'GOODS_RECEIPT'
+  | 'PURCHASE_INVOICE'
+  | 'PURCHASE_RETURN'
+  | 'DELIVERY_NOTE'
+  | 'SALES_INVOICE'
+  | 'SALES_RETURN';
+
+export type UomConversionSourceModule = 'purchases' | 'sales';
+
+export interface UomConversionImpactMovementDTO {
+  movementId: string;
+  date: string;
+  direction: 'IN' | 'OUT';
+  referenceType: UomConversionReferenceType;
+  referenceId: string;
+  referenceLineId?: string;
+  module: UomConversionSourceModule;
+  sourceQty?: number;
+  sourceUomId?: string;
+  sourceUom?: string;
+  currentBaseQty: number;
+  projectedBaseQty?: number;
+  deltaBaseQty?: number;
+  conversionMode: 'IDENTITY' | 'DIRECT' | 'REVERSE';
+  appliedFactor: number;
+}
+
+export interface UomConversionImpactReferenceDTO {
+  referenceType: UomConversionReferenceType;
+  referenceId: string;
+  module: UomConversionSourceModule;
+  status: string;
+  movementCount: number;
+  lineCount: number;
+  currentNetBaseQty: number;
+  projectedNetBaseQty?: number;
+  deltaNetBaseQty?: number;
+  canAutoFix: boolean;
+  autoFixReason?: string;
+}
+
+export interface UomConversionImpactReportDTO {
+  conversion: {
+    id: string;
+    itemId: string;
+    fromUomId?: string;
+    fromUom: string;
+    toUomId?: string;
+    toUom: string;
+    factor: number;
+    active: boolean;
+  };
+  item: {
+    id: string;
+    code: string;
+    name: string;
+    baseUomId?: string;
+    baseUom: string;
+  };
+  usageCount: number;
+  purchaseUsageCount: number;
+  salesUsageCount: number;
+  used: boolean;
+  editable: boolean;
+  hasAutoFixBlockers: boolean;
+  hasSalesUsage: boolean;
+  impactedReferences: UomConversionImpactReferenceDTO[];
+  impactedMovements: UomConversionImpactMovementDTO[];
+}
+
+export interface UomConversionCorrectionResultDTO {
+  conversion: UomConversionDTO;
+  impact?: UomConversionImpactReportDTO;
+  impactBefore?: UomConversionImpactReportDTO;
+  impactAfter?: UomConversionImpactReportDTO;
+  noChanges?: boolean;
+  autoFix?: {
+    mode: 'NONE' | 'PURCHASES_REVERSE_REPOST' | 'STOCK_ONLY_DELTA';
+    correctionRunId?: string;
+    unposted?: {
+      purchaseReturns: number;
+      purchaseInvoices: number;
+      goodsReceipts: number;
+    };
+    reposted?: {
+      goodsReceipts: number;
+      purchaseInvoices: number;
+      purchaseReturns: number;
+    };
+    generatedAdjustments?: {
+      in: number;
+      out: number;
+      netDeltaBaseQty: number;
+    };
+    notes?: string;
+  };
+}
+
+export type UomDimension = 'COUNT' | 'WEIGHT' | 'VOLUME' | 'LENGTH' | 'AREA' | 'TIME' | 'OTHER';
+
+export interface InventoryUomDTO {
+  id: string;
+  companyId: string;
+  code: string;
+  name: string;
+  dimension: UomDimension;
+  decimalPlaces: number;
+  active: boolean;
+  isSystem: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InventorySettingsDTO {
   companyId: string;
+  accountingMode: InventoryAccountingMode;
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
@@ -315,6 +438,7 @@ export interface ReconcileResultDTO {
 
 export const inventoryApi = {
   initialize: (payload: {
+    accountingMode?: InventoryAccountingMode;
     inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
     defaultWarehouseName?: string;
     defaultWarehouseCode?: string;
@@ -388,6 +512,35 @@ export const inventoryApi = {
 
   listUomConversions: (itemId: string): Promise<UomConversionDTO[]> =>
     client.get(`/tenant/inventory/uom-conversions/${itemId}`),
+
+  updateUomConversion: (id: string, payload: Partial<UomConversionDTO>): Promise<UomConversionDTO> =>
+    client.put(`/tenant/inventory/uom-conversions/${id}`, payload),
+
+  deleteUomConversion: (id: string): Promise<{ success: boolean }> =>
+    client.delete(`/tenant/inventory/uom-conversions/${id}`),
+
+  getUomConversionImpact: (id: string, proposedFactor?: number): Promise<UomConversionImpactReportDTO> =>
+    client.get(`/tenant/inventory/uom-conversions/${id}/impact`, {
+      params: proposedFactor && proposedFactor > 0 ? { proposedFactor } : undefined,
+    }),
+
+  applyUomConversionCorrection: (id: string, newFactor: number, effectiveDate?: string): Promise<UomConversionCorrectionResultDTO> =>
+    client.post(`/tenant/inventory/uom-conversions/${id}/apply-correction`, {
+      newFactor,
+      ...(effectiveDate ? { effectiveDate } : {}),
+    }),
+
+  createUom: (payload: Partial<InventoryUomDTO>): Promise<InventoryUomDTO> =>
+    client.post('/tenant/inventory/uoms', payload),
+
+  listUoms: (filters?: { active?: boolean; limit?: number; offset?: number }): Promise<InventoryUomDTO[]> =>
+    client.get('/tenant/inventory/uoms', { params: filters }),
+
+  getUom: (id: string): Promise<InventoryUomDTO | null> =>
+    client.get(`/tenant/inventory/uoms/${id}`),
+
+  updateUom: (id: string, payload: Partial<InventoryUomDTO>): Promise<InventoryUomDTO> =>
+    client.put(`/tenant/inventory/uoms/${id}`, payload),
 
   getStockLevels: (filters?: { itemId?: string; warehouseId?: string; limit?: number; offset?: number }): Promise<StockLevelDTO[]> =>
     client.get('/tenant/inventory/stock-levels', { params: filters }),

@@ -22,20 +22,20 @@ const STORAGE_KEY_FONT_SIZE = 'erp_voucher_list_font_size';
 const STORAGE_KEY_VISIBLE_COLUMNS = 'erp_voucher_list_visible_columns';
 
 const DEFAULT_COLUMN_WIDTHS = {
-  expand: 48,
-  date: 128,
-  number: 160,
-  type: 128,
-  name: 192,
-  debitAccount: 180,
-  creditAccount: 180,
-  creationMode: 80,
-  approvedAt: 128,
-  status: 96,
-  currency: 80,
-  amount: 128,
-  ref: 128,
-  actions: 96
+  expand: 40,
+  date: 100,
+  number: 120,
+  type: 90,
+  name: 140,
+  debitAccount: 140,
+  creditAccount: 140,
+  creationMode: 70,
+  approvedAt: 100,
+  status: 80,
+  currency: 60,
+  amount: 100,
+  ref: 100,
+  actions: 80
 };
 
 const COLUMN_KEYS = ['date', 'number', 'type', 'name', 'debitAccount', 'creditAccount', 'creationMode', 'approvedAt', 'status', 'currency', 'amount', 'ref', 'actions'] as const;
@@ -584,8 +584,8 @@ export const VoucherTable: React.FC<Props> = ({
     <div className="bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] shadow-sm flex flex-col transition-colors duration-300 h-full">
 
 
-      <div ref={tableContainerRef} className="flex-1 overflow-auto">
-        <table className="w-full divide-y divide-[var(--color-border)]">
+      <div ref={tableContainerRef} className="flex-1 overflow-hidden">
+        <table className="w-full table-fixed divide-y divide-[var(--color-border)]">
           <thead className="bg-[var(--color-bg-secondary)] select-none sticky top-0 z-10">
             <tr className="divide-x divide-[var(--color-border)]/50">
               <th className="px-2 py-3 text-center" style={{ width: columnWidths.expand }}>
@@ -648,7 +648,7 @@ export const VoucherTable: React.FC<Props> = ({
               {/* Date Header */}
               {visibleColumns.includes('date') && (
                 <th 
-                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative truncate", fontSize)}
                   style={{ width: columnWidths.date }}
                 >
                   <div className="flex items-center gap-2">
@@ -688,7 +688,7 @@ export const VoucherTable: React.FC<Props> = ({
 
               {visibleColumns.includes('number') && (
                 <th 
-                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative truncate", fontSize)}
                   style={{ width: columnWidths.number }}
                 >
                   <div className="flex items-center gap-2">
@@ -720,7 +720,7 @@ export const VoucherTable: React.FC<Props> = ({
               {/* Type Header */}
               {visibleColumns.includes('type') && (
                 <th 
-                  className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative truncate", fontSize)}
                   style={{ width: columnWidths.type }}
                 >
                   <div className="flex items-center gap-2">
@@ -755,31 +755,31 @@ export const VoucherTable: React.FC<Props> = ({
               )}
 
               {visibleColumns.includes('name') && (
-                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.name }}>
+                <th className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.name }}>
                   {t('voucherTable.columns.name')}
                   <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('debitAccount') && (
-                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.debitAccount }}>
+                <th className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.debitAccount }}>
                   {t('voucherTable.columns.debitAccount')}
                   <div onMouseDown={(e) => handleResizeStart('debitAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('creditAccount') && (
-                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creditAccount }}>
+                <th className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.creditAccount }}>
                   {t('voucherTable.columns.creditAccount')}
                   <div onMouseDown={(e) => handleResizeStart('creditAccount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('creationMode') && (
-                <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.creationMode }}>
+                <th className={clsx("px-2 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.creationMode }}>
                   {t('voucherTable.columns.creationMode')}
                   <div onMouseDown={(e) => handleResizeStart('creationMode', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('approvedAt') && (
-                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.approvedAt }}>
+                <th className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.approvedAt }}>
                   {t('voucherTable.columns.approvedAt')}
                   <div onMouseDown={(e) => handleResizeStart('approvedAt', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
@@ -788,7 +788,7 @@ export const VoucherTable: React.FC<Props> = ({
               {/* Status Header */}
               {visibleColumns.includes('status') && (
                 <th 
-                  className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative", fontSize)}
+                  className={clsx("px-2 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider group relative truncate", fontSize)}
                   style={{ width: columnWidths.status }}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -840,26 +840,26 @@ export const VoucherTable: React.FC<Props> = ({
               )}
 
               {visibleColumns.includes('currency') && (
-                <th className={clsx("px-6 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.currency }}>
+                <th className={clsx("px-2 py-3 text-center font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.currency }}>
                   {t('voucherTable.columns.currency')}
                   <div onMouseDown={(e) => handleResizeStart('currency', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
 
               {visibleColumns.includes('amount') && (
-                <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.amount }}>
+                <th className={clsx("px-2 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.amount }}>
                   {t('voucherTable.columns.amount')}
                   <div onMouseDown={(e) => handleResizeStart('amount', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('ref') && (
-                <th className={clsx("px-6 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.ref }}>
+                <th className={clsx("px-2 py-3 text-left font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.ref }}>
                   {t('voucherTable.columns.ref')}
                   <div onMouseDown={(e) => handleResizeStart('ref', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
               )}
               {visibleColumns.includes('actions') && (
-                <th className={clsx("px-6 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group", fontSize)} style={{ width: columnWidths.actions }}>
+                <th className={clsx("px-2 py-3 text-right font-medium text-[var(--color-text-secondary)] uppercase tracking-wider relative group truncate", fontSize)} style={{ width: columnWidths.actions }}>
                   {t('voucherTable.columns.actions')}
                   <div onMouseDown={(e) => handleResizeStart('actions', e)} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-500/30 transition-colors z-10" />
                 </th>
@@ -924,7 +924,7 @@ export const VoucherTable: React.FC<Props> = ({
                     </td>
 
                     {visibleColumns.includes('date') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)]", isNested && "pl-12", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-primary)] truncate", isNested && "pl-6", fontSize)}>
                         <div className="flex flex-col">
                           <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
                           {voucher.postingPeriodNo && voucher.postingPeriodNo > 12 && (
@@ -940,7 +940,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('number') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap font-mono text-[var(--color-text-secondary)]", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap font-mono text-[var(--color-text-secondary)] truncate", fontSize)}>
                         <div className="flex items-center gap-2">
                            {voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED && (
                              <span title={t('voucherTable.tooltips.auditLocked')}>
@@ -974,7 +974,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('type') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)}>
                         <span className={clsx(
                           "inline-flex items-center px-1.5 py-0.5 rounded font-medium",
                           isNested ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]",
@@ -986,25 +986,25 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('name') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)] font-medium truncate", fontSize)} title={voucherName}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-primary)] font-medium truncate", fontSize)} title={voucherName}>
                         {voucherName}
                       </td>
                     )}
 
                     {visibleColumns.includes('debitAccount') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={debitAccountName}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={debitAccountName}>
                         {debitAccountName}
                       </td>
                     )}
 
                     {visibleColumns.includes('creditAccount') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={creditAccountName}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-secondary)] truncate", fontSize)} title={creditAccountName}>
                         {creditAccountName}
                       </td>
                     )}
 
                     {visibleColumns.includes('creationMode') && (
-                      <td className="px-6 py-3 whitespace-nowrap text-center">
+                      <td className="px-2 py-3 whitespace-nowrap text-center">
                         {(() => {
                           const mode = voucher.metadata?.creationMode || 
                                       (voucher.postingLockPolicy === PostingLockPolicy.STRICT_LOCKED ? 'STRICT' : 
@@ -1032,7 +1032,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('approvedAt') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-secondary)]", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-secondary)]", fontSize)}>
                         {voucher.approvedAt ? (
                           <div className="flex flex-col">
                             <span>{formatCompanyDate(voucher.approvedAt, settings)}</span>
@@ -1045,7 +1045,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('status') && (
-                      <td className="px-6 py-3 whitespace-nowrap text-center text-xs">
+                      <td className="px-2 py-3 whitespace-nowrap text-center text-xs">
                         <div className="flex items-center justify-center">
                           {(() => {
                             const hasVisibleReversal = hasReversalMap.has(voucher.id);
@@ -1087,7 +1087,7 @@ export const VoucherTable: React.FC<Props> = ({
                               <Badge 
                                 variant={variant}
                                 className={clsx(
-                                  "flex items-center gap-1 px-2 py-0.5 rounded-full font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
+                                  "flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold shadow-sm transition-all whitespace-nowrap uppercase tracking-tighter",
                                   (isPosted && !isReversed) && "!bg-emerald-600 !text-white border-none shadow-sm",
                                   isReversed && "!bg-amber-500 !text-white border-none shadow-sm",
                                   fontSize
@@ -1103,13 +1103,13 @@ export const VoucherTable: React.FC<Props> = ({
                       </td>
                     )}
                     {visibleColumns.includes('currency') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-center text-[var(--color-text-secondary)] font-medium", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-center text-[var(--color-text-secondary)] font-medium", fontSize)}>
                         {voucher.currency}
                       </td>
                     )}
 
                     {visibleColumns.includes('amount') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-primary)] text-right font-mono font-semibold", fontSize)}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-primary)] text-right font-mono font-semibold", fontSize)}>
                         {typeof displayAmount === 'number' 
                           ? `${displayAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                           : displayAmount}
@@ -1117,7 +1117,7 @@ export const VoucherTable: React.FC<Props> = ({
                     )}
 
                     {visibleColumns.includes('ref') && (
-                      <td className={clsx("px-6 py-3 whitespace-nowrap text-[var(--color-text-muted)] truncate block max-w-[150px]", fontSize)} title={voucher.reference || ''}>
+                      <td className={clsx("px-2 py-3 whitespace-nowrap text-[var(--color-text-muted)] truncate", fontSize)} title={voucher.reference || ''}>
                         {voucher.reference || '-'}
                       </td>
                     )}
@@ -1172,7 +1172,7 @@ export const VoucherTable: React.FC<Props> = ({
                       };
 
                       return (
-                        <td className="px-6 py-3 whitespace-nowrap text-right font-medium">
+                        <td className="px-2 py-3 whitespace-nowrap text-right font-medium">
                           <div className="flex items-center justify-end gap-1 text-[var(--color-text-secondary)]">
                             {/* PRIMARY ACTIONS — always-visible icon buttons */}
                             {primaryActions.map(action => (
@@ -1248,7 +1248,7 @@ export const VoucherTable: React.FC<Props> = ({
 
       {/* Pagination Footer - Only show if pagination is provided */}
       {pagination && onPageChange && (
-        <div className="flex-none px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-between">
+        <div className="flex-none px-2 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-between">
           <div className="text-sm text-[var(--color-text-secondary)]">
             {t('voucherTable.pagination.showingPage')} <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.page}</span> {t('voucherTable.pagination.of')} <span className="font-medium text-[var(--color-text-primary)]">{pageInfo.totalPages || 1}</span> ({t('voucherTable.pagination.items', { count: pageInfo.totalItems })})
           </div>

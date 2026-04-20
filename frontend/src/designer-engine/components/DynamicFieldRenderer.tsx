@@ -8,6 +8,9 @@ import { FieldDefinition } from '../types/FieldDefinition';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../utils/dateUtils';
 import { DatePicker } from '../../modules/accounting/components/shared/DatePicker';
+import { PartySelector, ItemSelector, WarehouseSelector } from '../../components/shared/selectors';
+import { AccountSelector } from '../../modules/accounting/components/shared/AccountSelector';
+import { CostCenterSelector } from '../../modules/accounting/components/shared/CostCenterSelector';
 
 interface Props {
   field: FieldDefinition;
@@ -68,17 +71,75 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
     switch (field.type) {
       case 'TEXT':
       case 'RELATION': 
-        return (
-          <input
-            type="text"
-            className={baseInputClass}
-            style={customInputStyle}
-            placeholder={field.placeholder || t('voucherRenderer.selectPlaceholder')}
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={field.readOnly || readOnly}
-          />
-        );
+      case 'party-selector':
+      case 'item-selector':
+      case 'warehouse-selector':
+        {
+          const lowerId = field.id.toLowerCase();
+          const lowerName = (field.name || '').toLowerCase();
+          const lowerLabel = (label || '').toLowerCase();
+          const target = (field as any).relationTarget?.toLowerCase() || '';
+          const type = field.type as string;
+          
+          const isLineItemsField = lowerId === 'lineitems' || lowerName === 'lineitems';
+
+          // Auto-detect Party Selectors
+          if (type === 'party-selector' || 
+              target === 'customers' || target === 'vendors' || target === 'parties' ||
+              lowerId.includes('customer') || lowerId.includes('vendor') || lowerId.includes('party') ||
+              lowerName.includes('customer') || lowerName.includes('vendor') || lowerName.includes('party') ||
+              lowerLabel.includes('customer') || lowerLabel.includes('vendor') || lowerLabel.includes('party')) {
+            return (
+              <PartySelector 
+                value={value || ''}
+                onChange={(party) => onChange(party?.id || party?.code || '')}
+                disabled={field.readOnly || readOnly}
+              />
+            );
+          }
+
+          // Auto-detect Item Selectors
+          if (!isLineItemsField && (type === 'item-selector' || 
+              target === 'items' || target === 'products' ||
+              lowerId.includes('item') || lowerId.includes('sku') || lowerId.includes('product') ||
+              lowerName.includes('item') || lowerName.includes('sku') || lowerName.includes('product') ||
+              lowerLabel.includes('item') || lowerLabel.includes('sku') || lowerLabel.includes('product'))) {
+            return (
+              <ItemSelector 
+                value={value || ''}
+                onChange={(item) => onChange(item?.id || item?.code || '')}
+                disabled={field.readOnly || readOnly}
+              />
+            );
+          }
+
+          // Auto-detect Warehouse Selectors
+          if (type === 'warehouse-selector' || 
+              target === 'warehouses' || target === 'stores' ||
+              lowerId.includes('warehouse') || lowerId.includes('store') ||
+              lowerName.includes('warehouse') || lowerName.includes('store') ||
+              lowerLabel.includes('warehouse') || lowerLabel.includes('store')) {
+            return (
+              <WarehouseSelector 
+                value={value || ''}
+                onChange={(wh) => onChange(wh?.id || wh?.code || '')}
+                disabled={field.readOnly || readOnly}
+              />
+            );
+          }
+
+          return (
+            <input
+              type="text"
+              className={baseInputClass}
+              style={customInputStyle}
+              placeholder={field.placeholder || t('voucherRenderer.selectPlaceholder')}
+              value={value || ''}
+              onChange={(e) => onChange(e.target.value)}
+              disabled={field.readOnly || readOnly}
+            />
+          );
+        }
 
       case 'NUMBER':
         return (
@@ -98,6 +159,24 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
           <DatePicker
             value={value || ''}
             onChange={onChange}
+            disabled={field.readOnly || readOnly}
+          />
+        );
+
+      case 'account-selector':
+        return (
+          <AccountSelector 
+            value={value || ''}
+            onChange={(accId) => onChange(accId)}
+            disabled={field.readOnly || readOnly}
+          />
+        );
+
+      case 'cost-center-selector':
+        return (
+          <CostCenterSelector 
+            value={value || ''}
+            onChange={(ccId) => onChange(ccId)}
             disabled={field.readOnly || readOnly}
           />
         );

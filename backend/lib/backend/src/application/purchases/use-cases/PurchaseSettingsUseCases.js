@@ -2,178 +2,37 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdatePurchaseSettingsUseCase = exports.GetPurchaseSettingsUseCase = exports.InitializePurchasesUseCase = void 0;
 const crypto_1 = require("crypto");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const PurchaseSettings_1 = require("../../../domain/purchases/entities/PurchaseSettings");
-const PostingRole_1 = require("../../../domain/designer/entities/PostingRole");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
-const PURCHASE_VOUCHER_SEED_TEMPLATES = {
-    purchase_order: {
-        name: 'Purchase Order',
-        code: 'purchase_order',
-        module: 'PURCHASE',
-        prefix: 'PO',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'orderDate', label: 'Order Date', type: 'DATE', required: true, isPosting: false, postingRole: null },
-            { id: 'supplierId', label: 'Supplier', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: false, postingRole: null },
-            { id: 'notes', label: 'Internal Notes', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '250px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '120px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Order Details', fieldIds: ['orderDate', 'supplierId', 'currency', 'exchangeRate'] },
-                { id: 'lines', title: 'Items', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    grn: {
-        name: 'Goods Receipt Note',
-        code: 'grn',
-        module: 'PURCHASE',
-        prefix: 'GRN',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'receiptDate', label: 'Receipt Date', type: 'DATE', required: true, isPosting: false, postingRole: null },
-            { id: 'supplierId', label: 'Supplier', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'warehouseId', label: 'Warehouse', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'purchaseOrderId', label: 'PO Reference', type: 'SELECT', required: false, isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '250px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'uom', width: '80px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Receipt Info', fieldIds: ['receiptDate', 'supplierId', 'warehouseId', 'purchaseOrderId'] },
-                { id: 'lines', title: 'Received Items', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    purchase_invoice: {
-        name: 'Purchase Invoice',
-        code: 'purchase_invoice',
-        module: 'PURCHASE',
-        prefix: 'PI',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'date', label: 'Date', type: 'DATE', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.DATE },
-            { id: 'supplierId', label: 'Supplier', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.CURRENCY },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: true, postingRole: PostingRole_1.PostingRole.EXCHANGE_RATE },
-            { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, isPosting: true, postingRole: PostingRole_1.PostingRole.AMOUNT },
-            { id: 'description', label: 'Description', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '220px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '100px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Purchase Invoice Header', fieldIds: ['date', 'supplierId', 'currency', 'exchangeRate', 'totalAmount', 'description'] },
-                { id: 'lines', title: 'Invoice Lines', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    purchase_return: {
-        name: 'Purchase Return',
-        code: 'purchase_return',
-        module: 'PURCHASE',
-        prefix: 'PR',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'date', label: 'Date', type: 'DATE', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.DATE },
-            { id: 'supplierId', label: 'Supplier', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.CURRENCY },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: true, postingRole: PostingRole_1.PostingRole.EXCHANGE_RATE },
-            { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, isPosting: true, postingRole: PostingRole_1.PostingRole.AMOUNT },
-            { id: 'description', label: 'Description', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '220px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '100px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Purchase Return Header', fieldIds: ['date', 'supplierId', 'currency', 'exchangeRate', 'totalAmount', 'description'] },
-                { id: 'lines', title: 'Return Lines', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-};
-const cloneTemplateValue = (value) => {
-    if (value === undefined || value === null) {
-        return value;
-    }
-    return JSON.parse(JSON.stringify(value));
-};
-const buildFallbackVoucherType = (companyId, templateCode) => {
-    const template = PURCHASE_VOUCHER_SEED_TEMPLATES[templateCode];
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), 2);
-};
-const buildFallbackVoucherForm = (companyId, typeId, createdBy, templateCode) => {
-    const template = PURCHASE_VOUCHER_SEED_TEMPLATES[templateCode];
-    const now = new Date();
-    return {
-        id: (0, crypto_1.randomUUID)(),
-        companyId,
-        module: template.module,
-        typeId,
-        name: template.name,
-        code: template.code,
-        description: `${template.name} system default form`,
-        prefix: template.prefix,
-        isDefault: true,
-        isSystemGenerated: true,
-        isLocked: false,
-        enabled: true,
-        headerFields: cloneTemplateValue(template.headerFields),
-        tableColumns: cloneTemplateValue(template.tableColumns),
-        layout: cloneTemplateValue(template.layout),
-        uiModeOverrides: null,
-        rules: [],
-        actions: [],
-        isMultiLine: true,
-        tableStyle: 'web',
-        baseType: template.code,
-        createdAt: now,
-        updatedAt: now,
-        createdBy,
-    };
-};
+// Note: Hardcoded templates are now deprecated and will be removed in a future PR
+// Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
+const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
 const cloneVoucherTypeForCompany = (companyId, template) => {
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), template.isMultiLine, cloneTemplateValue(template.rules), cloneTemplateValue(template.actions), template.defaultCurrency);
+    var _a;
+    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
 };
-const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
+const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Can be from system metadata too
+) => {
     var _a, _b;
     const now = new Date();
     return {
         id: (0, crypto_1.randomUUID)(),
         companyId,
-        module: template.module,
+        module: template.module || 'PURCHASE',
         typeId,
         name: template.name,
         code: template.code,
-        description: template.description || '',
+        description: template.description || `Default form for ${template.name}`,
         prefix: template.prefix,
         numberFormat: template.numberFormat,
         isDefault: true,
         isSystemGenerated: true,
-        isLocked: false,
+        isLocked: true,
         enabled: (_a = template.enabled) !== null && _a !== void 0 ? _a : true,
-        headerFields: cloneTemplateValue(template.headerFields),
-        tableColumns: cloneTemplateValue(template.tableColumns),
-        layout: cloneTemplateValue(template.layout),
+        headerFields: cloneTemplateValue(template.headerFields) || [],
+        tableColumns: cloneTemplateValue(template.tableColumns) || [],
+        layout: cloneTemplateValue(template.layout) || { sections: [] },
         uiModeOverrides: cloneTemplateValue(template.uiModeOverrides),
         rules: cloneTemplateValue(template.rules) || [],
         actions: cloneTemplateValue(template.actions) || [],
@@ -187,50 +46,51 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
     };
 };
 const ensurePurchaseVoucherDefinitions = async (companyId, createdBy, voucherTypeRepo, voucherFormRepo) => {
-    const templates = Object.values(PURCHASE_VOUCHER_SEED_TEMPLATES);
-    for (const template of templates) {
+    // Fetch ALL system templates from the unified source of truth
+    const systemTemplates = await voucherTypeRepo.getSystemTemplates();
+    const purchaseTemplates = systemTemplates.filter(t => t.module === 'PURCHASE');
+    if (purchaseTemplates.length === 0) {
+        console.warn('[PurchaseSettingsUseCases] No PURCHASE system templates found. Check seeder!');
+    }
+    for (const template of purchaseTemplates) {
         const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
         // If it exists but in the WRONG module, we need to re-home it
         if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
             console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
-            await voucherTypeRepo.deleteVoucherType(companyId, existingType.id); // Delete the misplaced one
-            // Proceed to create the new one below
+            await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
+            // We'll create it below
         }
         const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
             ? existingType
-            : cloneVoucherTypeForCompany(companyId, existingType || buildFallbackVoucherType(companyId, template.code));
-        // Ensure the cloned one has the correct module
+            : cloneVoucherTypeForCompany(companyId, template);
+        // Set metadata correctly
         companyVoucherType.module = template.module;
         await voucherTypeRepo.createVoucherType(companyVoucherType);
         // FORM MIGRATION / RE-HOMING
-        // Check if forms exist ANYWHERE for this type
         const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
         for (const form of allExistingForms) {
             if (form.module !== template.module) {
-                console.log(`Re-homing Form ${form.name} from ${form.module} to ${template.module}`);
-                // Delete old
+                console.log(`Re-homing Purchase Form ${form.name} from ${form.module} to ${template.module}`);
                 await voucherFormRepo.delete(companyId, form.id);
-                // Create new with correct module
                 await voucherFormRepo.create(Object.assign(Object.assign({}, form), { module: template.module }));
             }
         }
         const companyForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
         if (companyForms.length > 0)
             continue;
-        const fallbackForm = await voucherFormRepo.getDefaultForType(companyId, template.code);
-        const companyForm = fallbackForm
-            ? cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, fallbackForm)
-            : buildFallbackVoucherForm(companyId, companyVoucherType.id, createdBy, template.code);
+        // Create default form from template
+        const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
         await voucherFormRepo.create(companyForm);
     }
 };
 class InitializePurchasesUseCase {
-    constructor(settingsRepo, accountRepo, companyModuleRepo, voucherTypeRepo, voucherFormRepo) {
+    constructor(settingsRepo, accountRepo, companyModuleRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.companyModuleRepo = companyModuleRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
@@ -240,13 +100,33 @@ class InitializePurchasesUseCase {
                 throw new Error(`Default AP account not found: ${input.defaultAPAccountId}`);
             }
         }
+        if (input.defaultGRNIAccountId) {
+            const grniAccount = await this.accountRepo.getById(input.companyId, input.defaultGRNIAccountId);
+            if (!grniAccount) {
+                throw new Error(`Default GRNI account not found: ${input.defaultGRNIAccountId}`);
+            }
+        }
         await ensurePurchaseVoucherDefinitions(input.companyId, input.userId || 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
-        const settings = new PurchaseSettings_1.PurchaseSettings({
-            companyId: input.companyId,
+        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
+        const accountingMode = this.inventorySettingsRepo
+            ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
+            : 'INVOICE_DRIVEN';
+        DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applyPurchaseWorkflowDefaults(workflowMode, {
             allowDirectInvoicing: (_a = input.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
             requirePOForStockItems: (_b = input.requirePOForStockItems) !== null && _b !== void 0 ? _b : false,
+        });
+        if (accountingMode === 'PERPETUAL' && !input.defaultGRNIAccountId) {
+            throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
+        }
+        const settings = new PurchaseSettings_1.PurchaseSettings({
+            companyId: input.companyId,
+            workflowMode,
+            allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
+            requirePOForStockItems: workflowDefaults.requirePOForStockItems,
             defaultAPAccountId: input.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: input.defaultPurchaseExpenseAccountId,
+            defaultGRNIAccountId: input.defaultGRNIAccountId,
             allowOverDelivery: (_c = input.allowOverDelivery) !== null && _c !== void 0 ? _c : false,
             overDeliveryTolerancePct: (_d = input.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
             overInvoiceTolerancePct: (_e = input.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,
@@ -304,47 +184,69 @@ class GetPurchaseSettingsUseCase {
 }
 exports.GetPurchaseSettingsUseCase = GetPurchaseSettingsUseCase;
 class UpdatePurchaseSettingsUseCase {
-    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo) {
+    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
         const existing = await this.settingsRepo.getSettings(input.companyId);
         if (!existing) {
             throw new Error('Purchase settings are not initialized');
         }
-        const nextAllowDirectInvoicing = (_a = input.allowDirectInvoicing) !== null && _a !== void 0 ? _a : existing.allowDirectInvoicing;
-        const nextAPAccountId = (_b = input.defaultAPAccountId) !== null && _b !== void 0 ? _b : existing.defaultAPAccountId;
+        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
+        const accountingMode = this.inventorySettingsRepo
+            ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
+            : 'INVOICE_DRIVEN';
+        DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applyPurchaseWorkflowDefaults(workflowMode, {
+            allowDirectInvoicing: (_b = input.allowDirectInvoicing) !== null && _b !== void 0 ? _b : existing.allowDirectInvoicing,
+            requirePOForStockItems: (_c = input.requirePOForStockItems) !== null && _c !== void 0 ? _c : existing.requirePOForStockItems,
+        });
+        const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
+        const nextAPAccountId = (_d = input.defaultAPAccountId) !== null && _d !== void 0 ? _d : existing.defaultAPAccountId;
+        const nextGRNIAccountId = (_e = input.defaultGRNIAccountId) !== null && _e !== void 0 ? _e : existing.defaultGRNIAccountId;
+        if (accountingMode === 'PERPETUAL' && !nextGRNIAccountId) {
+            throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
+        }
         if (nextAPAccountId) {
             const apAccount = await this.accountRepo.getById(input.companyId, nextAPAccountId);
             if (!apAccount) {
                 throw new Error(`Default AP account not found: ${nextAPAccountId}`);
             }
         }
+        if (nextGRNIAccountId) {
+            const grniAccount = await this.accountRepo.getById(input.companyId, nextGRNIAccountId);
+            if (!grniAccount) {
+                throw new Error(`Default GRNI account not found: ${nextGRNIAccountId}`);
+            }
+        }
         await ensurePurchaseVoucherDefinitions(input.companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
         const updated = new PurchaseSettings_1.PurchaseSettings({
             companyId: existing.companyId,
+            workflowMode,
             allowDirectInvoicing: nextAllowDirectInvoicing,
-            requirePOForStockItems: (_c = input.requirePOForStockItems) !== null && _c !== void 0 ? _c : existing.requirePOForStockItems,
+            requirePOForStockItems: workflowDefaults.requirePOForStockItems,
             defaultAPAccountId: nextAPAccountId,
-            defaultPurchaseExpenseAccountId: (_d = input.defaultPurchaseExpenseAccountId) !== null && _d !== void 0 ? _d : existing.defaultPurchaseExpenseAccountId,
-            allowOverDelivery: (_e = input.allowOverDelivery) !== null && _e !== void 0 ? _e : existing.allowOverDelivery,
-            overDeliveryTolerancePct: (_f = input.overDeliveryTolerancePct) !== null && _f !== void 0 ? _f : existing.overDeliveryTolerancePct,
-            overInvoiceTolerancePct: (_g = input.overInvoiceTolerancePct) !== null && _g !== void 0 ? _g : existing.overInvoiceTolerancePct,
-            defaultPaymentTermsDays: (_h = input.defaultPaymentTermsDays) !== null && _h !== void 0 ? _h : existing.defaultPaymentTermsDays,
-            purchaseVoucherTypeId: (_j = input.purchaseVoucherTypeId) !== null && _j !== void 0 ? _j : existing.purchaseVoucherTypeId,
-            defaultWarehouseId: (_k = input.defaultWarehouseId) !== null && _k !== void 0 ? _k : existing.defaultWarehouseId,
-            poNumberPrefix: (_l = input.poNumberPrefix) !== null && _l !== void 0 ? _l : existing.poNumberPrefix,
-            poNumberNextSeq: (_m = input.poNumberNextSeq) !== null && _m !== void 0 ? _m : existing.poNumberNextSeq,
-            grnNumberPrefix: (_o = input.grnNumberPrefix) !== null && _o !== void 0 ? _o : existing.grnNumberPrefix,
-            grnNumberNextSeq: (_p = input.grnNumberNextSeq) !== null && _p !== void 0 ? _p : existing.grnNumberNextSeq,
-            piNumberPrefix: (_q = input.piNumberPrefix) !== null && _q !== void 0 ? _q : existing.piNumberPrefix,
-            piNumberNextSeq: (_r = input.piNumberNextSeq) !== null && _r !== void 0 ? _r : existing.piNumberNextSeq,
-            prNumberPrefix: (_s = input.prNumberPrefix) !== null && _s !== void 0 ? _s : existing.prNumberPrefix,
-            prNumberNextSeq: (_t = input.prNumberNextSeq) !== null && _t !== void 0 ? _t : existing.prNumberNextSeq,
+            defaultPurchaseExpenseAccountId: (_f = input.defaultPurchaseExpenseAccountId) !== null && _f !== void 0 ? _f : existing.defaultPurchaseExpenseAccountId,
+            defaultGRNIAccountId: nextGRNIAccountId,
+            allowOverDelivery: (_g = input.allowOverDelivery) !== null && _g !== void 0 ? _g : existing.allowOverDelivery,
+            overDeliveryTolerancePct: (_h = input.overDeliveryTolerancePct) !== null && _h !== void 0 ? _h : existing.overDeliveryTolerancePct,
+            overInvoiceTolerancePct: (_j = input.overInvoiceTolerancePct) !== null && _j !== void 0 ? _j : existing.overInvoiceTolerancePct,
+            defaultPaymentTermsDays: (_k = input.defaultPaymentTermsDays) !== null && _k !== void 0 ? _k : existing.defaultPaymentTermsDays,
+            purchaseVoucherTypeId: (_l = input.purchaseVoucherTypeId) !== null && _l !== void 0 ? _l : existing.purchaseVoucherTypeId,
+            defaultWarehouseId: (_m = input.defaultWarehouseId) !== null && _m !== void 0 ? _m : existing.defaultWarehouseId,
+            poNumberPrefix: (_o = input.poNumberPrefix) !== null && _o !== void 0 ? _o : existing.poNumberPrefix,
+            poNumberNextSeq: (_p = input.poNumberNextSeq) !== null && _p !== void 0 ? _p : existing.poNumberNextSeq,
+            grnNumberPrefix: (_q = input.grnNumberPrefix) !== null && _q !== void 0 ? _q : existing.grnNumberPrefix,
+            grnNumberNextSeq: (_r = input.grnNumberNextSeq) !== null && _r !== void 0 ? _r : existing.grnNumberNextSeq,
+            piNumberPrefix: (_s = input.piNumberPrefix) !== null && _s !== void 0 ? _s : existing.piNumberPrefix,
+            piNumberNextSeq: (_t = input.piNumberNextSeq) !== null && _t !== void 0 ? _t : existing.piNumberNextSeq,
+            prNumberPrefix: (_u = input.prNumberPrefix) !== null && _u !== void 0 ? _u : existing.prNumberPrefix,
+            prNumberNextSeq: (_v = input.prNumberNextSeq) !== null && _v !== void 0 ? _v : existing.prNumberNextSeq,
         });
         await this.settingsRepo.saveSettings(updated);
         return updated;

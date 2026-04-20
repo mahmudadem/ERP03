@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
@@ -25,6 +26,10 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 
@@ -35,6 +40,7 @@ export interface PurchaseInvoiceLineInput {
   grnLineId?: string;
   itemId?: string;
   invoicedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
   taxCodeId?: string;
@@ -182,6 +188,7 @@ export class CreatePurchaseInvoiceUseCase {
         itemName: item.name,
         trackInventory: item.trackInventory,
         invoicedQty,
+        uomId: sourceLine.uomId || poLine?.uomId || item.purchaseUomId || item.baseUomId,
         uom: sourceLine.uom || poLine?.uom || item.purchaseUom || item.baseUom,
         unitPriceDoc,
         lineTotalDoc,
@@ -266,6 +273,7 @@ export class CreatePurchaseInvoiceUseCase {
           poLineId: line.lineId,
           itemId: line.itemId,
           invoicedQty: roundMoney(Math.max(ceiling, 0)),
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -319,7 +327,7 @@ export class PostPurchaseInvoiceUseCase {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
-    const isPerpetual = invSettings?.inventoryAccountingMethod === 'PERPETUAL';
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
 
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
@@ -372,14 +380,35 @@ export class PostPurchaseInvoiceUseCase {
         const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
         this.freezeTaxSnapshotSync(line, pi.exchangeRate, taxCode || undefined);
 
-        line.accountId = this.resolveDebitAccountSync(companyId, item, isPerpetual, categoriesMap, settings.defaultPurchaseExpenseAccountId, invSettings?.defaultInventoryAssetAccountId);
+        const hasReceiptBackedFlow = item.trackInventory && (!settings.allowDirectInvoicing || hasGRNForThisLine(line));
+        const clearsGRNI = DocumentPolicyResolver.shouldPurchaseInvoiceClearGRNI(
+          accountingMode,
+          hasReceiptBackedFlow
+        );
+
+        line.accountId = this.resolveDebitAccountSync(
+          companyId,
+          item,
+          clearsGRNI,
+          categoriesMap,
+          settings.defaultPurchaseExpenseAccountId,
+          invSettings?.defaultInventoryAssetAccountId,
+          settings.defaultGRNIAccountId
+        );
 
         if (settings.allowDirectInvoicing && item.trackInventory && !hasGRNForThisLine(line)) {
           const warehouseId = line.warehouseId || settings.defaultWarehouseId;
           const warehouse = warehouseId ? warehousesMap.get(warehouseId) : null;
           if (!warehouse) throw new Error(`Warehouse required for ${item.name}`);
 
-          const qtyInBaseUom = await this.convertToBaseUom(companyId, line.invoicedQty, line.uom, item.baseUom, item.id, item.code);
+          const conversionResult = await this.convertToBaseUom(
+            companyId,
+            line.invoicedQty,
+            line.uomId,
+            line.uom,
+            item
+          );
+          const qtyInBaseUom = conversionResult.qtyInBaseUom;
           const fxRateCCYToBase = await this.resolveCCYToBaseRate(companyId, item.costCurrency, baseCurrency, pi.currency, pi.exchangeRate, pi.invoiceDate);
 
           const movement = await this.inventoryService.processIN({
@@ -388,6 +417,18 @@ export class PostPurchaseInvoiceUseCase {
             refs: { type: 'PURCHASE_INVOICE', docId: pi.id, lineId: line.lineId },
             currentUser: pi.createdBy, unitCostInMoveCurrency: line.unitPriceDoc,
             moveCurrency: pi.currency, fxRateMovToBase: pi.exchangeRate, fxRateCCYToBase,
+            metadata: {
+              uomConversion: {
+                conversionId: conversionResult.trace.conversionId,
+                mode: conversionResult.trace.mode,
+                appliedFactor: conversionResult.trace.factor,
+                sourceQty: line.invoicedQty,
+                sourceUomId: line.uomId,
+                sourceUom: line.uom,
+                baseUomId: item.baseUomId,
+                baseUom: item.baseUom,
+              },
+            },
             transaction,
           } as any);
 
@@ -518,9 +559,20 @@ export class PostPurchaseInvoiceUseCase {
     pi.outstandingAmountBase = roundMoney(Math.max(pi.grandTotalBase - (pi.paidAmountBase || 0), 0));
   }
 
-  private resolveDebitAccountSync(companyId: string, item: Item, isPerpetual: boolean, cats: Map<string, any>, dExp?: string, dInv?: string): string {
+  private resolveDebitAccountSync(
+    companyId: string,
+    item: Item,
+    clearsGRNI: boolean,
+    cats: Map<string, any>,
+    dExp?: string,
+    dInv?: string,
+    dGRNI?: string
+  ): string {
     if (item.trackInventory) {
-      if (!isPerpetual) return dExp || '';
+      if (clearsGRNI) {
+        if (!dGRNI) throw new Error(`No GRNI account configured for item ${item.name}`);
+        return dGRNI;
+      }
       return item.inventoryAssetAccountId || (item.categoryId ? cats.get(item.categoryId)?.defaultInventoryAssetAccountId : null) || dInv || '';
     }
     if (item.cogsAccountId) return item.cogsAccountId;
@@ -536,14 +588,23 @@ export class PostPurchaseInvoiceUseCase {
     return aid;
   }
 
-  private async convertToBaseUom(cid: string, qty: number, uom: string, base: string, itemId: string, itemCode: string): Promise<number> {
-    if (uom.toUpperCase() === base.toUpperCase()) return qty;
-    const convs = await this.uomConversionRepo.getConversionsForItem(cid, itemId, { active: true });
-    const d = convs.find(c => c.fromUom.toUpperCase() === uom.toUpperCase() && c.toUom.toUpperCase() === base.toUpperCase());
-    if (d) return roundMoney(qty * d.factor);
-    const r = convs.find(c => c.fromUom.toUpperCase() === base.toUpperCase() && c.toUom.toUpperCase() === uom.toUpperCase());
-    if (r) return roundMoney(qty / r.factor);
-    throw new Error(`No UOM conversion for ${itemCode}`);
+  private async convertToBaseUom(
+    cid: string,
+    qty: number,
+    uomId: string | undefined,
+    uom: string,
+    item: Item
+  ): Promise<ItemQtyToBaseUomResult> {
+    const convs = await this.uomConversionRepo.getConversionsForItem(cid, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions: convs,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundMoney,
+      itemCode: item.code,
+    });
   }
 
   private async resolveCCYToBaseRate(cid: string, cost: string, base: string, move: string, rate: number, date: string): Promise<number> {
@@ -597,6 +658,7 @@ export class UpdatePurchaseInvoiceUseCase {
           itemName: existing?.itemName || '',
           trackInventory: existing?.trackInventory ?? false,
           invoicedQty: line.invoicedQty,
+          uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
           lineTotalDoc: existing?.lineTotalDoc ?? 0,

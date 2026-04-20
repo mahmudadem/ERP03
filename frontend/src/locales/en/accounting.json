@@ -698,6 +698,9 @@
         "amount": "Amount",
         "currency": "Currency",
         "exchangeRate": "Rate",
+        "party": "Party",
+        "item": "Item",
+        "warehouse": "Warehouse",
         "default": "Column"
       },
       "fields": {
@@ -715,7 +718,10 @@
         "lineDescription": "Line Description",
         "account": "Account",
         "debit": "Debit",
-        "credit": "Credit"
+        "credit": "Credit",
+        "party": "Party",
+        "item": "Item",
+        "warehouse": "Warehouse"
       },
       "selectPlaceholder": "Select...",
       "checkboxYes": "Yes",

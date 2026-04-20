@@ -6,10 +6,12 @@ import { PurchaseSettings } from '../../domain/purchases/entities/PurchaseSettin
 
 export interface PurchaseSettingsDTO {
   companyId: string;
+  workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -35,6 +37,7 @@ export interface PurchaseOrderLineDTO {
   itemType: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   receivedQty: number;
   invoicedQty: number;
@@ -86,6 +89,7 @@ export interface GoodsReceiptLineDTO {
   itemCode: string;
   itemName: string;
   receivedQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -108,6 +112,7 @@ export interface GoodsReceiptDTO {
   lines: GoodsReceiptLineDTO[];
   status: 'DRAFT' | 'POSTED' | 'CANCELLED';
   notes?: string;
+  voucherId?: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -124,6 +129,7 @@ export interface PurchaseInvoiceLineDTO {
   itemName: string;
   trackInventory: boolean;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   lineTotalDoc: number;
@@ -182,6 +188,7 @@ export interface PurchaseReturnLineDTO {
   itemCode: string;
   itemName: string;
   returnQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -247,10 +254,12 @@ export class PurchaseDTOMapper {
   static toSettingsDTO(settings: PurchaseSettings): PurchaseSettingsDTO {
     return {
       companyId: settings.companyId,
+      workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requirePOForStockItems: settings.requirePOForStockItems,
       defaultAPAccountId: settings.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId,
+      defaultGRNIAccountId: settings.defaultGRNIAccountId,
       allowOverDelivery: settings.allowOverDelivery,
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
@@ -278,6 +287,7 @@ export class PurchaseDTOMapper {
       itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom,
       receivedQty: line.receivedQty,
       invoicedQty: line.invoicedQty,
@@ -333,6 +343,7 @@ export class PurchaseDTOMapper {
       itemCode: line.itemCode,
       itemName: line.itemName,
       receivedQty: line.receivedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostDoc: line.unitCostDoc,
       unitCostBase: line.unitCostBase,
@@ -357,6 +368,7 @@ export class PurchaseDTOMapper {
       lines: grn.lines.map((line) => PurchaseDTOMapper.toGoodsReceiptLineDTO(line)),
       status: grn.status,
       notes: grn.notes,
+      voucherId: grn.voucherId ?? null,
       createdBy: grn.createdBy,
       createdAt: grn.createdAt.toISOString(),
       updatedAt: grn.updatedAt.toISOString(),
@@ -375,6 +387,7 @@ export class PurchaseDTOMapper {
       itemName: line.itemName,
       trackInventory: line.trackInventory,
       invoicedQty: line.invoicedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
       lineTotalDoc: line.lineTotalDoc,
@@ -437,6 +450,7 @@ export class PurchaseDTOMapper {
       itemCode: line.itemCode,
       itemName: line.itemName,
       returnQty: line.returnQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostDoc: line.unitCostDoc,
       unitCostBase: line.unitCostBase,

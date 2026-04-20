@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesInvoicePayload,
   SalesInvoiceDTO,
@@ -14,6 +14,9 @@ import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector, ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -27,6 +30,7 @@ interface EditableLine {
   itemCode?: string;
   itemName?: string;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -37,6 +41,7 @@ interface EditableLine {
 interface EditableForm {
   salesOrderId: string;
   customerId: string;
+  customerName?: string;
   customerInvoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
@@ -49,6 +54,7 @@ interface EditableForm {
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
   invoicedQty: 1,
+  uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
   taxCodeId: undefined,
@@ -86,6 +92,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialSalesOrderId, initialCustomerId));
+  const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -178,6 +185,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
           itemCode: line.itemCode,
           itemName: line.itemName,
           invoicedQty: remainingQty,
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -211,6 +219,24 @@ const SalesInvoiceDetailPage: React.FC = () => {
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
     setSalesOrders(Array.isArray(salesOrderList) ? salesOrderList : []);
+  };
+
+  const ensureItemUomOptions = async (itemId: string) => {
+    if (!itemId || uomOptionsByItemId[itemId] || !itemById[itemId]) return;
+    try {
+      const result = await inventoryApi.listUomConversions(itemId);
+      const conversions = unwrap<UomConversionDTO[]>(result) || [];
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], conversions),
+      }));
+    } catch (loadError) {
+      console.error('Failed to load UOM conversions', loadError);
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], []),
+      }));
+    }
   };
 
   const loadSalesOrderLines = async (orderId: string) => {
@@ -280,6 +306,13 @@ const SalesInvoiceDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const ids = Array.from(new Set(form.lines.map((line) => line.itemId).filter(Boolean)));
+    ids.forEach((itemId) => {
+      void ensureItemUomOptions(itemId);
+    });
+  }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
       const lines = [...prev.lines];
@@ -289,9 +322,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
       if (patch.itemId !== undefined) {
         const item = itemById[patch.itemId];
         if (item) {
+          const defaultUom = getDefaultItemUomOption(item, 'sales');
           next.itemCode = item.code;
           next.itemName = item.name;
-          next.uom = next.uom || item.salesUom || item.baseUom;
+          next.uomId = next.uomId || defaultUom?.uomId;
+          next.uom = next.uom || defaultUom?.code || item.salesUom || item.baseUom;
           if (!next.warehouseId && settings?.defaultWarehouseId) {
             next.warehouseId = settings.defaultWarehouseId;
           }
@@ -357,6 +392,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       dnLineId: line.dnLineId || undefined,
       itemId: line.itemId || undefined,
       invoicedQty: line.invoicedQty,
+      uomId: line.uomId,
       uom: line.uom || item?.salesUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
       taxCodeId: line.taxCodeId || undefined,
@@ -478,18 +514,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <PartySelector 
                 value={form.customerId}
-                onChange={(e) => setForm((prev) => ({ ...prev, customerId: e.target.value }))}
-              >
-                <option value="">Select customer</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.displayName}
-                  </option>
-                ))}
-              </select>
+                onChange={(party) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    customerId: party?.id || '',
+                    customerName: party?.displayName || '',
+                    currency: party?.defaultCurrency || prev.currency,
+                  }));
+                }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Customer Invoice #</label>
@@ -502,20 +537,16 @@ const SalesInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Invoice Date</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={form.invoiceDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, invoiceDate: e.target.value }))}
+                onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Due Date (optional)</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={form.dueDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -587,18 +618,23 @@ const SalesInvoiceDetailPage: React.FC = () => {
                 {form.lines.map((line, index) => (
                   <tr key={line.lineId || `line-${index}`} className="border-b border-slate-100 align-top">
                     <td className="py-2 pr-2">
-                      <select
-                        className="w-52 rounded-lg border border-slate-300 px-2 py-1.5"
+                      <ItemSelector 
                         value={line.itemId}
-                        onChange={(e) => setLine(index, { itemId: e.target.value })}
-                      >
-                        <option value="">Select item</option>
-                        {items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.code} - {item.name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(item) => {
+                          if (item) {
+                            const defaultUom = getDefaultItemUomOption(item, 'sales');
+                            setLine(index, {
+                              itemId: item.id,
+                              itemCode: item.code,
+                              itemName: item.name,
+                              uomId: defaultUom?.uomId,
+                              uom: defaultUom?.code || item.salesUom || item.baseUom,
+                            });
+                          } else {
+                            setLine(index, { itemId: '', itemCode: '', itemName: '', uomId: undefined, uom: '' });
+                          }
+                        }}
+                      />
                       {(line.itemCode || line.itemName) && (
                         <div className="mt-1 text-xs text-slate-500">
                           {(line.itemCode || '') + (line.itemName ? ` - ${line.itemName}` : '')}
@@ -616,12 +652,28 @@ const SalesInvoiceDetailPage: React.FC = () => {
                       />
                     </td>
                     <td className="py-2 pr-2">
-                      <input
-                        type="text"
-                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                        value={line.uom}
-                        onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
-                      />
+                      <select
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                        value={
+                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                          line.uomId ||
+                          line.uom
+                        }
+                        disabled={!line.itemId}
+                        onChange={(e) => {
+                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                            (option) => (option.uomId || option.code) === e.target.value
+                          );
+                          setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                        }}
+                      >
+                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                            {option.code}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-2 pr-2">
                       <input
@@ -648,19 +700,10 @@ const SalesInvoiceDetailPage: React.FC = () => {
                       </select>
                     </td>
                     <td className="py-2 pr-2">
-                      <select
-                        className="w-40 rounded-lg border border-slate-300 px-2 py-1.5"
-                        value={line.warehouseId || ''}
-                        disabled={busy}
-                        onChange={(e) => setLine(index, { warehouseId: e.target.value || undefined })}
-                      >
-                        <option value="">Select Warehouse</option>
-                        {warehouses.map((warehouse) => (
-                          <option key={warehouse.id} value={warehouse.id}>
-                            {warehouse.name}
-                          </option>
-                        ))}
-                      </select>
+                      <WarehouseSelector 
+                        value={line.warehouseId}
+                        onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
+                      />
                     </td>
                     <td className="py-2 pr-2 text-right">
                       {form.currency} {computedLines[index]?.lineTotalDoc.toFixed(2)}

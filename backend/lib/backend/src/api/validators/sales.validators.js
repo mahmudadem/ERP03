@@ -62,6 +62,12 @@ const ensureOptionalUuid = (value, fieldName) => {
         return;
     ensureRequiredString(value, fieldName);
 };
+const ensureWorkflowMode = (value, fieldName) => {
+    ensureRequiredString(value, fieldName);
+    if (value !== 'SIMPLE' && value !== 'OPERATIONAL') {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be SIMPLE or OPERATIONAL`);
+    }
+};
 const validateSOLine = (line, index) => {
     ensureRequiredString(line.itemId, `lines[${index}].itemId`);
     ensurePositiveNumber(line.orderedQty, `lines[${index}].orderedQty`);
@@ -74,6 +80,9 @@ const validateSOLine = (line, index) => {
     }
     if (line.uom !== undefined) {
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    }
+    if (line.uomId !== undefined) {
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     }
     if (line.warehouseId !== undefined) {
         ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
@@ -95,6 +104,8 @@ const validateDNLine = (line, index) => {
         ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
     if (line.uom !== undefined)
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.description !== undefined && typeof line.description !== 'string') {
         throw ApiError_1.ApiError.badRequest(`lines[${index}].description must be a string`);
     }
@@ -112,6 +123,8 @@ const validateSILine = (line, index) => {
         ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
     if (line.uom !== undefined)
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.unitPriceDoc !== undefined)
         ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
     if (line.taxCodeId !== undefined)
@@ -135,12 +148,16 @@ const validateSRLine = (line, index) => {
         ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
     if (line.uom !== undefined)
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.description !== undefined && typeof line.description !== 'string') {
         throw ApiError_1.ApiError.badRequest(`lines[${index}].description must be a string`);
     }
 };
 const validateInitializeSalesInput = (body) => {
     ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
+    if (body.workflowMode !== undefined)
+        ensureWorkflowMode(body.workflowMode, 'workflowMode');
     if (body.allowDirectInvoicing !== undefined)
         ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requireSOForStockItems !== undefined)
@@ -169,6 +186,8 @@ const validateInitializeSalesInput = (body) => {
 };
 exports.validateInitializeSalesInput = validateInitializeSalesInput;
 const validateUpdateSalesSettingsInput = (body) => {
+    if (body.workflowMode !== undefined)
+        ensureWorkflowMode(body.workflowMode, 'workflowMode');
     if (body.allowDirectInvoicing !== undefined)
         ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requireSOForStockItems !== undefined)

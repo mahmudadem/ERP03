@@ -23,10 +23,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { 
-  ArrowLeft, ArrowRight, Check, CheckCircle2, 
+  ArrowLeft, ArrowRight, Check, CheckCircle2, Plus,
   LayoutTemplate, Settings, 
   FileText, Shield, Layers, PlayCircle, MousePointerClick, Save,
-  GripVertical, X, Sliders
+  GripVertical, X, Sliders, ChevronDown, ChevronRight, Palette
 } from 'lucide-react';
 import { 
   DocumentFormConfig, FieldLayout, UIMode, AvailableField, 
@@ -88,15 +88,37 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // Skip Step 1 (template selection) if editing existing document
   const [currentStep, setCurrentStep] = useState(initialConfig ? 2 : 1);
   
+  const isFieldMandatory = (fieldId: string, baseType?: string) => {
+    // 1. Check system fields first (hardcoded logic)
+    const systemField = systemFields.find(f => f.id === fieldId);
+    if (systemField?.mandatory || systemField?.category === 'core') return true;
+
+    // 2. Check the base template definition if available in the props
+    const effectiveBaseType = baseType || config?.baseType;
+    const baseTemplate = availableTemplates.find(t => t.id === effectiveBaseType || t.code === effectiveBaseType);
+    if (baseTemplate) {
+      const isHeaderMandatory = (baseTemplate.headerFields || []).some((f: any) => (f.id === fieldId || f.name === fieldId) && (f.mandatory || f.required));
+      const isLineMandatory = (baseTemplate.lineFields || []).some((f: any) => (f.id === fieldId || f.name === fieldId) && (f.mandatory || f.required));
+      if (isHeaderMandatory || isLineMandatory) return true;
+    }
+
+    // 3. Fallback to the field's own mandatory flag if it exists (for standalone fields)
+    const field = availableFields.find(f => f.id === fieldId);
+    return field?.mandatory || false;
+  };
+
   const getCoreFieldIds = (baseType?: string) => {
-    return availableFields.filter(f => {
-      const isCore = f.category === 'core' || f.mandatory;
-      if (!isCore) return false;
+    return [...systemFields, ...availableFields].filter(f => {
+      const mandatory = isFieldMandatory(f.id, baseType);
+      if (!mandatory) return false;
       if (f.supportedTypes && baseType && !f.supportedTypes.includes(baseType)) return false;
       if (f.excludedTypes && baseType && f.excludedTypes.includes(baseType)) return false;
       return true;
     }).map(f => f.id);
   };
+
+  // --- GRID CONSTANTS ---
+  const GRID_COLS = 24;
 
   const isFieldAllowed = (fieldId: string, baseType?: string) => {
     const field = availableFields.find(f => f.id === fieldId);
@@ -104,6 +126,34 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     if (field.supportedTypes && baseType && !field.supportedTypes.includes(baseType)) return false;
     if (field.excludedTypes && baseType && field.excludedTypes.includes(baseType)) return false;
     return true;
+  };
+
+  // --- MIGRATION UTILITY ---
+  // If a layout has fields with colSpan <= 12 and max width <= 12, it might be from the old system
+  const migrateTo24Columns = (configToMigrate: DocumentFormConfig) => {
+    if (!configToMigrate.uiModeOverrides) return configToMigrate;
+    
+    // We check classic mode as a benchmark
+    const needsMigration = Object.values(configToMigrate.uiModeOverrides).some(mode => {
+      return Object.values(mode.sections).some(section => 
+        section.fields.some(f => (f.col + f.colSpan) <= 12 && f.colSpan > 0 && f.colSpan < 12)
+      );
+    });
+
+    if (!needsMigration) return configToMigrate;
+
+    const newConfig = JSON.parse(JSON.stringify(configToMigrate));
+    Object.values(newConfig.uiModeOverrides).forEach((mode: any) => {
+      Object.values(mode.sections).forEach((section: any) => {
+        section.fields.forEach((f: any) => {
+          // Double the horizontal coordinates
+          f.col = f.col * 2;
+          f.colSpan = f.colSpan * 2;
+        });
+      });
+    });
+    
+    return newConfig;
   };
 
   // Initialize with all core and required fields by default
@@ -146,19 +196,22 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   
   // Config State
   const [config, setConfig] = useState<DocumentFormConfig>(() => {
-    const base = initialConfig ? { ...initialConfig } : {
+    let initial = initialConfig;
+    if (initial) {
+      // Automatic migration for older 12-column documents
+      initial = migrateTo24Columns(initial);
+      return { ...initial, isMultiLine: true };
+    }
+    
+    // Default config for new forms
+    const base: Partial<DocumentFormConfig> = {
       id: 'new_document_form',
       name: 'New Document Form',
       prefix: 'V-',
       startNumber: 1000,
       rules: defaultRules,
       isMultiLine: true,
-      tableColumns: [
-        { id: 'account', labelOverride: 'Account' },
-        { id: 'debit', labelOverride: 'Debit' },
-        { id: 'credit', labelOverride: 'Credit' },
-        { id: 'notes', labelOverride: 'Notes' }
-      ],
+      tableColumns: [],
       actions: defaultActions,
       uiModeOverrides: null as any
     };
@@ -176,9 +229,16 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
             HEADER: { order: 0, fields: [] },
             BODY: { order: 1, fields: [] },
             EXTRA: { order: 2, fields: [] },
-            ACTIONS: { order: 3, fields: [] }
+            FOOTER: { order: 3, fields: [] },
+            ACTIONS: { order: 4, fields: [] }
           }
         };
+      } else if (!base.uiModeOverrides[mode].sections.FOOTER) {
+        // Migration patch for existing configurations that lack a FOOTER section
+        base.uiModeOverrides[mode].sections.FOOTER = { order: 3, fields: [] };
+        if (base.uiModeOverrides[mode].sections.ACTIONS) {
+          base.uiModeOverrides[mode].sections.ACTIONS.order = 4;
+        }
       }
     });
 
@@ -190,7 +250,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // UI State
   const [selectedField, setSelectedField] = useState<{ id: string, section: string } | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['required', 'columns']);
+  const [expandedVisualSections, setExpandedVisualSections] = useState<string[]>(['HEADER', 'BODY', 'FOOTER']);
 
   // Check if document is read-only (system default or locked)
   const isReadOnly = Boolean(initialConfig?.isLocked || initialConfig?.isSystemDefault);
@@ -241,6 +304,29 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     }
   }, [initialConfig]);
 
+  useEffect(() => {
+    if (currentStep === 6) {
+      runAutoPlacement();
+    }
+  }, [currentStep, selectedFieldIds, config.actions]);
+
+  // CLEANUP: Automatically remove table columns that are no longer in availableTableColumns or have no ID
+  useEffect(() => {
+    if (!availableTableColumns || availableTableColumns.length === 0) return;
+    
+    const validIds = new Set(availableTableColumns.map(c => c.id));
+    const currentCols = (config.tableColumns || []) as any[];
+    
+    const cleaned = currentCols.filter(col => {
+      const id = typeof col === 'string' ? col : col.id;
+      return id && (validIds.has(id) || (id === 'accountSelector' && validIds.has('account')));
+    });
+    
+    if (cleaned.length !== currentCols.length) {
+      setConfig(prev => ({ ...prev, tableColumns: cleaned }));
+    }
+  }, [availableTableColumns, config.id, currentStep]); // Run when available columns change, document changes, or step changes
+
   // Convert database templates to UI template format
   const templates: DocumentTemplate[] = [
     ...availableTemplates.map((t: DocumentFormConfig) => ({
@@ -258,86 +344,99 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   
   // --- AUTO-PLACEMENT ALGORITHM ---
 
-  const  runAutoPlacement = () => {
+  const runAutoPlacement = () => {
     const modes: UIMode[] = ['windows', 'classic'];
-    const newOverrides = { ...config.uiModeOverrides };
+    // Deep copy to avoid mutation issues
+    const newOverrides = JSON.parse(JSON.stringify(config.uiModeOverrides || {}));
 
     modes.forEach(mode => {
       const isWindows = mode === 'windows';
+      if (!newOverrides[mode]) {
+        newOverrides[mode] = {
+           sections: {
+            HEADER: { order: 0, fields: [] },
+            BODY: { order: 1, fields: [] },
+            EXTRA: { order: 2, fields: [] },
+            FOOTER: { order: 3, fields: [] },
+            ACTIONS: { order: 4, fields: [] }
+          }
+        };
+      }
+      
       const currentModeConfig = newOverrides[mode];
       
-      // 1. Collect all currently assigned field IDs across all sections to identify orphans/deleted
-      const assignedFieldIds = new Set<string>();
-      Object.values(currentModeConfig.sections).forEach(section => {
-        section.fields.forEach(f => assignedFieldIds.add(f.fieldId));
+      // Ensure all standard sections exist
+      const standardSections: SectionType[] = ['HEADER', 'BODY', 'EXTRA', 'FOOTER', 'ACTIONS'];
+      standardSections.forEach(s => {
+        if (!currentModeConfig.sections[s]) {
+          currentModeConfig.sections[s] = { order: standardSections.indexOf(s), fields: [] };
+        }
       });
 
-      // 2. Filter out fields that are no longer selected or actions that are no longer enabled
+      // 1. Filter out fields that are no longer selected or actions that are no longer enabled
       Object.keys(currentModeConfig.sections).forEach(sectionKey => {
         const section = currentModeConfig.sections[sectionKey as SectionType];
-        section.fields = section.fields.filter(f => {
-          // Action handling
-          if (f.fieldId.startsWith('action_')) {
-            const actionType = f.fieldId.replace('action_', '');
-            return config.actions.find(a => a.type === actionType)?.enabled ?? false;
-          }
-          // System fields
-          if (systemFields.some(sf => sf.id === f.fieldId)) return true;
-          // Regular fields
-          return selectedFieldIds.includes(f.fieldId);
-        });
+        if (section?.fields) {
+          section.fields = section.fields.filter(f => {
+            if (f.fieldId.startsWith('action_')) {
+              const actionType = f.fieldId.replace('action_', '');
+              return config.actions.find(a => a.type === actionType)?.enabled ?? false;
+            }
+            return selectedFieldIds.includes(f.fieldId);
+          });
+        }
       });
 
-      // 3. Identify fields that MUST be present but aren't currently placed
+      // 2. Identify missing fields
       const allRequiredFieldIds = Array.from(new Set([
-        ...systemFields.map(f => f.id),
-        ...availableFields.filter(f => {
+        ...[...systemFields, ...availableFields].filter(f => {
           if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
           if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
-          return f.category === 'core' || f.mandatory || selectedFieldIds.includes(f.id);
+          return selectedFieldIds.includes(f.id);
         }).map(f => f.id),
         ...config.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
       ]));
 
       const missingFieldIds = allRequiredFieldIds.filter(id => {
-        // Check if placed in any section
-        return !Object.values(currentModeConfig.sections).some(s => s.fields.some(f => f.fieldId === id));
+        return !Object.values(currentModeConfig.sections).some((s: any) => s.fields.some((f: any) => f.fieldId === id));
       });
 
-      if (missingFieldIds.length === 0) return;
+      if (missingFieldIds.length === 0) return; // Skip this mode
 
-      // 4. Place missing fields using auto-layout logic
+      // 3. Place missing fields
       missingFieldIds.forEach(fieldId => {
-        // Determine section hint
         let targetSection: SectionType = 'HEADER';
-        let span = isWindows ? 4 : 12;
+        let span = isWindows ? 8 : 24; // Scaled for 24 columns
         
         const systemField = systemFields.find(f => f.id === fieldId);
         const availableField = availableFields.find(f => f.id === fieldId);
         const isAction = fieldId.startsWith('action_');
 
         if (systemField) {
-          targetSection = 'HEADER';
-          span = isWindows ? 3 : 12;
+          targetSection = (systemField.sectionHint as SectionType) || 'HEADER';
+          span = systemField.id === 'lineItems' ? 24 : (isWindows ? 6 : 24);
         } else if (availableField) {
           targetSection = (availableField.sectionHint as SectionType) || 'HEADER';
-          span = isWindows ? 4 : 12;
+          span = isWindows ? 8 : 24;
         } else if (isAction) {
           targetSection = 'ACTIONS';
-          span = isWindows ? 4 : 12;
+          span = isWindows ? 4 : 24; // Actions are usually smaller
+        }
+
+        // Final safety check for target section existence
+        if (!currentModeConfig.sections[targetSection]) {
+          targetSection = 'HEADER';
         }
 
         const section = currentModeConfig.sections[targetSection];
-        
-        // Find the next available row/col for this section
-        const maxRow = section.fields.reduce((max, f) => Math.max(max, f.row), -1);
-        const fieldsInLastRow = section.fields.filter(f => f.row === Math.max(0, maxRow));
-        const lastColEnd = fieldsInLastRow.reduce((max, f) => Math.max(max, f.col + f.colSpan), 0);
+        const maxRow = section.fields.reduce((max: number, f: any) => Math.max(max, f.row), -1);
+        const fieldsInLastRow = section.fields.filter((f: any) => f.row === Math.max(0, maxRow));
+        const lastColEnd = fieldsInLastRow.reduce((max: number, f: any) => Math.max(max, f.col + f.colSpan), 0);
 
         let row = Math.max(0, maxRow);
         let col = lastColEnd;
 
-        if (col + span > 12) {
+        if (col + span > 24) { // Updated for 24 columns
           row++;
           col = 0;
         }
@@ -572,17 +671,21 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   const onResizeMove = (e: MouseEvent) => {
     if (!resizingRef.current) return;
     const { section, fieldId, startX, startSpan, containerWidth } = resizingRef.current;
-    
-    const colWidth = containerWidth / 12;
-    const deltaX = e.clientX - startX;
-    const deltaCols = Math.round(deltaX / colWidth);
-    
-    const newSpan = Math.max(1, Math.min(12, startSpan + deltaCols));
+    const container = document.querySelector('.grid-container') as HTMLElement;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const cellWidth = rect.width / GRID_COLS;
+    const deltaX = e.clientX - resizingRef.current.startX;
+    const colDelta = Math.round(deltaX / cellWidth);
     
     const overrides = { ...config.uiModeOverrides };
     const fields = overrides[previewMode].sections[section as SectionType].fields;
     const field = fields.find((f: FieldLayout) => f.fieldId === fieldId);
-    if (field && field.colSpan !== newSpan) {
+    if (!field) return;
+
+    const newSpan = Math.max(1, Math.min(GRID_COLS - field.col, resizingRef.current.startSpan + colDelta));
+    
+    if (newSpan !== field.colSpan) {
       field.colSpan = newSpan;
       setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
     }
@@ -594,7 +697,6 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     window.removeEventListener('mouseup', onResizeEnd);
   };
 
-  // --- PROPERTIES PANEL LOGIC ---
   // --- PROPERTIES PANEL LOGIC ---
   const updateSelectedField = (key: keyof FieldLayout, value: any) => {
     if (!selectedField) return;
@@ -613,8 +715,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
      const overrides = { ...config.uiModeOverrides };
      const modeConfig = overrides[previewMode];
      
+     const container = document.querySelector('.grid-container') as HTMLElement;
+     const rect = container?.getBoundingClientRect() || { width: 1000, left: 0 };
+     const cellWidth = rect.width / GRID_COLS;
+     const mouseX = 0; // Simplified for logic
+     const col = Math.floor(mouseX / cellWidth);
+     
      const sourceFields = modeConfig.sections[selectedField.section as SectionType].fields;
-      const idx = sourceFields.findIndex((f: FieldLayout) => f.fieldId === selectedField.id);
+     const idx = sourceFields.findIndex((f: FieldLayout) => f.fieldId === selectedField.id);
      if (idx === -1) return;
      const [field] = sourceFields.splice(idx, 1);
      
@@ -627,53 +735,114 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   };
 
 
+  const updateSectionStyle = (sectionName: string, color: string) => {
+    const overrides = { ...config.uiModeOverrides };
+    overrides[previewMode].sections[sectionName as SectionType].backgroundColor = color;
+    setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
+  };
+
   // Safely extract layout with fallback to prevent crashes
   const currentModeConfig = config.uiModeOverrides?.[previewMode] || { sections: {} };
   const sortedSections = Object.entries(currentModeConfig.sections || {})
     .sort(([, a], [, b]) => (a as SectionLayout).order - (b as SectionLayout).order);
 
-  // --- RENDERERS ---
-
   const renderInteractiveGrid = (sectionName: string) => {
     const layout = config.uiModeOverrides?.[previewMode]?.sections?.[sectionName as SectionType] || { order: 0, fields: [] };
     if (!layout) return null;
 
+    const isExpanded = expandedVisualSections.includes(sectionName);
     const maxRow = layout.fields.reduce((max: number, f: FieldLayout) => Math.max(max, f.row), 0) + 1;
+    const bgColorClass = layout.backgroundColor || 'bg-white';
+
+    const softColors = [
+      { id: 'white', hex: '#ffffff', class: 'bg-white' },
+      { id: 'gray', hex: '#f8fafc', class: 'bg-slate-50' },
+      { id: 'sky', hex: '#eff6ff', class: 'bg-sky-50' },
+      { id: 'teal', hex: '#f0fdfa', class: 'bg-teal-50' },
+      { id: 'indigo', hex: '#eef2ff', class: 'bg-indigo-50' },
+      { id: 'rose', hex: '#fff1f2', class: 'bg-rose-50' },
+    ];
+
+    // Find the hex color for the current selection to use in styles
+    const currentHex = layout.backgroundColor || '#ffffff';
 
     return (
       <div 
-        className="mb-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm transition-all relative group"
+        key={sectionName}
+        className={`mb-6 border border-gray-200 rounded-xl overflow-hidden shadow-sm transition-all relative group ${bgColorClass}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDropField(e, sectionName, maxRow, 0)}
       >
-        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center cursor-move">
-          <div className="flex items-center gap-2">
-            <GripVertical size={14} className="text-gray-400" />
-            <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} SECTION</span>
+        <div className={`px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-white/60 backdrop-blur-sm sticky top-0 z-[15]`}>
+          <div className="flex items-center gap-3">
+             <button 
+               onClick={() => setExpandedVisualSections(prev => prev.includes(sectionName) ? prev.filter(s => s !== sectionName) : [...prev, sectionName])}
+               className="p-1 hover:bg-gray-100 rounded text-gray-400"
+             >
+                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+             </button>
+             <div className="p-1.5 bg-gray-50 rounded border border-gray-200"><GripVertical size={12} className="text-gray-400" /></div>
+             <div>
+                <span className="text-[10px] font-black text-gray-800 uppercase tracking-widest leading-none block">{sectionName} SECTION</span>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">
+                   {layout.fields.length} Fields {layout.fields.length === 0 && '• EMPTY'}
+                </p>
+             </div>
           </div>
-          <div className="flex gap-2">
-             <button onClick={() => updateSectionOrder(sectionName, layout.order - 1)} disabled={layout.order === 0}><ArrowLeft size={14} className="rotate-90" /></button>
-             <button onClick={() => updateSectionOrder(sectionName, layout.order + 1)} disabled={layout.order === 3}><ArrowRight size={14} className="rotate-90" /></button>
+          
+          <div className="flex items-center gap-4">
+             {/* Background Style Picker */}
+             <div className="flex items-center gap-1.5 p-1 bg-gray-50 rounded-lg border border-gray-100">
+                <Palette size={12} className="text-gray-400 mx-1" />
+                {softColors.map(color => (
+                   <button
+                     key={color.id}
+                     onClick={() => updateSectionStyle(sectionName, color.hex)}
+                     className={`w-4 h-4 rounded-full border-2 transition-all ${color.class} ${currentHex === color.hex ? 'border-indigo-500 scale-125 shadow-sm' : 'border-white hover:scale-110 shadow-xs'}`}
+                     title={`Set background to ${color.id}`}
+                   />
+                ))}
+             </div>
+
+             <div className="h-6 w-px bg-gray-200"></div>
+
+             <div className="flex gap-1">
+                <button 
+                  onClick={() => updateSectionOrder(sectionName, layout.order - 1)} 
+                  disabled={layout.order === 0} 
+                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20"
+                >
+                   <ArrowLeft size={14} className="rotate-90" />
+                </button>
+                <button 
+                  onClick={() => updateSectionOrder(sectionName, layout.order + 1)} 
+                  disabled={layout.order === 4} 
+                  className="p-1.5 hover:bg-gray-100 rounded text-gray-500 disabled:opacity-20"
+                >
+                   <ArrowRight size={14} className="rotate-90" />
+                </button>
+             </div>
           </div>
         </div>
 
-        <div 
-          className="p-4 grid grid-cols-12 gap-2 relative min-h-[150px] grid-container"
-          style={{ gridTemplateRows: `repeat(${Math.max(4, maxRow + 1)}, minmax(3.5rem, auto))` }}
-        >
-           {Array.from({ length: Math.max(4, maxRow + 1) * 12 }).map((_, i) => {
-              const r = Math.floor(i / 12);
-              const c = i % 12;
-              return (
-                <div 
-                   key={`cell-${r}-${c}`}
-                   onDragOver={(e) => e.preventDefault()}
-                   onDrop={(e) => handleDropField(e, sectionName, r, c)}
-                   className="border border-dashed border-gray-100 rounded h-full w-full absolute z-0 pointer-events-auto hover:bg-indigo-50/30 transition-colors"
-                   style={{ gridRowStart: r + 1, gridColumnStart: c + 1 }}
-                />
-              );
-           })}
+        {isExpanded ? (
+          <div 
+            className="p-6 grid grid-cols-24 gap-3 relative min-h-[160px] grid-container animate-in fade-in duration-300"
+            style={{ backgroundColor: currentHex, gridTemplateRows: `repeat(${Math.max(4, maxRow + 1)}, minmax(3.5rem, auto))` }}
+          >
+             {Array.from({ length: Math.max(4, maxRow + 1) * GRID_COLS }).map((_, i) => {
+                const r = Math.floor(i / GRID_COLS);
+                const c = i % GRID_COLS;
+                return (
+                  <div 
+                     key={`cell-${r}-${c}`}
+                     onDragOver={(e) => e.preventDefault()}
+                     onDrop={(e) => handleDropField(e, sectionName, r, c)}
+                     className="border border-dashed border-gray-200/50 rounded-lg h-full w-full absolute z-0 pointer-events-auto hover:bg-indigo-500/5 transition-colors"
+                     style={{ gridRowStart: r + 1, gridColumnStart: c + 1 }}
+                  />
+                );
+             })}
 
            {(() => {
              const visibleFields = layout.fields.filter((f: FieldLayout) => {
@@ -812,6 +981,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
              return elements;
            })()}
         </div>
+        ) : null}
       </div>
     );
   };
@@ -822,14 +992,17 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
   const onColumnResizeMove = (e: MouseEvent) => {
       if (!columnResizeRef.current) return;
-      const { colIndex, startX, startWidth } = columnResizeRef.current;
+      const { colIndex, startX, startWidth, tableWidth } = columnResizeRef.current;
       const delta = e.clientX - startX;
-      const newWidth = Math.max(50, startWidth + delta);
+      
+      const newWidthPx = Math.max(40, startWidth + delta);
+      // Calculate percentage based on total table width
+      const newWidthPct = Math.min(100, Math.round((newWidthPx / tableWidth) * 100));
       
       const updated = [...((config.tableColumns || []) as any[])];
       const col = updated[colIndex];
       const base = typeof col === 'string' ? { id: col } : col;
-      updated[colIndex] = { ...base, width: `${newWidth}px` };
+      updated[colIndex] = { ...base, width: `${newWidthPct}%` };
       
       setConfig(prev => ({ ...prev, tableColumns: updated }));
   };
@@ -844,11 +1017,16 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     e.preventDefault();
     e.stopPropagation();
     const thElement = (e.currentTarget.parentElement as HTMLElement); 
+    const tableElement = thElement.closest('table');
+    const tableWidth = tableElement ? tableElement.offsetWidth : 1000;
+
     columnResizeRef.current = {
       colIndex,
       startX: e.clientX,
-      startWidth: thElement ? thElement.offsetWidth : 100
-    };
+      startWidth: thElement ? thElement.offsetWidth : 100,
+      tableWidth
+    } as any;
+
     window.addEventListener('mousemove', onColumnResizeMove);
     window.addEventListener('mouseup', onColumnResizeEnd);
   };
@@ -903,18 +1081,70 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                              <div className="bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20"><Layers size={20} /></div>
                              <div>
                                 <h3 className="text-sm font-bold text-white uppercase tracking-widest">Live Table Designer</h3>
-                                <p className="text-[10px] text-indigo-200">Drag headers to reorder. Drag edges to resize. Click to rename.</p>
+                                <div className="flex items-center gap-3">
+                                   <p className="text-[10px] text-indigo-200 font-medium">Drag headers to reorder. Drag edges to resize. Click to rename.</p>
+                                   <button 
+                                     onClick={() => setShowColumnPicker(!showColumnPicker)}
+                                     className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border transition-all font-sans flex items-center gap-1.5 ${showColumnPicker ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/10' : 'text-white/40 hover:text-white bg-white/5 border-white/10'}`}
+                                   >
+                                     {showColumnPicker ? 'Done' : 'Manage Columns'}
+                                     <Settings size={10} className={showColumnPicker ? 'animate-spin-slow' : ''} />
+                                   </button>
+                                </div>
                              </div>
                           </div>
                           {activeColumnId && (
                              <button 
                                onClick={() => setActiveColumnId(null)}
-                               className="text-white/60 hover:text-white text-[10px] font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded-full border border-white/10 transition-colors"
+                               className="text-white/40 hover:text-white text-[10px] font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/10 transition-colors font-sans"
                              >
                                 Deselect Column
                              </button>
                           )}
                        </div>
+
+                       {showColumnPicker && (
+                          <div className="bg-slate-800 border-b border-white/10 p-6 animate-in slide-in-from-top duration-300">
+                             <div className="flex items-center justify-between mb-4">
+                                <div>
+                                   <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Available Table Columns</h4>
+                                   <p className="text-[10px] text-white/40 font-medium font-sans">Toggle columns to add or remove them from the table</p>
+                                </div>
+                                <div className="text-[10px] font-bold text-white/20 bg-white/5 px-2 py-1 rounded font-sans">
+                                   {(config.tableColumns || []).length} / {availableTableColumns.length} Active
+                                </div>
+                             </div>
+                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                                {availableTableColumns.map(col => {
+                                   const currentCols = (config.tableColumns || []) as any[];
+                                   const isSelected = currentCols.some(c => (typeof c === 'string' ? c : c.id) === col.id);
+                                   
+                                   return (
+                                      <button 
+                                         key={col.id}
+                                         onClick={() => {
+                                            let updated;
+                                            if (isSelected) {
+                                               updated = currentCols.filter(c => (typeof c === 'string' ? c : c.id) !== col.id);
+                                            } else {
+                                               updated = [...currentCols, { id: col.id, labelOverride: col.label }];
+                                            }
+                                            setConfig({...config, tableColumns: updated});
+                                         }}
+                                         className={`flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-bold transition-all border font-sans ${
+                                            isSelected 
+                                               ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 shadow-inner' 
+                                               : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                                         }`}
+                                      >
+                                         <span className="truncate mr-2 font-sans">{col.label}</span>
+                                         {isSelected ? <Check size={12} /> : <Plus size={12} />}
+                                      </button>
+                                   );
+                                })}
+                             </div>
+                          </div>
+                       )}
                        
                        <div className="p-8 bg-slate-50/50">
                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden min-h-[300px] flex flex-col">
@@ -982,7 +1212,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                                           className="w-full bg-white/10 border border-white/20 rounded px-2 py-0.5 text-xs font-bold text-white focus:bg-white focus:text-indigo-600 outline-none transition-all"
                                                         />
                                                      ) : (
-                                                        <div className="text-xs font-bold text-left pl-6 truncate" title={columnLabel}>{columnLabel}</div>
+                                                        <div className="text-xs font-bold text-left pl-6 truncate text-white drop-shadow-sm font-sans" title={columnLabel}>{columnLabel || 'No Label'}</div>
                                                      )}
                                                   </div>
                                                   
@@ -1070,16 +1300,20 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                                      return (typeof col !== 'string' && col?.width) || 'auto';
                                                   })()}
                                                   onChange={(e) => {
-                                                     const updated = (config.tableColumns || []).map((c: any) => {
-                                                        const id = typeof c === 'string' ? c : c.id;
-                                                        if (id === activeColumnId) {
-                                                           const base = typeof c === 'string' ? { id: c } : c;
-                                                           return { ...base, width: e.target.value };
-                                                        }
-                                                        return c;
-                                                     });
-                                                     setConfig({...config, tableColumns: updated});
-                                                  }}
+                                                      const updated = (config.tableColumns || []).map((c: any) => {
+                                                         const id = typeof c === 'string' ? c : c.id;
+                                                         if (id === activeColumnId) {
+                                                            const base = typeof c === 'string' ? { id: c } : c;
+                                                            let val = e.target.value;
+                                                            if (val && !val.includes('%') && !isNaN(parseInt(val))) {
+                                                               val = val + '%';
+                                                            }
+                                                            return { ...base, width: val || 'auto' };
+                                                         }
+                                                         return c;
+                                                      });
+                                                      setConfig({...config, tableColumns: updated});
+                                                   }}
                                                   className="w-20 px-2 py-1 text-xs font-mono border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-center"
                                                />
                                                <button 
@@ -1325,6 +1559,21 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                Classic Table
                              </button>
                           </div>
+                           <button
+                             onClick={() => {
+                               const tableDesigner = document.querySelector('.mt-8.bg-white.border.border-gray-200.rounded-xl');
+                               if (tableDesigner) {
+                                  tableDesigner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  // Highlight the designer briefly
+                                  tableDesigner.classList.add('ring-4', 'ring-indigo-500/50');
+                                  setTimeout(() => tableDesigner.classList.remove('ring-4', 'ring-indigo-500/50'), 2000);
+                               }
+                             }}
+                             className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all border border-slate-200 group"
+                           >
+                              <Settings size={14} className="group-hover:rotate-90 transition-transform duration-500" />
+                              <span className="text-[10px] font-black uppercase tracking-widest font-sans">Go to Column Designer</span>
+                           </button>
                         </div>
                       )}
 
@@ -1531,13 +1780,32 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                   </div>
                 </div>
                 
-                <div onClick={() => setConfig({...config, isMultiLine: !config.isMultiLine})} className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${config.isMultiLine ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
-                   <div>
-                      <h3 className="text-sm font-bold text-gray-900">Multi-Line Journal Entry</h3>
-                      <p className="text-xs text-gray-500">Enable line items table for this document.</p>
+                {/* Multi-line Toggle */}
+                <div 
+                  onClick={() => setConfig({...config, isMultiLine: !config.isMultiLine})} 
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                    config.isMultiLine 
+                      ? 'border-indigo-600 bg-indigo-50 shadow-sm' 
+                      : 'border-gray-200 bg-white hover:border-indigo-200'
+                  }`}
+                >
+                   <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${config.isMultiLine ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                         <Layers size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 leading-none mb-1">Enable Line Items Table</h3>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                          {config.isMultiLine ? 'Enabled' : 'Disabled'}
+                        </p>
+                      </div>
                    </div>
-                   <div className={`px-3 py-1 rounded-full text-xs font-bold ${config.isMultiLine ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{config.isMultiLine ? 'ON' : 'OFF'}</div>
+                   <div className={`w-10 h-5 rounded-full relative transition-colors ${config.isMultiLine ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                     <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.isMultiLine ? 'left-6' : 'left-1'}`} />
+                   </div>
                 </div>
+                
+
 
              </div>
           </div>
@@ -1554,117 +1822,114 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
           </div>
         );
       case 4: // Fields (Reorganized)
-        const relevantFields = availableFields.filter(f => {
+        const allPossibleFields = [...systemFields, ...availableFields];
+        const relevantFields = allPossibleFields.filter(f => {
           if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
           if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
           return true;
         });
 
-        const coreFields = relevantFields.filter(f => f.category === 'core' || f.mandatory);
-        const optionalFields = relevantFields.filter(f => f.category !== 'core' && !f.mandatory);
-
-        const renderFieldCard = (field: AvailableField) => {
-          const isCore = field.category === 'core' || field.mandatory;
-          const isSelected = isCore || selectedFieldIds.includes(field.id);
+        const renderFieldCard = (field: any, isTableCol: boolean = false) => {
+          const isSelected = isTableCol 
+            ? (config.tableColumns || []).some((c: any) => (typeof c === 'string' ? c : c.id) === field.id)
+            : selectedFieldIds.includes(field.id);
           
           return (
             <div 
               key={field.id} 
               onClick={() => {
-                if (isCore) return; // Prevent toggling core fields
-                setSelectedFieldIds(prev => isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]);
+                if (isFieldMandatory(field.id, config.baseType) && isSelected) return;
+                if (isTableCol) {
+                  let updated;
+                  if (isSelected) {
+                    updated = (config.tableColumns || []).filter((c: any) => (typeof c === 'string' ? c : c.id) !== field.id);
+                  } else {
+                    updated = [...(config.tableColumns || []), { id: field.id, labelOverride: field.label }];
+                  }
+                  setConfig({...config, tableColumns: updated});
+                } else {
+                  setSelectedFieldIds(prev => isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]);
+                }
               }} 
               className={`
-                p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all
+                p-1.5 px-2 rounded-lg border flex items-center justify-between cursor-pointer transition-all shadow-sm
                 ${isSelected 
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                  ? 'bg-indigo-600 border-indigo-600 text-white' 
+                  : 'bg-white text-gray-600 border-gray-100 hover:border-indigo-300'
                 }
-                ${isCore ? 'opacity-80 cursor-default' : 'cursor-pointer'}
               `}
             >
-               <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">{field.label}</span>
-                    {isCore && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Required</span>
+                <div className="flex flex-col min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-[10px] font-bold truncate">{field.label}</span>
+                    {isFieldMandatory(field.id, config.baseType) && (
+                      <span className={`text-[7px] px-1 py-0.5 rounded font-black uppercase tracking-tighter shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Req</span>
                     )}
                   </div>
-                  <span className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-gray-400 font-medium'}`}>
-                    {field.id === 'lineItems' ? 'Main Table' : (field.sectionHint || 'HEADER')}
+                  <span className={`text-[8px] leading-none ${isSelected ? 'text-indigo-100' : 'text-gray-400'}`}>
+                    {field.id === 'lineItems' ? 'Main Table' : (field.sectionHint || (isTableCol ? 'COLUMN' : 'HEADER'))}
                   </span>
                </div>
-               <div className="flex items-center gap-2">
-                 {isSelected ? <CheckCircle2 size={18} className="text-white shadow-sm" /> : <div className="w-4 h-4 rounded-full border border-gray-200" />}
+               <div className="flex items-center shrink-0 ml-1.5">
+                 {isSelected ? <CheckCircle2 size={12} className="text-white" /> : <div className="w-3 h-3 rounded-full border border-gray-200" />}
                </div>
             </div>
           );
         };
 
+        const toggleSection = (section: string) => {
+          setExpandedSections(prev => 
+            prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]
+          );
+        };
+
+        const renderSection = (id: string, title: string, icon: any, fields: any[], color: string, isTableCol: boolean = false) => {
+          const isExpanded = expandedSections.includes(id);
+          if (fields.length === 0) return null;
+
+          return (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-3">
+              <button 
+                onClick={() => toggleSection(id)}
+                className="w-full flex items-center justify-between p-2.5 px-4 hover:bg-gray-50 transition-colors"
+                id={`field-section-toggle-${id}`}
+              >
+                <div className="flex items-center gap-2">
+                   <div className={`p-1.5 rounded-lg ${color} text-white shadow-sm shadow-black/5`}>
+                      {React.createElement(icon, { size: 12 })}
+                   </div>
+                   <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{title}</h3>
+                   <span className="text-[10px] text-gray-400 font-bold ml-2">/ {fields.length}</span>
+                </div>
+                {isExpanded ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+              </button>
+              {isExpanded && (
+                <div className="p-4 pt-0 border-t border-gray-50/50">
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 pt-4">
+                    {fields.map(f => renderFieldCard(f, isTableCol))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const systemList = relevantFields.filter(f => f.category === 'systemMetadata' || f.autoManaged);
+        const requiredList = relevantFields.filter(f => isFieldMandatory(f.id, config.baseType) && !systemList.includes(f));
+        const optionalList = relevantFields.filter(f => !isFieldMandatory(f.id, config.baseType) && !systemList.includes(f));
+
         return (
-          <div className="max-w-4xl mx-auto space-y-8">
-             <div className="space-y-6">
-                <section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                       <Shield size={12} /> Core System Fields
-                    </h3>
-                    <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-2 py-0.5 rounded">Always Included</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                     {coreFields.map(renderFieldCard)}
-                  </div>
-                </section>
+          <div className="max-w-6xl mx-auto py-2">
+             {renderSection('system', 'System Fields', Shield, systemList, 'bg-slate-500')}
+             {renderSection('required', 'Required Fields', CheckCircle2, requiredList, 'bg-blue-600')}
+             {renderSection('optional', 'Optional & Shared Fields', Layers, optionalList, 'bg-indigo-600')}
+             {renderSection('columns', 'Table Columns', Sliders, availableTableColumns, 'bg-emerald-600', true)}
 
-                <section className="pt-4 border-t border-gray-100">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
-                    <Layers size={12} /> Optional & Shared Fields
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                     {optionalFields.map(renderFieldCard)}
-                  </div>
-                </section>
+             <div className="mt-8 pt-6 border-t border-gray-100">
+               <p className="text-[10px] text-gray-400 text-center uppercase tracking-[0.2em] font-black">
+                 Labels and ordering are managed in the <span className="text-indigo-600 underline underline-offset-4">Visual Editor</span> step.
+               </p>
              </div>
-
-
-             {config.isMultiLine && (
-               <div className="space-y-6">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase text-center border-t border-gray-100 pt-6">Table Columns Selection</h3>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                     {availableTableColumns.map(col => {
-                        const currentCols = (config.tableColumns || []) as any[];
-                        // Standardize 'account' check
-                        const isSelected = currentCols.some(c => {
-                           const id = (typeof c === 'string' ? c : c.id);
-                           return id === col.id || (col.id === 'account' && id === 'accountSelector');
-                        });
-                        
-                        return (
-                           <div 
-                             key={col.id} 
-                             onClick={() => {
-                                let updated;
-                                if (isSelected) {
-                                  updated = currentCols.filter(c => {
-                                     const id = (typeof c === 'string' ? c : c.id);
-                                     return id !== col.id && id !== 'account'; // Filter out both
-                                  });
-                                } else {
-                                  updated = [...currentCols, { id: col.id, labelOverride: col.label }];
-                                }
-                                setConfig({...config, tableColumns: updated});
-                             }}
-                             className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${isSelected ? 'bg-indigo-600 text-white border-indigo-700 shadow-lg ring-4 ring-indigo-500/10 scale-[1.02]' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:bg-slate-50'}`}
-                           >
-                              <span className="text-sm font-bold">{col.label}</span>
-                              {isSelected ? <CheckCircle2 size={20} /> : <div className="w-5 h-5 rounded-full border-2 border-gray-200" />}
-                           </div>
-                        );
-                     })}
-                  </div>
-                  <p className="mt-4 text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">Labels and ordering are managed in the <span className="text-indigo-600">Visual Editor</span> step.</p>
-               </div>
-             )}
           </div>
         );
       case 5: // Actions
@@ -1704,7 +1969,17 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
           </div>
         );
       case 6: // Visual Editor
-        return renderVisualEditor();
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-4">
+               <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Step:</span>
+                  <span className="text-xs font-black text-indigo-600 uppercase">Visual Layout Designer</span>
+               </div>
+            </div>
+            {renderVisualEditor()}
+          </div>
+        );
       case 7: // Review
         return (
            <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -1735,7 +2010,18 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
               </div>
               <div className="flex-1 overflow-auto bg-gray-50 p-6">
                  <div className="bg-white shadow-lg rounded-lg border border-gray-200 min-h-full">
-                    <GenericVoucherRenderer definition={config as any} mode={previewMode} />
+                    <GenericVoucherRenderer 
+                      definition={config as any} 
+                      mode={previewMode} 
+                      isPreview={true} 
+                      onAction={(actionId) => {
+                        if (actionId === 'save') {
+                          alert('Test Run Success: Document validation passed! This voucher would be Post-Ready.');
+                        } else {
+                          alert(`Preview: Action [${actionId}] triggered.`);
+                        }
+                      }}
+                    />
                  </div>
               </div>
            </div>
@@ -1746,7 +2032,17 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
          <div className="flex items-center gap-3">
             <div className="bg-indigo-600 text-white p-2 rounded-lg"><LayoutTemplate size={20} /></div>
-            <div><h1 className="text-lg font-bold text-slate-800 leading-tight">Document Wizard</h1></div>
+            <div>
+               <h1 className="text-lg font-bold text-slate-800 leading-tight flex items-center gap-2">
+                 Document Wizard 
+                 {currentStep > 1 && config.name && config.name !== 'New Document Form' && (
+                    <>
+                       <span className="text-gray-300 font-normal">/</span>
+                       <span className="text-indigo-600">{config.name}</span>
+                    </>
+                 )}
+               </h1>
+            </div>
          </div>
          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
       </div>

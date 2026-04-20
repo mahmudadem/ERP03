@@ -68,7 +68,7 @@ class CompanyModulesController {
                 res.status(400).json({ success: false, error: 'Module name required' });
                 return;
             }
-            const useCase = new EnableModuleForCompanyUseCase_1.EnableModuleForCompanyUseCase(bindRepositories_1.diContainer.companyRepository);
+            const useCase = new EnableModuleForCompanyUseCase_1.EnableModuleForCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository);
             const result = await useCase.execute({ companyId, moduleName });
             res.json({ success: true, data: result });
         }

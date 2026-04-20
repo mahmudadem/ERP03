@@ -10,7 +10,7 @@ import { IStockLevelRepository } from '../../../repository/interfaces/inventory/
 import { IStockMovementRepository } from '../../../repository/interfaces/inventory/IStockMovementRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 
 class InMemoryCompanyRepository implements ICompanyRepository {
   private readonly companies = new Map<string, Company>();

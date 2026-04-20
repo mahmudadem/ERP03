@@ -5,3 +5,4 @@
 
 export { ModuleConfigurationGuard } from './ModuleConfigurationGuard';
 export { ModuleSetupPromptModal } from './ModuleSetupPromptModal';
+export { WorkflowModeGuard } from './WorkflowModeGuard';

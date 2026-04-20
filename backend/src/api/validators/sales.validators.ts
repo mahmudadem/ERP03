@@ -73,6 +73,13 @@ const ensureOptionalUuid = (value: any, fieldName: string) => {
   ensureRequiredString(value, fieldName);
 };
 
+const ensureWorkflowMode = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'SIMPLE' && value !== 'OPERATIONAL') {
+    throw ApiError.badRequest(`${fieldName} must be SIMPLE or OPERATIONAL`);
+  }
+};
+
 const validateSOLine = (line: any, index: number) => {
   ensureRequiredString(line.itemId, `lines[${index}].itemId`);
   ensurePositiveNumber(line.orderedQty, `lines[${index}].orderedQty`);
@@ -88,6 +95,9 @@ const validateSOLine = (line: any, index: number) => {
 
   if (line.uom !== undefined) {
     ensureOptionalString(line.uom, `lines[${index}].uom`);
+  }
+  if (line.uomId !== undefined) {
+    ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   }
 
   if (line.warehouseId !== undefined) {
@@ -110,6 +120,7 @@ const validateDNLine = (line: any, index: number) => {
 
   if (line.lineNo !== undefined) ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -126,6 +137,7 @@ const validateSILine = (line: any, index: number) => {
 
   if (line.lineNo !== undefined) ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.unitPriceDoc !== undefined) ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
   if (line.taxCodeId !== undefined) ensureOptionalString(line.taxCodeId, `lines[${index}].taxCodeId`);
   if (line.warehouseId !== undefined) ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
@@ -141,6 +153,7 @@ const validateSRLine = (line: any, index: number) => {
   if (line.itemId !== undefined) ensureOptionalString(line.itemId, `lines[${index}].itemId`);
   if (line.returnQty !== undefined) ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.description !== undefined && typeof line.description !== 'string') {
     throw ApiError.badRequest(`lines[${index}].description must be a string`);
   }
@@ -149,6 +162,7 @@ const validateSRLine = (line: any, index: number) => {
 export const validateInitializeSalesInput = (body: any) => {
   ensureRequiredString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
 
+  if (body.workflowMode !== undefined) ensureWorkflowMode(body.workflowMode, 'workflowMode');
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
@@ -173,6 +187,7 @@ export const validateInitializeSalesInput = (body: any) => {
 };
 
 export const validateUpdateSalesSettingsInput = (body: any) => {
+  if (body.workflowMode !== undefined) ensureWorkflowMode(body.workflowMode, 'workflowMode');
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requireSOForStockItems !== undefined) ensureBoolean(body.requireSOForStockItems, 'requireSOForStockItems');
   if (body.defaultARAccountId !== undefined) ensureOptionalString(body.defaultARAccountId, 'defaultARAccountId');

@@ -12,6 +12,7 @@ import { ItemSelector } from '../../../components/shared/selectors/ItemSelector'
 import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAccounts } from '../../../context/AccountsContext';
@@ -624,7 +625,10 @@ const OpeningStockPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-slate-500">Document Date</label>
-              <input type="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+              <DatePicker 
+                value={form.date}
+                onChange={(val) => setForm((prev) => ({ ...prev, date: val }))}
+              />
             </div>
             <div>
               <label className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-slate-500">Total Value ({baseCurrency})</label>

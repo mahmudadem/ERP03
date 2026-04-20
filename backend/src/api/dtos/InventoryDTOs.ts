@@ -11,6 +11,7 @@ import { StockAdjustment } from '../../domain/inventory/entities/StockAdjustment
 import { StockLevel } from '../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../domain/inventory/entities/StockMovement';
 import { StockTransfer } from '../../domain/inventory/entities/StockTransfer';
+import { Uom } from '../../domain/inventory/entities/Uom';
 import { UomConversion } from '../../domain/inventory/entities/UomConversion';
 import { Warehouse } from '../../domain/inventory/entities/Warehouse';
 
@@ -25,8 +26,11 @@ export interface ItemDTO {
   categoryId?: string;
   brand?: string;
   tags?: string[];
+  baseUomId?: string;
   baseUom: string;
+  purchaseUomId?: string;
   purchaseUom?: string;
+  salesUomId?: string;
   salesUom?: string;
   costCurrency: string;
   costingMethod: Item['costingMethod'];
@@ -74,14 +78,31 @@ export interface UomConversionDTO {
   id: string;
   companyId: string;
   itemId: string;
+  fromUomId?: string;
   fromUom: string;
+  toUomId?: string;
   toUom: string;
   factor: number;
   active: boolean;
 }
 
+export interface UomDTO {
+  id: string;
+  companyId: string;
+  code: string;
+  name: string;
+  dimension: Uom['dimension'];
+  decimalPlaces: number;
+  active: boolean;
+  isSystem: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InventorySettingsDTO {
   companyId: string;
+  accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
   inventoryAccountingMethod: 'PERIODIC' | 'PERPETUAL';
   defaultCostingMethod: 'MOVING_AVG';
   defaultCostCurrency: string;
@@ -265,8 +286,11 @@ export class InventoryDTOMapper {
       categoryId: item.categoryId,
       brand: item.brand,
       tags: item.tags,
+      baseUomId: item.baseUomId,
       baseUom: item.baseUom,
+      purchaseUomId: item.purchaseUomId,
       purchaseUom: item.purchaseUom,
+      salesUomId: item.salesUomId,
       salesUom: item.salesUom,
       costCurrency: item.costCurrency,
       costingMethod: item.costingMethod,
@@ -320,16 +344,35 @@ export class InventoryDTOMapper {
       id: conversion.id,
       companyId: conversion.companyId,
       itemId: conversion.itemId,
+      fromUomId: conversion.fromUomId,
       fromUom: conversion.fromUom,
+      toUomId: conversion.toUomId,
       toUom: conversion.toUom,
       factor: conversion.factor,
       active: conversion.active,
     };
   }
 
+  static toUomDTO(uom: Uom): UomDTO {
+    return {
+      id: uom.id,
+      companyId: uom.companyId,
+      code: uom.code,
+      name: uom.name,
+      dimension: uom.dimension,
+      decimalPlaces: uom.decimalPlaces,
+      active: uom.active,
+      isSystem: uom.isSystem,
+      createdBy: uom.createdBy,
+      createdAt: uom.createdAt.toISOString(),
+      updatedAt: uom.updatedAt.toISOString(),
+    };
+  }
+
   static toSettingsDTO(settings: InventorySettings): InventorySettingsDTO {
     return {
       companyId: settings.companyId,
+      accountingMode: settings.accountingMode,
       inventoryAccountingMethod: settings.inventoryAccountingMethod,
       defaultCostingMethod: settings.defaultCostingMethod,
       defaultCostCurrency: settings.defaultCostCurrency,

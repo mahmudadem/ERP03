@@ -14,12 +14,21 @@ import { useAccounts } from '../../../../context/AccountsContext';
 import { useCompanySettings } from '../../../../hooks/useCompanySettings';
 import { formatCompanyDate, formatCompanyTime, formatForInput, getCompanyToday } from '../../../../utils/dateUtils';
 import { DatePicker } from './DatePicker';
+import { PartySelector } from '../../../../components/shared/selectors/PartySelector';
+import { ItemSelector } from '../../../../components/shared/selectors/ItemSelector';
+import { WarehouseSelector } from '../../../../components/shared/selectors/WarehouseSelector';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
+import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
+import { sharedApi, TaxCodeDTO } from '../../../../api/sharedApi';
 import { useCompanyCurrencies } from '../../hooks/useCompanyCurrencies';
 import { CurrencyDropdown } from './CurrencyDropdown';
 import { PaymentMethodDropdown } from './PaymentMethodDropdown';
 import { roundMoney } from '../../../../utils/mathUtils';
+import {
+  getDefaultSectionBackground,
+  normalizeSectionBackgroundValue,
+} from '../../../tools/forms-designer/utils/sectionBackgrounds';
 
 interface GenericVoucherRendererProps {
   definition: VoucherTypeDefinition;
@@ -27,7 +36,9 @@ interface GenericVoucherRendererProps {
   initialData?: any;
   onChange?: (data: any) => void;
   onBlur?: () => void;
+  onAction?: (actionId: string, data: any) => void;
   readOnly?: boolean;
+  isPreview?: boolean;
 }
 
 // Helper to get initial rows with unique IDs
@@ -85,7 +96,7 @@ const stripSystemManagedSnapshotFields = (snapshot: any): any => {
   }, {} as Record<string, any>);
 };
 
-const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, readOnly }, ref) => {
+const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, GenericVoucherRendererProps>(({ definition, mode = 'windows', initialData, onChange, onBlur, onAction, readOnly, isPreview }, ref) => {
   // GUARD: definition must be present
   if (!definition) return null;
 
@@ -102,6 +113,223 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   // Language support
   const { t, i18n } = useTranslation('accounting');
   const isRTL = (i18n.language || '').startsWith('ar');
+
+  const normalizeTableColumnId = (id: string): string => {
+    switch ((id || '').trim()) {
+      case 'accountSelector': return 'account';
+      case 'item':
+      case 'itemSelector':
+        return 'itemId';
+      case 'warehouse':
+      case 'warehouseSelector':
+        return 'warehouseId';
+      case 'rate':
+      case 'unitPriceDoc':
+        return 'unitPrice';
+      case 'amount':
+      case 'total':
+      case 'totalDoc':
+      case 'lineTotalDoc':
+        return 'lineTotal';
+      case 'qty':
+        return 'quantity';
+      case 'taxCodeId':
+        return 'taxCode';
+      default:
+        return (id || '').trim();
+    }
+  };
+
+  const getLineQuantity = (row: any): number =>
+    Number(
+      row.quantity ??
+      row.orderedQty ??
+      row.deliveredQty ??
+      row.invoicedQty ??
+      row.metadata?.quantity ??
+      0
+    ) || 0;
+
+  const getLineUnitPrice = (row: any): number =>
+    Number(
+      row.unitPrice ??
+      row.unitPriceDoc ??
+      row.rate ??
+      row.metadata?.unitPrice ??
+      row.metadata?.unitPriceDoc ??
+      row.metadata?.rate ??
+      0
+    ) || 0;
+
+  const getDerivedLineTotal = (row: any): number => {
+    const quantity = getLineQuantity(row);
+    const unitPrice = getLineUnitPrice(row);
+    const discount = Number(row.discount ?? row.metadata?.discount ?? 0) || 0;
+    return roundMoney((quantity * unitPrice) - discount);
+  };
+
+  const getWebColumnWeight = (columnId: string): number => {
+    switch (normalizeTableColumnId(columnId)) {
+      case 'itemId':
+      case 'description':
+      case 'notes':
+      case 'warehouseId':
+        return 2;
+      default:
+        return 1;
+    }
+  };
+
+  const normalizeFieldType = (type?: string): string => String(type || '').trim().toLowerCase();
+  const normalizedDefinitionType = (() => {
+    const normalized = String(
+      (definition as any).baseType ||
+      definition.code ||
+      definition.id ||
+      ''
+    )
+      .trim()
+      .replace(/[\s-]+/g, '_')
+      .toLowerCase();
+
+    if (normalized.includes('si') || normalized.includes('salesinvoice') || normalized.includes('invoice')) return 'sales_invoice';
+    if (normalized.includes('so') || normalized.includes('salesorder') || normalized.includes('order')) return 'sales_order';
+    if (normalized.includes('dn') || normalized.includes('deliverynote') || normalized.includes('delivery')) return 'delivery_note';
+    if (normalized.includes('sr') || normalized.includes('salesreturn') || normalized.includes('return')) return 'sales_return';
+    if (normalized.includes('pi') || normalized.includes('purchaseinvoice')) return 'purchase_invoice';
+    if (normalized.includes('po') || normalized.includes('purchaseorder')) return 'purchase_order';
+    if (normalized.includes('grn') || normalized.includes('goodsreceipt') || normalized.includes('receipt')) return 'goods_receipt';
+    if (normalized.includes('pr') || normalized.includes('purchasereturn')) return 'purchase_return';
+
+    return normalized;
+  })();
+
+  const headerFieldMeta = useMemo(() => {
+    const allFields = [
+      ...((definition as any).headerFields || []),
+      ...((definition as any).canonical?.headerFields || []),
+    ];
+
+    return allFields.reduce((acc, field: any) => {
+      if (!field?.id) return acc;
+      acc[field.id] = {
+        ...(acc[field.id] || {}),
+        ...field,
+      };
+      return acc;
+    }, {} as Record<string, any>);
+  }, [definition]);
+
+  const [salesOrders, setSalesOrders] = useState<SalesOrderDTO[]>([]);
+  const [salesTaxCodes, setSalesTaxCodes] = useState<TaxCodeDTO[]>([]);
+
+  const salesOrderById = useMemo(
+    () =>
+      salesOrders.reduce<Record<string, SalesOrderDTO>>((acc, order) => {
+        acc[order.id] = order;
+        return acc;
+      }, {}),
+    [salesOrders]
+  );
+
+  const salesTaxCodeById = useMemo(
+    () =>
+      salesTaxCodes.reduce<Record<string, TaxCodeDTO>>((acc, taxCode) => {
+        acc[taxCode.id] = taxCode;
+        acc[taxCode.code] = taxCode;
+        return acc;
+      }, {}),
+    [salesTaxCodes]
+  );
+
+  const [formData, setFormData] = useState<any>(initialData || {});
+  const [rows, setRows] = useState<JournalRow[]>(getInitialRows());
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [rateDeviations, setRateDeviations] = useState<Record<number, any>>({});
+  const [savingRate, setSavingRate] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isFirstRender = useRef(true);
+  const hasUserTouchedHeaderFxRef = useRef(false);
+  const [fiscalYears, setFiscalYears] = useState<any[]>([]); // Cache fiscal years for period checking
+
+  const getDocumentDateValue = (data: any): string =>
+    data?.date ||
+    data?.invoiceDate ||
+    data?.orderDate ||
+    data?.deliveryDate ||
+    data?.receiptDate ||
+    data?.returnDate ||
+    '';
+
+  const getDerivedLineGrossTotal = (row: any): number =>
+    roundMoney(getLineQuantity(row) * getLineUnitPrice(row));
+
+  const getLineTaxRate = (row: any): number => {
+    const explicitRate = Number(
+      row.taxRate ??
+      row.taxAmountRate ??
+      row.metadata?.taxRate ??
+      0
+    );
+
+    if (!Number.isNaN(explicitRate) && explicitRate > 0) {
+      return explicitRate;
+    }
+
+    const taxCodeRef =
+      row.taxCodeId ??
+      row.taxCode ??
+      row.metadata?.taxCodeId ??
+      row.metadata?.taxCode;
+
+    if (!taxCodeRef) return 0;
+    return Number(salesTaxCodeById[String(taxCodeRef)]?.rate ?? 0) || 0;
+  };
+
+  const getDerivedLineTaxTotal = (row: any): number => {
+    const explicitTax = Number(
+      row.taxAmountDoc ??
+      row.taxAmount ??
+      row.metadata?.taxAmountDoc ??
+      row.metadata?.taxAmount ??
+      NaN
+    );
+
+    if (!Number.isNaN(explicitTax)) {
+      return explicitTax;
+    }
+
+    return roundMoney(getDerivedLineTotal(row) * getLineTaxRate(row));
+  };
+
+  const computedDocumentTotals = useMemo(() => {
+    return rows.reduce((acc, row) => {
+      const grossDoc = getDerivedLineGrossTotal(row);
+      const netDoc = getDerivedLineTotal(row);
+      const taxDoc = getDerivedLineTaxTotal(row);
+      const rate = Number(formData.exchangeRate) || 0;
+
+      acc.beforeDiscountDoc = roundMoney(acc.beforeDiscountDoc + grossDoc);
+      acc.subtotalDoc = roundMoney(acc.subtotalDoc + netDoc);
+      acc.taxTotalDoc = roundMoney(acc.taxTotalDoc + taxDoc);
+      acc.grandTotalDoc = roundMoney(acc.grandTotalDoc + netDoc + taxDoc);
+      acc.beforeDiscountBase = roundMoney(acc.beforeDiscountBase + (grossDoc * rate));
+      acc.subtotalBase = roundMoney(acc.subtotalBase + (netDoc * rate));
+      acc.taxTotalBase = roundMoney(acc.taxTotalBase + (taxDoc * rate));
+      acc.grandTotalBase = roundMoney(acc.grandTotalBase + ((netDoc + taxDoc) * rate));
+      return acc;
+    }, {
+      beforeDiscountDoc: 0,
+      beforeDiscountBase: 0,
+      subtotalDoc: 0,
+      subtotalBase: 0,
+      taxTotalDoc: 0,
+      taxTotalBase: 0,
+      grandTotalDoc: 0,
+      grandTotalBase: 0,
+    });
+  }, [formData.exchangeRate, rows, salesTaxCodeById]);
 
   // Helper: Detect format and get table columns
   const getTableColumns = (): any[] => {
@@ -136,19 +364,20 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       return [];
     }
 
-    return rawColumns.map((col: any) => {
+    const mappedColumns = rawColumns.map((col: any) => {
       // Handle legacy string array
       if (typeof col === 'string') {
-        const fallbackLabel = col.charAt(0).toUpperCase() + col.slice(1);
+        const normalizedId = normalizeTableColumnId(col);
+        const fallbackLabel = normalizedId.charAt(0).toUpperCase() + normalizedId.slice(1);
         return { 
-          id: col, 
-          label: t(`voucherRenderer.columns.${col}`, { defaultValue: fallbackLabel }),
+          id: normalizedId, 
+          label: t(`voucherRenderer.columns.${normalizedId}`, { defaultValue: fallbackLabel }),
           width: 'auto'
         };
       }
       
       // Handle structured object array (Schema V2)
-      const colId = col.id || col.fieldId;
+      const colId = normalizeTableColumnId(col.id || col.fieldId);
       // If we have no ID at all, then "Column" is the last resort fallback
       const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
       
@@ -161,9 +390,30 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         ...col,
         id: colId,
         label: shouldTranslate ? t(`voucherRenderer.fields.${colId}`, { defaultValue: fallbackLabel }) : (col.labelOverride || col.label || fallbackLabel),
-        width: col.width || 'auto'
+        width: col.width || 'auto',
+        readOnly: col.readOnly || colId === 'lineTotal'
       };
     });
+
+    const dedupedColumns = mappedColumns.reduce<any[]>((acc, col) => {
+      if (!col?.id) return acc;
+      if (acc.some((existing) => existing.id === col.id)) return acc;
+      acc.push(col);
+      return acc;
+    }, []);
+
+    const isClassicTable = (definition as any).tableStyle === 'classic';
+    const allAutoWidth = dedupedColumns.length > 0 && dedupedColumns.every(col => !col.width || col.width === 'auto');
+
+    if (!isClassicTable && allAutoWidth) {
+      const totalWeight = dedupedColumns.reduce((sum, col) => sum + getWebColumnWeight(col.id), 0) || dedupedColumns.length;
+      return dedupedColumns.map(col => ({
+        ...col,
+        width: `${((getWebColumnWeight(col.id) / totalWeight) * 100).toFixed(4)}%`
+      }));
+    }
+
+    return dedupedColumns;
   };
 
   const getRowValue = (row: JournalRow, colId: string): any => {
@@ -179,6 +429,23 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
     const val = (row as any)[colId] ?? (row as any).metadata?.[colId];
     if (val !== undefined && val !== null) return val;
+
+    const normalizedColId = normalizeTableColumnId(colId);
+    if (normalizedColId === 'itemId') {
+      return (row as any).itemId ?? (row as any).item ?? (row as any).metadata?.itemId ?? (row as any).metadata?.item ?? '';
+    }
+    if (normalizedColId === 'warehouseId') {
+      return (row as any).warehouseId ?? (row as any).warehouse ?? (row as any).metadata?.warehouseId ?? (row as any).metadata?.warehouse ?? '';
+    }
+    if (normalizedColId === 'unitPrice') {
+      return (row as any).unitPrice ?? (row as any).unitPriceDoc ?? (row as any).rate ?? (row as any).metadata?.unitPrice ?? (row as any).metadata?.unitPriceDoc ?? (row as any).metadata?.rate ?? '';
+    }
+    if (normalizedColId === 'lineTotal') {
+      return (row as any).lineTotal ?? (row as any).totalDoc ?? (row as any).lineTotalDoc ?? (row as any).amount ?? (row as any).metadata?.lineTotal ?? (row as any).metadata?.totalDoc ?? getDerivedLineTotal(row);
+    }
+    if (normalizedColId === 'taxCode') {
+      return (row as any).taxCode ?? (row as any).taxCodeId ?? (row as any).metadata?.taxCode ?? (row as any).metadata?.taxCodeId ?? '';
+    }
     
     // Alias Fallback: costCenter <-> costCenterId
     if (colId === 'costCenter') return (row as any).costCenterId ?? (row as any).metadata?.costCenterId ?? '';
@@ -190,23 +457,46 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   // Cache the result of getTableColumns
   const columns = useMemo(() => getTableColumns(), [definition.tableColumns, definition.id, t]);
   
-  const [formData, setFormData] = useState<any>(initialData || {});
-  const [rows, setRows] = useState<JournalRow[]>(getInitialRows());
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
-  const [rateDeviations, setRateDeviations] = useState<Record<number, any>>({});
-  const [savingRate, setSavingRate] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFirstRender = useRef(true);
-  const hasUserTouchedHeaderFxRef = useRef(false);
-  const [fiscalYears, setFiscalYears] = useState<any[]>([]); // Cache fiscal years for period checking
-
   // Load fiscal years on mount
   useEffect(() => {
     accountingApi.listFiscalYears().then(data => {
       setFiscalYears(data || []);
     }).catch(err => console.error('Failed to load fiscal years', err));
   }, []);
+
+  useEffect(() => {
+    const needsSalesContext =
+      normalizedDefinitionType === 'sales_invoice' ||
+      !!headerFieldMeta.salesOrderId;
+
+    if (!needsSalesContext) {
+      setSalesOrders([]);
+      setSalesTaxCodes([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all([
+      salesApi.listSOs({ limit: 500 }),
+      sharedApi.listTaxCodes({ scope: 'SALES', active: true })
+    ])
+      .then(([orders, taxCodes]) => {
+        if (cancelled) return;
+        setSalesOrders(Array.isArray(orders) ? orders : []);
+        setSalesTaxCodes(Array.isArray(taxCodes) ? taxCodes : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load sales invoice reference data', err);
+        setSalesOrders([]);
+        setSalesTaxCodes([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [headerFieldMeta.salesOrderId, normalizedDefinitionType]);
 
   // ─── Reopen Hydration ─────────────────────────────────────────────────────
   // Priority chain for restoring form state from a persisted voucher:
@@ -1459,6 +1749,19 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       } else {
         next = { ...prev, [fieldId]: value };
       }
+
+      if (normalizedDefinitionType === 'sales_invoice') {
+        const lowerFieldId = fieldId.toLowerCase();
+        if (lowerFieldId === 'date') {
+          next.invoiceDate = value;
+        } else if (lowerFieldId === 'customername' || lowerFieldId === 'customer') {
+          next.customerId = value;
+        } else if (lowerFieldId === 'description') {
+          next.notes = value;
+        } else if (lowerFieldId === 'soreference' || lowerFieldId === 'salesorderreference') {
+          next.salesOrderId = value;
+        }
+      }
       
       onChangeRef.current?.({ ...next, lines: rows });
       return next;
@@ -1764,40 +2067,213 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return definition.code?.substring(0, 3) || 'VOC';
   };
 
+  const cleanFieldLabel = (label: string) => {
+    if (!label) return label;
+    return label.replace(/🔴\s*TEST:\s*/gi, '').replace(/TEST:\s*/gi, '');
+  };
+
+  const getAliasedFieldLabel = (fieldId: string) => {
+    const lowerFieldId = fieldId.toLowerCase();
+
+    if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'date' || lowerFieldId === 'invoicedate')) return 'Invoice Date';
+    if (normalizedDefinitionType === 'sales_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
+    if (normalizedDefinitionType === 'sales_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
+    if (normalizedDefinitionType === 'delivery_note' && (lowerFieldId === 'date' || lowerFieldId === 'deliverydate')) return 'Delivery Date';
+    if (normalizedDefinitionType === 'purchase_invoice' && (lowerFieldId === 'date' || lowerFieldId === 'invoicedate')) return 'Invoice Date';
+    if (normalizedDefinitionType === 'purchase_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
+    if (normalizedDefinitionType === 'purchase_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
+    if (normalizedDefinitionType === 'goods_receipt' && (lowerFieldId === 'date' || lowerFieldId === 'receiptdate')) return 'Receipt Date';
+    
+    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'customername') return 'Customer';
+    if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'soreference' || lowerFieldId === 'salesorderreference')) return 'Sales Order';
+    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'description') return 'Notes';
+    
+    if (lowerFieldId === 'beforediscountdoc') return 'Before Discount';
+    if (lowerFieldId === 'beforediscountbase') return 'Before Discount (Base)';
+    if (lowerFieldId === 'subtotaldoc') return 'Subtotal';
+    if (lowerFieldId === 'subtotalbase') return 'Subtotal (Base)';
+    if (lowerFieldId === 'taxtotaldoc') return 'Tax Total';
+    if (lowerFieldId === 'taxtotalbase') return 'Tax Total (Base)';
+    if (lowerFieldId === 'grandtotaldoc' || lowerFieldId === 'totalamount') return 'Total Amount';
+    if (lowerFieldId === 'grandtotalbase') return 'Total Amount (Base)';
+
+    return undefined;
+  };
+
+  const getFieldDisplayLabel = (fieldId: string, labelOverride?: string) => {
+    const fieldMeta = headerFieldMeta[fieldId] || {};
+    const aliasedLabel = getAliasedFieldLabel(fieldId);
+    return cleanFieldLabel(
+      labelOverride ||
+      fieldMeta.label ||
+      aliasedLabel ||
+      t(`voucherRenderer.fields.${fieldId}`, {
+        defaultValue: labelOverride || fieldMeta.label || aliasedLabel || fieldId,
+      })
+    );
+  };
+
+  const getFieldValue = (fid: string) => {
+    if (fid.includes('.')) {
+      const parts = fid.split('.');
+      let current: any = formData;
+      for (const part of parts) {
+        if (current === undefined || current === null) return '';
+        current = current[part];
+      }
+      return current ?? '';
+    }
+
+    const lower = fid.toLowerCase();
+    const directValue = formData[fid] ?? formData[lower] ?? formData.metadata?.[fid] ?? formData.metadata?.[lower];
+    if (directValue !== undefined && directValue !== null && directValue !== '') {
+      return directValue;
+    }
+
+    switch (lower) {
+      case 'date':
+        if (normalizedDefinitionType === 'sales_invoice') {
+          return formData.invoiceDate ?? formData.date ?? '';
+        }
+        return '';
+      case 'customername':
+        return formData.customerId ?? formData.customerName ?? '';
+      case 'description':
+        if (normalizedDefinitionType === 'sales_invoice') {
+          return formData.notes ?? formData.description ?? '';
+        }
+        return '';
+      case 'documentid':
+        return (
+          formData.documentId ??
+          formData.invoiceNumber ??
+          formData.orderNumber ??
+          formData.dnNumber ??
+          formData.returnNumber ??
+          formData.voucherNumber ??
+          formData.voucherNo ??
+          formData.id ??
+          ''
+        );
+      case 'soreference':
+      case 'salesorderreference':
+        return salesOrderById[formData.salesOrderId || '']?.orderNumber || formData.salesOrderId || '';
+      case 'orderdate':
+        return formData.orderDate || salesOrderById[formData.salesOrderId || '']?.orderDate || '';
+      case 'totalamount':
+      case 'grandtotaldoc':
+        return formData.grandTotalDoc ?? formData.totalAmount ?? computedDocumentTotals.grandTotalDoc;
+      case 'grandtotalbase':
+        return formData.grandTotalBase ?? computedDocumentTotals.grandTotalBase;
+      case 'subtotaldoc':
+        return formData.subtotalDoc ?? computedDocumentTotals.subtotalDoc;
+      case 'subtotalbase':
+        return formData.subtotalBase ?? computedDocumentTotals.subtotalBase;
+      case 'taxtotaldoc':
+        return formData.taxTotalDoc ?? computedDocumentTotals.taxTotalDoc;
+      case 'taxtotalbase':
+        return formData.taxTotalBase ?? computedDocumentTotals.taxTotalBase;
+      case 'beforediscountdoc':
+      case 'grosstotaldoc':
+        return computedDocumentTotals.beforeDiscountDoc;
+      case 'beforediscountbase':
+      case 'grosstotalbase':
+        return computedDocumentTotals.beforeDiscountBase;
+      default:
+        return '';
+    }
+  };
+
+  const formatSummaryFieldValue = (fieldId: string, value: any) => {
+    const lowerFieldId = fieldId.toLowerCase();
+    const fieldMeta = headerFieldMeta[fieldId] || {};
+
+    if (value === undefined || value === null || value === '') {
+      return lowerFieldId === 'documentid' ? 'Auto-numbered' : '-';
+    }
+
+    if (lowerFieldId.includes('date') || normalizeFieldType(fieldMeta.type) === 'date') {
+      return formatCompanyDate(value, settings);
+    }
+
+    const shouldFormatAsMoney =
+      [
+        'beforediscountdoc',
+        'beforediscountbase',
+        'subtotaldoc',
+        'subtotalbase',
+        'taxtotaldoc',
+        'taxtotalbase',
+        'grandtotaldoc',
+        'grandtotalbase',
+        'totalamount',
+        'exchangerate',
+      ].includes(lowerFieldId) ||
+      normalizeFieldType(fieldMeta.type) === 'number' ||
+      fieldMeta.calculated;
+
+    if (shouldFormatAsMoney) {
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) {
+        return numericValue.toLocaleString(undefined, {
+          minimumFractionDigits: lowerFieldId === 'exchangerate' ? 4 : 2,
+          maximumFractionDigits: lowerFieldId === 'exchangerate' ? 4 : 2,
+        });
+      }
+    }
+
+    return String(value);
+  };
+
+  const getSummaryFieldUnit = (fieldId: string) => {
+    const lowerFieldId = fieldId.toLowerCase();
+    if (['beforediscountdoc', 'subtotaldoc', 'taxtotaldoc', 'grandtotaldoc', 'totalamount'].includes(lowerFieldId)) {
+      return formData.currency || company?.baseCurrency || '';
+    }
+    if (['beforediscountbase', 'subtotalbase', 'taxtotalbase', 'grandtotalbase'].includes(lowerFieldId)) {
+      return company?.baseCurrency || '';
+    }
+    return '';
+  };
+
   // --- Field Renderers ---
 
   const renderField = (fieldId: string, labelOverride?: string, typeOverride?: string, displayMode: string = 'standard', iconOverride?: string, isGrouped: boolean = false) => {
-    // Helper to get field value with case-insensitive lookup
-    const getFieldValue = (fid: string) => {
-      if (fid.includes('.')) {
-        const parts = fid.split('.');
-        let current: any = formData;
-        for (const part of parts) {
-          if (current === undefined || current === null) return '';
-          current = current[part];
-        }
-        return current ?? '';
-      }
-      const lower = fid.toLowerCase();
-      return formData[fid] ?? formData[lower] ?? formData.metadata?.[fid] ?? formData.metadata?.[lower] ?? '';
-    };
-
-    // SAFETY: Strip any legacy debug labels if they come from the database/override
-    const cleanLabel = (label: string) => {
-      if (!label) return label;
-      return label.replace(/🔴\s*TEST:\s*/gi, '').replace(/TEST:\s*/gi, '');
-    };
-
-    const finalLabel = cleanLabel(
-      labelOverride || t(`voucherRenderer.fields.${fieldId}`, { defaultValue: labelOverride || fieldId })
+    const fieldMeta = headerFieldMeta[fieldId] || {};
+    const lowerFieldId = fieldId.toLowerCase();
+    const effectiveType = normalizeFieldType(typeOverride || fieldMeta.type);
+    const isDerivedTotalField = [
+      'documentid',
+      'orderdate',
+      'totalamount',
+      'subtotaldoc',
+      'subtotalbase',
+      'taxtotaldoc',
+      'taxtotalbase',
+      'grandtotaldoc',
+      'grandtotalbase',
+      'beforediscountdoc',
+      'beforediscountbase',
+      'grosstotaldoc',
+      'grosstotalbase'
+    ].includes(lowerFieldId);
+    const effectiveReadOnly = Boolean(
+      readOnly ||
+      fieldMeta.readOnly ||
+      fieldMeta.calculated ||
+      fieldMeta.autoManaged ||
+      (normalizedDefinitionType === 'sales_invoice' && isDerivedTotalField)
     );
+    const relationTarget = String(fieldMeta.relationTarget || '').trim().toLowerCase();
+    const selectOptions = Array.isArray(fieldMeta.options) ? fieldMeta.options : [];
+    const finalLabel = getFieldDisplayLabel(fieldId, labelOverride);
     
     // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
     if (fieldId === 'exchangeRate') {
-      const hasCurrency = (definition.headerFields || []).some(f => f.id === 'currency' || f.id === 'currencyExchange');
-      const hasCurrencyInUI = (definition as any).uiModeOverrides?.[mode]?.sections?.HEADER?.fields?.some((f: any) => f.fieldId === 'currency' || f.fieldId === 'currencyExchange');
+      const hasCurrencyExchange = ((definition as any).headerFields || []).some((f: any) => f.id === 'currencyExchange');
+      const hasCurrencyExchangeInUI = (definition as any).uiModeOverrides?.[mode]?.sections?.HEADER?.fields?.some((f: any) => f.fieldId === 'currencyExchange');
       
-      if (hasCurrency || hasCurrencyInUI) {
+      if (hasCurrencyExchange || hasCurrencyExchangeInUI) {
         return null;
       }
     }
@@ -1817,8 +2293,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             currency={formData.currency || formData.baseCurrency || company?.baseCurrency || 'USD'}
             value={formData.exchangeRate}
             baseCurrency={formData.baseCurrency || company?.baseCurrency || 'USD'}
-            voucherDate={formData.date}
-            disabled={readOnly}
+            voucherDate={getDocumentDateValue(formData)}
+            disabled={effectiveReadOnly}
             onChange={(rate: number) => {
               handleInputChange('exchangeRate', rate);
             }}
@@ -1834,7 +2310,6 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     //   - semantic header account fields: depositToAccountId, payFromAccountId
     //   - any field ending in 'accountid' (case-insensitive)
     //   - typeOverride === 'account-selector'
-    const lowerFieldId = fieldId.toLowerCase();
     const isAccountSelectorField =
       !!CustomComponentRegistry[fieldId] ||
       fieldId === 'account' ||
@@ -1842,7 +2317,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       fieldId === 'depositToAccountId' ||
       fieldId === 'payFromAccountId' ||
       lowerFieldId.endsWith('accountid') ||
-      typeOverride === 'account-selector' ||
+      effectiveType === 'account-selector' ||
       typeOverride === 'AccountSelector';
 
     if (isAccountSelectorField) {
@@ -1860,7 +2335,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
           <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
           <AccountComponent
             value={fieldValue}
-            disabled={readOnly}
+            disabled={effectiveReadOnly}
             onChange={(val: any) => {
                if (val && typeof val === 'object' && (val.id || val.code)) {
                   const stored = fieldId === 'account' ? val.code : (val.id || val.code);
@@ -1871,6 +2346,107 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                   handleInputChange(fieldId, val);
                }
             }}
+          />
+        </div>
+      );
+    }
+
+    // 0.6. Specialized Business Selectors (Party, Item, Warehouse)
+    const lowerLabel = (finalLabel || '').toLowerCase();
+    const isLineItemsField = lowerFieldId === 'lineitems';
+    const isSalesOrderSelector =
+      relationTarget === 'sales_orders' ||
+      relationTarget === 'salesorders' ||
+      fieldId === 'salesOrderId' ||
+      lowerFieldId === 'soreference' ||
+      lowerFieldId === 'salesorderreference';
+    const isPartySelector = !isLineItemsField && (effectiveType === 'party-selector' || relationTarget === 'customers' || relationTarget === 'vendors' || relationTarget === 'parties' || fieldId === 'partyId' || lowerFieldId.includes('party') || lowerFieldId.includes('customer') || lowerFieldId.includes('vendor') || lowerLabel.includes('customer') || lowerLabel.includes('vendor') || lowerLabel.includes('party'));
+    const isItemSelector = !isLineItemsField && (effectiveType === 'item-selector' || relationTarget === 'items' || relationTarget === 'products' || fieldId === 'itemId' || lowerFieldId.includes('item') || lowerFieldId.includes('sku') || lowerFieldId.includes('product') || lowerLabel.includes('item') || lowerLabel.includes('sku') || lowerLabel.includes('product'));
+    const isWarehouseSelector = effectiveType === 'warehouse-selector' || relationTarget === 'warehouses' || relationTarget === 'stores' || fieldId === 'warehouseId' || lowerFieldId.includes('warehouse') || lowerFieldId.includes('store') || lowerLabel.includes('warehouse') || lowerLabel.includes('store');
+
+    if (isSalesOrderSelector) {
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <select
+            value={String(getFieldValue('salesOrderId') || getFieldValue(fieldId) || '')}
+            disabled={effectiveReadOnly}
+            onChange={(e) => {
+              const nextOrderId = e.target.value;
+              const selectedOrder = salesOrderById[nextOrderId];
+
+              handleInputChange('salesOrderId', nextOrderId);
+              if (fieldId !== 'salesOrderId') {
+                handleInputChange(fieldId, nextOrderId);
+              }
+
+              if (selectedOrder) {
+                handleInputChange('orderDate', selectedOrder.orderDate);
+                handleInputChange('customerId', selectedOrder.customerId);
+                handleInputChange('currency', selectedOrder.currency);
+                handleInputChange('salesOrderReference', selectedOrder.orderNumber);
+                if (!hasUserTouchedHeaderFxRef.current || !formData.exchangeRate) {
+                  handleInputChange('exchangeRate', selectedOrder.exchangeRate);
+                }
+              } else {
+                handleInputChange('orderDate', '');
+                handleInputChange('salesOrderReference', '');
+              }
+            }}
+            onBlur={() => onBlurRef.current?.()}
+            className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+          >
+            <option value="">Select sales order...</option>
+            {salesOrders.map((order) => (
+              <option key={order.id} value={order.id}>
+                {order.orderNumber} · {order.customerName}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    if (isPartySelector) {
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <PartySelector
+            value={getFieldValue(fieldId)}
+            disabled={effectiveReadOnly}
+            onChange={(val: any) => {
+              const nextPartyId = val?.id || val?.code || '';
+              handleInputChange(fieldId, nextPartyId);
+              if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'customername' || lowerFieldId === 'customer')) {
+                handleInputChange('customerId', nextPartyId);
+              }
+            }}
+          />
+        </div>
+      );
+    }
+
+    if (isItemSelector) {
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <ItemSelector
+            value={getFieldValue(fieldId)}
+            disabled={effectiveReadOnly}
+            onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
+          />
+        </div>
+      );
+    }
+
+    if (isWarehouseSelector) {
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <WarehouseSelector
+            value={getFieldValue(fieldId)}
+            disabled={effectiveReadOnly}
+            onChange={(val: any) => handleInputChange(fieldId, val?.id || val?.code || '')}
           />
         </div>
       );
@@ -1954,6 +2530,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             <button 
               title={actionLabel}
               type="button"
+              onClick={() => onAction?.(actionKey, formData)}
               className={`flex items-center justify-center p-2 transition-all text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98] text-indigo-600 dark:text-indigo-400 aspect-square h-9 w-9 shrink-0 mx-auto ${isGrouped ? 'hover:z-10 relative bg-transparent' : 'bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-full shadow-sm'}`}
             >
               <Icon size={18} />
@@ -1970,6 +2547,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const stdBtn = (
           <button 
             type="button"
+            onClick={() => onAction?.(actionKey, formData)}
             className={`flex items-center justify-center w-full h-full gap-2 px-4 text-xs font-bold transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98] ${isGrouped ? 'hover:z-10 relative' : 'rounded-lg shadow-sm'}`}
           >
             {Icon && <Icon size={16} />}
@@ -2071,7 +2649,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     }
 
     // 2. Line Items Table
-    if (fieldId === 'lineItems') {
+    if (lowerFid === 'lineitems') {
         const columns = getTableColumns();
         const isClassic = (definition as any).tableStyle === 'classic';
         
@@ -2090,30 +2668,24 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                              <tr className="border-b-2 border-[var(--color-border)]">
                                  <th className="p-2 text-center w-10 text-[11px] font-bold text-[var(--color-text-primary)] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30">#</th>
                                  {columns.map(col => {
-                                     // Parse initial width from column definition
-                                     let initialWidth = 150; // Default
-                                     if (col.width) {
-                                       if (typeof col.width === 'number') {
-                                         initialWidth = col.width;
-                                       } else if (typeof col.width === 'string') {
-                                         const parsed = parseInt(col.width);
-                                         if (!isNaN(parsed)) initialWidth = parsed;
-                                       }
-                                     }
-                                     
-                                     const colWidth = columnWidths[col.id] || initialWidth;
+                                     const colWidthOverride = columnWidths[col.id];
+                                     const resolvedWidth = colWidthOverride ? `${colWidthOverride}px` : (col.width || '150px');
                                      
                                      return (
                                          <th 
                                            key={col.id} 
                                            className="p-2 text-start text-[11px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide border-r border-[var(--color-border)] relative group transition-colors"
-                                           style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
+                                           style={{ width: resolvedWidth, minWidth: resolvedWidth }}
                                          >
                                            {col.label}
                                            {/* Resize handle */}
                                            <div
                                              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                             onMouseDown={(e) => handleResizeStart(e, col.id, colWidth)}
+                                             onMouseDown={(e) => {
+                                                 const th = e.currentTarget.parentElement;
+                                                 const currentPxWidth = th ? th.offsetWidth : 150;
+                                                 handleResizeStart(e, col.id, currentPxWidth);
+                                             }}
                                            />
                                          </th>
                                      );
@@ -2135,27 +2707,23 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                     </td>
                                      {columns.map((col, colIndex) => {
                                          const colId = col.id;
+                                         const normalizedColId = normalizeTableColumnId(colId);
                                          const totalCols = columns.length;
                                          
-                                         // Parse initial width (same logic as header)
-                                         let initialWidth = 150;
-                                         if (col.width) {
-                                           if (typeof col.width === 'number') {
-                                             initialWidth = col.width;
-                                           } else if (typeof col.width === 'string') {
-                                             const parsed = parseInt(col.width);
-                                             if (!isNaN(parsed)) initialWidth = parsed;
-                                           }
-                                         }
-                                         const colWidth = columnWidths[colId] || initialWidth;
+                                         const colWidthOverride = columnWidths[colId];
+                                         const resolvedWidth = colWidthOverride ? `${colWidthOverride}px` : (col.width || '150px');
                                          
                                          return (
                                              <td 
                                                key={`${row.id}-${colId}`} 
                                                className="p-0 border-r border-[var(--color-border)]"
-                                               style={{ width: `${colWidth}px`, minWidth: `${colWidth}px` }}
+                                               style={{ width: resolvedWidth, minWidth: resolvedWidth }}
                                              >
-                                                 {(colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
+                                                 {normalizedColId === 'lineTotal' ? (
+                                                     <div className="px-3 py-2 h-9 flex items-center justify-end text-xs font-mono font-bold text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)]/50">
+                                                       {getDerivedLineTotal(row).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                     </div>
+                                                 ) : (colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
                                                      <div className="p-0.5">
                                                         <AccountSelector 
                                                             ref={(el) => registerCellRef(index, colIndex, el)}
@@ -2169,7 +2737,35 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                         />
                                                     </div>
 
-                                                  ) : (colId === 'costCenterId' || colId === 'costCenter' || colId.toLowerCase().includes('costcenter') || col.type === 'cost-center-selector') ? (
+                                                  ) : (colId === 'item' || colId === 'itemId' || colId === 'itemSelector' || colId.toLowerCase().includes('itemid') || col.type === 'item-selector' || col.label?.toLowerCase().includes('item') || col.label?.toLowerCase().includes('product')) ? (
+                                                       <div className="p-0.5">
+                                                          <ItemSelector 
+                                                              ref={(el) => registerCellRef(index, colIndex, el)}
+                                                              value={(getRowValue(row, colId) || (row as any).itemId || (row as any).item || row.account) as string}
+                                                              disabled={readOnly}
+                                                              onChange={(val) => handleRowChange(row.id, colId as any, val?.id || val?.code || '')} 
+                                                              noBorder={true}
+                                                              placeholder={t('itemSelector.placeholder', { defaultValue: '...Item/Product' })}
+                                                              onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                              onBlur={() => onBlurRef.current?.()}
+                                                          />
+                                                      </div>
+
+                                                   ) : (colId === 'warehouse' || colId === 'warehouseId' || colId === 'warehouseSelector' || colId.toLowerCase().includes('warehouseid') || col.type === 'warehouse-selector') ? (
+                                                       <div className="p-0.5">
+                                                          <WarehouseSelector 
+                                                              ref={(el) => registerCellRef(index, colIndex, el)}
+                                                              value={(getRowValue(row, colId) || (row as any).warehouseId || (row as any).warehouse) as string}
+                                                              disabled={readOnly}
+                                                              onChange={(val) => handleRowChange(row.id, colId as any, val?.id || val?.code || '')} 
+                                                              noBorder={true}
+                                                              placeholder={t('warehouseSelector.placeholder', { defaultValue: '...Warehouse' })}
+                                                              onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                              onBlur={() => onBlurRef.current?.()}
+                                                          />
+                                                      </div>
+
+                                                   ) : (colId === 'costCenterId' || colId === 'costCenter' || colId.toLowerCase().includes('costcenter') || col.type === 'cost-center-selector') ? (
                                                       <div className="p-0.5">
                                                          <CostCenterSelector 
                                                              ref={(el) => registerCellRef(index, colIndex, el)}
@@ -2180,6 +2776,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                              noBorder={true}
                                                              disabled={readOnly}
                                                              placeholder={t('costCenterSelector.placeholder', { defaultValue: '...Cost center' })}
+
                                                              onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
                                                              onBlur={() => onBlurRef.current?.()}
                                                          />
@@ -2374,7 +2971,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return (
         <div className="border border-[var(--color-border)] rounded-lg shadow-sm min-h-[200px] bg-[var(--color-bg-primary)] transition-colors w-full overflow-hidden">
             <div className="overflow-x-auto w-full" style={{ maxWidth: '100%', display: 'block' }}>
-            <table className="w-full text-sm min-w-[600px] table-fixed">
+            <table className="w-full text-sm table-fixed">
                 <thead className="bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] font-medium">
                      <tr>
                          <th className="p-2 text-start w-10 text-xs">#</th>
@@ -2382,7 +2979,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                              <th 
                                key={col.id} 
                                className="p-2 text-start text-xs capitalize"
-                               style={col.width ? { width: col.width, minWidth: col.width === 'auto' ? '150px' : col.width } : {}}
+                               style={col.width ? { width: col.width } : {}}
                              >
                                {col.label}
                              </th>
@@ -2396,18 +2993,41 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                             <td className="p-2 text-[var(--color-text-muted)] text-xs text-center">{index + 1}</td>
                              {columns.map((col, colIdx) => {
                                  const colId = col.id;
+                                 const normalizedColId = normalizeTableColumnId(colId);
                                  return (
                                      <td 
                                        key={`${row.id}-${colId}`} 
                                        className="p-1"
                                        style={col.width ? { width: col.width } : {}}
                                      >
-                                         {(colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
+                                         {normalizedColId === 'lineTotal' ? (
+                                             <div className="w-full h-8 px-2 py-1.5 border border-[var(--color-border)] rounded text-xs font-mono font-bold text-end bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]">
+                                               {getDerivedLineTotal(row).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                             </div>
+                                         ) : (colId === 'account' || colId === 'accountId' || colId === 'accountSelector' || colId.toLowerCase().includes('accountid') || col.type === 'account-selector') ? (
                                              <AccountSelector 
                                                  ref={(el) => registerCellRef(index, colIdx, el)}
                                                  value={(getRowValue(row, colId) || row.accountId || row.account) as string}
                                                  disabled={readOnly}
                                                  onChange={(val) => handleRowChange(row.id, colId as any, val)} 
+                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                 onBlur={() => onBlurRef.current?.()}
+                                             />
+                                         ) : (colId === 'item' || colId === 'itemId' || colId === 'itemSelector' || colId.toLowerCase().includes('itemid') || col.type === 'item-selector' || col.label?.toLowerCase().includes('item') || col.label?.toLowerCase().includes('product')) ? (
+                                             <ItemSelector 
+                                                 ref={(el) => registerCellRef(index, colIdx, el)}
+                                                 value={(getRowValue(row, colId) || (row as any).itemId || (row as any).item || row.account) as string}
+                                                 disabled={readOnly}
+                                                 onChange={(val) => handleRowChange(row.id, colId as any, val?.id || val?.code || '')} 
+                                                 onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                                 onBlur={() => onBlurRef.current?.()}
+                                             />
+                                         ) : (colId === 'warehouse' || colId === 'warehouseId' || colId === 'warehouseSelector' || colId.toLowerCase().includes('warehouseid') || col.type === 'warehouse-selector') ? (
+                                             <WarehouseSelector 
+                                                 ref={(el) => registerCellRef(index, colIdx, el)}
+                                                 value={(getRowValue(row, colId) || (row as any).warehouseId || (row as any).warehouse) as string}
+                                                 disabled={readOnly}
+                                                 onChange={(val) => handleRowChange(row.id, colId as any, val?.id || val?.code || '')} 
                                                  onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
                                                  onBlur={() => onBlurRef.current?.()}
                                              />
@@ -2558,18 +3178,12 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     // 3. Standard Inputs (from canonical headerFields)
     
     // System fields list - these are read-only display fields
-    const systemFields = ['voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
-    // lowerFieldId is already declared above; reuse it here
+    const systemFields = ['documentId', 'voucherNumber', 'voucherNo', 'status', 'createdBy', 'createdAt', 'updatedAt', 'updatedBy'];
     const isSystemField = systemFields.some(sf => sf.toLowerCase() === lowerFieldId) || 
                           lowerFieldId.endsWith('createdat') || 
                           lowerFieldId.endsWith('updatedat') || 
                           lowerFieldId.endsWith('createdby') || 
                           lowerFieldId.endsWith('updatedby');
-    
-    // DEBUG: Log for system fields
-    if (fieldId.toLowerCase().includes('created') || fieldId.toLowerCase().includes('updated')) {
-        console.log(`🔍 ${fieldId} → isSystemField: ${isSystemField}, lowerFieldId: ${lowerFieldId}`);
-    }
 
     return (
         <div className="space-y-0.5">
@@ -2591,10 +3205,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                         // Get value using helper
                         const rawVal = getFieldValue(fieldId);
 
-                        /* Removed forced min0dXFj test */
-
                         const val = (normId === 'createdAt' || normId === 'updatedAt')
                             ? formatCompanyDate(rawVal, settings) 
+                            : normId === 'documentId'
+                            ? (rawVal || 'Auto-numbered')
                             : (normId === 'createdBy' && formData.createdByName) ? formData.createdByName
                             : (normId === 'updatedBy' && formData.updatedByName) ? formData.updatedByName
                             : rawVal || 'Pending';
@@ -2608,22 +3222,22 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                 </div>
             ) : fieldId === 'currency' ? (
                  <CurrencyDropdown 
-                   value={formData[fieldId] || ''}
-                   readOnly={readOnly}
+                   value={getFieldValue(fieldId) || ''}
+                   readOnly={effectiveReadOnly}
                    onChange={(val) => handleInputChange(fieldId, val)}
                  />
             ) : fieldId === 'paymentMethod' ? (
                  <PaymentMethodDropdown 
-                   value={formData[fieldId] || ''}
-                   readOnly={readOnly}
+                   value={getFieldValue(fieldId) || ''}
+                   readOnly={effectiveReadOnly}
                    onChange={(val) => handleInputChange(fieldId, val)}
                    onBlur={() => onBlurRef.current?.()}
                  />
-            ) : fieldId === 'date' ? (
+            ) : (fieldId === 'date' || effectiveType === 'date' || fieldId.toLowerCase().includes('date')) ? (
                  <div className="space-y-1.5">
                    <DatePicker 
-                     value={formData[fieldId] || ''}
-                     disabled={readOnly}
+                     value={getFieldValue(fieldId) || ''}
+                     disabled={effectiveReadOnly}
                      onChange={(val: string) => handleInputChange(fieldId, val)}
                    />
                    {(() => {
@@ -2655,7 +3269,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                           const val = e.target.value ? parseInt(e.target.value) : null;
                                           handleInputChange('postingPeriodNo', val);
                                       }}
-                                      disabled={readOnly}
+                                      disabled={effectiveReadOnly}
                                       className="w-full text-xs p-1.5 rounded border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 text-indigo-900 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 outline-none"
                                   >
                                       {options.map(opt => (
@@ -2674,7 +3288,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                type="checkbox"
                                className="sr-only"
                                checked={!!formData.metadata?.isAdjustment}
-                               disabled={readOnly}
+                               disabled={effectiveReadOnly}
                                onChange={(e) => {
                                  const isAdj = e.target.checked;
                                  handleInputChange('metadata', { 
@@ -2695,22 +3309,37 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                       return null;
                    })()}
                  </div>
-            ) : (typeOverride === 'textarea' || (!typeOverride && (fieldId === 'notes' || fieldId === 'description'))) ? (
+            ) : (effectiveType === 'select' && selectOptions.length > 0) ? (
+                 <select
+                   value={String(getFieldValue(fieldId) ?? '')}
+                   disabled={effectiveReadOnly}
+                   onChange={(e) => handleInputChange(fieldId, e.target.value)}
+                   onBlur={() => onBlurRef.current?.()}
+                   className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                 >
+                   <option value="">Select...</option>
+                   {selectOptions.map((option: any) => (
+                     <option key={String(option.value)} value={String(option.value)}>
+                       {option.label}
+                     </option>
+                   ))}
+                 </select>
+            ) : (effectiveType === 'textarea' || (!effectiveType && (fieldId === 'notes' || fieldId === 'description'))) ? (
                   <textarea 
-                    value={formData[fieldId] || ''}
-                    disabled={readOnly}
+                    value={getFieldValue(fieldId) || ''}
+                    disabled={effectiveReadOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
+                    className={`w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm min-h-[60px] transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`} 
                   />
             ) : (
                 <input 
-                    type={fieldId === 'exchangeRate' || fieldId === 'amount' ? 'number' : 'text'}
+                    type={effectiveType === 'number' || ['exchangeRate', 'amount', 'totalAmount', 'grandTotalDoc', 'grandTotalBase', 'subtotalDoc', 'subtotalBase', 'taxTotalDoc', 'taxTotalBase', 'beforeDiscountDoc', 'beforeDiscountBase'].includes(fieldId) ? 'number' : 'text'}
                     value={getFieldValue(fieldId)}
-                    disabled={readOnly}
+                    disabled={effectiveReadOnly}
                     onChange={(e) => handleInputChange(fieldId, e.target.value)}
                     onBlur={() => onBlurRef.current?.()}
-                    className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                    className={`w-full h-[32px] px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors ${effectiveReadOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                 />
             )}
         </div>
@@ -2793,6 +3422,136 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return elements;
   };
 
+  const defaultFooterFields = normalizedDefinitionType === 'sales_invoice'
+    ? [
+        'beforeDiscountDoc',
+        'beforeDiscountBase',
+        'subtotalDoc',
+        'subtotalBase',
+        'taxTotalDoc',
+        'taxTotalBase',
+        'grandTotalDoc',
+        'grandTotalBase',
+      ].map((fieldId, index) => ({
+        fieldId,
+        row: Math.floor(index / 4),
+        col: (index % 4) * 3,
+        colSpan: 3,
+      }))
+    : [];
+
+  const shouldRenderLayoutField = (field: any) => {
+    // If we are in the designer or a "Test Run", show everything 
+    // so the user can see their design regardless of data presence.
+    if (isPreview || !formData.id) {
+       return true;
+    }
+
+    const lowerFieldId = String(field?.fieldId || '').toLowerCase();
+
+    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'orderdate') {
+      return Boolean(
+        formData.salesOrderId ||
+        formData.orderDate ||
+        salesOrderById[formData.salesOrderId || '']?.orderDate
+      );
+    }
+
+    return true;
+  };
+
+  const getSectionLayout = (sectionKey: string) => {
+    const configDef = definition as any;
+    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
+    const sections = modeConfig?.sections || {};
+    const section = sections?.[sectionKey];
+    const fields = Array.isArray(section?.fields) ? section.fields : [];
+
+    return {
+      ...(section || {}),
+      fields,
+    };
+  };
+
+  const getSectionFields = (sectionKey: string) => {
+    return getSectionLayout(sectionKey).fields || [];
+  };
+
+  const getSectionBackground = (sectionKey: string) => {
+    const section = getSectionLayout(sectionKey);
+    // Support both 'background' (legacy) and 'backgroundColor' (new designer)
+    const colorValue = section?.backgroundColor || section?.background;
+    return normalizeSectionBackgroundValue(colorValue, sectionKey);
+  };
+
+  const getSectionSurfaceStyle = (sectionKey: string) => {
+    const backgroundColor = getSectionBackground(sectionKey);
+    return {
+      backgroundColor,
+    };
+  };
+
+  const getStickySectionSurfaceStyle = (sectionKey: string) => {
+    const backgroundColor = getSectionBackground(sectionKey);
+    return {
+      backgroundColor: backgroundColor || getDefaultSectionBackground(sectionKey),
+    };
+  };
+
+  const renderStickySummaryDock = () => {
+    if (mode !== 'windows') {
+      return null;
+    }
+
+    const summaryFields = [...getSectionFields('FOOTER')]
+      .filter(shouldRenderLayoutField)
+      .sort((a: any, b: any) => {
+        if (a.row !== b.row) return a.row - b.row;
+        return a.col - b.col;
+      });
+
+    if (summaryFields.length === 0) {
+      return null;
+    }
+
+    return (
+      <div
+        className="sticky bottom-0 z-20 border-t border-[var(--color-border)] backdrop-blur shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-colors"
+        style={getStickySectionSurfaceStyle('FOOTER')}
+      >
+        <div className="px-4 py-3">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+            {summaryFields.map((field: any) => {
+              const value = getFieldValue(field.fieldId);
+              const unit = getSummaryFieldUnit(field.fieldId);
+
+              return (
+                <div
+                  key={`summary_${field.fieldId}`}
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 min-w-0 transition-colors"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] truncate">
+                    {getFieldDisplayLabel(field.fieldId, field.labelOverride)}
+                  </div>
+                  <div className="mt-1 flex items-end gap-1 min-w-0">
+                    <div className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                      {formatSummaryFieldValue(field.fieldId, value)}
+                    </div>
+                    {unit && (
+                      <div className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] shrink-0">
+                        {unit}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Render header fields - supports both formats
   const renderHeaderFields = () => {
     const configDef = definition as any;
@@ -2807,14 +3566,20 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       
       if (headerSection && headerSection.fields && headerSection.fields.length > 0) {
         // Sort fields by row and col
-        const sortedFields = [...headerSection.fields].sort((a: any, b: any) => {
+        const sortedFields = [...headerSection.fields]
+          .filter(shouldRenderLayoutField)
+          .sort((a: any, b: any) => {
           if (a.row !== b.row) return a.row - b.row;
           return a.col - b.col;
         });
+
+        if (sortedFields.length === 0) {
+          return null;
+        }
         
          return (
-           <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
-            <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+           <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle('HEADER')}>
+            <div className="grid grid-cols-24 gap-x-4 gap-y-2">
               {renderFieldList(sortedFields)}
             </div>
           </div>
@@ -2824,10 +3589,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   }
 
     // Format 2: VoucherTypeDefinition (canonical system) - fallback if no UI override
-    if (definition.headerFields && definition.headerFields.length > 0) {
+    if (!configDef.uiModeOverrides && definition.headerFields && definition.headerFields.length > 0) {
       return (
-        <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
-          <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle('HEADER')}>
+          <div className="grid grid-cols-24 gap-x-4 gap-y-2">
             {definition.headerFields.map((field: any) => (
               <div key={field.id} className="col-span-6 md:col-span-4">
                 {renderField(field.id, field.label)}
@@ -2855,7 +3620,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     }
 
     return (
-       <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
+       <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle('BODY')}>
          <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{t('voucherRenderer.lineItems')}</h3>
         {renderField('lineItems')}
       </div>
@@ -2864,30 +3629,28 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
   // Render any section from uiModeOverrides (BODY, EXTRA, etc.)
   const renderSection = (sectionKey: string, title?: string) => {
-    const configDef = definition as any;
-    
-    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
-    if (!modeConfig) {
-      return null;
-    }
-    
-    const sections = modeConfig.sections || {};
-    const section = sections?.[sectionKey];
-    
-    if (!section || !section.fields || section.fields.length === 0) {
+    const sectionFields = getSectionFields(sectionKey);
+
+    if (sectionFields.length === 0) {
       return null;
     }
     
     // Sort fields by row and col
-    const sortedFields = [...section.fields].sort((a: any, b: any) => {
+    const sortedFields = [...sectionFields]
+      .filter(shouldRenderLayoutField)
+      .sort((a: any, b: any) => {
       if (a.row !== b.row) return a.row - b.row;
       return a.col - b.col;
     });
+
+    if (sortedFields.length === 0) {
+      return null;
+    }
     
     return (
-       <div className="bg-[var(--color-bg-primary)] px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors">
+       <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle(sectionKey)}>
          {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
-        <div className="grid grid-cols-12 gap-x-4 gap-y-2">
+        <div className="grid grid-cols-24 gap-x-4 gap-y-2">
           {renderFieldList(sortedFields)}
         </div>
       </div>
@@ -2896,11 +3659,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
   // Check if BODY section has lineItems to avoid rendering twice
   const bodyHasLineItems = () => {
-    const configDef = definition as any;
-    const modeConfig = configDef.uiModeOverrides?.[mode] || configDef.uiModeOverrides?.['classic'];
-    if (!modeConfig) return false;
-    const bodySection = modeConfig.sections?.BODY;
-    return bodySection?.fields?.some((f: any) => f.fieldId === 'lineItems');
+    return getSectionFields('BODY').some((f: any) => f.fieldId === 'lineItems');
   };
 
   // Render action buttons from config
@@ -2921,24 +3680,13 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     }
     
     // Fallback to config.actions if no ACTIONS section
-    if (actionFields.length === 0) {
+    if (actionFields.length === 0 && !configDef.uiModeOverrides) {
       const actions = configDef.actions || [];
       const enabledActions = actions.filter((a: any) => a.enabled !== false);
       
-      // If no custom actions defined, render default buttons
+      // If no custom actions defined, render nothing
       if (!enabledActions.length) {
-        return (
-           <div className="bg-[var(--color-bg-primary)] border-t border-[var(--color-border)] p-3 grid grid-cols-2 gap-3 transition-colors">
-             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-primary-500/10 transition-all bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98]">
-               <Save size={16} />
-               {t('voucherRenderer.actions.save')}
-             </button>
-             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-sm transition-all bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] active:scale-[0.98]">
-               <Printer size={16} />
-               {t('voucherRenderer.actions.print')}
-             </button>
-           </div>
-        );
+        return null;
       }
       
       // Create action fields from config.actions
@@ -2957,8 +3705,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     
     return (
        <div 
-         className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] p-3 grid grid-cols-12 gap-3 transition-colors"
-         style={{ gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
+         className="border-t border-[var(--color-border)] p-3 grid grid-cols-24 gap-3 transition-colors"
+         style={{ ...getSectionSurfaceStyle('ACTIONS'), gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
        >
           {renderFieldList(actionFields)}
        </div>
@@ -2966,7 +3714,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   };
 
    return (
-     <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] font-sans text-[var(--color-text-primary)] overflow-y-auto custom-scroll transition-colors">
+     <div className="flex flex-col h-full bg-[var(--color-bg-primary)] font-sans text-[var(--color-text-primary)] overflow-y-auto custom-scroll transition-colors">
         {/* Header Fields from Canonical */}
         {renderHeaderFields()}
         
@@ -2978,6 +3726,9 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         
          {/* Extra Section (if defined) */}
         {renderSection('EXTRA', 'Additional Information')}
+
+        {/* Footer Section / Summary Dock */}
+        {mode === 'windows' ? renderStickySummaryDock() : renderSection('FOOTER', 'Totals')}
 
         {/* Action Buttons - from config or default */}
         {renderActions()}

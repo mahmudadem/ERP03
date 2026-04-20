@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   GoodsReceiptDTO,
   GoodsReceiptLineInputDTO,
@@ -10,6 +10,9 @@ import {
   purchasesApi,
 } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -21,6 +24,7 @@ interface EditableLine {
   itemCode?: string;
   itemName?: string;
   receivedQty: number;
+  uomId?: string;
   uom: string;
   warehouseId?: string;
   description?: string;
@@ -38,6 +42,7 @@ interface EditableForm {
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
   receivedQty: 1,
+  uomId: undefined,
   uom: '',
   warehouseId: undefined,
   description: '',
@@ -66,6 +71,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialPurchaseOrderId, initialVendorId));
+  const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [loadingPOLines, setLoadingPOLines] = useState(false);
@@ -113,6 +119,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         itemCode: line.itemCode,
         itemName: line.itemName,
         receivedQty: roundQty(Math.max(line.orderedQty - line.receivedQty, 0)),
+        uomId: line.uomId,
         uom: line.uom || itemById[line.itemId]?.purchaseUom || itemById[line.itemId]?.baseUom || 'EA',
         warehouseId: line.warehouseId || fallbackWarehouseId,
         description: line.description,
@@ -177,6 +184,24 @@ const GoodsReceiptDetailPage: React.FC = () => {
     setItems(Array.isArray(itemList) ? itemList : []);
 
     return currentSettings;
+  };
+
+  const ensureItemUomOptions = async (itemId: string) => {
+    if (!itemId || uomOptionsByItemId[itemId] || !itemById[itemId]) return;
+    try {
+      const result = await inventoryApi.listUomConversions(itemId);
+      const conversions = unwrap<UomConversionDTO[]>(result) || [];
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], conversions),
+      }));
+    } catch (loadError) {
+      console.error('Failed to load UOM conversions', loadError);
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], []),
+      }));
+    }
   };
 
   const load = async () => {
@@ -246,6 +271,13 @@ const GoodsReceiptDetailPage: React.FC = () => {
     }
   }, [form.lines.length, isCreateMode, isEditMode]);
 
+  useEffect(() => {
+    const ids = Array.from(new Set(form.lines.map((line) => line.itemId).filter(Boolean)));
+    ids.forEach((itemId) => {
+      void ensureItemUomOptions(itemId);
+    });
+  }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
       const lines = [...prev.lines];
@@ -255,9 +287,11 @@ const GoodsReceiptDetailPage: React.FC = () => {
       if (patch.itemId !== undefined) {
         const item = itemById[patch.itemId];
         if (item) {
+          const defaultUom = getDefaultItemUomOption(item, 'purchase');
           next.itemCode = item.code;
           next.itemName = item.name;
-          next.uom = next.uom || item.purchaseUom || item.baseUom;
+          next.uomId = next.uomId || defaultUom?.uomId;
+          next.uom = next.uom || defaultUom?.code || item.purchaseUom || item.baseUom;
           if (!next.warehouseId && settings?.defaultWarehouseId) {
             next.warehouseId = settings.defaultWarehouseId;
           }
@@ -324,6 +358,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
       poLineId: line.poLineId || undefined,
       itemId: line.itemId || undefined,
       receivedQty: line.receivedQty,
+      uomId: line.uomId,
       uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
       warehouseId: line.warehouseId || undefined,
       description: line.description || undefined,
@@ -391,6 +426,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
       itemCode: l.itemCode,
       itemName: l.itemName,
       receivedQty: l.receivedQty,
+      uomId: l.uomId,
       uom: l.uom,
       warehouseId: grn.warehouseId,
       description: l.description,
@@ -493,22 +529,22 @@ const GoodsReceiptDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (standalone only)</label>
-              <input
-                type="text"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <PartySelector 
                 value={form.vendorId}
-                onChange={(e) => setForm((prev) => ({ ...prev, vendorId: e.target.value }))}
-                placeholder="vendorId"
                 disabled={!!form.purchaseOrderId}
+                onChange={(party) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    vendorId: party?.id || '',
+                  }));
+                }}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Receipt Date</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={form.receiptDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, receiptDate: e.target.value }))}
+                onChange={(val) => setForm((prev) => ({ ...prev, receiptDate: val }))}
               />
             </div>
             <div>
@@ -613,12 +649,28 @@ const GoodsReceiptDetailPage: React.FC = () => {
                       />
                     </td>
                     <td className="py-2 pr-2">
-                      <input
-                        type="text"
-                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                        value={line.uom}
-                        onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
-                      />
+                      <select
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                        value={
+                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                          line.uomId ||
+                          line.uom
+                        }
+                        disabled={!line.itemId}
+                        onChange={(e) => {
+                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                            (option) => (option.uomId || option.code) === e.target.value
+                          );
+                          setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                        }}
+                      >
+                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                            {option.code}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-2 pr-2">
                       <select

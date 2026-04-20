@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, Box } from 'lucide-react';
-import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
+import { inventoryApi, InventoryItemDTO, InventoryUomDTO } from '../../../api/inventoryApi';
 import { useCompanyCurrencies } from '../../../modules/accounting/hooks/useCompanyCurrencies';
 
 interface ItemSelectorProps {
@@ -20,6 +20,7 @@ interface CreateItemFormState {
   code: string;
   name: string;
   type: InventoryItemDTO['type'];
+  baseUomId?: string;
   baseUom: string;
   costCurrency: string;
   trackInventory: boolean;
@@ -33,7 +34,7 @@ const buildCreateSeed = (rawSearch: string, costCurrency: string): CreateItemFor
     code: looksLikeCode ? trimmed.toUpperCase() : '',
     name: trimmed,
     type: 'PRODUCT',
-    baseUom: 'pcs',
+    baseUom: 'PCS',
     costCurrency,
     trackInventory: true,
   };
@@ -63,6 +64,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<InventoryItemDTO[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItemDTO | null>(null);
+  const [uoms, setUoms] = useState<InventoryUomDTO[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -75,12 +77,17 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
 
   useEffect(() => {
-    if (value) {
-      if (selectedItem?.id === value || selectedItem?.code === value) return;
+    // Defensive check: if value is an object, try to extract ID
+    const normalizedValue = typeof value === 'object' && value !== null 
+      ? ((value as any).id || (value as any).code || '') 
+      : (value || '');
+
+    if (normalizedValue) {
+      if (selectedItem?.id === normalizedValue || selectedItem?.code === normalizedValue) return;
 
       const fetchItem = async () => {
         try {
-          const item = await inventoryApi.getItem(value);
+          const item = await inventoryApi.getItem(normalizedValue);
           if (item) {
             setSelectedItem(item);
             setInputValue(`${item.code} - ${item.name}`);
@@ -88,7 +95,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
           }
 
           const searchResult = await inventoryApi.searchItems(
-            value,
+            normalizedValue,
             1,
             undefined,
             trackInventoryOnly ? { trackInventory: true } : undefined
@@ -98,10 +105,10 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
             setSelectedItem(searchResult[0]);
             setInputValue(`${searchResult[0].code} - ${searchResult[0].name}`);
           } else {
-            setInputValue(value);
+            setInputValue(normalizedValue);
           }
         } catch (error) {
-          setInputValue(value);
+          setInputValue(normalizedValue);
         }
       };
 
@@ -126,6 +133,36 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
       costCurrency: currencyOptions[0]?.code || 'USD',
     }));
   }, [createForm.costCurrency, currencyOptions, showCreateModal]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUoms = async () => {
+      try {
+        const result = await inventoryApi.listUoms({ active: true, limit: 200 });
+        if (!active) return;
+        const nextUoms = Array.isArray(result) ? result : [];
+        setUoms(nextUoms);
+        setCreateForm((current) => {
+          if (current.baseUomId || !nextUoms.length) return current;
+          const selected = nextUoms.find((uom) => uom.code === current.baseUom) || nextUoms[0];
+          return {
+            ...current,
+            baseUomId: selected?.id,
+            baseUom: selected?.code || current.baseUom,
+          };
+        });
+      } catch (error) {
+        console.error('Failed to load UOMs for item selector', error);
+      }
+    };
+
+    void loadUoms();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const performSearch = async (query: string) => {
     if (!query.trim()) {
@@ -220,7 +257,13 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
   const handleOpenCreateModal = () => {
     setCreateError('');
-    setCreateForm(buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD'));
+    const seed = buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD');
+    const selectedUom = uoms.find((uom) => uom.code === seed.baseUom) || uoms[0];
+    setCreateForm({
+      ...seed,
+      baseUomId: selectedUom?.id,
+      baseUom: selectedUom?.code || seed.baseUom,
+    });
     setShowModal(false);
     setShowCreateModal(true);
   };
@@ -251,6 +294,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
         code: createForm.code.trim(),
         name: createForm.name.trim(),
         type: createForm.type,
+        baseUomId: createForm.baseUomId,
         baseUom: createForm.baseUom.trim(),
         costCurrency: createForm.costCurrency.trim().toUpperCase(),
         trackInventory: trackInventoryOnly ? true : createForm.type === 'SERVICE' ? false : createForm.trackInventory,
@@ -267,6 +311,9 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   return (
     <>
       <div className={`relative flex items-center ${className}`}>
+        <div className="absolute left-2.5 text-slate-400">
+          <Box size={14} />
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -276,10 +323,10 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || t('itemSelector.placeholder', 'Select item...')}
           disabled={disabled}
-          className={`w-full text-xs transition-colors duration-200
-            ${noBorder ? 'border-none bg-transparent p-1' : 'rounded border border-[var(--color-border)] bg-white p-2 pr-10 dark:bg-slate-900'}
-            focus:ring-1 focus:ring-indigo-500 outline-none
-            ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+          className={`w-full text-xs transition-all duration-200
+            ${noBorder ? 'border-none bg-transparent p-1 pl-8' : 'rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}
+            focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
+            ${disabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : ''}`}
         />
         {!disabled && inputValue && (
           <button type="button" onClick={handleClear} className="absolute right-2 text-slate-400 hover:text-slate-600">
@@ -428,13 +475,36 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
                 <label className="text-sm">
                   <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">Base UoM</div>
-                  <input
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={createForm.baseUom}
-                    onChange={(e) => setCreateForm((current) => ({ ...current, baseUom: e.target.value }))}
-                    placeholder="pcs"
-                    required
-                  />
+                  {uoms.length > 0 ? (
+                    <select
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                      value={createForm.baseUomId || ''}
+                      onChange={(e) => {
+                        const selected = uoms.find((uom) => uom.id === e.target.value);
+                        setCreateForm((current) => ({
+                          ...current,
+                          baseUomId: selected?.id,
+                          baseUom: selected?.code || current.baseUom,
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">Select UoM</option>
+                      {uoms.map((uom) => (
+                        <option key={uom.id} value={uom.id}>
+                          {uom.code} - {uom.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                      value={createForm.baseUom}
+                      onChange={(e) => setCreateForm((current) => ({ ...current, baseUom: e.target.value.toUpperCase() }))}
+                      placeholder="PCS"
+                      required
+                    />
+                  )}
                 </label>
 
                 <label className="text-sm">

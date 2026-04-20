@@ -2,7 +2,9 @@ export interface UomConversionProps {
   id: string;
   companyId: string;
   itemId: string;
+  fromUomId?: string;
   fromUom: string;
+  toUomId?: string;
   toUom: string;
   factor: number;
   active: boolean;
@@ -12,7 +14,9 @@ export class UomConversion {
   readonly id: string;
   readonly companyId: string;
   readonly itemId: string;
+  fromUomId?: string;
   fromUom: string;
+  toUomId?: string;
   toUom: string;
   factor: number;
   active: boolean;
@@ -30,7 +34,9 @@ export class UomConversion {
     this.id = props.id;
     this.companyId = props.companyId;
     this.itemId = props.itemId;
+    this.fromUomId = props.fromUomId;
     this.fromUom = props.fromUom.trim();
+    this.toUomId = props.toUomId;
     this.toUom = props.toUom.trim();
     this.factor = props.factor;
     this.active = props.active;
@@ -41,7 +47,9 @@ export class UomConversion {
       id: this.id,
       companyId: this.companyId,
       itemId: this.itemId,
+      fromUomId: this.fromUomId,
       fromUom: this.fromUom,
+      toUomId: this.toUomId,
       toUom: this.toUom,
       factor: this.factor,
       active: this.active,
@@ -53,7 +61,9 @@ export class UomConversion {
       id: data.id,
       companyId: data.companyId,
       itemId: data.itemId,
+      fromUomId: data.fromUomId,
       fromUom: data.fromUom,
+      toUomId: data.toUomId,
       toUom: data.toUom,
       factor: data.factor,
       active: data.active ?? true,

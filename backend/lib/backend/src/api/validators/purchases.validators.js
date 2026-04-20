@@ -61,6 +61,12 @@ const ensureOptionalUuid = (value, fieldName) => {
         return;
     ensureRequiredString(value, fieldName);
 };
+const ensureWorkflowMode = (value, fieldName) => {
+    ensureRequiredString(value, fieldName);
+    if (value !== 'SIMPLE' && value !== 'OPERATIONAL') {
+        throw ApiError_1.ApiError.badRequest(`${fieldName} must be SIMPLE or OPERATIONAL`);
+    }
+};
 const validatePOLine = (line, index) => {
     ensureRequiredString(line.itemId, `lines[${index}].itemId`);
     ensurePositiveNumber(line.orderedQty, `lines[${index}].orderedQty`);
@@ -73,6 +79,9 @@ const validatePOLine = (line, index) => {
     }
     if (line.uom !== undefined) {
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    }
+    if (line.uomId !== undefined) {
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     }
     if (line.warehouseId !== undefined) {
         ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
@@ -94,6 +103,8 @@ const validateGRNLine = (line, index) => {
         ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
     if (line.uom !== undefined)
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.unitCostDoc !== undefined)
         ensureNonNegativeNumber(line.unitCostDoc, `lines[${index}].unitCostDoc`);
     if (line.moveCurrency !== undefined)
@@ -119,6 +130,8 @@ const validatePILine = (line, index) => {
         ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
     if (line.uom !== undefined)
         ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.unitPriceDoc !== undefined)
         ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
     if (line.taxCodeId !== undefined)
@@ -142,6 +155,10 @@ const validatePRLine = (line, index) => {
         ensureOptionalString(line.itemId, `lines[${index}].itemId`);
     if (line.returnQty !== undefined)
         ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
+    if (line.uom !== undefined)
+        ensureOptionalString(line.uom, `lines[${index}].uom`);
+    if (line.uomId !== undefined)
+        ensureOptionalString(line.uomId, `lines[${index}].uomId`);
     if (line.piLineId === undefined
         && line.grnLineId === undefined
         && line.itemId === undefined) {
@@ -152,6 +169,8 @@ const validatePRLine = (line, index) => {
     }
 };
 const validateInitializePurchasesInput = (body) => {
+    if (body.workflowMode !== undefined)
+        ensureWorkflowMode(body.workflowMode, 'workflowMode');
     if (body.allowDirectInvoicing !== undefined)
         ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requirePOForStockItems !== undefined)
@@ -165,6 +184,7 @@ const validateInitializePurchasesInput = (body) => {
     if (body.defaultPaymentTermsDays !== undefined)
         ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
     ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+    ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
     ensureOptionalString(body.purchaseVoucherTypeId, 'purchaseVoucherTypeId');
     ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
     ensureOptionalString(body.poNumberPrefix, 'poNumberPrefix');
@@ -178,6 +198,8 @@ const validateInitializePurchasesInput = (body) => {
 };
 exports.validateInitializePurchasesInput = validateInitializePurchasesInput;
 const validateUpdatePurchaseSettingsInput = (body) => {
+    if (body.workflowMode !== undefined)
+        ensureWorkflowMode(body.workflowMode, 'workflowMode');
     if (body.allowDirectInvoicing !== undefined)
         ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
     if (body.requirePOForStockItems !== undefined)
@@ -186,6 +208,8 @@ const validateUpdatePurchaseSettingsInput = (body) => {
         ensureOptionalString(body.defaultAPAccountId, 'defaultAPAccountId');
     if (body.defaultPurchaseExpenseAccountId !== undefined)
         ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+    if (body.defaultGRNIAccountId !== undefined)
+        ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
     if (body.allowOverDelivery !== undefined)
         ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
     if (body.overDeliveryTolerancePct !== undefined)

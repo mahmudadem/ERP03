@@ -42,15 +42,30 @@ class FirestoreCompanyModuleRepository {
             .doc(companyId)
             .collection('modules')
             .doc(moduleCode);
+        const snapshot = await docRef.get();
+        const updatedAt = updates.updatedAt || new Date();
         const firestoreUpdates = {};
         if (updates.initialized !== undefined)
             firestoreUpdates.initialized = updates.initialized;
-        if (updates.initializationStatus)
+        if (updates.initializationStatus !== undefined)
             firestoreUpdates.initializationStatus = updates.initializationStatus;
-        if (updates.config)
+        if (updates.config !== undefined)
             firestoreUpdates.config = updates.config;
-        firestoreUpdates.updatedAt = new Date();
-        await docRef.update(firestoreUpdates);
+        firestoreUpdates.updatedAt = updatedAt;
+        // Upsert behavior: initialization flows may call update before module record exists.
+        // Create a minimal module record on first update to avoid Firestore NOT_FOUND.
+        if (!snapshot.exists) {
+            firestoreUpdates.companyId = companyId;
+            firestoreUpdates.moduleCode = moduleCode;
+            firestoreUpdates.installedAt = updates.installedAt || new Date();
+            if (firestoreUpdates.initialized === undefined)
+                firestoreUpdates.initialized = false;
+            if (firestoreUpdates.initializationStatus === undefined)
+                firestoreUpdates.initializationStatus = 'pending';
+            if (firestoreUpdates.config === undefined)
+                firestoreUpdates.config = {};
+        }
+        await docRef.set(firestoreUpdates, { merge: true });
     }
     async delete(companyId, moduleCode) {
         const docRef = this.db

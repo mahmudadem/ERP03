@@ -19,7 +19,7 @@
  * Output: Plain VoucherFormConfig object via onSave callback
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { 
@@ -269,19 +269,26 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   
   // --- AUTO-PLACEMENT ALGORITHM ---
 
-  const  runAutoPlacement = () => {
+  const buildSynchronizedConfig = (sourceConfig: VoucherFormConfig): VoucherFormConfig => {
     const modes: UIMode[] = ['windows', 'classic'];
-    const newOverrides = { ...config.uiModeOverrides };
+    const newOverrides = {} as VoucherFormConfig['uiModeOverrides'];
+
+    modes.forEach((mode) => {
+      newOverrides[mode] = {
+        ...sourceConfig.uiModeOverrides[mode],
+        sections: Object.entries(sourceConfig.uiModeOverrides[mode].sections).reduce((sections, [sectionKey, section]) => {
+          sections[sectionKey as SectionType] = {
+            ...section,
+            fields: section.fields.map((field) => ({ ...field })),
+          };
+          return sections;
+        }, {} as Record<SectionType, SectionLayout>)
+      };
+    });
 
     modes.forEach(mode => {
       const isWindows = mode === 'windows';
       const currentModeConfig = newOverrides[mode];
-      
-      // 1. Collect all currently assigned field IDs across all sections to identify orphans/deleted
-      const assignedFieldIds = new Set<string>();
-      Object.values(currentModeConfig.sections).forEach(section => {
-        section.fields.forEach(f => assignedFieldIds.add(f.fieldId));
-      });
 
       // 2. Filter out fields that are no longer selected or actions that are no longer enabled
       Object.keys(currentModeConfig.sections).forEach(sectionKey => {
@@ -290,7 +297,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
           // Action handling
           if (f.fieldId.startsWith('action_')) {
             const actionType = f.fieldId.replace('action_', '');
-            return config.actions.find(a => a.type === actionType)?.enabled ?? false;
+            return sourceConfig.actions.find(a => a.type === actionType)?.enabled ?? false;
           }
           // System fields
           if (SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) return true;
@@ -303,11 +310,11 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       const allRequiredFieldIds = Array.from(new Set([
         ...SYSTEM_FIELDS.map(f => f.id),
         ...AVAILABLE_FIELDS.filter(f => {
-          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
-          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          if (f.supportedTypes && sourceConfig.baseType && !f.supportedTypes.includes(sourceConfig.baseType)) return false;
+          if (f.excludedTypes && sourceConfig.baseType && f.excludedTypes.includes(sourceConfig.baseType)) return false;
           return f.category === 'core' || f.mandatory || selectedFieldIds.includes(f.id);
         }).map(f => f.id),
-        ...config.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
+        ...sourceConfig.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
       ]));
 
       const missingFieldIds = allRequiredFieldIds.filter(id => {
@@ -357,7 +364,19 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       });
     });
 
-    setConfig(prev => ({ ...prev, uiModeOverrides: newOverrides }));
+    return {
+      ...sourceConfig,
+      uiModeOverrides: newOverrides,
+    };
+  };
+
+  const previewConfig = useMemo(
+    () => buildSynchronizedConfig(config),
+    [config, selectedFieldIds]
+  );
+
+  const runAutoPlacement = () => {
+    setConfig((prev) => buildSynchronizedConfig(prev));
   };
 
   // --- HANDLERS ---
@@ -1542,7 +1561,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 
                 <div onClick={() => setConfig({...config, isMultiLine: !config.isMultiLine})} className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${config.isMultiLine ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Multi-Line Journal Entry</h3>
+                      <h3 className="text-sm font-bold text-gray-900">Enable Line Items Table</h3>
                       <p className="text-xs text-gray-500">Enable line items table for this voucher.</p>
                    </div>
                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${config.isMultiLine ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{config.isMultiLine ? 'ON' : 'OFF'}</div>
@@ -1744,7 +1763,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               </div>
               <div className="flex-1 overflow-auto bg-gray-50 p-6">
                  <div className="bg-white shadow-lg rounded-lg border border-gray-200 min-h-full">
-                    <GenericVoucherRenderer definition={config as any} mode={previewMode} />
+                    <GenericVoucherRenderer definition={previewConfig as any} mode={previewMode} />
                  </div>
               </div>
            </div>
@@ -1816,7 +1835,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
          <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
          {currentStep === 7 ? (
             <button 
-              onClick={() => onSave?.(config)} 
+              onClick={() => onSave?.(previewConfig)} 
               disabled={isReadOnly}
               className="flex items-center gap-2 px-8 py-2.5 rounded-lg font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >

@@ -6,6 +6,7 @@ import { StockMovement } from '../../../domain/inventory/entities/StockMovement'
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { ItemCategory } from '../../../domain/inventory/entities/ItemCategory';
 import { UomConversion } from '../../../domain/inventory/entities/UomConversion';
+import { Uom } from '../../../domain/inventory/entities/Uom';
 import { InventorySettings } from '../../../domain/inventory/entities/InventorySettings';
 import { OpeningStockDocument } from '../../../domain/inventory/entities/OpeningStockDocument';
 import { StockAdjustment } from '../../../domain/inventory/entities/StockAdjustment';
@@ -169,6 +170,25 @@ export class OpeningStockDocumentMapper {
       ...data,
       createdAt: toTimestamp(entity.createdAt),
       postedAt: toTimestamp(entity.postedAt),
+    });
+  }
+}
+
+export class UomMapper {
+  static toDomain(data: any): Uom {
+    return Uom.fromJSON({
+      ...data,
+      createdAt: toDate(data.createdAt),
+      updatedAt: toDate(data.updatedAt),
+    });
+  }
+
+  static toPersistence(entity: Uom): any {
+    const data = entity.toJSON();
+    return stripUndefinedDeep({
+      ...data,
+      createdAt: toTimestamp(entity.createdAt),
+      updatedAt: toTimestamp(entity.updatedAt),
     });
   }
 }

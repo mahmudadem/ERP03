@@ -28,14 +28,19 @@ export interface SidebarFormEntry {
 }
 
 export function useVoucherTypes() {
-  const { companyId } = useCompanyAccess();
+  const { companyId, moduleBundles, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
+  const hasAccountingModule = (moduleBundles || [])
+    .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+    .includes('accounting');
+  const canLoadForms = Boolean(companyId) && !accessLoading && permissionsLoaded && hasAccountingModule;
+
   const [voucherTypes, setVoucherTypes] = useState<VoucherFormConfig[]>([]);
   const [allModuleForms, setAllModuleForms] = useState<SidebarFormEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadVouchers() {
-      if (!companyId) {
+      if (!canLoadForms) {
         setVoucherTypes([]);
         setAllModuleForms([]);
         setLoading(false);
@@ -126,8 +131,9 @@ export function useVoucherTypes() {
       }
     }
 
+    setLoading(canLoadForms);
     loadVouchers();
-  }, [companyId]);
+  }, [canLoadForms]);
 
   return { voucherTypes, allModuleForms, loading };
 }

@@ -1,5 +1,7 @@
 import client from './client';
 
+export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
+
 export type SOStatus =
   | 'DRAFT'
   | 'CONFIRMED'
@@ -15,6 +17,7 @@ export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 
 export interface SalesSettingsDTO {
   companyId: string;
+  workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -47,6 +50,7 @@ export interface SalesOrderLineDTO {
   itemType: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   deliveredQty: number;
   invoicedQty: number;
@@ -98,6 +102,7 @@ export interface DeliveryNoteLineDTO {
   itemCode: string;
   itemName: string;
   deliveredQty: number;
+  uomId?: string;
   uom: string;
   unitCostBase: number;
   lineCostBase: number;
@@ -137,6 +142,7 @@ export interface SalesInvoiceLineDTO {
   itemName: string;
   trackInventory: boolean;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   lineTotalDoc: number;
@@ -200,6 +206,7 @@ export interface SalesReturnLineDTO {
   itemCode: string;
   itemName: string;
   returnQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc?: number;
   unitPriceBase?: number;
@@ -250,6 +257,7 @@ export interface SalesReturnDTO {
 }
 
 export interface InitializeSalesPayload {
+  workflowMode?: WorkflowMode;
   defaultARAccountId?: string;
   defaultRevenueAccountId: string;
   allowDirectInvoicing?: boolean;
@@ -278,6 +286,7 @@ export interface SalesOrderLineInputDTO {
   lineNo?: number;
   itemId: string;
   orderedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -322,6 +331,7 @@ export interface DeliveryNoteLineInputDTO {
   soLineId?: string;
   itemId?: string;
   deliveredQty: number;
+  uomId?: string;
   uom?: string;
   description?: string;
 }
@@ -348,6 +358,7 @@ export interface SalesInvoiceLineInputDTO {
   dnLineId?: string;
   itemId?: string;
   invoicedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
   taxCodeId?: string;
@@ -394,6 +405,7 @@ export interface SalesReturnLineInputDTO {
   soLineId?: string;
   itemId?: string;
   returnQty?: number;
+  uomId?: string;
   uom?: string;
   description?: string;
 }

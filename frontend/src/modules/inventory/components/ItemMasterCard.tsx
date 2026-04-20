@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Package, 
   DollarSign, 
@@ -15,7 +16,14 @@ import {
   Sparkles,
   Coins
 } from 'lucide-react';
-import { inventoryApi, InventoryItemDTO, InventoryCategoryDTO } from '../../../api/inventoryApi';
+import {
+  inventoryApi,
+  InventoryCategoryDTO,
+  InventoryItemDTO,
+  InventoryUomDTO,
+  UomConversionDTO,
+  UomConversionImpactReportDTO,
+} from '../../../api/inventoryApi';
 import { sharedApi, TaxCodeDTO } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
@@ -53,6 +61,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const [categories, setCategories] = useState<InventoryCategoryDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [currencies, setCurrencies] = useState<string[]>([]);
+  const [uoms, setUoms] = useState<InventoryUomDTO[]>([]);
+  const [conversions, setConversions] = useState<UomConversionDTO[]>([]);
+  const [conversionDraft, setConversionDraft] = useState<{ fromUomId?: string; toUomId?: string; factor: number }>({ factor: 1 });
+  const [conversionFactorDrafts, setConversionFactorDrafts] = useState<Record<string, number>>({});
+  const [conversionImpactById, setConversionImpactById] = useState<Record<string, UomConversionImpactReportDTO | undefined>>({});
+  const [analyzingConversionId, setAnalyzingConversionId] = useState<string | null>(null);
+  const [applyingConversionId, setApplyingConversionId] = useState<string | null>(null);
 
   const [item, setItem] = useState<Partial<InventoryItemDTO>>({
     code: '',
@@ -75,6 +90,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     loadCategories();
     loadTaxCodes();
     loadCurrencies();
+    loadUoms();
     if (!isNew && itemId) loadItem(itemId);
   }, [itemId]);
 
@@ -95,6 +111,33 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     catch (err) { console.error(err); }
   };
 
+  const loadUoms = async () => {
+    try {
+      const result = await inventoryApi.listUoms({ active: true, limit: 500 });
+      setUoms((result as any).data || result || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const applyConversionState = (entries: UomConversionDTO[]) => {
+    setConversions(entries);
+    setConversionFactorDrafts((current) => {
+      const next: Record<string, number> = {};
+      entries.forEach((entry) => {
+        next[entry.id] = current[entry.id] ?? entry.factor;
+      });
+      return next;
+    });
+    setConversionImpactById({});
+  };
+
+  const loadConversions = async (targetItemId: string) => {
+    const result = await inventoryApi.listUomConversions(targetItemId);
+    const list = ((result as any).data || result || []) as UomConversionDTO[];
+    applyConversionState(list);
+  };
+
   const loadItem = async (id: string) => {
     try {
       setLoading(true);
@@ -107,6 +150,9 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
             prices: { groups: data.metadata?.prices?.groups || [{ name: 'Retail', price: 0 }] }
         }
       });
+      if (data.id) {
+        await loadConversions(data.id);
+      }
     } catch (err) { setError('Failed to load item'); }
     finally { setLoading(false); }
   };
@@ -118,13 +164,125 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       const result = isNew 
         ? await inventoryApi.createItem(item as any)
         : await inventoryApi.updateItem(itemId!, item as any);
-      onSaved?.(result);
+      const normalized = (result as any).data || result;
+      setItem({
+        ...normalized,
+        metadata: {
+          dimensions: { weightUom: 'kg', dimensionUom: 'cm', ...(normalized?.metadata?.dimensions || {}) },
+          prices: { groups: normalized?.metadata?.prices?.groups || [{ name: 'Retail', price: 0 }] },
+        },
+      });
+      if (normalized?.id) {
+        await loadConversions(normalized.id);
+      }
+      onSaved?.(normalized);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
   };
+
+  const handleAddConversion = async () => {
+    if (!item.id && !itemId) {
+      setError('Save the item before adding conversions.');
+      return;
+    }
+    const toUomId = conversionDraft.toUomId || item.baseUomId;
+    if (!conversionDraft.fromUomId || !toUomId || !(conversionDraft.factor > 0)) {
+      setError('Conversion requires from UOM, to UOM, and a positive factor.');
+      return;
+    }
+
+    try {
+      setError(null);
+      const savedItemId = item.id || itemId!;
+      await inventoryApi.createUomConversion({
+        itemId: savedItemId,
+        fromUomId: conversionDraft.fromUomId,
+        toUomId,
+        factor: conversionDraft.factor,
+      });
+      await loadConversions(savedItemId);
+      setConversionDraft({ factor: 1 });
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to add conversion');
+    }
+  };
+
+  const handleDeleteConversion = async (conversionId: string) => {
+    try {
+      await inventoryApi.deleteUomConversion(conversionId);
+      const savedItemId = item.id || itemId;
+      if (savedItemId) {
+        await loadConversions(savedItemId);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to delete conversion');
+    }
+  };
+
+  const getDraftFactor = (conversion: UomConversionDTO): number => {
+    const value = conversionFactorDrafts[conversion.id];
+    return typeof value === 'number' ? value : conversion.factor;
+  };
+
+  const setDraftFactor = (conversionId: string, value: number) => {
+    setConversionFactorDrafts((current) => ({ ...current, [conversionId]: value }));
+  };
+
+  const handleAnalyzeConversion = async (conversion: UomConversionDTO) => {
+    const proposedFactor = getDraftFactor(conversion);
+    if (!(proposedFactor > 0)) {
+      setError('New factor must be a positive number.');
+      return;
+    }
+
+    try {
+      setError(null);
+      setAnalyzingConversionId(conversion.id);
+      const result = await inventoryApi.getUomConversionImpact(conversion.id, proposedFactor);
+      const report = ((result as any).data || result) as UomConversionImpactReportDTO;
+      setConversionImpactById((current) => ({ ...current, [conversion.id]: report }));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to analyze conversion impact');
+    } finally {
+      setAnalyzingConversionId(null);
+    }
+  };
+
+  const handleApplyConversionCorrection = async (conversion: UomConversionDTO) => {
+    const proposedFactor = getDraftFactor(conversion);
+    if (!(proposedFactor > 0)) {
+      setError('New factor must be a positive number.');
+      return;
+    }
+
+    const existingImpact = conversionImpactById[conversion.id];
+    if (existingImpact?.used) {
+      const shouldProceed = window.confirm(
+        'This conversion has posted usage. The system will add stock adjustment delta movements to apply the new factor without changing invoice/payment values. Continue?'
+      );
+      if (!shouldProceed) return;
+    }
+
+    try {
+      setError(null);
+      setApplyingConversionId(conversion.id);
+      await inventoryApi.applyUomConversionCorrection(conversion.id, proposedFactor);
+
+      const savedItemId = item.id || itemId;
+      if (savedItemId) {
+        await loadConversions(savedItemId);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to apply conversion correction');
+    } finally {
+      setApplyingConversionId(null);
+    }
+  };
+
+  const findUom = (id?: string) => uoms.find((uom) => uom.id === id);
 
   const updateMetadata = (path: string, value: any) => {
     const parts = path.split('.');
@@ -294,6 +452,247 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
               <div className="flex-1 text-sm font-bold">Inventory Tracking</div>
               <button onClick={() => setItem(p => ({ ...p, trackInventory: !p.trackInventory }))} className={clsx("px-4 py-1.5 rounded-full text-[10px] font-black", item.trackInventory ? "bg-blue-600 text-white" : "bg-slate-200")}>{item.trackInventory ? 'ON' : 'OFF'}</button>
            </div>
+
+           <FormSection title="Managed UOM Defaults">
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               <Field label="Base UOM" required>
+                 <select
+                   className="form-control"
+                   value={item.baseUomId || ''}
+                   onChange={(e) => {
+                     const selected = findUom(e.target.value);
+                     setItem((current) => ({
+                       ...current,
+                       baseUomId: selected?.id,
+                       baseUom: selected?.code || '',
+                     }));
+                   }}
+                 >
+                   <option value="">Select base UOM</option>
+                   {uoms.map((uom) => (
+                     <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
+                   ))}
+                 </select>
+               </Field>
+               <Field label="Purchase UOM">
+                 <select
+                   className="form-control"
+                   value={item.purchaseUomId || ''}
+                   onChange={(e) => {
+                     const selected = findUom(e.target.value);
+                     setItem((current) => ({
+                       ...current,
+                       purchaseUomId: selected?.id,
+                       purchaseUom: selected?.code || undefined,
+                     }));
+                   }}
+                 >
+                   <option value="">Use base UOM</option>
+                   {uoms.map((uom) => (
+                     <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
+                   ))}
+                 </select>
+               </Field>
+               <Field label="Sales UOM">
+                 <select
+                   className="form-control"
+                   value={item.salesUomId || ''}
+                   onChange={(e) => {
+                     const selected = findUom(e.target.value);
+                     setItem((current) => ({
+                       ...current,
+                       salesUomId: selected?.id,
+                       salesUom: selected?.code || undefined,
+                     }));
+                   }}
+                 >
+                   <option value="">Use base UOM</option>
+                   {uoms.map((uom) => (
+                     <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
+                   ))}
+                 </select>
+               </Field>
+             </div>
+             <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+               Need a new unit? Open{' '}
+               <Link className="font-semibold underline" to="/inventory/uoms">
+                 UOM Master
+               </Link>
+               . Base/Purchase/Sales UOM selection is here; conversion factor setup is in the section below.
+             </div>
+           </FormSection>
+
+           <FormSection title="Item UOM Conversions">
+             {isNew ? (
+               <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                 Save this item first, then return to <span className="font-semibold">Stock Control</span> to define
+                 <span className="font-semibold"> From UOM</span>, <span className="font-semibold">To UOM</span>, and
+                 <span className="font-semibold"> conversion factor</span>.
+               </div>
+             ) : (
+               <div className="space-y-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                   <select
+                     className="form-control"
+                     value={conversionDraft.fromUomId || ''}
+                     onChange={(e) => setConversionDraft((current) => ({ ...current, fromUomId: e.target.value || undefined }))}
+                   >
+                     <option value="">From UOM</option>
+                     {uoms.map((uom) => (
+                       <option key={uom.id} value={uom.id}>{uom.code}</option>
+                     ))}
+                   </select>
+                   <select
+                     className="form-control"
+                     value={conversionDraft.toUomId || item.baseUomId || ''}
+                     onChange={(e) => setConversionDraft((current) => ({ ...current, toUomId: e.target.value || undefined }))}
+                   >
+                     <option value="">To UOM</option>
+                     {uoms.map((uom) => (
+                       <option key={uom.id} value={uom.id}>{uom.code}</option>
+                     ))}
+                   </select>
+                   <input
+                     className="form-control"
+                     type="number"
+                     min={0}
+                     step="0.0001"
+                     value={conversionDraft.factor}
+                     onChange={(e) => setConversionDraft((current) => ({ ...current, factor: Number(e.target.value || 0) }))}
+                   />
+                   <button type="button" onClick={handleAddConversion} className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white">
+                     Add Conversion
+                   </button>
+                 </div>
+
+                <div className="rounded border font-mono">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 border-b">
+                      <tr>
+                        <th className="px-4 py-2">From</th>
+                        <th className="px-4 py-2">To</th>
+                        <th className="px-4 py-2 text-right">Current Factor</th>
+                        <th className="px-4 py-2 text-right">New Factor</th>
+                        <th className="px-4 py-2">Impact</th>
+                        <th className="w-40" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {conversions.map((conversion) => {
+                        const impact = conversionImpactById[conversion.id];
+                        const draftFactor = getDraftFactor(conversion);
+                        const hasDraftChange = Math.abs(draftFactor - conversion.factor) > 0.0000001;
+
+                        return (
+                          <React.Fragment key={conversion.id}>
+                            <tr className="border-b last:border-none">
+                              <td className="px-4 py-2">{conversion.fromUom}</td>
+                              <td className="px-4 py-2">{conversion.toUom}</td>
+                              <td className="px-4 py-2 text-right">{conversion.factor}</td>
+                              <td className="px-4 py-2">
+                                <input
+                                  className="form-control text-right"
+                                  type="number"
+                                  min={0}
+                                  step="0.0001"
+                                  value={draftFactor}
+                                  onChange={(e) => setDraftFactor(conversion.id, Number(e.target.value || 0))}
+                                />
+                              </td>
+                              <td className="px-4 py-2">
+                                {impact ? (
+                                  <div className="text-[11px] leading-4 text-slate-600">
+                                    <div>Usage: {impact.usageCount}</div>
+                                    <div>P: {impact.purchaseUsageCount} / S: {impact.salesUsageCount}</div>
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400">Not analyzed</span>
+                                )}
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    className="rounded border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 disabled:opacity-50"
+                                    disabled={analyzingConversionId === conversion.id}
+                                    onClick={() => handleAnalyzeConversion(conversion)}
+                                  >
+                                    {analyzingConversionId === conversion.id ? 'Analyzing...' : 'Analyze'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-50"
+                                    disabled={!hasDraftChange || applyingConversionId === conversion.id}
+                                    onClick={() => handleApplyConversionCorrection(conversion)}
+                                  >
+                                    {applyingConversionId === conversion.id ? 'Applying...' : 'Apply'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="text-slate-300 hover:text-red-500"
+                                    onClick={() => handleDeleteConversion(conversion.id)}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {impact && (
+                              <tr className="border-b bg-slate-50/50 last:border-none">
+                                <td className="px-4 py-3" colSpan={6}>
+                                  <div className="space-y-2 text-[11px]">
+                                    {!impact.used && (
+                                      <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
+                                        No posted movement uses this conversion yet. Applying new factor is direct.
+                                      </div>
+                                    )}
+                                    {impact.used && (
+                                      <div className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
+                                        Correction will be applied as stock delta adjustments. Invoice/payment values stay unchanged.
+                                      </div>
+                                    )}
+                                    {impact.impactedReferences.length > 0 && (
+                                      <div className="overflow-auto rounded border border-slate-200">
+                                        <table className="w-full text-[11px] text-left">
+                                          <thead className="bg-slate-100">
+                                            <tr>
+                                              <th className="px-2 py-1">Reference</th>
+                                              <th className="px-2 py-1">Status</th>
+                                              <th className="px-2 py-1">Movements</th>
+                                              <th className="px-2 py-1">Module</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {impact.impactedReferences.map((entry) => (
+                                              <tr key={`${entry.referenceType}:${entry.referenceId}`} className="border-t">
+                                                <td className="px-2 py-1">{entry.referenceType} / {entry.referenceId}</td>
+                                                <td className="px-2 py-1">{entry.status}</td>
+                                                <td className="px-2 py-1">{entry.movementCount}</td>
+                                                <td className="px-2 py-1">{entry.module}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                      {conversions.length === 0 && (
+                        <tr>
+                          <td className="px-4 py-3 text-slate-400" colSpan={6}>No alternate UOM conversions defined.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+               </div>
+             )}
+           </FormSection>
         </div>
       )}
 

@@ -45,14 +45,20 @@ export class SubmitVoucherUseCase {
    */
   async execute(
     companyId: string,
-    voucherId: string,
-    submitterId: string
+    voucherIdOrEntity: string | VoucherEntity,
+    submitterId: string,
+    transaction?: any
   ): Promise<VoucherEntity> {
     // Step 1: Load voucher
-    const voucher = await this.voucherRepository.findById(companyId, voucherId);
-    
-    if (!voucher) {
-      throw new Error(`Voucher not found: ${voucherId}`);
+    let voucher: VoucherEntity;
+    if (typeof voucherIdOrEntity === 'string') {
+      const found = await this.voucherRepository.findById(companyId, voucherIdOrEntity);
+      if (!found) {
+        throw new Error(`Voucher not found: ${voucherIdOrEntity}`);
+      }
+      voucher = found;
+    } else {
+      voucher = voucherIdOrEntity;
     }
 
     // Step 2: Validate can submit (only DRAFT or REJECTED status)
@@ -144,7 +150,7 @@ export class SubmitVoucherUseCase {
     const submittedVoucher = this.createSubmittedVoucher(voucher, submitterId, gateResult);
     
     // Step 8: Save
-    const savedVoucher = await this.voucherRepository.save(submittedVoucher);
+    const savedVoucher = await this.voucherRepository.save(submittedVoucher, transaction);
     
     // Step 9: Dispatch notifications (non-blocking)
     this.dispatchNotifications(companyId, savedVoucher, gateResult).catch(() => {

@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnpostPurchaseInvoiceUseCase = exports.ListPurchaseInvoicesUseCase = exports.GetPurchaseInvoiceUseCase = exports.UpdatePurchaseInvoiceUseCase = exports.PostPurchaseInvoiceUseCase = exports.CreatePurchaseInvoiceUseCase = void 0;
 const crypto_1 = require("crypto");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const PurchaseInvoice_1 = require("../../../domain/purchases/entities/PurchaseInvoice");
+const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const PurchasePostingHelpers_1 = require("./PurchasePostingHelpers");
 const PurchaseOrderUseCases_1 = require("./PurchaseOrderUseCases");
 const findPOLine = (po, poLineId, itemId) => {
@@ -95,6 +97,7 @@ class CreatePurchaseInvoiceUseCase {
                 itemName: item.name,
                 trackInventory: item.trackInventory,
                 invoicedQty,
+                uomId: sourceLine.uomId || (poLine === null || poLine === void 0 ? void 0 : poLine.uomId) || item.purchaseUomId || item.baseUomId,
                 uom: sourceLine.uom || (poLine === null || poLine === void 0 ? void 0 : poLine.uom) || item.purchaseUom || item.baseUom,
                 unitPriceDoc,
                 lineTotalDoc,
@@ -171,6 +174,7 @@ class CreatePurchaseInvoiceUseCase {
                 poLineId: line.lineId,
                 itemId: line.itemId,
                 invoicedQty: (0, PurchasePostingHelpers_1.roundMoney)(Math.max(ceiling, 0)),
+                uomId: line.uomId,
                 uom: line.uom,
                 unitPriceDoc: line.unitPriceDoc,
                 taxCodeId: line.taxCodeId,
@@ -220,7 +224,7 @@ class PostPurchaseInvoiceUseCase {
         if (!settings)
             throw new Error('Purchases module is not initialized');
         const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
-        const isPerpetual = (invSettings === null || invSettings === void 0 ? void 0 : invSettings.inventoryAccountingMethod) === 'PERPETUAL';
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
         const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
         if (!pi)
             throw new Error(`Purchase invoice not found: ${id}`);
@@ -260,13 +264,16 @@ class PostPurchaseInvoiceUseCase {
                 this.validatePostingQuantity(line, poLine, settings.allowDirectInvoicing, settings.overInvoiceTolerancePct, isPOLinked);
                 const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
                 this.freezeTaxSnapshotSync(line, pi.exchangeRate, taxCode || undefined);
-                line.accountId = this.resolveDebitAccountSync(companyId, item, isPerpetual, categoriesMap, settings.defaultPurchaseExpenseAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
+                const hasReceiptBackedFlow = item.trackInventory && (!settings.allowDirectInvoicing || hasGRNForThisLine(line));
+                const clearsGRNI = DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPurchaseInvoiceClearGRNI(accountingMode, hasReceiptBackedFlow);
+                line.accountId = this.resolveDebitAccountSync(companyId, item, clearsGRNI, categoriesMap, settings.defaultPurchaseExpenseAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId, settings.defaultGRNIAccountId);
                 if (settings.allowDirectInvoicing && item.trackInventory && !hasGRNForThisLine(line)) {
                     const warehouseId = line.warehouseId || settings.defaultWarehouseId;
                     const warehouse = warehouseId ? warehousesMap.get(warehouseId) : null;
                     if (!warehouse)
                         throw new Error(`Warehouse required for ${item.name}`);
-                    const qtyInBaseUom = await this.convertToBaseUom(companyId, line.invoicedQty, line.uom, item.baseUom, item.id, item.code);
+                    const conversionResult = await this.convertToBaseUom(companyId, line.invoicedQty, line.uomId, line.uom, item);
+                    const qtyInBaseUom = conversionResult.qtyInBaseUom;
                     const fxRateCCYToBase = await this.resolveCCYToBaseRate(companyId, item.costCurrency, baseCurrency, pi.currency, pi.exchangeRate, pi.invoiceDate);
                     const movement = await this.inventoryService.processIN({
                         companyId, itemId: line.itemId, warehouseId, qty: qtyInBaseUom, date: pi.invoiceDate,
@@ -274,6 +281,18 @@ class PostPurchaseInvoiceUseCase {
                         refs: { type: 'PURCHASE_INVOICE', docId: pi.id, lineId: line.lineId },
                         currentUser: pi.createdBy, unitCostInMoveCurrency: line.unitPriceDoc,
                         moveCurrency: pi.currency, fxRateMovToBase: pi.exchangeRate, fxRateCCYToBase,
+                        metadata: {
+                            uomConversion: {
+                                conversionId: conversionResult.trace.conversionId,
+                                mode: conversionResult.trace.mode,
+                                appliedFactor: conversionResult.trace.factor,
+                                sourceQty: line.invoicedQty,
+                                sourceUomId: line.uomId,
+                                sourceUom: line.uom,
+                                baseUomId: item.baseUomId,
+                                baseUom: item.baseUom,
+                            },
+                        },
                         transaction,
                     });
                     line.stockMovementId = movement.id;
@@ -386,11 +405,14 @@ class PostPurchaseInvoiceUseCase {
         pi.grandTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(pi.subtotalBase + pi.taxTotalBase);
         pi.outstandingAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(Math.max(pi.grandTotalBase - (pi.paidAmountBase || 0), 0));
     }
-    resolveDebitAccountSync(companyId, item, isPerpetual, cats, dExp, dInv) {
+    resolveDebitAccountSync(companyId, item, clearsGRNI, cats, dExp, dInv, dGRNI) {
         var _a;
         if (item.trackInventory) {
-            if (!isPerpetual)
-                return dExp || '';
+            if (clearsGRNI) {
+                if (!dGRNI)
+                    throw new Error(`No GRNI account configured for item ${item.name}`);
+                return dGRNI;
+            }
             return item.inventoryAssetAccountId || (item.categoryId ? (_a = cats.get(item.categoryId)) === null || _a === void 0 ? void 0 : _a.defaultInventoryAssetAccountId : null) || dInv || '';
         }
         if (item.cogsAccountId)
@@ -407,17 +429,17 @@ class PostPurchaseInvoiceUseCase {
             throw new Error(`No AP account for ${vendor.displayName}`);
         return aid;
     }
-    async convertToBaseUom(cid, qty, uom, base, itemId, itemCode) {
-        if (uom.toUpperCase() === base.toUpperCase())
-            return qty;
-        const convs = await this.uomConversionRepo.getConversionsForItem(cid, itemId, { active: true });
-        const d = convs.find(c => c.fromUom.toUpperCase() === uom.toUpperCase() && c.toUom.toUpperCase() === base.toUpperCase());
-        if (d)
-            return (0, PurchasePostingHelpers_1.roundMoney)(qty * d.factor);
-        const r = convs.find(c => c.fromUom.toUpperCase() === base.toUpperCase() && c.toUom.toUpperCase() === uom.toUpperCase());
-        if (r)
-            return (0, PurchasePostingHelpers_1.roundMoney)(qty / r.factor);
-        throw new Error(`No UOM conversion for ${itemCode}`);
+    async convertToBaseUom(cid, qty, uomId, uom, item) {
+        const convs = await this.uomConversionRepo.getConversionsForItem(cid, item.id, { active: true });
+        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+            qty,
+            item,
+            conversions: convs,
+            fromUomId: uomId,
+            fromUom: uom,
+            round: PurchasePostingHelpers_1.roundMoney,
+            itemCode: item.code,
+        });
     }
     async resolveCCYToBaseRate(cid, cost, base, move, rate, date) {
         if (cost.toUpperCase() === base.toUpperCase())
@@ -465,7 +487,7 @@ class UpdatePurchaseInvoiceUseCase {
         if (input.lines) {
             const existingById = new Map(current.lines.map((line) => [line.lineId, line]));
             const mappedLines = input.lines.map((line, index) => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
                 const existing = line.lineId ? existingById.get(line.lineId) : undefined;
                 return {
                     lineId: line.lineId || (0, crypto_1.randomUUID)(),
@@ -477,20 +499,21 @@ class UpdatePurchaseInvoiceUseCase {
                     itemName: (existing === null || existing === void 0 ? void 0 : existing.itemName) || '',
                     trackInventory: (_e = existing === null || existing === void 0 ? void 0 : existing.trackInventory) !== null && _e !== void 0 ? _e : false,
                     invoicedQty: line.invoicedQty,
+                    uomId: (_f = line.uomId) !== null && _f !== void 0 ? _f : existing === null || existing === void 0 ? void 0 : existing.uomId,
                     uom: line.uom || (existing === null || existing === void 0 ? void 0 : existing.uom) || 'EA',
-                    unitPriceDoc: (_g = (_f = line.unitPriceDoc) !== null && _f !== void 0 ? _f : existing === null || existing === void 0 ? void 0 : existing.unitPriceDoc) !== null && _g !== void 0 ? _g : 0,
-                    lineTotalDoc: (_h = existing === null || existing === void 0 ? void 0 : existing.lineTotalDoc) !== null && _h !== void 0 ? _h : 0,
-                    unitPriceBase: (_j = existing === null || existing === void 0 ? void 0 : existing.unitPriceBase) !== null && _j !== void 0 ? _j : 0,
-                    lineTotalBase: (_k = existing === null || existing === void 0 ? void 0 : existing.lineTotalBase) !== null && _k !== void 0 ? _k : 0,
-                    taxCodeId: (_l = line.taxCodeId) !== null && _l !== void 0 ? _l : existing === null || existing === void 0 ? void 0 : existing.taxCodeId,
+                    unitPriceDoc: (_h = (_g = line.unitPriceDoc) !== null && _g !== void 0 ? _g : existing === null || existing === void 0 ? void 0 : existing.unitPriceDoc) !== null && _h !== void 0 ? _h : 0,
+                    lineTotalDoc: (_j = existing === null || existing === void 0 ? void 0 : existing.lineTotalDoc) !== null && _j !== void 0 ? _j : 0,
+                    unitPriceBase: (_k = existing === null || existing === void 0 ? void 0 : existing.unitPriceBase) !== null && _k !== void 0 ? _k : 0,
+                    lineTotalBase: (_l = existing === null || existing === void 0 ? void 0 : existing.lineTotalBase) !== null && _l !== void 0 ? _l : 0,
+                    taxCodeId: (_m = line.taxCodeId) !== null && _m !== void 0 ? _m : existing === null || existing === void 0 ? void 0 : existing.taxCodeId,
                     taxCode: existing === null || existing === void 0 ? void 0 : existing.taxCode,
-                    taxRate: (_m = existing === null || existing === void 0 ? void 0 : existing.taxRate) !== null && _m !== void 0 ? _m : 0,
-                    taxAmountDoc: (_o = existing === null || existing === void 0 ? void 0 : existing.taxAmountDoc) !== null && _o !== void 0 ? _o : 0,
-                    taxAmountBase: (_p = existing === null || existing === void 0 ? void 0 : existing.taxAmountBase) !== null && _p !== void 0 ? _p : 0,
-                    warehouseId: (_q = line.warehouseId) !== null && _q !== void 0 ? _q : existing === null || existing === void 0 ? void 0 : existing.warehouseId,
+                    taxRate: (_o = existing === null || existing === void 0 ? void 0 : existing.taxRate) !== null && _o !== void 0 ? _o : 0,
+                    taxAmountDoc: (_p = existing === null || existing === void 0 ? void 0 : existing.taxAmountDoc) !== null && _p !== void 0 ? _p : 0,
+                    taxAmountBase: (_q = existing === null || existing === void 0 ? void 0 : existing.taxAmountBase) !== null && _q !== void 0 ? _q : 0,
+                    warehouseId: (_r = line.warehouseId) !== null && _r !== void 0 ? _r : existing === null || existing === void 0 ? void 0 : existing.warehouseId,
                     accountId: (existing === null || existing === void 0 ? void 0 : existing.accountId) || '',
-                    stockMovementId: (_r = existing === null || existing === void 0 ? void 0 : existing.stockMovementId) !== null && _r !== void 0 ? _r : null,
-                    description: (_s = line.description) !== null && _s !== void 0 ? _s : existing === null || existing === void 0 ? void 0 : existing.description,
+                    stockMovementId: (_s = existing === null || existing === void 0 ? void 0 : existing.stockMovementId) !== null && _s !== void 0 ? _s : null,
+                    description: (_t = line.description) !== null && _t !== void 0 ? _t : existing === null || existing === void 0 ? void 0 : existing.description,
                 };
             });
             current.lines = mappedLines;

@@ -13,6 +13,7 @@ import { VoucherTaskbar } from './VoucherTaskbar';
 import { ItemCardWindow } from '../../inventory/components/ItemCardWindow';
 import { PartyCardWindow } from './PartyCardWindow';
 import { WarehouseCardWindow } from './WarehouseCardWindow';
+import { DocumentWindow } from '../../../components/mdi/DocumentWindow';
 
 interface WindowsDesktopProps {
   onSaveVoucher: (windowId: string, data: any) => Promise<any>;
@@ -24,6 +25,9 @@ interface WindowsDesktopProps {
   onCancelVoucher?: (id: string) => Promise<void>;
   onReverseVoucher?: (id: string) => Promise<void>;
   onPrintVoucher?: (id: string) => void;
+  // Document Actions
+  onSalesAction?: any;
+  onPurchasesAction?: any;
 }
 
 export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ 
@@ -35,7 +39,9 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
   onPostVoucher,
   onCancelVoucher,
   onReverseVoucher,
-  onPrintVoucher
+  onPrintVoucher,
+  onSalesAction,
+  onPurchasesAction
 }) => {
   const { windows } = useWindowManager();
 
@@ -85,6 +91,15 @@ export const WindowsDesktop: React.FC<WindowsDesktopProps> = ({
             <WarehouseCardWindow
               key={window.id}
               win={window}
+            />
+          );
+        } else if (window.type === 'document') {
+          return (
+            <DocumentWindow
+              key={window.id}
+              win={window}
+              onSalesAction={onSalesAction}
+              onPurchasesAction={onPurchasesAction}
             />
           );
         }

@@ -17,6 +17,7 @@ export interface PurchaseOrderLine {
   itemType: POItemType;
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   receivedQty: number;
   invoicedQty: number;
@@ -167,6 +168,7 @@ export class PurchaseOrder {
       itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom,
       receivedQty: line.receivedQty ?? 0,
       invoicedQty: line.invoicedQty ?? 0,

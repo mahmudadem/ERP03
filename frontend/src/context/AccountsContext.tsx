@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { accountingApi, AccountDTO } from '../api/accountingApi';
+import { useCompanyAccess } from './CompanyAccessContext';
 
 // Account type matching backend (ADR-005 compliant)
 export interface Account {
@@ -40,6 +41,12 @@ interface AccountsProviderProps {
 }
 
 export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) => {
+  const { moduleBundles, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
+  const hasAccountingModule = (moduleBundles || [])
+    .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+    .includes('accounting');
+  const canUseAccounting = !accessLoading && permissionsLoaded && hasAccountingModule;
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [validAccounts, setValidAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +55,16 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
   const [hasFetched, setHasFetched] = useState(false);
 
   const fetchAccounts = useCallback(async (force = false) => {
+    // Empty-module companies should not call accounting endpoints.
+    if (!canUseAccounting) {
+      setAccounts([]);
+      setValidAccounts([]);
+      setError(null);
+      setIsLoading(false);
+      setHasFetched(false);
+      return;
+    }
+
     // Check cache: only skip if not forced AND (cache is valid OR already fetching/fetched successfully)
     if (!force && hasFetched && Date.now() - lastFetch < CACHE_DURATION && accounts.length > 0) {
       return;
@@ -99,14 +116,25 @@ export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) 
     } finally {
       setIsLoading(false);
     }
-  }, [lastFetch, accounts.length, hasFetched, isLoading]);
+  }, [lastFetch, accounts.length, hasFetched, isLoading, canUseAccounting]);
 
   // Initial fetch - Only run once on mount or when fetchAccounts changes safely
   useEffect(() => {
-    if (!hasFetched) {
+    if (canUseAccounting && !hasFetched) {
       fetchAccounts();
     }
-  }, [fetchAccounts, hasFetched]);
+  }, [fetchAccounts, hasFetched, canUseAccounting]);
+
+  useEffect(() => {
+    if (!canUseAccounting) {
+      setAccounts([]);
+      setValidAccounts([]);
+      setError(null);
+      setIsLoading(false);
+      setHasFetched(false);
+      setLastFetch(0);
+    }
+  }, [canUseAccounting]);
 
   const refreshAccounts = useCallback(async () => {
     await fetchAccounts(true);

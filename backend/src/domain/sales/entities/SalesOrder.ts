@@ -17,6 +17,7 @@ export interface SalesOrderLine {
   itemType: SOItemType;
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   deliveredQty: number;
   invoicedQty: number;
@@ -177,6 +178,7 @@ export class SalesOrder {
       itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom,
       deliveredQty: line.deliveredQty ?? 0,
       invoicedQty: line.invoicedQty ?? 0,

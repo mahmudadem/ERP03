@@ -15,6 +15,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./IItemRepository"), exports);
+__exportStar(require("./IUomRepository"), exports);
 __exportStar(require("./IWarehouseRepository"), exports);
 __exportStar(require("./IStockMovementRepository"), exports);
 __exportStar(require("./IStockLevelRepository"), exports);

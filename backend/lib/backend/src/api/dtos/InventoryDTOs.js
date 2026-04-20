@@ -14,8 +14,11 @@ class InventoryDTOMapper {
             categoryId: item.categoryId,
             brand: item.brand,
             tags: item.tags,
+            baseUomId: item.baseUomId,
             baseUom: item.baseUom,
+            purchaseUomId: item.purchaseUomId,
             purchaseUom: item.purchaseUom,
+            salesUomId: item.salesUomId,
             salesUom: item.salesUom,
             costCurrency: item.costCurrency,
             costingMethod: item.costingMethod,
@@ -66,15 +69,33 @@ class InventoryDTOMapper {
             id: conversion.id,
             companyId: conversion.companyId,
             itemId: conversion.itemId,
+            fromUomId: conversion.fromUomId,
             fromUom: conversion.fromUom,
+            toUomId: conversion.toUomId,
             toUom: conversion.toUom,
             factor: conversion.factor,
             active: conversion.active,
         };
     }
+    static toUomDTO(uom) {
+        return {
+            id: uom.id,
+            companyId: uom.companyId,
+            code: uom.code,
+            name: uom.name,
+            dimension: uom.dimension,
+            decimalPlaces: uom.decimalPlaces,
+            active: uom.active,
+            isSystem: uom.isSystem,
+            createdBy: uom.createdBy,
+            createdAt: uom.createdAt.toISOString(),
+            updatedAt: uom.updatedAt.toISOString(),
+        };
+    }
     static toSettingsDTO(settings) {
         return {
             companyId: settings.companyId,
+            accountingMode: settings.accountingMode,
             inventoryAccountingMethod: settings.inventoryAccountingMethod,
             defaultCostingMethod: settings.defaultCostingMethod,
             defaultCostCurrency: settings.defaultCostCurrency,

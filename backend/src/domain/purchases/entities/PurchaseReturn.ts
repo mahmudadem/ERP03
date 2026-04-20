@@ -11,6 +11,7 @@ export interface PurchaseReturnLine {
   itemCode: string;
   itemName: string;
   returnQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -193,6 +194,7 @@ export class PurchaseReturn {
       itemCode: line.itemCode || '',
       itemName: line.itemName || '',
       returnQty: line.returnQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostDoc: line.unitCostDoc,
       unitCostBase,

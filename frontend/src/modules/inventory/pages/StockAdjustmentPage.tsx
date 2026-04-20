@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { StockAdjustmentDTO, inventoryApi } from '../../../api/inventoryApi';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -68,7 +69,10 @@ const StockAdjustmentPage: React.FC = () => {
         <form className="grid gap-3 md:grid-cols-4" onSubmit={handleCreate}>
           <input className="rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Warehouse ID" value={form.warehouseId} onChange={(e) => setForm((p) => ({ ...p, warehouseId: e.target.value }))} required />
           <input className="rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Item ID" value={form.itemId} onChange={(e) => setForm((p) => ({ ...p, itemId: e.target.value }))} required />
-          <input type="date" className="rounded border border-slate-300 px-3 py-2 text-sm" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} required />
+          <DatePicker 
+            value={form.date}
+            onChange={(val) => setForm((p) => ({ ...p, date: val }))}
+          />
           <select className="rounded border border-slate-300 px-3 py-2 text-sm" value={form.reason} onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}>
             <option value="CORRECTION">CORRECTION</option>
             <option value="LOSS">LOSS</option>

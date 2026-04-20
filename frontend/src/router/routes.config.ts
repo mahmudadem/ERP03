@@ -48,6 +48,7 @@ const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTr
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
 const UnsettledCostsPage = lazy(() => import('../modules/inventory/pages/UnsettledCostsPage'));
 const InventorySettingsPage = lazy(() => import('../modules/inventory/pages/InventorySettingsPage'));
+const UomsPage = lazy(() => import('../modules/inventory/pages/UomsPage'));
 
 // HR
 const HrHomePage = lazy(() => import('../modules/hr/pages/HrHomePage'));
@@ -135,6 +136,7 @@ export interface AppRoute {
   requiredPermission?: string;
   requiredGlobalRole?: 'SUPER_ADMIN';
   requiredModule?: string;
+  requiredOperationalWorkflow?: 'sales' | 'purchase';
 }
 
 export const routesConfig: AppRoute[] = [
@@ -192,6 +194,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock', label: 'Opening Stock Documents', component: OpeningStockPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
+  { path: '/inventory/uoms', label: 'UOM Master', component: UomsPage, section: 'INVENTORY', requiredPermission: 'inventory.uom.view', requiredModule: 'inventory' },
   { path: '/inventory/settings', label: 'Settings', component: InventorySettingsPage, section: 'INVENTORY', requiredPermission: 'inventory.settings.manage', requiredModule: 'inventory' },
 
   // HR
@@ -265,11 +268,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/customers', label: 'Customers', component: CustomersListPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/customers/:id', label: 'Customer Detail', component: CustomerDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
-  { path: '/sales/orders', label: 'Sales Orders', component: SalesOrdersListPage, section: 'INVENTORY', requiredModule: 'sales' },
-  { path: '/sales/orders/:id', label: 'Sales Order Detail', component: SalesOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
-  { path: '/sales/delivery-notes', label: 'Delivery Notes', component: DeliveryNotesListPage, section: 'INVENTORY', requiredModule: 'sales' },
-  { path: '/sales/delivery-notes/new', label: 'New Delivery Note', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
-  { path: '/sales/delivery-notes/:id', label: 'Delivery Note Detail', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
+  { path: '/sales/orders', label: 'Sales Orders', component: SalesOrdersListPage, section: 'INVENTORY', requiredModule: 'sales', requiredOperationalWorkflow: 'sales' },
+  { path: '/sales/orders/:id', label: 'Sales Order Detail', component: SalesOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales', requiredOperationalWorkflow: 'sales' },
+  { path: '/sales/delivery-notes', label: 'Delivery Notes', component: DeliveryNotesListPage, section: 'INVENTORY', requiredModule: 'sales', requiredOperationalWorkflow: 'sales' },
+  { path: '/sales/delivery-notes/new', label: 'New Delivery Note', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales', requiredOperationalWorkflow: 'sales' },
+  { path: '/sales/delivery-notes/:id', label: 'Delivery Note Detail', component: DeliveryNoteDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales', requiredOperationalWorkflow: 'sales' },
   { path: '/sales/invoices', label: 'Sales Invoices', component: SalesInvoicesListPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/invoices/new', label: 'New Sales Invoice', component: SalesInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
   { path: '/sales/invoices/:id', label: 'Sales Invoice Detail', component: SalesInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'sales' },
@@ -287,11 +290,11 @@ export const routesConfig: AppRoute[] = [
   { path: '/purchases', label: 'Purchase Overview', component: PurchaseHomePage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/items', label: 'Products & Services', component: ItemsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
-  { path: '/purchases/orders', label: 'Purchase Orders', component: PurchaseOrdersListPage, section: 'INVENTORY', requiredModule: 'purchase' },
-  { path: '/purchases/orders/:id', label: 'Purchase Order Detail', component: PurchaseOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
-  { path: '/purchases/goods-receipts', label: 'Goods Receipts', component: GoodsReceiptsListPage, section: 'INVENTORY', requiredModule: 'purchase' },
-  { path: '/purchases/goods-receipts/new', label: 'New Goods Receipt', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
-  { path: '/purchases/goods-receipts/:id', label: 'Goods Receipt Detail', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
+  { path: '/purchases/orders', label: 'Purchase Orders', component: PurchaseOrdersListPage, section: 'INVENTORY', requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
+  { path: '/purchases/orders/:id', label: 'Purchase Order Detail', component: PurchaseOrderDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
+  { path: '/purchases/goods-receipts', label: 'Goods Receipts', component: GoodsReceiptsListPage, section: 'INVENTORY', requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
+  { path: '/purchases/goods-receipts/new', label: 'New Goods Receipt', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
+  { path: '/purchases/goods-receipts/:id', label: 'Goods Receipt Detail', component: GoodsReceiptDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase', requiredOperationalWorkflow: 'purchase' },
   { path: '/purchases/invoices', label: 'Purchase Invoices', component: PurchaseInvoicesListPage, section: 'INVENTORY', requiredModule: 'purchase' },
   { path: '/purchases/invoices/new', label: 'New Purchase Invoice', component: PurchaseInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },
   { path: '/purchases/invoices/:id', label: 'Purchase Invoice Detail', component: PurchaseInvoiceDetailPage, section: 'INVENTORY', hideInMenu: true, requiredModule: 'purchase' },

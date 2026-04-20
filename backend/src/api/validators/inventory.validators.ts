@@ -34,6 +34,26 @@ const ensureUuid = (value: any, fieldName: string) => {
   ensureRequiredString(value, fieldName);
 };
 
+const ensureOptionalString = (value: any, fieldName: string) => {
+  if (value !== undefined && (typeof value !== 'string' || !value.trim())) {
+    throw ApiError.badRequest(`${fieldName} must be a non-empty string`);
+  }
+};
+
+const ensureBoolean = (value: any, fieldName: string) => {
+  if (typeof value !== 'boolean') {
+    throw ApiError.badRequest(`${fieldName} must be boolean`);
+  }
+};
+
+const ensureUomDimension = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  const allowed = ['COUNT', 'WEIGHT', 'VOLUME', 'LENGTH', 'AREA', 'TIME', 'OTHER'];
+  if (!allowed.includes(value)) {
+    throw ApiError.badRequest(`${fieldName} must be one of ${allowed.join(', ')}`);
+  }
+};
+
 const ensureInventoryAccountingMethod = (value: any, fieldName: string) => {
   ensureRequiredString(value, fieldName);
   if (value !== 'PERIODIC' && value !== 'PERPETUAL') {
@@ -41,9 +61,26 @@ const ensureInventoryAccountingMethod = (value: any, fieldName: string) => {
   }
 };
 
+const ensureAccountingMode = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'INVOICE_DRIVEN' && value !== 'PERPETUAL') {
+    throw ApiError.badRequest(`${fieldName} must be INVOICE_DRIVEN or PERPETUAL`);
+  }
+};
+
 export const validateInitializeInventoryInput = (body: any) => {
-  ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
-  if (body.inventoryAccountingMethod === 'PERPETUAL') {
+  if (body.accountingMode !== undefined) {
+    ensureAccountingMode(body.accountingMode, 'accountingMode');
+  }
+  if (body.inventoryAccountingMethod !== undefined) {
+    ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
+  }
+
+  const effectiveAccountingMode =
+    body.accountingMode
+    || (body.inventoryAccountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN');
+
+  if (effectiveAccountingMode === 'PERPETUAL') {
     ensureUuid(body.defaultInventoryAssetAccountId, 'defaultInventoryAssetAccountId');
   }
 
@@ -63,13 +100,9 @@ export const validateInitializeInventoryInput = (body: any) => {
     throw ApiError.badRequest('defaultCostCurrency must be a string');
   }
 
-  if (body.allowNegativeStock !== undefined && typeof body.allowNegativeStock !== 'boolean') {
-    throw ApiError.badRequest('allowNegativeStock must be boolean');
-  }
+  if (body.allowNegativeStock !== undefined) ensureBoolean(body.allowNegativeStock, 'allowNegativeStock');
 
-  if (body.autoGenerateItemCode !== undefined && typeof body.autoGenerateItemCode !== 'boolean') {
-    throw ApiError.badRequest('autoGenerateItemCode must be boolean');
-  }
+  if (body.autoGenerateItemCode !== undefined) ensureBoolean(body.autoGenerateItemCode, 'autoGenerateItemCode');
 
   if (body.itemCodePrefix !== undefined && typeof body.itemCodePrefix !== 'string') {
     throw ApiError.badRequest('itemCodePrefix must be a string');
@@ -86,18 +119,31 @@ export const validateCreateItemInput = (body: any) => {
   ensureRequiredString(body.code, 'code');
   ensureRequiredString(body.name, 'name');
   ensureRequiredString(body.type, 'type');
-  ensureRequiredString(body.baseUom, 'baseUom');
+  if (body.baseUomId === undefined && body.baseUom === undefined) {
+    throw ApiError.badRequest('baseUom or baseUomId is required');
+  }
+  if (body.baseUom !== undefined) ensureRequiredString(body.baseUom, 'baseUom');
+  if (body.baseUomId !== undefined) ensureRequiredString(body.baseUomId, 'baseUomId');
+  ensureOptionalString(body.purchaseUom, 'purchaseUom');
+  ensureOptionalString(body.purchaseUomId, 'purchaseUomId');
+  ensureOptionalString(body.salesUom, 'salesUom');
+  ensureOptionalString(body.salesUomId, 'salesUomId');
   ensureRequiredString(body.costCurrency, 'costCurrency');
 
-  if (typeof body.trackInventory !== 'boolean') {
-    throw ApiError.badRequest('trackInventory must be boolean');
-  }
+  ensureBoolean(body.trackInventory, 'trackInventory');
 };
 
 export const validateUpdateItemInput = (body: any) => {
   if (body.code !== undefined) ensureRequiredString(body.code, 'code');
   if (body.name !== undefined) ensureRequiredString(body.name, 'name');
+  if (body.baseUom !== undefined) ensureRequiredString(body.baseUom, 'baseUom');
+  if (body.baseUomId !== undefined) ensureRequiredString(body.baseUomId, 'baseUomId');
+  ensureOptionalString(body.purchaseUom, 'purchaseUom');
+  ensureOptionalString(body.purchaseUomId, 'purchaseUomId');
+  ensureOptionalString(body.salesUom, 'salesUom');
+  ensureOptionalString(body.salesUomId, 'salesUomId');
   if (body.costCurrency !== undefined) ensureRequiredString(body.costCurrency, 'costCurrency');
+  if (body.trackInventory !== undefined) ensureBoolean(body.trackInventory, 'trackInventory');
 };
 
 export const validateCreateCategoryInput = (body: any) => {
@@ -106,6 +152,30 @@ export const validateCreateCategoryInput = (body: any) => {
 
 export const validateUpdateCategoryInput = (body: any) => {
   if (body.name !== undefined) ensureRequiredString(body.name, 'name');
+};
+
+export const validateCreateUomInput = (body: any) => {
+  ensureRequiredString(body.code, 'code');
+  ensureRequiredString(body.name, 'name');
+  ensureUomDimension(body.dimension, 'dimension');
+  if (body.decimalPlaces !== undefined) {
+    if (!Number.isInteger(body.decimalPlaces) || body.decimalPlaces < 0 || body.decimalPlaces > 6) {
+      throw ApiError.badRequest('decimalPlaces must be an integer between 0 and 6');
+    }
+  }
+  if (body.active !== undefined) ensureBoolean(body.active, 'active');
+};
+
+export const validateUpdateUomInput = (body: any) => {
+  if (body.code !== undefined) ensureRequiredString(body.code, 'code');
+  if (body.name !== undefined) ensureRequiredString(body.name, 'name');
+  if (body.dimension !== undefined) ensureUomDimension(body.dimension, 'dimension');
+  if (body.decimalPlaces !== undefined) {
+    if (!Number.isInteger(body.decimalPlaces) || body.decimalPlaces < 0 || body.decimalPlaces > 6) {
+      throw ApiError.badRequest('decimalPlaces must be an integer between 0 and 6');
+    }
+  }
+  if (body.active !== undefined) ensureBoolean(body.active, 'active');
 };
 
 export const validateCreateWarehouseInput = (body: any) => {
@@ -124,9 +194,45 @@ export const validateUpdateWarehouseInput = (body: any) => {
 
 export const validateCreateUomConversionInput = (body: any) => {
   ensureRequiredString(body.itemId, 'itemId');
-  ensureRequiredString(body.fromUom, 'fromUom');
-  ensureRequiredString(body.toUom, 'toUom');
+  if (body.fromUomId === undefined && body.fromUom === undefined) {
+    throw ApiError.badRequest('fromUom or fromUomId is required');
+  }
+  if (body.toUomId === undefined && body.toUom === undefined) {
+    throw ApiError.badRequest('toUom or toUomId is required');
+  }
+  if (body.fromUom !== undefined) ensureRequiredString(body.fromUom, 'fromUom');
+  if (body.fromUomId !== undefined) ensureRequiredString(body.fromUomId, 'fromUomId');
+  if (body.toUom !== undefined) ensureRequiredString(body.toUom, 'toUom');
+  if (body.toUomId !== undefined) ensureRequiredString(body.toUomId, 'toUomId');
   ensurePositiveNumber(body.factor, 'factor');
+};
+
+export const validateUpdateUomConversionInput = (body: any) => {
+  if (body.itemId !== undefined) ensureRequiredString(body.itemId, 'itemId');
+  if (body.fromUom !== undefined) ensureRequiredString(body.fromUom, 'fromUom');
+  if (body.fromUomId !== undefined) ensureRequiredString(body.fromUomId, 'fromUomId');
+  if (body.toUom !== undefined) ensureRequiredString(body.toUom, 'toUom');
+  if (body.toUomId !== undefined) ensureRequiredString(body.toUomId, 'toUomId');
+  if (body.factor !== undefined) ensurePositiveNumber(body.factor, 'factor');
+  if (body.active !== undefined) ensureBoolean(body.active, 'active');
+};
+
+export const validateUomConversionImpactQuery = (query: any) => {
+  if (query.proposedFactor === undefined) return;
+  const proposedFactor = Number(query.proposedFactor);
+  if (!Number.isFinite(proposedFactor) || proposedFactor <= 0) {
+    throw ApiError.badRequest('proposedFactor must be a positive number');
+  }
+};
+
+export const validateApplyUomConversionCorrectionInput = (body: any) => {
+  const newFactor = Number(body.newFactor);
+  if (!Number.isFinite(newFactor) || newFactor <= 0) {
+    throw ApiError.badRequest('newFactor must be a positive number');
+  }
+  if (body.effectiveDate !== undefined) {
+    ensureIsoDate(body.effectiveDate, 'effectiveDate');
+  }
 };
 
 export const validateOpeningMovementInput = (body: any) => {
@@ -228,6 +334,9 @@ export const validateMovementByReferenceQuery = (query: any) => {
 };
 
 export const validateUpdateSettingsInput = (body: any) => {
+  if (body.accountingMode !== undefined) {
+    ensureAccountingMode(body.accountingMode, 'accountingMode');
+  }
   if (body.inventoryAccountingMethod !== undefined) {
     ensureInventoryAccountingMethod(body.inventoryAccountingMethod, 'inventoryAccountingMethod');
   }
@@ -250,9 +359,7 @@ export const validateCreateOpeningStockDocumentInput = (body: any) => {
     throw ApiError.badRequest('notes must be a string');
   }
 
-  if (body.createAccountingEffect !== undefined && typeof body.createAccountingEffect !== 'boolean') {
-    throw ApiError.badRequest('createAccountingEffect must be boolean');
-  }
+  if (body.createAccountingEffect !== undefined) ensureBoolean(body.createAccountingEffect, 'createAccountingEffect');
 
   if (body.createAccountingEffect === true) {
     ensureRequiredString(body.openingBalanceAccountId, 'openingBalanceAccountId');

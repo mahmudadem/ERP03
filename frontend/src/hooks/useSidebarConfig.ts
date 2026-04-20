@@ -2,8 +2,13 @@ import { useMemo } from 'react';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { useRBAC } from '../api/rbac/useRBAC';
 import { moduleMenuMap } from '../config/moduleMenuMap';
+import { useDocumentPolicies } from './useDocumentPolicies';
 import { useVoucherTypes, SidebarFormEntry } from './useVoucherTypes';
 import { useTranslation } from 'react-i18next';
+import {
+  isOperationalPurchaseDocument,
+  isOperationalSalesDocument,
+} from '../utils/documentPolicy';
 
 type SidebarItem = {
   label: string;
@@ -20,9 +25,10 @@ const MODULE_ROUTE_MAP: Record<string, { baseRoute: string; permission: string; 
 };
 
 export const useSidebarConfig = () => {
-  const { isSuperAdmin, moduleBundles, resolvedPermissions } = useCompanyAccess();
+  const { isSuperAdmin, moduleBundles, resolvedPermissions, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const { hasPermission } = useRBAC();
   const { voucherTypes, allModuleForms } = useVoucherTypes();
+  const { showPurchaseOperationalDocs, showSalesOperationalDocs } = useDocumentPolicies();
   const { t } = useTranslation('common');
 
   const labelKeyMap: Record<string, string> = {
@@ -90,7 +96,12 @@ export const useSidebarConfig = () => {
    */
   const buildDynamicFormGroups = (moduleId: string): SidebarItem[] => {
     const moduleKey = moduleId.toUpperCase();
-    const moduleForms = allModuleForms.filter(f => f.module === moduleKey && f.enabled);
+    const moduleForms = allModuleForms.filter((form) => {
+      if (form.module !== moduleKey || !form.enabled) return false;
+      if (moduleId === 'sales' && !showSalesOperationalDocs && isOperationalSalesDocument(form)) return false;
+      if (moduleId === 'purchase' && !showPurchaseOperationalDocs && isOperationalPurchaseDocument(form)) return false;
+      return true;
+    });
     if (moduleForms.length === 0) return [];
 
     const routeConfig = MODULE_ROUTE_MAP[moduleId];
@@ -131,7 +142,7 @@ export const useSidebarConfig = () => {
           label: form.name,
           path: moduleId === 'accounting' 
             ? `${routeConfig.baseRoute}?type=${form.id}`
-            : `${routeConfig.baseRoute}/${form.code.replace(/_/g, '-')}`,
+            : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
           icon: routeConfig.icon
         });
       });
@@ -149,7 +160,7 @@ export const useSidebarConfig = () => {
         label: form.name,
         path: moduleId === 'accounting'
           ? `${routeConfig.baseRoute}?type=${form.id}`
-          : `${routeConfig.baseRoute}/${form.code.replace(/_/g, '-')}`,
+          : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
         icon: routeConfig.icon
       });
     });
@@ -164,26 +175,14 @@ export const useSidebarConfig = () => {
       return {};
     }
 
-    let cachedPerms: string[] = [];
-    try {
-      const rawPerms = localStorage.getItem('resolvedPermissions');
-      if (rawPerms) cachedPerms = JSON.parse(rawPerms);
-    } catch (e) {
-      cachedPerms = [];
-    }
-    const effectivePermissions = resolvedPermissions.length ? resolvedPermissions : cachedPerms;
-    const hasWildcard = effectivePermissions.includes('*');
-    let persistedModules: string[] = [];
-    try {
-      const raw = localStorage.getItem('activeModules');
-      if (raw) persistedModules = JSON.parse(raw);
-    } catch (e) {
-      persistedModules = [];
-    }
+    const normalizedBundles = (moduleBundles || [])
+      .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+      .filter(Boolean);
 
     const bundleList =
-      (window as any)?.activeModules ||
-      (moduleBundles && moduleBundles.length ? moduleBundles : persistedModules.length ? persistedModules : hasWildcard ? Object.keys(moduleMenuMap) : []);
+      !accessLoading && permissionsLoaded
+        ? normalizedBundles
+        : [];
 
     const mapped = bundleList.flatMap((m: string) => {
       if (m === 'financial') return ['accounting'];
@@ -197,7 +196,24 @@ export const useSidebarConfig = () => {
         icon: 'LayoutGrid',
         items: []
       };
-      let items = def.items.filter((item) => hasPermission(item.permission));
+      let items = def.items.filter((item) => {
+        if (!hasPermission(item.permission)) return false;
+        if (
+          moduleId === 'sales'
+          && !showSalesOperationalDocs
+          && (item.path === '/sales/orders' || item.path === '/sales/delivery-notes')
+        ) {
+          return false;
+        }
+        if (
+          (moduleId === 'purchase' || moduleId === 'purchases')
+          && !showPurchaseOperationalDocs
+          && (item.path === '/purchases/orders' || item.path === '/purchases/goods-receipts')
+        ) {
+          return false;
+        }
+        return true;
+      });
       
       // === DYNAMIC FORM INJECTION ===
       // For modules with dynamic forms (accounting, sales, purchase),
@@ -263,7 +279,19 @@ export const useSidebarConfig = () => {
     });
 
     return sections;
-  }, [hasPermission, isSuperAdmin, moduleBundles, resolvedPermissions, allModuleForms, voucherTypes, t]);
+  }, [
+    hasPermission,
+    isSuperAdmin,
+    accessLoading,
+    permissionsLoaded,
+    moduleBundles,
+    resolvedPermissions,
+    allModuleForms,
+    voucherTypes,
+    t,
+    showPurchaseOperationalDocs,
+    showSalesOperationalDocs,
+  ]);
 
   return sidebarSections;
 };

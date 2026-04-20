@@ -7,6 +7,10 @@ import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { errorHandler } from '../../../services/errorHandler';
+import {
+  getAccountingModeLabel,
+  resolveInventoryAccountingMode,
+} from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => {
   const data = payload?.data ?? payload;
@@ -55,7 +59,8 @@ const InventorySettingsPage: React.FC = () => {
   const handleSave = async () => {
     if (!settings) return;
 
-    if (settings.inventoryAccountingMethod === 'PERPETUAL' && !settings.defaultInventoryAssetAccountId) {
+    const accountingMode = resolveInventoryAccountingMode(settings);
+    if (accountingMode === 'PERPETUAL' && !settings.defaultInventoryAssetAccountId) {
       errorHandler.showError('Default Inventory Asset Account is required for Perpetual accounting.');
       return;
     }
@@ -95,6 +100,7 @@ const InventorySettingsPage: React.FC = () => {
   }
 
   if (!settings) return null;
+  const accountingMode = resolveInventoryAccountingMode(settings);
 
   const tabs = [
     { id: 'accounting', label: 'Accounting Foundation', icon: DollarSign },
@@ -123,13 +129,13 @@ const InventorySettingsPage: React.FC = () => {
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Accounting Method</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Accounting Mode</label>
                   <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 font-semibold shadow-sm">
-                    {settings.inventoryAccountingMethod}
+                    {getAccountingModeLabel(accountingMode)}
                   </div>
                   <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-500">
                     <Info className="h-3.5 w-3.5 mt-0.5" />
-                    <span>The accounting method is immutable after initialization.</span>
+                    <span>The accounting mode is immutable after initialization.</span>
                   </div>
                 </div>
 
@@ -145,7 +151,7 @@ const InventorySettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              {settings.inventoryAccountingMethod === 'PERPETUAL' && (
+              <div className="space-y-6">
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
@@ -156,7 +162,9 @@ const InventorySettingsPage: React.FC = () => {
                       accounts={allAccounts.filter(a => a.accountRole === 'POSTING' && a.classification?.toUpperCase() === 'ASSET')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Required for Perpetual mode to post real-time inventory value.
+                      {accountingMode === 'PERPETUAL'
+                        ? 'Required for perpetual mode to post real-time inventory value.'
+                        : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
                     </p>
                   </div>
 
@@ -172,11 +180,11 @@ const InventorySettingsPage: React.FC = () => {
                       )}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Required for Perpetual mode to post real-time Cost of Goods Sold.
+                      Optional fallback for stock cost recognition when the item or category has no own COGS account.
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </Card>
         </SettingsSection>

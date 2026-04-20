@@ -148,13 +148,13 @@ export class ReverseAndReplaceVoucherUseCase {
           accountIds.map(id => this.accountRepo?.getById(cid, id))
         );
         return accounts
-          .filter(acc => acc !== null)
+          .filter((acc): acc is NonNullable<typeof acc> => !!acc)
           .map(acc => ({
-            accountId: acc!.id,
-            classification: acc!.classification || 'ASSET', // Default to ASSET for CC purposes
-            requiresApproval: acc!.requiresApproval || false,
-            requiresCustodyConfirmation: acc!.requiresCustodyConfirmation || false,
-            custodianUserId: acc!.custodianUserId || undefined
+            accountId: acc.id,
+            classification: acc.classification || 'ASSET', // Default to ASSET for CC purposes
+            requiresApproval: acc.requiresApproval || false,
+            requiresCustodyConfirmation: acc.requiresCustodyConfirmation || false,
+            custodianUserId: acc.custodianUserId || undefined
           }));
       };
 
@@ -165,7 +165,7 @@ export class ReverseAndReplaceVoucherUseCase {
         getAccountMetadata
       );
 
-      const pendingReversal = await submitUseCase.execute(companyId, savedReversal.id, userId);
+      const pendingReversal = await submitUseCase.execute(companyId, savedReversal, userId, transaction);
 
       // NOTE: Reversal is now PENDING (or APPROVED if Mode A)
       // If APPROVED, it will NOT auto-post here because this transaction is meant to create correction entries.

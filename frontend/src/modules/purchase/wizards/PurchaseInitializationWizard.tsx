@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Calculator,
   CheckCircle,
@@ -9,22 +9,24 @@ import {
   Settings,
   ShoppingCart,
 } from 'lucide-react';
-import {
-  InitializePurchasesPayload,
-  purchasesApi,
-} from '../../../api/purchasesApi';
 import { inventoryApi } from '../../../api/inventoryApi';
+import { InitializePurchasesPayload, purchasesApi } from '../../../api/purchasesApi';
+import { WorkflowMode } from '../../../api/salesApi';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
-import { useAccounts, Account } from '../../../context/AccountsContext';
-import { useRef } from 'react';
+import { useAccounts } from '../../../context/AccountsContext';
+import {
+  getAccountingModeLabel,
+  getWorkflowModeLabel,
+  resolveInventoryAccountingMode,
+} from '../../../utils/documentPolicy';
+import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
 }
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-
-const stepTitles = ['Welcome', 'Purchasing Policy', 'Default Accounts', 'Defaults & Numbering', 'Review'];
+const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Review'];
 
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -32,12 +34,13 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [error, setError] = useState<string | null>(null);
   const { validAccounts, isLoading: loadingAccountsContext, getAccountById, refreshAccounts } = useAccounts();
   const [loadingSettings, setLoadingSettings] = useState(true);
-  const [defaultAPAccountId, setDefaultAPAccountId] = useState('');
 
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>('SIMPLE');
   const [allowDirectInvoicing, setAllowDirectInvoicing] = useState(true);
   const [requirePOForStockItems, setRequirePOForStockItems] = useState(false);
-  const [inventoryAccountingMethod, setInventoryAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERPETUAL');
+  const [defaultAPAccountId, setDefaultAPAccountId] = useState('');
   const [defaultPurchaseExpenseAccountId, setDefaultPurchaseExpenseAccountId] = useState('');
+  const [defaultGRNIAccountId, setDefaultGRNIAccountId] = useState('');
   const [defaultPaymentTermsDays, setDefaultPaymentTermsDays] = useState(30);
   const [poNumberPrefix, setPoNumberPrefix] = useState('PO');
   const [grnNumberPrefix, setGrnNumberPrefix] = useState('GRN');
@@ -45,27 +48,31 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [prNumberPrefix, setPrNumberPrefix] = useState('PR');
   const [inventorySettings, setInventorySettings] = useState<{
     defaultInventoryAssetAccountId?: string;
+    accountingMode?: 'INVOICE_DRIVEN' | 'PERPETUAL';
+    inventoryAccountingMethod?: 'PERIODIC' | 'PERPETUAL';
   } | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingSettings(true);
-        const inventorySettings = await inventoryApi.getSettings().catch(() => null);
-        const invSettings = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
-        
-        setInventorySettings(invSettings);
-        setInventoryAccountingMethod(invSettings?.inventoryAccountingMethod === 'PERIODIC' ? 'PERIODIC' : 'PERPETUAL');
-        
-        refreshAccounts();
+        const inventorySettingsResult = await inventoryApi.getSettings().catch(() => null);
+        const invSettingsData = inventorySettingsResult
+          ? unwrap<any>(inventorySettingsResult)?.data ?? unwrap<any>(inventorySettingsResult)
+          : null;
+
+        setInventorySettings(invSettingsData);
+        if (resolveInventoryAccountingMode(invSettingsData) === 'PERPETUAL') {
+          setWorkflowMode('OPERATIONAL');
+        }
       } catch (err) {
-        console.error('Failed to load accounts for purchases initialization', err);
+        console.error('Failed to load dependencies for purchases initialization', err);
       } finally {
         setLoadingSettings(false);
       }
     };
 
-    loadData();
+    void loadData();
   }, []);
 
   const hasRefreshed = useRef(false);
@@ -78,48 +85,46 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
   const liabilityAccounts = useMemo(
     () =>
-      validAccounts.filter(
-        (account) => {
-          const classification = String(account.classification || account.type || '').toUpperCase();
-          return (classification === 'LIABILITY');
-        }
-      ),
+      validAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'LIABILITY';
+      }),
     [validAccounts]
   );
 
   const expenseAccounts = useMemo(
     () =>
-      validAccounts.filter(
-        (account) => {
-          const classification = String(account.classification || account.type || '').toUpperCase();
-          return (classification === 'EXPENSE');
-        }
-      ),
+      validAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'EXPENSE';
+      }),
     [validAccounts]
   );
 
+  const getAccountLabel = (accountId?: string) => {
+    if (!accountId) return 'Not Configured';
+    const account = getAccountById(accountId);
+    return account ? `${account.code} - ${account.name}` : accountId;
+  };
+
+  const isLoading = loadingAccountsContext || loadingSettings;
+  const accountingMode = resolveInventoryAccountingMode(inventorySettings);
+  const simpleWorkflowDisabled = accountingMode === 'PERPETUAL';
+
   const stepError = useMemo(() => {
     if (currentStep === 2) {
-      if (!defaultAPAccountId) return 'Default Accounts Payable (Liability) account is required.';
-      if (inventoryAccountingMethod === 'PERIODIC' && !defaultPurchaseExpenseAccountId) {
-        return 'Default Purchase Expense Account is required for PERIODIC inventory accounting.';
+      if (!defaultAPAccountId) return 'Default Accounts Payable account is required.';
+      if (accountingMode === 'PERPETUAL' && !defaultGRNIAccountId) {
+        return 'Default GRNI account is required for perpetual purchasing workflows.';
       }
     }
 
-    if (currentStep === 3) {
-      if (Number.isNaN(defaultPaymentTermsDays) || defaultPaymentTermsDays < 0) {
-        return 'Payment terms must be zero or greater.';
-      }
+    if (currentStep === 3 && (Number.isNaN(defaultPaymentTermsDays) || defaultPaymentTermsDays < 0)) {
+      return 'Payment terms must be zero or greater.';
     }
 
     return null;
-  }, [
-    currentStep,
-    defaultPaymentTermsDays,
-    defaultPurchaseExpenseAccountId,
-    defaultAPAccountId,
-    inventoryAccountingMethod,
-  ]);
+  }, [accountingMode, currentStep, defaultAPAccountId, defaultGRNIAccountId, defaultPaymentTermsDays]);
 
   const goNext = () => {
     if (stepError) {
@@ -135,14 +140,6 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
-  const getAccountLabel = (accountId?: string) => {
-    if (!accountId) return 'Not Configured';
-    const account = getAccountById(accountId);
-    return account ? `${account.code} - ${account.name}` : accountId;
-  };
-
-  const isLoading = loadingAccountsContext || loadingSettings;
-
   const initialize = async () => {
     if (stepError) {
       setError(stepError);
@@ -154,10 +151,12 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       setError(null);
 
       const payload: InitializePurchasesPayload = {
-        allowDirectInvoicing,
-        requirePOForStockItems,
+        workflowMode,
+        allowDirectInvoicing: workflowMode === 'SIMPLE' ? true : allowDirectInvoicing,
+        requirePOForStockItems: workflowMode === 'SIMPLE' ? false : requirePOForStockItems,
         defaultAPAccountId,
         defaultPurchaseExpenseAccountId: defaultPurchaseExpenseAccountId || undefined,
+        defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? defaultGRNIAccountId || undefined : undefined,
         defaultPaymentTermsDays,
         poNumberPrefix: poNumberPrefix || 'PO',
         grnNumberPrefix: grnNumberPrefix || 'GRN',
@@ -166,14 +165,15 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       };
 
       await purchasesApi.initializePurchases(payload);
+      emitCompanyModulesRefresh({ moduleCode: 'purchase' });
       onComplete();
     } catch (err: any) {
       console.error('Purchases initialization failed', err);
       setError(
-        err?.response?.data?.error?.message ||
-          err?.response?.data?.message ||
-          err?.message ||
-          'Initialization failed. Please try again.'
+        err?.response?.data?.error?.message
+          || err?.response?.data?.message
+          || err?.message
+          || 'Initialization failed. Please try again.'
       );
     } finally {
       setSubmitting(false);
@@ -183,29 +183,29 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const content = (() => {
     if (currentStep === 0) {
       return (
-        <div className="text-center py-8">
-          <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingCart className="w-10 h-10 text-primary-600" />
+        <div className="py-8 text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary-100">
+            <ShoppingCart className="h-10 w-10 text-primary-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Purchases Setup</h2>
-          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            Configure procurement flow and accounting defaults before posting purchase transactions.
+          <h2 className="mb-4 text-3xl font-bold text-gray-900">Welcome to Purchases Setup</h2>
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-gray-600">
+            Configure your purchasing workflow and accounting defaults before creating supplier transactions.
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <Calculator className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Purchasing Policy</h3>
-              <p className="text-sm text-gray-600">Configure direct invoicing and stock-item order requirements.</p>
+          <div className="mx-auto grid max-w-3xl gap-6 text-left md:grid-cols-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <Calculator className="mb-3 h-8 w-8 text-primary-600" />
+              <h3 className="mb-1 font-semibold text-gray-900">Workflow</h3>
+              <p className="text-sm text-gray-600">Choose between invoice-only simplicity and a full operational flow.</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Default Accounts</h3>
-              <p className="text-sm text-gray-600">Set periodic purchase expense or rely on perpetual inventory asset routing.</p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <DollarSign className="mb-3 h-8 w-8 text-primary-600" />
+              <h3 className="mb-1 font-semibold text-gray-900">Default Accounts</h3>
+              <p className="text-sm text-gray-600">Set AP, optional expense fallback, and GRNI when perpetual accounting is enabled.</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <Settings className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Numbering</h3>
-              <p className="text-sm text-gray-600">Configure prefixes and default payment terms.</p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <Settings className="mb-3 h-8 w-8 text-primary-600" />
+              <h3 className="mb-1 font-semibold text-gray-900">Numbering</h3>
+              <p className="text-sm text-gray-600">Configure prefixes and default payment terms for purchase documents.</p>
             </div>
           </div>
         </div>
@@ -214,81 +214,157 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
     if (currentStep === 1) {
       return (
-        <div className="py-8 max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Configure Purchasing Policy</h2>
-          <p className="text-gray-600 text-center mb-6">
-            These toggles control document requirements for stock flow and invoicing behavior.
+        <div className="mx-auto max-w-3xl space-y-4 py-8">
+          <h2 className="text-center text-2xl font-bold text-gray-900">Choose Purchasing Workflow</h2>
+          <p className="mb-6 text-center text-gray-600">
+            Workflow controls which purchase documents users see. Accounting mode is inherited from Inventory.
           </p>
 
-          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            Inventory accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+          </div>
+
+          <label className={`flex items-start gap-3 rounded-lg border bg-white p-5 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${workflowMode === 'SIMPLE' ? 'border-primary-500' : 'border-gray-200 hover:border-primary-500'}`}>
             <input
-              type="checkbox"
-              checked={allowDirectInvoicing}
-              onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
+              type="radio"
+              name="purchase-workflow-mode"
+              checked={workflowMode === 'SIMPLE'}
+              onChange={() => setWorkflowMode('SIMPLE')}
+              disabled={simpleWorkflowDisabled}
             />
             <div>
-              <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
-              <div className="text-sm text-gray-600">When enabled, invoices can be posted without a PO/GRN path.</div>
+              <div className="font-semibold text-gray-900">Simple</div>
+              <div className="text-sm text-gray-600">Show invoices and returns only. Purchase Orders and Goods Receipts stay hidden.</div>
             </div>
           </label>
 
-          <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
+          <label className={`flex items-start gap-3 rounded-lg border bg-white p-5 cursor-pointer ${workflowMode === 'OPERATIONAL' ? 'border-primary-500' : 'border-gray-200 hover:border-primary-500'}`}>
             <input
-              type="checkbox"
-              checked={requirePOForStockItems}
-              onChange={(e) => setRequirePOForStockItems(e.target.checked)}
+              type="radio"
+              name="purchase-workflow-mode"
+              checked={workflowMode === 'OPERATIONAL'}
+              onChange={() => setWorkflowMode('OPERATIONAL')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Require Purchase Orders for Stock Items</div>
-              <div className="text-sm text-gray-600">When enabled, goods receipts and stock-item flows require a PO reference.</div>
+              <div className="font-semibold text-gray-900">Operational</div>
+              <div className="text-sm text-gray-600">Expose Purchase Orders and Goods Receipts alongside invoices and returns.</div>
             </div>
           </label>
+
+          {simpleWorkflowDisabled && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Perpetual accounting requires the operational workflow because Goods Receipts create inventory accounting.
+            </div>
+          )}
+
+          {workflowMode === 'OPERATIONAL' ? (
+            <div className="space-y-4 pt-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 hover:border-primary-500">
+                <input
+                  type="checkbox"
+                  checked={allowDirectInvoicing}
+                  onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
+                />
+                <div>
+                  <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
+                  <div className="text-sm text-gray-600">Allow vendor invoices without a Purchase Order or Goods Receipt path.</div>
+                </div>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 hover:border-primary-500">
+                <input
+                  type="checkbox"
+                  checked={requirePOForStockItems}
+                  onChange={(e) => setRequirePOForStockItems(e.target.checked)}
+                />
+                <div>
+                  <div className="font-semibold text-gray-900">Require Purchase Orders for Stock Items</div>
+                  <div className="text-sm text-gray-600">Force stock-item procurement to start from a Purchase Order.</div>
+                </div>
+              </label>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              Simple workflow automatically enables direct invoicing and hides Purchase Orders and Goods Receipts from end users.
+            </div>
+          )}
         </div>
       );
     }
 
     if (currentStep === 2) {
       return (
-        <div className="py-8 max-w-3xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Default Accounts</h2>
-          <p className="text-gray-600 text-center mb-4">Required accounts must be set before initialization.</p>
+        <div className="mx-auto max-w-3xl space-y-5 py-8">
+          <h2 className="text-center text-2xl font-bold text-gray-900">Default Accounts</h2>
+          <p className="mb-4 text-center text-sm text-gray-600">
+            Required purchase posting accounts must be configured before initialization.
+          </p>
+
           <div className="space-y-6">
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Default Accounts Payable (Liability)</label>
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <label className="mb-2 block text-sm font-bold text-gray-700">Default Accounts Payable</label>
               <AccountSelector
                 value={defaultAPAccountId}
-                onChange={(acc: any) => setDefaultAPAccountId(acc?.id || '')}
+                onChange={(account: any) => setDefaultAPAccountId(account?.id || '')}
                 accounts={liabilityAccounts}
-                placeholder="Select AP Liability Account"
+                placeholder="Select AP liability account"
                 disabled={isLoading}
               />
-              <p className="mt-2 text-xs text-gray-500 italic">
-                Purchases are credited to this account. Usually "Accounts Payable".
+              <p className="mt-2 text-xs text-gray-500">Primary vendor liability account. Usually Accounts Payable.</p>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <label className="mb-2 block text-sm font-bold text-gray-700">Default Purchase Expense</label>
+              <AccountSelector
+                value={defaultPurchaseExpenseAccountId}
+                onChange={(account: any) => setDefaultPurchaseExpenseAccountId(account?.id || '')}
+                accounts={expenseAccounts}
+                placeholder="Select expense account for non-stock purchases"
+                disabled={isLoading}
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                Optional fallback used for non-stock or service purchases when an item/category account is not set.
               </p>
             </div>
 
-            {inventoryAccountingMethod === 'PERIODIC' ? (
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Default Purchase Expense Account</label>
+            {accountingMode === 'PERPETUAL' ? (
+              <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                <label className="mb-2 block text-sm font-bold text-gray-700">Default GRNI Account</label>
                 <AccountSelector
-                  value={defaultPurchaseExpenseAccountId}
-                  onChange={(acc: any) => setDefaultPurchaseExpenseAccountId(acc?.id || '')}
-                  accounts={expenseAccounts}
-                  placeholder="Select expense account"
+                  value={defaultGRNIAccountId}
+                  onChange={(account: any) => setDefaultGRNIAccountId(account?.id || '')}
+                  accounts={liabilityAccounts}
+                  placeholder="Select GRNI liability account"
                   disabled={isLoading}
                 />
-                <p className="mt-2 text-xs text-gray-500 italic">
-                  Purchases are debited to this account in Periodic mode.
+                <p className="mt-2 text-xs text-gray-500">
+                  Required in perpetual mode. Goods Receipts credit this account before the Purchase Invoice clears it.
                 </p>
               </div>
             ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <p className="text-sm text-blue-700 font-medium mb-1">Perpetual Stock Integration</p>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
+                <p className="mb-1 text-sm font-medium text-blue-700">Invoice-driven purchase accounting</p>
                 <p className="text-sm text-blue-600/80">
-                  Stock purchases are automatically debited to your <strong>Inventory Asset</strong> account.
+                  Goods Receipts stay operational only. Purchase Invoices create the accounting effect.
                 </p>
               </div>
             )}
+
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6">
+              <h4 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                <Settings className="h-3.5 w-3.5 text-gray-400" />
+                Related Inventory Accounts
+              </h4>
+              <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                Accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-tight text-gray-400">Default Inventory Asset</span>
+                <span className="mt-1 block truncate rounded border border-gray-100 bg-white px-2 py-1 text-sm font-medium text-gray-600">
+                  {getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -296,61 +372,57 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
     if (currentStep === 3) {
       return (
-        <div className="py-8 max-w-3xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Defaults & Numbering</h2>
-          <p className="text-gray-600 text-center mb-4">Set default terms and document prefixes.</p>
+        <div className="mx-auto max-w-3xl space-y-6 py-8">
+          <h2 className="text-center text-2xl font-bold text-gray-900">Defaults & Numbering</h2>
+          <p className="mb-4 text-center text-gray-600">Set default payment terms and document prefixes.</p>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default Payment Terms (Days)</label>
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Default Payment Terms (Days)</label>
             <input
               type="number"
+              min={0}
               value={defaultPaymentTermsDays}
-              onChange={(e) => setDefaultPaymentTermsDays(parseInt(e.target.value) || 0)}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm"
-              placeholder="e.g. 30"
+              onChange={(e) => setDefaultPaymentTermsDays(Number(e.target.value))}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               disabled={isLoading}
             />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">PO Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">PO Prefix</label>
               <input
                 type="text"
                 value={poNumberPrefix}
                 onChange={(e) => setPoNumberPrefix(e.target.value.toUpperCase())}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isLoading}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">GRN Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">GRN Prefix</label>
               <input
                 type="text"
                 value={grnNumberPrefix}
                 onChange={(e) => setGrnNumberPrefix(e.target.value.toUpperCase())}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isLoading}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">PI Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">PI Prefix</label>
               <input
                 type="text"
                 value={piNumberPrefix}
                 onChange={(e) => setPiNumberPrefix(e.target.value.toUpperCase())}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isLoading}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">PR Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">PR Prefix</label>
               <input
                 type="text"
                 value={prNumberPrefix}
                 onChange={(e) => setPrNumberPrefix(e.target.value.toUpperCase())}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isLoading}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -359,143 +431,146 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     return (
-      <div className="py-8 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Review & Confirm</h2>
-        <p className="text-gray-600 mb-6 text-center">Confirm your configuration before initializing Purchases.</p>
-
-        <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-1 font-semibold">Purchasing Policy</h3>
-            <p className="text-sm text-gray-900">Allow Direct Invoicing: {allowDirectInvoicing ? 'Yes' : 'No'}</p>
-            <p className="text-sm text-gray-900">Require PO for Stock Items: {requirePOForStockItems ? 'Yes' : 'No'}</p>
+      <div className="mx-auto max-w-3xl space-y-6 py-8">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Finance & Accounts</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                <span className="text-gray-500">Default Accounts Payable (Liability)</span>
-                <span className="font-semibold text-gray-900">{getAccountLabel(defaultAPAccountId)}</span>
-              </div>
-              
-              {inventoryAccountingMethod === 'PERIODIC' ? (
-                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                  <span className="text-gray-500">Default Purchase Expense</span>
-                  <span className="font-semibold text-gray-900">{getAccountLabel(defaultPurchaseExpenseAccountId)}</span>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 text-gray-400 italic">
-                  <span className="flex items-center gap-1.5 opacity-70">
-                    <Settings className="w-3 h-3" />
-                    Default Inventory Asset (From Inventory)
-                  </span>
-                  <span className="text-xs truncate max-w-[200px]">{getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2 font-semibold">Defaults</h3>
-            <p className="text-sm text-gray-900">Payment Terms: {defaultPaymentTermsDays} days</p>
-            <p className="text-sm text-gray-900">
-              Prefixes: {poNumberPrefix || 'PO'} / {grnNumberPrefix || 'GRN'} / {piNumberPrefix || 'PI'} / {prNumberPrefix || 'PR'}
-            </p>
-          </div>
+          <h2 className="mb-2 text-2xl font-bold text-gray-900">Review & Initialize</h2>
+          <p className="text-gray-600">Review the configuration below and initialize the Purchases module.</p>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-700">
-            Initialization is required once per company. You can adjust settings later from Purchase Settings.
-          </p>
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Workflow Mode</div>
+              <div className="mt-1 font-semibold text-gray-900">{getWorkflowModeLabel(workflowMode)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Accounting Mode</div>
+              <div className="mt-1 font-semibold text-gray-900">{getAccountingModeLabel(accountingMode)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Allow Direct Invoicing</div>
+              <div className="mt-1 font-semibold text-gray-900">{workflowMode === 'SIMPLE' ? 'Yes' : allowDirectInvoicing ? 'Yes' : 'No'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Require PO For Stock Items</div>
+              <div className="mt-1 font-semibold text-gray-900">{workflowMode === 'SIMPLE' ? 'No' : requirePOForStockItems ? 'Yes' : 'No'}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Default AP Account</div>
+              <div className="mt-1 font-semibold text-gray-900">{getAccountLabel(defaultAPAccountId)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Default Purchase Expense</div>
+              <div className="mt-1 font-semibold text-gray-900">{getAccountLabel(defaultPurchaseExpenseAccountId)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Default GRNI Account</div>
+              <div className="mt-1 font-semibold text-gray-900">
+                {accountingMode === 'PERPETUAL' ? getAccountLabel(defaultGRNIAccountId) : 'Not Required'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Default Payment Terms</div>
+              <div className="mt-1 font-semibold text-gray-900">{defaultPaymentTermsDays} days</div>
+            </div>
+          </div>
         </div>
       </div>
     );
   })();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl h-[750px] flex flex-col bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-        <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600 flex-shrink-0">
-          <div className="flex items-center justify-between gap-2">
-            {stepTitles.map((_, index) => {
-              const isCompleted = index < currentStep;
-              const isCurrent = index === currentStep;
-
-              return (
-                <div key={index} className="flex items-center flex-1">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                      isCompleted ? 'bg-white' : isCurrent ? 'bg-white ring-2 ring-white/50' : 'bg-white/30'
-                    }`}
-                  />
-                  {index < stepTitles.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2">
-                      <div className={`h-full transition-all duration-300 ${index < currentStep ? 'bg-white' : 'bg-white/30'}`} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-white/90">
-              Step {currentStep + 1} of {stepTitles.length}
-            </span>
-            <span className="text-xs font-semibold text-white">{Math.round(((currentStep + 1) / stepTitles.length) * 100)}%</span>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-10">
+      <div className="mx-auto max-w-5xl px-4">
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 text-4xl font-bold text-gray-900">Purchases Module Initialization</h1>
+          <p className="text-lg text-gray-600">Set workflow, accounting defaults, and numbering for procurement.</p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 min-h-0">{content}</div>
-
-        {error && (
-          <div className="px-8 pb-4">
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
-          </div>
-        )}
-
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={currentStep === 0 || submitting}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-
-          {currentStep < stepTitles.length - 1 ? (
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={initialize}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Initializing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Complete Setup
-                </>
+        <div className="mb-8 flex items-center justify-center">
+          {stepTitles.map((title, index) => (
+            <React.Fragment key={title}>
+              <div className="flex items-center">
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
+                    index <= currentStep ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <div className="ml-3 hidden text-sm font-medium text-gray-700 md:block">{title}</div>
+              </div>
+              {index < stepTitles.length - 1 && (
+                <div className={`mx-4 h-0.5 w-16 ${index < currentStep ? 'bg-primary-600' : 'bg-gray-200'}`} />
               )}
-            </button>
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
+          <div className="min-h-[540px] px-8 py-10">
+            {isLoading ? (
+              <div className="flex h-96 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              </div>
+            ) : (
+              content
+            )}
+          </div>
+
+          {error && (
+            <div className="border-t border-red-200 bg-red-50 px-8 py-4">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
           )}
+
+          <div className="border-t border-gray-100 bg-gray-50 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={currentStep === 0 || submitting}
+                className="inline-flex items-center rounded-lg border border-gray-300 px-6 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft className="mr-2 h-5 w-5" />
+                Previous
+              </button>
+
+              {currentStep < stepTitles.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={submitting || isLoading}
+                  className="inline-flex items-center rounded-lg bg-primary-600 px-6 py-3 font-medium text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={initialize}
+                  disabled={submitting || isLoading}
+                  className="inline-flex items-center rounded-lg bg-green-600 px-8 py-3 font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Initialize Purchases Module
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

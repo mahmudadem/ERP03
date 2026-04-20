@@ -1,5 +1,6 @@
 
 import { randomUUID } from 'crypto';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import { PaymentStatus, SalesInvoice, SalesInvoiceLine } from '../../../domain/sales/entities/SalesInvoice';
@@ -26,6 +27,10 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { roundMoney, updateSOStatus } from './SalesPostingHelpers';
 
@@ -37,6 +42,7 @@ export interface SalesReturnLineInput {
   soLineId?: string;
   itemId?: string;
   returnQty?: number;
+  uomId?: string;
   uom?: string;
   description?: string;
 }
@@ -304,6 +310,7 @@ export class CreateSalesReturnUseCase {
       itemCode: salesInvoiceLine.itemCode,
       itemName: salesInvoiceLine.itemName,
       returnQty,
+      uomId: inputLine?.uomId || salesInvoiceLine.uomId,
       uom: inputLine?.uom || salesInvoiceLine.uom,
       unitPriceDoc,
       unitPriceBase,
@@ -337,6 +344,7 @@ export class CreateSalesReturnUseCase {
       itemCode: deliveryNoteLine.itemCode,
       itemName: deliveryNoteLine.itemName,
       returnQty,
+      uomId: inputLine?.uomId || deliveryNoteLine.uomId,
       uom: inputLine?.uom || deliveryNoteLine.uom,
       unitCostBase: deliveryNoteLine.unitCostBase || 0,
       fxRateMovToBase: deliveryNoteLine.fxRateMovToBase || 1,
@@ -373,7 +381,7 @@ export class PostSalesReturnUseCase {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
-    const isPerpetual = invSettings?.inventoryAccountingMethod === 'PERPETUAL';
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
 
     const salesReturn = await this.salesReturnRepo.getById(companyId, id);
     if (!salesReturn) throw new Error(`Sales return not found: ${id}`);
@@ -443,6 +451,7 @@ export class PostSalesReturnUseCase {
           line.soLineId = line.soLineId || sourceLine.soLineId;
           line.itemCode = line.itemCode || sourceLine.itemCode;
           line.itemName = line.itemName || sourceLine.itemName;
+          line.uomId = line.uomId || sourceLine.uomId;
           line.uom = line.uom || sourceLine.uom;
           line.unitPriceDoc = line.unitPriceDoc ?? sourceLine.unitPriceDoc;
           line.unitPriceBase = line.unitPriceBase ?? sourceLine.unitPriceBase;
@@ -476,6 +485,7 @@ export class PostSalesReturnUseCase {
           line.soLineId = line.soLineId || sourceLine.soLineId;
           line.itemCode = line.itemCode || sourceLine.itemCode;
           line.itemName = line.itemName || sourceLine.itemName;
+          line.uomId = line.uomId || sourceLine.uomId;
           line.uom = line.uom || sourceLine.uom;
           line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
           line.fxRateMovToBase = line.fxRateMovToBase || sourceLine.fxRateMovToBase || 1;
@@ -516,14 +526,14 @@ export class PostSalesReturnUseCase {
           }
         }
         if (item.trackInventory) {
-          const qtyInBaseUom = await this.convertToBaseUom(
+          const conversionResult = await this.convertToBaseUom(
             companyId,
             line.returnQty,
+            line.uomId,
             line.uom,
-            item.baseUom,
-            item.id,
-            item.code
+            item
           );
+          const qtyInBaseUom = conversionResult.qtyInBaseUom;
 
           const unitCostBase = roundMoney(line.unitCostBase || 0);
           line.unitCostBase = unitCostBase;
@@ -556,12 +566,29 @@ export class PostSalesReturnUseCase {
             moveCurrency: salesReturn.currency,
             fxRateMovToBase,
             fxRateCCYToBase,
+            metadata: {
+              uomConversion: {
+                conversionId: conversionResult.trace.conversionId,
+                mode: conversionResult.trace.mode,
+                appliedFactor: conversionResult.trace.factor,
+                sourceQty: line.returnQty,
+                sourceUomId: line.uomId,
+                sourceUom: line.uom,
+                baseUomId: item.baseUomId,
+                baseUom: item.baseUom,
+              },
+            },
             transaction,
           });
 
           line.stockMovementId = movement.id;
 
-          if (isPerpetual) {
+          if (
+            DocumentPolicyResolver.shouldSalesReturnReverseInventoryAccounting(
+              accountingMode,
+              salesReturn.returnContext
+            )
+          ) {
             const accounts = await this.resolveCOGSAccounts(
               companyId,
               item,
@@ -602,7 +629,7 @@ export class PostSalesReturnUseCase {
 
       recalcReturnTotals(salesReturn);
 
-      if (isPerpetual && cogsBucket.size > 0) {
+      if (cogsBucket.size > 0) {
         const cogsVoucherLines: VoucherBucketLine[] = [];
         for (const line of Array.from(cogsBucket.values())) {
           const amount = roundMoney(line.amountBase);
@@ -788,36 +815,20 @@ export class PostSalesReturnUseCase {
   private async convertToBaseUom(
     companyId: string,
     qty: number,
+    uomId: string | undefined,
     uom: string,
-    baseUom: string,
-    itemId: string,
-    itemCode: string
-  ): Promise<number> {
-    if (uom.toUpperCase() === baseUom.toUpperCase()) {
-      return qty;
-    }
-
-    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-    const normalizedFrom = uom.toUpperCase();
-    const normalizedTo = baseUom.toUpperCase();
-
-    const direct = conversions.find(
-      (conversion) =>
-        conversion.active
-        && conversion.fromUom.toUpperCase() === normalizedFrom
-        && conversion.toUom.toUpperCase() === normalizedTo
-    );
-    if (direct) return roundMoney(qty * direct.factor);
-
-    const reverse = conversions.find(
-      (conversion) =>
-        conversion.active
-        && conversion.fromUom.toUpperCase() === normalizedTo
-        && conversion.toUom.toUpperCase() === normalizedFrom
-    );
-    if (reverse) return roundMoney(qty / reverse.factor);
-
-    throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    item: NonNullable<Awaited<ReturnType<IItemRepository['getItem']>>>
+  ): Promise<ItemQtyToBaseUomResult> {
+    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundMoney,
+      itemCode: item.code,
+    });
   }
 
   private async getPreviouslyReturnedQtyForSILine(

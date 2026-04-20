@@ -107,6 +107,7 @@ class SalesInvoice {
             itemName: line.itemName || '',
             trackInventory: !!line.trackInventory,
             invoicedQty: line.invoicedQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitPriceDoc: line.unitPriceDoc,
             lineTotalDoc,

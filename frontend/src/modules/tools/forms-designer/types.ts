@@ -15,9 +15,8 @@
  * or validation must happen OUTSIDE the wizard.
  */
 
-// UI Modes
 export type UIMode = 'classic' | 'windows';
-export type SectionType = 'HEADER' | 'BODY' | 'EXTRA' | 'ACTIONS';
+export type SectionType = 'HEADER' | 'BODY' | 'EXTRA' | 'FOOTER' | 'ACTIONS';
 
 // Field Categories (stored in DB with document type)
 export type FieldCategory = 'core' | 'shared' | 'systemMetadata';
@@ -39,6 +38,7 @@ export interface FieldLayout {
 export interface SectionLayout {
   order: number;
   fields: FieldLayout[];
+  backgroundColor?: string; // Tailwind class name or hex
 }
 
 export interface DocumentLayoutConfig {

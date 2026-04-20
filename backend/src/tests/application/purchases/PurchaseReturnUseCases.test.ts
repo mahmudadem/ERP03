@@ -341,6 +341,13 @@ const makeInventoryService = () => ({
   processOUT: jest.fn(async () => ({ id: 'mov-return-1' })),
 });
 
+const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERIODIC') => ({
+  getSettings: jest.fn(async () => ({
+    inventoryAccountingMethod: method,
+    defaultInventoryAssetAccountId: 'INV-100',
+  })),
+});
+
 describe('PurchaseReturn posting use-case (Phase 3)', () => {
   it('1) AFTER_INVOICE return: creates PURCHASE_RETURN OUT movement + GL voucher (Dr AP, Cr Inventory)', async () => {
     const settings = makeSettings('SIMPLE');
@@ -358,6 +365,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
         list: jest.fn(async () => []),
@@ -421,6 +429,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
         list: jest.fn(async () => []),
@@ -467,6 +476,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async () => purchaseReturn),
         list: jest.fn(async () => []),
@@ -509,6 +519,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async () => purchaseReturn),
         list: jest.fn(async () => []),
@@ -551,6 +562,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async () => purchaseReturn),
         list: jest.fn(async () => []),
@@ -608,6 +620,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
 
     const useCase = new PostPurchaseReturnUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       {
         getById: jest.fn(async (_companyId: string, id: string) => returnStore.get(id) ?? null),
         list: jest.fn(async () => []),

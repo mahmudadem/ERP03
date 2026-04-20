@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InventoryPeriodSnapshotMapper = exports.StockTransferMapper = exports.StockAdjustmentMapper = exports.OpeningStockDocumentMapper = exports.InventorySettingsMapper = exports.UomConversionMapper = exports.ItemCategoryMapper = exports.StockLevelMapper = exports.StockMovementMapper = exports.WarehouseMapper = exports.ItemMapper = void 0;
+exports.InventoryPeriodSnapshotMapper = exports.StockTransferMapper = exports.StockAdjustmentMapper = exports.UomMapper = exports.OpeningStockDocumentMapper = exports.InventorySettingsMapper = exports.UomConversionMapper = exports.ItemCategoryMapper = exports.StockLevelMapper = exports.StockMovementMapper = exports.WarehouseMapper = exports.ItemMapper = void 0;
 const firestore_1 = require("firebase-admin/firestore");
 const Item_1 = require("../../../domain/inventory/entities/Item");
 const Warehouse_1 = require("../../../domain/inventory/entities/Warehouse");
@@ -8,6 +8,7 @@ const StockMovement_1 = require("../../../domain/inventory/entities/StockMovemen
 const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
 const ItemCategory_1 = require("../../../domain/inventory/entities/ItemCategory");
 const UomConversion_1 = require("../../../domain/inventory/entities/UomConversion");
+const Uom_1 = require("../../../domain/inventory/entities/Uom");
 const InventorySettings_1 = require("../../../domain/inventory/entities/InventorySettings");
 const OpeningStockDocument_1 = require("../../../domain/inventory/entities/OpeningStockDocument");
 const StockAdjustment_1 = require("../../../domain/inventory/entities/StockAdjustment");
@@ -129,6 +130,16 @@ class OpeningStockDocumentMapper {
     }
 }
 exports.OpeningStockDocumentMapper = OpeningStockDocumentMapper;
+class UomMapper {
+    static toDomain(data) {
+        return Uom_1.Uom.fromJSON(Object.assign(Object.assign({}, data), { createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) }));
+    }
+    static toPersistence(entity) {
+        const data = entity.toJSON();
+        return stripUndefinedDeep(Object.assign(Object.assign({}, data), { createdAt: toTimestamp(entity.createdAt), updatedAt: toTimestamp(entity.updatedAt) }));
+    }
+}
+exports.UomMapper = UomMapper;
 class StockAdjustmentMapper {
     static toDomain(data) {
         return StockAdjustment_1.StockAdjustment.fromJSON(Object.assign(Object.assign({}, data), { createdAt: toDate(data.createdAt), postedAt: toDate(data.postedAt) }));

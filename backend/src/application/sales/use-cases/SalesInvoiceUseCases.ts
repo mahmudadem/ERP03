@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import { SalesInvoice, SalesInvoiceLine, PaymentStatus } from '../../../domain/sales/entities/SalesInvoice';
@@ -22,6 +23,10 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { addDaysToISODate, roundMoney } from './SalesPostingHelpers';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 
@@ -32,6 +37,7 @@ export interface SalesInvoiceLineInput {
   dnLineId?: string;
   itemId?: string;
   invoicedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc?: number;
   taxCodeId?: string;
@@ -202,6 +208,7 @@ export class CreateSalesInvoiceUseCase {
         itemName: item.name,
         trackInventory: item.trackInventory,
         invoicedQty,
+        uomId: sourceLine.uomId || soLine?.uomId || item.salesUomId || item.baseUomId,
         uom: sourceLine.uom || soLine?.uom || item.salesUom || item.baseUom,
         unitPriceDoc,
         lineTotalDoc,
@@ -306,6 +313,7 @@ export class CreateSalesInvoiceUseCase {
           itemId: line.itemId,
           dnLineId: undefined,
           invoicedQty: roundMoney(Math.max(ceiling, 0)),
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -388,7 +396,7 @@ export class PostSalesInvoiceUseCase {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
-    const isPerpetual = invSettings?.inventoryAccountingMethod === 'PERPETUAL';
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
 
     const si = await this.salesInvoiceRepo.getById(companyId, id);
     if (!si || si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
@@ -454,39 +462,79 @@ export class PostSalesInvoiceUseCase {
           }
         }
 
-        // Inventory movement logic
-        if (settings.allowDirectInvoicing && line.trackInventory && !hasDNForThisLine(line)) {
-          const warehouseId = line.warehouseId || settings.defaultWarehouseId;
-          if (!warehouseId || !warehousesMap.has(warehouseId)) throw new Error(`Warehouse required for ${item.name}`);
+        // Inventory movement / cost recognition
+        if (line.trackInventory) {
+          const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
+          const hasOperationalDelivery = matchedDeliveryLines.length > 0;
 
-          const qtyInBaseUom = await this.convertToBaseUom(companyId, line.invoicedQty, line.uom, item.baseUom, item.id, item.code);
-          const movement = await this.inventoryService.processOUT({
-            companyId, itemId: line.itemId, warehouseId: warehouseId!, qty: qtyInBaseUom, date: si.invoiceDate,
-            movementType: 'SALES_DELIVERY',
-            refs: { type: 'SALES_INVOICE', docId: si.id, lineId: line.lineId },
-            currentUser: si.createdBy,
-            transaction
-          });
+          if (!hasOperationalDelivery && settings.allowDirectInvoicing) {
+            const warehouseId = line.warehouseId || settings.defaultWarehouseId;
+            if (!warehouseId || !warehousesMap.has(warehouseId)) throw new Error(`Warehouse required for ${item.name}`);
 
-          line.stockMovementId = movement.id;
-          line.unitCostBase = roundMoney(movement.unitCostBase || 0);
-          line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
-          this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
-          
-          if (isPerpetual && line.lineCostBase > 0) {
-            const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings?.defaultCOGSAccountId, invSettings?.defaultInventoryAssetAccountId);
-            if (accounts) {
-              const resCOGSId = await this.resolveAccountId(companyId, accounts.cogsAccountId);
-              const resInvId = await this.resolveAccountId(companyId, accounts.inventoryAccountId);
-              this.addToCOGSBucket(cogsBucket, resCOGSId, resInvId, line.lineCostBase);
-            }
+            const conversionResult = await this.convertToBaseUom(
+              companyId,
+              line.invoicedQty,
+              line.uomId,
+              line.uom,
+              item
+            );
+            const qtyInBaseUom = conversionResult.qtyInBaseUom;
+            const movement = await this.inventoryService.processOUT({
+              companyId,
+              itemId: line.itemId,
+              warehouseId,
+              qty: qtyInBaseUom,
+              date: si.invoiceDate,
+              movementType: 'SALES_DELIVERY',
+              refs: { type: 'SALES_INVOICE', docId: si.id, lineId: line.lineId },
+              currentUser: si.createdBy,
+              metadata: {
+                uomConversion: {
+                  conversionId: conversionResult.trace.conversionId,
+                  mode: conversionResult.trace.mode,
+                  appliedFactor: conversionResult.trace.factor,
+                  sourceQty: line.invoicedQty,
+                  sourceUomId: line.uomId,
+                  sourceUom: line.uom,
+                  baseUomId: item.baseUomId,
+                  baseUom: item.baseUom,
+                },
+              },
+              transaction,
+            });
+
+            line.stockMovementId = movement.id;
+            line.unitCostBase = roundMoney(movement.unitCostBase || 0);
+            line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
+            this.assertPositiveTrackedCost(
+              qtyInBaseUom,
+              line.unitCostBase,
+              line.itemName || item.name,
+              `sales invoice ${si.invoiceNumber}`
+            );
+          } else {
+            const operationalQty = roundMoney(line.invoicedQty);
+            line.unitCostBase = roundMoney(this.resolveControlledUnitCost(line, soLine, postedDNs));
+            line.lineCostBase = roundMoney(operationalQty * line.unitCostBase);
+            this.assertPositiveTrackedCost(
+              operationalQty,
+              line.unitCostBase,
+              line.itemName || item.name,
+              `sales invoice ${si.invoiceNumber}`
+            );
           }
-        } else if (!settings.allowDirectInvoicing && line.trackInventory) {
-          line.unitCostBase = roundMoney(this.resolveControlledUnitCost(line, soLine, postedDNs));
-          line.lineCostBase = roundMoney(line.invoicedQty * line.unitCostBase);
-          this.assertPositiveTrackedCost(line.invoicedQty, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
-          if (isPerpetual && line.lineCostBase > 0) {
-            const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings?.defaultCOGSAccountId, invSettings?.defaultInventoryAssetAccountId);
+
+          if (
+            line.lineCostBase
+            && DocumentPolicyResolver.shouldInvoiceRecognizeInventory(accountingMode, hasOperationalDelivery)
+          ) {
+            const accounts = this.resolveCOGSAccountsSync(
+              companyId,
+              item,
+              categoriesMap,
+              invSettings?.defaultCOGSAccountId,
+              invSettings?.defaultInventoryAssetAccountId
+            );
             if (accounts) {
               const resCOGSId = await this.resolveAccountId(companyId, accounts.cogsAccountId);
               const resInvId = await this.resolveAccountId(companyId, accounts.inventoryAccountId);
@@ -536,8 +584,8 @@ export class PostSalesInvoiceUseCase {
       );
       si.voucherId = revVoucher.id;
 
-      // Create COGS voucher (COGS vs Inventory) - Perpetual only
-      if (isPerpetual && cogsBucket.size > 0) {
+      // Create inventory recognition voucher (COGS vs Inventory)
+      if (cogsBucket.size > 0) {
         const cogsVoucherLines: VoucherAccumulatedLine[] = [];
         for (const line of Array.from(cogsBucket.values())) {
           const amount = roundMoney(line.amountBase);
@@ -578,6 +626,8 @@ export class PostSalesInvoiceUseCase {
           transaction
         );
         si.cogsVoucherId = cogsVoucher.id;
+      } else {
+        si.cogsVoucherId = null;
       }
 
       if (so) {
@@ -670,8 +720,22 @@ export class PostSalesInvoiceUseCase {
     }
   }
 
-  private resolveControlledUnitCost(line: any, soLine: any, postedDNs: DeliveryNote[]): number {
-    const matched = postedDNs.flatMap(dn => dn.lines).filter(l => (l.lineId === line.dnLineId || l.soLineId === line.soLineId || (l.itemId === soLine?.itemId)) && l.unitCostBase > 0);
+  private getMatchedDeliveryLines(line: SalesInvoiceLine, soLine: SalesOrder['lines'][number] | null, postedDNs: DeliveryNote[]) {
+    return postedDNs
+      .flatMap((dn) => dn.lines)
+      .filter(
+        (entry) =>
+          (
+            entry.lineId === line.dnLineId
+            || entry.soLineId === line.soLineId
+            || (!!soLine && entry.itemId === soLine.itemId)
+          )
+          && entry.unitCostBase > 0
+      );
+  }
+
+  private resolveControlledUnitCost(line: SalesInvoiceLine, soLine: SalesOrder['lines'][number] | null, postedDNs: DeliveryNote[]): number {
+    const matched = this.getMatchedDeliveryLines(line, soLine, postedDNs);
     if (!matched.length) return 0;
     const totalV = matched.reduce((s, l) => s + (l.unitCostBase * l.deliveredQty), 0);
     const totalQ = matched.reduce((s, l) => s + l.deliveredQty, 0);
@@ -687,14 +751,23 @@ export class PostSalesInvoiceUseCase {
     si.grandTotalBase = roundMoney(si.subtotalBase + si.taxTotalBase);
   }
 
-  private async convertToBaseUom(cid: string, qty: number, uom: string, base: string, itemId: string, itemCode: string): Promise<number> {
-    if (uom.toUpperCase() === base.toUpperCase()) return qty;
-    const convs = await this.uomConversionRepo.getConversionsForItem(cid, itemId, { active: true });
-    const d = convs.find(c => c.fromUom.toUpperCase() === uom.toUpperCase() && c.toUom.toUpperCase() === base.toUpperCase());
-    if (d) return roundMoney(qty * d.factor);
-    const r = convs.find(c => c.fromUom.toUpperCase() === base.toUpperCase() && c.toUom.toUpperCase() === uom.toUpperCase());
-    if (r) return roundMoney(qty / r.factor);
-    throw new Error(`No UOM conversion for ${itemCode}`);
+  private async convertToBaseUom(
+    cid: string,
+    qty: number,
+    uomId: string | undefined,
+    uom: string,
+    item: Item
+  ): Promise<ItemQtyToBaseUomResult> {
+    const convs = await this.uomConversionRepo.getConversionsForItem(cid, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions: convs,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundMoney,
+      itemCode: item.code,
+    });
   }
 
   private assertPositiveTrackedCost(qty: number, unitCostBase: number, itemName: string, documentLabel: string): void {
@@ -754,6 +827,7 @@ export class UpdateSalesInvoiceUseCase {
           itemName: existing?.itemName || '',
           trackInventory: existing?.trackInventory ?? false,
           invoicedQty: line.invoicedQty,
+          uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitPriceDoc: line.unitPriceDoc ?? existing?.unitPriceDoc ?? 0,
           lineTotalDoc: existing?.lineTotalDoc ?? 0,

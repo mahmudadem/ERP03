@@ -106,12 +106,17 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 
   // Sync input value with external value
   useEffect(() => {
-    if (value) {
-      const warehouse = allWarehouses.find(w => w.id === value || w.code === value);
+    // Defensive check: if value is an object, try to extract ID
+    const normalizedValue = typeof value === 'object' && value !== null 
+      ? ((value as any).id || (value as any).code || '') 
+      : (value || '');
+
+    if (normalizedValue) {
+      const warehouse = allWarehouses.find(w => w.id === normalizedValue || w.code === normalizedValue);
       if (warehouse) {
         setInputValue(`${warehouse.code} - ${warehouse.name}`);
       } else {
-        setInputValue(value);
+        setInputValue(normalizedValue);
       }
     } else {
       setInputValue('');
@@ -273,6 +278,9 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
   return (
     <>
       <div className={`relative flex items-center ${className}`}>
+        <div className="absolute left-2.5 text-slate-400">
+          <WarehouseIcon size={14} />
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -282,10 +290,10 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full text-xs transition-colors duration-200 
-            ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 pr-16 border border-[var(--color-border)] rounded bg-white dark:bg-slate-900'} 
-            focus:ring-1 focus:ring-indigo-500 outline-none
-            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full text-xs transition-all duration-200 
+            ${noBorder ? 'p-1 pl-8 border-none bg-transparent' : 'p-2 pl-8 pr-16 border border-slate-200 rounded-lg bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'} 
+            focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
+            ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''}`}
         />
         {!disabled && (
           <div className="absolute right-1 flex items-center gap-1">

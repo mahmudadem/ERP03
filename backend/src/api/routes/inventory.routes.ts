@@ -31,8 +31,16 @@ router.get('/warehouses', permissionGuard('inventory.warehouses.view'), Inventor
 router.get('/warehouses/:id', permissionGuard('inventory.warehouses.view'), InventoryController.getWarehouse);
 router.put('/warehouses/:id', permissionGuard('inventory.warehouses.manage'), InventoryController.updateWarehouse);
 
+router.post('/uoms', permissionGuard('inventory.uom.manage'), InventoryController.createUom);
+router.get('/uoms', permissionGuard('inventory.uom.view'), InventoryController.listUoms);
+router.get('/uoms/:id', permissionGuard('inventory.uom.view'), InventoryController.getUom);
+router.put('/uoms/:id', permissionGuard('inventory.uom.manage'), InventoryController.updateUom);
 router.post('/uom-conversions', permissionGuard('inventory.uom.manage'), InventoryController.createUomConversion);
 router.get('/uom-conversions/:itemId', permissionGuard('inventory.uom.view'), InventoryController.listUomConversions);
+router.get('/uom-conversions/:id/impact', permissionGuard('inventory.uom.view'), InventoryController.getUomConversionImpact);
+router.post('/uom-conversions/:id/apply-correction', permissionGuard('inventory.uom.manage'), InventoryController.applyUomConversionCorrection);
+router.put('/uom-conversions/:id', permissionGuard('inventory.uom.manage'), InventoryController.updateUomConversion);
+router.delete('/uom-conversions/:id', permissionGuard('inventory.uom.manage'), InventoryController.deleteUomConversion);
 
 router.get('/stock-levels', permissionGuard('inventory.stock.view'), InventoryController.getStockLevels);
 router.post('/stock-levels/reserve', permissionGuard('inventory.stock.adjust'), InventoryController.reserveStock);

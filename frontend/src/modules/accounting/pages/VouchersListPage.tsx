@@ -376,7 +376,7 @@ const VouchersListPage: React.FC = () => {
   return (
     <AccountsProvider>
       <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] relative transition-colors duration-300">
-        <div className="flex-none p-6 pb-0">
+        <div className="flex-none p-4 pb-0">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{pageTitle}</h1>
             <div className="flex items-center gap-3">
@@ -421,31 +421,29 @@ const VouchersListPage: React.FC = () => {
           />
         </div>
 
-        <div className="flex-1 flex flex-col p-6 overflow-hidden">
+        <div className="flex-1 flex flex-col p-2 overflow-hidden">
           <div className="flex flex-col bg-[var(--color-bg-primary)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden transition-colors duration-300 flex-1">
-            <div className="flex-1 overflow-auto">
-              <VoucherTable 
-                vouchers={vouchers} 
-                voucherTypes={voucherTypes}
-                pagination={pagination}
-                onPageChange={(newPage) => setPage(newPage)}
-                isLoading={vouchersLoading || typesLoading}
-                error={error ? error.message : null}
-                onViewPrint={handleViewPrint}
-                onRowClick={handleRowClick}
-                onEdit={(voucher) => handleRowClick(voucher.id)}
-                onDelete={(id) => setDeleteVoucherId(id)}
-                onCancel={handleCancel}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onConfirm={handleConfirm}
-                onPost={handlePost}
-                onReverse={handleReverse}
-                onRefresh={() => invalidateVouchers()}
-                externalFilters={clientFilters}
-                dateRange={dateRange}
-              />
-            </div>
+            <VoucherTable 
+              vouchers={vouchers} 
+              voucherTypes={voucherTypes}
+              pagination={pagination}
+              onPageChange={(newPage) => setPage(newPage)}
+              isLoading={vouchersLoading || typesLoading}
+              error={error ? error.message : null}
+              onViewPrint={handleViewPrint}
+              onRowClick={handleRowClick}
+              onEdit={(voucher) => handleRowClick(voucher.id)}
+              onDelete={(id) => setDeleteVoucherId(id)}
+              onCancel={handleCancel}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              onConfirm={handleConfirm}
+              onPost={handlePost}
+              onReverse={handleReverse}
+              onRefresh={() => invalidateVouchers()}
+              externalFilters={clientFilters}
+              dateRange={dateRange}
+            />
           </div>
         </div>
 

@@ -228,6 +228,11 @@ const STANDARD_TABLE_FIELDS: Record<string, Partial<FieldDefinition>> = {
     type: 'account-selector',
     required: true
   },
+  party: {
+    label: 'Party',
+    type: 'party-selector',
+    required: false
+  },
   debit: {
     label: 'Debit',
     type: 'NUMBER',

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useState, useRef, useEffect } from 'react';
 import { accountingApi, CostCenterDTO } from '../api/accountingApi';
+import { useCompanyAccess } from './CompanyAccessContext';
 
 interface CostCentersContextValue {
   costCenters: CostCenterDTO[];
@@ -14,11 +15,24 @@ const CostCentersContext = createContext<CostCentersContextValue>({
 });
 
 export const CostCentersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { moduleBundles, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
+  const hasAccountingModule = (moduleBundles || [])
+    .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+    .includes('accounting');
+  const canUseAccounting = !accessLoading && permissionsLoaded && hasAccountingModule;
+
   const [costCenters, setCostCenters] = useState<CostCenterDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const loadedRef = useRef(false);
 
   const load = useCallback(async (force = false) => {
+    if (!canUseAccounting) {
+      setCostCenters([]);
+      setLoading(false);
+      loadedRef.current = false;
+      return;
+    }
+
     // Only skip fetch if we already successfully loaded AND we actually have items, unless forced.
     if (!force && loadedRef.current && costCenters.length > 0) {
       return;
@@ -52,13 +66,21 @@ export const CostCentersProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canUseAccounting, costCenters.length]);
 
   useEffect(() => {
-    if (!loadedRef.current) {
+    if (canUseAccounting && !loadedRef.current) {
       load();
     }
-  }, [load]);
+  }, [load, canUseAccounting]);
+
+  useEffect(() => {
+    if (!canUseAccounting) {
+      setCostCenters([]);
+      setLoading(false);
+      loadedRef.current = false;
+    }
+  }, [canUseAccounting]);
 
   return (
     <CostCentersContext.Provider value={{ costCenters, refresh: load, loading }}>

@@ -1,5 +1,6 @@
 
 export * from './IItemRepository';
+export * from './IUomRepository';
 export * from './IWarehouseRepository';
 export * from './IStockMovementRepository';
 export * from './IStockLevelRepository';

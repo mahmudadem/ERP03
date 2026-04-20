@@ -96,6 +96,7 @@ class SalesOrder {
             itemType: line.itemType,
             trackInventory: line.trackInventory,
             orderedQty: line.orderedQty,
+            uomId: line.uomId,
             uom: line.uom,
             deliveredQty: (_e = line.deliveredQty) !== null && _e !== void 0 ? _e : 0,
             invoicedQty: (_f = line.invoicedQty) !== null && _f !== void 0 ? _f : 0,

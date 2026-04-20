@@ -91,158 +91,37 @@ const DEFAULT_VOUCHER_TYPES = [
         inUse: false,
         baseType: 'JOURNAL_ENTRY',
         headerFields: [
-            { id: 'voucherNumber', label: 'voucherNumber', type: 'text', order: 0 },
-            { id: 'status', label: 'status', type: 'text', order: 0 },
-            { id: 'createdBy', label: 'createdBy', type: 'text', order: 0 },
-            { id: 'createdAt', label: 'createdAt', type: 'text', order: 0 },
-            { id: 'date', label: 'date', type: 'text', order: 1 },
-            { id: 'description', label: 'description', type: 'text', order: 2 },
-            { id: 'currency', label: 'currency', type: 'text', order: 3 },
-            { id: 'reference', label: 'reference', type: 'text', order: 4 },
-            { id: 'currencyExchange', label: 'currencyExchange', type: 'text', order: 5 },
+            { id: 'date', label: 'Posting Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: true },
+            { id: 'reference', label: 'Reference', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false },
+            { id: 'description', label: 'Description', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false },
         ],
         tableColumns: [
-            { id: 'account', fieldId: 'account', label: 'account', labelOverride: 'Account', width: '30%', type: 'text', order: 0 },
-            { id: 'debit', fieldId: 'debit', label: 'debit', labelOverride: 'Debit', width: '10%', type: 'text', order: 0 },
-            { id: 'credit', fieldId: 'credit', label: 'credit', labelOverride: 'Credit', width: '10%', type: 'text', order: 0 },
-            { id: 'currency', fieldId: 'currency', label: 'currency', labelOverride: 'Currency', width: '10%', type: 'text', order: 0 },
-            { id: 'parity', fieldId: 'parity', label: 'parity', labelOverride: 'Parity', width: '10%', type: 'text', order: 0 },
-            { id: 'equivalent', fieldId: 'equivalent', label: 'equivalent', labelOverride: 'Equivalent', width: '10%', type: 'text', order: 0 },
-            { id: 'notes', fieldId: 'notes', label: 'notes', labelOverride: 'Line Description', width: '15%', type: 'text', order: 0 },
+            { id: 'account', fieldId: 'accountSelector', label: 'Account', width: '30%', mandatory: true },
+            { id: 'debit', fieldId: 'debit', label: 'Debit', width: '15%', mandatory: true },
+            { id: 'credit', fieldId: 'credit', label: 'Credit', width: '15%', mandatory: true },
+            { id: 'currency', fieldId: 'currency', label: 'Currency', width: '10%' },
+            { id: 'notes', fieldId: 'notes', label: 'Line Description', width: '30%' },
         ],
-        uiModeOverrides: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-                            { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-                            { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'reference', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                        ],
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [] },
-                    ACTIONS: {
-                        order: 4,
-                        fields: [
-                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_email', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_pdf', row: 2, col: 0, colSpan: 12 },
-                        ],
-                    },
-                },
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'currency', row: 1, col: 0, colSpan: 4 },
-                            { fieldId: 'currencyExchange', row: 1, col: 4, colSpan: 3, label: 'currency Exchange Rates' },
-                            { fieldId: 'description', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'reference', row: 1, col: 7, colSpan: 4 },
-                        ],
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [] },
-                    ACTIONS: {
-                        order: 4,
-                        fields: [
-                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 4 },
-                            { fieldId: 'action_email', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 8, colSpan: 4, label: 'download PDF' },
-                        ],
-                    },
-                },
-            },
-        },
-        layout: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-                            { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-                            { fieldId: 'description', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'reference', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [] },
-                    ACTIONS: {
-                        order: 4,
-                        fields: [
-                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_email', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_pdf', row: 2, col: 0, colSpan: 12 },
-                        ],
-                    }
-                }
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'currency', row: 1, col: 0, colSpan: 4 },
-                            { fieldId: 'currencyExchange', row: 1, col: 4, colSpan: 3, label: 'currency Exchange Rates' },
-                            { fieldId: 'description', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'reference', row: 1, col: 7, colSpan: 4 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [] },
-                    ACTIONS: {
-                        order: 4,
-                        fields: [
-                            { fieldId: 'action_print', row: 0, col: 0, colSpan: 4 },
-                            { fieldId: 'action_email', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 8, colSpan: 4, label: 'download PDF' },
-                        ],
-                    }
-                }
-            }
-        },
-        isMultiLine: true,
-        requiresApproval: true,
-        preventNegativeCash: true,
-        allowFutureDates: true,
-        mandatoryAttachments: true,
-        rules: COMMON_RULES,
+        rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Vouchers must be approved by a supervisor.' },
+            { id: 'prevent_negative_cash', label: 'Prevent Negative Cash', enabled: false, description: 'Block saving if cash accounts go negative.' },
+            { id: 'allow_future_date', label: 'Allow Future Posting Dates', enabled: true, description: 'Users can select dates in the future.' },
+        ],
         actions: [
             { type: 'print', label: 'Print Voucher', enabled: true },
             { type: 'email', label: 'Email PDF', enabled: true },
             { type: 'download_pdf', label: 'Download PDF', enabled: true },
-            { type: 'download_excel', label: 'Download Excel', enabled: false },
-            { type: 'import_csv', label: 'Import Lines (CSV)', enabled: false },
-            { type: 'export_json', label: 'Export JSON', enabled: false },
         ],
-        enabledActions: ['print', 'email', 'download_pdf'],
-        tableStyle: 'classic',
-        defaultCurrency: '',
+        layout: {
+            sections: [
+                { id: 'header', title: 'Voucher Header', fieldIds: ['date', 'currency', 'exchangeRate', 'reference', 'description'] },
+                { id: 'lines', title: 'Entries', fieldIds: ['lineItems'] },
+            ],
+        },
+        isMultiLine: true,
+        tableStyle: 'web',
     },
     {
         id: 'payment_voucher',
@@ -258,144 +137,32 @@ const DEFAULT_VOUCHER_TYPES = [
         inUse: false,
         baseType: 'PAYMENT',
         headerFields: [
-            { id: 'voucherNumber', label: 'voucherNumber', type: 'text', order: 0 },
-            { id: 'description', label: 'description', type: 'text', order: 2 },
-            { id: 'status', label: 'status', type: 'text', order: 0 },
-            { id: 'createdBy', label: 'createdBy', type: 'text', order: 0 },
-            { id: 'createdAt', label: 'createdAt', type: 'text', order: 0 },
-            { id: 'date', label: 'date', type: 'text', order: 0 },
-            { id: 'account', label: 'account', type: 'text', order: 1 },
-            { id: 'currency', label: 'currency', type: 'text', order: 1 },
-            { id: 'currencyExchange', label: 'currencyExchange', type: 'text', order: 1 },
+            { id: 'date', label: 'Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'account', label: 'Paid From Account', type: 'SELECT', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: true },
+            { id: 'description', label: 'Description', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false },
         ],
         tableColumns: [
-            { id: 'payToAccountId', fieldId: 'payToAccountId', label: 'payToAccountId', labelOverride: 'payToAccountId', width: '200px', type: 'text', order: 0 },
-            { id: 'amount', fieldId: 'amount', label: 'amount', labelOverride: 'amount', width: '100px', type: 'text', order: 0 },
-            { id: 'notes', fieldId: 'notes', label: 'notes', labelOverride: 'notes', width: '200px', type: 'text', order: 0 },
+            { id: 'account', fieldId: 'accountSelector', label: 'Pay to Account', width: '40%', mandatory: true },
+            { id: 'amount', fieldId: 'amount', label: 'Amount', width: '20%', mandatory: true },
+            { id: 'notes', fieldId: 'notes', label: 'Description', width: '40%' },
         ],
-        uiModeOverrides: {
-            classic: {
-                sections: {
-                    EXTRA: { fields: [], order: 2 },
-                    ACTIONS: {
-                        fields: [
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_excel', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_import_csv', row: 2, col: 0, colSpan: 12 },
-                        ],
-                        order: 3,
-                    },
-                    HEADER: {
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'date', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'description', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                            { fieldId: 'account', row: 8, col: 0, colSpan: 12 },
-                        ],
-                        order: 0,
-                    },
-                    BODY: { fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }], order: 1 },
-                },
-            },
-            windows: {
-                sections: {
-                    EXTRA: { fields: [], order: 2 },
-                    ACTIONS: {
-                        fields: [
-                            { fieldId: 'action_download_excel', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_import_csv', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 4 },
-                        ],
-                        order: 3,
-                    },
-                    HEADER: {
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'description', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'account', row: 1, col: 0, colSpan: 3 },
-                            { fieldId: 'currency', row: 1, col: 3, colSpan: 3 },
-                            { fieldId: 'currencyExchange', row: 1, col: 6, colSpan: 6 },
-                        ],
-                        order: 0,
-                    },
-                    BODY: { fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }], order: 1 },
-                },
-            },
-        },
+        rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Vouchers must be approved.' },
+        ],
+        actions: [
+            { type: 'print', label: 'Print Voucher', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+        ],
         layout: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 0,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'date', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'description', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                            { fieldId: 'account', row: 8, col: 0, colSpan: 12 },
-                        ],
-                    },
-                    BODY: { order: 1, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 2, fields: [] },
-                    ACTIONS: {
-                        order: 3,
-                        fields: [
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_excel', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_import_csv', row: 2, col: 0, colSpan: 12 },
-                        ],
-                    },
-                },
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 0,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'description', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'account', row: 1, col: 0, colSpan: 3 },
-                            { fieldId: 'currency', row: 1, col: 3, colSpan: 3 },
-                            { fieldId: 'currencyExchange', row: 1, col: 6, colSpan: 6 },
-                        ],
-                    },
-                    BODY: { order: 1, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 2, fields: [] },
-                    ACTIONS: {
-                        order: 3,
-                        fields: [
-                            { fieldId: 'action_download_excel', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_import_csv', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 4 },
-                        ],
-                    },
-                },
-            },
+            sections: [
+                { id: 'header', title: 'Payment Details', fieldIds: ['date', 'account', 'currency', 'exchangeRate', 'description'] },
+                { id: 'lines', title: 'Payments', fieldIds: ['lineItems'] },
+            ],
         },
         isMultiLine: true,
-        requiresApproval: true,
-        rules: COMMON_RULES,
-        actions: COMMON_ACTIONS,
-        enabledActions: ['download_pdf', 'download_excel', 'import_csv'],
-        tableStyle: 'classic',
-        defaultCurrency: '',
+        tableStyle: 'web',
     },
     {
         id: 'receipt_voucher',
@@ -411,258 +178,32 @@ const DEFAULT_VOUCHER_TYPES = [
         inUse: false,
         baseType: 'RECEIPT',
         headerFields: [
-            { id: 'voucherNumber', label: 'voucherNumber', type: 'text', order: 0 },
-            { id: 'description', label: 'description', type: 'text', order: 2 },
-            { id: 'status', label: 'status', type: 'text', order: 0 },
-            { id: 'createdBy', label: 'createdBy', type: 'text', order: 0 },
-            { id: 'createdAt', label: 'createdAt', type: 'text', order: 0 },
-            { id: 'date', label: 'date', type: 'text', order: 0 },
-            { id: 'account', label: 'account', type: 'text', order: 1 },
-            { id: 'currency', label: 'currency', type: 'text', order: 1 },
-            { id: 'currencyExchange', label: 'currencyExchange', type: 'text', order: 1 },
+            { id: 'date', label: 'Date', type: 'DATE', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'account', label: 'Received Into Account', type: 'SELECT', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, category: 'core', mandatory: true, autoManaged: false },
+            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, category: 'core', mandatory: true, autoManaged: true },
+            { id: 'description', label: 'Description', type: 'TEXT', category: 'shared', mandatory: false, autoManaged: false },
         ],
         tableColumns: [
-            { id: 'receiveFromAccountId', fieldId: 'receiveFromAccountId', label: 'receiveFromAccountId', labelOverride: 'receiveFromAccountId', width: '200px', type: 'text', order: 0 },
-            { id: 'amount', fieldId: 'amount', label: 'amount', labelOverride: 'amount', width: '100px', type: 'text', order: 0 },
-            { id: 'notes', fieldId: 'notes', label: 'notes', labelOverride: 'notes', width: '200px', type: 'text', order: 0 },
+            { id: 'account', fieldId: 'accountSelector', label: 'Received From Account', width: '40%', mandatory: true },
+            { id: 'amount', fieldId: 'amount', label: 'Amount', width: '20%', mandatory: true },
+            { id: 'notes', fieldId: 'notes', label: 'Description', width: '40%' },
         ],
-        uiModeOverrides: {
-            classic: {
-                sections: {
-                    EXTRA: { fields: [], order: 2 },
-                    ACTIONS: {
-                        fields: [
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_excel', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_import_csv', row: 2, col: 0, colSpan: 12 },
-                        ],
-                        order: 3,
-                    },
-                    HEADER: {
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'date', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'description', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                            { fieldId: 'account', row: 8, col: 0, colSpan: 12 },
-                        ],
-                        order: 0,
-                    },
-                    BODY: { fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }], order: 1 },
-                },
-            },
-            windows: {
-                sections: {
-                    EXTRA: { fields: [], order: 2 },
-                    ACTIONS: {
-                        fields: [
-                            { fieldId: 'action_download_excel', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_import_csv', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 4 },
-                        ],
-                        order: 3,
-                    },
-                    HEADER: {
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'description', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'account', row: 1, col: 0, colSpan: 3 },
-                            { fieldId: 'currency', row: 1, col: 3, colSpan: 3 },
-                            { fieldId: 'currencyExchange', row: 1, col: 6, colSpan: 6 },
-                        ],
-                        order: 0,
-                    },
-                    BODY: { fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }], order: 1 },
-                },
-            },
-        },
+        rules: [
+            { id: 'require_approval', label: 'Require Approval Workflow', enabled: true, description: 'Vouchers must be approved.' },
+        ],
+        actions: [
+            { type: 'print', label: 'Print Voucher', enabled: true },
+            { type: 'download_pdf', label: 'Download PDF', enabled: true },
+        ],
         layout: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 0,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'createdBy', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'createdAt', row: 3, col: 0, colSpan: 12 },
-                            { fieldId: 'date', row: 4, col: 0, colSpan: 12 },
-                            { fieldId: 'description', row: 5, col: 0, colSpan: 12 },
-                            { fieldId: 'currency', row: 6, col: 0, colSpan: 12 },
-                            { fieldId: 'currencyExchange', row: 7, col: 0, colSpan: 12 },
-                            { fieldId: 'account', row: 8, col: 0, colSpan: 12 },
-                        ],
-                    },
-                    BODY: { order: 1, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 2, fields: [] },
-                    ACTIONS: {
-                        order: 3,
-                        fields: [
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 12 },
-                            { fieldId: 'action_download_excel', row: 1, col: 0, colSpan: 12 },
-                            { fieldId: 'action_import_csv', row: 2, col: 0, colSpan: 12 },
-                        ],
-                    },
-                },
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 0,
-                        fields: [
-                            { fieldId: 'voucherNumber', row: 0, col: 0, colSpan: 2 },
-                            { fieldId: 'description', row: 2, col: 0, colSpan: 12 },
-                            { fieldId: 'status', row: 0, col: 2, colSpan: 2 },
-                            { fieldId: 'createdBy', row: 0, col: 4, colSpan: 2 },
-                            { fieldId: 'createdAt', row: 0, col: 6, colSpan: 2 },
-                            { fieldId: 'date', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'account', row: 1, col: 0, colSpan: 3 },
-                            { fieldId: 'currency', row: 1, col: 3, colSpan: 3 },
-                            { fieldId: 'currencyExchange', row: 1, col: 6, colSpan: 6 },
-                        ],
-                    },
-                    BODY: { order: 1, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 2, fields: [] },
-                    ACTIONS: {
-                        order: 3,
-                        fields: [
-                            { fieldId: 'action_download_excel', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'action_import_csv', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'action_download_pdf', row: 0, col: 0, colSpan: 4 },
-                        ],
-                    },
-                },
-            },
+            sections: [
+                { id: 'header', title: 'Receipt Details', fieldIds: ['date', 'account', 'currency', 'exchangeRate', 'description'] },
+                { id: 'lines', title: 'Receipts', fieldIds: ['lineItems'] },
+            ],
         },
         isMultiLine: true,
-        requiresApproval: false,
-        rules: COMMON_RULES,
-        actions: COMMON_ACTIONS,
-        enabledActions: ['download_pdf', 'download_excel', 'import_csv'],
-        tableStyle: 'classic',
-        defaultCurrency: '',
-    },
-    {
-        id: 'transfer_voucher',
-        code: 'TRANSFER_VOUCHER',
-        name: 'Transfer Voucher',
-        schemaVersion: 2,
-        prefix: 'TRF-',
-        nextNumber: 1000,
-        enabled: true,
-        isRecommended: true,
-        isSystemDefault: true,
-        inUse: false,
-        layout: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-                            { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-                            { fieldId: 'fromAccount', row: 1, col: 0, colSpan: 6 },
-                            { fieldId: 'toAccount', row: 1, col: 6, colSpan: 6 },
-                            { fieldId: 'amount', row: 2, col: 0, colSpan: 4 },
-                            { fieldId: 'exchangeRate', row: 2, col: 4, colSpan: 4 },
-                            { fieldId: 'reference', row: 2, col: 8, colSpan: 4 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
-                }
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
-                            { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'fromAccount', row: 1, col: 0, colSpan: 6 },
-                            { fieldId: 'toAccount', row: 1, col: 6, colSpan: 6 },
-                            { fieldId: 'fromAmount', row: 2, col: 0, colSpan: 4 },
-                            { fieldId: 'toAmount', row: 2, col: 4, colSpan: 4 },
-                            { fieldId: 'exchangeRate', row: 2, col: 8, colSpan: 4 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
-                }
-            }
-        },
-        isMultiLine: false,
-        requiresApproval: true,
-        enabledActions: ['print', 'email', 'download_pdf'],
-    },
-    {
-        id: 'invoice',
-        code: 'INVOICE',
-        name: 'Invoice',
-        schemaVersion: 2,
-        prefix: 'INV-',
-        nextNumber: 1000,
-        enabled: true,
-        isRecommended: true,
-        isSystemDefault: true,
-        inUse: false,
-        layout: {
-            classic: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 6 },
-                            { fieldId: 'voucherNumber', row: 0, col: 6, colSpan: 6 },
-                            { fieldId: 'customer', row: 1, col: 0, colSpan: 6 },
-                            { fieldId: 'dueDate', row: 1, col: 6, colSpan: 6 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
-                }
-            },
-            windows: {
-                sections: {
-                    HEADER: {
-                        order: 1,
-                        fields: [
-                            { fieldId: 'date', row: 0, col: 0, colSpan: 4 },
-                            { fieldId: 'voucherNumber', row: 0, col: 4, colSpan: 4 },
-                            { fieldId: 'status', row: 0, col: 8, colSpan: 4 },
-                            { fieldId: 'customer', row: 1, col: 0, colSpan: 8 },
-                            { fieldId: 'dueDate', row: 1, col: 8, colSpan: 4 },
-                        ]
-                    },
-                    BODY: { order: 2, fields: [{ fieldId: 'lineItems', row: 0, col: 0, colSpan: 12 }] },
-                    EXTRA: { order: 3, fields: [{ fieldId: 'notes', row: 0, col: 0, colSpan: 12 }] },
-                    ACTIONS: { order: 4, fields: [] }
-                }
-            }
-        },
-        isMultiLine: true,
-        tableColumns: [
-            { fieldId: 'item', width: '30%', labelOverride: 'Product/Service' },
-            { fieldId: 'quantity', width: '10%', labelOverride: 'Qty' },
-            { fieldId: 'rate', width: '15%', labelOverride: 'Unit Price' },
-            { fieldId: 'amount', width: '15%', labelOverride: 'Total' },
-            { fieldId: 'vatPercent', width: '10%', labelOverride: 'VAT %' },
-            { fieldId: 'notes', width: '20%', labelOverride: 'Description' }
-        ],
-        requiresApproval: false,
-        enabledActions: ['print', 'email', 'download_pdf', 'download_excel'],
+        tableStyle: 'web',
     },
 ];
 async function seedDefaultVoucherTypes() {

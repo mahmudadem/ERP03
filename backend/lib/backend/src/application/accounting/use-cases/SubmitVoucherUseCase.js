@@ -42,11 +42,18 @@ class SubmitVoucherUseCase {
      * @returns Updated voucher entity
      * @throws Error if voucher not found or cannot be submitted
      */
-    async execute(companyId, voucherId, submitterId) {
+    async execute(companyId, voucherIdOrEntity, submitterId, transaction) {
         // Step 1: Load voucher
-        const voucher = await this.voucherRepository.findById(companyId, voucherId);
-        if (!voucher) {
-            throw new Error(`Voucher not found: ${voucherId}`);
+        let voucher;
+        if (typeof voucherIdOrEntity === 'string') {
+            const found = await this.voucherRepository.findById(companyId, voucherIdOrEntity);
+            if (!found) {
+                throw new Error(`Voucher not found: ${voucherIdOrEntity}`);
+            }
+            voucher = found;
+        }
+        else {
+            voucher = voucherIdOrEntity;
         }
         // Step 2: Validate can submit (only DRAFT or REJECTED status)
         // IDEMPOTENCY FIX: If voucher is already APPROVED, assume it was auto-processed (Flexible Mode)
@@ -117,7 +124,7 @@ class SubmitVoucherUseCase {
         // Step 7: Create updated voucher with gate requirements frozen in metadata
         const submittedVoucher = this.createSubmittedVoucher(voucher, submitterId, gateResult);
         // Step 8: Save
-        const savedVoucher = await this.voucherRepository.save(submittedVoucher);
+        const savedVoucher = await this.voucherRepository.save(submittedVoucher, transaction);
         // Step 9: Dispatch notifications (non-blocking)
         this.dispatchNotifications(companyId, savedVoucher, gateResult).catch(() => {
             // Log error but don't fail the submission

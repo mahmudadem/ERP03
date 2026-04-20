@@ -11,6 +11,7 @@ export interface SalesInvoiceLine {
   itemName: string;
   trackInventory: boolean;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   lineTotalDoc: number;
@@ -200,6 +201,7 @@ export class SalesInvoice {
       itemName: line.itemName || '',
       trackInventory: !!line.trackInventory,
       invoicedQty: line.invoicedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
       lineTotalDoc,

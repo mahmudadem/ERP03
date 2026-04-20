@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { roundMoney as roundLedgerMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { Item } from '../../../domain/inventory/entities/Item';
@@ -19,6 +20,7 @@ import { Party } from '../../../domain/shared/entities/Party';
 import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IUomConversionRepository } from '../../../repository/interfaces/inventory/IUomConversionRepository';
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { IPurchaseInvoiceRepository } from '../../../repository/interfaces/purchases/IPurchaseInvoiceRepository';
@@ -30,6 +32,10 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 
@@ -42,6 +48,7 @@ export interface PurchaseReturnLineInput {
   itemId?: string;
   returnQty?: number;
   unitCostDoc?: number;
+  uomId?: string;
   uom?: string;
   accountId?: string;
   description?: string;
@@ -311,7 +318,8 @@ export class CreatePurchaseReturnUseCase {
       itemCode: invoiceLine.itemCode,
       itemName: invoiceLine.itemName,
       returnQty,
-      uom: invoiceLine.uom,
+      uomId: inputLine?.uomId || invoiceLine.uomId,
+      uom: inputLine?.uom || invoiceLine.uom,
       unitCostDoc: invoiceLine.unitPriceDoc,
       unitCostBase: invoiceLine.unitPriceBase,
       fxRateMovToBase: exchangeRate,
@@ -342,7 +350,8 @@ export class CreatePurchaseReturnUseCase {
       itemCode: grnLine.itemCode,
       itemName: grnLine.itemName,
       returnQty,
-      uom: grnLine.uom,
+      uomId: inputLine?.uomId || grnLine.uomId,
+      uom: inputLine?.uom || grnLine.uom,
       unitCostDoc: grnLine.unitCostDoc,
       unitCostBase: grnLine.unitCostBase,
       fxRateMovToBase: grnLine.fxRateMovToBase,
@@ -378,6 +387,7 @@ export class CreatePurchaseReturnUseCase {
         itemCode: item.code,
         itemName: item.name,
         returnQty: qty,
+        uomId: input.uomId || item.purchaseUomId || item.baseUomId,
         uom: input.uom || item.purchaseUom || item.baseUom,
         unitCostDoc: unitCost,
         unitCostBase: 0, 
@@ -396,6 +406,7 @@ export class CreatePurchaseReturnUseCase {
 export class PostPurchaseReturnUseCase {
   constructor(
     private readonly settingsRepo: IPurchaseSettingsRepository,
+    private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly purchaseReturnRepo: IPurchaseReturnRepository,
     private readonly companySettingsRepo: ICompanySettingsRepository,
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
@@ -414,6 +425,8 @@ export class PostPurchaseReturnUseCase {
   async execute(companyId: string, id: string): Promise<PurchaseReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
+    const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
 
     const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
     if (!purchaseReturn) throw new Error(`Purchase return not found: ${id}`);
@@ -423,6 +436,10 @@ export class PostPurchaseReturnUseCase {
 
     const isAfterInvoice = purchaseReturn.returnContext === 'AFTER_INVOICE';
     const isDirect = purchaseReturn.returnContext === 'DIRECT';
+    const shouldCreateVoucher = DocumentPolicyResolver.shouldPurchaseReturnCreateVoucher(
+      accountingMode,
+      purchaseReturn.returnContext
+    );
     let purchaseInvoice: PurchaseInvoice | null = null;
     let goodsReceipt: GoodsReceipt | null = null;
     let purchaseOrder: PurchaseOrder | null = null;
@@ -534,6 +551,8 @@ export class PostPurchaseReturnUseCase {
           line.unitCostDoc = roundMoney(line.unitCostDoc || sourceLine.unitCostDoc);
           line.unitCostBase = roundMoney(line.unitCostBase || sourceLine.unitCostBase);
           line.taxRate = 0;
+          line.taxCodeId = undefined;
+          line.taxCode = undefined;
         } else if (isDirect) {
           line.accountId = line.accountId || settings.defaultPurchaseExpenseAccountId;
           if (!line.accountId) {
@@ -549,14 +568,14 @@ export class PostPurchaseReturnUseCase {
         line.taxAmountBase = roundMoney(lineTotalBase * (line.taxRate || 0));
 
         if (item.trackInventory) {
-          const qtyInBaseUom = await this.convertToBaseUom(
+          const conversionResult = await this.convertToBaseUom(
             companyId,
             line.returnQty,
+            line.uomId,
             line.uom,
-            item.baseUom,
-            item.id,
-            item.code
+            item
           );
+          const qtyInBaseUom = conversionResult.qtyInBaseUom;
 
           const reversesMovementId = this.findOriginalMovementId(
             line,
@@ -579,19 +598,34 @@ export class PostPurchaseReturnUseCase {
               reversesMovementId,
             } as any,
             currentUser: purchaseReturn.createdBy,
+            metadata: {
+              uomConversion: {
+                conversionId: conversionResult.trace.conversionId,
+                mode: conversionResult.trace.mode,
+                appliedFactor: conversionResult.trace.factor,
+                sourceQty: line.returnQty,
+                sourceUomId: line.uomId,
+                sourceUom: line.uom,
+                baseUomId: item.baseUomId,
+                baseUom: item.baseUom,
+              },
+            },
             transaction,
           } as any);
 
           line.stockMovementId = movement.id;
         }
 
-        if (isAfterInvoice) {
-          if (!line.accountId) {
+        if (isAfterInvoice && shouldCreateVoucher) {
+          const creditAccountId = item.trackInventory
+            ? this.resolveInventoryAccount(item, inventorySettings?.defaultInventoryAssetAccountId)
+            : line.accountId;
+          if (!creditAccountId) {
             throw new Error(`accountId is required for AFTER_INVOICE return line ${line.lineId}`);
           }
 
           voucherLines.push({
-            accountId: line.accountId,
+            accountId: creditAccountId,
             side: 'Credit',
             baseAmount: lineTotalBase,
             docAmount: lineTotalDoc,
@@ -624,7 +658,23 @@ export class PostPurchaseReturnUseCase {
               },
             });
           }
-        } else if (isDirect) {
+        } else if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && shouldCreateVoucher) {
+          const inventoryAccountId = this.resolveInventoryAccount(item, inventorySettings?.defaultInventoryAssetAccountId);
+          voucherLines.push({
+            accountId: inventoryAccountId,
+            side: 'Credit',
+            baseAmount: lineTotalBase,
+            docAmount: lineTotalDoc,
+            notes: `Return before invoice: ${line.itemName} x ${line.returnQty}`,
+            metadata: {
+              sourceModule: 'purchases',
+              sourceType: 'PURCHASE_RETURN',
+              sourceId: purchaseReturn.id,
+              lineId: line.lineId,
+              itemId: line.itemId,
+            },
+          });
+        } else if (isDirect && shouldCreateVoucher) {
            if (!line.accountId) throw new Error(`Account is required for direct return line ${line.lineId}`);
            voucherLines.push({
              accountId: line.accountId,
@@ -740,6 +790,48 @@ export class PostPurchaseReturnUseCase {
           invoice.updatedAt = new Date();
           await this.purchaseInvoiceRepo.update(invoice, transaction);
         }
+      } else if (shouldCreateVoucher) {
+        if (!settings.defaultGRNIAccountId) {
+          throw new Error('Default GRNI account is required for perpetual goods-return reversals before invoice.');
+        }
+
+        voucherLines.push({
+          accountId: settings.defaultGRNIAccountId,
+          side: 'Debit',
+          baseAmount: purchaseReturn.grandTotalBase,
+          docAmount: purchaseReturn.grandTotalDoc,
+          notes: `GRNI reversal - ${purchaseReturn.vendorName} - Return ${purchaseReturn.returnNumber}`,
+          metadata: {
+            sourceModule: 'purchases',
+            sourceType: 'PURCHASE_RETURN',
+            sourceId: purchaseReturn.id,
+            vendorId: purchaseReturn.vendorId,
+          },
+        });
+
+        const voucher = await this.accountingPostingService.postInTransaction(
+          {
+            companyId,
+            voucherType: VoucherType.PURCHASE_RETURN,
+            voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+            date: purchaseReturn.returnDate,
+            description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+            currency: purchaseReturn.currency,
+            exchangeRate: purchaseReturn.exchangeRate,
+            lines: voucherLines,
+            metadata: {
+              sourceModule: 'purchases',
+              sourceType: 'PURCHASE_RETURN',
+              sourceId: purchaseReturn.id,
+              originType: 'purchase_return',
+            },
+            createdBy: purchaseReturn.createdBy,
+            postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
+            reference: purchaseReturn.returnNumber,
+          },
+          transaction
+        );
+        purchaseReturn.voucherId = voucher.id;
       } else {
         purchaseReturn.voucherId = null;
       }
@@ -765,6 +857,14 @@ export class PostPurchaseReturnUseCase {
     return vendor.defaultAPAccountId || defaultAPAccountId;
   }
 
+  private resolveInventoryAccount(item: Item, defaultInventoryAccountId?: string): string {
+    const inventoryAccountId = item.inventoryAssetAccountId || defaultInventoryAccountId;
+    if (!inventoryAccountId) {
+      throw new Error(`No inventory account configured for item ${item.code}`);
+    }
+    return inventoryAccountId;
+  }
+
   private async resolvePurchaseTaxAccount(companyId: string, taxCodeId?: string): Promise<string> {
     if (!taxCodeId) throw new Error('taxCodeId is required for tax reversal line');
     const taxCode = await this.taxCodeRepo.getById(companyId, taxCodeId);
@@ -778,36 +878,20 @@ export class PostPurchaseReturnUseCase {
   private async convertToBaseUom(
     companyId: string,
     qty: number,
+    uomId: string | undefined,
     uom: string,
-    baseUom: string,
-    itemId: string,
-    itemCode: string
-  ): Promise<number> {
-    if (uom.toUpperCase() === baseUom.toUpperCase()) {
-      return qty;
-    }
-
-    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-    const normalizedFrom = uom.toUpperCase();
-    const normalizedTo = baseUom.toUpperCase();
-
-    const direct = conversions.find(
-      (conversion) =>
-        conversion.active
-        && conversion.fromUom.toUpperCase() === normalizedFrom
-        && conversion.toUom.toUpperCase() === normalizedTo
-    );
-    if (direct) return roundLedgerMoney(qty * direct.factor);
-
-    const reverse = conversions.find(
-      (conversion) =>
-        conversion.active
-        && conversion.fromUom.toUpperCase() === normalizedTo
-        && conversion.toUom.toUpperCase() === normalizedFrom
-    );
-    if (reverse) return roundLedgerMoney(qty / reverse.factor);
-
-    throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    item: Item
+  ): Promise<ItemQtyToBaseUomResult> {
+    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundLedgerMoney,
+      itemCode: item.code,
+    });
   }
 
   private async getPreviouslyReturnedQtyForPILine(
@@ -938,6 +1022,7 @@ export class UpdatePurchaseReturnUseCase {
           itemCode: item.code,
           itemName: item.name,
           returnQty,
+          uomId: lineInput.uomId || item.purchaseUomId || item.baseUomId,
           uom: lineInput.uom || item.purchaseUom || item.baseUom,
           unitCostDoc,
           unitCostBase,

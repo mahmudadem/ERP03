@@ -8,7 +8,8 @@ class DisableModuleForCompanyUseCase {
     }
     async execute(input) {
         // Validate companyId + moduleName
-        if (!input.companyId || !input.moduleName) {
+        const moduleName = String(input.moduleName || '').trim().toLowerCase();
+        if (!input.companyId || !moduleName) {
             throw ApiError_1.ApiError.badRequest("Missing required fields");
         }
         // Load company
@@ -17,18 +18,21 @@ class DisableModuleForCompanyUseCase {
             throw ApiError_1.ApiError.notFound("Company not found");
         }
         // If module not active → throw error
-        if (!company.modules || !company.modules.includes(input.moduleName)) {
+        const normalizedModules = (company.modules || [])
+            .map((m) => String(m || '').trim().toLowerCase())
+            .filter(Boolean);
+        if (!normalizedModules.includes(moduleName)) {
             throw ApiError_1.ApiError.badRequest("Module is not enabled for this company");
         }
         // Ensure safe modules (DO NOT allow disabling "core" module)
-        if (input.moduleName === 'core') {
+        if (moduleName === 'core') {
             throw ApiError_1.ApiError.forbidden("Cannot disable core module");
         }
         // Remove from list
-        const newModules = company.modules.filter(m => m !== input.moduleName);
+        const newModules = normalizedModules.filter((m) => m !== moduleName);
         await this.companyRepository.update(input.companyId, { modules: newModules });
         // Return success DTO
-        return { moduleName: input.moduleName, status: 'disabled' };
+        return { moduleName, status: 'disabled' };
     }
 }
 exports.DisableModuleForCompanyUseCase = DisableModuleForCompanyUseCase;

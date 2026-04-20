@@ -6,6 +6,7 @@ import { SalesSettings } from '../../domain/sales/entities/SalesSettings';
 
 export interface SalesSettingsDTO {
   companyId: string;
+  workflowMode: 'SIMPLE' | 'OPERATIONAL';
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -38,6 +39,7 @@ export interface SalesOrderLineDTO {
   itemType: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   trackInventory: boolean;
   orderedQty: number;
+  uomId?: string;
   uom: string;
   deliveredQty: number;
   invoicedQty: number;
@@ -89,6 +91,7 @@ export interface DeliveryNoteLineDTO {
   itemCode: string;
   itemName: string;
   deliveredQty: number;
+  uomId?: string;
   uom: string;
   unitCostBase: number;
   lineCostBase: number;
@@ -128,6 +131,7 @@ export interface SalesInvoiceLineDTO {
   itemName: string;
   trackInventory: boolean;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   lineTotalDoc: number;
@@ -191,6 +195,7 @@ export interface SalesReturnLineDTO {
   itemCode: string;
   itemName: string;
   returnQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc?: number;
   unitPriceBase?: number;
@@ -259,6 +264,7 @@ export class SalesDTOMapper {
   static toSettingsDTO(settings: SalesSettings): SalesSettingsDTO {
     return {
       companyId: settings.companyId,
+      workflowMode: settings.workflowMode,
       allowDirectInvoicing: settings.allowDirectInvoicing,
       requireSOForStockItems: settings.requireSOForStockItems,
       defaultARAccountId: settings.defaultARAccountId,
@@ -293,6 +299,7 @@ export class SalesDTOMapper {
       itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
+      uomId: line.uomId,
       uom: line.uom,
       deliveredQty: line.deliveredQty,
       invoicedQty: line.invoicedQty,
@@ -348,6 +355,7 @@ export class SalesDTOMapper {
       itemCode: line.itemCode,
       itemName: line.itemName,
       deliveredQty: line.deliveredQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostBase: line.unitCostBase,
       lineCostBase: line.lineCostBase,
@@ -391,6 +399,7 @@ export class SalesDTOMapper {
       itemName: line.itemName,
       trackInventory: line.trackInventory,
       invoicedQty: line.invoicedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
       lineTotalDoc: line.lineTotalDoc,
@@ -458,6 +467,7 @@ export class SalesDTOMapper {
       itemCode: line.itemCode,
       itemName: line.itemName,
       returnQty: line.returnQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
       unitPriceBase: line.unitPriceBase,

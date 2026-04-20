@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { companyModulesApi } from '../../api/companyModules';
+import { emitCompanyModulesRefresh } from '../../utils/companyModulesEvents';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { CheckCircle, Loader2 } from 'lucide-react';
@@ -43,6 +44,8 @@ export const ModuleInitializationWizard: React.FC<ModuleInitializationWizardProp
       await companyModulesApi.initialize(companyId, moduleCode, {
         completedAt: new Date().toISOString(),
       });
+
+      emitCompanyModulesRefresh({ companyId, moduleCode });
 
       // Call custom completion handler if provided
       if (onComplete) {

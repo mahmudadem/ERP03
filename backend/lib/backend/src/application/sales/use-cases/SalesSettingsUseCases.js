@@ -2,184 +2,42 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateSalesSettingsUseCase = exports.GetSalesSettingsUseCase = exports.InitializeSalesUseCase = void 0;
 const crypto_1 = require("crypto");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const SalesSettings_1 = require("../../../domain/sales/entities/SalesSettings");
-const PostingRole_1 = require("../../../domain/designer/entities/PostingRole");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
-const SALES_VOUCHER_SEED_TEMPLATES = {
-    sales_order: {
-        name: 'Sales Order',
-        code: 'sales_order',
-        module: 'SALES',
-        prefix: 'SO',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'orderDate', label: 'Order Date', type: 'DATE', required: true, isPosting: false, postingRole: null },
-            { id: 'customerId', label: 'Customer', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: false, postingRole: null },
-            { id: 'notes', label: 'Internal Notes', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '250px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '120px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Order Details', fieldIds: ['orderDate', 'customerId', 'currency', 'exchangeRate'] },
-                { id: 'lines', title: 'Items', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    delivery_note: {
-        name: 'Delivery Note',
-        code: 'delivery_note',
-        module: 'SALES',
-        prefix: 'DN',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'deliveryDate', label: 'Delivery Date', type: 'DATE', required: true, isPosting: false, postingRole: null },
-            { id: 'customerId', label: 'Customer', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'warehouseId', label: 'Warehouse', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'salesOrderId', label: 'SO Reference', type: 'SELECT', required: false, isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '250px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'uom', width: '80px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Delivery Info', fieldIds: ['deliveryDate', 'customerId', 'warehouseId', 'salesOrderId'] },
-                { id: 'lines', title: 'Delivered Items', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    sales_invoice: {
-        name: 'Sales Invoice',
-        code: 'sales_invoice',
-        module: 'SALES',
-        prefix: 'SI',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'date', label: 'Date', type: 'DATE', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.DATE },
-            { id: 'customerId', label: 'Customer', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.CURRENCY },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: true, postingRole: PostingRole_1.PostingRole.EXCHANGE_RATE },
-            { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, isPosting: true, postingRole: PostingRole_1.PostingRole.AMOUNT },
-            { id: 'description', label: 'Description', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '220px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '100px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Sales Invoice Header', fieldIds: ['date', 'customerId', 'currency', 'exchangeRate', 'totalAmount', 'description'] },
-                { id: 'lines', title: 'Invoice Lines', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-    sales_return: {
-        name: 'Sales Return',
-        code: 'sales_return',
-        module: 'SALES',
-        prefix: 'SR',
-        sidebarGroup: 'Documents',
-        headerFields: [
-            { id: 'date', label: 'Date', type: 'DATE', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.DATE },
-            { id: 'customerId', label: 'Customer', type: 'SELECT', required: true, isPosting: false, postingRole: null },
-            { id: 'currency', label: 'Currency', type: 'CURRENCY_SELECT', required: true, isPosting: true, postingRole: PostingRole_1.PostingRole.CURRENCY },
-            { id: 'exchangeRate', label: 'Exchange Rate', type: 'NUMBER', defaultValue: 1, isPosting: true, postingRole: PostingRole_1.PostingRole.EXCHANGE_RATE },
-            { id: 'totalAmount', label: 'Total Amount', type: 'NUMBER', required: false, readOnly: true, calculated: true, isPosting: true, postingRole: PostingRole_1.PostingRole.AMOUNT },
-            { id: 'description', label: 'Description', type: 'TEXT', isPosting: false, postingRole: null },
-        ],
-        tableColumns: [
-            { fieldId: 'itemId', width: '220px' },
-            { fieldId: 'quantity', width: '100px' },
-            { fieldId: 'unitPrice', width: '100px' },
-            { fieldId: 'lineTotal', width: '120px' },
-        ],
-        layout: {
-            sections: [
-                { id: 'header', title: 'Sales Return Header', fieldIds: ['date', 'customerId', 'currency', 'exchangeRate', 'totalAmount', 'description'] },
-                { id: 'lines', title: 'Return Lines', fieldIds: ['lineItems'] },
-            ],
-        },
-    },
-};
-const cloneTemplateValue = (value) => {
-    if (value === undefined || value === null) {
-        return value;
-    }
-    return JSON.parse(JSON.stringify(value));
-};
-const buildFallbackVoucherType = (companyId, templateCode) => {
-    const template = SALES_VOUCHER_SEED_TEMPLATES[templateCode];
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), 2);
-};
-const buildFallbackVoucherForm = (companyId, typeId, createdBy, templateCode) => {
-    const template = SALES_VOUCHER_SEED_TEMPLATES[templateCode];
-    const now = new Date();
-    return {
-        id: (0, crypto_1.randomUUID)(),
-        companyId,
-        module: template.module,
-        typeId,
-        name: template.name,
-        code: template.code,
-        description: `${template.name} system default form`,
-        prefix: template.prefix,
-        isDefault: true,
-        isSystemGenerated: true,
-        isLocked: false,
-        enabled: true,
-        headerFields: cloneTemplateValue(template.headerFields),
-        tableColumns: cloneTemplateValue(template.tableColumns),
-        layout: cloneTemplateValue(template.layout),
-        uiModeOverrides: null,
-        rules: [],
-        actions: [],
-        isMultiLine: true,
-        tableStyle: 'web',
-        baseType: template.code,
-        createdAt: now,
-        updatedAt: now,
-        createdBy,
-    };
-};
+// Note: Hardcoded templates are now deprecated and will be removed in a future PR
+// Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
+const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
 const cloneVoucherTypeForCompany = (companyId, template) => {
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), template.isMultiLine, cloneTemplateValue(template.rules), cloneTemplateValue(template.actions), template.defaultCurrency);
+    var _a;
+    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
 };
-const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
+const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Can be from system metadata too
+) => {
     var _a, _b;
     const now = new Date();
     return {
         id: (0, crypto_1.randomUUID)(),
         companyId,
-        module: template.module,
+        module: template.module || 'SALES',
         typeId,
         name: template.name,
         code: template.code,
-        description: template.description || '',
+        description: template.description || `Default form for ${template.name}`,
         prefix: template.prefix,
         numberFormat: template.numberFormat,
         isDefault: true,
         isSystemGenerated: true,
-        isLocked: false,
+        isLocked: true,
         enabled: (_a = template.enabled) !== null && _a !== void 0 ? _a : true,
-        headerFields: cloneTemplateValue(template.headerFields),
-        tableColumns: cloneTemplateValue(template.tableColumns),
-        layout: cloneTemplateValue(template.layout),
+        headerFields: cloneTemplateValue(template.headerFields) || [],
+        tableColumns: cloneTemplateValue(template.tableColumns) || [],
+        layout: cloneTemplateValue(template.layout) || { sections: [] },
         uiModeOverrides: cloneTemplateValue(template.uiModeOverrides),
         rules: cloneTemplateValue(template.rules) || [],
         actions: cloneTemplateValue(template.actions) || [],
         isMultiLine: (_b = template.isMultiLine) !== null && _b !== void 0 ? _b : true,
         tableStyle: template.tableStyle || 'web',
-        defaultCurrency: template.defaultCurrency,
         baseType: template.baseType || template.code,
         createdAt: now,
         updatedAt: now,
@@ -187,22 +45,27 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
     };
 };
 const ensureSalesVoucherDefinitions = async (companyId, createdBy, voucherTypeRepo, voucherFormRepo) => {
-    const templates = Object.values(SALES_VOUCHER_SEED_TEMPLATES);
-    for (const template of templates) {
+    // Fetch ALL system templates from the unified source of truth
+    const systemTemplates = await voucherTypeRepo.getSystemTemplates();
+    const salesTemplates = systemTemplates.filter(t => t.module === 'SALES');
+    if (salesTemplates.length === 0) {
+        console.warn('[SalesSettingsUseCases] No SALES system templates found. Check seeder!');
+    }
+    for (const template of salesTemplates) {
         const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
         // If it exists but in the WRONG module, we need to re-home it
         if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
             console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
-            await voucherTypeRepo.deleteVoucherType(companyId, existingType.id); // Delete the misplaced one
-            // Proceed to create the new one below
+            await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
+            // We'll create it below
         }
         const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
             ? existingType
-            : cloneVoucherTypeForCompany(companyId, existingType || buildFallbackVoucherType(companyId, template.code));
-        // Ensure correct module tagging
+            : cloneVoucherTypeForCompany(companyId, template);
+        // Set metadata correctly
         companyVoucherType.module = template.module;
         await voucherTypeRepo.createVoucherType(companyVoucherType);
-        // FORM MIGRATION / RE-HOMING - Run for EVERY template
+        // FORM MIGRATION / RE-HOMING
         const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
         for (const form of allExistingForms) {
             if (form.module !== template.module) {
@@ -214,20 +77,19 @@ const ensureSalesVoucherDefinitions = async (companyId, createdBy, voucherTypeRe
         const companyForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
         if (companyForms.length > 0)
             continue;
-        const fallbackForm = await voucherFormRepo.getDefaultForType(companyId, template.code);
-        const companyForm = fallbackForm
-            ? cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, fallbackForm)
-            : buildFallbackVoucherForm(companyId, companyVoucherType.id, createdBy, template.code);
+        // Create default form from template
+        const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
         await voucherFormRepo.create(companyForm);
     }
 };
 class InitializeSalesUseCase {
-    constructor(settingsRepo, accountRepo, companyModuleRepo, voucherTypeRepo, voucherFormRepo) {
+    constructor(settingsRepo, accountRepo, companyModuleRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.companyModuleRepo = companyModuleRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
@@ -250,10 +112,21 @@ class InitializeSalesUseCase {
             throw new Error(`Default AR account not found: ${input.defaultARAccountId}`);
         }
         await ensureSalesVoucherDefinitions(input.companyId, input.userId || 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
-        const settings = new SalesSettings_1.SalesSettings({
-            companyId: input.companyId,
+        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
+        if (this.inventorySettingsRepo) {
+            const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
+            const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+            DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+        }
+        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
             allowDirectInvoicing: (_a = input.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
             requireSOForStockItems: (_b = input.requireSOForStockItems) !== null && _b !== void 0 ? _b : false,
+        });
+        const settings = new SalesSettings_1.SalesSettings({
+            companyId: input.companyId,
+            workflowMode,
+            allowDirectInvoicing: workflowDefaults.allowDirectInvoicing,
+            requireSOForStockItems: workflowDefaults.requireSOForStockItems,
             defaultARAccountId: input.defaultARAccountId,
             defaultRevenueAccountId: input.defaultRevenueAccountId,
             defaultCOGSAccountId: input.defaultCOGSAccountId,
@@ -316,22 +189,33 @@ class GetSalesSettingsUseCase {
 }
 exports.GetSalesSettingsUseCase = GetSalesSettingsUseCase;
 class UpdateSalesSettingsUseCase {
-    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo) {
+    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
         const existing = await this.settingsRepo.getSettings(input.companyId);
         if (!existing) {
             throw new Error('Sales settings are not initialized');
         }
-        const nextAllowDirectInvoicing = (_a = input.allowDirectInvoicing) !== null && _a !== void 0 ? _a : existing.allowDirectInvoicing;
-        const nextARAccountId = (_b = input.defaultARAccountId) !== null && _b !== void 0 ? _b : existing.defaultARAccountId;
-        const nextRevenueAccountId = (_c = input.defaultRevenueAccountId) !== null && _c !== void 0 ? _c : existing.defaultRevenueAccountId;
-        const nextDefaultInventoryAccountId = (_d = input.defaultInventoryAccountId) !== null && _d !== void 0 ? _d : existing.defaultInventoryAccountId;
+        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
+        if (this.inventorySettingsRepo) {
+            const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
+            const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+            DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+        }
+        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
+            allowDirectInvoicing: (_b = input.allowDirectInvoicing) !== null && _b !== void 0 ? _b : existing.allowDirectInvoicing,
+            requireSOForStockItems: (_c = input.requireSOForStockItems) !== null && _c !== void 0 ? _c : existing.requireSOForStockItems,
+        });
+        const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
+        const nextARAccountId = (_d = input.defaultARAccountId) !== null && _d !== void 0 ? _d : existing.defaultARAccountId;
+        const nextRevenueAccountId = (_e = input.defaultRevenueAccountId) !== null && _e !== void 0 ? _e : existing.defaultRevenueAccountId;
+        const nextDefaultInventoryAccountId = (_f = input.defaultInventoryAccountId) !== null && _f !== void 0 ? _f : existing.defaultInventoryAccountId;
         if (!nextRevenueAccountId)
             throw new Error('defaultRevenueAccountId is required');
         const [revenueAccount, inventoryAccount, arAccount] = await Promise.all([
@@ -354,27 +238,28 @@ class UpdateSalesSettingsUseCase {
         await ensureSalesVoucherDefinitions(input.companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
         const updated = new SalesSettings_1.SalesSettings({
             companyId: existing.companyId,
+            workflowMode,
             allowDirectInvoicing: nextAllowDirectInvoicing,
-            requireSOForStockItems: (_e = input.requireSOForStockItems) !== null && _e !== void 0 ? _e : existing.requireSOForStockItems,
+            requireSOForStockItems: workflowDefaults.requireSOForStockItems,
             defaultARAccountId: nextARAccountId,
             defaultRevenueAccountId: nextRevenueAccountId,
-            defaultCOGSAccountId: (_f = input.defaultCOGSAccountId) !== null && _f !== void 0 ? _f : existing.defaultCOGSAccountId,
+            defaultCOGSAccountId: (_g = input.defaultCOGSAccountId) !== null && _g !== void 0 ? _g : existing.defaultCOGSAccountId,
             defaultInventoryAccountId: nextDefaultInventoryAccountId,
-            defaultSalesExpenseAccountId: (_g = input.defaultSalesExpenseAccountId) !== null && _g !== void 0 ? _g : existing.defaultSalesExpenseAccountId,
-            allowOverDelivery: (_h = input.allowOverDelivery) !== null && _h !== void 0 ? _h : existing.allowOverDelivery,
-            overDeliveryTolerancePct: (_j = input.overDeliveryTolerancePct) !== null && _j !== void 0 ? _j : existing.overDeliveryTolerancePct,
-            overInvoiceTolerancePct: (_k = input.overInvoiceTolerancePct) !== null && _k !== void 0 ? _k : existing.overInvoiceTolerancePct,
-            defaultPaymentTermsDays: (_l = input.defaultPaymentTermsDays) !== null && _l !== void 0 ? _l : existing.defaultPaymentTermsDays,
-            salesVoucherTypeId: (_m = input.salesVoucherTypeId) !== null && _m !== void 0 ? _m : existing.salesVoucherTypeId,
-            defaultWarehouseId: (_o = input.defaultWarehouseId) !== null && _o !== void 0 ? _o : existing.defaultWarehouseId,
-            soNumberPrefix: (_p = input.soNumberPrefix) !== null && _p !== void 0 ? _p : existing.soNumberPrefix,
-            soNumberNextSeq: (_q = input.soNumberNextSeq) !== null && _q !== void 0 ? _q : existing.soNumberNextSeq,
-            dnNumberPrefix: (_r = input.dnNumberPrefix) !== null && _r !== void 0 ? _r : existing.dnNumberPrefix,
-            dnNumberNextSeq: (_s = input.dnNumberNextSeq) !== null && _s !== void 0 ? _s : existing.dnNumberNextSeq,
-            siNumberPrefix: (_t = input.siNumberPrefix) !== null && _t !== void 0 ? _t : existing.siNumberPrefix,
-            siNumberNextSeq: (_u = input.siNumberNextSeq) !== null && _u !== void 0 ? _u : existing.siNumberNextSeq,
-            srNumberPrefix: (_v = input.srNumberPrefix) !== null && _v !== void 0 ? _v : existing.srNumberPrefix,
-            srNumberNextSeq: (_w = input.srNumberNextSeq) !== null && _w !== void 0 ? _w : existing.srNumberNextSeq,
+            defaultSalesExpenseAccountId: (_h = input.defaultSalesExpenseAccountId) !== null && _h !== void 0 ? _h : existing.defaultSalesExpenseAccountId,
+            allowOverDelivery: (_j = input.allowOverDelivery) !== null && _j !== void 0 ? _j : existing.allowOverDelivery,
+            overDeliveryTolerancePct: (_k = input.overDeliveryTolerancePct) !== null && _k !== void 0 ? _k : existing.overDeliveryTolerancePct,
+            overInvoiceTolerancePct: (_l = input.overInvoiceTolerancePct) !== null && _l !== void 0 ? _l : existing.overInvoiceTolerancePct,
+            defaultPaymentTermsDays: (_m = input.defaultPaymentTermsDays) !== null && _m !== void 0 ? _m : existing.defaultPaymentTermsDays,
+            salesVoucherTypeId: (_o = input.salesVoucherTypeId) !== null && _o !== void 0 ? _o : existing.salesVoucherTypeId,
+            defaultWarehouseId: (_p = input.defaultWarehouseId) !== null && _p !== void 0 ? _p : existing.defaultWarehouseId,
+            soNumberPrefix: (_q = input.soNumberPrefix) !== null && _q !== void 0 ? _q : existing.soNumberPrefix,
+            soNumberNextSeq: (_r = input.soNumberNextSeq) !== null && _r !== void 0 ? _r : existing.soNumberNextSeq,
+            dnNumberPrefix: (_s = input.dnNumberPrefix) !== null && _s !== void 0 ? _s : existing.dnNumberPrefix,
+            dnNumberNextSeq: (_t = input.dnNumberNextSeq) !== null && _t !== void 0 ? _t : existing.dnNumberNextSeq,
+            siNumberPrefix: (_u = input.siNumberPrefix) !== null && _u !== void 0 ? _u : existing.siNumberPrefix,
+            siNumberNextSeq: (_v = input.siNumberNextSeq) !== null && _v !== void 0 ? _v : existing.siNumberNextSeq,
+            srNumberPrefix: (_w = input.srNumberPrefix) !== null && _w !== void 0 ? _w : existing.srNumberPrefix,
+            srNumberNextSeq: (_x = input.srNumberNextSeq) !== null && _x !== void 0 ? _x : existing.srNumberNextSeq,
         });
         await this.settingsRepo.saveSettings(updated);
         return updated;

@@ -147,7 +147,7 @@ const makeVoucherFormRepo = (seed: VoucherFormDefinition[] = []) => {
 };
 
 describe('Sales settings use-cases', () => {
-  it('initialization creates company-specific SI/SR voucher types and forms from system templates', async () => {
+  it('initialization creates company-specific sales voucher types and forms from system templates', async () => {
     const storedSettings: { current: SalesSettings | null } = { current: null };
     const moduleState: { current: any } = { current: null };
     const typeRepo = makeVoucherTypeRepo([
@@ -193,16 +193,26 @@ describe('Sales settings use-cases', () => {
     const companyTypes = typeRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
     const companyForms = formRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
 
-    expect(companyTypes).toHaveLength(2);
-    expect(companyTypes.map((entry) => entry.code).sort()).toEqual(['sales_invoice', 'sales_return']);
-    expect(companyForms).toHaveLength(2);
-    expect(companyForms.map((entry) => entry.code).sort()).toEqual(['sales_invoice', 'sales_return']);
+    expect(companyTypes).toHaveLength(4);
+    expect(companyTypes.map((entry) => entry.code).sort()).toEqual([
+      'delivery_note',
+      'sales_invoice',
+      'sales_order',
+      'sales_return',
+    ]);
+    expect(companyForms).toHaveLength(4);
+    expect(companyForms.map((entry) => entry.code).sort()).toEqual([
+      'delivery_note',
+      'sales_invoice',
+      'sales_order',
+      'sales_return',
+    ]);
     expect(companyForms.every((entry) => companyTypes.some((type) => type.id === entry.typeId))).toBe(true);
     expect(moduleState.current?.initialized).toBe(true);
     expect(storedSettings.current?.companyId).toBe(COMPANY_ID);
   });
 
-  it('get settings backfills SI/SR voucher types and forms even when system templates are absent', async () => {
+  it('get settings backfills sales voucher types and forms even when system templates are absent', async () => {
     const existingSettings = makeExistingSettings();
     const typeRepo = makeVoucherTypeRepo();
     const formRepo = makeVoucherFormRepo();
@@ -220,9 +230,19 @@ describe('Sales settings use-cases', () => {
     const companyForms = formRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
 
     expect(result).toBe(existingSettings);
-    expect(companyTypes).toHaveLength(2);
-    expect(companyForms).toHaveLength(2);
-    expect(companyTypes.map((entry) => entry.code).sort()).toEqual(['sales_invoice', 'sales_return']);
-    expect(companyForms.map((entry) => entry.code).sort()).toEqual(['sales_invoice', 'sales_return']);
+    expect(companyTypes).toHaveLength(4);
+    expect(companyForms).toHaveLength(4);
+    expect(companyTypes.map((entry) => entry.code).sort()).toEqual([
+      'delivery_note',
+      'sales_invoice',
+      'sales_order',
+      'sales_return',
+    ]);
+    expect(companyForms.map((entry) => entry.code).sort()).toEqual([
+      'delivery_note',
+      'sales_invoice',
+      'sales_order',
+      'sales_return',
+    ]);
   });
 });

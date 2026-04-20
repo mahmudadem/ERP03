@@ -8,6 +8,7 @@ export interface GoodsReceiptLine {
   itemCode: string;
   itemName: string;
   receivedQty: number;
+  uomId?: string;
   uom: string;
   unitCostDoc: number;
   unitCostBase: number;
@@ -30,6 +31,7 @@ export interface GoodsReceiptProps {
   lines: GoodsReceiptLine[];
   status?: GRNStatus;
   notes?: string;
+  voucherId?: string | null;
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +61,7 @@ export class GoodsReceipt {
   lines: GoodsReceiptLine[];
   status: GRNStatus;
   notes?: string;
+  voucherId?: string | null;
   readonly createdBy: string;
   readonly createdAt: Date;
   updatedAt: Date;
@@ -93,6 +96,7 @@ export class GoodsReceipt {
     this.status = status;
 
     this.notes = props.notes;
+    this.voucherId = props.voucherId ?? null;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
@@ -125,6 +129,7 @@ export class GoodsReceipt {
       itemCode: line.itemCode || '',
       itemName: line.itemName || '',
       receivedQty: line.receivedQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostDoc: line.unitCostDoc,
       unitCostBase: roundMoney(line.unitCostBase),
@@ -149,6 +154,7 @@ export class GoodsReceipt {
       lines: this.lines.map((line) => ({ ...line })),
       status: this.status,
       notes: this.notes,
+      voucherId: this.voucherId,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
@@ -169,6 +175,7 @@ export class GoodsReceipt {
       lines: data.lines || [],
       status: data.status || 'DRAFT',
       notes: data.notes,
+      voucherId: data.voucherId ?? null,
       createdBy: data.createdBy || 'SYSTEM',
       createdAt: toDate(data.createdAt),
       updatedAt: toDate(data.updatedAt),

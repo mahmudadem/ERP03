@@ -108,7 +108,7 @@ class ReverseAndReplaceVoucherUseCase {
             const getAccountMetadata = async (cid, accountIds) => {
                 const accounts = await Promise.all(accountIds.map(id => { var _a; return (_a = this.accountRepo) === null || _a === void 0 ? void 0 : _a.getById(cid, id); }));
                 return accounts
-                    .filter(acc => acc !== null)
+                    .filter((acc) => !!acc)
                     .map(acc => ({
                     accountId: acc.id,
                     classification: acc.classification || 'ASSET',
@@ -118,7 +118,7 @@ class ReverseAndReplaceVoucherUseCase {
                 }));
             };
             const submitUseCase = new SubmitVoucherUseCase_1.SubmitVoucherUseCase(this.voucherRepo, this.policyConfigProvider, new ApprovalPolicyService_1.ApprovalPolicyService(), getAccountMetadata);
-            const pendingReversal = await submitUseCase.execute(companyId, savedReversal.id, userId);
+            const pendingReversal = await submitUseCase.execute(companyId, savedReversal, userId, transaction);
             // NOTE: Reversal is now PENDING (or APPROVED if Mode A)
             // If APPROVED, it will NOT auto-post here because this transaction is meant to create correction entries.
             // The user/system should post it via the normal verify/post flow.

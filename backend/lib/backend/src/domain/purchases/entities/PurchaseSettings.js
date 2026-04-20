@@ -3,14 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PurchaseSettings = void 0;
 class PurchaseSettings {
     constructor(props) {
-        var _a, _b;
+        var _a, _b, _c;
         if (!((_a = props.companyId) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('PurchaseSettings companyId is required');
         this.companyId = props.companyId;
+        this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
         this.allowDirectInvoicing = props.allowDirectInvoicing;
         this.requirePOForStockItems = props.requirePOForStockItems;
         this.defaultAPAccountId = ((_b = props.defaultAPAccountId) === null || _b === void 0 ? void 0 : _b.trim()) || undefined;
         this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
+        this.defaultGRNIAccountId = ((_c = props.defaultGRNIAccountId) === null || _c === void 0 ? void 0 : _c.trim()) || undefined;
         this.allowOverDelivery = props.allowOverDelivery;
         this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
         this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
@@ -30,6 +32,7 @@ class PurchaseSettings {
     static createDefault(companyId, defaultAPAccountId) {
         return new PurchaseSettings({
             companyId,
+            workflowMode: 'OPERATIONAL',
             allowDirectInvoicing: true,
             requirePOForStockItems: false,
             defaultAPAccountId,
@@ -50,10 +53,12 @@ class PurchaseSettings {
     toJSON() {
         return {
             companyId: this.companyId,
+            workflowMode: this.workflowMode,
             allowDirectInvoicing: this.allowDirectInvoicing,
             requirePOForStockItems: this.requirePOForStockItems,
             defaultAPAccountId: this.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
+            defaultGRNIAccountId: this.defaultGRNIAccountId,
             allowOverDelivery: this.allowOverDelivery,
             overDeliveryTolerancePct: this.overDeliveryTolerancePct,
             overInvoiceTolerancePct: this.overInvoiceTolerancePct,
@@ -75,10 +80,12 @@ class PurchaseSettings {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         return new PurchaseSettings({
             companyId: data.companyId,
+            workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
             allowDirectInvoicing: (_a = data.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
             requirePOForStockItems: (_b = data.requirePOForStockItems) !== null && _b !== void 0 ? _b : false,
             defaultAPAccountId: data.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
+            defaultGRNIAccountId: data.defaultGRNIAccountId,
             allowOverDelivery: (_c = data.allowOverDelivery) !== null && _c !== void 0 ? _c : false,
             overDeliveryTolerancePct: (_d = data.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
             overInvoiceTolerancePct: (_e = data.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,

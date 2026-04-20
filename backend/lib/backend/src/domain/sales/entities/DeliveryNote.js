@@ -74,6 +74,7 @@ class DeliveryNote {
             itemCode: line.itemCode || '',
             itemName: line.itemName || '',
             deliveredQty: line.deliveredQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitCostBase,
             lineCostBase,

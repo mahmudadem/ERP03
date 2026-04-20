@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom'; // Important for nested routing
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -7,8 +7,8 @@ import { WindowsDesktop } from '../modules/accounting/components/WindowsDesktop'
 import { AccountsProvider } from '../context/AccountsContext';
 import { CostCentersProvider } from '../context/CostCentersContext';
 import { useVoucherActions } from '../hooks/useVoucherActions';
+import { useDocumentActions } from '../hooks/useDocumentActions';
 import { clsx } from 'clsx';
-import React from 'react'; // Added React import for React.useEffect
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { accountingApi } from '../api/accountingApi';
 import { VoucherPrintView } from '../modules/accounting/components/VoucherPrintView';
@@ -18,6 +18,7 @@ export const AppShell: React.FC = () => {
   const { uiMode, sidebarPinned } = useUserPreferences();
   const [isSidebarOpen, setIsSidebarOpen] = useState(sidebarPinned);
   const { handleSaveVoucher, handleSubmitVoucher, handleApproveVoucher, handleRejectVoucher, handleConfirmVoucher, post, cancel, reverse } = useVoucherActions();
+  const documentActions = useDocumentActions();
   const { i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const [isDesktop, setIsDesktop] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
@@ -132,6 +133,9 @@ export const AppShell: React.FC = () => {
             onPrintVoucher={(id) => {
                window.dispatchEvent(new CustomEvent('print-voucher', { detail: { id } }));
             }}
+            // Document Actions
+            onSalesAction={documentActions.sales}
+            onPurchasesAction={documentActions.purchases}
           />
         )}
 

@@ -5,6 +5,10 @@ import { SalesInvoiceDTO, SalesOrderDTO, SalesSettingsDTO, salesApi } from '../.
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import SalesInitializationWizard from '../wizards/SalesInitializationWizard';
+import {
+  resolveSalesWorkflowMode,
+  shouldShowOperationalDocuments,
+} from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -21,6 +25,7 @@ const SalesHomePage: React.FC = () => {
   const { companyId } = useCompanyAccess();
 
   const [initialized, setInitialized] = useState<boolean | null>(null);
+  const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [orders, setOrders] = useState<SalesOrderDTO[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +42,7 @@ const SalesHomePage: React.FC = () => {
         const salesModule = modules.find((module) => module.moduleCode === 'sales');
         if (salesModule && !salesModule.initialized) {
           setInitialized(false);
+          setSettings(null);
           setOrders([]);
           setInvoices([]);
           return;
@@ -48,15 +54,18 @@ const SalesHomePage: React.FC = () => {
 
       if (!currentSettings) {
         setInitialized(false);
+        setSettings(null);
         setOrders([]);
         setInvoices([]);
         return;
       }
 
       setInitialized(true);
+      setSettings(currentSettings);
 
+      const showOperationalDocuments = shouldShowOperationalDocuments(resolveSalesWorkflowMode(currentSettings));
       const [ordersResult, invoicesResult] = await Promise.all([
-        salesApi.listSOs({ limit: 200 }),
+        showOperationalDocuments ? salesApi.listSOs({ limit: 200 }) : Promise.resolve([]),
         salesApi.listSIs({ limit: 500 }),
       ]);
 
@@ -68,10 +77,10 @@ const SalesHomePage: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to load sales dashboard', error);
       setLoadError(
-        error?.response?.data?.error?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to load sales module.'
+        error?.response?.data?.error?.message
+          || error?.response?.data?.message
+          || error?.message
+          || 'Failed to load sales module.'
       );
     } finally {
       setLoading(false);
@@ -79,9 +88,10 @@ const SalesHomePage: React.FC = () => {
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, [companyId, reloadTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const showOperationalDocuments = shouldShowOperationalDocuments(resolveSalesWorkflowMode(settings));
   const today = todayIso();
   const postedInvoices = invoices.filter((invoice) => invoice.status === 'POSTED');
   const totalRevenue = postedInvoices.reduce((sum, invoice) => sum + invoice.grandTotalBase, 0);
@@ -92,6 +102,9 @@ const SalesHomePage: React.FC = () => {
   const overdueInvoices = postedInvoices.filter(
     (invoice) => !!invoice.dueDate && invoice.dueDate < today && invoice.outstandingAmountBase > 0
   ).length;
+  const recentInvoices = [...invoices]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    .slice(0, 8);
 
   const topCustomers = Array.from(
     postedInvoices.reduce<Map<string, { customerName: string; total: number }>>((acc, invoice) => {
@@ -148,10 +161,10 @@ const SalesHomePage: React.FC = () => {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => navigate('/sales/orders/new')}
+            onClick={() => navigate(showOperationalDocuments ? '/sales/orders/new' : '/sales/invoices/new')}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            New SO
+            {showOperationalDocuments ? 'New SO' : 'New Sales Invoice'}
           </button>
           <button
             type="button"
@@ -172,36 +185,66 @@ const SalesHomePage: React.FC = () => {
 
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Sales Orders</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {showOperationalDocuments ? 'Recent Sales Orders' : 'Recent Sales Invoices'}
+          </h2>
           <button
             type="button"
             className="text-sm font-medium text-primary-700 hover:underline"
-            onClick={() => navigate('/sales/orders')}
+            onClick={() => navigate(showOperationalDocuments ? '/sales/orders' : '/sales/invoices')}
           >
             View all
           </button>
         </div>
         <div className="space-y-2">
-          {orders.slice(0, 8).map((order) => (
-            <button
-              key={order.id}
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
-              onClick={() => navigate(`/sales/orders/${order.id}`)}
-            >
-              <div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {order.orderNumber}
-                </div>
-                <div className="text-xs text-slate-600">
-                  {order.customerName} • {order.status}
-                </div>
-              </div>
-              <div className="text-xs text-slate-500">{order.orderDate}</div>
-            </button>
-          ))}
-          {!loading && orders.length === 0 && (
-            <div className="py-4 text-center text-sm text-slate-500">No sales orders yet.</div>
+          {showOperationalDocuments ? (
+            <>
+              {orders.slice(0, 8).map((order) => (
+                <button
+                  key={order.id}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
+                  onClick={() => navigate(`/sales/orders/${order.id}`)}
+                >
+                  <div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {order.orderNumber}
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      {order.customerName} • {order.status}
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-500">{order.orderDate}</div>
+                </button>
+              ))}
+              {!loading && orders.length === 0 && (
+                <div className="py-4 text-center text-sm text-slate-500">No sales orders yet.</div>
+              )}
+            </>
+          ) : (
+            <>
+              {recentInvoices.map((invoice) => (
+                <button
+                  key={invoice.id}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
+                  onClick={() => navigate(`/sales/invoices/${invoice.id}`)}
+                >
+                  <div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {invoice.invoiceNumber}
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      {invoice.customerName} • {invoice.status}
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-500">{invoice.invoiceDate}</div>
+                </button>
+              ))}
+              {!loading && recentInvoices.length === 0 && (
+                <div className="py-4 text-center text-sm text-slate-500">No sales invoices yet.</div>
+              )}
+            </>
           )}
         </div>
       </Card>

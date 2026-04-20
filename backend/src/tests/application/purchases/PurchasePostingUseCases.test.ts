@@ -27,6 +27,7 @@ const makeSettings = (
     requirePOForStockItems: mode === 'CONTROLLED',
     defaultAPAccountId: 'AP-100',
     defaultPurchaseExpenseAccountId: 'EXP-100',
+    defaultGRNIAccountId: 'GRNI-100',
     allowOverDelivery: false,
     overDeliveryTolerancePct: 0,
     overInvoiceTolerancePct: 0,
@@ -286,6 +287,19 @@ const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PER
   })),
 });
 
+const makeAccountingPostingService = (voucherRepo?: any, ledgerRepo?: any) =>
+  new SubledgerVoucherPostingService(
+    (voucherRepo || {
+      save: jest.fn(async (voucher: any) => voucher),
+      delete: jest.fn(async () => true),
+    }) as any,
+    (ledgerRepo || {
+      recordForVoucher: jest.fn(async () => undefined),
+      deleteForVoucher: jest.fn(async () => undefined),
+    }) as any,
+    { getBaseCurrency: jest.fn(async () => 'USD') } as any
+  );
+
 describe('Purchase posting use-cases (Phase 2)', () => {
   it('1) PostGRN creates PURCHASE_RECEIPT inventory movement per line', async () => {
     const settings = makeSettings('CONTROLLED');
@@ -309,15 +323,20 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     const itemRepo = { getItem: jest.fn(async () => item) };
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
 
     const useCase = new PostGoodsReceiptUseCase(
       settingsRepo as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       goodsReceiptRepo as any,
       purchaseOrderRepo as any,
       itemRepo as any,
       warehouseRepo as any,
       uomConversionRepo as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
 
@@ -350,15 +369,20 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     const itemRepo = { getItem: jest.fn(async () => item) };
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
 
     const useCase = new PostGoodsReceiptUseCase(
       settingsRepo as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       goodsReceiptRepo as any,
       purchaseOrderRepo as any,
       itemRepo as any,
       warehouseRepo as any,
       uomConversionRepo as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
 
@@ -380,15 +404,20 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     const itemRepo = { getItem: jest.fn(async () => item) };
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
 
     const useCase = new PostGoodsReceiptUseCase(
       settingsRepo as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
       goodsReceiptRepo as any,
       purchaseOrderRepo as any,
       itemRepo as any,
       warehouseRepo as any,
       uomConversionRepo as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
 
@@ -396,7 +425,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     expect(po.status).toBe('PARTIALLY_RECEIVED');
   });
 
-  it('4) PostGRN creates NO GL entries (no voucher on GRN)', async () => {
+  it('4) PostGRN in PERPETUAL mode creates inventory/GRNI voucher', async () => {
     const settings = makeSettings('CONTROLLED');
     const item = makeItem('stock-4', { trackInventory: true });
     const po = makePO({ id: 'po-4', item, orderedQty: 10, receivedQty: 0 });
@@ -410,20 +439,32 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     const itemRepo = { getItem: jest.fn(async () => item) };
     const warehouseRepo = { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) };
     const uomConversionRepo = { getConversionsForItem: jest.fn(async () => []) };
+    const voucherRepo = { save: jest.fn(async (voucher: any) => ({ ...voucher, id: 'v-grn-1' })), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
 
     const useCase = new PostGoodsReceiptUseCase(
       settingsRepo as any,
+      makeInventorySettingsRepository('PERPETUAL') as any,
       goodsReceiptRepo as any,
       purchaseOrderRepo as any,
       itemRepo as any,
       warehouseRepo as any,
       uomConversionRepo as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
 
     const posted = await useCase.execute(COMPANY_ID, grn.id);
-    expect((posted as any).voucherId).toBeUndefined();
+    expect(voucherRepo.save).toHaveBeenCalledTimes(1);
+    expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
+    const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
+    expect(posted.voucherId).toBe(savedVoucher.id);
+    const hasInventoryDebit = savedVoucher.lines.some((line: any) => line.accountId === 'INV-100' && line.side === 'Debit');
+    const hasGRNICredit = savedVoucher.lines.some((line: any) => line.accountId === 'GRNI-100' && line.side === 'Credit');
+    expect(hasInventoryDebit).toBe(true);
+    expect(hasGRNICredit).toBe(true);
   });
 
   it('5) PostPI (CONTROLLED stock): blocks if invoicedQty > receivedQty', async () => {

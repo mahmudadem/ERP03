@@ -8,6 +8,7 @@ export interface DeliveryNoteLine {
   itemCode: string;
   itemName: string;
   deliveredQty: number;
+  uomId?: string;
   uom: string;
   unitCostBase: number;
   lineCostBase: number;
@@ -120,6 +121,7 @@ export class DeliveryNote {
       itemCode: line.itemCode || '',
       itemName: line.itemName || '',
       deliveredQty: line.deliveredQty,
+      uomId: line.uomId,
       uom: line.uom,
       unitCostBase,
       lineCostBase,

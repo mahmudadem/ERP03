@@ -108,6 +108,7 @@ class PurchaseReturn {
             itemCode: line.itemCode || '',
             itemName: line.itemName || '',
             returnQty: line.returnQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase,

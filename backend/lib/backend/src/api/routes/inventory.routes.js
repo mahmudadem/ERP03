@@ -25,8 +25,16 @@ router.post('/warehouses', (0, permissionGuard_1.permissionGuard)('inventory.war
 router.get('/warehouses', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.view'), InventoryController_1.InventoryController.listWarehouses);
 router.get('/warehouses/:id', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.view'), InventoryController_1.InventoryController.getWarehouse);
 router.put('/warehouses/:id', (0, permissionGuard_1.permissionGuard)('inventory.warehouses.manage'), InventoryController_1.InventoryController.updateWarehouse);
+router.post('/uoms', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.createUom);
+router.get('/uoms', (0, permissionGuard_1.permissionGuard)('inventory.uom.view'), InventoryController_1.InventoryController.listUoms);
+router.get('/uoms/:id', (0, permissionGuard_1.permissionGuard)('inventory.uom.view'), InventoryController_1.InventoryController.getUom);
+router.put('/uoms/:id', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.updateUom);
 router.post('/uom-conversions', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.createUomConversion);
 router.get('/uom-conversions/:itemId', (0, permissionGuard_1.permissionGuard)('inventory.uom.view'), InventoryController_1.InventoryController.listUomConversions);
+router.get('/uom-conversions/:id/impact', (0, permissionGuard_1.permissionGuard)('inventory.uom.view'), InventoryController_1.InventoryController.getUomConversionImpact);
+router.post('/uom-conversions/:id/apply-correction', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.applyUomConversionCorrection);
+router.put('/uom-conversions/:id', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.updateUomConversion);
+router.delete('/uom-conversions/:id', (0, permissionGuard_1.permissionGuard)('inventory.uom.manage'), InventoryController_1.InventoryController.deleteUomConversion);
 router.get('/stock-levels', (0, permissionGuard_1.permissionGuard)('inventory.stock.view'), InventoryController_1.InventoryController.getStockLevels);
 router.post('/stock-levels/reserve', (0, permissionGuard_1.permissionGuard)('inventory.stock.adjust'), InventoryController_1.InventoryController.reserveStock);
 router.post('/stock-levels/release', (0, permissionGuard_1.permissionGuard)('inventory.stock.adjust'), InventoryController_1.InventoryController.releaseStock);

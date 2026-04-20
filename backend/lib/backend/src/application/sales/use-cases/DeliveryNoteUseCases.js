@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListDeliveryNotesUseCase = exports.GetDeliveryNoteUseCase = exports.PostDeliveryNoteUseCase = exports.CreateDeliveryNoteUseCase = void 0;
 const crypto_1 = require("crypto");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
+const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const DeliveryNote_1 = require("../../../domain/sales/entities/DeliveryNote");
+const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const SalesOrderUseCases_1 = require("./SalesOrderUseCases");
 const SalesPostingHelpers_1 = require("./SalesPostingHelpers");
 const findSOLine = (so, soLineId, itemId) => {
@@ -79,6 +81,7 @@ class CreateDeliveryNoteUseCase {
                 itemCode: item.code,
                 itemName: item.name,
                 deliveredQty,
+                uomId: line.uomId || (soLine === null || soLine === void 0 ? void 0 : soLine.uomId) || item.salesUomId || item.baseUomId,
                 uom: line.uom || (soLine === null || soLine === void 0 ? void 0 : soLine.uom) || item.salesUom || item.baseUom,
                 unitCostBase: 0,
                 lineCostBase: 0,
@@ -125,6 +128,7 @@ class CreateDeliveryNoteUseCase {
             soLineId: line.lineId,
             itemId: line.itemId,
             deliveredQty: (0, SalesPostingHelpers_1.roundMoney)(line.orderedQty - line.deliveredQty),
+            uomId: line.uomId,
             uom: line.uom,
             description: line.description,
         }));
@@ -132,8 +136,9 @@ class CreateDeliveryNoteUseCase {
 }
 exports.CreateDeliveryNoteUseCase = CreateDeliveryNoteUseCase;
 class PostDeliveryNoteUseCase {
-    constructor(settingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
+        this.inventorySettingsRepo = inventorySettingsRepo;
         this.deliveryNoteRepo = deliveryNoteRepo;
         this.salesOrderRepo = salesOrderRepo;
         this.itemRepo = itemRepo;
@@ -150,6 +155,8 @@ class PostDeliveryNoteUseCase {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
+        const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
         const dn = await this.deliveryNoteRepo.getById(companyId, id);
         if (!dn)
             throw new Error(`Delivery note not found: ${id}`);
@@ -197,7 +204,8 @@ class PostDeliveryNoteUseCase {
                         }
                     }
                 }
-                const qtyInBaseUom = await this.convertToBaseUom(companyId, line.deliveredQty, line.uom, item.baseUom, item.id, item.code);
+                const conversionResult = await this.convertToBaseUom(companyId, line.deliveredQty, line.uomId, line.uom, item);
+                const qtyInBaseUom = conversionResult.qtyInBaseUom;
                 const movement = await this.inventoryService.processOUT({
                     companyId,
                     itemId: line.itemId,
@@ -211,6 +219,18 @@ class PostDeliveryNoteUseCase {
                         lineId: line.lineId,
                     },
                     currentUser: dn.createdBy,
+                    metadata: {
+                        uomConversion: {
+                            conversionId: conversionResult.trace.conversionId,
+                            mode: conversionResult.trace.mode,
+                            appliedFactor: conversionResult.trace.factor,
+                            sourceQty: line.deliveredQty,
+                            sourceUomId: line.uomId,
+                            sourceUom: line.uom,
+                            baseUomId: item.baseUomId,
+                            baseUom: item.baseUom,
+                        },
+                    },
                     transaction,
                 });
                 line.stockMovementId = movement.id;
@@ -239,7 +259,7 @@ class PostDeliveryNoteUseCase {
                     soLine.deliveredQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.deliveredQty + line.deliveredQty);
                 }
             }
-            if (cogsBucket.size > 0) {
+            if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
                 const cogsVoucherLines = [];
                 for (const line of Array.from(cogsBucket.values())) {
                     const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
@@ -279,6 +299,9 @@ class PostDeliveryNoteUseCase {
                     reference: dn.dnNumber,
                 }, transaction);
                 dn.cogsVoucherId = voucher.id;
+            }
+            else {
+                dn.cogsVoucherId = null;
             }
             if (so) {
                 so.status = (0, SalesPostingHelpers_1.updateSOStatus)(so);
@@ -320,24 +343,17 @@ class PostDeliveryNoteUseCase {
         }
         return { cogsAccountId, inventoryAccountId };
     }
-    async convertToBaseUom(companyId, qty, uom, baseUom, itemId, itemCode) {
-        if (uom.toUpperCase() === baseUom.toUpperCase()) {
-            return qty;
-        }
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-        const normalizedFrom = uom.toUpperCase();
-        const normalizedTo = baseUom.toUpperCase();
-        const direct = conversions.find((conversion) => conversion.active &&
-            conversion.fromUom.toUpperCase() === normalizedFrom &&
-            conversion.toUom.toUpperCase() === normalizedTo);
-        if (direct)
-            return (0, SalesPostingHelpers_1.roundMoney)(qty * direct.factor);
-        const reverse = conversions.find((conversion) => conversion.active &&
-            conversion.fromUom.toUpperCase() === normalizedTo &&
-            conversion.toUom.toUpperCase() === normalizedFrom);
-        if (reverse)
-            return (0, SalesPostingHelpers_1.roundMoney)(qty / reverse.factor);
-        throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    async convertToBaseUom(companyId, qty, uomId, uom, item) {
+        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+            qty,
+            item,
+            conversions,
+            fromUomId: uomId,
+            fromUom: uom,
+            round: SalesPostingHelpers_1.roundMoney,
+            itemCode: item.code,
+        });
     }
     assertPositiveTrackedCost(qty, unitCostBase, itemName, documentLabel) {
         if (qty > 0 && !(unitCostBase > 0)) {

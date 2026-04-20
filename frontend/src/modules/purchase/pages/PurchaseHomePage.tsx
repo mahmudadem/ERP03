@@ -13,6 +13,10 @@ import {
 import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import PurchaseInitializationWizard from '../wizards/PurchaseInitializationWizard';
+import {
+  resolvePurchaseWorkflowMode,
+  shouldShowOperationalDocuments,
+} from '../../../utils/documentPolicy';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -44,6 +48,7 @@ const PurchaseHomePage: React.FC = () => {
   const { companyId } = useCompanyAccess();
 
   const [initialized, setInitialized] = useState<boolean | null>(null);
+  const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [orders, setOrders] = useState<PurchaseOrderDTO[]>([]);
   const [receipts, setReceipts] = useState<GoodsReceiptDTO[]>([]);
   const [invoices, setInvoices] = useState<PurchaseInvoiceDTO[]>([]);
@@ -59,9 +64,10 @@ const PurchaseHomePage: React.FC = () => {
 
       if (companyId) {
         const modules = await companyModulesApi.list(companyId);
-        const purchaseModule = modules.find((m) => m.moduleCode === 'purchase');
+        const purchaseModule = modules.find((module) => module.moduleCode === 'purchase');
         if (purchaseModule && !purchaseModule.initialized) {
           setInitialized(false);
+          setSettings(null);
           setOrders([]);
           setReceipts([]);
           setInvoices([]);
@@ -75,6 +81,7 @@ const PurchaseHomePage: React.FC = () => {
 
       if (!currentSettings) {
         setInitialized(false);
+        setSettings(null);
         setOrders([]);
         setReceipts([]);
         setInvoices([]);
@@ -83,10 +90,12 @@ const PurchaseHomePage: React.FC = () => {
       }
 
       setInitialized(true);
+      setSettings(currentSettings);
 
+      const showOperational = shouldShowOperationalDocuments(resolvePurchaseWorkflowMode(currentSettings));
       const [ordersResult, receiptsResult, invoicesResult, returnsResult] = await Promise.all([
-        purchasesApi.listPOs({ limit: 100 }),
-        purchasesApi.listGRNs({ limit: 100 }),
+        showOperational ? purchasesApi.listPOs({ limit: 100 }) : Promise.resolve([]),
+        showOperational ? purchasesApi.listGRNs({ limit: 100 }) : Promise.resolve([]),
         purchasesApi.listPIs({ status: 'POSTED', limit: 100 }),
         purchasesApi.listReturns(),
       ]);
@@ -103,10 +112,10 @@ const PurchaseHomePage: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to load purchases dashboard', error);
       setLoadError(
-        error?.response?.data?.error?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          'Failed to load purchases module.'
+        error?.response?.data?.error?.message
+          || error?.response?.data?.message
+          || error?.message
+          || 'Failed to load purchases module.'
       );
     } finally {
       setLoading(false);
@@ -114,43 +123,49 @@ const PurchaseHomePage: React.FC = () => {
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, [companyId, reloadTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const showOperational = shouldShowOperationalDocuments(resolvePurchaseWorkflowMode(settings));
   const today = todayIso();
+  const postedInvoices = invoices.filter((invoice) => invoice.status === 'POSTED');
   const openPOsCount = orders.filter((order) => !['CLOSED', 'CANCELLED'].includes(order.status)).length;
   const pendingGRNsCount = receipts.filter((receipt) => receipt.status === 'DRAFT').length;
-  const unpaidInvoicesCount = invoices.filter((invoice) => invoice.paymentStatus !== 'PAID').length;
-  const overdueInvoicesCount = invoices.filter((invoice) => {
+  const unpaidInvoicesCount = postedInvoices.filter((invoice) => invoice.paymentStatus !== 'PAID').length;
+  const overdueInvoicesCount = postedInvoices.filter((invoice) => {
     if (invoice.paymentStatus === 'PAID') return false;
     if (!invoice.dueDate) return false;
     return invoice.dueDate < today;
   }).length;
+  const totalPurchases = postedInvoices.reduce((sum, invoice) => sum + invoice.grandTotalBase, 0);
+  const postedReturnsCount = returns.filter((entry) => entry.status === 'POSTED').length;
 
   const recentActivity = useMemo(() => {
     const events: Array<{ id: string; date: string; label: string; subtitle: string; href: string }> = [];
 
-    orders.forEach((order) => {
-      events.push({
-        id: `PO-${order.id}`,
-        date: order.updatedAt || order.createdAt,
-        label: `PO ${order.orderNumber}`,
-        subtitle: `${order.vendorName} • ${order.status}`,
-        href: `/purchases/orders/${order.id}`,
+    if (showOperational) {
+      orders.forEach((order) => {
+        events.push({
+          id: `PO-${order.id}`,
+          date: order.updatedAt || order.createdAt,
+          label: `PO ${order.orderNumber}`,
+          subtitle: `${order.vendorName} • ${order.status}`,
+          href: `/purchases/orders/${order.id}`,
+        });
       });
-    });
 
-    receipts.forEach((receipt) => {
-      events.push({
-        id: `GRN-${receipt.id}`,
-        date: receipt.postedAt || receipt.updatedAt || receipt.createdAt,
-        label: `GRN ${receipt.grnNumber}`,
-        subtitle: `${receipt.vendorName} • ${receipt.status}`,
-        href: `/purchases/goods-receipts/${receipt.id}`,
+      receipts.forEach((receipt) => {
+        events.push({
+          id: `GRN-${receipt.id}`,
+          date: receipt.postedAt || receipt.updatedAt || receipt.createdAt,
+          label: `GRN ${receipt.grnNumber}`,
+          subtitle: `${receipt.vendorName} • ${receipt.status}`,
+          href: `/purchases/goods-receipts/${receipt.id}`,
+        });
       });
-    });
+    }
 
-    invoices.forEach((invoice) => {
+    postedInvoices.forEach((invoice) => {
       events.push({
         id: `PI-${invoice.id}`,
         date: invoice.postedAt || invoice.updatedAt || invoice.createdAt,
@@ -173,7 +188,7 @@ const PurchaseHomePage: React.FC = () => {
     return events
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
-  }, [invoices, orders, receipts, returns]);
+  }, [orders, postedInvoices, receipts, returns, showOperational]);
 
   if (loading && initialized === null) {
     return (
@@ -213,10 +228,10 @@ const PurchaseHomePage: React.FC = () => {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => navigate('/purchases/orders/new')}
+            onClick={() => navigate(showOperational ? '/purchases/orders/new' : '/purchases/invoices/new')}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            New PO
+            {showOperational ? 'New PO' : 'New Purchase Invoice'}
           </button>
           <button
             type="button"
@@ -229,42 +244,75 @@ const PurchaseHomePage: React.FC = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatsCard
-          icon={<ShoppingCart className="h-5 w-5" />}
-          label="Open POs"
-          value={loading ? '...' : String(openPOsCount)}
-          accentClass="bg-blue-100 text-blue-700"
-        />
-        <StatsCard
-          icon={<ClipboardList className="h-5 w-5" />}
-          label="Pending GRNs"
-          value={loading ? '...' : String(pendingGRNsCount)}
-          accentClass="bg-amber-100 text-amber-700"
-        />
-        <StatsCard
-          icon={<FileText className="h-5 w-5" />}
-          label="Unpaid Invoices"
-          value={loading ? '...' : String(unpaidInvoicesCount)}
-          accentClass="bg-emerald-100 text-emerald-700"
-        />
-        <StatsCard
-          icon={<AlertTriangle className="h-5 w-5" />}
-          label="Overdue Invoices"
-          value={loading ? '...' : String(overdueInvoicesCount)}
-          accentClass="bg-rose-100 text-rose-700"
-        />
+        {showOperational ? (
+          <>
+            <StatsCard
+              icon={<ShoppingCart className="h-5 w-5" />}
+              label="Open POs"
+              value={loading ? '...' : String(openPOsCount)}
+              accentClass="bg-blue-100 text-blue-700"
+            />
+            <StatsCard
+              icon={<ClipboardList className="h-5 w-5" />}
+              label="Pending GRNs"
+              value={loading ? '...' : String(pendingGRNsCount)}
+              accentClass="bg-amber-100 text-amber-700"
+            />
+            <StatsCard
+              icon={<FileText className="h-5 w-5" />}
+              label="Unpaid Invoices"
+              value={loading ? '...' : String(unpaidInvoicesCount)}
+              accentClass="bg-emerald-100 text-emerald-700"
+            />
+            <StatsCard
+              icon={<AlertTriangle className="h-5 w-5" />}
+              label="Overdue Invoices"
+              value={loading ? '...' : String(overdueInvoicesCount)}
+              accentClass="bg-rose-100 text-rose-700"
+            />
+          </>
+        ) : (
+          <>
+            <StatsCard
+              icon={<FileText className="h-5 w-5" />}
+              label="Total Purchases"
+              value={loading ? '...' : totalPurchases.toFixed(2)}
+              accentClass="bg-emerald-100 text-emerald-700"
+            />
+            <StatsCard
+              icon={<ClipboardList className="h-5 w-5" />}
+              label="Posted Invoices"
+              value={loading ? '...' : String(postedInvoices.length)}
+              accentClass="bg-blue-100 text-blue-700"
+            />
+            <StatsCard
+              icon={<AlertTriangle className="h-5 w-5" />}
+              label="Overdue Invoices"
+              value={loading ? '...' : String(overdueInvoicesCount)}
+              accentClass="bg-rose-100 text-rose-700"
+            />
+            <StatsCard
+              icon={<Undo2 className="h-5 w-5" />}
+              label="Posted Returns"
+              value={loading ? '...' : String(postedReturnsCount)}
+              accentClass="bg-amber-100 text-amber-700"
+            />
+          </>
+        )}
       </div>
 
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            {showOperational ? 'Recent Activity' : 'Recent Purchase Invoices & Returns'}
+          </h2>
           <button
             type="button"
             className="inline-flex items-center gap-2 text-sm font-medium text-primary-700"
-            onClick={() => navigate('/purchases/returns')}
+            onClick={() => navigate(showOperational ? '/purchases/returns' : '/purchases/invoices')}
           >
             <Undo2 className="h-4 w-4" />
-            Returns
+            {showOperational ? 'Returns' : 'Invoices'}
           </button>
         </div>
         <div className="space-y-2">
@@ -276,14 +324,10 @@ const PurchaseHomePage: React.FC = () => {
               onClick={() => navigate(activity.href)}
             >
               <div>
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {activity.label}
-                </div>
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{activity.label}</div>
                 <div className="text-xs text-slate-600">{activity.subtitle}</div>
               </div>
-              <div className="text-xs text-slate-500">
-                {new Date(activity.date).toLocaleDateString()}
-              </div>
+              <div className="text-xs text-slate-500">{new Date(activity.date).toLocaleDateString()}</div>
             </button>
           ))}
           {!loading && recentActivity.length === 0 && (

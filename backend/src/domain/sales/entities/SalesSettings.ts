@@ -1,5 +1,8 @@
+export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
+
 export interface SalesSettingsProps {
   companyId: string;
+  workflowMode?: WorkflowMode;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -25,6 +28,7 @@ export interface SalesSettingsProps {
 
 export class SalesSettings {
   readonly companyId: string;
+  workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
@@ -52,6 +56,7 @@ export class SalesSettings {
     if (!props.defaultRevenueAccountId?.trim()) throw new Error('SalesSettings defaultRevenueAccountId is required');
 
     this.companyId = props.companyId;
+    this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requireSOForStockItems = props.requireSOForStockItems;
     this.defaultARAccountId = props.defaultARAccountId?.trim() || undefined;
@@ -82,6 +87,7 @@ export class SalesSettings {
   ): SalesSettings {
     return new SalesSettings({
       companyId,
+      workflowMode: 'OPERATIONAL',
       allowDirectInvoicing: true,
       requireSOForStockItems: false,
       defaultARAccountId,
@@ -104,6 +110,7 @@ export class SalesSettings {
   toJSON(): Record<string, any> {
     return {
       companyId: this.companyId,
+      workflowMode: this.workflowMode,
       allowDirectInvoicing: this.allowDirectInvoicing,
       requireSOForStockItems: this.requireSOForStockItems,
       defaultARAccountId: this.defaultARAccountId,
@@ -131,6 +138,7 @@ export class SalesSettings {
   static fromJSON(data: any): SalesSettings {
     return new SalesSettings({
       companyId: data.companyId,
+      workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requireSOForStockItems: data.requireSOForStockItems ?? false,
       defaultARAccountId: data.defaultARAccountId,

@@ -1,11 +1,13 @@
 ﻿import { randomUUID } from 'crypto';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { DeliveryNote, DeliveryNoteLine } from '../../../domain/sales/entities/DeliveryNote';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IUomConversionRepository } from '../../../repository/interfaces/inventory/IUomConversionRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/IDeliveryNoteRepository';
@@ -14,6 +16,10 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { roundMoney, updateSOStatus } from './SalesPostingHelpers';
 
@@ -23,6 +29,7 @@ export interface DeliveryNoteLineInput {
   soLineId?: string;
   itemId?: string;
   deliveredQty: number;
+  uomId?: string;
   uom?: string;
   description?: string;
 }
@@ -128,6 +135,7 @@ export class CreateDeliveryNoteUseCase {
         itemCode: item.code,
         itemName: item.name,
         deliveredQty,
+        uomId: line.uomId || soLine?.uomId || item.salesUomId || item.baseUomId,
         uom: line.uom || soLine?.uom || item.salesUom || item.baseUom,
         unitCostBase: 0,
         lineCostBase: 0,
@@ -183,6 +191,7 @@ export class CreateDeliveryNoteUseCase {
         soLineId: line.lineId,
         itemId: line.itemId,
         deliveredQty: roundMoney(line.orderedQty - line.deliveredQty),
+        uomId: line.uomId,
         uom: line.uom,
         description: line.description,
       }));
@@ -192,6 +201,7 @@ export class CreateDeliveryNoteUseCase {
 export class PostDeliveryNoteUseCase {
   constructor(
     private readonly settingsRepo: ISalesSettingsRepository,
+    private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly itemRepo: IItemRepository,
@@ -207,6 +217,8 @@ export class PostDeliveryNoteUseCase {
   async execute(companyId: string, id: string): Promise<DeliveryNote> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
+    const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
 
     const dn = await this.deliveryNoteRepo.getById(companyId, id);
     if (!dn) throw new Error(`Delivery note not found: ${id}`);
@@ -258,7 +270,14 @@ export class PostDeliveryNoteUseCase {
           }
         }
 
-        const qtyInBaseUom = await this.convertToBaseUom(companyId, line.deliveredQty, line.uom, item.baseUom, item.id, item.code);
+        const conversionResult = await this.convertToBaseUom(
+          companyId,
+          line.deliveredQty,
+          line.uomId,
+          line.uom,
+          item
+        );
+        const qtyInBaseUom = conversionResult.qtyInBaseUom;
 
         const movement = await this.inventoryService.processOUT({
           companyId,
@@ -273,6 +292,18 @@ export class PostDeliveryNoteUseCase {
             lineId: line.lineId,
           },
           currentUser: dn.createdBy,
+          metadata: {
+            uomConversion: {
+              conversionId: conversionResult.trace.conversionId,
+              mode: conversionResult.trace.mode,
+              appliedFactor: conversionResult.trace.factor,
+              sourceQty: line.deliveredQty,
+              sourceUomId: line.uomId,
+              sourceUom: line.uom,
+              baseUomId: item.baseUomId,
+              baseUom: item.baseUom,
+            },
+          },
           transaction,
         });
 
@@ -309,7 +340,7 @@ export class PostDeliveryNoteUseCase {
         }
       }
 
-      if (cogsBucket.size > 0) {
+      if (DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
         const cogsVoucherLines: Array<Record<string, any>> = [];
         for (const line of Array.from(cogsBucket.values())) {
           const amount = roundMoney(line.amountBase);
@@ -353,6 +384,8 @@ export class PostDeliveryNoteUseCase {
           transaction
         );
         dn.cogsVoucherId = voucher.id;
+      } else {
+        dn.cogsVoucherId = null;
       }
 
       if (so) {
@@ -412,36 +445,20 @@ export class PostDeliveryNoteUseCase {
   private async convertToBaseUom(
     companyId: string,
     qty: number,
+    uomId: string | undefined,
     uom: string,
-    baseUom: string,
-    itemId: string,
-    itemCode: string
-  ): Promise<number> {
-    if (uom.toUpperCase() === baseUom.toUpperCase()) {
-      return qty;
-    }
-
-    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-    const normalizedFrom = uom.toUpperCase();
-    const normalizedTo = baseUom.toUpperCase();
-
-    const direct = conversions.find(
-      (conversion) =>
-        conversion.active &&
-        conversion.fromUom.toUpperCase() === normalizedFrom &&
-        conversion.toUom.toUpperCase() === normalizedTo
-    );
-    if (direct) return roundMoney(qty * direct.factor);
-
-    const reverse = conversions.find(
-      (conversion) =>
-        conversion.active &&
-        conversion.fromUom.toUpperCase() === normalizedTo &&
-        conversion.toUom.toUpperCase() === normalizedFrom
-    );
-    if (reverse) return roundMoney(qty / reverse.factor);
-
-    throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    item: NonNullable<Awaited<ReturnType<IItemRepository['getItem']>>>
+  ): Promise<ItemQtyToBaseUomResult> {
+    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundMoney,
+      itemCode: item.code,
+    });
   }
 
   private assertPositiveTrackedCost(qty: number, unitCostBase: number, itemName: string, documentLabel: string): void {

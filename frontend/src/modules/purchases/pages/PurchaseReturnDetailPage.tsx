@@ -2,11 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CreatePurchaseReturnPayload, PurchaseInvoiceDTO, PurchaseReturnDTO, purchasesApi } from '../../../api/purchasesApi';
 import { sharedApi } from '../../../api/sharedApi';
-import { inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import { Card } from '../../../components/ui/Card';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
+import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -43,6 +46,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
     itemName: '',
     itemCode: '',
     returnQty: 0,
+    uomId: undefined,
     uom: '',
     unitCostDoc: 0,
     lineId: `new-${Date.now()}`
@@ -53,11 +57,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const [piOptions, setPiOptions] = useState<PurchaseInvoiceDTO[]>([]);
   const [selectedPiId, setSelectedPiId] = useState('');
   
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [taxCodes, setTaxCodes] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>(null);
+  const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
 
   const { settings: company } = useCompanySettings();
   const { data: currencies = [] } = useCompanyCurrencies();
@@ -68,6 +73,15 @@ const PurchaseReturnDetailPage: React.FC = () => {
     if (vendorId.trim()) return 'DIRECT';
     return '-';
   }, [goodsReceiptId, purchaseInvoiceId, vendorId]);
+
+  const itemById = useMemo(
+    () =>
+      items.reduce<Record<string, InventoryItemDTO>>((acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      }, {}),
+    [items]
+  );
 
   const loadReferenceData = async () => {
     try {
@@ -119,6 +133,37 @@ const PurchaseReturnDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const ensureItemUomOptions = async (itemId: string) => {
+    if (!itemId || uomOptionsByItemId[itemId] || !itemById[itemId]) return;
+    try {
+      const result = await inventoryApi.listUomConversions(itemId);
+      const conversions = unwrap<UomConversionDTO[]>(result) || [];
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], conversions),
+      }));
+    } catch (loadError) {
+      console.error('Failed to load UOM conversions', loadError);
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], []),
+      }));
+    }
+  };
+
+  useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        [...selectedLines, ...editLines]
+          .map((line) => line?.itemId)
+          .filter((itemId): itemId is string => Boolean(itemId))
+      )
+    );
+    ids.forEach((itemId) => {
+      void ensureItemUomOptions(itemId);
+    });
+  }, [selectedLines, editLines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchSourceData = async (options?: { purchaseInvoiceId?: string; goodsReceiptId?: string }) => {
     try {
       const targetPI = (options?.purchaseInvoiceId ?? purchaseInvoiceId).trim();
@@ -138,6 +183,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         setSelectedLines(pi.lines.map((l: any) => ({
           ...l,
           piLineId: l.lineId,
+          uomId: l.uomId,
           returnQty: 0, // Default to 0, let user enter
         })));
       } else if (targetGRN) {
@@ -148,6 +194,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         setSelectedLines(grn.lines.map((l: any) => ({
           ...l,
           grnLineId: l.lineId,
+          uomId: l.uomId,
           returnQty: 0,
         })));
       } else {
@@ -215,8 +262,13 @@ const PurchaseReturnDetailPage: React.FC = () => {
     setSelectedLines((prev) => prev.map((l) => (l.lineId === lineId ? { ...l, unitCostDoc: price } : l)));
   };
 
-  const handleUomChange = (lineId: string, uomValue: string) => {
-    setSelectedLines((prev) => prev.map((l) => (l.lineId === lineId ? { ...l, uom: uomValue.toUpperCase() } : l)));
+  const handleUomChange = (lineId: string, itemId: string, value: string) => {
+    const selected = (uomOptionsByItemId[itemId] || []).find((option) => (option.uomId || option.code) === value);
+    setSelectedLines((prev) =>
+      prev.map((line) =>
+        line.lineId === lineId ? { ...line, uomId: selected?.uomId, uom: selected?.code || '' } : line
+      )
+    );
   };
 
   const handleItemSelect = (index: number, itemId: string) => {
@@ -231,6 +283,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: sourceLine.itemId,
           itemCode: sourceLine.itemCode,
           itemName: sourceLine.itemName,
+          uomId: sourceLine.uomId,
           uom: sourceLine.uom,
           unitCostDoc: sourceLine.unitPriceDoc ?? sourceLine.unitCostDoc,
           piLineId: sourceLine.piLineId || (purchaseInvoiceId ? sourceLine.lineId : undefined),
@@ -243,6 +296,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
     } else {
       const item = items.find(i => i.id === itemId);
       if (!item) return;
+      const defaultUom = getDefaultItemUomOption(item, 'purchase');
       setSelectedLines(prev => {
         const copy = [...prev];
         copy[index] = {
@@ -250,8 +304,9 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: item.id,
           itemCode: item.code,
           itemName: item.name,
-          uom: item.purchaseUom || item.baseUom,
-          unitCostDoc: item.lastPurchasePrice || 0,
+          uomId: defaultUom?.uomId,
+          uom: defaultUom?.code || item.purchaseUom || item.baseUom,
+          unitCostDoc: (item as any).lastPurchasePrice || 0,
           availableQty: undefined,
           returnQty: 1,
         };
@@ -304,6 +359,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          uomId: l.uomId,
           uom: l.uom,
           description: l.description,
         })),
@@ -331,6 +387,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       itemName: '',
       itemCode: '',
       returnQty: 0,
+      uomId: undefined,
       uom: '',
       unitCostDoc: 0,
       lineId: `new-${Date.now()}`
@@ -397,6 +454,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       itemCode: l.itemCode,
       itemName: l.itemName,
       returnQty: l.returnQty,
+      uomId: l.uomId,
       uom: l.uom,
       unitCostDoc: l.unitCostDoc,
       accountId: l.accountId,
@@ -430,6 +488,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           itemId: l.itemId,
           returnQty: l.returnQty,
           unitCostDoc: l.unitCostDoc,
+          uomId: l.uomId,
           uom: l.uom,
           accountId: l.accountId,
           description: l.description,
@@ -515,23 +574,19 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Vendor (Manual Selection)</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+              <PartySelector 
                 value={vendorId}
-                onChange={(e) => {
-                  setVendorId(e.target.value);
-                  if (e.target.value) {
+                disabled={!!purchaseInvoiceId || !!goodsReceiptId}
+                onChange={(party) => {
+                  setVendorId(party?.id || '');
+                  if (party) {
                     setPurchaseInvoiceId('');
                     setGoodsReceiptId('');
+                    // Also update currency if party has a default
+                    if (party.defaultCurrency) setCurrency(party.defaultCurrency);
                   }
                 }}
-                disabled={!!purchaseInvoiceId || !!goodsReceiptId}
-              >
-                <option value="">-- Direct Return --</option>
-                {vendors.map(v => (
-                  <option key={v.id} value={v.id}>{v.displayName}</option>
-                ))}
-              </select>
+              />
             </div>
             <div className="md:col-span-2 flex justify-end">
               <button
@@ -560,11 +615,9 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Return Date</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={returnDate}
-                onChange={(e) => setReturnDate(e.target.value)}
+                onChange={(val) => setReturnDate(val)}
               />
             </div>
             <div>
@@ -651,12 +704,23 @@ const PurchaseReturnDetailPage: React.FC = () => {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <input
-                            type="text"
+                          <select
                             className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm uppercase focus:ring-1 focus:ring-indigo-500 outline-none"
-                            value={line.uom}
-                            onChange={(e) => handleUomChange(line.lineId, e.target.value)}
-                          />
+                            value={
+                              findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                              line.uomId ||
+                              line.uom
+                            }
+                            disabled={!line.itemId}
+                            onChange={(e) => handleUomChange(line.lineId, line.itemId, e.target.value)}
+                          >
+                            <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                            {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                              <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                                {option.code}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-4 py-3">
                           <input
@@ -912,7 +976,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
             {isEditMode ? (
-              <input type="date" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editReturnDate} onChange={(e) => setEditReturnDate(e.target.value)} />
+              <DatePicker 
+                value={editReturnDate}
+                onChange={(val) => setEditReturnDate(val)}
+                className="mt-1"
+              />
             ) : (
               <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.returnDate}</div>
             )}
@@ -988,12 +1056,32 @@ const PurchaseReturnDetailPage: React.FC = () => {
                       />
                     </td>
                     <td className="py-2">
-                      <input
-                        type="text"
-                        className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm uppercase"
-                        value={line.uom}
-                        onChange={(e) => setEditLines(prev => prev.map((l, i) => i === idx ? { ...l, uom: e.target.value.toUpperCase() } : l))}
-                      />
+                      <select
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm uppercase"
+                        value={
+                          findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                          line.uomId ||
+                          line.uom
+                        }
+                        disabled={!line.itemId}
+                        onChange={(e) => {
+                          const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                            (option) => (option.uomId || option.code) === e.target.value
+                          );
+                          setEditLines((prev) =>
+                            prev.map((entry, i) =>
+                              i === idx ? { ...entry, uomId: selected?.uomId, uom: selected?.code || '' } : entry
+                            )
+                          );
+                        }}
+                      >
+                        <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                        {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                          <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                            {option.code}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-2">
                       <input

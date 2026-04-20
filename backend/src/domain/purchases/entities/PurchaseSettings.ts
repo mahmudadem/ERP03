@@ -1,9 +1,13 @@
+export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
+
 export interface PurchaseSettingsProps {
   companyId: string;
+  workflowMode?: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -23,10 +27,12 @@ export interface PurchaseSettingsProps {
 
 export class PurchaseSettings {
   readonly companyId: string;
+  workflowMode: WorkflowMode;
   allowDirectInvoicing: boolean;
   requirePOForStockItems: boolean;
   defaultAPAccountId?: string;
   defaultPurchaseExpenseAccountId?: string;
+  defaultGRNIAccountId?: string;
   allowOverDelivery: boolean;
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
@@ -47,10 +53,12 @@ export class PurchaseSettings {
     if (!props.companyId?.trim()) throw new Error('PurchaseSettings companyId is required');
 
     this.companyId = props.companyId;
+    this.workflowMode = props.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
     this.allowDirectInvoicing = props.allowDirectInvoicing;
     this.requirePOForStockItems = props.requirePOForStockItems;
     this.defaultAPAccountId = props.defaultAPAccountId?.trim() || undefined;
     this.defaultPurchaseExpenseAccountId = props.defaultPurchaseExpenseAccountId;
+    this.defaultGRNIAccountId = props.defaultGRNIAccountId?.trim() || undefined;
     this.allowOverDelivery = props.allowOverDelivery;
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
@@ -71,6 +79,7 @@ export class PurchaseSettings {
   static createDefault(companyId: string, defaultAPAccountId?: string): PurchaseSettings {
     return new PurchaseSettings({
       companyId,
+      workflowMode: 'OPERATIONAL',
       allowDirectInvoicing: true,
       requirePOForStockItems: false,
       defaultAPAccountId,
@@ -92,10 +101,12 @@ export class PurchaseSettings {
   toJSON(): Record<string, any> {
     return {
       companyId: this.companyId,
+      workflowMode: this.workflowMode,
       allowDirectInvoicing: this.allowDirectInvoicing,
       requirePOForStockItems: this.requirePOForStockItems,
       defaultAPAccountId: this.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: this.defaultPurchaseExpenseAccountId,
+      defaultGRNIAccountId: this.defaultGRNIAccountId,
       allowOverDelivery: this.allowOverDelivery,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
@@ -117,10 +128,12 @@ export class PurchaseSettings {
   static fromJSON(data: any): PurchaseSettings {
     return new PurchaseSettings({
       companyId: data.companyId,
+      workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
       allowDirectInvoicing: data.allowDirectInvoicing ?? true,
       requirePOForStockItems: data.requirePOForStockItems ?? false,
       defaultAPAccountId: data.defaultAPAccountId,
       defaultPurchaseExpenseAccountId: data.defaultPurchaseExpenseAccountId,
+      defaultGRNIAccountId: data.defaultGRNIAccountId,
       allowOverDelivery: data.allowOverDelivery ?? false,
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,

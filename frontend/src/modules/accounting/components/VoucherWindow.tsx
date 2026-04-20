@@ -7,13 +7,14 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText } from 'lucide-react';
+import { X, Minus, Square, ChevronDown, Save, Printer, Loader2, Send, AlertTriangle, CheckCircle, Plus, RotateCcw, RefreshCw, Ban, Check, Lock, Zap, Globe, FileText, Mail, ImageIcon, Download, FileSpreadsheet } from 'lucide-react';
 import { GenericVoucherRenderer, GenericVoucherRendererRef } from './shared/GenericVoucherRenderer';
 import { UIWindow as UIWindowType } from '../../../context/WindowManagerContext';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { accountingApi } from '../../../api/accountingApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { clsx } from 'clsx';
+import { MdiWindowFrame } from '../../../components/mdi/MdiWindowFrame';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { VoucherCorrectionModal } from './VoucherCorrectionModal';
 import { RateDeviationDialog } from './shared/RateDeviationDialog';
@@ -58,20 +59,9 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
   const { settings, isLoading: settingsLoading, refresh: refreshSettings, updateSettings } = useCompanySettings();
   const { user } = useAuth();
   const { t } = useTranslation('accounting');
-  const windowRef = useRef<HTMLDivElement>(null);
+  
   const rendererRef = useRef<GenericVoucherRendererRef>(null);
 
-  // Drag state
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
-  // Resize state
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeType, setResizeType] = useState('');
-  
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  
   // Save state
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,6 +126,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
   const calculationLines = (renderRows && renderRows.length > 0) ? renderRows : liveLines;
   const normalizedTypeKey = React.useMemo(() => {
     const rawType = (
+      (win.data?.voucherConfig as any)?.module ||
       (win.data?.voucherConfig as any)?.baseType ||
       (win.data?.voucherConfig as any)?.code ||
       win.data?.type ||
@@ -144,23 +135,44 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     ).toString().toLowerCase();
     return rawType;
   }, [win.data?.voucherConfig, win.data?.type, renderData?.type]);
+
   const isReceiptType = normalizedTypeKey.includes('receipt');
   const isPaymentType = normalizedTypeKey.includes('payment');
-  const isSemanticAmountType = isReceiptType || isPaymentType;
+  const isInvoiceType = normalizedTypeKey.includes('invoice') || normalizedTypeKey.includes('bill');
+  const isOrderType = normalizedTypeKey.includes('order');
+  const isDeliveryType = normalizedTypeKey.includes('delivery');
+  const isReturnType = normalizedTypeKey.includes('return');
+  
+  const isSemanticAmountType = isReceiptType || isPaymentType || isInvoiceType || isOrderType || isDeliveryType || isReturnType || 
+                               normalizedTypeKey.includes('sales') || normalizedTypeKey.includes('purchase') ||
+                               (win.data?.voucherConfig as any)?.module === 'SALES' ||
+                               (win.data?.voucherConfig as any)?.module === 'PURCHASE';
+
   const semanticLineAccountKey = isReceiptType ? 'receiveFromAccountId' : (isPaymentType ? 'payToAccountId' : null);
   const semanticHeaderAccountKey = isReceiptType ? 'depositToAccountId' : (isPaymentType ? 'payFromAccountId' : null);
+
+  const voucherCurrency = liveCurrency || 
+                          renderData?.currency || 
+                          win.data?.currency || 
+                          settings?.baseCurrency || '';
 
   // Detect if voucher is posted/approved (stored in Base Currency Equivalents)
   const isPosted = win.data?.status === 'posted' || 
                    win.data?.status === 'approved' || 
                    !!win.data?.metadata?.isPosted;
 
+  // Fallback check to auto-detect if the user built a semantic form without explicitly tagging it as Sales/Purchase
+  const isEffectivelySemantic = React.useMemo(() => {
+    if (isSemanticAmountType) return false;
+    return calculationLines.some((r: any) => (r.amount || r.total || r.lineTotalDoc || r.lineTotal || r.rowTotal) && !r.debit && !r.credit);
+  }, [calculationLines, isSemanticAmountType]);
+
   const { 
     totalDebitVoucher, 
     totalCreditVoucher, 
     isBalanced: isBalancedVoucher, 
     differenceVoucher 
-  } = useVoucherTotals(calculationLines, headerRate, isPosted, isSemanticAmountType ? 'semantic' : 'journal');
+  } = useVoucherTotals(calculationLines, headerRate, isPosted, (isSemanticAmountType || isEffectivelySemantic) ? 'semantic' : 'journal');
 
   const isSystemStrict = React.useMemo(() => {
     return settings?.strictApprovalMode === true;
@@ -199,27 +211,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.window-header') && 
-        !(e.target as HTMLElement).closest('button')) {
-      setIsDragging(true);
-      const rect = windowRef.current?.getBoundingClientRect();
-      if (rect) {
-        setDragOffset({
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        });
-      }
-      focusWindow(win.id);
-    }
-  };
-
-  const handleResizeMouseDown = (e: React.MouseEvent, type: string) => {
-    e.stopPropagation();
-    setIsResizing(true);
-    setResizeType(type);
-    focusWindow(win.id);
-  };
 
   useEffect(() => {
     const fetchPolicy = async () => {
@@ -286,68 +277,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
   }, [policyLoading]);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging && !win.isMaximized) {
-        updateWindowPosition(win.id, {
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y
-        });
-      }
-      
-      if (isResizing && !win.isMaximized && windowRef.current) {
-        const rect = windowRef.current.getBoundingClientRect();
-        let newWidth = win.size.width;
-        let newHeight = win.size.height;
-        let newX = win.position.x;
-        let newY = win.position.y;
-
-        // Calculate new dimensions based on resize type
-        if (resizeType.includes('e')) {
-          newWidth = e.clientX - rect.left;
-        }
-        if (resizeType.includes('w')) {
-          const deltaX = rect.left - e.clientX;
-          newWidth = win.size.width + deltaX;
-          newX = e.clientX;
-        }
-        if (resizeType.includes('s')) {
-          newHeight = e.clientY - rect.top;
-        }
-        if (resizeType.includes('n')) {
-          const deltaY = rect.top - e.clientY;
-          newHeight = win.size.height + deltaY;
-          newY = e.clientY;
-        }
-
-        // Apply minimum size constraints
-        newWidth = Math.max(400, Math.min(newWidth, globalThis.window.innerWidth - 20));
-        newHeight = Math.max(300, Math.min(newHeight, globalThis.window.innerHeight - 100));
-
-        // Update window size and position
-        updateWindowSize(win.id, { width: newWidth, height: newHeight });
-        if (newX !== win.position.x || newY !== win.position.y) {
-          updateWindowPosition(win.id, { x: newX, y: newY });
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      setIsResizing(false);
-      setResizeType('');
-    };
-
-    if (isDragging || isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, isResizing, dragOffset, resizeType, win.id, win.isMaximized, win.size, win.position, updateWindowPosition, updateWindowSize]);
 
   const normalizeSemanticPayload = (rawData: any): any => {
     return rawData;
@@ -622,7 +551,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
         errorHandler.showSuccess('Voucher cancelled successfully');
         globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
       }
-      setContextMenu(null);
+
       closeWindow(win.id);
     } catch (error: any) {
       errorHandler.showError(error);
@@ -662,8 +591,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     setLiveCurrency(settings?.baseCurrency || '');
     setShowSuccessModal(false);
     setShowCorrectionModal(false);
-    setContextMenu(null);
-    
+
     // Build a completely CLEAN data object — no spreading of old voucher data
     // Only preserve the form definition so the renderer knows which template to use
     const cleanData: Record<string, any> = {
@@ -767,333 +695,195 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
   }, [settings, settingsLoading, policyLoading, isVoucherReadOnly]);
 
-  if (win.isMinimized) return null;
 
-  // Use translate3d for GPU-accelerated dragging
-  const style: React.CSSProperties = win.isMaximized
-    ? {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: '80px',
-        width: 'auto',
-        height: 'auto',
-        zIndex: win.isFocused ? 1000 : 999
-      }
-    : {
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        transform: `translate3d(${win.position.x}px, ${win.position.y}px, 0)`,
-        width: win.size.width,
-        height: win.size.height,
-        zIndex: win.isFocused ? 1000 : 999,
-        willChange: (isDragging || isResizing) ? 'transform' : 'auto'
-      };
-
-  return (
+  const StatusBadges = () => (
     <>
-      {/* Invisible overlay during drag/resize to prevent events leaking to background */}
-      {(isDragging || isResizing) && (
-        <div 
-          className="fixed inset-0 z-[9999]"
-          style={{ cursor: isDragging ? 'move' : 'se-resize' }}
-        />
+      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+        win.data?.status?.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
+        win.data?.status?.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
+        win.data?.status?.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
+        win.data?.status?.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
+        'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+      }`}>
+        {t(`statuses.${win.data?.status?.toLowerCase()}`, { defaultValue: win.data?.status })}
+      </span>
+      
+      {/* V1: Posting Badge (derived from postedAt) */}
+      {(win.data?.status?.toLowerCase() === 'approved' || win.data?.status?.toLowerCase() === 'posted') && (
+        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
+          win.data.postedAt 
+            ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+            : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+        }`}>
+          {win.data.postedAt ? t('statuses.posted') : t('voucherWindow.notPosted', { defaultValue: 'Not Posted' })}
+        </span>
       )}
       
-      <div
-        ref={windowRef}
-        style={style}
-        className={clsx(
-          "flex flex-col bg-[var(--color-bg-primary)] rounded-lg shadow-2xl overflow-hidden border transition-colors",
-          !isDragging && !isResizing && "transition-all duration-300",
-          win.isFocused ? 'border-primary-500/50 ring-1 ring-primary-500/20' : 'border-[var(--color-border)]'
-        )}
-        onMouseDown={() => focusWindow(win.id)}
-      >
-      {/* Window Header */}
-      <div
-        className="window-header relative z-50 flex items-center justify-between px-3 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] cursor-move select-none"
-        onMouseDown={handleMouseDown}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setContextMenu({ x: e.clientX, y: e.clientY });
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <h3 className="font-bold text-sm text-[var(--color-text-primary)]">
-            {win.data?.id
-              ? t('voucherEditor.existingTitle', { name: win.data?.voucherConfig?.name || win.title, id: win.data?.voucherNumber || win.data?.voucherNo || win.data?.id || '' })
-              : t('voucherEditor.newTitle', { name: win.data?.voucherConfig?.name || win.title })}
-          </h3>
-          {win.data?.status && (
-            <div className="flex items-center gap-1.5">
-              {/* V1: Workflow Badge */}
-              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                win.data.status.toLowerCase() === 'approved' ? 'bg-success-100/80 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
-                win.data.status.toLowerCase() === 'draft' ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]' :
-                win.data.status.toLowerCase() === 'pending' ? 'bg-amber-100/80 text-amber-700' :
-                win.data.status.toLowerCase() === 'rejected' ? 'bg-red-100/80 text-red-700' :
-                'bg-primary-100/80 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
-              }`}>
-                {t(`statuses.${win.data.status.toLowerCase()}`, { defaultValue: win.data.status })}
-              </span>
-              
-              {/* V1: Posting Badge (derived from postedAt) */}
-              {(win.data.status.toLowerCase() === 'approved' || win.data.status.toLowerCase() === 'posted') && (
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${
-                  win.data.postedAt 
-                    ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                    : 'bg-orange-100/80 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                }`}>
-                  {win.data.postedAt ? t('statuses.posted') : t('voucherWindow.notPosted', { defaultValue: 'Not Posted' })}
-                </span>
-              )}
-              
-              {/* Policy Duo Indicator - Distinguishes between System Policy and Voucher Governance */}
-              <PolicyGovernanceIndicator 
-                isSystemStrict={isSystemStrict || false}
-                isVoucherStrict={isVoucherStrict}
-                settingsLoading={settingsLoading}
-                isNewVoucher={!win.data?.id}
-              />
+      {/* Policy Duo Indicator - Distinguishes between System Policy and Voucher Governance */}
+      <PolicyGovernanceIndicator 
+        isSystemStrict={isSystemStrict || false}
+        isVoucherStrict={isVoucherStrict}
+        settingsLoading={settingsLoading}
+        isNewVoucher={!win.data?.id}
+      />
 
-              {win.data.status.toLowerCase() === 'pending' && win.data.metadata?.isEdited && (
-                <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 text-amber-600 rounded-md border border-amber-100 animate-pulse">
-                  {t('voucherWindow.edited', { defaultValue: 'Edited' })}
+      {win.data?.status?.toLowerCase() === 'pending' && win.data.metadata?.isEdited && (
+        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 text-amber-600 rounded-md border border-amber-100 animate-pulse">
+          {t('voucherWindow.edited', { defaultValue: 'Edited' })}
+        </span>
+      )}
+      
+      {/* Completion Status for Pending Vouchers - shows gate progress */}
+      {win.data?.status?.toLowerCase() === 'pending' && (
+        <div className="group relative cursor-help">
+          <span className={`px-2 py-0.5 text-[9px] font-semibold rounded-full ${
+            win.data.metadata?.pendingFinancialApproval 
+              ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
+              : win.data.metadata?.pendingCustodyConfirmations?.length > 0
+                ? 'bg-purple-50 text-purple-600 border border-purple-100'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+          }`}>
+            {win.data.metadata?.pendingFinancialApproval 
+              ? t('voucherWindow.awaitingApproval', { defaultValue: '⏳ Awaiting Approval' })
+              : win.data.metadata?.pendingCustodyConfirmations?.length > 0
+                ? t('voucherWindow.awaitingCustody', { count: win.data.metadata.pendingCustodyConfirmations.length, defaultValue: `⏳ Custody (${win.data.metadata.pendingCustodyConfirmations.length})` })
+                : t('voucherWindow.allGatesSatisfied', { defaultValue: '✓ All Gates Satisfied' })}
+          </span>
+          {/* Tooltip with details */}
+          <div className="absolute left-0 top-5 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl z-50 min-w-48">
+            <p className="font-bold border-b border-gray-600 pb-1 mb-1">{t('voucherWindow.gateStatus', { defaultValue: 'Gate Status' })}</p>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className={win.data.metadata?.pendingFinancialApproval ? 'text-amber-300' : 'text-emerald-300'}>
+                  {win.data.metadata?.pendingFinancialApproval ? '⏳' : '✓'}
                 </span>
-              )}
-              
-              {/* Completion Status for Pending Vouchers - shows gate progress */}
-              {win.data.status.toLowerCase() === 'pending' && (
-                <div className="group relative cursor-help">
-                  <span className={`px-2 py-0.5 text-[9px] font-semibold rounded-full ${
-                    win.data.metadata?.pendingFinancialApproval 
-                      ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' 
-                      : win.data.metadata?.pendingCustodyConfirmations?.length > 0
-                        ? 'bg-purple-50 text-purple-600 border border-purple-100'
-                        : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                  }`}>
-                    {win.data.metadata?.pendingFinancialApproval 
-                      ? t('voucherWindow.awaitingApproval', { defaultValue: '⏳ Awaiting Approval' })
-                      : win.data.metadata?.pendingCustodyConfirmations?.length > 0
-                        ? t('voucherWindow.awaitingCustody', { count: win.data.metadata.pendingCustodyConfirmations.length, defaultValue: `⏳ Custody (${win.data.metadata.pendingCustodyConfirmations.length})` })
-                        : t('voucherWindow.allGatesSatisfied', { defaultValue: '✓ All Gates Satisfied' })}
+                <span>{t('voucherWindow.financialApproval', { defaultValue: 'Financial Approval' })}</span>
+              </div>
+              {win.data.metadata?.custodyConfirmationRequired && (
+                <div className="flex items-center gap-2">
+                  <span className={win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? 'text-amber-300' : 'text-emerald-300'}>
+                    {win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? '⏳' : '✓'}
                   </span>
-                  {/* Tooltip with details */}
-                  <div className="absolute left-0 top-5 hidden group-hover:block bg-gray-800 text-white text-[10px] p-2 rounded-md shadow-xl z-50 min-w-48">
-                    <p className="font-bold border-b border-gray-600 pb-1 mb-1">{t('voucherWindow.gateStatus', { defaultValue: 'Gate Status' })}</p>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={win.data.metadata?.pendingFinancialApproval ? 'text-amber-300' : 'text-emerald-300'}>
-                          {win.data.metadata?.pendingFinancialApproval ? '⏳' : '✓'}
-                        </span>
-                        <span>{t('voucherWindow.financialApproval', { defaultValue: 'Financial Approval' })}</span>
-                      </div>
-                      {win.data.metadata?.custodyConfirmationRequired && (
-                        <div className="flex items-center gap-2">
-                          <span className={win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? 'text-amber-300' : 'text-emerald-300'}>
-                            {win.data.metadata?.pendingCustodyConfirmations?.length > 0 ? '⏳' : '✓'}
-                          </span>
-                          <span>{t('voucherWindow.custodyPending', { count: win.data.metadata?.pendingCustodyConfirmations?.length || 0, defaultValue: `Custody (${win.data.metadata?.pendingCustodyConfirmations?.length || 0} pending)` })}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <span>{t('voucherWindow.custodyPending', { count: win.data.metadata?.pendingCustodyConfirmations?.length || 0, defaultValue: `Custody (${win.data.metadata?.pendingCustodyConfirmations?.length || 0} pending)` })}</span>
                 </div>
               )}
             </div>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => minimizeWindow(win.id)}
-            className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            title={t('voucherWindow.minimize', { defaultValue: 'Minimize' })}
-          >
-            <Minus className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => maximizeWindow(win.id)}
-            className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            title={win.isMaximized ? t('voucherWindow.restore', { defaultValue: 'Restore' }) : t('voucherWindow.maximize', { defaultValue: 'Maximize' })}
-          >
-            <Square className="w-3 h-3" />
-          </button>
-          <button
-            onClick={handleCloseAttempt}
-            className="p-1.5 hover:bg-danger-500/10 rounded-full text-[var(--color-text-muted)] hover:text-danger-500 transition-colors"
-            title={t('voucherWindow.close', { defaultValue: 'Close' })}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <>
-          <div 
-            className="fixed inset-0 z-[9998]" 
-            onClick={() => setContextMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setContextMenu(null);
-            }}
-          />
-          <div 
-            className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-52 transition-colors animate-in fade-in zoom-in duration-200"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          >
-            <button
-              onClick={() => {
-                handleSave();
-                setContextMenu(null);
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
-            >
-              <Save className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              Save
-            </button>
-            <button
-              onClick={() => {
-                window.print();
-                setContextMenu(null);
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
-            >
-              <Printer className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              Print
-            </button>
-            
-            {/* Show correction options for posted/approved vouchers that aren't already reversed */}
-            {win.data && (win.data.status?.toLowerCase() === 'posted' || win.data.status?.toLowerCase() === 'approved') && !isReversal && !isAlreadyReversed && (
-              <>
-                <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
-                <button
-                  onClick={() => {
-                    const met = win.data?.metadata;
-                    if (met?.reversedByVoucherId || met?.isReversed) return;
-                    setCorrectionMode('REVERSE_ONLY');
-                    setShowCorrectionModal(true);
-                    setContextMenu(null);
-                  }}
-                  disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
-                  className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
-                >
-                  <RotateCcw className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                  {win.data?.metadata?.reversedByVoucherId || win.data?.metadata?.isReversed
-                    ? t('voucherWindow.alreadyReversed', 'Already Reversed')
-                    : t('voucherWindow.reverseVoucher', 'Reverse Voucher')}
-                </button>
-                {settings?.strictApprovalMode === false && (
-                  <button
-                    onClick={() => {
-                      const met = win.data?.metadata;
-                      if (met?.reversedByVoucherId || met?.isReversed) return;
-                      setCorrectionMode('REVERSE_AND_REPLACE');
-                      setShowCorrectionModal(true);
-                      setContextMenu(null);
-                    }}
-                    disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
-                    className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                    {t('voucherWindow.reverseReplace', 'Reverse & Replace')}
-                  </button>
-                )}
-              </>
-            )}
-            {win.data && (win.data.status?.toLowerCase() === 'draft' || win.data.status?.toLowerCase() === 'approved') && !win.data.postedAt && !isNested && (
-              <>
-                <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
-                <button
-                  onClick={handleCancel}
-                  className="w-full px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors"
-                >
-                  <Ban className="w-4 h-4" />
-                  Cancel / Void Voucher
-                </button>
-              </>
-            )}
-            <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
-            <button
-              onClick={() => {
-                minimizeWindow(win.id);
-                setContextMenu(null);
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
-            >
-              <Minus className="w-4 h-4 text-[var(--color-text-secondary)]" />
-              Minimize
-            </button>
-            <button
-              onClick={() => {
-                setContextMenu(null);
-                handleCloseAttempt();
-              }}
-              className="w-full px-4 py-2 text-left text-sm text-danger-600 hover:bg-danger-50 flex items-center gap-3 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Close
-            </button>
           </div>
+        </div>
+      )}
+    </>
+  );
+
+  const ContextMenuExtra = () => (
+    <>
+      <button
+        onClick={() => {
+          handleSave();
+        }}
+        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+      >
+        <Save className="w-4 h-4 text-[var(--color-text-secondary)]" />
+        Save
+      </button>
+      <button
+        onClick={() => {
+          window.print();
+        }}
+        className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors"
+      >
+        <Printer className="w-4 h-4 text-[var(--color-text-secondary)]" />
+        Print
+      </button>
+      
+      {win.data && (win.data.status?.toLowerCase() === 'posted' || win.data.status?.toLowerCase() === 'approved') && !isReversal && !isAlreadyReversed && (
+        <>
+          <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
+          <button
+            onClick={() => {
+              const met = win.data?.metadata;
+              if (met?.reversedByVoucherId || met?.isReversed) return;
+              setCorrectionMode('REVERSE_ONLY');
+              setShowCorrectionModal(true);
+            }}
+            disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
+            className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
+          >
+            <RotateCcw className="w-4 h-4 text-[var(--color-text-secondary)]" />
+            {win.data?.metadata?.reversedByVoucherId || win.data?.metadata?.isReversed
+              ? t('voucherWindow.alreadyReversed', 'Already Reversed')
+              : t('voucherWindow.reverseVoucher', 'Reverse Voucher')}
+          </button>
+          {settings?.strictApprovalMode === false && (
+            <button
+              onClick={() => {
+                const met = win.data?.metadata;
+                if (met?.reversedByVoucherId || met?.isReversed) return;
+                setCorrectionMode('REVERSE_AND_REPLACE');
+                setShowCorrectionModal(true);
+              }}
+              disabled={!!win.data?.metadata?.reversedByVoucherId || !!win.data?.metadata?.isReversed || win.data?.type === 'REVERSAL'}
+              className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-3 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              {t('voucherWindow.reverseReplace', 'Reverse & Replace')}
+            </button>
+          )}
         </>
       )}
+      {win.data && (win.data.status?.toLowerCase() === 'draft' || win.data.status?.toLowerCase() === 'approved') && !win.data.postedAt && !isNested && (
+        <>
+          <div className="border-t border-[var(--color-border)] my-1.5 opacity-50"></div>
+          <button
+            onClick={handleCancel}
+            className="w-full px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-3 transition-colors"
+          >
+            <Ban className="w-4 h-4" />
+            Cancel / Void Voucher
+          </button>
+        </>
+      )}
+    </>
+  );
 
-      {/* Voucher Content */}
-      <div className={clsx(
-        "flex-1 overflow-y-auto p-4 bg-[var(--color-bg-primary)] overflow-x-auto custom-scroll transition-colors",
-        (isDragging || isResizing) && "pointer-events-none select-none overflow-hidden"
-      )}>
-        <GenericVoucherRenderer
-          ref={rendererRef}
-          definition={win.data?.voucherConfig as any}
-          mode="windows"
-          initialData={win.data}
-          readOnly={isVoucherReadOnly}
-          onChange={handleRendererChange}
-          onBlur={handleRendererBlur}
-        />
-      </div>
+  const FooterActions = () => {
+    // Use variables from main component scope: totalDebitVoucher, totalCreditVoucher, isBalancedVoucher, etc.
+                            
+    const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
+    
+    const semanticLineCount = isSemanticAmountType
+      ? currentRows.filter((r: any) => {
+          // Broad array of possible identifiers in custom forms
+          const accountVal = r?.[semanticLineAccountKey || ''] || r?.accountId || r?.account || r?.itemId || r?.item || r?.productId || r?.product || r?.serviceId || r?.service || r?.description || r?.name;
+          const amountVal = Number(r?.amount) || Number(r?.lineTotalDoc) || Number(r?.total) || Number(r?.rowTotal) || 0;
+          return !!accountVal && amountVal > 0;
+        }).length
+      : 0;
+      
+    const hasLines = isSemanticAmountType
+      ? (semanticLineCount >= 1)
+      : (currentRows.filter(r => (r.accountId || r.account || r.description) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2);
+    
+    const finalHasLines = isEffectivelySemantic 
+      ? currentRows.filter((r: any) => (Number(r?.amount) || Number(r?.total) || Number(r?.lineTotalDoc) || Number(r?.lineTotal) || Number(r?.rowTotal) || 0) > 0).length >= 1
+      : hasLines;
 
-      {/* Window Footer - Core Actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)] transition-colors">
-        {/* Totals Display */}
+    const canSave = isBalancedVoucher && finalHasLines;
+
+    return (
+      <>
         <div className="flex items-center gap-4">
-          {(() => {
-            const hasValues = totalDebitVoucher > 0 || totalCreditVoucher > 0;
-            
-            // Use live currency from renderer/state FIRST, fall back to saved data
-            const voucherCurrency = liveCurrency || 
-                                   rendererRef.current?.getData()?.currency || 
-                                   win.data?.currency || 
-                                   settings?.baseCurrency || '';
-            
-            return (
-              <VoucherTotalsDisplay
-                totalDebit={totalDebitVoucher}
-                totalCredit={totalCreditVoucher}
-                currency={voucherCurrency}
-                isBalanced={isBalancedVoucher}
-                difference={differenceVoucher}
-                lines={calculationLines}
-                baseCurrency={settings?.baseCurrency || 'SYP'}
-                headerRate={headerRate}
-              />
-            );
-          })()}
+          <VoucherTotalsDisplay
+            totalDebit={totalDebitVoucher}
+            totalCredit={totalCreditVoucher}
+            currency={voucherCurrency}
+            isBalanced={isBalancedVoucher}
+            difference={differenceVoucher}
+            lines={calculationLines}
+            baseCurrency={settings?.baseCurrency || 'SYP'}
+            headerRate={headerRate}
+          />
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
@@ -1158,33 +948,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 </button>
               );
             }
-
-            const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
-            const semanticLineCount = isSemanticAmountType && semanticLineAccountKey
-              ? currentRows.filter((r: any) => {
-                  const accountVal = r?.[semanticLineAccountKey] || r?.accountId || r?.account;
-                  const amountVal = Number(r?.amount) || 0;
-                  return !!accountVal && amountVal > 0;
-                }).length
-              : 0;
-            const semanticHeaderHasAccount = isSemanticAmountType && semanticHeaderAccountKey
-              ? !!(
-                renderData?.[semanticHeaderAccountKey] ||
-                renderData?.metadata?.[semanticHeaderAccountKey] ||
-                win.data?.[semanticHeaderAccountKey] ||
-                win.data?.metadata?.[semanticHeaderAccountKey] ||
-                renderData?.accountId ||
-                renderData?.metadata?.accountId ||
-                renderData?.account ||
-                win.data?.accountId ||
-                win.data?.metadata?.accountId ||
-                win.data?.account
-              )
-              : false;
-            const hasLines = isSemanticAmountType
-              ? (semanticLineCount >= 1 && semanticHeaderHasAccount)
-              : (currentRows.filter(r => r.accountId && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2);
-            const canSave = isBalancedVoucher && hasLines;
 
             return (
               <button
@@ -1252,7 +1015,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
           })()}
 
           {win.data?.status?.toLowerCase() === 'pending' && (
-            <div className="flex items-center gap-2">
+            <>
               <button
                 onClick={async () => {
                   if (onApprove && win.data?.id) {
@@ -1325,175 +1088,184 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
               >
                 {t('voucherWindow.reject', 'Reject')}
               </button>
-            </div>
+            </>
           )}
 
           {/* Post Button for APPROVED vouchers that are not yet posted */}
           {win.data?.status?.toLowerCase() === 'approved' && !win.data?.postedAt && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={async () => {
-                  if (win.data?.id) {
-                    setIsSubmitting(true);
-                    try {
-                      await accountingApi.postVoucher(win.data.id);
-                      setIsDirty(false);
-                      setShowSuccessModal(true);
-                      await refreshVoucher();
-                    } catch (error: any) {
-                      errorHandler.showError(error);
-                    } finally {
-                      setIsSubmitting(false);
-                    }
+            <button
+              onClick={async () => {
+                if (win.data?.id) {
+                  setIsSubmitting(true);
+                  try {
+                    await accountingApi.postVoucher(win.data.id);
+                    setIsDirty(false);
+                    setShowSuccessModal(true);
+                    await refreshVoucher();
+                  } catch (error: any) {
+                    errorHandler.showError(error);
+                  } finally {
+                    setIsSubmitting(false);
                   }
-                }}
-                className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                {t('voucherWindow.post', 'Post to Ledger')}
-              </button>
-            </div>
+                }
+              }}
+              className="flex items-center gap-2 px-6 py-2 text-xs font-bold bg-success-600 text-white rounded-lg hover:bg-success-700 shadow-sm disabled:opacity-50 transition-all active:scale-[0.98]"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              {t('voucherWindow.post', 'Post to Ledger')}
+            </button>
           )}
         </div>
-      </div>
+      </>
+    );
+  };
 
-      {/* Resize Handles - Only when not maximized */}
-      {!win.isMaximized && (
-        <>
-          {/* Corner resize handles */}
-          <div 
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'se')}
-          />
-          <div 
-            className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'sw')}
-          />
-          <div 
-            className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'ne')}
-          />
-          <div 
-            className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize"
-            onMouseDown={(e) => handleResizeMouseDown(e, 'nw')}
-          />
-        </>
-      )}
-    </div>
-    
-    <ConfirmDialog
-      isOpen={showUnsavedModal}
-      title={t('unsavedChangesModal.title')}
-      message={t('unsavedChangesModal.description')}
-      onCancel={() => {
-        setShowUnsavedModal(false);
-        setIsPendingNew(false);
-      }}
-      onConfirm={handleConfirmClose}
-      confirmLabel={t('unsavedChangesModal.closeWithoutSaving')}
-      cancelLabel={t('unsavedChangesModal.cancel')}
-      tone="danger"
-    />
+  const Modals = () => (
+    <>
+      <ConfirmDialog
+        isOpen={showUnsavedModal}
+        title={t('unsavedChangesModal.title')}
+        message={t('unsavedChangesModal.description')}
+        onCancel={() => {
+          setShowUnsavedModal(false);
+          setIsPendingNew(false);
+        }}
+        onConfirm={handleConfirmClose}
+        confirmLabel={t('unsavedChangesModal.closeWithoutSaving')}
+        cancelLabel={t('unsavedChangesModal.cancel')}
+        tone="danger"
+      />
 
-    {/* Confirmation Modal */}
-    <ConfirmDialog
-      isOpen={showConfirmSubmitModal}
-      title={t('voucherWindow.confirmSubmitTitle')}
-      message={t('voucherWindow.confirmSubmitBody')}
-      onCancel={() => setShowConfirmSubmitModal(false)}
-      onConfirm={handleConfirmSubmit}
-      confirmLabel={t('voucherWindow.confirmSubmit')}
-      cancelLabel={t('common.cancel', 'Cancel')}
-      tone="warning"
-      isConfirming={isSubmitting}
-      icon={<Send size={24} />}
-    />
+      {/* Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showConfirmSubmitModal}
+        title={t('voucherWindow.confirmSubmitTitle')}
+        message={t('voucherWindow.confirmSubmitBody')}
+        onCancel={() => setShowConfirmSubmitModal(false)}
+        onConfirm={handleConfirmSubmit}
+        confirmLabel={t('voucherWindow.confirmSubmit')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        tone="warning"
+        isConfirming={isSubmitting}
+        icon={<Send size={24} />}
+      />
 
-    {/* Success Modal */}
-    {showSuccessModal && (
-      <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
-        <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
-          <div className="flex flex-col items-center text-center gap-4">
-            <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center text-success-600 mb-2">
-              <CheckCircle size={32} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">
-                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custody', 'Custody Confirmed!') :
-                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.posted', 'Posted Successfully!') : 
-                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.saved', 'Saved Successfully!') : 
-                 t('voucherWindow.success.submitted', 'Submitted Successfully!')}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custodyMsg', 'You have successfully confirmed custody of this voucher.') :
-                 win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.postedMsg', 'Voucher has been posted to the ledger.') : 
-                 win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.savedMsg', 'Voucher saved as draft.') : 
-                 t('voucherWindow.success.submittedMsg', 'Voucher has been sent for approval.')}
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-3 w-full mt-4">
-              <button 
-                onClick={handleSuccessNew}
-                className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-              >
-                <Plus size={16} /> {t('voucherWindow.success.createAnother', 'Create Another Voucher')}
-              </button>
-              <button 
-                onClick={handleSuccessClose}
-                className="w-full px-4 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
-              >
-                {t('voucherWindow.success.close', 'Close Window')}
-              </button>
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-96 p-6 border border-gray-100 scale-100 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center text-success-600 mb-2">
+                <CheckCircle size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custody', 'Custody Confirmed!') :
+                   win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.posted', 'Posted Successfully!') : 
+                   win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.saved', 'Saved Successfully!') : 
+                   t('voucherWindow.success.submitted', 'Submitted Successfully!')}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {successAction === 'CONFIRM_CUSTODY' ? t('voucherWindow.success.custodyMsg', 'You have successfully confirmed custody of this voucher.') :
+                   win.data?.status?.toLowerCase() === 'posted' ? t('voucherWindow.success.postedMsg', 'Voucher has been posted to the ledger.') : 
+                   win.data?.status?.toLowerCase() === 'draft' ? t('voucherWindow.success.savedMsg', 'Voucher saved as draft.') : 
+                   t('voucherWindow.success.submittedMsg', 'Voucher has been sent for approval.')}
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-3 w-full mt-4">
+                <button 
+                  onClick={handleSuccessNew}
+                  className="w-full px-4 py-3 text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <Plus size={16} /> {t('voucherWindow.success.createAnother', 'Create Another Voucher')}
+                </button>
+                <button 
+                  onClick={handleSuccessClose}
+                  className="w-full px-4 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
+                >
+                  {t('voucherWindow.success.close', 'Close Window')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
-    
-    {/* Voucher Correction Modal */}
-    <VoucherCorrectionModal
-      isOpen={showCorrectionModal}
-      onClose={() => setShowCorrectionModal(false)}
-      voucherId={win.data?.id || ''}
-      voucherNumber={win.data?.voucherNumber || win.data?.voucherNo || ''}
-      originalVoucher={win.data}
-      initialMode={correctionMode}
-      onSuccess={(result) => {
-        // 1. Update local window data with reversal linkage
-        updateWindowData(win.id, { 
-          ...win.data, 
-          // Inject reversal info into metadata so UI buttons respond immediately
-          metadata: {
-            ...win.data?.metadata,
-            reversedByVoucherId: result.reverseVoucherId,
-            isReversed: true
-          }
-        });
-        
-        // 2. TRIGGER GLOBAL REFRESH for the list page
-        globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
-        
-        errorHandler.showSuccess(t('voucherWindow.reversalSubmitted'));
-        setShowCorrectionModal(false);
-      }}
-    />
-
-    {/* Rate Deviation Warning Dialog */}
-    {rateDeviationResult && (
-      <RateDeviationDialog
-        isOpen={!!rateDeviationResult}
-        result={rateDeviationResult}
-        baseCurrency={settings?.baseCurrency || 'SYP'}
-        voucherDate={(pendingSaveData as any)?.date || new Date().toISOString().split('T')[0]}
-        onConfirm={handleRateDeviationConfirm}
-        onConfirmWithSync={handleRateDeviationSync}
-        onCancel={handleRateDeviationCancel}
+      )}
+      
+      {/* Voucher Correction Modal */}
+      <VoucherCorrectionModal
+        isOpen={showCorrectionModal}
+        onClose={() => setShowCorrectionModal(false)}
+        voucherId={win.data?.id || ''}
+        voucherNumber={win.data?.voucherNumber || win.data?.voucherNo || ''}
+        originalVoucher={win.data}
+        initialMode={correctionMode}
+        onSuccess={(result: any) => {
+          updateWindowData(win.id, { 
+            ...win.data, 
+            metadata: {
+              ...win.data?.metadata,
+              reversedByVoucherId: result.reverseVoucherId,
+              isReversed: true
+            }
+          });
+          globalThis.window.dispatchEvent(new CustomEvent('vouchers-updated'));
+          errorHandler.showSuccess(t('voucherWindow.reversalSubmitted'));
+          setShowCorrectionModal(false);
+        }}
       />
-    )}
+
+      {/* Rate Deviation Warning Dialog */}
+      {rateDeviationResult && (
+        <RateDeviationDialog
+          isOpen={!!rateDeviationResult}
+          result={rateDeviationResult}
+          baseCurrency={settings?.baseCurrency || 'SYP'}
+          voucherDate={(pendingSaveData as any)?.date || new Date().toISOString().split('T')[0]}
+          onConfirm={handleRateDeviationConfirm}
+          onConfirmWithSync={handleRateDeviationSync}
+          onCancel={handleRateDeviationCancel}
+        />
+      )}
     </>
   );
-};
 
-export const VoucherWindow = React.memo(_VoucherWindow);
+  const title = win.data?.id
+    ? t('voucherEditor.existingTitle', { name: win.data?.voucherConfig?.name || win.title, id: win.data?.voucherNumber || win.data?.voucherNo || win.data?.id || '' })
+    : t('voucherEditor.newTitle', { name: win.data?.voucherConfig?.name || win.title });
+
+  return (
+    <MdiWindowFrame
+      win={win}
+      title={title}
+      onClose={handleCloseAttempt}
+      headerExtra={StatusBadges()}
+      contextMenuExtra={ContextMenuExtra()}
+      footer={FooterActions()}
+      modals={Modals()}
+    >
+      <GenericVoucherRenderer
+        ref={rendererRef}
+        definition={win.data?.voucherConfig as any}
+        mode="windows"
+        initialData={win.data}
+        readOnly={isVoucherReadOnly}
+        onChange={handleRendererChange}
+        onBlur={handleRendererBlur}
+      />
+    </MdiWindowFrame>
+  );
+};
+  
+export const VoucherWindow = React.memo(_VoucherWindow, (prevProps, nextProps) => {
+  if (prevProps.win.id !== nextProps.win.id) return false;
+  if (prevProps.win.isMaximized !== nextProps.win.isMaximized) return false;
+  if (prevProps.win.isMinimized !== nextProps.win.isMinimized) return false;
+  if (prevProps.win.isFocused !== nextProps.win.isFocused) return false;
+  if (prevProps.win.position.x !== nextProps.win.position.x) return false;
+  if (prevProps.win.position.y !== nextProps.win.position.y) return false;
+  if (prevProps.win.size.width !== nextProps.win.size.width) return false;
+  if (prevProps.win.size.height !== nextProps.win.size.height) return false;
+  return prevProps.win.data?.id === nextProps.win.data?.id;
+});

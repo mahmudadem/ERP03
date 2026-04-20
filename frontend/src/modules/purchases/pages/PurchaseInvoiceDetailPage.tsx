@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreatePurchaseInvoicePayload,
   PurchaseInvoiceDTO,
@@ -14,6 +14,9 @@ import { Card } from '../../../components/ui/Card';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
+import { DatePicker } from '../../accounting/components/shared/DatePicker';
+import { PartySelector } from '../../../components/shared/selectors';
+import { buildItemUomOptions, findItemUomOption, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -27,6 +30,7 @@ interface EditableLine {
   itemCode?: string;
   itemName?: string;
   invoicedQty: number;
+  uomId?: string;
   uom: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -37,6 +41,7 @@ interface EditableLine {
 interface EditableForm {
   purchaseOrderId: string;
   vendorId: string;
+  vendorName?: string;
   vendorInvoiceNumber: string;
   invoiceDate: string;
   dueDate: string;
@@ -49,6 +54,7 @@ interface EditableForm {
 const createEmptyLine = (): EditableLine => ({
   itemId: '',
   invoicedQty: 1,
+  uomId: undefined,
   uom: '',
   unitPriceDoc: 0,
   taxCodeId: undefined,
@@ -86,6 +92,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [form, setForm] = useState<EditableForm>(() => createEmptyForm(initialPurchaseOrderId, initialVendorId));
+  const [uomOptionsByItemId, setUomOptionsByItemId] = useState<Record<string, ManagedUomOption[]>>({});
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -169,6 +176,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           itemCode: line.itemCode,
           itemName: line.itemName,
           invoicedQty: remainingQty,
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -199,6 +207,24 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     setItems(Array.isArray(itemList) ? itemList : []);
     setTaxCodes(Array.isArray(taxCodeList) ? taxCodeList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+  };
+
+  const ensureItemUomOptions = async (itemId: string) => {
+    if (!itemId || uomOptionsByItemId[itemId] || !itemById[itemId]) return;
+    try {
+      const result = await inventoryApi.listUomConversions(itemId);
+      const conversions = unwrap<UomConversionDTO[]>(result) || [];
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], conversions),
+      }));
+    } catch (loadError) {
+      console.error('Failed to load UOM conversions', loadError);
+      setUomOptionsByItemId((current) => ({
+        ...current,
+        [itemId]: buildItemUomOptions(itemById[itemId], []),
+      }));
+    }
   };
 
   const loadPurchaseOrderLines = async (orderId: string) => {
@@ -268,6 +294,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     load();
   }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const ids = Array.from(new Set(form.lines.map((line) => line.itemId).filter(Boolean)));
+    ids.forEach((itemId) => {
+      void ensureItemUomOptions(itemId);
+    });
+  }, [form.lines, itemById]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setLine = (index: number, patch: Partial<EditableLine>) => {
     setForm((prev) => {
       const lines = [...prev.lines];
@@ -277,9 +310,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       if (patch.itemId !== undefined) {
         const item = itemById[patch.itemId];
         if (item) {
+          const defaultUom = getDefaultItemUomOption(item, 'purchase');
           next.itemCode = item.code;
           next.itemName = item.name;
-          next.uom = next.uom || item.purchaseUom || item.baseUom;
+          next.uomId = next.uomId || defaultUom?.uomId;
+          next.uom = next.uom || defaultUom?.code || item.purchaseUom || item.baseUom;
           if (!next.warehouseId && settings?.defaultWarehouseId) {
             next.warehouseId = settings.defaultWarehouseId;
           }
@@ -347,6 +382,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       grnLineId: line.grnLineId || undefined,
       itemId: line.itemId || undefined,
       invoicedQty: line.invoicedQty,
+      uomId: line.uomId,
       uom: line.uom || item?.purchaseUom || item?.baseUom || 'EA',
       unitPriceDoc: line.unitPriceDoc,
       taxCodeId: line.taxCodeId || undefined,
@@ -419,6 +455,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         itemCode: l.itemCode,
         itemName: l.itemName,
         invoicedQty: l.invoicedQty,
+        uomId: l.uomId,
         uom: l.uom,
         unitPriceDoc: l.unitPriceDoc,
         taxCodeId: l.taxCodeId,
@@ -521,18 +558,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Vendor</label>
-              <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <PartySelector 
                 value={form.vendorId}
-                onChange={(e) => setForm((prev) => ({ ...prev, vendorId: e.target.value }))}
-              >
-                <option value="">Select vendor</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.displayName}
-                  </option>
-                ))}
-              </select>
+                onChange={(party) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    vendorId: party?.id || '',
+                    vendorName: party?.displayName || '',
+                    currency: party?.defaultCurrency || prev.currency,
+                  }));
+                }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Vendor Invoice #</label>
@@ -545,20 +581,16 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Invoice Date</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={form.invoiceDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, invoiceDate: e.target.value }))}
+                onChange={(val) => setForm((prev) => ({ ...prev, invoiceDate: val }))}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Due Date (optional)</label>
-              <input
-                type="date"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <DatePicker 
                 value={form.dueDate}
-                onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                onChange={(val) => setForm((prev) => ({ ...prev, dueDate: val }))}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -658,14 +690,30 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                         onChange={(e) => setLine(index, { invoicedQty: Number(e.target.value) })}
                       />
                     </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="text"
-                        className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
-                        value={line.uom}
-                        onChange={(e) => setLine(index, { uom: e.target.value.toUpperCase() })}
-                      />
-                    </td>
+                  <td className="py-2 pr-2">
+                    <select
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 uppercase"
+                      value={
+                        findItemUomOption(uomOptionsByItemId[line.itemId] || [], line.uomId, line.uom)?.uomId ||
+                        line.uomId ||
+                        line.uom
+                      }
+                      disabled={!line.itemId}
+                      onChange={(e) => {
+                        const selected = (uomOptionsByItemId[line.itemId] || []).find(
+                          (option) => (option.uomId || option.code) === e.target.value
+                        );
+                        setLine(index, { uomId: selected?.uomId, uom: selected?.code || '' });
+                      }}
+                    >
+                      <option value="">{line.itemId ? 'Select UOM' : 'No item'}</option>
+                      {(uomOptionsByItemId[line.itemId] || []).map((option) => (
+                        <option key={option.uomId || option.code} value={option.uomId || option.code}>
+                          {option.code}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                     <td className="py-2 pr-2">
                       <input
                         type="number"

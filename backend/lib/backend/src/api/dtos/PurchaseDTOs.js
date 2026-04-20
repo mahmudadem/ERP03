@@ -5,10 +5,12 @@ class PurchaseDTOMapper {
     static toSettingsDTO(settings) {
         return {
             companyId: settings.companyId,
+            workflowMode: settings.workflowMode,
             allowDirectInvoicing: settings.allowDirectInvoicing,
             requirePOForStockItems: settings.requirePOForStockItems,
             defaultAPAccountId: settings.defaultAPAccountId,
             defaultPurchaseExpenseAccountId: settings.defaultPurchaseExpenseAccountId,
+            defaultGRNIAccountId: settings.defaultGRNIAccountId,
             allowOverDelivery: settings.allowOverDelivery,
             overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
             overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
@@ -35,6 +37,7 @@ class PurchaseDTOMapper {
             itemType: line.itemType,
             trackInventory: line.trackInventory,
             orderedQty: line.orderedQty,
+            uomId: line.uomId,
             uom: line.uom,
             receivedQty: line.receivedQty,
             invoicedQty: line.invoicedQty,
@@ -90,6 +93,7 @@ class PurchaseDTOMapper {
             itemCode: line.itemCode,
             itemName: line.itemName,
             receivedQty: line.receivedQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase: line.unitCostBase,
@@ -101,7 +105,7 @@ class PurchaseDTOMapper {
         };
     }
     static toGoodsReceiptDTO(grn) {
-        var _a;
+        var _a, _b;
         return {
             id: grn.id,
             companyId: grn.companyId,
@@ -114,10 +118,11 @@ class PurchaseDTOMapper {
             lines: grn.lines.map((line) => PurchaseDTOMapper.toGoodsReceiptLineDTO(line)),
             status: grn.status,
             notes: grn.notes,
+            voucherId: (_a = grn.voucherId) !== null && _a !== void 0 ? _a : null,
             createdBy: grn.createdBy,
             createdAt: grn.createdAt.toISOString(),
             updatedAt: grn.updatedAt.toISOString(),
-            postedAt: (_a = grn.postedAt) === null || _a === void 0 ? void 0 : _a.toISOString(),
+            postedAt: (_b = grn.postedAt) === null || _b === void 0 ? void 0 : _b.toISOString(),
         };
     }
     static toPurchaseInvoiceLineDTO(line) {
@@ -132,6 +137,7 @@ class PurchaseDTOMapper {
             itemName: line.itemName,
             trackInventory: line.trackInventory,
             invoicedQty: line.invoicedQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitPriceDoc: line.unitPriceDoc,
             lineTotalDoc: line.lineTotalDoc,
@@ -194,6 +200,7 @@ class PurchaseDTOMapper {
             itemCode: line.itemCode,
             itemName: line.itemName,
             returnQty: line.returnQty,
+            uomId: line.uomId,
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase: line.unitCostBase,

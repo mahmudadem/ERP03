@@ -18,7 +18,10 @@ export const useVoucherTotals = (
 ) => {
   const { totalDebitVoucher, totalCreditVoucher, isBalanced, differenceVoucher } = useMemo(() => {
     if (mode === 'semantic') {
-      const totalAmount = rows.reduce((sum, row) => sum + (parseFloat(row.amount as string) || 0), 0);
+      const totalAmount = rows.reduce((sum, row) => {
+        const val = (row as any)?.amount ?? (row as any)?.lineTotalDoc ?? (row as any)?.total ?? (row as any)?.lineTotal ?? (row as any)?.rowTotal ?? 0;
+        return sum + (parseFloat(val as string) || 0);
+      }, 0);
       return {
         totalDebitVoucher: totalAmount,
         totalCreditVoucher: totalAmount,

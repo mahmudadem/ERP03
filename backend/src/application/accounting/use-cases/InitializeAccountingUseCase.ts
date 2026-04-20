@@ -8,9 +8,9 @@ import { ICompanyRepository } from '../../../repository/interfaces/core/ICompany
 import { IFiscalYearRepository } from '../../../repository/interfaces/accounting/IFiscalYearRepository';
 import { FiscalYear, FiscalYearStatus, PeriodScheme } from '../../../domain/accounting/entities/FiscalYear';
 import { FiscalPeriodGenerator } from '../../../domain/accounting/services/FiscalPeriodGenerator';
-
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { IVoucherFormRepository, VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { randomUUID } from 'crypto';
 
 interface InitializeAccountingRequest {
@@ -34,7 +34,9 @@ export class InitializeAccountingUseCase {
     private companySettingsRepo: ICompanySettingsRepository,
     private currencyRepo: ICurrencyRepository,
     private companyRepo: ICompanyRepository,
-    private fiscalYearRepo: IFiscalYearRepository
+    private fiscalYearRepo: IFiscalYearRepository,
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private voucherFormRepo: IVoucherFormRepository
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
@@ -272,67 +274,51 @@ export class InitializeAccountingUseCase {
     companyId: string,
     selectedVoucherTypeIds: string[]
   ): Promise<void> {
-    const db = admin.firestore();
-    
     // If no vouchers selected, skip copying
     if (!selectedVoucherTypeIds || selectedVoucherTypeIds.length === 0) {
       console.log(`[InitializeAccountingUseCase] No voucher types selected, skipping copy`);
       return;
     }
-    
-    // Load default voucher types from system_metadata/voucher_types/items
-    const defaultVouchersRef = db
-      .collection('system_metadata')
-      .doc('voucher_types')
-      .collection('items');
-    
-    const snapshot = await defaultVouchersRef.get();
-    
-    if (snapshot.empty) {
-      console.warn(`[InitializeAccountingUseCase] No default voucher types found in system_metadata`);
+
+    // Load default voucher types from system templates
+    const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
+    if (systemTemplates.length === 0) {
+      console.warn(`[InitializeAccountingUseCase] No default voucher types found in system templates`);
       return;
     }
 
-    const batch = db.batch();
-    let count = 0;
-    const copiedTypes: { id: string; data: any }[] = [];
+    const copiedTypes: { id: string; data: VoucherTypeDefinition }[] = [];
 
-    snapshot.forEach(doc => {
-      // Only copy if this voucher type was selected
-      if (!selectedVoucherTypeIds.includes(doc.id)) {
-        return; // Skip this one
+    for (const systemTemplate of systemTemplates) {
+      if (!selectedVoucherTypeIds.includes(systemTemplate.id)) {
+        continue;
       }
-      
-      const voucherType = doc.data();
-      
-      // Create a copy for this company in modular path: accounting/Settings/voucher_types
-      const companyVoucherRef = db
-        .collection('companies')
-        .doc(companyId)
-        .collection('accounting')
-        .doc('Settings')
-        .collection('voucher_types')
-        .doc(doc.id);
-      
-      // Add company-specific metadata
-      const companyVoucher = {
-        ...voucherType,
-        companyId,
-        isSystemDefault: true,  // Mark as system default (immutable)
-        isLocked: true,         // Lock for editing
-        enabled: true,          // Enable by default
-        inUse: false,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-      
-      batch.set(companyVoucherRef, companyVoucher);
-      copiedTypes.push({ id: doc.id, data: companyVoucher });
-      count++;
-    });
 
-    await batch.commit();
-    console.log(`[InitializeAccountingUseCase] Copied ${count} default voucher types to company ${companyId}`);
+      // Create a copy for this company
+      const companyVoucherType = new VoucherTypeDefinition(
+        systemTemplate.id,
+        companyId,
+        systemTemplate.name,
+        systemTemplate.code,
+        systemTemplate.module,
+        systemTemplate.headerFields,
+        systemTemplate.tableColumns,
+        systemTemplate.layout,
+        systemTemplate.schemaVersion,
+        systemTemplate.requiredPostingRoles,
+        systemTemplate.workflow,
+        systemTemplate.uiModeOverrides,
+        systemTemplate.isMultiLine,
+        systemTemplate.rules,
+        systemTemplate.actions,
+        systemTemplate.defaultCurrency
+      );
+
+      await this.voucherTypeRepo.createVoucherType(companyVoucherType);
+      copiedTypes.push({ id: systemTemplate.id, data: companyVoucherType });
+    }
+
+    console.log(`[InitializeAccountingUseCase] Copied ${copiedTypes.length} default voucher types to company ${companyId}`);
 
     // Now create default forms for each copied type
     await this.createDefaultFormsForTypes(companyId, copiedTypes);
@@ -345,16 +331,12 @@ export class InitializeAccountingUseCase {
    */
   private async createDefaultFormsForTypes(
     companyId: string,
-    types: { id: string; data: any }[]
+    types: { id: string; data: VoucherTypeDefinition }[]
   ): Promise<void> {
-    const db = admin.firestore();
-    const batch = db.batch();
-
     for (const type of types) {
-      // Use same ID as type for the default form (simpler)
       const formId = type.id;
       const code = String(type.data.code || type.id || '').toUpperCase();
-      const baseType = String(type.data.baseType || '').toUpperCase() || (
+      const baseType = String(type.data.module || '').toUpperCase() || (
         code.includes('RECEIPT') ? 'RECEIPT' :
         code.includes('PAYMENT') ? 'PAYMENT' :
         code.includes('JOURNAL') ? 'JOURNAL' :
@@ -362,51 +344,55 @@ export class InitializeAccountingUseCase {
         code.includes('INVOICE') ? 'INVOICE' :
         code
       );
-      
-      const formRef = db
-        .collection('companies')
-        .doc(companyId)
-        .collection('accounting')
-        .doc('Settings')
-        .collection('voucherForms')
-        .doc(formId);
 
-      // Extract UI layout from the type definition
-      const form = {
+      const headerFields = (type.data.headerFields || []).map((f: any) => ({
+        id: f.id || f.fieldId,
+        label: f.label || f.name || '',
+        type: f.type || 'text',
+        required: f.required || false,
+        order: f.order || 0,
+      }));
+
+      const tableColumns = (type.data.tableColumns || []).map((c: any) => ({
+        id: c.fieldId || c.id || '',
+        label: c.labelOverride || c.label || '',
+        type: c.type || 'text',
+        required: c.required || false,
+        order: c.order || 0,
+      }));
+
+      const form: VoucherFormDefinition = {
         id: formId,
         companyId,
         typeId: baseType || type.id,
-        baseType: baseType || type.id,
-        name: type.data.name || type.id, // Use original name, no suffix
+        name: type.data.name || type.id,
         code: type.data.code || baseType || type.id,
         description: `Default form for ${type.data.name || type.id}`,
-        prefix: type.data.prefix || type.data.code?.slice(0, 3).toUpperCase() || 'V',
+        prefix: type.data.code?.slice(0, 3).toUpperCase() || 'V',
         isDefault: true,
         isSystemGenerated: true,
-        isLocked: true, // System-generated forms are locked
+        isLocked: true,
         enabled: true,
-        // Copy layout from type definition
-        headerFields: type.data.headerFields || type.data.fields?.filter((f: any) => f.section === 'header') || [],
-        tableColumns: type.data.tableColumns || type.data.fields?.filter((f: any) => f.section === 'table') || [],
+        headerFields,
+        tableColumns,
         uiModeOverrides: type.data.uiModeOverrides || null,
         rules: type.data.rules || [],
         actions: type.data.actions || [],
         isMultiLine: type.data.isMultiLine ?? true,
-        tableStyle: type.data.tableStyle || 'web',
+        tableStyle: 'web',
         defaultCurrency: type.data.defaultCurrency || '',
         layout: type.data.layout || {
           theme: 'default',
           showTotals: true
         },
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
         createdBy: 'system'
       };
 
-      batch.set(formRef, form);
+      await this.voucherFormRepo.create(form);
     }
 
-    await batch.commit();
     console.log(`[InitializeAccountingUseCase] Created ${types.length} default forms in voucherForms collection`);
   }
 }

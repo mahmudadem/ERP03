@@ -315,6 +315,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const inventoryService = makeInventoryService();
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
       { getItem: jest.fn(async () => item) } as any,
@@ -354,6 +355,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
       { getItem: jest.fn(async () => item) } as any,
@@ -391,6 +393,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
       { getItem: jest.fn(async () => item) } as any,
@@ -419,6 +422,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       { getById: jest.fn(async () => dn), update: jest.fn(async () => undefined) } as any,
       { getById: jest.fn(async () => so), update: jest.fn(async () => undefined) } as any,
       { getItem: jest.fn(async () => item) } as any,
@@ -794,6 +798,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       dnRepo as any,
       soRepo as any,
       { getItem: jest.fn(async () => item) } as any,
@@ -963,6 +968,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
       deliveryNoteRepo as any,
       salesOrderRepo as any,
       { getItem: jest.fn(async () => item) } as any,

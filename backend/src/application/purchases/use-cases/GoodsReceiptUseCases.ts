@@ -1,8 +1,12 @@
 import { randomUUID } from 'crypto';
+import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
+import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { GoodsReceipt, GoodsReceiptLine } from '../../../domain/purchases/entities/GoodsReceipt';
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
+import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IUomConversionRepository } from '../../../repository/interfaces/inventory/IUomConversionRepository';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
@@ -10,6 +14,11 @@ import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchas
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import {
+  ItemQtyToBaseUomResult,
+  convertItemQtyToBaseUomDetailed,
+} from '../../inventory/services/UomResolutionService';
 import { generateDocumentNumber } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 
@@ -19,6 +28,7 @@ export interface GoodsReceiptLineInput {
   poLineId?: string;
   itemId?: string;
   receivedQty: number;
+  uomId?: string;
   uom?: string;
   unitCostDoc?: number;
   moveCurrency?: string;
@@ -139,6 +149,7 @@ export class CreateGoodsReceiptUseCase {
         itemCode: item.code,
         itemName: item.name,
         receivedQty,
+        uomId: line.uomId || poLine?.uomId || item.purchaseUomId || item.baseUomId,
         uom: line.uom || poLine?.uom || item.purchaseUom || item.baseUom,
         unitCostDoc,
         unitCostBase: roundMoney(unitCostDoc * fxRateMovToBase),
@@ -188,6 +199,7 @@ export class CreateGoodsReceiptUseCase {
         poLineId: line.lineId,
         itemId: line.itemId,
         receivedQty: roundMoney(line.orderedQty - line.receivedQty),
+        uomId: line.uomId,
         uom: line.uom,
         unitCostDoc: line.unitPriceDoc,
         moveCurrency: po.currency,
@@ -201,18 +213,23 @@ export class CreateGoodsReceiptUseCase {
 export class PostGoodsReceiptUseCase {
   constructor(
     private readonly settingsRepo: IPurchaseSettingsRepository,
+    private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly itemRepo: IItemRepository,
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
   async execute(companyId: string, id: string): Promise<GoodsReceipt> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
+    const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
+    const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
 
     const grn = await this.goodsReceiptRepo.getById(companyId, id);
     if (!grn) throw new Error(`Goods receipt not found: ${id}`);
@@ -237,6 +254,9 @@ export class PostGoodsReceiptUseCase {
         validatePOLinkedForReceipt(po);
       }
     }
+
+    const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || 'USD';
+    const receiptAccountingBucket = new Map<string, number>();
 
     await this.transactionManager.runTransaction(async (transaction) => {
       for (const line of grn.lines) {
@@ -277,7 +297,14 @@ export class PostGoodsReceiptUseCase {
           }
         }
 
-        const qtyInBaseUom = await this.convertToBaseUom(companyId, line.receivedQty, line.uom, item.baseUom, item.id, item.code);
+        const conversionResult = await this.convertToBaseUom(
+          companyId,
+          line.receivedQty,
+          line.uomId,
+          line.uom,
+          item
+        );
+        const qtyInBaseUom = conversionResult.qtyInBaseUom;
         const movement = await this.inventoryService.processIN({
           companyId,
           itemId: line.itemId,
@@ -295,13 +322,85 @@ export class PostGoodsReceiptUseCase {
           moveCurrency: line.moveCurrency,
           fxRateMovToBase: line.fxRateMovToBase,
           fxRateCCYToBase: line.fxRateCCYToBase,
+          metadata: {
+            uomConversion: {
+              conversionId: conversionResult.trace.conversionId,
+              mode: conversionResult.trace.mode,
+              appliedFactor: conversionResult.trace.factor,
+              sourceQty: line.receivedQty,
+              sourceUomId: line.uomId,
+              sourceUom: line.uom,
+              baseUomId: item.baseUomId,
+              baseUom: item.baseUom,
+            },
+          },
           transaction,
         } as any);
 
         line.stockMovementId = movement.id;
+        line.unitCostBase = roundMoney(movement.unitCostBase || line.unitCostBase);
         if (poLine) {
           poLine.receivedQty = roundMoney(poLine.receivedQty + line.receivedQty);
         }
+
+        if (DocumentPolicyResolver.shouldPostGoodsReceiptAccounting(accountingMode)) {
+          const inventoryAccountId = item.inventoryAssetAccountId || inventorySettings?.defaultInventoryAssetAccountId;
+          if (!inventoryAccountId) {
+            throw new Error(`No inventory account configured for item ${item.code}`);
+          }
+          const current = receiptAccountingBucket.get(inventoryAccountId) || 0;
+          receiptAccountingBucket.set(
+            inventoryAccountId,
+            roundMoney(current + (movement.totalCostBase || roundMoney(qtyInBaseUom * line.unitCostBase)))
+          );
+        }
+      }
+
+      if (DocumentPolicyResolver.shouldPostGoodsReceiptAccounting(accountingMode) && receiptAccountingBucket.size > 0) {
+        if (!settings.defaultGRNIAccountId) {
+          throw new Error('Default GRNI account is required for perpetual goods receipt posting.');
+        }
+
+        const voucherLines: Array<Record<string, any>> = [];
+        let totalBase = 0;
+        for (const [inventoryAccountId, amount] of Array.from(receiptAccountingBucket.entries())) {
+          totalBase = roundMoney(totalBase + amount);
+          voucherLines.push({
+            accountId: inventoryAccountId,
+            side: 'Debit',
+            amount,
+          });
+        }
+        voucherLines.push({
+          accountId: settings.defaultGRNIAccountId,
+          side: 'Credit',
+          amount: totalBase,
+        });
+
+        const voucher = await this.accountingPostingService.postInTransaction(
+          {
+            companyId,
+            voucherType: VoucherType.JOURNAL_ENTRY,
+            voucherNo: `GRN-${grn.grnNumber}`,
+            date: grn.receiptDate,
+            description: `Goods Receipt ${grn.grnNumber}`,
+            currency: baseCurrency,
+            exchangeRate: 1,
+            lines: voucherLines,
+            metadata: {
+              sourceModule: 'purchases',
+              sourceType: 'GOODS_RECEIPT',
+              sourceId: grn.id,
+            },
+            createdBy: grn.createdBy,
+            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+            reference: grn.grnNumber,
+          },
+          transaction
+        );
+        grn.voucherId = voucher.id;
+      } else {
+        grn.voucherId = null;
       }
 
       grn.status = 'POSTED';
@@ -324,36 +423,20 @@ export class PostGoodsReceiptUseCase {
   private async convertToBaseUom(
     companyId: string,
     qty: number,
+    uomId: string | undefined,
     uom: string,
-    baseUom: string,
-    itemId: string,
-    itemCode: string
-  ): Promise<number> {
-    if (uom.toUpperCase() === baseUom.toUpperCase()) {
-      return qty;
-    }
-
-    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, itemId, { active: true });
-    const normalizedFrom = uom.toUpperCase();
-    const normalizedTo = baseUom.toUpperCase();
-
-    const direct = conversions.find(
-      (conversion) =>
-        conversion.active &&
-        conversion.fromUom.toUpperCase() === normalizedFrom &&
-        conversion.toUom.toUpperCase() === normalizedTo
-    );
-    if (direct) return roundMoney(qty * direct.factor);
-
-    const reverse = conversions.find(
-      (conversion) =>
-        conversion.active &&
-        conversion.fromUom.toUpperCase() === normalizedTo &&
-        conversion.toUom.toUpperCase() === normalizedFrom
-    );
-    if (reverse) return roundMoney(qty / reverse.factor);
-
-    throw new Error(`No UOM conversion from ${uom} to ${baseUom} for item ${itemCode}`);
+    item: NonNullable<Awaited<ReturnType<IItemRepository['getItem']>>>
+  ): Promise<ItemQtyToBaseUomResult> {
+    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+    return convertItemQtyToBaseUomDetailed({
+      qty,
+      item,
+      conversions,
+      fromUomId: uomId,
+      fromUom: uom,
+      round: roundMoney,
+      itemCode: item.code,
+    });
   }
 }
 
@@ -414,6 +497,7 @@ export class UpdateGoodsReceiptUseCase {
           itemCode: existing?.itemCode || '',
           itemName: existing?.itemName || '',
           receivedQty: line.receivedQty,
+          uomId: line.uomId ?? existing?.uomId,
           uom: line.uom || existing?.uom || 'EA',
           unitCostDoc: line.unitCostDoc ?? existing?.unitCostDoc ?? 0,
           unitCostBase: existing?.unitCostBase ?? 0,
@@ -439,6 +523,7 @@ export class UnpostGoodsReceiptUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
@@ -453,6 +538,11 @@ export class UnpostGoodsReceiptUseCase {
     }
 
     await this.transactionManager.runTransaction(async (transaction) => {
+      if (grn.voucherId) {
+        await this.accountingPostingService.deleteVoucherInTransaction(companyId, grn.voucherId, transaction);
+        grn.voucherId = null;
+      }
+
       // 1. Reverse inventory movements
       for (const line of grn.lines) {
         if (line.stockMovementId) {

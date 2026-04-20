@@ -62,7 +62,13 @@ class CompleteCompanyCreationUseCase {
         const fiscalYearStart = this.safeDate(session.data.fiscalYearStart);
         const fiscalYearEnd = new Date(fiscalYearStart);
         fiscalYearEnd.setFullYear(fiscalYearEnd.getFullYear() + 1);
-        const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, [session.model], [], session.data.taxId || '', undefined, session.data.address || undefined);
+        const requestedModules = Array.isArray(session.data.modules)
+            ? session.data.modules
+                .map((moduleId) => String(moduleId || '').trim().toLowerCase())
+                .filter(Boolean)
+            : [];
+        const companyModules = Array.from(new Set(['companyAdmin', ...requestedModules]));
+        const company = new Company_1.Company(this.generateId('cmp'), session.data.companyName, session.userId, now, now, baseCurrency, fiscalYearStart, fiscalYearEnd, companyModules, [], session.data.taxId || '', undefined, session.data.address || undefined);
         try {
             await this.companyRepo.save(company);
             // Initialize settings (Global Tier 1)
@@ -97,8 +103,7 @@ class CompleteCompanyCreationUseCase {
             createdAt: now
         });
         // 4. Activate Modules with Dependency Tracing
-        const modules = session.data.modules || [];
-        for (const moduleCode of modules) {
+        for (const moduleCode of requestedModules) {
             try {
                 await this.moduleActivationService.activateModule(company.id, moduleCode, session.userId);
             }
@@ -107,18 +112,18 @@ class CompleteCompanyCreationUseCase {
             }
         }
         // 5. Update Role Module Bundles
-        if (modules.length > 0) {
+        if (companyModules.length > 0) {
             const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
             const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');
             if (ownerRole) {
                 await this.rbacCompanyRoleRepo.update(company.id, ownerRole.id, {
-                    moduleBundles: Array.from(new Set([...(ownerRole.moduleBundles || []), ...modules])),
+                    moduleBundles: Array.from(new Set([...(ownerRole.moduleBundles || []), ...companyModules])),
                     resolvedPermissions: ownerRole.resolvedPermissions,
                 });
             }
             if (adminRole) {
                 await this.rbacCompanyRoleRepo.update(company.id, adminRole.id, {
-                    moduleBundles: Array.from(new Set([...(adminRole.moduleBundles || []), ...modules])),
+                    moduleBundles: Array.from(new Set([...(adminRole.moduleBundles || []), ...companyModules])),
                     resolvedPermissions: adminRole.resolvedPermissions,
                 });
             }

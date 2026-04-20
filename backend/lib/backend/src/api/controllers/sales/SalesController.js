@@ -99,7 +99,7 @@ class SalesController {
             (0, sales_validators_1.validateInitializeSalesInput)(req.body);
             const companyId = SalesController.getCompanyId(req);
             const userId = SalesController.getUserId(req);
-            const useCase = new SalesSettingsUseCases_1.InitializeSalesUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
+            const useCase = new SalesSettingsUseCases_1.InitializeSalesUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
                 userId }));
             res.status(200).json({
@@ -129,7 +129,7 @@ class SalesController {
         try {
             (0, sales_validators_1.validateUpdateSalesSettingsInput)(req.body);
             const companyId = SalesController.getCompanyId(req);
-            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
+            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -311,7 +311,7 @@ class SalesController {
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
             const accountingPostingService = SalesController.buildAccountingPostingService();
-            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const dn = await useCase.execute(companyId, id);
             res.json({
                 success: true,

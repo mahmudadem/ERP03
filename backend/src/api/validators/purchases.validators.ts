@@ -71,6 +71,13 @@ const ensureOptionalUuid = (value: any, fieldName: string) => {
   ensureRequiredString(value, fieldName);
 };
 
+const ensureWorkflowMode = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  if (value !== 'SIMPLE' && value !== 'OPERATIONAL') {
+    throw ApiError.badRequest(`${fieldName} must be SIMPLE or OPERATIONAL`);
+  }
+};
+
 const validatePOLine = (line: any, index: number) => {
   ensureRequiredString(line.itemId, `lines[${index}].itemId`);
   ensurePositiveNumber(line.orderedQty, `lines[${index}].orderedQty`);
@@ -86,6 +93,9 @@ const validatePOLine = (line: any, index: number) => {
 
   if (line.uom !== undefined) {
     ensureOptionalString(line.uom, `lines[${index}].uom`);
+  }
+  if (line.uomId !== undefined) {
+    ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   }
 
   if (line.warehouseId !== undefined) {
@@ -108,6 +118,7 @@ const validateGRNLine = (line: any, index: number) => {
 
   if (line.lineNo !== undefined) ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.unitCostDoc !== undefined) ensureNonNegativeNumber(line.unitCostDoc, `lines[${index}].unitCostDoc`);
   if (line.moveCurrency !== undefined) ensureOptionalString(line.moveCurrency, `lines[${index}].moveCurrency`);
   if (line.fxRateMovToBase !== undefined) ensurePositiveNumber(line.fxRateMovToBase, `lines[${index}].fxRateMovToBase`);
@@ -128,6 +139,7 @@ const validatePILine = (line: any, index: number) => {
 
   if (line.lineNo !== undefined) ensurePositiveNumber(line.lineNo, `lines[${index}].lineNo`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (line.unitPriceDoc !== undefined) ensureNonNegativeNumber(line.unitPriceDoc, `lines[${index}].unitPriceDoc`);
   if (line.taxCodeId !== undefined) ensureOptionalString(line.taxCodeId, `lines[${index}].taxCodeId`);
   if (line.warehouseId !== undefined) ensureOptionalString(line.warehouseId, `lines[${index}].warehouseId`);
@@ -143,6 +155,8 @@ const validatePRLine = (line: any, index: number) => {
   if (line.poLineId !== undefined) ensureOptionalString(line.poLineId, `lines[${index}].poLineId`);
   if (line.itemId !== undefined) ensureOptionalString(line.itemId, `lines[${index}].itemId`);
   if (line.returnQty !== undefined) ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
+  if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
+  if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
   if (
     line.piLineId === undefined
     && line.grnLineId === undefined
@@ -156,6 +170,7 @@ const validatePRLine = (line: any, index: number) => {
 };
 
 export const validateInitializePurchasesInput = (body: any) => {
+  if (body.workflowMode !== undefined) ensureWorkflowMode(body.workflowMode, 'workflowMode');
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
@@ -164,6 +179,7 @@ export const validateInitializePurchasesInput = (body: any) => {
   if (body.defaultPaymentTermsDays !== undefined) ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
 
   ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+  ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   ensureOptionalString(body.purchaseVoucherTypeId, 'purchaseVoucherTypeId');
   ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
   ensureOptionalString(body.poNumberPrefix, 'poNumberPrefix');
@@ -178,10 +194,12 @@ export const validateInitializePurchasesInput = (body: any) => {
 };
 
 export const validateUpdatePurchaseSettingsInput = (body: any) => {
+  if (body.workflowMode !== undefined) ensureWorkflowMode(body.workflowMode, 'workflowMode');
   if (body.allowDirectInvoicing !== undefined) ensureBoolean(body.allowDirectInvoicing, 'allowDirectInvoicing');
   if (body.requirePOForStockItems !== undefined) ensureBoolean(body.requirePOForStockItems, 'requirePOForStockItems');
   if (body.defaultAPAccountId !== undefined) ensureOptionalString(body.defaultAPAccountId, 'defaultAPAccountId');
   if (body.defaultPurchaseExpenseAccountId !== undefined) ensureOptionalString(body.defaultPurchaseExpenseAccountId, 'defaultPurchaseExpenseAccountId');
+  if (body.defaultGRNIAccountId !== undefined) ensureOptionalString(body.defaultGRNIAccountId, 'defaultGRNIAccountId');
   if (body.allowOverDelivery !== undefined) ensureBoolean(body.allowOverDelivery, 'allowOverDelivery');
   if (body.overDeliveryTolerancePct !== undefined) ensureNonNegativeNumber(body.overDeliveryTolerancePct, 'overDeliveryTolerancePct');
   if (body.overInvoiceTolerancePct !== undefined) ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');

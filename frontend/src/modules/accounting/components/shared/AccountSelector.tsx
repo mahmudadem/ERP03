@@ -265,11 +265,11 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
        const currentAccount = contextAccounts.find(a => a.code === value || a.id === value);
        if (currentAccount) {
           if (currentAccount.accountRole === 'POSTING') {
-             // Block creation as child of posting account
-             setWarningParentName(currentAccount.name);
-             setShowModal(false);
-             setShowPostingWarning(true);
-             return;
+              // Block creation as child of posting account
+              setWarningParentName(currentAccount.name);
+              setShowModal(false);
+              setShowPostingWarning(true);
+              return;
           }
        }
     }
@@ -361,9 +361,9 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
           
           {/* Modal */}
           <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none p-4">
-            <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] w-full max-w-md max-h-[450px] pointer-events-auto flex flex-col transition-colors duration-300">
+            <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--color-border)] w-full max-w-lg max-h-[500px] pointer-events-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               {/* Header */}
-              <div className="p-4 border-b border-[var(--color-border)]">
+              <div className="p-4 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                 <div className="flex items-center gap-3">
                   <Search className="w-5 h-5 text-[var(--color-text-muted)]" />
                   <input
@@ -434,7 +434,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-0.5">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredAccounts.map((account, index) => (
                       <div
                         key={account.id}
@@ -443,29 +443,38 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                           handleSelectAccount(account);
                         }}
                         onMouseEnter={() => setHighlightedIndex(index)}
-                        className={`px-4 py-3 flex justify-between items-center text-sm rounded-md transition-colors
+                        className={`px-4 py-3 flex justify-between items-center text-sm transition-all duration-150
                           ${account.accountRole === 'HEADER' && !allowHeaders 
-                            ? 'opacity-50 cursor-not-allowed bg-gray-50' 
+                            ? 'opacity-40 cursor-not-allowed grayscale' 
                             : 'cursor-pointer'}
-                          ${index === highlightedIndex && !(account.accountRole === 'HEADER' && !allowHeaders) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-[var(--color-bg-tertiary)]'}
-                          ${account.code === value ? 'border-l-2 border-primary-500 bg-primary-50/50 dark:bg-primary-900/30' : ''}`}
+                          ${index === highlightedIndex && !(account.accountRole === 'HEADER' && !allowHeaders) ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'}
+                          ${account.code === value ? 'border-l-4 border-primary-500 bg-primary-50/30' : ''}`}
                       >
-                          <span className={`font-mono text-xs font-bold ${account.accountRole === 'HEADER' ? 'text-indigo-600' : 'text-[var(--color-text-primary)]'}`}>
-                            {account.code || (account.name ? 'No Code' : `ID: ${account.id.slice(0, 8)}`)}
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className={`font-mono text-[11px] font-black leading-none mb-1.5 ${account.accountRole === 'HEADER' ? 'text-indigo-600' : 'text-primary-600'}`}>
+                            {account.code || (account.name ? 'NO-CODE' : `ID: ${account.id.slice(0, 8)}`)}
                           </span>
-                          <div className="flex items-center gap-2">
-                             <span className={`text-[13px] tracking-tight truncate ${account.accountRole === 'HEADER' ? 'font-bold' : 'font-medium text-[var(--color-text-secondary)]'}`}>
-                               {account.name || 'Unnamed Account'}
+                          <span className={`text-[13px] tracking-tight truncate ${account.accountRole === 'HEADER' ? 'font-bold text-slate-800' : 'font-semibold text-slate-700'}`}>
+                            {account.name || 'Unnamed Account'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                          {account.currency && (
+                             <span className="text-[9px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800 uppercase font-black tracking-tighter">
+                               {account.currency}
                              </span>
-                             <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 py-0.5 rounded uppercase font-extrabold tracking-tighter">
-                               {account.classification || account.type}
-                             </span>
-                             {account.accountRole === 'HEADER' && (
-                               <span className="text-[9px] bg-indigo-50 text-indigo-500 px-1 py-0.5 rounded uppercase font-extrabold">HEADER</span>
-                             )}
-                          </div>
+                          )}
+                          <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded uppercase font-extrabold tracking-tighter border border-slate-200 dark:border-slate-700">
+                            {account.classification || account.type}
+                          </span>
+                          {account.accountRole === 'HEADER' && (
+                            <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase font-black border border-indigo-100">HEADER</span>
+                          )}
+                        </div>
+
                         {account.code === value && (
-                           <div className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                           <div className="w-2 h-2 rounded-full bg-primary-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] ml-3" />
                         )}
                       </div>
                     ))}

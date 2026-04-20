@@ -10,7 +10,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search, LayoutDashboard } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, LayoutDashboard, ChevronDown, ChevronRight, Shield, User } from 'lucide-react';
 import { DocumentFormConfig, AvailableField, DocumentRule, DocumentAction } from '../types';
 import { DocumentDesigner } from './DocumentDesigner';
 import { useWizard } from '../WizardContext';
@@ -61,6 +61,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
     message: '',
     suggestion: ''
   });
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['custom']);
   const { forms: allForms, addForm, updateForm, deleteForm } = useWizard();
 
   // Filter forms based on search query
@@ -296,8 +297,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
       
       {/* Modal Overlay for Designer */}
       {viewMode === 'designer' && (
-        <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-8">
-           <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-6xl overflow-hidden flex flex-col border border-gray-200">
+        <div className="absolute inset-0 z-50 bg-black/20 backdrop-blur-sm flex items-center justify-center p-6 md:p-12">
+           <div className="bg-white rounded-xl shadow-2xl w-full h-[80vh] max-h-[800px] max-w-6xl overflow-hidden flex flex-col border border-gray-200">
                <AccountsProvider>
                  <DocumentDesigner 
                    initialConfig={editingForm}
@@ -410,69 +411,92 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
               <div className="space-y-12">
                 {/* --- SECTION: SYSTEM DEFAULTS --- */}
                 {forms.filter(f => isProtected(f)).length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>
-                      <h2 className="text-xl font-bold text-slate-800">System Document Templates</h2>
-                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium">Read-Only</span>
-                    </div>
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <button 
+                      onClick={() => setExpandedGroups(prev => prev.includes('system') ? prev.filter(g => g !== 'system') : [...prev, 'system'])}
+                      className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                          <Shield size={20} />
+                        </div>
+                        <div className="text-left">
+                          <h2 className="text-lg font-bold text-slate-800">System Document Templates</h2>
+                          <p className="text-xs text-slate-500">Standard configurations provided by the platform</p>
+                        </div>
+                        <span className="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                          {forms.filter(f => isProtected(f)).length}
+                        </span>
+                      </div>
+                      {expandedGroups.includes('system') ? <ChevronDown size={20} className="text-gray-400" /> : <ChevronRight size={20} className="text-gray-400" />}
+                    </button>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {forms.filter(f => isProtected(f)).map((form: DocumentFormConfig) => (
-                        <FormCard
-                          key={form.id}
-                          form={form}
-                          isProtected={true}
-                          onEdit={handleEdit}
-                          onClone={handleClone}
-                          onDelete={handleDelete}
-                          onToggleEnabled={handleToggleEnabled}
-                          onExport={handleExportSingle}
-                          onUpdateSidebarGroup={onUpdateSidebarGroup}
-                        />
-                      ))}
-                    </div>
+                    {expandedGroups.includes('system') && (
+                      <div className="p-6 bg-slate-50/30">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {forms.filter(f => isProtected(f)).map((form: DocumentFormConfig) => (
+                            <FormCard
+                              key={form.id}
+                              form={form}
+                              isProtected={true}
+                              onEdit={handleEdit}
+                              onClone={handleClone}
+                              onDelete={handleDelete}
+                              onToggleEnabled={handleToggleEnabled}
+                              onExport={handleExportSingle}
+                              onUpdateSidebarGroup={onUpdateSidebarGroup}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {/* divider if both sections exist */}
-                {forms.filter(f => isProtected(f)).length > 0 && forms.filter(f => !isProtected(f)).length > 0 && (
-                  <div className="border-t border-gray-100"></div>
                 )}
 
                 {/* --- SECTION: USER CUSTOMIZED --- */}
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-1 bg-green-500 rounded-full"></div>
-                      <h2 className="text-xl font-bold text-slate-800">Your Custom Forms</h2>
-                      <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full font-medium">Editable</span>
-                    </div>
-                    
-                    {forms.filter(f => !isProtected(f)).length === 0 && (
-                      <p className="text-sm text-gray-400">No custom forms created yet</p>
-                    )}
-                  </div>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                   <button 
+                      onClick={() => setExpandedGroups(prev => prev.includes('custom') ? prev.filter(g => g !== 'custom') : [...prev, 'custom'])}
+                      className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-green-50 p-2 rounded-lg text-green-600">
+                          <User size={20} />
+                        </div>
+                        <div className="text-left">
+                          <h2 className="text-lg font-bold text-slate-800">Your Custom Forms</h2>
+                          <p className="text-xs text-slate-500">Document configurations tailored for your company</p>
+                        </div>
+                        <span className="ml-2 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                          {forms.filter(f => !isProtected(f)).length}
+                        </span>
+                      </div>
+                      {expandedGroups.includes('custom') ? <ChevronDown size={20} className="text-gray-400" /> : <ChevronRight size={20} className="text-gray-400" />}
+                    </button>
                   
-                  {forms.filter(f => !isProtected(f)).length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {forms.filter(f => !isProtected(f)).map((form: DocumentFormConfig) => (
-                        <FormCard
-                          key={form.id}
-                          form={form}
-                          isProtected={false}
-                          onEdit={handleEdit}
-                          onClone={handleClone}
-                          onDelete={handleDelete}
-                          onToggleEnabled={handleToggleEnabled}
-                          onExport={handleExportSingle}
-                          onUpdateSidebarGroup={onUpdateSidebarGroup}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                       <p className="text-gray-500">Clones or new forms will appear here.</p>
+                  {expandedGroups.includes('custom') && (
+                    <div className="p-6 bg-slate-50/30">
+                      {forms.filter(f => !isProtected(f)).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {forms.filter(f => !isProtected(f)).map((form: DocumentFormConfig) => (
+                            <FormCard
+                              key={form.id}
+                              form={form}
+                              isProtected={false}
+                              onEdit={handleEdit}
+                              onClone={handleClone}
+                              onDelete={handleDelete}
+                              onToggleEnabled={handleToggleEnabled}
+                              onExport={handleExportSingle}
+                              onUpdateSidebarGroup={onUpdateSidebarGroup}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-12 text-center">
+                           <p className="text-gray-400 text-sm italic">No custom forms created yet. Clone a system template to get started.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

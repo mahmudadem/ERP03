@@ -99,7 +99,7 @@ class PurchaseController {
             (0, purchases_validators_1.validateInitializePurchasesInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
             const userId = PurchaseController.getUserId(req);
-            const useCase = new PurchaseSettingsUseCases_1.InitializePurchasesUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
+            const useCase = new PurchaseSettingsUseCases_1.InitializePurchasesUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId,
                 userId }));
             res.status(200).json({
@@ -129,7 +129,7 @@ class PurchaseController {
         try {
             (0, purchases_validators_1.validateUpdatePurchaseSettingsInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
-            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
+            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -326,7 +326,7 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, inventoryService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -342,7 +342,7 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -553,7 +553,7 @@ class PurchaseController {
             const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService();
-            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const pr = await useCase.execute(companyId, id);
             res.json({
                 success: true,

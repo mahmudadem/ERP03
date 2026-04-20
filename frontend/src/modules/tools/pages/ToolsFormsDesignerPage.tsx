@@ -79,26 +79,77 @@ export default function ToolsFormsDesignerPage() {
 
   // Extra system fields that are always available for any module
   const systemFields: AvailableField[] = [
-    { id: 'documentId', label: 'Document Number', type: 'text', category: 'systemMetadata', autoManaged: true },
-    { id: 'status', label: 'Status', type: 'text', category: 'systemMetadata', autoManaged: true },
-    { id: 'createdAt', label: 'Creation Date', type: 'date', category: 'systemMetadata', autoManaged: true },
-    { id: 'createdBy', label: 'Created By', type: 'text', category: 'systemMetadata', autoManaged: true },
+    { id: 'documentId', label: 'Document Number', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
+    { id: 'status', label: 'Status', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
+    { id: 'createdAt', label: 'Creation Date', type: 'date', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
+    { id: 'createdBy', label: 'Created By', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
+    
+    // Core Accounting Totals injected globally
+    { id: 'beforeDiscountDoc', label: 'Sum Before Discount (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'beforeDiscountBase', label: 'Sum Before Discount (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'subtotalDoc', label: 'Subtotal (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'subtotalBase', label: 'Subtotal (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'taxTotalDoc', label: 'Tax Total (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'taxTotalBase', label: 'Tax Total (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'grandTotalDoc', label: 'Grand Total (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    { id: 'grandTotalBase', label: 'Grand Total (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
+    
+    // Line Items Table Component
+    { id: 'lineItems', label: 'Line Items Table', type: 'table', category: 'core', mandatory: true, sectionHint: 'BODY' },
   ];
 
   // Resolve available fields dynamically from the active definitions
-  // This is the "Mechanism" - it shows the fields defined in the database
-  const availableFields: AvailableField[] = Array.from(new Set(
-    definitions.flatMap(def => [
-      ...(Array.isArray(def.headerFields) ? def.headerFields : []),
-      ...(Array.isArray(def.lineFields) ? def.lineFields : [])
-    ])
-  )).map(f => ({
+  // Deduplicate by field ID to avoid duplicate rendering of shared fields
+  const uniqueFieldsMap = new Map<string, any>();
+  definitions.flatMap(def => [
+    ...(Array.isArray(def.headerFields) ? def.headerFields : []),
+    ...(Array.isArray(def.lineFields) ? def.lineFields : [])
+  ]).forEach(f => {
+    if (f && f.id && !uniqueFieldsMap.has(f.id)) {
+      // NOTE: We don't inherit mandatory status globally here to avoid leakage 
+      // between different document types in the same module.
+      uniqueFieldsMap.set(f.id, { ...f, mandatory: false, required: false });
+    }
+  });
+
+  const availableFields: AvailableField[] = Array.from(uniqueFieldsMap.values()).map(f => ({
     id: f.id,
     label: f.label,
     type: (f.type || 'text').toLowerCase() as any,
     category: 'shared',
-    required: f.required
+    required: false,
+    mandatory: false
   }));
+
+  // Resolve available table columns dynamically from active definitions
+  const uniqueTableColumnsMap = new Map<string, any>();
+  definitions.flatMap(def => def.tableColumns || []).forEach(col => {
+    const colId = col?.id || col?.fieldId;
+    if (colId && !uniqueTableColumnsMap.has(colId)) {
+      uniqueTableColumnsMap.set(colId, {
+         id: colId,
+         label: col.label || (colId.charAt(0).toUpperCase() + colId.slice(1).replace(/Id$/, '')),
+         ...col
+      });
+    }
+  });
+  
+  const availableTableColumns: any[] = Array.from(uniqueTableColumnsMap.values());
+
+  // Add standard fallback columns if none were found in definitions
+  if (availableTableColumns.length === 0) {
+    const fallbacks = [
+      { id: 'item', label: 'Item/Service', type: 'select' },
+      { id: 'description', label: 'Description', type: 'text' },
+      { id: 'qty', label: 'Quantity', type: 'number' },
+      { id: 'price', label: 'Unit Price', type: 'amount' },
+      { id: 'discount', label: 'Discount %', type: 'number' },
+      { id: 'total', label: 'Line Total', type: 'amount' },
+      { id: 'account', label: 'GL Account', type: 'select' }
+    ];
+    fallbacks.forEach(f => availableTableColumns.push(f));
+  }
+
 
   const handleSaveForm = async (config: DocumentFormConfig, isEdit: boolean) => {
     if (!companyId || !user) return;
@@ -363,6 +414,7 @@ export default function ToolsFormsDesignerPage() {
             templates={templates as any}
             systemFields={systemFields}
             availableFields={availableFields}
+            availableTableColumns={availableTableColumns}
             defaultRules={defaultRules as any}
             defaultActions={defaultActions as any}
             onDocumentSaved={handleSaveForm}

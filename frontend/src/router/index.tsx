@@ -16,6 +16,7 @@ import { SuperAdminRedirect } from '../components/auth/SuperAdminRedirect';
 
 // Module Guards
 import { ModuleConfigurationGuard } from '../components/guards';
+import { WorkflowModeGuard } from '../components/guards';
 
 // Onboarding
 import { LandingPage, PlanSelectionPage, CompaniesListPage } from '../modules/onboarding';
@@ -136,6 +137,28 @@ const routes = [
               {/* Wrap with ModuleConfigurationGuard if route requires a module (except SETUP routes) */}
               {route.requiredModule && route.section !== 'SETUP' ? (
                 <ModuleConfigurationGuard moduleCode={route.requiredModule}>
+                  {route.requiredOperationalWorkflow ? (
+                    <WorkflowModeGuard module={route.requiredOperationalWorkflow}>
+                      <ProtectedRoute
+                        requiredPermission={route.requiredPermission}
+                        requiredGlobalRole={route.requiredGlobalRole}
+                        requiredModule={route.requiredModule}
+                      >
+                        <route.component />
+                      </ProtectedRoute>
+                    </WorkflowModeGuard>
+                  ) : (
+                    <ProtectedRoute
+                      requiredPermission={route.requiredPermission}
+                      requiredGlobalRole={route.requiredGlobalRole}
+                      requiredModule={route.requiredModule}
+                    >
+                      <route.component />
+                    </ProtectedRoute>
+                  )}
+                </ModuleConfigurationGuard>
+              ) : route.requiredOperationalWorkflow ? (
+                <WorkflowModeGuard module={route.requiredOperationalWorkflow}>
                   <ProtectedRoute
                     requiredPermission={route.requiredPermission}
                     requiredGlobalRole={route.requiredGlobalRole}
@@ -143,7 +166,7 @@ const routes = [
                   >
                     <route.component />
                   </ProtectedRoute>
-                </ModuleConfigurationGuard>
+                </WorkflowModeGuard>
               ) : (
                 <ProtectedRoute
                   requiredPermission={route.requiredPermission}

@@ -9,6 +9,7 @@ jest.mock('../../../../domain/accounting/services/VoucherValidationService', () 
         VoucherValidationService: jest.fn().mockImplementation(() => {
             return {
                 validateCore: jest.fn(),
+                validateAccounts: jest.fn().mockResolvedValue(undefined),
                 validatePolicies: jest.fn().mockResolvedValue(undefined)
             };
         })

@@ -1,6 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { companyModulesApi, CompanyModuleStatus } from '../api/companyModules';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
+import {
+  COMPANY_MODULES_REFRESH_EVENT,
+  CompanyModulesRefreshEventDetail,
+} from '../utils/companyModulesEvents';
 
 /**
  * Hook to fetch and manage company module installation statuses
@@ -11,27 +15,47 @@ export function useCompanyModules() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchModules = useCallback(async () => {
     if (!companyId) {
+      setModules([]);
+      setError(null);
       setLoading(false);
       return;
     }
 
-    const fetchModules = async () => {
-      try {
-        setLoading(true);
-        const data = await companyModulesApi.list(companyId);
-        setModules(data);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load module status');
-      } finally {
-        setLoading(false);
+    try {
+      setLoading(true);
+      const data = await companyModulesApi.list(companyId);
+      setModules(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load module status');
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    void fetchModules();
+  }, [fetchModules]);
+
+  useEffect(() => {
+    if (!companyId) return;
+
+    const handleRefresh = (event: Event) => {
+      const customEvent = event as CustomEvent<CompanyModulesRefreshEventDetail | undefined>;
+      const targetCompanyId = customEvent.detail?.companyId;
+
+      if (targetCompanyId && targetCompanyId !== companyId) {
+        return;
       }
+
+      void fetchModules();
     };
 
-    fetchModules();
-  }, [companyId]);
+    window.addEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+    return () => window.removeEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
+  }, [companyId, fetchModules]);
 
   const isModuleInitialized = (moduleCode: string): boolean => {
     const module = modules.find((m) => m.moduleCode === moduleCode);
@@ -48,10 +72,6 @@ export function useCompanyModules() {
     error,
     isModuleInitialized,
     getModuleStatus,
-    refreshModules: () => {
-      if (companyId) {
-        companyModulesApi.list(companyId).then(setModules);
-      }
-    },
+    refreshModules: fetchModules,
   };
 }

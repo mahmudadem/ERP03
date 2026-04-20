@@ -14,30 +14,24 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requiredPermission, requiredGlobalRole, requiredModule }: ProtectedRouteProps) {
   const { t } = useTranslation('common');
-  const { isSuperAdmin, loading, companyId, moduleBundles, resolvedPermissions } = useCompanyAccess();
+  const { isSuperAdmin, loading, companyId, moduleBundles } = useCompanyAccess();
   const companyIdFallback = companyId || localStorage.getItem('activeCompanyId') || '';
   const { hasPermission } = useRBAC();
   const location = useLocation();
   const path = location.pathname.startsWith('/') ? location.pathname : `/${location.pathname}`;
   const isWizardFlow = path.startsWith('/company-wizard') || path.startsWith('/company-selector');
   const isSuperAdminRoute = path.startsWith('/super-admin');
-  let persistedModules: string[] = [];
-  try {
-    const raw = localStorage.getItem('activeModules');
-    if (raw) persistedModules = JSON.parse(raw);
-  } catch (e) {
-    persistedModules = [];
-  }
 
   const activeModules = (() => {
-    const list = moduleBundles && moduleBundles.length ? moduleBundles : persistedModules;
+    const list = moduleBundles || [];
     return Array.from(
       new Set(
-        (list || []).flatMap((m) => (m === 'financial' ? ['accounting'] : [m]))
+        (list || [])
+          .map((m) => String(m || '').trim().toLowerCase())
+          .flatMap((m) => (m === 'financial' ? ['accounting'] : [m]))
       )
     );
   })();
-  const hasWildcard = resolvedPermissions.includes('*') || isSuperAdmin;
 
   if (loading) {
     return <div className="p-6">{t('auth.loading')}</div>;
@@ -53,7 +47,7 @@ export function ProtectedRoute({ children, requiredPermission, requiredGlobalRol
     return <Navigate to="/forbidden" replace />;
   }
 
-  if (requiredModule && !hasWildcard && !activeModules.includes(requiredModule)) {
+  if (requiredModule && !isSuperAdmin && !activeModules.includes(requiredModule.toLowerCase())) {
     return <Navigate to="/forbidden" replace />;
   }
 

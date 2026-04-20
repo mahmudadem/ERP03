@@ -86,6 +86,7 @@ class PurchaseOrder {
             itemType: line.itemType,
             trackInventory: line.trackInventory,
             orderedQty: line.orderedQty,
+            uomId: line.uomId,
             uom: line.uom,
             receivedQty: (_d = line.receivedQty) !== null && _d !== void 0 ? _d : 0,
             invoicedQty: (_e = line.invoicedQty) !== null && _e !== void 0 ? _e : 0,

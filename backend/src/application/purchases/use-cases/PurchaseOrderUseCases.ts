@@ -47,6 +47,7 @@ export interface PurchaseOrderLineInput {
   lineNo?: number;
   itemId: string;
   orderedQty: number;
+  uomId?: string;
   uom?: string;
   unitPriceDoc: number;
   taxCodeId?: string;
@@ -228,6 +229,7 @@ export class CreatePurchaseOrderUseCase {
       itemType: item.type,
       trackInventory: item.trackInventory,
       orderedQty: lineInput.orderedQty,
+      uomId: lineInput.uomId || item.purchaseUomId || item.baseUomId,
       uom: lineInput.uom || item.purchaseUom || item.baseUom,
       receivedQty: 0,
       invoicedQty: 0,
@@ -279,6 +281,7 @@ export class UpdatePurchaseOrderUseCase {
           lineNo: line.lineNo,
           itemId: line.itemId,
           orderedQty: line.orderedQty,
+          uomId: line.uomId,
           uom: line.uom,
           unitPriceDoc: line.unitPriceDoc,
           taxCodeId: line.taxCodeId,
@@ -361,6 +364,7 @@ export class UpdatePurchaseOrderUseCase {
       itemType: item.type,
       trackInventory: item.trackInventory,
       orderedQty: lineInput.orderedQty,
+      uomId: lineInput.uomId || currentLine?.uomId || item.purchaseUomId || item.baseUomId,
       uom: lineInput.uom || item.purchaseUom || item.baseUom,
       receivedQty: currentLine?.receivedQty ?? 0,
       invoicedQty: currentLine?.invoicedQty ?? 0,
