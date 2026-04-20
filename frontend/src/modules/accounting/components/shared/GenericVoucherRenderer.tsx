@@ -1655,7 +1655,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             };
           })
           .filter(line => line.payToAccountId && line.amount > 0);
-      } else {
+      } else if (backendType === 'journal_entry' || backendType === 'opening_balance' || backendType === 'fx_revaluation' || backendType === 'reversal') {
+        // Journal-style types: require account + debit/credit
         backendLines = rows
           .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0))
           .map(row => {
@@ -1673,6 +1674,19 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
               costCenter: (row as any).costCenter || (row as any).costCenterId || null,
               metadata: row.metadata || {}
             };
+          });
+      } else {
+        // Sales/Purchase types: pass raw rows as-is (itemId, quantity, unitPrice, etc.)
+        // Backend expects: itemId, quantity, unitPrice, lineTotal, warehouseId, etc.
+        backendLines = rows
+          .filter(row => row.itemId || row.serviceId || row.description)
+          .map(row => {
+            const out: Record<string, any> = {};
+            Object.entries(row || {}).forEach(([key, value]) => {
+              if (key === '_rowId' || value === undefined || value === null) return;
+              out[key] = value;
+            });
+            return out;
           });
       }
       
