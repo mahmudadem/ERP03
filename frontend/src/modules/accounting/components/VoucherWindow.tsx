@@ -177,9 +177,16 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
 
   // NEW: Two-Layer Validation Hook (with feature flag for rollback)
   const validationEnabled = isValidationEnabled(normalizedTypeKey);
+  
+  // Build form data with ACTUAL UI lines (not backend-transformed lines from getData())
+  const validationFormData = renderData ? {
+    ...renderData,
+    lines: calculationLines, // Use the same lines that useVoucherTotals uses
+  } : win.data;
+  
   const newValidation = useDocumentValidation(
     win.data?.voucherConfig,
-    rendererRef.current?.getData() || win.data,
+    validationFormData,
     {
       enabled: validationEnabled,
       parallelRun: true, // Log both old and new results in development

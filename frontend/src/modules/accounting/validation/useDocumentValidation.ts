@@ -34,7 +34,7 @@ export function useDocumentValidation(
   } = options;
 
   return useMemo(() => {
-    // Guard: No definition = use fallback (allow save, let old validation handle it)
+    // Guard: No definition = defer to old validation
     if (!definition) {
       return {
         structuralErrors: [],
@@ -47,8 +47,12 @@ export function useDocumentValidation(
       };
     }
 
-    // Guard: No formData yet (renderer not ready) = allow save (wait for old validation)
-    if (!formData || Object.keys(formData).length === 0) {
+    // Guard: No formData or no lines yet (renderer not ready) = defer to old validation
+    const hasFormData = formData && typeof formData === 'object';
+    const hasLines = formData?.lines && Array.isArray(formData.lines) && formData.lines.length > 0;
+    const hasAnyFields = hasFormData && Object.keys(formData).length > 2;
+    
+    if (!hasFormData || (!hasLines && !hasAnyFields)) {
       return {
         structuralErrors: [],
         businessErrors: [],
@@ -74,6 +78,8 @@ export function useDocumentValidation(
     if (parallelRun && process.env.NODE_ENV === 'development') {
       console.log('[VALIDATION] Parallel run:', {
         type: definition.code || definition.baseType,
+        formDataKeys: Object.keys(formData),
+        linesCount: formData?.lines?.length,
         ...result._debug,
       });
     }

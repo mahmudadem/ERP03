@@ -41,6 +41,7 @@ export class SalesValidator extends DocumentValidator {
     }
 
     // Rule 2: Must have at least 1 line item WITH AMOUNT
+    // Check all possible amount field names used in sales forms
     const linesWithAmount = lines.filter((l) => {
       const hasAmount = Number(l.amount) > 0 || 
                        Number(l.total) > 0 || 
