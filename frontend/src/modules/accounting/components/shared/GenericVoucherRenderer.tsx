@@ -1512,13 +1512,25 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     getData: () => {
       // Map designer codes to backend types
       const typeMap: Record<string, string> = {
+        // Accounting
         'JOURNAL': 'journal_entry',
         'JOURNAL_ENTRY': 'journal_entry',
         'PAYMENT': 'payment',
         'RECEIPT': 'receipt',
         'OPENING_BALANCE': 'opening_balance',
         'OPENING': 'opening_balance',
-        'FX_REVALUATION': 'fx_revaluation'
+        'FX_REVALUATION': 'fx_revaluation',
+        'REVERSAL': 'reversal',
+        // Sales (matches seeded codes: "sales_invoice", "sales_order", etc.)
+        'SALES_INVOICE': 'sales_invoice',
+        'SALES_ORDER': 'sales_order',
+        'SALES_RETURN': 'sales_return',
+        'DELIVERY_NOTE': 'delivery_note',
+        // Purchase (matches seeded codes: "purchase_invoice", "purchase_order", etc.)
+        'PURCHASE_INVOICE': 'purchase_invoice',
+        'PURCHASE_ORDER': 'purchase_order',
+        'GOODS_RECEIPT': 'goods_receipt',
+        'PURCHASE_RETURN': 'purchase_return',
       };
       
       // Try to resolve backend type from multiple sources
@@ -1542,16 +1554,36 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         const nameLower = definition.name.toLowerCase();
         if (nameLower.includes('journal')) backendType = 'journal_entry';
         else if (nameLower.includes('payment')) backendType = 'payment';
-        else if (nameLower.includes('receipt')) backendType = 'receipt';
+        else if (nameLower.includes('receipt') && !nameLower.includes('goods')) backendType = 'receipt';
         else if (nameLower.includes('opening')) backendType = 'opening_balance';
+        else if (nameLower.includes('revaluation') || nameLower.includes('fx')) backendType = 'fx_revaluation';
+        else if (nameLower.includes('reversal')) backendType = 'reversal';
+        else if (nameLower.includes('sales') && nameLower.includes('invoice')) backendType = 'sales_invoice';
+        else if (nameLower.includes('sales') && nameLower.includes('order')) backendType = 'sales_order';
+        else if (nameLower.includes('sales') && nameLower.includes('return')) backendType = 'sales_return';
+        else if (nameLower.includes('delivery')) backendType = 'delivery_note';
+        else if (nameLower.includes('purchase') && nameLower.includes('invoice')) backendType = 'purchase_invoice';
+        else if (nameLower.includes('purchase') && nameLower.includes('order')) backendType = 'purchase_order';
+        else if (nameLower.includes('goods') && nameLower.includes('receipt')) backendType = 'goods_receipt';
+        else if (nameLower.includes('purchase') && nameLower.includes('return')) backendType = 'purchase_return';
       }
       // 4. Check if code contains a base type pattern
       else if (definition.code) {
         const codeLower = definition.code.toLowerCase();
         if (codeLower.includes('journal')) backendType = 'journal_entry';
         else if (codeLower.includes('payment')) backendType = 'payment';
-        else if (codeLower.includes('receipt')) backendType = 'receipt';
+        else if (codeLower.includes('receipt') && !codeLower.includes('goods')) backendType = 'receipt';
         else if (codeLower.includes('opening')) backendType = 'opening_balance';
+        else if (codeLower.includes('revaluation') || codeLower.includes('fx')) backendType = 'fx_revaluation';
+        else if (codeLower.includes('reversal')) backendType = 'reversal';
+        else if (codeLower.includes('sales') && codeLower.includes('invoice')) backendType = 'sales_invoice';
+        else if (codeLower.includes('sales') && codeLower.includes('order')) backendType = 'sales_order';
+        else if (codeLower.includes('sales') && codeLower.includes('return')) backendType = 'sales_return';
+        else if (codeLower.includes('delivery')) backendType = 'delivery_note';
+        else if (codeLower.includes('purchase') && codeLower.includes('invoice')) backendType = 'purchase_invoice';
+        else if (codeLower.includes('purchase') && codeLower.includes('order')) backendType = 'purchase_order';
+        else if (codeLower.includes('goods') && codeLower.includes('receipt')) backendType = 'goods_receipt';
+        else if (codeLower.includes('purchase') && codeLower.includes('return')) backendType = 'purchase_return';
       }
 
       // 5. REVERSAL PROTECTION: If this voucher is already identified as a reversal (e.g., from backend or correction flow),
