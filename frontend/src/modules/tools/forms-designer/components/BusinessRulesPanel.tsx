@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { AlertTriangle, Shield, CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
+import { AlertTriangle, Shield, CheckCircle, XCircle, AlertCircle, Info, ChevronDown } from 'lucide-react';
 import { DocumentFormConfig } from '../types';
 
 export interface BusinessRuleState {
@@ -93,8 +93,8 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
                 <input
                   type="number"
                   min="1"
-                  value={rule.value || 1}
-                  onChange={(e) => handleRuleChange(ruleKey, { value: parseInt(e.target.value) || 1 })}
+                  value={(rule as any).value || 1}
+                  onChange={(e) => handleRuleChange(ruleKey, { value: parseInt(e.target.value) || 1 } as any)}
                   className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>

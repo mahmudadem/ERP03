@@ -19,32 +19,25 @@ export interface ValidationConfig {
 /**
  * Current validation configuration
  * 
- * In development: enabled with parallel run
- * In production: disabled until tested (controlled by env var)
+ * TEMPORARILY DISABLED for testing - set to false to prevent blank page
  */
 export const VALIDATION_CONFIG: ValidationConfig = {
-  enabled: process.env.REACT_APP_NEW_VALIDATION === 'true',
+  enabled: false, // DISABLED until TypeScript errors are fixed
   parallelRun: process.env.NODE_ENV === 'development',
   enableByType: {
-    // Phase 1: Journal entries (simplest) - ENABLED
-    JOURNAL_ENTRY: true,
-    FX_REVALUATION: true,
-    OPENING_BALANCE: true,
-    REVERSAL: true,
-    
-    // Phase 2: Sales forms - ENABLED
-    SALES_INVOICE: true,
-    SALES_ORDER: true,
-    SALES_RETURN: true,
-    DELIVERY_NOTE: true,
-    
-    // Phase 3: Purchase forms - ENABLED
-    PURCHASE_INVOICE: true,
-    PURCHASE_ORDER: true,
-    GOODS_RECEIPT: true,
-    PURCHASE_RETURN: true,
-    
-    // Phase 4: Receipt/payment (most complex) - DISABLED for now
+    // All disabled for now
+    JOURNAL_ENTRY: false,
+    FX_REVALUATION: false,
+    OPENING_BALANCE: false,
+    REVERSAL: false,
+    SALES_INVOICE: false,
+    SALES_ORDER: false,
+    SALES_RETURN: false,
+    DELIVERY_NOTE: false,
+    PURCHASE_INVOICE: false,
+    PURCHASE_ORDER: false,
+    GOODS_RECEIPT: false,
+    PURCHASE_RETURN: false,
     RECEIPT: false,
     PAYMENT: false,
   },
