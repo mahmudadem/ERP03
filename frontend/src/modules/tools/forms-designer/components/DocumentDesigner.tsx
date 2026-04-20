@@ -633,6 +633,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
        
        if (primaryIdxInRow !== -1) {
            // We'll move the ENTIRE group. 
+           // Calculate total width to ensure clamping
+           const totalGroupWidth = rowFields.reduce((sum, f) => sum + (f.colSpan || 1), 0);
+           const clampedCol = Math.max(0, Math.min(GRID_COLS - totalGroupWidth, targetCol));
+
            // Extract them from source
            fieldsToMove = rowFields;
            
@@ -641,7 +645,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
            modeConfig.sections[sourceSection as SectionType].fields = sourceFields.filter(f => !fieldIdsToRemove.has(f.fieldId));
            
            // Place them in the target section, maintaining relative column offsets
-           let currentColOffset = targetCol;
+           let currentColOffset = clampedCol;
            fieldsToMove.forEach(f => {
               f.row = targetRow;
               f.col = currentColOffset;
@@ -651,13 +655,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
            // Fallback if logic fails somehow
            fieldsToMove = sourceFields.splice(primaryFieldIndex, 1);
            fieldsToMove[0].row = targetRow;
-           fieldsToMove[0].col = targetCol;
+           fieldsToMove[0].col = Math.max(0, Math.min(GRID_COLS - (fieldsToMove[0].colSpan || 1), targetCol));
        }
     } else {
        // Single standard field move
        fieldsToMove = sourceFields.splice(primaryFieldIndex, 1);
        fieldsToMove[0].row = targetRow;
-       fieldsToMove[0].col = targetCol;
+       // Clamp col to stay within 24 grid
+       fieldsToMove[0].col = Math.max(0, Math.min(GRID_COLS - (fieldsToMove[0].colSpan || 1), targetCol));
     }
 
     const targetFields = modeConfig.sections[targetSection as SectionType].fields;
@@ -721,8 +726,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     const fields = overrides[previewMode].sections[selectedField.section as SectionType].fields;
     const field = fields.find((f: FieldLayout) => f.fieldId === selectedField.id);
     if (field) {
-      // @ts-ignore
-      field[key] = value;
+      // Validate colSpan constraint: must not exceed grid width when combined with current column
+      if (key === 'colSpan') {
+         const newSpan = parseInt(value);
+         field.colSpan = Math.max(1, Math.min(GRID_COLS - field.col, newSpan));
+      } else {
+         // @ts-ignore
+         field[key] = value;
+      }
       setConfig(prev => ({ ...prev, uiModeOverrides: overrides }));
     }
   };
@@ -844,8 +855,12 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
         {isExpanded ? (
           <div 
-            className="p-6 grid grid-cols-24 gap-3 relative min-h-[160px] grid-container animate-in fade-in duration-300"
-            style={{ backgroundColor: currentHex, gridTemplateRows: `repeat(${Math.max(4, maxRow + 1)}, minmax(3.5rem, auto))` }}
+            className="p-6 grid gap-3 relative min-h-[160px] grid-container animate-in fade-in duration-300"
+            style={{ 
+              backgroundColor: currentHex, 
+              gridTemplateRows: `repeat(${Math.max(4, maxRow + 1)}, minmax(3.5rem, auto))`,
+              gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' 
+            }}
           >
              {Array.from({ length: Math.max(4, maxRow + 1) * GRID_COLS }).map((_, i) => {
                 const r = Math.floor(i / GRID_COLS);
@@ -967,7 +982,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     onDragStart={(e) => handleDragStartField(e, field.fieldId, sectionName)}
                     onClick={(e) => { e.stopPropagation(); setSelectedField({ id: field.fieldId, section: sectionName }); }}
                     className={`
-                      rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all
+                      rounded border p-2 flex flex-col justify-center text-xs relative z-10 select-none shadow-sm group/item transition-all min-w-0
                       ${isSelected ? 'ring-2 ring-indigo-500 border-indigo-500 z-20' : ''}
                       ${meta?.type === 'system' ? 'bg-gray-100 border-gray-300 text-gray-500' : ''}
                       ${meta?.type === 'button' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold items-center' : ''}
@@ -975,7 +990,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     `}
                     style={{
                       gridColumnStart: field.col + 1,
-                      gridColumnEnd: `span ${field.colSpan}`,
+                      gridColumnEnd: `span ${Math.min(GRID_COLS - field.col, field.colSpan)}`,
                       gridRowStart: field.row + 1,
                       gridRowEnd: `span ${field.rowSpan || 1}`,
                     }}
@@ -1444,14 +1459,14 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Width (Columns)</label>
                         <div className="flex items-center gap-3">
                            <input 
-                             type="range" min="1" max="12"
+                             type="range" min="1" max="24"
                              value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan || 1}
                              onChange={(e) => updateSelectedField('colSpan', parseInt(e.target.value))}
                              className="flex-1 accent-indigo-600 bg-white"
                            />
                            <span className="text-sm font-bold w-6 text-center text-slate-900">{config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan}</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1">Grid has 12 columns total.</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Grid has 24 columns total.</p>
                      </div>
 
                      <div>

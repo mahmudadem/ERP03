@@ -3186,13 +3186,13 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                           lowerFieldId.endsWith('updatedby');
 
     return (
-        <div className="space-y-0.5">
-            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+        <div className="space-y-0.5 min-w-0">
+            <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide truncate block" title={finalLabel}>{finalLabel}</label>
             {/* System fields - display as read-only */}
             {(isSystemField || lowerFieldId.includes('created') || lowerFieldId.includes('updated')) ? (
                 <div 
-                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors block" 
-                    style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    className="w-full p-1.5 border border-[var(--color-border)] rounded bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)] italic transition-colors block truncate" 
+                    style={{ minWidth: 0 }}
                     title={getFieldValue(fieldId)}
                 >
                     {(() => {
@@ -3406,10 +3406,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       elements.push(
         <div 
           key={field.fieldId || i}
-          className={`col-span-${Math.min(12, field.colSpan || 4)}`}
+          className="min-w-0"
           style={{ 
             gridColumnStart: (field.col || 0) + 1,
-            gridColumnEnd: `span ${field.colSpan || 4}`,
+            gridColumnEnd: `span ${Math.min(24 - (field.col || 0), field.colSpan || 4)}`,
             gridRowStart: (field.row || 0) + 1,
             gridRowEnd: `span ${field.rowSpan || 1}`
           }}
@@ -3435,8 +3435,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       ].map((fieldId, index) => ({
         fieldId,
         row: Math.floor(index / 4),
-        col: (index % 4) * 3,
-        colSpan: 3,
+        col: (index % 4) * 6,
+        colSpan: 6,
       }))
     : [];
 
@@ -3579,7 +3579,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         
          return (
            <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle('HEADER')}>
-            <div className="grid grid-cols-24 gap-x-4 gap-y-2">
+            <div className="grid gap-x-4 gap-y-2" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
               {renderFieldList(sortedFields)}
             </div>
           </div>
@@ -3592,7 +3592,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     if (!configDef.uiModeOverrides && definition.headerFields && definition.headerFields.length > 0) {
       return (
         <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle('HEADER')}>
-          <div className="grid grid-cols-24 gap-x-4 gap-y-2">
+          <div className="grid gap-x-4 gap-y-2" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
             {definition.headerFields.map((field: any) => (
               <div key={field.id} className="col-span-6 md:col-span-4">
                 {renderField(field.id, field.label)}
@@ -3650,7 +3650,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return (
        <div className="px-4 py-3 border-b border-[var(--color-border)] mb-4 transition-colors" style={getSectionSurfaceStyle(sectionKey)}>
          {title && <h3 className="text-xs font-bold text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">{title}</h3>}
-        <div className="grid grid-cols-24 gap-x-4 gap-y-2">
+        <div className="grid gap-x-2 xl:gap-x-4 gap-y-2" style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}>
           {renderFieldList(sortedFields)}
         </div>
       </div>
@@ -3705,8 +3705,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     
     return (
        <div 
-         className="border-t border-[var(--color-border)] p-3 grid grid-cols-24 gap-3 transition-colors"
-         style={{ ...getSectionSurfaceStyle('ACTIONS'), gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))` }}
+         className="border-t border-[var(--color-border)] p-3 grid gap-3 transition-colors"
+         style={{ ...getSectionSurfaceStyle('ACTIONS'), gridTemplateRows: `repeat(${maxRow}, minmax(2.5rem, auto))`, gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}
        >
           {renderFieldList(actionFields)}
        </div>
@@ -3714,7 +3714,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   };
 
    return (
-     <div className="flex flex-col h-full bg-[var(--color-bg-primary)] font-sans text-[var(--color-text-primary)] overflow-y-auto custom-scroll transition-colors">
+     <div className="flex flex-col h-full bg-[var(--color-bg-primary)] font-sans text-[var(--color-text-primary)] overflow-y-auto overflow-x-hidden w-full max-w-full custom-scroll transition-colors">
         {/* Header Fields from Canonical */}
         {renderHeaderFields()}
         
