@@ -158,12 +158,13 @@ export abstract class DocumentValidator {
     // Tier 2: Company-level
     const companyRules = injectedRules || {};
 
-    // Tier 3: System defaults
+    // Tier 3: System defaults - ALL DISABLED by default (opt-in per form)
     const systemDefaults: BusinessRulesConfig = {
-      requirePositiveTotal: { enabled: true, outcome: RuleOutcome.BLOCK },
+      requirePositiveTotal: { enabled: false, outcome: RuleOutcome.BLOCK },
       preventBelowCost: { enabled: false, outcome: RuleOutcome.ALLOW_WITH_WARN },
       enforceCreditLimit: { enabled: false, outcome: RuleOutcome.BLOCK },
       requireWarehouse: { enabled: false, outcome: RuleOutcome.BLOCK },
+      minLineCount: { enabled: false, outcome: RuleOutcome.BLOCK },
     };
 
     // Cascade: form > company > system

@@ -34,16 +34,29 @@ export function useDocumentValidation(
   } = options;
 
   return useMemo(() => {
-    // Guard: No definition = invalid
+    // Guard: No definition = use fallback (allow save, let old validation handle it)
     if (!definition) {
       return {
-        structuralErrors: ['Form definition is missing'],
+        structuralErrors: [],
         businessErrors: [],
         businessWarnings: [],
         systemWarnings: [],
-        canSave: false,
+        canSave: true,
         hasWarnings: false,
-        hasErrors: true,
+        hasErrors: false,
+      };
+    }
+
+    // Guard: No formData yet (renderer not ready) = allow save (wait for old validation)
+    if (!formData || Object.keys(formData).length === 0) {
+      return {
+        structuralErrors: [],
+        businessErrors: [],
+        businessWarnings: [],
+        systemWarnings: [],
+        canSave: true,
+        hasWarnings: false,
+        hasErrors: false,
       };
     }
 
