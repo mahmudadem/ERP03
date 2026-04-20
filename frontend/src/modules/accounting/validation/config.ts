@@ -26,18 +26,25 @@ export const VALIDATION_CONFIG: ValidationConfig = {
   enabled: process.env.REACT_APP_NEW_VALIDATION === 'true',
   parallelRun: process.env.NODE_ENV === 'development',
   enableByType: {
-    // Start with journal entries (simplest)
+    // Phase 1: Journal entries (simplest) - ENABLED
     JOURNAL_ENTRY: true,
     FX_REVALUATION: true,
     OPENING_BALANCE: true,
+    REVERSAL: true,
     
-    // Then expand to sales/purchase
-    SALES_INVOICE: false,
-    SALES_ORDER: false,
-    PURCHASE_INVOICE: false,
-    PURCHASE_ORDER: false,
+    // Phase 2: Sales forms - ENABLED
+    SALES_INVOICE: true,
+    SALES_ORDER: true,
+    SALES_RETURN: true,
+    DELIVERY_NOTE: true,
     
-    // Receipt/payment last (most complex)
+    // Phase 3: Purchase forms - ENABLED
+    PURCHASE_INVOICE: true,
+    PURCHASE_ORDER: true,
+    GOODS_RECEIPT: true,
+    PURCHASE_RETURN: true,
+    
+    // Phase 4: Receipt/payment (most complex) - DISABLED for now
     RECEIPT: false,
     PAYMENT: false,
   },

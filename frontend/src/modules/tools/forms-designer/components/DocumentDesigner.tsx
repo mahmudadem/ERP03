@@ -34,6 +34,7 @@ import {
 } from '../types';
 import { GenericVoucherRenderer } from '../../../accounting/components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
+import { BusinessRulesPanel, BusinessRuleState } from './BusinessRulesPanel';
 
 // --- MOCK DATA (UI ONLY) ---
 
@@ -193,6 +194,22 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     prefix?: string;
   }>({});
   const [isValidating, setIsValidating] = useState(false);
+  
+  // Business Rules State (Layer 2 validation)
+  const [businessRules, setBusinessRules] = useState<BusinessRuleState>(() => {
+    // Load from initialConfig.metadata.businessRules if exists
+    if (initialConfig?.metadata?.businessRules) {
+      return initialConfig.metadata.businessRules;
+    }
+    // Default: all rules disabled (inherit from company defaults)
+    return {
+      requirePositiveTotal: { enabled: false, outcome: 'BLOCK' },
+      preventBelowCost: { enabled: false, outcome: 'ALLOW_WITH_WARN' },
+      enforceCreditLimit: { enabled: false, outcome: 'BLOCK' },
+      requireWarehouse: { enabled: false, outcome: 'BLOCK' },
+      minLineCount: { enabled: false, outcome: 'BLOCK', value: 1 },
+    };
+  });
   
   // Config State
   const [config, setConfig] = useState<DocumentFormConfig>(() => {
@@ -1812,13 +1829,36 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         );
       case 3: // Rules
         return (
-          <div className="max-w-2xl mx-auto grid gap-4">
-            {config.rules.map(rule => (
-              <div key={rule.id} onClick={() => setConfig(prev => ({...prev, rules: prev.rules.map(r => r.id === rule.id ? { ...r, enabled: !r.enabled } : r)}))} className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer ${rule.enabled ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'}`}>
-                <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${rule.enabled ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300'}`}>{rule.enabled && <Check size={14} />}</div>
-                <div><h4 className="font-bold text-slate-900">{rule.label}</h4><p className="text-sm text-gray-500">{rule.description}</p></div>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Layer 2: Business Rules Panel */}
+            <BusinessRulesPanel
+              form={config}
+              rules={businessRules}
+              onChange={(newRules) => {
+                setBusinessRules(newRules);
+                // Also update config.metadata.businessRules for persistence
+                setConfig(prev => ({
+                  ...prev,
+                  metadata: {
+                    ...prev.metadata,
+                    businessRules: newRules,
+                  },
+                }));
+              }}
+            />
+
+            {/* Dynamic Rules (existing) */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Dynamic Rules</h3>
+              <div className="max-w-2xl mx-auto grid gap-4">
+                {config.rules.map(rule => (
+                  <div key={rule.id} onClick={() => setConfig(prev => ({...prev, rules: prev.rules.map(r => r.id === rule.id ? { ...r, enabled: !r.enabled } : r)}))} className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer ${rule.enabled ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'}`}>
+                    <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center ${rule.enabled ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300'}`}>{rule.enabled && <Check size={14} />}</div>
+                    <div><h4 className="font-bold text-slate-900">{rule.label}</h4><p className="text-sm text-gray-500">{rule.description}</p></div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         );
       case 4: // Fields (Reorganized)
