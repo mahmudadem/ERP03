@@ -33,33 +33,28 @@ export class SalesValidator extends DocumentValidator {
       this.hasField('partyId') ||
       this.hasField('customer') ||
       this.hasField('customerName') ||
-      !!formData?.accountId || // Some sales forms use generic accountId
+      !!formData?.accountId ||
       !!formData?.account;
     
-    // DON'T block on missing customer for now - let old validation handle it
-    // if (!hasCustomer) {
-    //   errors.push('Customer is required');
-    // }
-
-    // Rule 2: Must have at least 1 line item
-    if (lines.length === 0) {
-      errors.push('At least 1 line item is required');
+    if (!hasCustomer) {
+      errors.push('Customer is required');
     }
 
-    // Rule 3: Each line must have SOME content (very permissive)
-    if (lines.length > 0) {
-      const hasAnyContent = lines.some((l) => {
-        return Object.keys(l).length > 1; // Has at least one field besides id
-      });
+    // Rule 2: Must have at least 1 line item WITH AMOUNT
+    const linesWithAmount = lines.filter((l) => {
+      const hasAmount = Number(l.amount) > 0 || 
+                       Number(l.total) > 0 || 
+                       Number(l.lineTotal) > 0 ||
+                       Number(l.lineTotalDoc) > 0 ||
+                       Number(l.rowTotal) > 0;
+      return hasAmount;
+    });
 
-      if (!hasAnyContent) {
-        // Don't block - empty lines are OK initially
-        // errors.push('Line items must have content');
-      }
+    if (linesWithAmount.length === 0) {
+      errors.push('At least 1 line with amount > 0 is required');
     }
 
-    // TEMPORARY: Don't block any sales forms during testing
-    return { isValid: true, errors: [] };
+    return { isValid: errors.length === 0, errors };
   }
 
   generateWarnings(): SystemWarningResult {

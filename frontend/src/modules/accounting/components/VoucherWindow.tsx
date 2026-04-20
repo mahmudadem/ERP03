@@ -881,10 +881,19 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
 
     const oldCanSave = isBalancedVoucher && finalHasLines;
     
-    // NEW validation (from two-layer system)
-    const canSave = validationEnabled ? newValidation.canSave : oldCanSave;
-    const validationErrors = validationEnabled ? newValidation.structuralErrors.concat(newValidation.businessErrors) : (oldCanSave ? [] : ['Voucher must balance and have lines']);
-    const validationWarnings = validationEnabled ? newValidation.businessWarnings.concat(newValidation.systemWarnings) : [];
+    // NEW validation (from two-layer system) - ADDS to old validation, doesn't replace it
+    // canSave = old validation (balance + lines) AND new validation (structural + business rules)
+    const canSave = validationEnabled 
+      ? (oldCanSave && newValidation.canSave)  // Both must pass
+      : oldCanSave;
+    
+    const validationErrors = validationEnabled 
+      ? [...newValidation.structuralErrors, ...newValidation.businessErrors]  // New errors
+      : (oldCanSave ? [] : ['Voucher must balance and have lines']);  // Old errors
+    
+    const validationWarnings = validationEnabled 
+      ? [...newValidation.businessWarnings, ...newValidation.systemWarnings] 
+      : [];
 
     return (
       <>
