@@ -43,12 +43,17 @@ export class SalesValidator extends DocumentValidator {
     // Rule 2: Must have at least 1 line item WITH AMOUNT
     // Check all possible amount field names used in sales forms
     const linesWithAmount = lines.filter((l) => {
-      const hasAmount = Number(l.amount) > 0 || 
-                       Number(l.total) > 0 || 
-                       Number(l.lineTotal) > 0 ||
-                       Number(l.lineTotalDoc) > 0 ||
-                       Number(l.rowTotal) > 0;
-      return hasAmount;
+      // Direct amount fields
+      const directAmount = Number(l.amount) > 0 || 
+                           Number(l.total) > 0 || 
+                           Number(l.lineTotal) > 0 ||
+                           Number(l.lineTotalDoc) > 0 ||
+                           Number(l.rowTotal) > 0;
+      
+      // Computed amount: quantity × unitPrice (for sales forms where lineTotal is derived)
+      const computedAmount = Number(l.quantity) > 0 && Number(l.unitPrice) > 0;
+      
+      return directAmount || computedAmount;
     });
 
     if (linesWithAmount.length === 0) {

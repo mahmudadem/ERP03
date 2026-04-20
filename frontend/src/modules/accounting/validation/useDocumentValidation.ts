@@ -80,6 +80,8 @@ export function useDocumentValidation(
         type: definition.code || definition.baseType,
         formDataKeys: Object.keys(formData),
         linesCount: formData?.lines?.length,
+        firstLineKeys: formData?.lines?.[0] ? Object.keys(formData.lines[0]) : 'no lines',
+        firstLine: formData?.lines?.[0],
         ...result._debug,
       });
     }
