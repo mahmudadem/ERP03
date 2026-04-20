@@ -22,6 +22,8 @@
  */
 
 import { accountingApi, CorrectionMode, CorrectionRequest } from '../api/accountingApi';
+import { salesApi } from '../api/salesApi';
+import { purchasesApi } from '../api/purchasesApi';
 import { errorHandler } from '../services/errorHandler';
 import { VoucherActionType } from '../modules/accounting/utils/voucherActions';
 
@@ -371,14 +373,91 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     delete cleanPayload.id;
   }
   
+  // Route to correct API based on voucher type
+  const isSalesInvoice = resolvedType === 'sales_invoice';
+  const isSalesOrder = resolvedType === 'sales_order';
+  const isSalesReturn = resolvedType === 'sales_return';
+  const isDeliveryNote = resolvedType === 'delivery_note';
+  const isPurchaseInvoice = resolvedType === 'purchase_invoice';
+  const isPurchaseOrder = resolvedType === 'purchase_order';
+  const isPurchaseReturn = resolvedType === 'purchase_return';
+  const isGoodsReceipt = resolvedType === 'goods_receipt';
+  const isSubledgerDocument = isSalesInvoice || isSalesOrder || isSalesReturn || isDeliveryNote ||
+    isPurchaseInvoice || isPurchaseOrder || isPurchaseReturn || isGoodsReceipt;
+
   let savedVoucher;
-  if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
-    await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
-    // Update endpoint returns ack only; fetch full server state for reliable reopen.
-    savedVoucher = await accountingApi.getVoucher(cleanPayload.id);
+  
+  if (isSubledgerDocument) {
+    // Route to subledger-specific API (sales/purchase)
+    if (isSalesInvoice) {
+      const siPayload = {
+        customerId: data.customerId || '',
+        invoiceDate: data.date || data.invoiceDate || new Date().toISOString().split('T')[0],
+        dueDate: data.dueDate || undefined,
+        currency: headerCurrency || undefined,
+        exchangeRate: exchangeRate || 1,
+        notes: data.notes || data.description || undefined,
+        lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
+          itemId: l.itemId,
+          invoicedQty: Number(l.quantity) || 0,
+          uomId: l.uomId || undefined,
+          unitPriceDoc: Number(l.unitPrice) || 0,
+          taxCodeId: l.taxCodeId || undefined,
+          warehouseId: l.warehouseId || undefined,
+          description: l.description || undefined,
+        })),
+      };
+      
+      if (cleanPayload.id) {
+        savedVoucher = await salesApi.updateSI(cleanPayload.id, siPayload);
+      } else {
+        savedVoucher = await salesApi.createSI(siPayload);
+      }
+    } else if (isPurchaseInvoice) {
+      const piPayload = {
+        vendorId: data.vendorId || data.supplierId || data.partyId || '',
+        invoiceDate: data.date || data.invoiceDate || new Date().toISOString().split('T')[0],
+        dueDate: data.dueDate || undefined,
+        currency: headerCurrency || undefined,
+        exchangeRate: exchangeRate || 1,
+        notes: data.notes || data.description || undefined,
+        lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
+          itemId: l.itemId,
+          invoicedQty: Number(l.quantity) || 0,
+          uomId: l.uomId || undefined,
+          unitPriceDoc: Number(l.unitPrice) || 0,
+          taxCodeId: l.taxCodeId || undefined,
+          warehouseId: l.warehouseId || undefined,
+          description: l.description || undefined,
+        })),
+      };
+      
+      if (cleanPayload.id) {
+        savedVoucher = await purchasesApi.updatePI(cleanPayload.id, piPayload);
+      } else {
+        savedVoucher = await purchasesApi.createPI(piPayload);
+      }
+    } else {
+      // For other subledger types (SO, SR, DN, PO, PR, GRN), fall back to accounting API
+      // These don't have dedicated API endpoints yet
+      if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
+        await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
+        savedVoucher = await accountingApi.getVoucher(cleanPayload.id);
+      } else {
+        const res = await accountingApi.createVoucher(cleanPayload);
+        savedVoucher = res;
+      }
+    }
   } else {
-    const res = await accountingApi.createVoucher(cleanPayload);
-    savedVoucher = res;
+    // Accounting types (journal, payment, receipt, etc.)
+    if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
+      await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
+      // Update endpoint returns ack only; fetch full server state for reliable reopen.
+      savedVoucher = await accountingApi.getVoucher(cleanPayload.id);
+    } else {
+      const res = await accountingApi.createVoucher(cleanPayload);
+      savedVoucher = res;
+    }
   }
   
   dispatchUpdate();
