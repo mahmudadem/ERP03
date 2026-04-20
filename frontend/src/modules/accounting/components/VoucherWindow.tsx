@@ -873,8 +873,9 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     const semanticLineCount = isSemanticAmountType
       ? currentRows.filter((r: any) => {
           const accountVal = r?.[semanticLineAccountKey || ''] || r?.accountId || r?.account || r?.itemId || r?.item || r?.productId || r?.product || r?.serviceId || r?.service || r?.description || r?.name;
-          const amountVal = Number(r?.amount) || Number(r?.lineTotalDoc) || Number(r?.total) || Number(r?.rowTotal) || 0;
-          return !!accountVal && amountVal > 0;
+          const directAmount = Number(r?.amount) || Number(r?.lineTotalDoc) || Number(r?.total) || Number(r?.rowTotal) || 0;
+          const computedAmount = Number(r?.quantity) > 0 && Number(r?.unitPrice) > 0;
+          return !!accountVal && (directAmount > 0 || computedAmount);
         }).length
       : 0;
       
@@ -883,7 +884,11 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
       : (currentRows.filter(r => (r.accountId || r.account || r.description) && (Number(r.debit) > 0 || Number(r.credit) > 0)).length >= 2);
     
     const finalHasLines = isEffectivelySemantic 
-      ? currentRows.filter((r: any) => (Number(r?.amount) || Number(r?.total) || Number(r?.lineTotalDoc) || Number(r?.lineTotal) || Number(r?.rowTotal) || 0) > 0).length >= 1
+      ? currentRows.filter((r: any) => {
+          const directAmount = Number(r?.amount) || Number(r?.total) || Number(r?.lineTotalDoc) || Number(r?.lineTotal) || Number(r?.rowTotal) || 0;
+          const computedAmount = Number(r?.quantity) > 0 && Number(r?.unitPrice) > 0;
+          return (directAmount > 0 || computedAmount);
+        }).length >= 1
       : hasLines;
 
     const oldCanSave = isBalancedVoucher && finalHasLines;
