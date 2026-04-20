@@ -403,7 +403,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
           uomId: l.uomId || undefined,
           unitPriceDoc: Number(l.unitPrice) || 0,
           taxCodeId: l.taxCodeId || undefined,
-          warehouseId: l.warehouseId || undefined,
+          warehouseId: l.warehouseId || data.warehouseId || undefined,
           description: l.description || undefined,
         })),
       };
@@ -427,7 +427,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
           uomId: l.uomId || undefined,
           unitPriceDoc: Number(l.unitPrice) || 0,
           taxCodeId: l.taxCodeId || undefined,
-          warehouseId: l.warehouseId || undefined,
+          warehouseId: l.warehouseId || data.warehouseId || undefined,
           description: l.description || undefined,
         })),
       };

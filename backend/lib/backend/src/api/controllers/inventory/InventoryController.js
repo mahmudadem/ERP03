@@ -23,10 +23,6 @@ const StockReservationUseCases_1 = require("../../../application/inventory/use-c
 const CostQueryUseCases_1 = require("../../../application/inventory/use-cases/CostQueryUseCases");
 const ReferenceQueryUseCases_1 = require("../../../application/inventory/use-cases/ReferenceQueryUseCases");
 const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
-const PurchasesInventoryService_1 = require("../../../application/inventory/services/PurchasesInventoryService");
-const GoodsReceiptUseCases_1 = require("../../../application/purchases/use-cases/GoodsReceiptUseCases");
-const PurchaseInvoiceUseCases_1 = require("../../../application/purchases/use-cases/PurchaseInvoiceUseCases");
-const PurchaseReturnUseCases_1 = require("../../../application/purchases/use-cases/PurchaseReturnUseCases");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const InventoryDTOs_1 = require("../../dtos/InventoryDTOs");
 const VoucherValidationService_1 = require("../../../domain/accounting/services/VoucherValidationService");
@@ -58,9 +54,6 @@ class InventoryController {
     }
     static buildAccountingPostingService() {
         return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.accountRepository, new VoucherValidationService_1.VoucherValidationService());
-    }
-    static buildPurchasesInventoryService() {
-        return new PurchasesInventoryService_1.PurchasesInventoryService(InventoryController.buildMovementUseCase());
     }
     static buildUomImpactUseCase() {
         return new UomConversionGovernanceUseCases_1.AnalyzeUomConversionImpactUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.stockMovementRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesReturnRepository);
@@ -563,6 +556,9 @@ class InventoryController {
             const userId = InventoryController.getUserId(req);
             const conversionId = String(req.params.id);
             const newFactor = Number(req.body.newFactor);
+            const effectiveDate = String(req.body.effectiveDate || new Date().toISOString().slice(0, 10));
+            const roundQty = (value) => Math.round((value + Number.EPSILON) * 1000000) / 1000000;
+            const signedQty = (direction, qty) => (direction === 'IN' ? qty : -qty);
             const manageUseCase = new UomConversionUseCases_1.ManageUomConversionsUseCase(bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.uomRepository);
             const current = await manageUseCase.get(conversionId);
             if (!current || current.companyId !== companyId) {
@@ -574,7 +570,9 @@ class InventoryController {
                 conversionId,
                 proposedFactor: newFactor,
             });
-            if (Math.abs(current.factor - newFactor) < 0.0000001) {
+            const correctedMovements = impact.impactedMovements.filter((entry) => (typeof entry.projectedBaseQty === 'number'
+                && Math.abs((entry.projectedBaseQty || 0) - entry.currentBaseQty) > 0.0000001));
+            if (Math.abs(current.factor - newFactor) < 0.0000001 && correctedMovements.length === 0) {
                 res.json({
                     success: true,
                     data: {
@@ -585,63 +583,112 @@ class InventoryController {
                 });
                 return;
             }
-            if (!impact.used) {
-                const updated = await manageUseCase.update(conversionId, { factor: newFactor });
-                res.json({
-                    success: true,
-                    data: {
-                        conversion: InventoryDTOs_1.InventoryDTOMapper.toUomConversionDTO(updated),
-                        impact,
-                        autoFix: {
-                            mode: 'NONE',
-                            unposted: { purchaseReturns: 0, purchaseInvoices: 0, goodsReceipts: 0 },
-                            reposted: { goodsReceipts: 0, purchaseInvoices: 0, purchaseReturns: 0 },
+            const correctionMetadataRows = await bindRepositories_1.diContainer.stockMovementRepository.getItemMovements(companyId, current.itemId);
+            const appliedDeltaBySourceMovement = new Map();
+            correctionMetadataRows.forEach((movement) => {
+                var _a;
+                if (movement.referenceType !== 'MANUAL')
+                    return;
+                const meta = (((_a = movement.metadata) === null || _a === void 0 ? void 0 : _a.uomCorrection) || {});
+                if (meta.conversionId !== conversionId)
+                    return;
+                const sourceMovementId = typeof meta.sourceMovementId === 'string' ? meta.sourceMovementId : '';
+                if (!sourceMovementId)
+                    return;
+                const existing = appliedDeltaBySourceMovement.get(sourceMovementId) || 0;
+                appliedDeltaBySourceMovement.set(sourceMovementId, roundQty(existing + signedQty(movement.direction, movement.qty)));
+            });
+            const movementUseCase = InventoryController.buildMovementUseCase();
+            const correctionRunId = `UOM_CORR_${conversionId}_${Date.now()}`;
+            let generatedIn = 0;
+            let generatedOut = 0;
+            let generatedNetDeltaBaseQty = 0;
+            for (const impacted of correctedMovements) {
+                const sourceMovement = await bindRepositories_1.diContainer.stockMovementRepository.getMovement(impacted.movementId);
+                if (!sourceMovement || sourceMovement.companyId !== companyId) {
+                    throw ApiError_1.ApiError.notFound(`Source stock movement not found: ${impacted.movementId}`);
+                }
+                const projectedBaseQty = impacted.projectedBaseQty;
+                const desiredDelta = roundQty(signedQty(sourceMovement.direction, projectedBaseQty) - signedQty(sourceMovement.direction, sourceMovement.qty));
+                const alreadyAppliedDelta = appliedDeltaBySourceMovement.get(sourceMovement.id) || 0;
+                const remainingDelta = roundQty(desiredDelta - alreadyAppliedDelta);
+                if (Math.abs(remainingDelta) <= 0.0000001) {
+                    continue;
+                }
+                const correctionMetadata = {
+                    conversionId,
+                    sourceMovementId: sourceMovement.id,
+                    sourceReferenceType: sourceMovement.referenceType,
+                    sourceReferenceId: sourceMovement.referenceId,
+                    sourceReferenceLineId: sourceMovement.referenceLineId,
+                    sourceDirection: sourceMovement.direction,
+                    sourceQty: sourceMovement.qty,
+                    desiredQty: projectedBaseQty,
+                    desiredDeltaBaseQty: desiredDelta,
+                    appliedDeltaBaseQty: remainingDelta,
+                    effectiveDate,
+                    fromFactor: current.factor,
+                    toFactor: newFactor,
+                    correctedAt: new Date().toISOString(),
+                    module: impacted.module,
+                };
+                if (remainingDelta > 0) {
+                    const fxRateMovToBase = sourceMovement.fxRateMovToBase > 0 ? sourceMovement.fxRateMovToBase : 1;
+                    const fxRateCCYToBase = sourceMovement.fxRateCCYToBase > 0 ? sourceMovement.fxRateCCYToBase : fxRateMovToBase;
+                    const unitCostInMoveCurrency = sourceMovement.unitCostBase / fxRateMovToBase;
+                    await movementUseCase.processIN({
+                        companyId,
+                        itemId: sourceMovement.itemId,
+                        warehouseId: sourceMovement.warehouseId,
+                        qty: remainingDelta,
+                        date: effectiveDate,
+                        movementType: 'ADJUSTMENT_IN',
+                        refs: {
+                            type: 'MANUAL',
+                            docId: correctionRunId,
+                            lineId: sourceMovement.id,
                         },
-                    },
-                });
-                return;
+                        currentUser: userId,
+                        unitCostInMoveCurrency,
+                        moveCurrency: sourceMovement.movementCurrency,
+                        fxRateMovToBase,
+                        fxRateCCYToBase,
+                        notes: `UOM correction delta for movement ${sourceMovement.id}`,
+                        metadata: {
+                            uomCorrection: correctionMetadata,
+                        },
+                    });
+                    generatedIn += 1;
+                }
+                else {
+                    await movementUseCase.processOUT({
+                        companyId,
+                        itemId: sourceMovement.itemId,
+                        warehouseId: sourceMovement.warehouseId,
+                        qty: Math.abs(remainingDelta),
+                        date: effectiveDate,
+                        movementType: 'ADJUSTMENT_OUT',
+                        refs: {
+                            type: 'MANUAL',
+                            docId: correctionRunId,
+                            lineId: sourceMovement.id,
+                        },
+                        currentUser: userId,
+                        forcedUnitCostBase: sourceMovement.unitCostBase,
+                        forcedUnitCostCCY: sourceMovement.unitCostCCY,
+                        notes: `UOM correction delta for movement ${sourceMovement.id}`,
+                        metadata: {
+                            uomCorrection: correctionMetadata,
+                        },
+                    });
+                    generatedOut += 1;
+                }
+                generatedNetDeltaBaseQty = roundQty(generatedNetDeltaBaseQty + remainingDelta);
+                appliedDeltaBySourceMovement.set(sourceMovement.id, roundQty(alreadyAppliedDelta + remainingDelta));
             }
-            if (impact.hasSalesUsage) {
-                throw ApiError_1.ApiError.conflict('This conversion has posted sales usage. Smart auto-fix currently supports purchases only. '
-                    + 'Reverse/cleanup sales documents first, then retry.');
-            }
-            const purchaseBlockers = impact.impactedReferences.filter((entry) => entry.module === 'purchases' && !entry.canAutoFix);
-            if (purchaseBlockers.length > 0) {
-                const first = purchaseBlockers[0];
-                throw ApiError_1.ApiError.conflict(`Auto-fix blocked by ${first.referenceType} ${first.referenceId}: ${first.autoFixReason || 'document is not auto-fix eligible.'}`);
-            }
-            const uniqueIds = (ids) => Array.from(new Set(ids.filter(Boolean)));
-            const purchaseReferences = impact.impactedReferences.filter((entry) => entry.module === 'purchases');
-            const purchaseReturnIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'PURCHASE_RETURN').map((entry) => entry.referenceId));
-            const purchaseInvoiceIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'PURCHASE_INVOICE').map((entry) => entry.referenceId));
-            const goodsReceiptIds = uniqueIds(purchaseReferences.filter((entry) => entry.referenceType === 'GOODS_RECEIPT').map((entry) => entry.referenceId));
-            const purchasesInventoryService = InventoryController.buildPurchasesInventoryService();
-            const accountingPostingService = InventoryController.buildAccountingPostingService();
-            const unpostGoodsReceiptUseCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
-            const unpostPurchaseInvoiceUseCase = new PurchaseInvoiceUseCases_1.UnpostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
-            const unpostPurchaseReturnUseCase = new PurchaseReturnUseCases_1.UnpostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
-            const postGoodsReceiptUseCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
-            const postPurchaseInvoiceUseCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
-            const postPurchaseReturnUseCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, purchasesInventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
-            for (const referenceId of purchaseReturnIds) {
-                await unpostPurchaseReturnUseCase.execute(companyId, referenceId, userId);
-            }
-            for (const referenceId of purchaseInvoiceIds) {
-                await unpostPurchaseInvoiceUseCase.execute(companyId, referenceId, userId);
-            }
-            for (const referenceId of goodsReceiptIds) {
-                await unpostGoodsReceiptUseCase.execute(companyId, referenceId);
-            }
-            const updatedConversion = await manageUseCase.update(conversionId, { factor: newFactor });
-            for (const referenceId of goodsReceiptIds) {
-                await postGoodsReceiptUseCase.execute(companyId, referenceId);
-            }
-            for (const referenceId of purchaseInvoiceIds) {
-                await postPurchaseInvoiceUseCase.execute(companyId, referenceId);
-            }
-            for (const referenceId of purchaseReturnIds) {
-                await postPurchaseReturnUseCase.execute(companyId, referenceId);
-            }
+            const updatedConversion = Math.abs(current.factor - newFactor) < 0.0000001
+                ? current
+                : await manageUseCase.update(conversionId, { factor: newFactor });
             const afterImpact = await impactUseCase.execute({
                 companyId,
                 conversionId,
@@ -653,17 +700,14 @@ class InventoryController {
                     impactBefore: impact,
                     impactAfter: afterImpact,
                     autoFix: {
-                        mode: 'PURCHASES_REVERSE_REPOST',
-                        unposted: {
-                            purchaseReturns: purchaseReturnIds.length,
-                            purchaseInvoices: purchaseInvoiceIds.length,
-                            goodsReceipts: goodsReceiptIds.length,
+                        mode: 'STOCK_ONLY_DELTA',
+                        correctionRunId,
+                        generatedAdjustments: {
+                            in: generatedIn,
+                            out: generatedOut,
+                            netDeltaBaseQty: generatedNetDeltaBaseQty,
                         },
-                        reposted: {
-                            goodsReceipts: goodsReceiptIds.length,
-                            purchaseInvoices: purchaseInvoiceIds.length,
-                            purchaseReturns: purchaseReturnIds.length,
-                        },
+                        notes: 'Commercial invoice/payment values are not modified. Stock is corrected via adjustment delta movements.',
                     },
                 },
             });

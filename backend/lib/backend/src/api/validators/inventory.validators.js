@@ -239,6 +239,9 @@ const validateApplyUomConversionCorrectionInput = (body) => {
     if (!Number.isFinite(newFactor) || newFactor <= 0) {
         throw ApiError_1.ApiError.badRequest('newFactor must be a positive number');
     }
+    if (body.effectiveDate !== undefined) {
+        ensureIsoDate(body.effectiveDate, 'effectiveDate');
+    }
 };
 exports.validateApplyUomConversionCorrectionInput = validateApplyUomConversionCorrectionInput;
 const validateOpeningMovementInput = (body) => {
