@@ -4,6 +4,7 @@ import { inventoryApi } from '../../../api/inventoryApi';
 import { SalesSettingsDTO, salesApi } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { WarehouseSelector } from '../../../components/shared/selectors/WarehouseSelector';
 import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
@@ -281,6 +282,16 @@ const SalesSettingsPage: React.FC = () => {
                       placeholder="Select Revenue account"
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">Global fallback for all Sales Invoices.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Warehouse</label>
+                    <WarehouseSelector
+                      value={settings.defaultWarehouseId}
+                      onChange={(warehouse: any) => updateSetting('defaultWarehouseId', warehouse?.id || '')}
+                      placeholder="Select Warehouse"
+                    />
+                    <p className="mt-1.5 text-xs text-gray-500 italic">Used when no warehouse is specified on a sales line or invoice header.</p>
                   </div>
                 </div>
 
