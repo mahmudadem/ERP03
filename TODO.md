@@ -11,10 +11,9 @@
   7. Visit /accounting/setup after init is complete → verify "Already Configured" guard appears
   8. Visit /inventory/financial-integration without Accounting init → verify redirect to settings page
   9. Same flows for Purchase & Sales FI wizards
-- [ ] Decide on dependency map: Option A (remove accounting from deps) vs Option B (keep + UX step)
-  - Current: inventory→[accounting], sales→[accounting], purchase→[accounting] forces Accounting auto-activation
-  - Option A: Remove accounting from deps; users opt-in separately; simpler, matches our graceful-degradation architecture
-  - Option B: Keep deps but add UX step in init wizard explaining Accounting setup
+- [x] Decide on dependency map: Option A (remove accounting from deps) vs Option B (keep + UX step)
+  - Chose Option A: removed accounting from inventory/sales/purchase dependencies
+  - Operational modules now gracefully degrade without Accounting via createAccountingEffect
 
 ## Priority: Medium
 - [ ] Write unit tests for ConfigureInventoryFinancialIntegrationUseCase
