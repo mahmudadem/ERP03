@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Calculator,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  Info,
   Loader2,
   Settings,
   ShoppingCart,
@@ -19,6 +21,7 @@ import {
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
 
 interface SalesInitializationWizardProps {
   onComplete: () => void;
@@ -33,6 +36,8 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
   const [error, setError] = useState<string | null>(null);
   const { validAccounts, isLoading: loadingAccountsContext, getAccountById, refreshAccounts } = useAccounts();
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const { isModuleInitialized, loading: loadingModules } = useCompanyModules();
+  const accountingEnabled = isModuleInitialized('accounting');
 
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>('SIMPLE');
   const [allowDirectInvoicing, setAllowDirectInvoicing] = useState(true);
@@ -101,8 +106,11 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
   const simpleWorkflowDisabled = accountingMode === 'PERPETUAL';
 
   const stepError = useMemo(() => {
-    if (currentStep === 2 && !defaultRevenueAccountId) {
-      return 'Default Revenue account is required.';
+    if (currentStep === 2) {
+      if (accountingEnabled) {
+        if (!defaultRevenueAccountId) return 'Default Revenue Account is required.';
+      }
+      if (!defaultPaymentTermsDays || defaultPaymentTermsDays <= 0) return 'Payment terms must be greater than 0.';
     }
 
     if (currentStep === 3 && (Number.isNaN(defaultPaymentTermsDays) || defaultPaymentTermsDays < 0)) {
@@ -110,7 +118,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     }
 
     return null;
-  }, [currentStep, defaultPaymentTermsDays, defaultRevenueAccountId]);
+  }, [accountingEnabled, currentStep, defaultPaymentTermsDays, defaultRevenueAccountId]);
 
   const goNext = () => {
     if (stepError) {
@@ -136,19 +144,17 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       setSubmitting(true);
       setError(null);
 
-      const payload: InitializeSalesPayload = {
+      await salesApi.initializeSales({
         workflowMode,
+        defaultRevenueAccountId: accountingEnabled ? defaultRevenueAccountId : undefined,
+        defaultPaymentTermsDays,
         allowDirectInvoicing: workflowMode === 'SIMPLE' ? true : allowDirectInvoicing,
         requireSOForStockItems: workflowMode === 'SIMPLE' ? false : requireSOForStockItems,
-        defaultRevenueAccountId,
-        defaultPaymentTermsDays,
         soNumberPrefix: soNumberPrefix || 'SO',
         dnNumberPrefix: dnNumberPrefix || 'DN',
         siNumberPrefix: siNumberPrefix || 'SI',
         srNumberPrefix: srNumberPrefix || 'SR',
-      };
-
-      await salesApi.initializeSales(payload);
+      });
       emitCompanyModulesRefresh({ moduleCode: 'sales' });
       onComplete();
     } catch (err: any) {
@@ -277,6 +283,25 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     }
 
     if (currentStep === 2) {
+      if (!accountingEnabled) {
+        return (
+          <div className="py-6 max-w-2xl mx-auto space-y-5">
+            <h2 className="text-2xl font-bold text-gray-900">Account Mapping</h2>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
+                  <div className="text-sm text-amber-800 mt-1">Sales operations will track documents and quantities but will NOT create financial/GL postings.</div>
+                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600">Account mapping (Revenue, AR, COGS accounts) will be configured when Accounting is enabled. You can set these later from Sales Settings.</p>
+          </div>
+        );
+      }
+
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-5">
           <h2 className="text-2xl font-bold text-gray-900 text-center">Default Accounts</h2>
@@ -390,6 +415,15 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       <div className="py-8 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Review & Confirm</h2>
         <p className="text-gray-600 mb-6 text-center">Confirm your configuration before initializing Sales.</p>
+
+        {!accountingEnabled && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Accounting is not enabled. This initialization will set up sales operations only — no financial/GL postings will be created.</span>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg p-5">

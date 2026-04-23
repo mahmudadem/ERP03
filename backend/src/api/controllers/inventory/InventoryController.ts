@@ -63,6 +63,7 @@ import {
 } from '../../../application/inventory/use-cases/StockReservationUseCases';
 import { GetCurrentCostUseCase } from '../../../application/inventory/use-cases/CostQueryUseCases';
 import { GetMovementForReferenceUseCase } from '../../../application/inventory/use-cases/ReferenceQueryUseCases';
+import { ConfigureInventoryFinancialIntegrationUseCase } from '../../../application/inventory/use-cases/ConfigureInventoryFinancialIntegrationUseCase';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
@@ -1304,6 +1305,7 @@ export class InventoryController {
         diContainer.itemRepository,
         movementUseCase,
         diContainer.transactionManager,
+        diContainer.companyModuleRepository,
         accountingPostingService
       );
 
@@ -1566,6 +1568,36 @@ export class InventoryController {
       (res as any).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async configureFinancialIntegration(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new ConfigureInventoryFinancialIntegrationUseCase(
+        diContainer.inventorySettingsRepository,
+        diContainer.companyModuleRepository,
+        diContainer.accountRepository,
+        diContainer.stockMovementRepository
+      );
+
+      await useCase.execute({
+        companyId,
+        accountingMethod: (req as any).body.accountingMethod,
+        accountingMode: (req as any).body.accountingMode,
+        defaultInventoryAssetAccountId: (req as any).body.defaultInventoryAssetAccountId,
+        defaultCOGSAccountId: (req as any).body.defaultCOGSAccountId,
+        accountingStartDate: (req as any).body.accountingStartDate,
+      });
+
+      const settings = await diContainer.inventorySettingsRepository.getSettings(companyId);
+
+      (res as any).json({
+        success: true,
+        data: settings ? InventoryDTOMapper.toSettingsDTO(settings) : null,
       });
     } catch (error) {
       next(error);

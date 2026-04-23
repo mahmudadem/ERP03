@@ -57,6 +57,10 @@ export function useCompanyModules() {
     return () => window.removeEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
   }, [companyId, fetchModules]);
 
+  const isModuleInstalled = (moduleCode: string): boolean => {
+    return modules.some((m) => m.moduleCode === moduleCode);
+  };
+
   const isModuleInitialized = (moduleCode: string): boolean => {
     const module = modules.find((m) => m.moduleCode === moduleCode);
     return module?.initialized ?? false;
@@ -70,6 +74,7 @@ export function useCompanyModules() {
     modules,
     loading,
     error,
+    isModuleInstalled,
     isModuleInitialized,
     getModuleStatus,
     refreshModules: fetchModules,

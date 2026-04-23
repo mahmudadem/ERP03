@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   Box,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Info,
   Loader2,
   Settings,
   Warehouse,
@@ -14,6 +16,7 @@ import { Account, useAccounts } from '../../../context/AccountsContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { getAccountingModeLabel } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
 
 interface InventoryInitializationWizardProps {
   onComplete: () => void;
@@ -29,6 +32,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accounts, isLoading: loadingAccounts } = useAccounts();
+  const { isModuleInitialized, loading: loadingModules } = useCompanyModules();
+  const accountingEnabled = isModuleInitialized('accounting');
 
   const [defaultWarehouseName, setDefaultWarehouseName] = useState('Main Warehouse');
   const [defaultWarehouseCode, setDefaultWarehouseCode] = useState('MAIN');
@@ -84,7 +89,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     }
 
     if (currentStep === 3) {
-      if (accountingMode === 'PERPETUAL') {
+      if (accountingEnabled && accountingMode === 'PERPETUAL') {
         if (!defaultInventoryAssetAccountId) return 'Default Inventory Asset Account is required.';
       }
       if (autoGenerateItemCode) {
@@ -132,14 +137,12 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       setError(null);
 
       await inventoryApi.initialize({
-        accountingMode,
-        inventoryAccountingMethod: accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC',
+        accountingMode: accountingEnabled ? accountingMode : 'INVOICE_DRIVEN',
+        inventoryAccountingMethod: accountingEnabled ? (accountingMode === 'PERPETUAL' ? 'PERPETUAL' : 'PERIODIC') : 'PERIODIC',
         defaultWarehouseName: defaultWarehouseName.trim(),
         defaultWarehouseCode: defaultWarehouseCode.trim(),
-        defaultInventoryAssetAccountId:
-          defaultInventoryAssetAccountId || undefined,
-        defaultCOGSAccountId:
-          defaultCOGSAccountId || undefined,
+        defaultInventoryAssetAccountId: accountingEnabled ? (defaultInventoryAssetAccountId || undefined) : undefined,
+        defaultCOGSAccountId: accountingEnabled ? (defaultCOGSAccountId || undefined) : undefined,
         defaultCostCurrency: defaultCostCurrency.trim() || undefined,
         allowNegativeStock,
         autoGenerateItemCode,
@@ -194,6 +197,25 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     }
 
     if (currentStep === 1) {
+      if (!accountingEnabled) {
+        return (
+          <div className="py-6 max-w-2xl mx-auto space-y-5">
+            <h2 className="text-2xl font-bold text-gray-900">Accounting Integration</h2>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
+                  <div className="text-sm text-amber-800 mt-1">Inventory operations will track quantities and costs but will NOT create financial/GL postings.</div>
+                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600">The accounting mode selection is available once Accounting is enabled. You can configure it later from Inventory Settings.</p>
+          </div>
+        );
+      }
+
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
           <h2 className="text-2xl font-bold text-gray-900">Inventory Accounting Mode</h2>
@@ -288,42 +310,54 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
             />
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
-              <AccountSelector
-                value={defaultInventoryAssetAccountId}
-                onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
-                placeholder="Select inventory asset account"
-                disabled={loadingAccounts}
-                accounts={inventoryAssetAccounts as any}
-              />
-              <p className="mt-1 text-xs text-gray-600">
-                {accountingMode === 'PERPETUAL'
-                  ? 'Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.'
-                  : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.
-              </p>
+          {!accountingEnabled ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-gray-700">Account Mapping</div>
+                  <div className="text-xs text-gray-500 mt-1">Account mapping will be configured when Accounting is enabled. You can set Inventory Asset and COGS accounts later from Inventory Settings.</div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
-              <AccountSelector
-                value={defaultCOGSAccountId}
-                onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
-                placeholder="Select COGS account"
-                disabled={loadingAccounts}
-                accounts={cogsAccounts as any}
-              />
-              <p className="mt-1 text-xs text-gray-600">
-                Optional fallback. Used when sold stock needs a cost posting and the item or category does not have its own COGS account yet.
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist yet.
-              </p>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+                <AccountSelector
+                  value={defaultInventoryAssetAccountId}
+                  onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
+                  placeholder="Select inventory asset account"
+                  disabled={loadingAccounts}
+                  accounts={inventoryAssetAccounts as any}
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  {accountingMode === 'PERPETUAL'
+                    ? 'Required for perpetual inventory. This is the balance sheet account that holds the value of stock on hand.'
+                    : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Type an account code or name, then press Enter or Alt+Down to search. If no match exists, you can create a new account from the selector dialog.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+                <AccountSelector
+                  value={defaultCOGSAccountId}
+                  onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
+                  placeholder="Select COGS account"
+                  disabled={loadingAccounts}
+                  accounts={cogsAccounts as any}
+                />
+                <p className="mt-1 text-xs text-gray-600">
+                  Optional fallback. Used when sold stock needs a cost posting and the item or category does not have its own COGS account yet.
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist yet.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <div>
@@ -384,6 +418,15 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       <div className="py-6 max-w-2xl mx-auto space-y-4">
         <h2 className="text-2xl font-bold text-gray-900">Confirm & Initialize</h2>
         <p className="text-sm text-gray-600">Review your setup before creating inventory defaults.</p>
+
+        {!accountingEnabled && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Accounting is not enabled. This initialization will set up inventory operations only — no financial/GL postings will be created.</span>
+            </div>
+          </div>
+        )}
 
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">

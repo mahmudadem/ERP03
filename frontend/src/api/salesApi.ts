@@ -21,7 +21,7 @@ export interface SalesSettingsDTO {
   allowDirectInvoicing: boolean;
   requireSOForStockItems: boolean;
   defaultARAccountId?: string;
-  defaultRevenueAccountId: string;
+  defaultRevenueAccountId?: string;
   defaultCOGSAccountId?: string;
   defaultInventoryAccountId?: string;
   defaultSalesExpenseAccountId?: string;
@@ -259,7 +259,7 @@ export interface SalesReturnDTO {
 export interface InitializeSalesPayload {
   workflowMode?: WorkflowMode;
   defaultARAccountId?: string;
-  defaultRevenueAccountId: string;
+  defaultRevenueAccountId?: string;
   allowDirectInvoicing?: boolean;
   requireSOForStockItems?: boolean;
   defaultCOGSAccountId?: string;

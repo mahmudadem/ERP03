@@ -14,6 +14,7 @@ import {
 import { Party } from '../../../domain/shared/entities/Party';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
@@ -373,15 +374,17 @@ export class PostSalesReturnUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: ISalesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string): Promise<SalesReturn> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const salesReturn = await this.salesReturnRepo.getById(companyId, id);
     if (!salesReturn) throw new Error(`Sales return not found: ${id}`);
@@ -629,7 +632,7 @@ export class PostSalesReturnUseCase {
 
       recalcReturnTotals(salesReturn);
 
-      if (cogsBucket.size > 0) {
+      if (shouldPostAccounting && cogsBucket.size > 0) {
         const cogsVoucherLines: VoucherBucketLine[] = [];
         for (const line of Array.from(cogsBucket.values())) {
           const amount = roundMoney(line.amountBase);
@@ -677,7 +680,7 @@ export class PostSalesReturnUseCase {
         salesReturn.cogsVoucherId = null;
       }
 
-      if (isAfterInvoice) {
+      if (shouldPostAccounting && isAfterInvoice) {
         const arAccountId = this.resolveARAccount(customer);
         const revenueVoucherLines = [
           ...Array.from(revenueDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
@@ -740,6 +743,11 @@ export class PostSalesReturnUseCase {
     const posted = await this.salesReturnRepo.getById(companyId, id);
     if (!posted) throw new Error(`Sales return not found after posting: ${id}`);
     return posted;
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 
   private resolveARAccount(customer: Party): string {

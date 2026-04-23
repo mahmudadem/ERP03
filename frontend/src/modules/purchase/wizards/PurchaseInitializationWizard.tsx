@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   Calculator,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  Info,
   Loader2,
   Settings,
   ShoppingCart,
@@ -20,6 +22,7 @@ import {
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
@@ -34,6 +37,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   const [error, setError] = useState<string | null>(null);
   const { validAccounts, isLoading: loadingAccountsContext, getAccountById, refreshAccounts } = useAccounts();
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const { isModuleInitialized, loading: loadingModules } = useCompanyModules();
+  const accountingEnabled = isModuleInitialized('accounting');
 
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>('SIMPLE');
   const [allowDirectInvoicing, setAllowDirectInvoicing] = useState(true);
@@ -113,10 +118,11 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
   const stepError = useMemo(() => {
     if (currentStep === 2) {
-      if (!defaultAPAccountId) return 'Default Accounts Payable account is required.';
-      if (accountingMode === 'PERPETUAL' && !defaultGRNIAccountId) {
-        return 'Default GRNI account is required for perpetual purchasing workflows.';
+      if (accountingEnabled) {
+        if (!defaultAPAccountId) return 'Default AP Account is required.';
+        if (workflowMode === 'OPERATIONAL' && !defaultGRNIAccountId) return 'Default GRNI Account is required for operational workflow.';
       }
+      if (!defaultPaymentTermsDays || defaultPaymentTermsDays <= 0) return 'Payment terms must be greater than 0.';
     }
 
     if (currentStep === 3 && (Number.isNaN(defaultPaymentTermsDays) || defaultPaymentTermsDays < 0)) {
@@ -124,7 +130,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     return null;
-  }, [accountingMode, currentStep, defaultAPAccountId, defaultGRNIAccountId, defaultPaymentTermsDays]);
+  }, [accountingEnabled, currentStep, defaultAPAccountId, defaultGRNIAccountId, defaultPaymentTermsDays, workflowMode]);
 
   const goNext = () => {
     if (stepError) {
@@ -150,21 +156,19 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       setSubmitting(true);
       setError(null);
 
-      const payload: InitializePurchasesPayload = {
+      await purchasesApi.initializePurchases({
         workflowMode,
+        defaultAPAccountId: accountingEnabled ? defaultAPAccountId : undefined,
+        defaultGRNIAccountId: accountingEnabled ? (workflowMode === 'OPERATIONAL' ? defaultGRNIAccountId : undefined) : undefined,
+        defaultPurchaseExpenseAccountId: accountingEnabled ? defaultPurchaseExpenseAccountId : undefined,
+        defaultPaymentTermsDays,
         allowDirectInvoicing: workflowMode === 'SIMPLE' ? true : allowDirectInvoicing,
         requirePOForStockItems: workflowMode === 'SIMPLE' ? false : requirePOForStockItems,
-        defaultAPAccountId,
-        defaultPurchaseExpenseAccountId: defaultPurchaseExpenseAccountId || undefined,
-        defaultGRNIAccountId: accountingMode === 'PERPETUAL' ? defaultGRNIAccountId || undefined : undefined,
-        defaultPaymentTermsDays,
         poNumberPrefix: poNumberPrefix || 'PO',
         grnNumberPrefix: grnNumberPrefix || 'GRN',
         piNumberPrefix: piNumberPrefix || 'PI',
         prNumberPrefix: prNumberPrefix || 'PR',
-      };
-
-      await purchasesApi.initializePurchases(payload);
+      });
       emitCompanyModulesRefresh({ moduleCode: 'purchase' });
       onComplete();
     } catch (err: any) {
@@ -293,6 +297,25 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     }
 
     if (currentStep === 2) {
+      if (!accountingEnabled) {
+        return (
+          <div className="py-6 max-w-2xl mx-auto space-y-5">
+            <h2 className="text-2xl font-bold text-gray-900">Account Mapping</h2>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
+                  <div className="text-sm text-amber-800 mt-1">Purchase operations will track documents and quantities but will NOT create financial/GL postings.</div>
+                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600">Account mapping (AP, GRNI, expense accounts) will be configured when Accounting is enabled. You can set these later from Purchase Settings.</p>
+          </div>
+        );
+      }
+
       return (
         <div className="mx-auto max-w-3xl space-y-5 py-8">
           <h2 className="text-center text-2xl font-bold text-gray-900">Default Accounts</h2>
@@ -439,6 +462,15 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           <h2 className="mb-2 text-2xl font-bold text-gray-900">Review & Initialize</h2>
           <p className="text-gray-600">Review the configuration below and initialize the Purchases module.</p>
         </div>
+
+        {!accountingEnabled && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Accounting is not enabled. This initialization will set up purchase operations only — no financial/GL postings will be created.</span>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">

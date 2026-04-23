@@ -657,4 +657,13 @@ export const inventoryApi = {
 
   reconcile: (): Promise<ReconcileResultDTO> =>
     client.post('/tenant/inventory/reconcile', {}),
+
+  configureFinancialIntegration: (payload: {
+    accountingMethod: 'PERIODIC' | 'PERPETUAL';
+    accountingMode: 'INVOICE_DRIVEN' | 'PERPETUAL';
+    defaultInventoryAssetAccountId?: string;
+    defaultCOGSAccountId?: string;
+    accountingStartDate?: string;
+  }) =>
+    client.post('/tenant/inventory/financial-integration', payload),
 };

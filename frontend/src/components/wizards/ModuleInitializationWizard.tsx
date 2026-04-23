@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
+import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { companyModulesApi } from '../../api/companyModules';
 import { emitCompanyModulesRefresh } from '../../utils/companyModulesEvents';
 import { Button } from '../ui/Button';
@@ -30,8 +31,15 @@ export const ModuleInitializationWizard: React.FC<ModuleInitializationWizardProp
 }) => {
   const { companyId } = useCompanyAccess();
   const navigate = useNavigate();
+  const { isModuleInitialized, loading: modulesLoading } = useCompanyModules();
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!modulesLoading && isModuleInitialized(moduleCode)) {
+      navigate(redirectPath || `/${moduleCode}`, { replace: true });
+    }
+  }, [modulesLoading, isModuleInitialized, moduleCode, redirectPath, navigate]);
 
   const handleComplete = async () => {
     if (!companyId) return;
@@ -62,6 +70,18 @@ export const ModuleInitializationWizard: React.FC<ModuleInitializationWizardProp
       setIsCompleting(false);
     }
   };
+
+  if (modulesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
+
+  if (isModuleInitialized(moduleCode)) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

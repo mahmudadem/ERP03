@@ -42,7 +42,7 @@ export class ModuleActivationService {
   }
 
   /**
-   * Ensures a module is initialized for a company.
+   * Ensures a module is installed for a company.
    * @param isImplicit If true, the module is activated for "foundational" purposes 
    *                   and might not show up in the main sidebar immediately.
    */
@@ -50,7 +50,6 @@ export class ModuleActivationService {
     const existing = await this.companyModuleRepo.get(companyId, moduleCode);
 
     if (existing) {
-      // If it exists but was implicit and we are now activating it explicitly, update it.
       if (!isImplicit && existing.config?.isImplicit) {
         await this.companyModuleRepo.update(companyId, moduleCode, {
           config: { ...existing.config, isImplicit: false },
@@ -60,13 +59,12 @@ export class ModuleActivationService {
       return;
     }
 
-    // Create new module activation record
     const newModule: CompanyModule = {
       companyId,
       moduleCode,
       installedAt: new Date(),
-      initialized: true,
-      initializationStatus: 'complete',
+      initialized: false,
+      initializationStatus: 'pending',
       config: {
         isImplicit,
         activatedAt: new Date().toISOString()
@@ -75,9 +73,6 @@ export class ModuleActivationService {
     };
 
     await this.companyModuleRepo.create(newModule);
-    
-    // TODO: Trigger module-specific seeding/foundational setup here
-    // e.g. If moduleCode === 'accounting', seed Fiscal Year / Tax Categories
   }
 
   /**

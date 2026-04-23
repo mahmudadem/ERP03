@@ -6,6 +6,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
+import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import {
   getAccountingModeLabel,
@@ -116,6 +117,12 @@ const InventorySettingsPage: React.FC = () => {
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as TabId)}
     >
+      <AccountingIntegrationStatus
+        moduleCode="inventory"
+        hasMappings={!!settings?.defaultInventoryAssetAccountId}
+        integrationRoute="/inventory/financial-integration"
+      />
+
       {/* Accounting Foundation Tab */}
       {activeTab === 'accounting' && (
         <SettingsSection

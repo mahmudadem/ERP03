@@ -12,6 +12,7 @@ import { IWarehouseRepository } from '../../../repository/interfaces/inventory/I
 import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
@@ -221,15 +222,17 @@ export class PostGoodsReceiptUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string): Promise<GoodsReceipt> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<GoodsReceipt> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
     const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const grn = await this.goodsReceiptRepo.getById(companyId, id);
     if (!grn) throw new Error(`Goods receipt not found: ${id}`);
@@ -377,6 +380,7 @@ export class PostGoodsReceiptUseCase {
           amount: totalBase,
         });
 
+        if (shouldPostAccounting) {
         const voucher = await this.accountingPostingService.postInTransaction(
           {
             companyId,
@@ -399,6 +403,9 @@ export class PostGoodsReceiptUseCase {
           transaction
         );
         grn.voucherId = voucher.id;
+        } else {
+        grn.voucherId = null;
+        }
       } else {
         grn.voucherId = null;
       }
@@ -437,6 +444,11 @@ export class PostGoodsReceiptUseCase {
       round: roundMoney,
       itemCode: item.code,
     });
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 }
 
@@ -523,14 +535,17 @@ export class UnpostGoodsReceiptUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string): Promise<GoodsReceipt> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<GoodsReceipt> {
     const grn = await this.goodsReceiptRepo.getById(companyId, id);
     if (!grn) throw new Error(`Goods receipt not found: ${id}`);
     if (grn.status !== 'POSTED') throw new Error('Only POSTED goods receipts can be unposted');
+
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     let po: PurchaseOrder | null = null;
     if (grn.purchaseOrderId) {
@@ -538,9 +553,11 @@ export class UnpostGoodsReceiptUseCase {
     }
 
     await this.transactionManager.runTransaction(async (transaction) => {
+      if (shouldPostAccounting) {
       if (grn.voucherId) {
         await this.accountingPostingService.deleteVoucherInTransaction(companyId, grn.voucherId, transaction);
         grn.voucherId = null;
+      }
       }
 
       // 1. Reverse inventory movements
@@ -576,5 +593,10 @@ export class UnpostGoodsReceiptUseCase {
     const unposted = await this.goodsReceiptRepo.getById(companyId, id);
     if (!unposted) throw new Error('Failed to retrieve goods receipt after unposting');
     return unposted;
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 }

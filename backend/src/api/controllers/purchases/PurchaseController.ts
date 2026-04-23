@@ -488,6 +488,7 @@ export class PurchaseController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         PurchaseController.buildAccountingPostingService(),
         diContainer.transactionManager
       );
@@ -512,6 +513,7 @@ export class PurchaseController {
         diContainer.goodsReceiptRepository,
         diContainer.purchaseOrderRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         PurchaseController.buildAccountingPostingService(),
         diContainer.transactionManager
       );
@@ -643,6 +645,7 @@ export class PurchaseController {
         diContainer.companyCurrencyRepository,
         diContainer.exchangeRateRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager
@@ -670,6 +673,7 @@ export class PurchaseController {
         diContainer.purchaseInvoiceRepository,
         diContainer.purchaseOrderRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.transactionManager
       );
@@ -827,6 +831,7 @@ export class PurchaseController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.transactionManager
       );
@@ -857,6 +862,7 @@ export class PurchaseController {
         diContainer.purchaseOrderRepository,
         diContainer.goodsReceiptRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.transactionManager
       );

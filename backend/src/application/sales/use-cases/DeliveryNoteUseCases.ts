@@ -1,10 +1,11 @@
-﻿import { randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { DeliveryNote, DeliveryNoteLine } from '../../../domain/sales/entities/DeliveryNote';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
@@ -210,15 +211,17 @@ export class PostDeliveryNoteUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: ISalesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string): Promise<DeliveryNote> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<DeliveryNote> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module is not initialized');
     const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const dn = await this.deliveryNoteRepo.getById(companyId, id);
     if (!dn) throw new Error(`Delivery note not found: ${id}`);
@@ -340,7 +343,7 @@ export class PostDeliveryNoteUseCase {
         }
       }
 
-      if (DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
+      if (shouldPostAccounting && DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
         const cogsVoucherLines: Array<Record<string, any>> = [];
         for (const line of Array.from(cogsBucket.values())) {
           const amount = roundMoney(line.amountBase);
@@ -459,6 +462,11 @@ export class PostDeliveryNoteUseCase {
       round: roundMoney,
       itemCode: item.code,
     });
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 
   private assertPositiveTrackedCost(qty: number, unitCostBase: number, itemName: string, documentLabel: string): void {

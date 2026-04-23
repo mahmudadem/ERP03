@@ -6,6 +6,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
+import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import {
   getAccountingModeLabel,
@@ -162,6 +163,12 @@ const PurchaseSettingsPage: React.FC = () => {
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as TabId)}
     >
+      <AccountingIntegrationStatus
+        moduleCode="purchases"
+        hasMappings={!!settings?.defaultAPAccountId}
+        integrationRoute="/purchases/financial-integration"
+      />
+
       {activeTab === 'policy' && (
         <SettingsSection
           title="Procurement Policy"

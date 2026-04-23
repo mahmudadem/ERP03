@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { StockAdjustment, StockAdjustmentLine } from '../../../domain/inventory/entities/StockAdjustment';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IStockAdjustmentRepository } from '../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
@@ -69,14 +70,17 @@ export class PostStockAdjustmentUseCase {
     private readonly itemRepo: IItemRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly transactionManager: ITransactionManager,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService?: SubledgerVoucherPostingService
   ) {}
 
-  async execute(companyId: string, adjustmentId: string, userId: string): Promise<StockAdjustment> {
+  async execute(companyId: string, adjustmentId: string, userId: string, createAccountingEffect: boolean = true): Promise<StockAdjustment> {
     const adjustment = await this.adjustmentRepo.getAdjustment(adjustmentId);
     if (!adjustment || adjustment.companyId !== companyId) {
       throw new Error(`Stock adjustment not found: ${adjustmentId}`);
     }
+
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     if (adjustment.status !== 'DRAFT') {
       throw new Error('Only DRAFT adjustments can be posted');
@@ -141,22 +145,22 @@ export class PostStockAdjustmentUseCase {
         }
       }
 
-      const voucherId = await this.createVoucherForAdjustment(
-        companyId,
-        userId,
-        adjustment,
-        itemCache,
-        transaction
-      );
+      let voucherId: string | undefined;
+      if (shouldPostAccounting && this.accountingPostingService) {
+        voucherId = await this.createVoucherForAdjustment(
+          companyId,
+          userId,
+          adjustment,
+          itemCache,
+          transaction
+        );
+      }
 
       const updatePatch: Partial<StockAdjustment> = {
         status: 'POSTED',
         postedAt: new Date(),
+        voucherId: voucherId || null,
       };
-
-      if (voucherId) {
-        updatePatch.voucherId = voucherId;
-      }
 
       await this.adjustmentRepo.updateAdjustment(companyId, adjustment.id, updatePatch, transaction);
     });
@@ -296,5 +300,10 @@ export class PostStockAdjustmentUseCase {
         `[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}: ${message}`
       );
     }
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 }

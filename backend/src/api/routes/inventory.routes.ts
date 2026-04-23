@@ -13,6 +13,7 @@ router.get('/settings', permissionGuard('inventory.view'), InventoryController.g
 router.use(moduleInitializedGuard('inventory'));
 
 router.put('/settings', permissionGuard('inventory.settings.manage'), InventoryController.updateSettings);
+router.post('/financial-integration', permissionGuard('inventory.settings.manage'), InventoryController.configureFinancialIntegration);
 
 router.get('/items/search', permissionGuard('inventory.items.view'), InventoryController.searchItems);
 router.post('/items', permissionGuard('inventory.items.manage'), InventoryController.createItem);

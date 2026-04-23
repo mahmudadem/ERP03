@@ -10,6 +10,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
@@ -384,6 +385,7 @@ export class PostSalesInvoiceUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: ISalesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager
@@ -392,11 +394,13 @@ export class PostSalesInvoiceUseCase {
     this.accountRepo = accountRepo;
   }
 
-  async execute(companyId: string, id: string): Promise<SalesInvoice> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<SalesInvoice> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Sales module not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
+
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const si = await this.salesInvoiceRepo.getById(companyId, id);
     if (!si || si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
@@ -548,76 +552,34 @@ export class PostSalesInvoiceUseCase {
       this.recalcInvoiceTotals(si);
       const resolvedARId = await this.resolveAccountId(companyId, arAccountId);
 
-      // Create main invoice voucher (AR vs Revenue + Tax)
-      const revenueVoucherLines: VoucherAccumulatedLine[] = [
-        {
-          accountId: resolvedARId,
-          side: 'Debit',
-          baseAmount: roundMoney(si.grandTotalBase),
-          docAmount: roundMoney(si.grandTotalDoc),
-        },
-        ...Array.from(revenueCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
-        ...Array.from(taxCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
-      ];
-
-      const revVoucher = await this.accountingPostingService.postInTransaction(
-        {
-          companyId,
-          voucherType: VoucherType.SALES_INVOICE,
-          voucherNo: `SI-${si.invoiceNumber}`,
-          date: si.invoiceDate,
-          description: `Sales Invoice ${si.invoiceNumber} - ${si.customerName}`,
-          currency: si.currency,
-          exchangeRate: si.exchangeRate,
-          lines: revenueVoucherLines,
-          metadata: {
-            sourceModule: 'sales',
-            sourceType: 'SALES_INVOICE',
-            sourceId: si.id,
-            voucherPart: 'REVENUE',
-          },
-          createdBy: si.createdBy,
-          postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-          reference: si.invoiceNumber,
-        },
-        transaction
-      );
-      si.voucherId = revVoucher.id;
-
-      // Create inventory recognition voucher (COGS vs Inventory)
-      if (cogsBucket.size > 0) {
-        const cogsVoucherLines: VoucherAccumulatedLine[] = [];
-        for (const line of Array.from(cogsBucket.values())) {
-          const amount = roundMoney(line.amountBase);
-          cogsVoucherLines.push({
-            accountId: line.cogsAccountId,
+      if (shouldPostAccounting) {
+        // Create main invoice voucher (AR vs Revenue + Tax)
+        const revenueVoucherLines: VoucherAccumulatedLine[] = [
+          {
+            accountId: resolvedARId,
             side: 'Debit',
-            baseAmount: amount,
-            docAmount: amount,
-          });
-          cogsVoucherLines.push({
-            accountId: line.inventoryAccountId,
-            side: 'Credit',
-            baseAmount: amount,
-            docAmount: amount,
-          });
-        }
+            baseAmount: roundMoney(si.grandTotalBase),
+            docAmount: roundMoney(si.grandTotalDoc),
+          },
+          ...Array.from(revenueCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
+          ...Array.from(taxCredits.values()).map((line) => ({ ...line, side: 'Credit' as const })),
+        ];
 
-        const cogsVoucher = await this.accountingPostingService.postInTransaction(
+        const revVoucher = await this.accountingPostingService.postInTransaction(
           {
             companyId,
             voucherType: VoucherType.SALES_INVOICE,
-            voucherNo: `SI-COGS-${si.invoiceNumber}`,
+            voucherNo: `SI-${si.invoiceNumber}`,
             date: si.invoiceDate,
-            description: `Sales Invoice ${si.invoiceNumber} COGS`,
-            currency: (baseCurrency || si.currency).toUpperCase(),
-            exchangeRate: 1,
-            lines: cogsVoucherLines,
+            description: `Sales Invoice ${si.invoiceNumber} - ${si.customerName}`,
+            currency: si.currency,
+            exchangeRate: si.exchangeRate,
+            lines: revenueVoucherLines,
             metadata: {
               sourceModule: 'sales',
               sourceType: 'SALES_INVOICE',
               sourceId: si.id,
-              voucherPart: 'COGS',
+              voucherPart: 'REVENUE',
             },
             createdBy: si.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
@@ -625,8 +587,55 @@ export class PostSalesInvoiceUseCase {
           },
           transaction
         );
-        si.cogsVoucherId = cogsVoucher.id;
+        si.voucherId = revVoucher.id;
+
+        // Create inventory recognition voucher (COGS vs Inventory)
+        if (cogsBucket.size > 0) {
+          const cogsVoucherLines: VoucherAccumulatedLine[] = [];
+          for (const line of Array.from(cogsBucket.values())) {
+            const amount = roundMoney(line.amountBase);
+            cogsVoucherLines.push({
+              accountId: line.cogsAccountId,
+              side: 'Debit',
+              baseAmount: amount,
+              docAmount: amount,
+            });
+            cogsVoucherLines.push({
+              accountId: line.inventoryAccountId,
+              side: 'Credit',
+              baseAmount: amount,
+              docAmount: amount,
+            });
+          }
+
+          const cogsVoucher = await this.accountingPostingService.postInTransaction(
+            {
+              companyId,
+              voucherType: VoucherType.SALES_INVOICE,
+              voucherNo: `SI-COGS-${si.invoiceNumber}`,
+              date: si.invoiceDate,
+              description: `Sales Invoice ${si.invoiceNumber} COGS`,
+              currency: (baseCurrency || si.currency).toUpperCase(),
+              exchangeRate: 1,
+              lines: cogsVoucherLines,
+              metadata: {
+                sourceModule: 'sales',
+                sourceType: 'SALES_INVOICE',
+                sourceId: si.id,
+                voucherPart: 'COGS',
+              },
+              createdBy: si.createdBy,
+              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+              reference: si.invoiceNumber,
+            },
+            transaction
+          );
+          si.cogsVoucherId = cogsVoucher.id;
+        } else {
+          si.cogsVoucherId = null;
+        }
       } else {
+        si.voucherId = null;
         si.cogsVoucherId = null;
       }
 
@@ -718,6 +727,11 @@ export class PostSalesInvoiceUseCase {
     } else {
       bucket.set(key, { cogsAccountId: cogsId, inventoryAccountId: invId, amountBase: roundMoney(amount) });
     }
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 
   private getMatchedDeliveryLines(line: SalesInvoiceLine, soLine: SalesOrder['lines'][number] | null, postedDNs: DeliveryNote[]) {

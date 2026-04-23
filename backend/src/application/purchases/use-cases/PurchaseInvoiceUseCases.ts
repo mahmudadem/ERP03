@@ -24,6 +24,7 @@ import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchas
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
@@ -316,6 +317,7 @@ export class PostPurchaseInvoiceUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly exchangeRateRepo: IExchangeRateRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager
@@ -323,11 +325,12 @@ export class PostPurchaseInvoiceUseCase {
     this.accountRepo = accountRepo;
   }
 
-  async execute(companyId: string, id: string): Promise<PurchaseInvoice> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseInvoice> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
     const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(invSettings);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
@@ -473,6 +476,7 @@ export class PostPurchaseInvoiceUseCase {
         metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: pi.id, vendorId: pi.vendorId }
       });
 
+      if (shouldPostAccounting) {
       const voucher = await this.accountingPostingService.postInTransaction(
         {
           companyId,
@@ -496,6 +500,7 @@ export class PostPurchaseInvoiceUseCase {
       );
 
       pi.voucherId = voucher.id;
+      }
       pi.status = 'POSTED';
       pi.postedAt = new Date();
       pi.updatedAt = new Date();
@@ -614,6 +619,11 @@ export class PostPurchaseInvoiceUseCase {
     return r ? r.rate : rate;
   }
 
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
+  }
+
 }
 
 export class UpdatePurchaseInvoiceUseCase {
@@ -714,11 +724,12 @@ export class UnpostPurchaseInvoiceUseCase {
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string, currentUser: string): Promise<PurchaseInvoice> {
+  async execute(companyId: string, id: string, currentUser: string, createAccountingEffect: boolean = true): Promise<PurchaseInvoice> {
     const pi = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!pi) throw new Error(`Purchase invoice not found: ${id}`);
     if (pi.status !== 'POSTED') throw new Error('Only POSTED purchase invoices can be unposted');
@@ -727,16 +738,19 @@ export class UnpostPurchaseInvoiceUseCase {
       throw new Error('Cannot unpost an invoice that has payments applied. Reverse the payments first.');
     }
 
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
+
     let po: PurchaseOrder | null = null;
     if (pi.purchaseOrderId) {
       po = await this.purchaseOrderRepo.getById(companyId, pi.purchaseOrderId);
     }
 
     await this.transactionManager.runTransaction(async (transaction) => {
-      // 1. Reverse accounting voucher and ledger
+      if (shouldPostAccounting) {
       if (pi.voucherId) {
         await this.accountingPostingService.deleteVoucherInTransaction(companyId, pi.voucherId, transaction);
         pi.voucherId = null;
+      }
       }
 
       // 2. Reverse inventory movements (direct invoicing lines)
@@ -772,5 +786,10 @@ export class UnpostPurchaseInvoiceUseCase {
     const unposted = await this.purchaseInvoiceRepo.getById(companyId, id);
     if (!unposted) throw new Error('Failed to retrieve invoice after unposting');
     return unposted;
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 }

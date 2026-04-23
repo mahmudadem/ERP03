@@ -461,6 +461,7 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.transactionManager
       );
@@ -593,12 +594,13 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager
       );
 
-      const si = await useCase.execute(companyId, id);
+      const si = await useCase.execute(companyId, id, true);
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),
@@ -695,6 +697,7 @@ export class SalesController {
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
+        diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.transactionManager
       );

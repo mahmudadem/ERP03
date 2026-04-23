@@ -27,6 +27,7 @@ import { IPurchaseInvoiceRepository } from '../../../repository/interfaces/purch
 import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { IPurchaseReturnRepository } from '../../../repository/interfaces/purchases/IPurchaseReturnRepository';
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
+import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
@@ -418,15 +419,17 @@ export class PostPurchaseReturnUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string): Promise<PurchaseReturn> {
+  async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
     if (!settings) throw new Error('Purchases module is not initialized');
     const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
     const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
     if (!purchaseReturn) throw new Error(`Purchase return not found: ${id}`);
@@ -759,6 +762,7 @@ export class PostPurchaseReturnUseCase {
           });
         }
 
+        if (shouldPostAccounting) {
         const voucher = await this.accountingPostingService.postInTransaction(
           {
             companyId,
@@ -782,6 +786,7 @@ export class PostPurchaseReturnUseCase {
           transaction
         );
         purchaseReturn.voucherId = voucher.id;
+        }
 
         if (isAfterInvoice) {
           const invoice = purchaseInvoice as PurchaseInvoice;
@@ -809,6 +814,7 @@ export class PostPurchaseReturnUseCase {
           },
         });
 
+        if (shouldPostAccounting) {
         const voucher = await this.accountingPostingService.postInTransaction(
           {
             companyId,
@@ -832,6 +838,7 @@ export class PostPurchaseReturnUseCase {
           transaction
         );
         purchaseReturn.voucherId = voucher.id;
+        }
       } else {
         purchaseReturn.voucherId = null;
       }
@@ -954,6 +961,11 @@ export class PostPurchaseReturnUseCase {
     return undefined;
   }
 
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
+  }
+
 }
 
 export interface UpdatePurchaseReturnInput {
@@ -1053,16 +1065,19 @@ export class UnpostPurchaseReturnUseCase {
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly inventoryService: IPurchasesInventoryService,
+    private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
   ) {}
 
-  async execute(companyId: string, id: string, currentUser: string): Promise<PurchaseReturn> {
+  async execute(companyId: string, id: string, currentUser: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
     const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
     if (!purchaseReturn) throw new Error(`Purchase return not found: ${id}`);
     if (purchaseReturn.status !== 'POSTED') {
       throw new Error('Only POSTED purchase returns can be unposted');
     }
+
+    const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
 
     let purchaseInvoice: PurchaseInvoice | null = null;
     let purchaseOrder: PurchaseOrder | null = null;
@@ -1075,9 +1090,11 @@ export class UnpostPurchaseReturnUseCase {
     }
 
     await this.transactionManager.runTransaction(async (transaction) => {
+      if (shouldPostAccounting) {
       if (purchaseReturn.voucherId) {
         await this.accountingPostingService.deleteVoucherInTransaction(companyId, purchaseReturn.voucherId, transaction);
         purchaseReturn.voucherId = null;
+      }
       }
 
       for (const line of purchaseReturn.lines) {
@@ -1119,6 +1136,11 @@ export class UnpostPurchaseReturnUseCase {
     const unposted = await this.purchaseReturnRepo.getById(companyId, id);
     if (!unposted) throw new Error('Failed to retrieve return after unposting');
     return unposted;
+  }
+
+  private async isAccountingEnabled(companyId: string): Promise<boolean> {
+    const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+    return !!accountingModule?.initialized;
   }
 }
 
