@@ -13,12 +13,16 @@ export class ModuleActivationService {
    * Static dependency map.
    * Key: Module that depends on others
    * Value: Array of dependent module codes
+   *
+   * NOTE: Accounting is intentionally NOT listed as a dependency of operational
+   * modules (inventory, sales, purchase). Operational modules gracefully degrade
+   * when Accounting is disabled — the createAccountingEffect flag causes posting
+   * use cases to skip GL operations. Users opt into Accounting separately when
+   * they want financial integration.
    */
   private static readonly DEPENDENCIES: Record<string, string[]> = {
     'hr': ['accounting'],
-    'sales': ['accounting'],
-    'inventory': ['accounting'],
-    'procurement': ['accounting', 'inventory'],
+    'procurement': ['inventory'],
   };
 
   constructor(
