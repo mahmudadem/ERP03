@@ -9,6 +9,8 @@ import {
   Calendar,
   BookOpen,
   TrendingUp,
+  Info,
+  X,
 } from 'lucide-react';
 import { Account, useAccounts } from '../../../context/AccountsContext';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
@@ -43,6 +45,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [accountingMethod, setAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERIODIC');
+  const [modalContent, setModalContent] = useState<'PERIODIC' | 'PERPETUAL' | null>(null);
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
   const [startBehavior, setStartBehavior] = useState<'FROM_TODAY' | 'FROM_DATE'>('FROM_TODAY');
@@ -145,17 +148,27 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input type="radio" name="accounting-method" checked={accountingMethod === 'PERIODIC'} onChange={() => setAccountingMethod('PERIODIC')} />
-            <div>
-              <div className="font-semibold text-gray-900">Periodic (Invoice-driven)</div>
-              <div className="text-sm text-gray-600">COGS is calculated at period-end based on physical counts. Inventory asset account is updated through invoices.</div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">Periodic (Invoice-driven)</span>
+                <button type="button" onClick={(e) => { e.preventDefault(); setModalContent('PERIODIC'); }} className="text-primary-500 hover:text-primary-700 flex-shrink-0">
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="text-sm text-gray-600 mt-1">COGS is calculated at period-end based on physical counts. Inventory asset account is updated through invoices.</div>
             </div>
           </label>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input type="radio" name="accounting-method" checked={accountingMethod === 'PERPETUAL'} onChange={() => setAccountingMethod('PERPETUAL')} />
-            <div>
-              <div className="font-semibold text-gray-900">Perpetual</div>
-              <div className="text-sm text-gray-600">COGS and inventory asset accounts are updated in real-time with every stock movement. Requires account mappings.</div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900">Perpetual</span>
+                <button type="button" onClick={(e) => { e.preventDefault(); setModalContent('PERPETUAL'); }} className="text-primary-500 hover:text-primary-700 flex-shrink-0">
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="text-sm text-gray-600 mt-1">COGS and inventory asset accounts are updated in real-time with every stock movement. Requires account mappings.</div>
             </div>
           </label>
         </div>
@@ -294,7 +307,163 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
     return null;
   }
 
+  const periodicModal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setModalContent(null)}>
+      <div className="fixed inset-0 bg-black/50" />
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h3 className="text-lg font-bold text-gray-900">Periodic (Invoice-driven) — Financial Effects</h3>
+          <button onClick={() => setModalContent(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-5 text-sm text-gray-700">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">How It Works</h4>
+            <p>In periodic mode, inventory quantities are tracked in real-time, but <strong>financial (GL) postings only happen when an invoice is posted</strong>. Stock movements like deliveries and receipts do not create accounting entries.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-gray-200 rounded-lg">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Document</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">GL Effect?</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Goods Receipt</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
+                  <td className="px-4 py-2">Stock quantity updated, no GL posting</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Delivery Note</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
+                  <td className="px-4 py-2">Stock quantity updated, no GL posting</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Purchase Invoice</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr Expense/COGS, Cr AP — inventory cost recognized at invoice time</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Sales Invoice</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr AR, Cr Revenue — COGS not posted (calculated at period-end)</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Purchase Return (after invoice)</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Reverses the original invoice posting</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Purchase Return (before invoice)</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
+                  <td className="px-4 py-2">Only stock quantity adjusted</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Sales Return (after invoice)</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Reverses the original invoice posting and restores stock</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 font-medium">Sales Return (before invoice)</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
+                  <td className="px-4 py-2">Only stock quantity restored</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h4 className="font-semibold text-amber-900 mb-1">Important</h4>
+            <ul className="list-disc list-inside text-amber-800 space-y-1">
+              <li>COGS is <strong>not</strong> posted on every transaction — it is calculated at period-end based on inventory counts.</li>
+              <li>No Inventory Asset or COGS account mappings are required for periodic mode.</li>
+              <li>Account mappings for Purchase/Sales invoices come from their respective module settings.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const perpetualModal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setModalContent(null)}>
+      <div className="fixed inset-0 bg-black/50" />
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h3 className="text-lg font-bold text-gray-900">Perpetual — Financial Effects</h3>
+          <button onClick={() => setModalContent(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+        <div className="px-6 py-5 space-y-5 text-sm text-gray-700">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">How It Works</h4>
+            <p>In perpetual mode, <strong>every stock movement creates a financial (GL) posting in real-time</strong>. The Inventory Asset and COGS accounts are updated immediately on each receipt, delivery, or adjustment.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-gray-200 rounded-lg">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Document</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">GL Effect?</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Goods Receipt</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr Inventory Asset, Cr GRNI (Goods Received Not Invoiced)</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Delivery Note</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr COGS, Cr Inventory Asset — inventory cost recognized immediately</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Purchase Invoice</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Clears GRNI: Cr GRNI, Dr AP. Any cost variance adjusts Inventory Asset.</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Sales Invoice</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr AR, Cr Revenue. COGS already posted by Delivery Note.</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Purchase Return</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Reverses GR entry: Cr Inventory Asset, Cr COGS (or Dr GRNI)</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-2 font-medium">Sales Return</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr Inventory Asset, Cr COGS — reverses the delivery posting</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 font-medium">Stock Adjustment</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
+                  <td className="px-4 py-2">Dr/Cr Inventory Asset with offset to COGS or variance account</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <h4 className="font-semibold text-amber-900 mb-1">Important</h4>
+            <ul className="list-disc list-inside text-amber-800 space-y-1">
+              <li><strong>Inventory Asset and COGS account mappings are required</strong> — every stock movement posts to these accounts.</li>
+              <li>The accounting method <strong>cannot be changed after confirmation</strong> because all historical GL entries are based on this method.</li>
+              <li>GRNI (Goods Received Not Invoiced) is a temporary liability account that tracks received but not yet invoiced goods.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
+    <>
+      {modalContent === 'PERIODIC' && periodicModal}
+      {modalContent === 'PERPETUAL' && perpetualModal}
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl h-[720px] bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
         <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600 flex-shrink-0">
@@ -346,5 +515,6 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
