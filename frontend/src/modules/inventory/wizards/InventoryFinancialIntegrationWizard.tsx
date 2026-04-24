@@ -43,7 +43,6 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [accountingMethod, setAccountingMethod] = useState<'PERIODIC' | 'PERPETUAL'>('PERIODIC');
-  const [accountingMode, setAccountingMode] = useState<'INVOICE_DRIVEN' | 'PERPETUAL'>('INVOICE_DRIVEN');
   const [defaultInventoryAssetAccountId, setDefaultInventoryAssetAccountId] = useState('');
   const [defaultCOGSAccountId, setDefaultCOGSAccountId] = useState('');
   const [startBehavior, setStartBehavior] = useState<'FROM_TODAY' | 'FROM_DATE'>('FROM_TODAY');
@@ -100,7 +99,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
       setError(null);
       await inventoryApi.configureFinancialIntegration({
         accountingMethod,
-        accountingMode,
+        accountingMode: accountingMethod === 'PERPETUAL' ? 'PERPETUAL' : 'INVOICE_DRIVEN',
         defaultInventoryAssetAccountId: accountingMethod === 'PERPETUAL' ? defaultInventoryAssetAccountId : undefined,
         defaultCOGSAccountId: accountingMethod === 'PERPETUAL' ? defaultCOGSAccountId : undefined,
         accountingStartDate: startBehavior === 'FROM_DATE' ? accountingStartDate : undefined,
@@ -253,11 +252,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
             <span className="font-semibold text-gray-900">Accounting Method:</span>{' '}
-            <span className="text-gray-700">{accountingMethod}</span>
-          </div>
-          <div className="text-sm">
-            <span className="font-semibold text-gray-900">Accounting Mode:</span>{' '}
-            <span className="text-gray-700">{accountingMode}</span>
+            <span className="text-gray-700">{accountingMethod === 'PERPETUAL' ? 'Perpetual — real-time GL posting on every stock movement' : 'Periodic (Invoice-driven) — GL posting only on invoices'}</span>
           </div>
           {accountingMethod === 'PERPETUAL' && (
             <>
