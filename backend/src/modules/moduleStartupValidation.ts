@@ -16,6 +16,7 @@ import { ModuleAvailabilityService } from '../application/platform/ModuleAvailab
 import { ModuleRegistry } from '../application/platform/ModuleRegistry';
 import { EntitlementServiceAdapter } from '../application/platform/EntitlementServiceAdapter';
 import { EntitlementService } from '../application/platform/EntitlementService';
+import { PermissionCatalogSyncService } from '../application/platform/PermissionCatalogSyncService';
 import { diContainer } from '../infrastructure/di/bindRepositories';
 
 export async function runModuleStartupValidation(): Promise<void> {
@@ -62,6 +63,8 @@ export async function runModuleStartupValidation(): Promise<void> {
     }
 
     await runCapabilityStartupValidation();
+
+    await runPermissionStartupValidation();
 
     console.log('=== Startup Validation Complete ===');
   } catch (error) {
@@ -122,5 +125,22 @@ async function runCapabilityStartupValidation(): Promise<void> {
       throw error;
     }
     console.error('Capability startup validation failed:', error);
+  }
+}
+
+async function runPermissionStartupValidation(): Promise<void> {
+  console.log('=== Permission Startup Validation ===');
+
+  if (!diContainer.permissionRegistryRepository) {
+    console.log('⚠️  Permission registry repository not configured, skipping');
+    return;
+  }
+
+  try {
+    const syncService = new PermissionCatalogSyncService();
+    await syncService.sync();
+    console.log('✓ Permission catalog synced successfully');
+  } catch (error) {
+    console.error('Permission startup validation failed:', error);
   }
 }

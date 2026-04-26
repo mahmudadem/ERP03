@@ -42,6 +42,11 @@ router.post('/roles/:roleId/update', CompanyRolesController.updateRole);
 router.delete('/roles/:roleId', CompanyRolesController.deleteRole);
 
 // ============================================================================
+// PERMISSION ROUTES (Phase 4)
+// ============================================================================
+router.get('/permissions', CompanyRolesController.listPermissions);
+
+// ============================================================================
 // MODULE ROUTES
 // ============================================================================
 router.get('/modules', CompanyModulesController.listModules);

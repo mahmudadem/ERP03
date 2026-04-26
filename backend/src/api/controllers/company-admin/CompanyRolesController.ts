@@ -75,7 +75,10 @@ export class CompanyRolesController {
 
       const { name, description, permissions } = req.body;
 
-      const useCase = new CreateCompanyRoleUseCase(diContainer.companyRoleRepository);
+      const useCase = new CreateCompanyRoleUseCase(
+        diContainer.companyRoleRepository,
+        diContainer.permissionRegistryRepository
+      );
       const role = await useCase.execute({
         companyId,
         name,
@@ -105,7 +108,10 @@ export class CompanyRolesController {
 
       const { name, description, permissions } = req.body;
 
-      const useCase = new UpdateCompanyRoleUseCase(diContainer.companyRoleRepository);
+      const useCase = new UpdateCompanyRoleUseCase(
+        diContainer.companyRoleRepository,
+        diContainer.permissionRegistryRepository
+      );
       await useCase.execute({
         companyId,
         roleId,
@@ -120,10 +126,10 @@ export class CompanyRolesController {
     }
   }
 
-  /**
-   * DELETE /company-admin/roles/:roleId
-   * Delete role
-   */
+/**
+    * DELETE /company-admin/roles/:roleId
+    * Delete role
+    */
   static async deleteRole(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = (req as any).tenantContext?.companyId;
@@ -141,6 +147,31 @@ export class CompanyRolesController {
       await useCase.execute(companyId, roleId);
 
       res.json({ success: true, message: 'Role deleted successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /company-admin/permissions
+   * List available permissions from catalog
+   */
+  static async listPermissions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).tenantContext?.companyId;
+      if (!companyId) {
+        res.status(400).json({ success: false, error: 'Company ID required' });
+        return;
+      }
+
+      if (!diContainer.permissionRegistryRepository) {
+        res.status(503).json({ success: false, error: 'Permission registry not available' });
+        return;
+      }
+
+      const permissions = await diContainer.permissionRegistryRepository.getAll();
+
+      res.json({ success: true, data: permissions });
     } catch (error) {
       next(error);
     }

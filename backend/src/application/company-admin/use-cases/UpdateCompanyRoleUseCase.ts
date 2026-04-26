@@ -1,4 +1,5 @@
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
+import { IPermissionRegistryRepository } from '../../../repository/interfaces/super-admin/IPermissionRegistryRepository';
 import { ApiError } from '../../../api/errors/ApiError';
 
 export interface UpdateRoleInput {
@@ -11,7 +12,8 @@ export interface UpdateRoleInput {
 
 export class UpdateCompanyRoleUseCase {
   constructor(
-    private companyRoleRepository: ICompanyRoleRepository
+    private companyRoleRepository: ICompanyRoleRepository,
+    private permissionRegistryRepository?: IPermissionRegistryRepository
   ) { }
 
   async execute(input: UpdateRoleInput): Promise<void> {
@@ -31,6 +33,14 @@ export class UpdateCompanyRoleUseCase {
       throw ApiError.forbidden("System roles cannot be modified");
     }
 
+    // Validate permissions against catalog if provided
+    if (input.permissions !== undefined && input.permissions.length > 0 && this.permissionRegistryRepository) {
+      const invalid = await this.validatePermissions(input.permissions);
+      if (invalid.length > 0) {
+        throw ApiError.badRequest(`Invalid permissions: ${invalid.join(', ')}. Permissions must be from the catalog.`);
+      }
+    }
+
     // Apply updates to name, description, permissions only
     const name = input.name !== undefined ? input.name : role.name;
     const description = input.description !== undefined ? input.description : role.description;
@@ -43,5 +53,11 @@ export class UpdateCompanyRoleUseCase {
       permissions,
       updatedAt: new Date()
     });
+  }
+
+  private async validatePermissions(permissions: string[]): Promise<string[]> {
+    const catalog = await this.permissionRegistryRepository!.getAll();
+    const validSet = new Set(catalog.map(p => p.id));
+    return permissions.filter(p => !validSet.has(p));
   }
 }
