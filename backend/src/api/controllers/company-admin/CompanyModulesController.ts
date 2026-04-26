@@ -54,7 +54,10 @@ export class CompanyModulesController {
         return;
       }
 
-      const useCase = new ListActiveCompanyModulesUseCase(diContainer.companyRepository);
+      const useCase = new ListActiveCompanyModulesUseCase(
+        diContainer.companyRepository,
+        diContainer.companyModuleRepository
+      );
       const result = await useCase.execute({ companyId });
 
       res.json({ success: true, data: result });

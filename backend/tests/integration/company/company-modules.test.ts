@@ -7,11 +7,18 @@
  * - Module status queries
  */
 
+import * as admin from 'firebase-admin';
 import { FirestoreCompanyModuleRepository } from '../../../src/infrastructure/firestore/repositories/company/FirestoreCompanyModuleRepository';
 import { CompanyModuleEntity } from '../../../src/domain/company/entities/CompanyModule';
 
+if (!admin.apps.length) {
+  process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
+  admin.initializeApp({ projectId: 'erp03-next' });
+}
+
 describe('CompanyModule - Phase 3 Integration', () => {
-  const repo = new FirestoreCompanyModuleRepository();
+  const db = admin.firestore();
+  const repo = new FirestoreCompanyModuleRepository(db);
   const testCompanyId = `test_${Date.now()}`;
   const testModuleCodes = ['accounting', 'inventory', 'companyAdmin'];
 

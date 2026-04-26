@@ -300,6 +300,7 @@ export class InitializeSalesUseCase {
       await this.companyModuleRepo.create({
         companyId: input.companyId,
         moduleCode: 'sales',
+        isEnabled: true,
         installedAt: now,
         initialized: true,
         initializationStatus: 'complete',

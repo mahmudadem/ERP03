@@ -4,8 +4,7 @@ export class ListAvailableBundlesUseCase {
     constructor(private bundleRepo: IBundleRegistryRepository) {}
 
     async execute(): Promise<any[]> {
-        // Return all bundles from Firestore
-        const bundles = await this.bundleRepo.getAll();
+        const bundles = await this.bundleRepo.getReady();
         return bundles.map(bundle => ({
             bundleId: bundle.id,
             ...bundle

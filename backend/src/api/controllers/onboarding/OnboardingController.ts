@@ -130,7 +130,7 @@ export class OnboardingController {
    */
   static async listBundles(req: Request, res: Response, next: NextFunction) {
     try {
-      const bundles = await diContainer.bundleRegistryRepository.getAll();
+      const bundles = await diContainer.bundleRegistryRepository.getReady();
       
       // Format for frontend
       const formattedBundles = bundles.map((b) => ({
@@ -168,7 +168,7 @@ export class OnboardingController {
         diContainer.companyRoleRepository
       );
 
-      const useCase = new CreateCompanyUseCase(
+const useCase = new CreateCompanyUseCase(
         diContainer.companyRepository,
         diContainer.userRepository,
         diContainer.rbacCompanyUserRepository,
@@ -177,8 +177,10 @@ export class OnboardingController {
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
         diContainer.bundleRegistryRepository,
+        diContainer.bundleRegistryRepository as any,
         diContainer.companyModuleRepository,
-        diContainer.companySettingsRepository
+        diContainer.companySettingsRepository,
+        diContainer.companyEntitlementRepository
       );
 
       const result = await useCase.execute({

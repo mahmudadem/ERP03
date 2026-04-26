@@ -50,8 +50,14 @@ export interface CompanyModule {
   id: string;
   name: string;
   description: string;
+  version?: string;
+  state?: string;
+  isAvailable?: boolean;
+  isEnabled?: boolean;
   enabled: boolean;
   mandatory?: boolean;
+  blockedReason?: string;
+  reason?: string;
 }
 
 export interface CompanyBundle {
@@ -69,10 +75,17 @@ export interface CompanyBundle {
 
 export interface CompanyFeature {
   id: string;
+  code?: string;
+  moduleId?: string;
   name: string;
-  description: string;
+  description?: string;
   enabled: boolean;
+  available?: boolean;
+  blockedReason?: string;
+  enablementPolicy?: string;
 }
+
+const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
 
 // ============================================================================
 // PROFILE API
@@ -283,13 +296,22 @@ export const upgradeBundle = async (payload: {
 // ============================================================================
 
 export const listFeatures = async (): Promise<CompanyFeature[]> => {
-  const response = await client.get('/tenant/company-admin/features');
-  return response as unknown as CompanyFeature[];
+  const response = await client.get('/tenant/company-admin/capabilities');
+  const capabilities = unwrap<any[]>(response);
+  return (capabilities || []).map((capability) => ({
+    ...capability,
+    id: capability.id || capability.code,
+    code: capability.code || capability.id,
+    enabled: !!capability.enabled,
+    available: capability.available !== false,
+  }));
 };
 
 export const listActiveFeatures = async (): Promise<string[]> => {
-  const response = await client.get('/tenant/company-admin/features/active');
-  return response as unknown as string[];
+  const capabilities = await listFeatures();
+  return capabilities
+    .filter((capability) => capability.enabled && capability.available !== false)
+    .map((capability) => capability.code || capability.id);
 };
 
 export const toggleFeature = async (payload: {
@@ -301,11 +323,21 @@ export const toggleFeature = async (payload: {
   enabled: boolean;
   activeFeatures: string[];
 }> => {
-  const response = await client.post('/tenant/company-admin/features/toggle', payload);
-  return response as unknown as {
-    companyId: string;
-    featureName: string;
-    enabled: boolean;
-    activeFeatures: string[];
+  if (payload.enabled) {
+    await client.post('/tenant/company-admin/capabilities/enable', {
+      capabilityCode: payload.featureName,
+    });
+  } else {
+    await client.post('/tenant/company-admin/capabilities/disable', {
+      capabilityCode: payload.featureName,
+    });
+  }
+
+  const activeFeatures = await listActiveFeatures();
+  return {
+    companyId: '',
+    featureName: payload.featureName,
+    enabled: payload.enabled,
+    activeFeatures,
   };
 };

@@ -46,10 +46,66 @@ export interface Permission {
 
 export interface Module {
   id: string;
+  code?: string;
   name: string;
   description: string;
+  version: string;
+  lifecycleStatus: 'draft' | 'ready' | 'deprecated' | 'inactive';
+  runtimeStatus: 'available' | 'suspended';
+  implementationStatus: 'unchecked' | 'passed' | 'failed';
+  implementationError?: string;
+  implementationCheckedAt?: string | Date;
+  releaseNotes?: string;
+  dependencies?: string[];
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface ModuleManifest {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  requiredPermissions?: string[];
+}
+
+export interface ModuleAvailabilityInfo {
+  moduleId: string;
+  state: string;
+  dbRecord?: Module;
+  manifest?: ModuleManifest;
+  hasRouter: boolean;
+  entitlementsMissing: boolean;
+  reason?: string;
+}
+
+export interface ModuleAvailabilityReport {
+  available: Module[];
+  dbOnly: Module[];
+  codeOnly: { id: string; manifest: ModuleManifest; hasRouter: boolean }[];
+  versionMismatch: { moduleId: string; dbVersion: string; codeVersion: string }[];
+  notReady: Module[];
+  implementationUnchecked: Module[];
+  suspended: Module[];
+}
+
+export interface CreateModulePayload {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  releaseNotes?: string;
+}
+
+export interface UpdateModulePayload {
+  name?: string;
+  description?: string;
+  version?: string;
+  releaseNotes?: string;
+  lifecycleStatus?: Module['lifecycleStatus'];
+  runtimeStatus?: Module['runtimeStatus'];
+  suspendReason?: string;
+  reason?: string;
 }
 
 export interface Bundle {
@@ -134,14 +190,23 @@ export const superAdminApi = {
   getModules: (): Promise<Module[]> =>
     client.get('/super-admin/modules'),
 
-  createModule: (data: Omit<Module, 'createdAt' | 'updatedAt'>): Promise<void> =>
+  createModule: (data: CreateModulePayload): Promise<void> =>
     client.post('/super-admin/modules', data),
 
-  updateModule: (id: string, data: Partial<Omit<Module, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> =>
+  updateModule: (id: string, data: UpdateModulePayload): Promise<void> =>
     client.patch(`/super-admin/modules/${id}`, data),
 
   deleteModule: (id: string): Promise<void> =>
     client.delete(`/super-admin/modules/${id}`),
+
+  getModuleAvailabilityReport: (): Promise<ModuleAvailabilityReport> =>
+    client.get('/super-admin/modules/availability'),
+
+  getModuleAvailability: (id: string): Promise<ModuleAvailabilityInfo> =>
+    client.get(`/super-admin/modules/${id}/availability`),
+
+  checkModuleImplementation: (id: string): Promise<any> =>
+    client.post(`/super-admin/modules/${id}/check-implementation`),
 
   // Bundles
   getBundles: (): Promise<Bundle[]> =>

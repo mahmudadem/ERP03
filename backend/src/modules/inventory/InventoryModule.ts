@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { IModule, ModuleMetadata } from '../../domain/platform/IModule';
+import { ModuleManifest } from '../../domain/platform/ModuleManifest';
 import inventoryRoutes from '../../api/routes/inventory.routes';
 
 export class InventoryModule implements IModule {
@@ -36,6 +37,16 @@ export class InventoryModule implements IModule {
         'inventory.valuation.view',
         'inventory.reconcile.run'
     ];
+
+    getManifest(): ModuleManifest {
+        return {
+            id: this.metadata.id,
+            name: this.metadata.name,
+            version: this.metadata.version,
+            description: this.metadata.description,
+            requiredPermissions: this.permissions,
+        };
+    }
 
     async initialize(): Promise<void> {
         console.log('Initializing Inventory Module...');

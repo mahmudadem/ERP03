@@ -19,6 +19,8 @@ import { ICompanySettingsRepository } from '../../../repository/interfaces/core/
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
+import { ICompanyEntitlementRepository, IBundleItemRepository } from '../../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
+import { CompanyEntitlement, CompanyEntitlementItem } from '../../../domain/super-admin/EntitlementDefinition';
 
 interface Input {
   userId: string;
@@ -44,8 +46,10 @@ export class CreateCompanyUseCase {
     private voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private voucherFormRepo: IVoucherFormRepository,
     private bundleRepo: IBundleRegistryRepository,
+    private bundleItemRepo: IBundleItemRepository,
     private companyModuleRepo: ICompanyModuleRepository,
-    private companySettingsRepo: ICompanySettingsRepository
+    private companySettingsRepo: ICompanySettingsRepository,
+    private entitlementRepo: ICompanyEntitlementRepository
   ) { }
 
   private generateId(prefix: string) {
@@ -65,8 +69,15 @@ export class CreateCompanyUseCase {
     const bundle = await this.bundleRepo.getById(input.bundleId);
     if (!bundle) throw ApiError.badRequest('Invalid bundle selected');
 
+    if (bundle.lifecycleStatus !== 'ready') {
+      throw ApiError.badRequest(`Bundle '${bundle.name}' is not available. Please select a ready bundle.`);
+    }
+
+    const bundleItems = await this.bundleItemRepo.getByBundleId(input.bundleId);
+    const bundleModules = bundleItems.filter(i => i.itemType === 'module').map(i => i.itemKey);
+    const bundleCapabilities = bundleItems.filter(i => i.itemType === 'capability').map(i => i.itemKey);
+
     const now = new Date();
-    // Default fiscal year: Jan 1 to Dec 31
     const fiscalYearStart = new Date(now.getFullYear(), 0, 1);
     const fiscalYearEnd = new Date(now.getFullYear(), 11, 31);
 
@@ -76,17 +87,17 @@ export class CreateCompanyUseCase {
       input.userId,
       now,
       now,
-      input.currency || '', // Use input currency or empty
+      input.currency || '',
       fiscalYearStart,
       fiscalYearEnd,
-      Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
-      [], // features
-      '', // Tax ID optional
-      bundle.name, // Subscription Plan / Bundle Name
-      undefined, // Address
+      bundleModules,
+      [],
+      '',
+      input.bundleId,
+      undefined,
       input.country,
-      input.logoData, // Logo URL (storing direct B64 for now)
-      { email: input.email } // Contact Info - Fixed object literal
+      input.logoData,
+      { email: input.email }
     );
 
     // Track what we've created for rollback purposes
@@ -94,6 +105,7 @@ export class CreateCompanyUseCase {
     let rolesCreated = false;
     let userRoleAssigned = false;
     let modulesCreated = false;
+    let entitlementCreated = false;
 
     try {
       // Step 1: Save company
@@ -101,6 +113,48 @@ export class CreateCompanyUseCase {
       await this.companyRepo.save(company);
       companyCreated = true;
       console.log('[CreateCompanyUseCase] Company saved successfully');
+
+      // Step 2: Create entitlement from normalized BundleItem
+      console.log('[CreateCompanyUseCase] Creating entitlement from bundle:', input.bundleId);
+      
+      const entitlementItems: CompanyEntitlementItem[] = [
+        ...bundleModules.map((moduleCode) => ({
+          id: `item_${company.id}_${moduleCode}`,
+          entitlementId: `ent_${company.id}`,
+          itemType: 'module' as const,
+          itemKey: moduleCode,
+          createdAt: now,
+        })),
+        ...bundleCapabilities.map((capabilityCode) => ({
+          id: `item_${company.id}_${capabilityCode}`,
+          entitlementId: `ent_${company.id}`,
+          itemType: 'capability' as const,
+          itemKey: capabilityCode,
+          createdAt: now,
+        })),
+      ];
+
+      const entitlement: CompanyEntitlement = {
+        id: `ent_${company.id}`,
+        companyId: company.id,
+        sourceType: 'bundle',
+        sourceId: input.bundleId,
+        validFrom: now,
+        isActive: true,
+        items: entitlementItems,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await this.entitlementRepo.createEntitlement(entitlement);
+      entitlementCreated = true;
+      console.log('[CreateCompanyUseCase] Entitlement created with items:', entitlementItems.length);
+
+      // Get effective modules for roles (excluding platform modules)
+      const effectiveModules = await this.entitlementRepo.getEffectiveModules(company.id);
+      const finalModules = effectiveModules;
+
+      console.log('[CreateCompanyUseCase] Effective modules for roles:', finalModules);
 
       // Initialize company settings with defaults from wizard
       await this.companySettingsRepo.updateSettings(company.id, {
@@ -112,7 +166,6 @@ export class CreateCompanyUseCase {
       });
 
       // Initialize Roles (OWNER, ADMIN, MEMBER)
-      const finalModules = Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin']));
       const rolesToCreate = [
         { id: 'OWNER', name: 'Owner', system: true, modules: finalModules, permissions: ['*'] },
         { id: 'ADMIN', name: 'Administrator', system: true, modules: finalModules, permissions: [] },
@@ -232,6 +285,16 @@ export class CreateCompanyUseCase {
             console.log('[CreateCompanyUseCase] Company deleted successfully');
           } catch (err) {
             console.error('[CreateCompanyUseCase] Rollback failed for company:', err);
+          }
+        }
+
+        if (entitlementCreated) {
+          console.log('[CreateCompanyUseCase] Rollback: Deleting entitlement');
+          try {
+            await this.entitlementRepo.deactivateEntitlement(`ent_${company.id}`);
+            console.log('[CreateCompanyUseCase] Entitlement deactivated successfully');
+          } catch (err) {
+            console.error('[CreateCompanyUseCase] Rollback failed for entitlement:', err);
           }
         }
 

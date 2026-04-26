@@ -1,7 +1,18 @@
+/**
+ * CompanyModuleGuard
+ *
+ * Guards module routes. Checks:
+ * 1. Module is available (DB + code + passed implementation check + ready + available)
+ * 2. Version matches between DB and code
+ * 3. Company has module enabled in tenant context
+ *
+ * Returns 423 Locked for suspended modules that are enabled.
+ * Returns 503 for unavailable or blocked modules.
+ * Returns 403 Forbidden for disabled modules.
+ */
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../../errors/ApiError';
-import { ModuleRegistry } from '../../../application/platform/ModuleRegistry';
-import { diContainer } from '../../../infrastructure/di/bindRepositories';
+import { ModuleAvailabilityService, ModuleAvailabilityState } from '../../../application/platform/ModuleAvailabilityService';
 
 export function companyModuleGuard(moduleName: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -16,32 +27,52 @@ export function companyModuleGuard(moduleName: string) {
       ? context.modules.map((m) => String(m || '').trim().toLowerCase()).filter(Boolean)
       : [];
 
-    // Primary path: trust tenant context when module list contains canonical module ids.
+    const service = ModuleAvailabilityService.getInstance();
+
     if (tenantModules.includes(normalizedModuleName)) {
-      return next();
-    }
+      const info = service.getAvailabilityInfo(normalizedModuleName);
 
-    const registeredModules = new Set(
-      ModuleRegistry.getInstance()
-        .getAllModules()
-        .map((m) => String(m.metadata.id || '').trim().toLowerCase())
-        .filter(Boolean)
-    );
-
-    const hasCanonicalTenantModules = tenantModules.some((m) => registeredModules.has(m));
-
-    // Fallback path for legacy/stale company.modules payloads (e.g., wizard model tokens).
-    if (!hasCanonicalTenantModules) {
-      try {
-        const moduleState = await diContainer.companyModuleRepository.get(context.companyId, normalizedModuleName);
-        if (moduleState && (moduleState.initialized || moduleState.initializationStatus === 'complete')) {
-          return next();
-        }
-      } catch (error) {
-        return next(error);
+      if (!info) {
+        return next(ApiError.internal('Module availability info not found'));
       }
+
+      if (info.state === ModuleAvailabilityState.DB_ONLY) {
+        return next(ApiError.custom(503, 'Module implementation not found. Contact SuperAdmin.'));
+      }
+
+      if (info.state === ModuleAvailabilityState.CODE_ONLY) {
+        return next(ApiError.custom(503, 'Module not registered. Contact SuperAdmin.'));
+      }
+
+      if (info.state === ModuleAvailabilityState.VERSION_MISMATCH) {
+        return next(ApiError.custom(503, `Module version mismatch: ${info.reason}`));
+      }
+
+      if (info.state === ModuleAvailabilityState.IMPLEMENTATION_FAILED) {
+        return next(ApiError.custom(503, `Module implementation failed: ${info.reason}`));
+      }
+
+      if (info.state === ModuleAvailabilityState.IMPLEMENTATION_UNCHECKED) {
+        return next(ApiError.custom(503, `Module implementation not verified: ${info.reason}`));
+      }
+
+      if (info.state === ModuleAvailabilityState.NOT_READY) {
+        return next(ApiError.custom(503, `Module is not ready: ${info.reason}`));
+      }
+
+      if (info.state === ModuleAvailabilityState.SUSPENDED) {
+        return next(ApiError.locked(
+          `${normalizedModuleName} is temporarily unavailable due to maintenance. Your data is safe. Please try again later or contact your administrator.`
+        ));
+      }
+
+      if (info.state === ModuleAvailabilityState.AVAILABLE) {
+        return next();
+      }
+
+      return next(ApiError.forbidden(`Module '${moduleName}' access denied`));
     }
 
-    return next(ApiError.forbidden(`Module '${moduleName}' is disabled for this company`));
+    return next(ApiError.forbidden(`Module '${moduleName}' is not enabled for this company`));
   };
 }

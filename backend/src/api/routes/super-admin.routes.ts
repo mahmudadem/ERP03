@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { SuperAdminController } from '../controllers/super-admin/SuperAdminController';
 import { PermissionRegistryController } from '../controllers/super-admin/PermissionRegistryController';
 import { ModuleRegistryController } from '../controllers/super-admin/ModuleRegistryController';
+import { ModuleAvailabilityController } from '../controllers/super-admin/ModuleAvailabilityController';
 import { BusinessDomainRegistryController } from '../controllers/super-admin/BusinessDomainRegistryController';
 import { BundleRegistryController } from '../controllers/super-admin/BundleRegistryController';
 import { PlanRegistryController } from '../controllers/super-admin/PlanRegistryController';
@@ -38,6 +39,11 @@ router.get('/modules', ModuleRegistryController.list);
 router.post('/modules', ModuleRegistryController.create);
 router.patch('/modules/:id', ModuleRegistryController.update);
 router.delete('/modules/:id', ModuleRegistryController.delete);
+
+// Module Availability & Implementation Check
+router.get('/modules/availability', ModuleAvailabilityController.getAvailabilityReport);
+router.get('/modules/:id/availability', ModuleAvailabilityController.getModuleAvailability);
+router.post('/modules/:id/check-implementation', ModuleAvailabilityController.checkImplementation);
 
 // Business Domains
 router.get('/business-domains', BusinessDomainRegistryController.list);

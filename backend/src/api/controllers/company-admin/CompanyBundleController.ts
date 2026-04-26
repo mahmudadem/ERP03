@@ -69,7 +69,9 @@ export class CompanyBundleController {
 
       const useCase = new UpgradeCompanyBundleUseCase(
         diContainer.companyRepository,
-        diContainer.bundleRegistryRepository
+        diContainer.bundleRegistryRepository,
+        diContainer.bundleRegistryRepository as any,
+        diContainer.companyEntitlementRepository
       );
       const result = await useCase.execute({ companyId, bundleId });
 

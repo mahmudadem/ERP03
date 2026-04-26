@@ -5,6 +5,7 @@ import { GetCompanyRoleUseCase } from '../../../application/company-admin/use-ca
 import { CreateCompanyRoleUseCase } from '../../../application/company-admin/use-cases/CreateCompanyRoleUseCase';
 import { UpdateCompanyRoleUseCase } from '../../../application/company-admin/use-cases/UpdateCompanyRoleUseCase';
 import { DeleteCompanyRoleUseCase } from '../../../application/company-admin/use-cases/DeleteCompanyRoleUseCase';
+import { PermissionCatalogSyncService } from '../../../application/platform/PermissionCatalogSyncService';
 
 /**
  * CompanyRolesController
@@ -76,8 +77,7 @@ export class CompanyRolesController {
       const { name, description, permissions } = req.body;
 
       const useCase = new CreateCompanyRoleUseCase(
-        diContainer.companyRoleRepository,
-        diContainer.permissionRegistryRepository
+        diContainer.companyRoleRepository
       );
       const role = await useCase.execute({
         companyId,
@@ -109,8 +109,7 @@ export class CompanyRolesController {
       const { name, description, permissions } = req.body;
 
       const useCase = new UpdateCompanyRoleUseCase(
-        diContainer.companyRoleRepository,
-        diContainer.permissionRegistryRepository
+        diContainer.companyRoleRepository
       );
       await useCase.execute({
         companyId,
@@ -164,12 +163,8 @@ export class CompanyRolesController {
         return;
       }
 
-      if (!diContainer.permissionRegistryRepository) {
-        res.status(503).json({ success: false, error: 'Permission registry not available' });
-        return;
-      }
-
-      const permissions = await diContainer.permissionRegistryRepository.getAll();
+      const syncService = new PermissionCatalogSyncService();
+      const permissions = await syncService.getAvailablePermissions(companyId);
 
       res.json({ success: true, data: permissions });
     } catch (error) {

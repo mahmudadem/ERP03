@@ -93,6 +93,7 @@ import { FirestoreCompanyAdminRepository } from '../firestore/company-admin/Fire
 import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaCompanyAdminRepository';
 import { ICompanyModuleRepository } from '../../repository/interfaces/company/ICompanyModuleRepository';
 import { FirestoreCompanyModuleRepository } from '../firestore/repositories/company/FirestoreCompanyModuleRepository';
+import { FirestoreCapabilityRegistryRepository } from '../firestore/repositories/company/FirestoreCapabilityRegistryRepository';
 import { SettingsResolver } from '../../application/common/services/SettingsResolver';
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
 
@@ -103,6 +104,7 @@ import { IModuleRegistryRepository } from '../../repository/interfaces/super-adm
 import { IBundleRegistryRepository } from '../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { IPlanRegistryRepository } from '../../repository/interfaces/super-admin/IPlanRegistryRepository';
 import { IRoleTemplateRegistryRepository } from '../../repository/interfaces/super-admin/IRoleTemplateRegistryRepository';
+import { ICompanyEntitlementRepository, IBundleItemRepository } from '../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
 import { FirestoreBusinessDomainRepository } from '../firestore/repositories/super-admin/FirestoreBusinessDomainRepository';
 import { FirestorePermissionRegistryRepository } from '../firestore/repositories/super-admin/FirestorePermissionRegistryRepository';
 import { FirestoreModuleRegistryRepository } from '../firestore/repositories/super-admin/FirestoreModuleRegistryRepository';
@@ -151,6 +153,8 @@ import { PrismaRecurringVoucherTemplateRepository } from '../prisma/repositories
 import { PrismaVoucherSequenceRepository } from '../prisma/repositories/accounting/PrismaVoucherSequenceRepository';
 
 import { PrismaCompanyModuleRepository } from '../prisma/repositories/company/PrismaCompanyModuleRepository';
+import { PrismaCapabilityRegistryRepository } from '../prisma/repositories/company/PrismaCapabilityRegistryRepository';
+import { ICapabilityRegistryRepository } from '../../repository/interfaces/company/ICapabilityRegistryRepository';
 
 import { PrismaChartOfAccountsTemplateRepository } from '../prisma/repositories/company-wizard/PrismaChartOfAccountsTemplateRepository';
 import { PrismaCompanyCreationSessionRepository } from '../prisma/repositories/company-wizard/PrismaCompanyCreationSessionRepository';
@@ -207,6 +211,10 @@ import { PrismaModuleRegistryRepository } from '../prisma/repositories/super-adm
 import { PrismaPermissionRegistryRepository } from '../prisma/repositories/super-admin/PrismaPermissionRegistryRepository';
 import { PrismaPlanRegistryRepository } from '../prisma/repositories/super-admin/PrismaPlanRegistryRepository';
 import { PrismaRoleTemplateRegistryRepository } from '../prisma/repositories/super-admin/PrismaRoleTemplateRegistryRepository';
+import { PrismaCompanyEntitlementRepository } from '../prisma/repositories/super-admin/PrismaCompanyEntitlementRepository';
+import { FirestoreCompanyEntitlementRepository } from '../firestore/repositories/super-admin/FirestoreCompanyEntitlementRepository';
+import { EntitlementService } from '../../application/platform/EntitlementService';
+import { IEntitlementService } from '../../application/platform/IEntitlementService';
 
 import { PrismaRbacCompanyUserRepository } from '../prisma/repositories/rbac/PrismaRbacCompanyUserRepository';
 import { PrismaModuleSettingsDefinitionRepository } from '../prisma/repositories/system/PrismaModuleSettingsDefinitionRepository';
@@ -268,6 +276,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaCompanyModuleRepository(getPrismaClient())
       : new FirestoreCompanyModuleRepository(getDb());
+  },
+  get capabilityRegistryRepository(): ICapabilityRegistryRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaCapabilityRegistryRepository(getPrismaClient())
+      : new FirestoreCapabilityRegistryRepository(getDb());
   },
   get moduleActivationService(): ModuleActivationService { return moduleActivationService; },
 
@@ -632,10 +645,18 @@ export const diContainer = {
       ? new PrismaModuleRegistryRepository(getPrismaClient())
       : new FirestoreModuleRegistryRepository(getDb());
   },
-  get bundleRegistryRepository(): IBundleRegistryRepository {
+  get bundleRegistryRepository(): IBundleRegistryRepository & IBundleItemRepository {
     return DB_TYPE === 'SQL'
       ? new PrismaBundleRegistryRepository(getPrismaClient())
       : new FirestoreBundleRegistryRepository(getDb());
+  },
+  get companyEntitlementRepository(): ICompanyEntitlementRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaCompanyEntitlementRepository(getPrismaClient())
+      : new FirestoreCompanyEntitlementRepository(getDb());
+  },
+  get entitlementService(): IEntitlementService {
+    return new EntitlementService(this.companyEntitlementRepository);
   },
   get planRegistryRepository(): IPlanRegistryRepository {
     return DB_TYPE === 'SQL'

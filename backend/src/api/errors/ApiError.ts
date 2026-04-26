@@ -33,6 +33,14 @@ export class ApiError extends Error {
     return new ApiError(409, message, code);
   }
 
+  static locked(message: string, code = 'LOCKED') {
+    return new ApiError(423, message, code);
+  }
+
+  static custom(statusCode: number, message: string, code?: string) {
+    return new ApiError(statusCode, message, code || 'CUSTOM_ERROR');
+  }
+
   static internal(message: string = 'Internal Server Error', code = 'INTERNAL_ERROR') {
     return new ApiError(500, message, code);
   }

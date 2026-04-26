@@ -5,12 +5,14 @@ import { useCompanyAccess } from './CompanyAccessContext';
 interface CostCentersContextValue {
   costCenters: CostCenterDTO[];
   refresh: () => Promise<void>;
+  refreshCostCenters: () => Promise<void>;
   loading: boolean;
 }
 
 const CostCentersContext = createContext<CostCentersContextValue>({
   costCenters: [],
   refresh: async () => {},
+  refreshCostCenters: async () => {},
   loading: false
 });
 
@@ -83,7 +85,7 @@ export const CostCentersProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [canUseAccounting]);
 
   return (
-    <CostCentersContext.Provider value={{ costCenters, refresh: load, loading }}>
+    <CostCentersContext.Provider value={{ costCenters, refresh: load, refreshCostCenters: load, loading }}>
       {children}
     </CostCentersContext.Provider>
   );

@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { IModule, ModuleMetadata } from '../../domain/platform/IModule';
+import { ModuleManifest } from '../../domain/platform/ModuleManifest';
 import accountingRoutes from '../../api/routes/accounting.routes';
 
 export class AccountingModule implements IModule {
@@ -27,9 +28,18 @@ export class AccountingModule implements IModule {
         'accounting.reports.view'
     ];
 
+    getManifest(): ModuleManifest {
+        return {
+            id: this.metadata.id,
+            name: this.metadata.name,
+            version: this.metadata.version,
+            description: this.metadata.description,
+            requiredPermissions: this.permissions,
+        };
+    }
+
     async initialize(): Promise<void> {
         console.log('Initializing Accounting Module...');
-        // Any module-specific initialization logic here
     }
 
     getRouter(): Router {

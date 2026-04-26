@@ -66,6 +66,7 @@ export class ModuleActivationService {
     const newModule: CompanyModule = {
       companyId,
       moduleCode,
+      isEnabled: true,
       installedAt: new Date(),
       initialized: false,
       initializationStatus: 'pending',

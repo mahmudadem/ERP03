@@ -2,14 +2,31 @@ import './firebaseAdmin';
 import * as functions from 'firebase-functions';
 import { registerAllModules } from './modules';
 import { ModuleRegistry } from './application/platform/ModuleRegistry';
+import { runModuleStartupValidation } from './modules/moduleStartupValidation';
 
-// Register modules before the server (and tenant router) are loaded
-registerAllModules();
-ModuleRegistry.getInstance().initializeAll().catch(() => {});
+let server: any = null;
+let serverReady = false;
 
-// Load the server after modules are registered so tenant router can mount them
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const server = require('./api/server').default;
+async function initServer() {
+  registerAllModules();
+  await ModuleRegistry.getInstance().initializeAll();
+  await runModuleStartupValidation();
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  server = require('./api/server').default;
+  serverReady = true;
+}
 
-export const api = functions.https.onRequest(server as any);
+initServer().catch((error) => {
+  console.error('Failed to initialize server:', error);
+});
+
+export const api = functions.https.onRequest(async (req: any, res: any) => {
+  if (!serverReady || !server) {
+    res.status(503).json({ success: false, error: 'Server not ready, please retry' });
+    return;
+  }
+
+  server(req, res);
+});
+
 export const accountingModule = {};

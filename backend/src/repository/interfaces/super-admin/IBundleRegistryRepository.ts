@@ -7,7 +7,9 @@ import { BundleDefinition } from '../../../domain/super-admin/BundleDefinition';
 export interface IBundleRegistryRepository {
   getAll(): Promise<BundleDefinition[]>;
   getById(id: string): Promise<BundleDefinition | null>;
+  getByCode(code: string): Promise<BundleDefinition | null>;
   create(bundle: BundleDefinition): Promise<void>;
   update(id: string, bundle: Partial<BundleDefinition>): Promise<void>;
   delete(id: string): Promise<void>;
+  getReady(): Promise<BundleDefinition[]>;
 }

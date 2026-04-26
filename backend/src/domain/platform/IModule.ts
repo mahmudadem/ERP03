@@ -5,6 +5,9 @@
  */
 
 import { Router } from 'express';
+import { ModuleManifest } from './ModuleManifest';
+
+export { ModuleManifest };
 
 export interface ModuleMetadata {
     id: string;
@@ -25,6 +28,11 @@ export interface IModule {
      * Permissions required by this module
      */
     permissions: string[];
+
+    /**
+     * Get the module manifest for validation
+     */
+    getManifest(): ModuleManifest;
 
     /**
      * Initialize the module (called on server startup)

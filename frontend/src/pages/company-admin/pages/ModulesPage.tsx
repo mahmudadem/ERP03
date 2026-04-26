@@ -15,6 +15,7 @@ export const ModulesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { refreshPermissions } = useCompanyAccess();
   const { modules, activeModules, isLoading, enableModule, disableModule, isEnabling, isDisabling } = useCompanyModules();
+  const effectiveActiveCount = modules.filter((module) => module.isEnabled ?? module.enabled ?? activeModules.includes(module.id)).length;
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -68,7 +69,7 @@ export const ModulesPage: React.FC = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-900">{t('companyAdmin.modules.activeModules')}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                {isLoading ? t('companyAdmin.modules.loading') : t('companyAdmin.modules.activeCount', { count: activeModules.length })}
+                {isLoading ? t('companyAdmin.modules.loading') : t('companyAdmin.modules.activeCount', { count: effectiveActiveCount })}
               </p>
             </div>
           </div>
@@ -87,22 +88,28 @@ export const ModulesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {modules.map((module) => {
-            const isEnabled = activeModules.includes(module.id);
+            const isEnabled = module.isEnabled ?? module.enabled ?? activeModules.includes(module.id);
             const isMandatory = module.mandatory;
+            const isSuspended = module.state === 'suspended';
+            const isBlocked = isEnabled && (isSuspended || module.isAvailable === false);
+            const blockedReason = module.blockedReason || module.reason || (isSuspended ? 'This module is temporarily suspended.' : undefined);
+            const canToggle = !isMandatory && !isEnabling && !isDisabling && (isEnabled || module.isAvailable !== false);
             
             return (
-              <Card key={module.id} className="p-6">
+              <Card key={module.id} className={`p-6 ${isBlocked ? 'border-amber-300 bg-amber-50/40' : ''}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900">{module.name}</h3>
                     <p className="text-sm text-gray-500 mt-1">{module.description}</p>
                   </div>
                   <div className={`ml-4 px-3 py-1 rounded-full text-xs font-medium ${
-                    isEnabled 
+                    isBlocked
+                      ? 'bg-amber-100 text-amber-800'
+                      : isEnabled
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {isEnabled ? t('companyAdmin.modules.active') : t('companyAdmin.modules.inactive')}
+                    {isBlocked ? 'Blocked' : isEnabled ? t('companyAdmin.modules.active') : t('companyAdmin.modules.inactive')}
                   </div>
                 </div>
 
@@ -112,14 +119,26 @@ export const ModulesPage: React.FC = () => {
                   </div>
                 )}
 
+                {isBlocked && (
+                  <div className="mb-4 p-3 bg-amber-100 border border-amber-200 rounded text-xs text-amber-800">
+                    <span className="font-medium">Runtime blocked.</span> {blockedReason}
+                  </div>
+                )}
+
                 <div className="pt-4 border-t">
                   <Button
                     variant={isEnabled ? 'secondary' : 'primary'}
                     className="w-full"
                     onClick={() => handleToggle(module.id, module.name, isEnabled)}
-                    disabled={isMandatory || isEnabling || isDisabling}
+                    disabled={!canToggle}
                   >
-                    {isEnabling || isDisabling ? t('companyAdmin.modules.processing') : isEnabled ? t('companyAdmin.modules.disableModule') : t('companyAdmin.modules.enableModule')}
+                    {isEnabling || isDisabling
+                      ? t('companyAdmin.modules.processing')
+                      : isEnabled
+                        ? t('companyAdmin.modules.disableModule')
+                        : module.isAvailable === false
+                          ? 'Unavailable'
+                          : t('companyAdmin.modules.enableModule')}
                   </Button>
                 </div>
               </Card>

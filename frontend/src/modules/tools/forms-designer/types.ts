@@ -128,6 +128,7 @@ export interface DocumentFormConfig {
   inUse?: boolean;          // Has transactions, can't delete
   baseType?: string;         // Metadata for backend compatibility
   headerFields?: any[]; // For persistence mapping
+  lineFields?: any[]; // For persistence mapping
   
   // Metadata for arbitrary storage
   metadata?: Record<string, any>;

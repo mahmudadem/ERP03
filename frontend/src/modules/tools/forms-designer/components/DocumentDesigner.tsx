@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { 
   DocumentFormConfig, FieldLayout, UIMode, AvailableField, 
-  DocumentRule, DocumentAction, SectionLayout, SectionType
+  DocumentRule, DocumentAction, SectionLayout, SectionType, DocumentLayoutConfig
 } from '../types';
 import { GenericVoucherRenderer } from '../../../accounting/components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
@@ -217,11 +217,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     if (initial) {
       // Automatic migration for older 12-column documents
       initial = migrateTo24Columns(initial);
-      return { ...initial, isMultiLine: true };
+      return { ...(initial as DocumentFormConfig), isMultiLine: true } as DocumentFormConfig;
     }
     
     // Default config for new forms
-    const base: Partial<DocumentFormConfig> = {
+    const base: Partial<DocumentFormConfig> & { uiModeOverrides: Record<UIMode, DocumentLayoutConfig> } = {
       id: 'new_document_form',
       name: 'New Document Form',
       prefix: 'V-',
@@ -230,7 +230,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       isMultiLine: true,
       tableColumns: [],
       actions: defaultActions,
-      uiModeOverrides: null as any
+      uiModeOverrides: {} as Record<UIMode, DocumentLayoutConfig>
     };
 
     // Ensure uiModeOverrides is NEVER null and has both modes initialized
@@ -394,7 +394,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       Object.keys(currentModeConfig.sections).forEach(sectionKey => {
         const section = currentModeConfig.sections[sectionKey as SectionType];
         if (section?.fields) {
-          section.fields = section.fields.filter(f => {
+          section.fields = section.fields.filter((f: FieldLayout) => {
             if (f.fieldId.startsWith('action_')) {
               const actionType = f.fieldId.replace('action_', '');
               return config.actions.find(a => a.type === actionType)?.enabled ?? false;
@@ -1020,7 +1020,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
   // --- COLUMN RESIZING LOGIC ---
 
-  const columnResizeRef = useRef<{ colIndex: number, startX: number, startWidth: number } | null>(null);
+  const columnResizeRef = useRef<{ colIndex: number, startX: number, startWidth: number, tableWidth: number } | null>(null);
 
   const onColumnResizeMove = (e: MouseEvent) => {
       if (!columnResizeRef.current) return;
@@ -1901,7 +1901,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                   } else {
                     updated = [...(config.tableColumns || []), { id: field.id, labelOverride: field.label }];
                   }
-                  setConfig({...config, tableColumns: updated});
+                  setConfig({...config, tableColumns: updated as any});
                 } else {
                   setSelectedFieldIds(prev => isSelected ? prev.filter(f => f !== field.id) : [...prev, field.id]);
                 }

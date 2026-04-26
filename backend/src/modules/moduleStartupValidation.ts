@@ -138,9 +138,20 @@ async function runPermissionStartupValidation(): Promise<void> {
 
   try {
     const syncService = new PermissionCatalogSyncService();
-    await syncService.sync();
-    console.log('✓ Permission catalog synced successfully');
+    const report = await syncService.sync();
+
+    if (report.errors.length > 0) {
+      console.error('✗ Permission sync failed:', report.errors.join(', '));
+      throw new Error(`Permission sync failed: ${report.errors.join(', ')}`);
+    }
+
+    if (report.synced === 0) {
+      console.warn('⚠️  No permissions synced - catalog may be empty');
+    }
+
+    console.log(`✓ Permission catalog synced: ${report.synced} permissions (${report.newPermissions.length} new, ${report.updatedPermissions.length} updated)`);
   } catch (error) {
-    console.error('Permission startup validation failed:', error);
+    console.error('✗ Permission startup validation failed:', error);
+    throw error;
   }
 }

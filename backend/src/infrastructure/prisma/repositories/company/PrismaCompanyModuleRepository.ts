@@ -26,6 +26,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
       data: {
         companyId: module.companyId,
         moduleCode: module.moduleCode,
+        isEnabled: module.isEnabled ?? true,
         installedAt: module.installedAt,
         initialized: module.initialized,
         initializationStatus: module.initializationStatus,
@@ -36,6 +37,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
 
   async update(companyId: string, moduleCode: string, updates: Partial<CompanyModule>): Promise<void> {
     const data: any = {};
+    if (updates.isEnabled !== undefined) data.isEnabled = updates.isEnabled;
     if (updates.initialized !== undefined) data.initialized = updates.initialized;
     if (updates.initializationStatus !== undefined) data.initializationStatus = updates.initializationStatus;
     if (updates.config !== undefined) data.config = updates.config as any;
@@ -61,6 +63,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
           data: {
             companyId: m.companyId,
             moduleCode: m.moduleCode,
+            isEnabled: m.isEnabled ?? true,
             installedAt: m.installedAt,
             initialized: m.initialized,
             initializationStatus: m.initializationStatus,
@@ -75,6 +78,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
     return {
       companyId: record.companyId,
       moduleCode: record.moduleCode,
+      isEnabled: record.isEnabled ?? true,
       installedAt: record.installedAt,
       initialized: record.initialized,
       initializationStatus: record.initializationStatus as 'pending' | 'in_progress' | 'complete',

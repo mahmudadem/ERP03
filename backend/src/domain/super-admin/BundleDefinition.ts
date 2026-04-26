@@ -5,12 +5,17 @@
  * Bundles appear during company creation (not user signup).
  */
 
+export type BundleLifecycleStatus = 'draft' | 'ready' | 'deprecated' | 'inactive';
+
 export interface BundleDefinition {
   id: string;
+  code?: string;
   name: string;
   description: string;
-  businessDomains: string[];      // Array of business domain IDs
-  modulesIncluded: string[];      // Array of module IDs
+  businessDomains: string[];
+  modulesIncluded: string[];
+  capabilities?: string[];
+  lifecycleStatus: BundleLifecycleStatus;
   createdAt: Date;
   updatedAt: Date;
 }

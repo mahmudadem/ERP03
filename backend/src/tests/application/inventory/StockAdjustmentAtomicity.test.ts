@@ -72,11 +72,16 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       postInTransaction: jest.fn(async () => ({ id: 'vch-1' })),
     };
 
+    const companyModuleRepo = {
+      get: jest.fn(async () => ({ initialized: true })),
+    };
+
     const useCase = new PostStockAdjustmentUseCase(
       adjustmentRepo as any,
       itemRepo as any,
       movementUseCase as any,
       transactionManager as any,
+      companyModuleRepo as any,
       accountingPostingService as any
     );
 
@@ -136,11 +141,16 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       }),
     };
 
+    const companyModuleRepo = {
+      get: jest.fn(async () => ({ initialized: true })),
+    };
+
     const useCase = new PostStockAdjustmentUseCase(
       adjustmentRepo as any,
       itemRepo as any,
       movementUseCase as any,
       transactionManager as any,
+      companyModuleRepo as any,
       accountingPostingService as any
     );
 

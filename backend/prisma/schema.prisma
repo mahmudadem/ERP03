@@ -1831,30 +1831,103 @@ model BusinessDomain {
 }
 
 model ModuleRegistry {
-  id           String   @id @default(uuid())
-  code         String   @unique
-  name         String
-  version      String
-  description  String?
-  dependencies String[] @default([])
-  businessDomainId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                     String             @id @default(uuid())
+  code                   String             @unique
+  name                   String
+  version                String             @default("1.0.0")
+  description            String?
+  dependencies           String[]           @default([])
+  businessDomainId       String?
+  lifecycleStatus        String             @default("draft")
+  runtimeStatus          String             @default("available")
+  implementationStatus   String             @default("unchecked")
+  implementationError    String?
+  implementationCheckedAt DateTime?
+  releaseNotes           String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
   @@map("module_registries")
 }
 
+model ModuleCapabilityRegistry {
+  id                    String   @id @default(uuid())
+  code                 String   @unique
+  moduleId             String
+  name                 String
+  description          String?
+  lifecycleStatus      String   @default("draft")
+  runtimeStatus       String   @default("available")
+  implementationStatus String @default("unchecked")
+  implementationError String?
+  implementationCheckedAt DateTime?
+  enablementPolicy    String   @default("platform_only") // "platform_only" | "bundle_entitled" | "company_admin_optional"
+  requiresMigration   Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([moduleId])
+  @@map("module_capability_registries")
+}
+
 model BundleRegistry {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  name            String
+  description     String?
+  lifecycleStatus String   @default("draft")
+  modules         String[] @default([])
+  pricing         Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bundleItems     BundleItem[]
+
+  @@map("bundle_registries")
+}
+
+model BundleItem {
+  id        String   @id @default(uuid())
+  bundleId  String
+  itemType  String   // "module" or "capability"
+  itemKey   String   // "sales" or "crm.ai-scoring"
+  createdAt DateTime @default(now())
+
+  bundle    BundleRegistry @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, itemKey])
+  @@map("bundle_items")
+}
+
+model CompanyEntitlement {
   id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  modules     String[] @default([])
-  pricing     Json?
+  companyId   String
+  sourceType  String   // "bundle" | "superadmin_override" | "trial" | "promotion"
+  sourceId    String   // bundleId or override policy id
+  validFrom   DateTime @default(now())
+  validUntil  DateTime?
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("bundle_registries")
+  items       CompanyEntitlementItem[]
+
+  @@index([companyId])
+  @@index([companyId, isActive])
+  @@map("company_entitlements")
+}
+
+model CompanyEntitlementItem {
+  id              String   @id @default(uuid())
+  entitlementId   String
+  itemType        String   // "module" or "capability"
+  itemKey         String   // "sales" or "crm.ai-scoring"
+  createdAt       DateTime @default(now())
+
+  entitlement     CompanyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+
+  @@unique([entitlementId, itemKey])
+  @@map("company_entitlement_items")
 }
 
 model PlanRegistry {
@@ -1963,6 +2036,7 @@ model CompanyModule {
   companyId              String
   moduleCode             String
   installedAt            DateTime @default(now())
+  isEnabled             Boolean @default(true)
   initialized            Boolean  @default(false)
   initializationStatus   String   @default("pending")
   config                 Json?
@@ -1972,6 +2046,20 @@ model CompanyModule {
 
   @@id([companyId, moduleCode])
   @@map("company_modules")
+}
+
+model CompanyCapability {
+  companyId              String
+  capabilityId          String
+  isEnabled             Boolean @default(false)
+  config                 Json?
+  enabledAt             DateTime?
+  disabledAt            DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt              DateTime? @updatedAt
+
+  @@id([companyId, capabilityId])
+  @@map("company_capabilities")
 }
 
 // ============================================

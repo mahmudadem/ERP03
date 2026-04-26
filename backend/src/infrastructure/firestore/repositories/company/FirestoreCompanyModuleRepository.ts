@@ -4,7 +4,7 @@ import { CompanyModule } from '../../../../domain/company/entities/CompanyModule
 
 /**
  * Firestore implementation of CompanyModule repository
- * Collection path: companyModules/{companyId}/modules/{moduleCode}
+ * Collection path: companies/{companyId}/modules/{moduleCode}
  */
 export class FirestoreCompanyModuleRepository implements ICompanyModuleRepository {
   constructor(private db: admin.firestore.Firestore) {}
@@ -53,17 +53,17 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
     const updatedAt = updates.updatedAt || new Date();
 
     const firestoreUpdates: any = {};
+    if (updates.isEnabled !== undefined) firestoreUpdates.isEnabled = updates.isEnabled;
     if (updates.initialized !== undefined) firestoreUpdates.initialized = updates.initialized;
     if (updates.initializationStatus !== undefined) firestoreUpdates.initializationStatus = updates.initializationStatus;
     if (updates.config !== undefined) firestoreUpdates.config = updates.config;
     firestoreUpdates.updatedAt = updatedAt;
 
-    // Upsert behavior: initialization flows may call update before module record exists.
-    // Create a minimal module record on first update to avoid Firestore NOT_FOUND.
     if (!snapshot.exists) {
       firestoreUpdates.companyId = companyId;
       firestoreUpdates.moduleCode = moduleCode;
       firestoreUpdates.installedAt = updates.installedAt || new Date();
+      firestoreUpdates.isEnabled = updates.isEnabled ?? true;
       if (firestoreUpdates.initialized === undefined) firestoreUpdates.initialized = false;
       if (firestoreUpdates.initializationStatus === undefined) firestoreUpdates.initializationStatus = 'pending';
       if (firestoreUpdates.config === undefined) firestoreUpdates.config = {};
@@ -102,7 +102,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
     return {
       companyId: module.companyId,
       moduleCode: module.moduleCode,
-      // Store as Date - Firestore auto-converts to Timestamp
+      isEnabled: module.isEnabled ?? true,
       installedAt: module.installedAt,
       initialized: module.initialized,
       initializationStatus: module.initializationStatus,
@@ -115,6 +115,7 @@ export class FirestoreCompanyModuleRepository implements ICompanyModuleRepositor
     return {
       companyId: data.companyId,
       moduleCode: data.moduleCode,
+      isEnabled: data.isEnabled ?? true,
       installedAt: data.installedAt?.toDate() || new Date(),
       initialized: data.initialized || false,
       initializationStatus: data.initializationStatus || 'pending',

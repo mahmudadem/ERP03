@@ -2,6 +2,7 @@ import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICom
 import { IPermissionRegistryRepository } from '../../../repository/interfaces/super-admin/IPermissionRegistryRepository';
 import { CompanyRole } from '../../../domain/rbac/CompanyRole';
 import { ApiError } from '../../../api/errors/ApiError';
+import { PermissionCatalogSyncService } from '../../platform/PermissionCatalogSyncService';
 
 export interface CreateRoleInput {
   companyId: string;
@@ -22,11 +23,14 @@ export class CreateCompanyRoleUseCase {
       throw ApiError.badRequest("Missing required fields");
     }
 
-    // Validate permissions against catalog if registry available
-    if (input.permissions && input.permissions.length > 0 && this.permissionRegistryRepository) {
-      const invalid = await this.validatePermissions(input.permissions);
+    // Validate permissions against company-scoped catalog
+    if (input.permissions && input.permissions.length > 0) {
+      const syncService = new PermissionCatalogSyncService();
+      const availablePerms = await syncService.getAvailablePermissions(input.companyId);
+      const validSet = new Set(availablePerms.map(p => p.id));
+      const invalid = input.permissions.filter(p => !validSet.has(p));
       if (invalid.length > 0) {
-        throw ApiError.badRequest(`Invalid permissions: ${invalid.join(', ')}. Permissions must be from the catalog.`);
+        throw ApiError.badRequest(`Invalid permissions: ${invalid.join(', ')}. Permissions must be from the available catalog for your company's modules.`);
       }
     }
 
@@ -59,11 +63,5 @@ export class CreateCompanyRoleUseCase {
       createdAt: role.createdAt,
       updatedAt: role.updatedAt
     };
-  }
-
-  private async validatePermissions(permissions: string[]): Promise<string[]> {
-    const catalog = await this.permissionRegistryRepository!.getAll();
-    const validSet = new Set(catalog.map(p => p.id));
-    return permissions.filter(p => !validSet.has(p));
   }
 }

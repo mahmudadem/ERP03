@@ -1,5 +1,6 @@
 
 import { IBundleRegistryRepository } from '../../../repository/interfaces/super-admin/IBundleRegistryRepository';
+import { BundleLifecycleStatus } from '../../../domain/super-admin/BundleDefinition';
 
 interface UpdateBundleInput {
   id: string;
@@ -7,6 +8,8 @@ interface UpdateBundleInput {
   description?: string;
   businessDomains?: string[];
   modulesIncluded?: string[];
+  capabilities?: string[];
+  lifecycleStatus?: BundleLifecycleStatus;
 }
 
 export class UpdateBundleUseCase {
@@ -22,6 +25,10 @@ export class UpdateBundleUseCase {
 
     if (updates.modulesIncluded !== undefined && !Array.isArray(updates.modulesIncluded)) {
       throw new Error('modulesIncluded must be an array');
+    }
+
+    if (updates.capabilities !== undefined && !Array.isArray(updates.capabilities)) {
+      throw new Error('capabilities must be an array');
     }
     
     await this.bundleRepo.update(id, {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { IModule, ModuleMetadata } from '../../domain/platform/IModule';
+import { ModuleManifest } from '../../domain/platform/ModuleManifest';
 import purchasesRoutes from '../../api/routes/purchases.routes';
 
 export class PurchaseModule implements IModule {
@@ -18,6 +19,16 @@ export class PurchaseModule implements IModule {
     'purchase.orders.view',
     'purchase.orders.manage',
   ];
+
+  getManifest(): ModuleManifest {
+    return {
+      id: this.metadata.id,
+      name: this.metadata.name,
+      version: this.metadata.version,
+      description: this.metadata.description,
+      requiredPermissions: this.permissions,
+    };
+  }
 
   async initialize(): Promise<void> {
     console.log('Initializing Purchase Module...');

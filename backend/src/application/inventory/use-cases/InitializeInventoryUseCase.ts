@@ -101,6 +101,7 @@ export class InitializeInventoryUseCase {
       await this.companyModuleRepo.create({
         companyId: input.companyId,
         moduleCode: 'inventory',
+        isEnabled: true,
         installedAt: now,
         initialized: true,
         initializationStatus: 'complete',
