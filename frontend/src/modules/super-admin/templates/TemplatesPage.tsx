@@ -1,6 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { superAdminTemplatesApi, WizardTemplateSummary, CoaTemplateSummary, CurrencySummary } from '../../../api/superAdminTemplates';
 import { useTranslation } from 'react-i18next';
+import {
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 export default function TemplatesPage() {
   const { t } = useTranslation('common');
@@ -20,16 +30,15 @@ export default function TemplatesPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('superAdmin.templates.title')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('superAdmin.templates.subtitle')}</p>
-        </div>
-      </header>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.templates.title')}
+        description={t('superAdmin.templates.subtitle')}
+        meta="Initialization"
+      />
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">{t('superAdmin.templates.sections.wizardTemplates')}</h2>
+        <h2 className="mb-3 text-base font-semibold text-slate-950">{t('superAdmin.templates.sections.wizardTemplates')}</h2>
         <TemplateCard
           loading={wizardQuery.isLoading}
           error={wizardQuery.error as any}
@@ -44,7 +53,7 @@ export default function TemplatesPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">{t('superAdmin.templates.sections.coaTemplates')}</h2>
+        <h2 className="mb-3 text-base font-semibold text-slate-950">{t('superAdmin.templates.sections.coaTemplates')}</h2>
         <TemplateCard
           loading={coaQuery.isLoading}
           error={coaQuery.error as any}
@@ -58,7 +67,7 @@ export default function TemplatesPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">{t('superAdmin.templates.sections.currencies')}</h2>
+        <h2 className="mb-3 text-base font-semibold text-slate-950">{t('superAdmin.templates.sections.currencies')}</h2>
         <TemplateCard
           loading={currencyQuery.isLoading}
           error={currencyQuery.error as any}
@@ -70,34 +79,33 @@ export default function TemplatesPage() {
           ]}
         />
       </section>
-    </div>
+    </SuperAdminPage>
   );
 }
 
 type Column<T> = { header: string; render: (row: T) => React.ReactNode };
 
 function TemplateCard<T>({ loading, error, data, columns, t }: { loading: boolean; error: any; data: T[] | undefined; columns: Column<T>[]; t: (key: string, options?: any) => string }) {
-  if (loading) return <div className="text-sm text-gray-500">{t('superAdmin.templates.loading')}</div>;
-  if (error) return <div className="text-sm text-red-600">{t('superAdmin.templates.loadFailed', { message: error?.message || t('superAdmin.templates.unknownError') })}</div>;
+  if (loading) return <SuperAdminLoading label={t('superAdmin.templates.loading')} />;
+  if (error) return <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{t('superAdmin.templates.loadFailed', { message: error?.message || t('superAdmin.templates.unknownError') })}</div>;
   const rows = data || [];
 
   return (
-    <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <SuperAdminTable>
+        <thead className="bg-slate-50">
           <tr>
             {columns.map((c) => (
-              <th key={c.header} className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th key={c.header} className={tableHeadCellClass}>
                 {c.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-slate-100 bg-white">
           {rows.map((row, idx) => (
-            <tr key={idx}>
+            <tr key={idx} className={tableRowClass}>
               {columns.map((c) => (
-                <td key={c.header} className="px-4 py-2 text-sm text-gray-800">
+                <td key={c.header} className={tableCellClass}>
                   {c.render(row)}
                 </td>
               ))}
@@ -105,13 +113,10 @@ function TemplateCard<T>({ loading, error, data, columns, t }: { loading: boolea
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-4 text-sm text-gray-500 text-center">
-                {t('superAdmin.templates.empty')}
-              </td>
+              <td colSpan={columns.length}><SuperAdminEmptyState title={t('superAdmin.templates.empty')} /></td>
             </tr>
           )}
         </tbody>
-      </table>
-    </div>
+    </SuperAdminTable>
   );
 }

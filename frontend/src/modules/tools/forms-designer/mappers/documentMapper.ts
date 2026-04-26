@@ -47,11 +47,16 @@ export function documentUiToCanonical(
   const mapFieldType = (type: string): FieldDefinition['type'] => {
     switch (type) {
       case 'number': return 'NUMBER';
+      case 'amount': return 'NUMBER';
       case 'date': return 'DATE';
       case 'checkbox': return 'CHECKBOX';
       case 'select': return 'SELECT';
       case 'account-selector': return 'account-selector';
       case 'cost-center-selector': return 'cost-center-selector';
+      case 'party-selector': return 'party-selector';
+      case 'item-selector': return 'item-selector';
+      case 'warehouse-selector': return 'warehouse-selector';
+      case 'currency-selector': return 'SELECT';
       case 'textarea': return 'TEXTAREA';
       case 'relation': return 'RELATION';
       default: return 'TEXT';

@@ -218,7 +218,7 @@ const FORM_DATA_EXCLUDED_KEYS = new Set([
     'voucherConfig', 'uiMode', '_rowId',
 ]);
 const buildFormData = (payload, existingFormData) => {
-    var _a;
+    var _a, _b;
     if (!payload || typeof payload !== 'object')
         return existingFormData || null;
     // Explicit formData in payload takes priority (frontend already shaped it)
@@ -236,6 +236,13 @@ const buildFormData = (payload, existingFormData) => {
             return;
         headerFields[key] = value;
     });
+    if (isPlainObject((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.customFields)) {
+        Object.entries(payload.metadata.customFields).forEach(([key, value]) => {
+            if (!key || value === undefined)
+                return;
+            headerFields[key] = value;
+        });
+    }
     const detailLines = Array.isArray(payload.lines)
         ? payload.lines.map((line) => {
             // Strip internal accounting fields from detail lines — keep business fields
@@ -244,7 +251,7 @@ const buildFormData = (payload, existingFormData) => {
         }).filter(Boolean)
         : [];
     const result = {
-        formId: payload.formId || ((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.formId) || null,
+        formId: payload.formId || ((_b = payload.metadata) === null || _b === void 0 ? void 0 : _b.formId) || null,
         headerFields: sanitizeSnapshotObject(headerFields),
         detailLines,
     };

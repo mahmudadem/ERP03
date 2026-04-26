@@ -120,7 +120,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
       isChild ? "text-xs font-normal py-1.5" : "text-sm font-medium",
       (active || (isAnyChildActive && !isExpanded && !isSubmenusMode))
         ? "bg-primary-50 text-primary-700 font-medium dark:bg-primary-900/20 dark:text-primary-400" 
-        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]",
+        : "text-[var(--app-sidebar-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--app-sidebar-text)]",
       isFlyout && "px-4 py-2.5 rounded-none hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/20 dark:hover:text-primary-400"
     )}>
       {/* Active Indicator (vertical strip for expanded, maybe different for shrunk) */}
@@ -143,7 +143,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           : "w-10 h-10 mb-1",
         (active || isAnyChildActive)
           ? "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-400" 
-          : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--color-text-primary)]"
+          : "bg-[var(--color-bg-tertiary)] text-[var(--app-sidebar-muted)] group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-[var(--app-sidebar-text)]"
       )}>
         {finalIcon ? (
           React.cloneElement(finalIcon as React.ReactElement, { 

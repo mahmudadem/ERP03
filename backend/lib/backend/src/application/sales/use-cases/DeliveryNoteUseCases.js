@@ -136,7 +136,7 @@ class CreateDeliveryNoteUseCase {
 }
 exports.CreateDeliveryNoteUseCase = CreateDeliveryNoteUseCase;
 class PostDeliveryNoteUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.deliveryNoteRepo = deliveryNoteRepo;
@@ -147,16 +147,18 @@ class PostDeliveryNoteUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id) {
+    async execute(companyId, id, createAccountingEffect = true) {
         var _a;
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
         const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
         const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const dn = await this.deliveryNoteRepo.getById(companyId, id);
         if (!dn)
             throw new Error(`Delivery note not found: ${id}`);
@@ -259,7 +261,7 @@ class PostDeliveryNoteUseCase {
                     soLine.deliveredQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.deliveredQty + line.deliveredQty);
                 }
             }
-            if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
+            if (shouldPostAccounting && DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
                 const cogsVoucherLines = [];
                 for (const line of Array.from(cogsBucket.values())) {
                     const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
@@ -354,6 +356,10 @@ class PostDeliveryNoteUseCase {
             round: SalesPostingHelpers_1.roundMoney,
             itemCode: item.code,
         });
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
     assertPositiveTrackedCost(qty, unitCostBase, itemName, documentLabel) {
         if (qty > 0 && !(unitCostBase > 0)) {

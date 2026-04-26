@@ -5,6 +5,8 @@
  */
 
 import { PostingRole } from './PostingRole';
+export type FieldClass = 'system_core' | 'system_optional' | 'computed' | 'custom_metadata';
+export type FieldBindingTarget = 'payload' | 'metadata.customFields';
 
 export type FieldType = 
   | 'TEXT' 
@@ -31,6 +33,10 @@ export interface FieldDefinition {
   name: string; // Key in the data object
   label: string;
   type: FieldType;
+  fieldClass?: FieldClass;
+  bindingTarget?: FieldBindingTarget;
+  nameLocked?: boolean;
+  computed?: boolean;
   
   // Posting Classification (Schema V2)
   isPosting: boolean;

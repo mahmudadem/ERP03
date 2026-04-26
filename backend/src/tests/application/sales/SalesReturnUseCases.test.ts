@@ -361,6 +361,14 @@ const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PER
   })),
 });
 
+const makeCompanyModuleRepo = (initialized = true) => ({
+  get: jest.fn(async () => ({
+    companyId: COMPANY_ID,
+    moduleKey: 'accounting',
+    initialized,
+  })),
+});
+
 describe('SalesReturn posting use-case (Phase 3)', () => {
   it('11) AFTER_INVOICE: creates RETURN_IN + Revenue reversal + COGS reversal', async () => {
     const settings = makeSettings('SIMPLE');
@@ -394,6 +402,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -448,6 +457,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -489,6 +499,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -524,6 +535,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -562,6 +574,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -609,6 +622,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -662,6 +676,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -713,6 +728,7 @@ describe('SalesReturn posting use-case (Phase 3)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,

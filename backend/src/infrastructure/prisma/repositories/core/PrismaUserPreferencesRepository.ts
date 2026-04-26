@@ -13,6 +13,7 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
       (data.theme as Theme) || 'light',
       (data.sidebarMode as SidebarMode) || 'classic',
       data.sidebarPinned ?? true,
+      (data.appearanceSettings as Record<string, any>) || {},
       (data.disabledNotificationCategories as string[]) || [],
       (data.notificationCategoryOverrides as Record<string, boolean>) || {},
       data.createdAt,
@@ -35,6 +36,7 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
     if (prefs.theme !== undefined) updateData.theme = prefs.theme;
     if (prefs.sidebarMode !== undefined) updateData.sidebarMode = prefs.sidebarMode;
     if (prefs.sidebarPinned !== undefined) updateData.sidebarPinned = prefs.sidebarPinned;
+    if (prefs.appearanceSettings !== undefined) updateData.appearanceSettings = prefs.appearanceSettings as any;
     if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories as any;
     if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides as any;
 

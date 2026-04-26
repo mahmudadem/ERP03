@@ -71,6 +71,9 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   const [createForm, setCreateForm] = useState<CreateItemFormState>(() =>
     buildCreateSeed('', 'USD')
   );
+  const [allItems, setAllItems] = useState<InventoryItemDTO[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +122,28 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
     }
   }, [selectedItem?.code, selectedItem?.id, trackInventoryOnly, value]);
 
+  const loadAllItems = async (force = false) => {
+    if (hasLoadedOnce && !force) return;
+    setIsRefreshing(true);
+    try {
+      const results = await inventoryApi.listItems({ 
+        active: true, 
+        limit: 1000,
+        ...(trackInventoryOnly ? { trackInventory: true } : {})
+      });
+      setAllItems(results);
+      setHasLoadedOnce(true);
+    } catch (error) {
+      console.error('Failed to load items for cache', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllItems();
+  }, [trackInventoryOnly]);
+
   useEffect(() => {
     if (showModal) {
       performSearch(modalSearch);
@@ -165,11 +190,27 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   }, []);
 
   const performSearch = async (query: string) => {
-    if (!query.trim()) {
+    const lowerQuery = query.toLowerCase().trim();
+    if (!lowerQuery) {
       setSearchResults([]);
       return;
     }
 
+    // Try local filter first
+    const localMatches = allItems.filter(item => {
+      const compound = `${item.code} - ${item.name}`.toLowerCase();
+      return (
+        compound.includes(lowerQuery) ||
+        (item.barcode && item.barcode.toLowerCase().includes(lowerQuery))
+      );
+    });
+
+    if (localMatches.length > 0) {
+      setSearchResults(localMatches.slice(0, 20));
+      return;
+    }
+
+    // If no local matches, or to be sure, do server search
     setIsLoading(true);
     try {
       const results = await inventoryApi.searchItems(
@@ -197,6 +238,33 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
       return;
     }
 
+    // 2. Try to find exact match or unique match in local cache first
+    const query = inputValue.toLowerCase().trim();
+    const localMatches = allItems.filter(item => 
+      item.code.toLowerCase() === query || 
+      item.name.toLowerCase() === query ||
+      `${item.code} - ${item.name}`.toLowerCase() === query ||
+      `${item.code} — ${item.name}`.toLowerCase() === query ||
+      (item.barcode && item.barcode.toLowerCase() === query)
+    );
+
+    // If we have an exact match or exactly one partial match, select it
+    if (localMatches.length === 1) {
+      handleSelect(localMatches[0]);
+      if (externalBlur) externalBlur();
+      return;
+    }
+
+    if (localMatches.length > 1) {
+       // More than one result - open modal to resolve
+       setSearchResults(localMatches.slice(0, 20));
+       setHighlightedIndex(0);
+       setModalSearch(inputValue.trim());
+       setShowModal(true);
+       if (externalBlur) externalBlur();
+       return;
+    }
+
     try {
       const exactResults = await inventoryApi.searchItems(
         inputValue,
@@ -207,8 +275,11 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
       if (
         exactResults.length > 0 &&
-        (exactResults[0].code.toLowerCase() === inputValue.toLowerCase() ||
-          exactResults[0].name.toLowerCase() === inputValue.toLowerCase())
+        (exactResults[0].code.toLowerCase() === query ||
+          exactResults[0].name.toLowerCase() === query ||
+          `${exactResults[0].code} - ${exactResults[0].name}`.toLowerCase() === query ||
+          `${exactResults[0].code} — ${exactResults[0].name}`.toLowerCase() === query ||
+          (exactResults[0].barcode && exactResults[0].barcode.toLowerCase() === query))
       ) {
         handleSelect(exactResults[0]);
       } else {
@@ -328,10 +399,18 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
             focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
             ${disabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : ''}`}
         />
-        {!disabled && inputValue && (
-          <button type="button" onClick={handleClear} className="absolute right-2 text-slate-400 hover:text-slate-600">
-            <X size={14} />
-          </button>
+        {!disabled && (
+          <div className="absolute right-2 flex items-center gap-1">
+            {inputValue && (
+              <button 
+                type="button" 
+                onClick={handleClear} 
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -360,7 +439,31 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                     if (e.key === 'Escape') setShowModal(false);
                   }}
                 />
-                {isLoading && <RefreshCw size={14} className="animate-spin text-indigo-500" />}
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => loadAllItems(true)}
+                  disabled={isRefreshing}
+                  title={t('itemSelector.refresh', 'Refresh items')}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  title={t('itemSelector.create', 'Create new item')}
+                  className="rounded p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <Plus size={18} />
+                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-1">

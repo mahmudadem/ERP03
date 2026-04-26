@@ -372,7 +372,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   if (cleanPayload.id && cleanPayload.id.toString().startsWith('voucher-')) {
     delete cleanPayload.id;
   }
-  
+
   // Route to correct API based on voucher type
   const isSalesInvoice = resolvedType === 'sales_invoice';
   const isSalesOrder = resolvedType === 'sales_order';
@@ -399,9 +399,10 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         notes: data.notes || data.description || undefined,
         lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
           itemId: l.itemId,
-          invoicedQty: Number(l.quantity) || 0,
+          invoicedQty: Number(l.invoicedQty) || 0,
           uomId: l.uomId || undefined,
-          unitPriceDoc: Number(l.unitPrice) || 0,
+          uom: l.uom || undefined,
+          unitPriceDoc: Number(l.unitPriceDoc) || 0,
           taxCodeId: l.taxCodeId || undefined,
           warehouseId: l.warehouseId || data.warehouseId || undefined,
           description: l.description || undefined,
@@ -423,9 +424,10 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         notes: data.notes || data.description || undefined,
         lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
           itemId: l.itemId,
-          invoicedQty: Number(l.quantity) || 0,
+          invoicedQty: Number(l.invoicedQty) || 0,
           uomId: l.uomId || undefined,
-          unitPriceDoc: Number(l.unitPrice) || 0,
+          uom: l.uom || undefined,
+          unitPriceDoc: Number(l.unitPriceDoc) || 0,
           taxCodeId: l.taxCodeId || undefined,
           warehouseId: l.warehouseId || data.warehouseId || undefined,
           description: l.description || undefined,

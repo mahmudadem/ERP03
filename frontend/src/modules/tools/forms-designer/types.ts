@@ -67,7 +67,7 @@ export interface DocumentRule {
 export interface AvailableField {
   id: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector';
+  type?: 'text' | 'number' | 'amount' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector' | 'party-selector' | 'item-selector' | 'warehouse-selector' | 'currency-selector';
   sectionHint?: SectionType;
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields

@@ -83,12 +83,27 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
   }
 
   async getVoucherType(companyId: string, id: string): Promise<VoucherTypeDefinition | null> {
+    if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      const systemDoc = await this.getSystemCollection().doc(id).get();
+      if (systemDoc.exists) {
+        const systemDef = this.toDomain({ ...systemDoc.data(), id: systemDoc.id });
+        try {
+          VoucherTypeDefinitionValidator.validate(systemDef);
+          return systemDef;
+        } catch (error: any) {
+          // Super-admin must be able to open and repair broken system templates.
+          console.warn(`[VOUCHER_DEF_LOAD_WARN] Returning invalid system voucher definition for repair`, { id, error: error.message });
+          return systemDef;
+        }
+      }
+    }
+
     // Try across modules
     const modules = ['accounting', 'sales', 'purchase', 'purchases', 'inventory', 'sales_module'];
     for (const mod of modules) {
       const doc = await this.getCollection(companyId, mod).doc(id).get();
       if (doc.exists) {
-        const definition = this.toDomain(doc.data());
+        const definition = this.toDomain({ ...doc.data(), id: doc.id });
         try {
           VoucherTypeDefinitionValidator.validate(definition);
           return definition;
@@ -97,30 +112,14 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
         }
       }
     }
-    
-    // Fallback to SYSTEM
-    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
-      const systemDoc = await this.getSystemCollection().doc(id).get();
-      if (systemDoc.exists) {
-        const systemDef = this.toDomain(systemDoc.data());
-        try {
-          VoucherTypeDefinitionValidator.validate(systemDef);
-          return systemDef;
-        } catch (error: any) {
-          console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load system fallback definition`, { id, error: error.message });
-        }
-      }
-    }
-    
+
     return null;
   }
 
   async getVoucherTypesForModule(companyId: string, module: string): Promise<VoucherTypeDefinition[]> {
     if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
         const snap = await this.getSystemCollection().where('module', '==', module).get();
-        return snap.docs.map(d => this.toDomain(d.data())).filter(def => {
-             try { VoucherTypeDefinitionValidator.validate(def); return true; } catch (e) { return false; }
-        });
+        return snap.docs.map(d => this.toDomain({ ...d.data(), id: d.id }));
     }
 
     const snap = await this.getCollection(companyId, module).get();
@@ -144,16 +143,6 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
       }
     });
 
-    // Merge with System templates if not already present
-    const systemTemplates = await this.getSystemTemplates();
-    const companyCodes = new Set(companyDefs.map(d => d.code));
-    
-    for (const sysDef of systemTemplates) {
-      if (sysDef.module === module && !companyCodes.has(sysDef.code)) {
-        companyDefs.push(sysDef);
-      }
-    }
-
     return companyDefs;
   }
 
@@ -175,20 +164,25 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
       }));
     }
 
-    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
-      const systemTemplates = await this.getSystemTemplates();
-      const companyCodes = new Set(allDefs.map(d => d.code));
-      for (const sysDef of systemTemplates) {
-        if (!companyCodes.has(sysDef.code)) {
-          allDefs.push(sysDef);
-        }
-      }
-    }
-
     return allDefs;
   }
 
   async getByCode(companyId: string, code: string): Promise<VoucherTypeDefinition | null> {
+    if (companyId === FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
+      const systemSnap = await this.getSystemCollection().where('code', '==', code).limit(1).get();
+      if (!systemSnap.empty) {
+        const sysDef = this.toDomain({ ...systemSnap.docs[0].data(), id: systemSnap.docs[0].id });
+        try {
+          VoucherTypeDefinitionValidator.validate(sysDef);
+          return sysDef;
+        } catch (error: any) {
+          console.warn(`[VOUCHER_DEF_LOAD_WARN] Returning invalid system voucher definition by code for repair`, { code, error: error.message });
+          return sysDef;
+        }
+      }
+      return null;
+    }
+
     const modules = ['accounting', 'sales', 'purchase', 'purchases', 'inventory', 'sales_module'];
     for (const mod of modules) {
       const snap = await this.getCollection(companyId, mod).where('code', '==', code).limit(1).get();
@@ -203,21 +197,6 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
         }
       }
     }
-    
-    // Fallback to SYSTEM
-    if (companyId !== FirestoreVoucherTypeDefinitionRepository.SYSTEM_COMPANY_ID) {
-      const systemSnap = await this.getSystemCollection().where('code', '==', code).limit(1).get();
-      if (!systemSnap.empty) {
-        const sysDef = this.toDomain(systemSnap.docs[0].data());
-        try {
-          VoucherTypeDefinitionValidator.validate(sysDef);
-          return sysDef;
-        } catch (error: any) {
-          console.error(`[VOUCHER_DEF_LOAD_ERROR] Failed to load system fallback definition by code`, { code, error: error.message });
-        }
-      }
-    }
-
     return null;
   }
 
@@ -237,20 +216,18 @@ export class FirestoreVoucherTypeDefinitionRepository extends BaseFirestoreRepos
 
   async getSystemTemplates(): Promise<VoucherTypeDefinition[]> {
     const snap = await this.getSystemCollection().get();
-    const definitions = snap.docs.map(d => this.toDomain(d.data()));
-    
-    return definitions.filter(def => {
+    return snap.docs.map(d => {
+      const def = this.toDomain({ ...d.data(), id: d.id });
       try {
         VoucherTypeDefinitionValidator.validate(def);
-        return true;
       } catch (error: any) {
-        console.error(`[VOUCHER_DEF_LOAD_ERROR] Excluded invalid system template`, {
+        console.warn(`[VOUCHER_DEF_LOAD_WARN] Included invalid system template for super-admin repair`, {
           id: def.id,
           name: def.name,
           error: error.message
         });
-        return false;
       }
+      return def;
     });
   }
 

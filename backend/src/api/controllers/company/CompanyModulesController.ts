@@ -62,6 +62,10 @@ export class CompanyModulesController {
 
       // Special handling for Accounting Initialization
       if (moduleCode === 'accounting') {
+        if (!String(config.baseCurrency || '').trim()) {
+          throw ApiError.badRequest('Base currency is required to initialize accounting');
+        }
+
         const { diContainer } = require('../../../infrastructure/di/bindRepositories');
         const { InitializeAccountingUseCase } = require('../../../application/accounting/use-cases/InitializeAccountingUseCase');
         
@@ -73,7 +77,9 @@ export class CompanyModulesController {
           diContainer.companySettingsRepository,
           diContainer.currencyRepository,
           diContainer.companyRepository,
-          diContainer.fiscalYearRepository
+          diContainer.fiscalYearRepository,
+          diContainer.voucherTypeDefinitionRepository,
+          diContainer.voucherFormRepository
         );
 
         console.log('[InitializeAccounting] Received config:', JSON.stringify(config, null, 2));

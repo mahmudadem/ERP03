@@ -205,6 +205,13 @@ const buildFormData = (payload: any, existingFormData?: Record<string, any> | nu
     headerFields[key] = value;
   });
 
+  if (isPlainObject(payload.metadata?.customFields)) {
+    Object.entries(payload.metadata.customFields).forEach(([key, value]) => {
+      if (!key || value === undefined) return;
+      headerFields[key] = value;
+    });
+  }
+
   const detailLines = Array.isArray(payload.lines)
     ? payload.lines.map((line: any) => {
         // Strip internal accounting fields from detail lines — keep business fields

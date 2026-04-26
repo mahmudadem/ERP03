@@ -367,31 +367,36 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     const mappedColumns = rawColumns.map((col: any) => {
       // Handle legacy string array
       if (typeof col === 'string') {
-        const normalizedId = normalizeTableColumnId(col);
+        const rawId = String(col || '').trim();
+        const normalizedId = normalizeTableColumnId(rawId);
+        const colId = rawId || normalizedId;
         const fallbackLabel = normalizedId.charAt(0).toUpperCase() + normalizedId.slice(1);
         return { 
-          id: normalizedId, 
+          id: colId, 
           label: t(`voucherRenderer.columns.${normalizedId}`, { defaultValue: fallbackLabel }),
           width: 'auto'
         };
       }
       
       // Handle structured object array (Schema V2)
-      const colId = normalizeTableColumnId(col.id || col.fieldId);
+      const rawColId = String(col.id || col.fieldId || '').trim();
+      const normalizedColId = normalizeTableColumnId(rawColId);
+      const colId = rawColId || normalizedColId;
       // If we have no ID at all, then "Column" is the last resort fallback
-      const fallbackLabel = colId ? (colId.charAt(0).toUpperCase() + colId.slice(1)) : 'Column';
+      const fallbackLabel = normalizedColId ? (normalizedColId.charAt(0).toUpperCase() + normalizedColId.slice(1)) : 'Column';
       
       const currentLabel = col.labelOverride || col.label || '';
       const normalizedCurrent = currentLabel.replace(/\s+/g, '').toLowerCase();
       const normalizedFallback = (fallbackLabel || '').replace(/\s+/g, '').toLowerCase();
-      const shouldTranslate = !currentLabel || normalizedCurrent === (colId || '').toLowerCase() || normalizedCurrent === normalizedFallback;
+      const shouldTranslate = !currentLabel || normalizedCurrent === (normalizedColId || '').toLowerCase() || normalizedCurrent === normalizedFallback;
 
       return {
         ...col,
         id: colId,
-        label: shouldTranslate ? t(`voucherRenderer.fields.${colId}`, { defaultValue: fallbackLabel }) : (col.labelOverride || col.label || fallbackLabel),
+        fieldId: col.fieldId || colId,
+        label: shouldTranslate ? t(`voucherRenderer.fields.${normalizedColId}`, { defaultValue: fallbackLabel }) : (col.labelOverride || col.label || fallbackLabel),
         width: col.width || 'auto',
-        readOnly: col.readOnly || colId === 'lineTotal'
+        readOnly: col.readOnly || normalizedColId === 'lineTotal'
       };
     });
 
@@ -1676,10 +1681,9 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             };
           });
       } else {
-        // Sales/Purchase types: pass raw rows as-is (itemId, quantity, unitPrice, etc.)
-        // Backend expects: itemId, quantity, unitPrice, lineTotal, warehouseId, etc.
+        // Sales/Purchase types: preserve template-owned line field IDs.
         backendLines = rows
-          .filter(row => row.itemId || row.serviceId || row.description)
+          .filter((row: any) => row.itemId || row.serviceId || row.description)
           .map(row => {
             const out: Record<string, any> = {};
             Object.entries(row || {}).forEach(([key, value]) => {
@@ -1693,6 +1697,12 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const resultFormId = definition.id;
       const resultPrefix = (definition as any).prefix || definition.code?.slice(0, 3).toUpperCase() || 'V';
       const resultNumberFormat = (definition as any).numberFormat || undefined;
+      const customMetadataFieldIds = new Set(
+        (definition.headerFields || [])
+          .filter((field: any) => field?.fieldClass === 'custom_metadata' || field?.bindingTarget === 'metadata.customFields')
+          .map((field: any) => String(field?.id || '').trim())
+          .filter(Boolean)
+      );
       const sourceFormData = Object.entries(formData || {}).reduce((acc, [key, value]) => {
         if (key === 'voucherConfig') return acc;
         if (isSystemManagedField(key)) return acc;
@@ -1732,6 +1742,27 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const normalizedHeaderAccountCode = semanticHeaderIdentity.code ||
         (typeof semanticHeaderRaw === 'string' ? (getAccountByCode(semanticHeaderRaw)?.code || undefined) : undefined) ||
         (typeof formData.account === 'string' ? formData.account : undefined);
+      const metadataCustomFields = Object.entries(sourceFormData).reduce((acc, [key, value]) => {
+        if (!customMetadataFieldIds.has(key)) return acc;
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, any>);
+      const payloadHeaderFields = Object.entries(sourceFormData).reduce((acc, [key, value]) => {
+        if (customMetadataFieldIds.has(key)) return acc;
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, any>);
+      const mergedMetadata = {
+        ...(formData.metadata || {}),
+        ...(Object.keys(metadataCustomFields).length > 0
+          ? {
+              customFields: {
+                ...((formData.metadata && formData.metadata.customFields) || {}),
+                ...metadataCustomFields,
+              }
+            }
+          : {})
+      };
 
       const sourcePayload = {
         ...sourceFormData,
@@ -1747,7 +1778,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       };
       
       return {
-        ...sourceFormData,
+        ...payloadHeaderFields,
         ...((formData?.id || initialData?.id) ? { id: formData?.id || initialData?.id } : {}),
         ...(normalizedHeaderAccountId ? { accountId: normalizedHeaderAccountId } : {}),
         ...(normalizedHeaderAccountCode ? { account: normalizedHeaderAccountCode } : {}),
@@ -1758,6 +1789,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         formId: resultFormId, // Which form was used for rendering
         prefix: resultPrefix, // Voucher number prefix
         numberFormat: resultNumberFormat, // Custom number format template
+        metadata: mergedMetadata,
         sourcePayload
       };
     },
@@ -2171,7 +2203,13 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     }
 
     const lower = fid.toLowerCase();
-    const directValue = formData[fid] ?? formData[lower] ?? formData.metadata?.[fid] ?? formData.metadata?.[lower];
+          const directValue =
+            formData[fid] ??
+            formData[lower] ??
+            formData.metadata?.[fid] ??
+            formData.metadata?.[lower] ??
+            formData.metadata?.customFields?.[fid] ??
+            formData.metadata?.customFields?.[lower];
     if (directValue !== undefined && directValue !== null && directValue !== '') {
       return directValue;
     }
@@ -2617,7 +2655,12 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     if (['vouchernumber', 'voucherno', 'status', 'createdby', 'createdat', 'updatedby', 'updatedat'].includes(lowerFid)) {
        const isDate = lowerFid === 'createdat' || lowerFid === 'updatedat';
        // Case-insensitive value lookup
-       const rawValue = formData[fieldId] ?? formData[lowerFid] ?? '';
+                  const rawValue =
+                    formData[fieldId] ??
+                    formData[lowerFid] ??
+                    formData.metadata?.customFields?.[fieldId] ??
+                    formData.metadata?.customFields?.[lowerFid] ??
+                    '';
        
        let displayValue;
        if (isDate) {

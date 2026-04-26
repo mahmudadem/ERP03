@@ -27,12 +27,14 @@ const AxiosInitializer: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 import { UserPreferencesProvider } from './context/UserPreferencesContext';
+import { userAppearanceStyleTag } from './theme/userAppearance';
 
 const App: React.FC = () => {
   return (
     <QueryProvider>
       <AuthProvider>
         <UserPreferencesProvider>
+          {userAppearanceStyleTag}
           <CompanyAccessProvider>
             <AxiosInitializer>
               <CompanySettingsProvider>

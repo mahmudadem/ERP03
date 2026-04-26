@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { superAdminApi, BusinessDomain } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import {
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminModal,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 export const BusinessDomainsManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -82,51 +93,49 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">{t('superAdmin.businessDomains.loading')}</div>;
+  if (loading) return <SuperAdminPage><SuperAdminLoading label={t('superAdmin.businessDomains.loading')} /></SuperAdminPage>;
 
   return (
-    <div className="business-domains-manager p-6">
-      <div className="header mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('superAdmin.businessDomains.title')}</h1>
-          <p className="text-gray-600 mt-2">{t('superAdmin.businessDomains.subtitle')}</p>
-        </div>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.businessDomains.title')}
+        description={t('superAdmin.businessDomains.subtitle')}
+        meta="Catalog"
+        actions={
         <button 
           onClick={handleCreate} 
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           + {t('superAdmin.businessDomains.actions.createDomain')}
         </button>
-      </div>
+        }
+      />
 
-      <div className="domains-list bg-white shadow rounded">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <SuperAdminTable>
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.id')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.name')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.description')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.businessDomains.columns.actions')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.id')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.name')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.description')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.actions')}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 bg-white">
             {domains.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  {t('superAdmin.businessDomains.empty')}
-                </td>
+                <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.businessDomains.empty')} /></td>
               </tr>
             ) : (
               domains.map((domain) => (
-                <tr key={domain.id} className="border-t hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm">{domain.id}</td>
-                  <td className="px-6 py-4 font-semibold">{domain.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{domain.description}</td>
-                  <td className="px-6 py-4">
-                    <button onClick={() => handleEdit(domain)} className="text-blue-600 hover:underline mr-4">
+                <tr key={domain.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs`}>{domain.id}</td>
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{domain.name}</td>
+                  <td className={tableCellClass}>{domain.description}</td>
+                  <td className={tableCellClass}>
+                    <button onClick={() => handleEdit(domain)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
                       {t('superAdmin.businessDomains.actions.edit')}
                     </button>
-                    <button onClick={() => handleDelete(domain.id)} className="text-red-600 hover:underline">
+                    <button onClick={() => handleDelete(domain.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
                       {t('superAdmin.businessDomains.actions.delete')}
                     </button>
                   </td>
@@ -134,16 +143,14 @@ export const BusinessDomainsManagerPage: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
-      </div>
+      </SuperAdminTable>
 
       {isModalOpen && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingDomain ? t('superAdmin.businessDomains.modal.editTitle') : t('superAdmin.businessDomains.modal.createTitle')}
-            </h2>
-            
+        <SuperAdminModal
+          title={editingDomain ? t('superAdmin.businessDomains.modal.editTitle') : t('superAdmin.businessDomains.modal.createTitle')}
+          onClose={() => setIsModalOpen(false)}
+          footer={null}
+        >
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">{t('superAdmin.businessDomains.fields.id')}</label>
@@ -151,7 +158,7 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                   type="text"
                   value={formData.id}
                   onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   disabled={!!editingDomain}
                   placeholder={t('superAdmin.businessDomains.placeholders.id')}
@@ -164,7 +171,7 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   placeholder={t('superAdmin.businessDomains.placeholders.name')}
                 />
@@ -175,7 +182,7 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   rows={3}
                   placeholder={t('superAdmin.businessDomains.placeholders.description')}
                 />
@@ -185,21 +192,20 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
                 >
                   {t('superAdmin.businessDomains.actions.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm text-white hover:bg-slate-800"
                 >
                   {editingDomain ? t('superAdmin.businessDomains.actions.update') : t('superAdmin.businessDomains.actions.create')}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </SuperAdminModal>
       )}
-    </div>
+    </SuperAdminPage>
   );
 };

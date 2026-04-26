@@ -38,18 +38,20 @@ class CreateStockAdjustmentUseCase {
 }
 exports.CreateStockAdjustmentUseCase = CreateStockAdjustmentUseCase;
 class PostStockAdjustmentUseCase {
-    constructor(adjustmentRepo, itemRepo, movementUseCase, transactionManager, accountingPostingService) {
+    constructor(adjustmentRepo, itemRepo, movementUseCase, transactionManager, companyModuleRepo, accountingPostingService) {
         this.adjustmentRepo = adjustmentRepo;
         this.itemRepo = itemRepo;
         this.movementUseCase = movementUseCase;
         this.transactionManager = transactionManager;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
     }
-    async execute(companyId, adjustmentId, userId) {
+    async execute(companyId, adjustmentId, userId, createAccountingEffect = true) {
         const adjustment = await this.adjustmentRepo.getAdjustment(adjustmentId);
         if (!adjustment || adjustment.companyId !== companyId) {
             throw new Error(`Stock adjustment not found: ${adjustmentId}`);
         }
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         if (adjustment.status !== 'DRAFT') {
             throw new Error('Only DRAFT adjustments can be posted');
         }
@@ -110,14 +112,15 @@ class PostStockAdjustmentUseCase {
                     await this.movementUseCase.processOUT(outInput);
                 }
             }
-            const voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction);
+            let voucherId;
+            if (shouldPostAccounting && this.accountingPostingService) {
+                voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction);
+            }
             const updatePatch = {
                 status: 'POSTED',
                 postedAt: new Date(),
+                voucherId: voucherId || null,
             };
-            if (voucherId) {
-                updatePatch.voucherId = voucherId;
-            }
             await this.adjustmentRepo.updateAdjustment(companyId, adjustment.id, updatePatch, transaction);
         });
         const posted = await this.adjustmentRepo.getAdjustment(adjustment.id);
@@ -217,6 +220,10 @@ class PostStockAdjustmentUseCase {
             const message = error instanceof Error ? error.message : String(error);
             throw new Error(`[Inventory][PostStockAdjustmentUseCase] Failed to create GL voucher for adjustment ${adjustment.id}: ${message}`);
         }
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
 }
 exports.PostStockAdjustmentUseCase = PostStockAdjustmentUseCase;

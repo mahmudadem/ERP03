@@ -239,7 +239,7 @@ class CreateSalesReturnUseCase {
 }
 exports.CreateSalesReturnUseCase = CreateSalesReturnUseCase;
 class PostSalesReturnUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, salesReturnRepo, salesInvoiceRepo, deliveryNoteRepo, salesOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, salesReturnRepo, salesInvoiceRepo, deliveryNoteRepo, salesOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.salesReturnRepo = salesReturnRepo;
@@ -253,15 +253,17 @@ class PostSalesReturnUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id) {
+    async execute(companyId, id, createAccountingEffect = true) {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
         const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
         const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const salesReturn = await this.salesReturnRepo.getById(companyId, id);
         if (!salesReturn)
             throw new Error(`Sales return not found: ${id}`);
@@ -463,7 +465,7 @@ class PostSalesReturnUseCase {
                 }
             }
             recalcReturnTotals(salesReturn);
-            if (cogsBucket.size > 0) {
+            if (shouldPostAccounting && cogsBucket.size > 0) {
                 const cogsVoucherLines = [];
                 for (const line of Array.from(cogsBucket.values())) {
                     const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
@@ -504,7 +506,7 @@ class PostSalesReturnUseCase {
             else {
                 salesReturn.cogsVoucherId = null;
             }
-            if (isAfterInvoice) {
+            if (shouldPostAccounting && isAfterInvoice) {
                 const arAccountId = this.resolveARAccount(customer);
                 const revenueVoucherLines = [
                     ...Array.from(revenueDebitBucket.values()).map((line) => (Object.assign(Object.assign({}, line), { side: 'Debit' }))),
@@ -561,6 +563,10 @@ class PostSalesReturnUseCase {
         if (!posted)
             throw new Error(`Sales return not found after posting: ${id}`);
         return posted;
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
     resolveARAccount(customer) {
         if (!customer.defaultARAccountId) {

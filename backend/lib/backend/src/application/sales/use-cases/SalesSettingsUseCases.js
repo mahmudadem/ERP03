@@ -8,6 +8,18 @@ const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/Vouch
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
 const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
+const normalizeModule = (value) => String(value || '').trim().toUpperCase();
+const ensureVoucherTypeScope = async (voucherTypeRepo, companyId, voucherTypeId, expectedModule, fieldName) => {
+    if (!voucherTypeId)
+        return;
+    const voucherType = await voucherTypeRepo.getVoucherType(companyId, voucherTypeId);
+    if (!voucherType) {
+        throw new Error(`${fieldName} not found: ${voucherTypeId}`);
+    }
+    if (normalizeModule(voucherType.module) !== expectedModule) {
+        throw new Error(`${fieldName} must belong to ${expectedModule} module`);
+    }
+};
 const cloneVoucherTypeForCompany = (companyId, template) => {
     var _a;
     return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
@@ -52,19 +64,20 @@ const ensureSalesVoucherDefinitions = async (companyId, createdBy, voucherTypeRe
         console.warn('[SalesSettingsUseCases] No SALES system templates found. Check seeder!');
     }
     for (const template of salesTemplates) {
-        const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
+        let existingType = await voucherTypeRepo.getByCode(companyId, template.code);
         // If it exists but in the WRONG module, we need to re-home it
         if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
             console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
             await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
-            // We'll create it below
+            existingType = null;
         }
         const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
             ? existingType
             : cloneVoucherTypeForCompany(companyId, template);
-        // Set metadata correctly
-        companyVoucherType.module = template.module;
-        await voucherTypeRepo.createVoucherType(companyVoucherType);
+        if (!existingType) {
+            companyVoucherType.module = template.module;
+            await voucherTypeRepo.createVoucherType(companyVoucherType);
+        }
         // FORM MIGRATION / RE-HOMING
         const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
         for (const form of allExistingForms) {
@@ -112,6 +125,7 @@ class InitializeSalesUseCase {
             throw new Error(`Default AR account not found: ${input.defaultARAccountId}`);
         }
         await ensureSalesVoucherDefinitions(input.companyId, input.userId || 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
+        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.salesVoucherTypeId, 'SALES', 'salesVoucherTypeId');
         const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
         if (this.inventorySettingsRepo) {
             const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
@@ -183,7 +197,6 @@ class GetSalesSettingsUseCase {
         if (!settings) {
             return null;
         }
-        await ensureSalesVoucherDefinitions(companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
         return settings;
     }
 }
@@ -202,6 +215,7 @@ class UpdateSalesSettingsUseCase {
         if (!existing) {
             throw new Error('Sales settings are not initialized');
         }
+        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.salesVoucherTypeId, 'SALES', 'salesVoucherTypeId');
         const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
         if (this.inventorySettingsRepo) {
             const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
@@ -235,7 +249,6 @@ class UpdateSalesSettingsUseCase {
         if (nextARAccountId && !arAccount) {
             throw new Error(`Default AR account not found: ${nextARAccountId}`);
         }
-        await ensureSalesVoucherDefinitions(input.companyId, 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
         const updated = new SalesSettings_1.SalesSettings({
             companyId: existing.companyId,
             workflowMode,

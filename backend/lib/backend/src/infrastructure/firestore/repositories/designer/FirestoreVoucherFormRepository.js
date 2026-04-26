@@ -72,12 +72,12 @@ class FirestoreVoucherFormRepository {
             isSystemGenerated: form.isSystemGenerated,
             isLocked: form.isLocked,
             enabled: form.enabled,
-            headerFields: form.headerFields,
-            tableColumns: form.tableColumns,
-            layout: form.layout || {},
-            uiModeOverrides: form.uiModeOverrides || null,
-            rules: form.rules || [],
-            actions: form.actions || [],
+            headerFields: this.stripUndefinedDeep(form.headerFields || []),
+            tableColumns: this.stripUndefinedDeep(form.tableColumns || []),
+            layout: this.stripUndefinedDeep(form.layout || {}),
+            uiModeOverrides: this.stripUndefinedDeep(form.uiModeOverrides || null),
+            rules: this.stripUndefinedDeep(form.rules || []),
+            actions: this.stripUndefinedDeep(form.actions || []),
             isMultiLine: (_a = form.isMultiLine) !== null && _a !== void 0 ? _a : true,
             tableStyle: form.tableStyle || 'web',
             defaultCurrency: form.defaultCurrency || null,
@@ -88,36 +88,26 @@ class FirestoreVoucherFormRepository {
             createdBy: form.createdBy || null
         };
     }
-    getSystemCollection() {
-        return this.db.collection(FirestoreVoucherFormRepository.SYSTEM_METADATA_COLLECTION)
-            .doc(FirestoreVoucherFormRepository.SYSTEM_COLLECTION_NAME)
-            .collection('items');
-    }
-    toSystemDomain(data) {
-        return this.toDomain(Object.assign(Object.assign({}, data), { typeId: data.code || data.id, isSystemGenerated: true }));
-    }
-    mergeMissingSystemForms(companyForms, systemForms) {
-        const normalize = (value) => String(value || '').trim().toLowerCase();
-        const seenKeys = new Set();
-        companyForms.forEach((form) => {
-            [form.id, form.code, form.typeId].forEach((value) => {
-                const key = normalize(value);
-                if (key)
-                    seenKeys.add(key);
-            });
-        });
-        const merged = [...companyForms];
-        for (const form of systemForms) {
-            const candidateKeys = [form.id, form.code, form.typeId]
-                .map((value) => normalize(value))
-                .filter(Boolean);
-            if (candidateKeys.some((key) => seenKeys.has(key))) {
-                continue;
-            }
-            merged.push(form);
-            candidateKeys.forEach((key) => seenKeys.add(key));
+    stripUndefinedDeep(value) {
+        if (Array.isArray(value)) {
+            const cleaned = value
+                .map((item) => this.stripUndefinedDeep(item))
+                .filter((item) => item !== undefined);
+            return cleaned;
         }
-        return merged;
+        if (value && typeof value === 'object') {
+            const proto = Object.getPrototypeOf(value);
+            if (proto === Object.prototype || proto === null) {
+                const cleaned = {};
+                for (const [key, raw] of Object.entries(value)) {
+                    if (raw === undefined)
+                        continue;
+                    cleaned[key] = this.stripUndefinedDeep(raw);
+                }
+                return cleaned;
+            }
+        }
+        return value;
     }
     async create(form) {
         try {
@@ -137,11 +127,6 @@ class FirestoreVoucherFormRepository {
                     return this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id }));
                 }
             }
-            // Fallback to SYSTEM templates if not found in company collection
-            const systemDoc = await this.getSystemCollection().doc(formId).get();
-            if (systemDoc.exists) {
-                return this.toSystemDomain(Object.assign(Object.assign({}, systemDoc.data()), { id: systemDoc.id }));
-            }
             return null;
         }
         catch (error) {
@@ -157,15 +142,6 @@ class FirestoreVoucherFormRepository {
                     .get();
                 snapshot.docs.forEach(doc => {
                     allForms.push(this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
-                });
-            }
-            // If no company forms found for this type, check system
-            if (allForms.length === 0) {
-                const systemSnapshot = await this.getSystemCollection()
-                    .where('code', '==', typeId)
-                    .get();
-                systemSnapshot.docs.forEach(doc => {
-                    allForms.push(this.toSystemDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
                 });
             }
             return allForms;
@@ -185,14 +161,6 @@ class FirestoreVoucherFormRepository {
                 if (!snapshot.empty)
                     return this.toDomain(Object.assign(Object.assign({}, snapshot.docs[0].data()), { id: snapshot.docs[0].id }));
             }
-            // Fallback to system default
-            const systemSnapshot = await this.getSystemCollection()
-                .where('code', '==', typeId)
-                .limit(1)
-                .get();
-            if (!systemSnapshot.empty) {
-                return this.toDomain(Object.assign(Object.assign({}, systemSnapshot.docs[0].data()), { id: systemSnapshot.docs[0].id, typeId: systemSnapshot.docs[0].data().code || systemSnapshot.docs[0].id, isDefault: true, isSystemGenerated: true }));
-            }
             return null;
         }
         catch (error) {
@@ -208,9 +176,7 @@ class FirestoreVoucherFormRepository {
                     companyForms.push(this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
                 });
             }
-            const systemSnapshot = await this.getSystemCollection().get();
-            const systemForms = systemSnapshot.docs.map(doc => this.toSystemDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
-            return this.mergeMissingSystemForms(companyForms, systemForms);
+            return companyForms;
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting all voucher forms', error);
@@ -240,6 +206,9 @@ class FirestoreVoucherFormRepository {
                 if (cleanUpdates[key] === undefined) {
                     delete cleanUpdates[key];
                 }
+                else {
+                    cleanUpdates[key] = this.stripUndefinedDeep(cleanUpdates[key]);
+                }
             });
             await targetRef.set(cleanUpdates, { merge: true });
         }
@@ -265,7 +234,4 @@ class FirestoreVoucherFormRepository {
 }
 exports.FirestoreVoucherFormRepository = FirestoreVoucherFormRepository;
 FirestoreVoucherFormRepository.MODULES = ['accounting', 'sales', 'purchase', 'purchases', 'inventory', 'sales_module'];
-FirestoreVoucherFormRepository.SYSTEM_COMPANY_ID = 'SYSTEM';
-FirestoreVoucherFormRepository.SYSTEM_COLLECTION_NAME = 'voucher_types';
-FirestoreVoucherFormRepository.SYSTEM_METADATA_COLLECTION = 'system_metadata';
 //# sourceMappingURL=FirestoreVoucherFormRepository.js.map

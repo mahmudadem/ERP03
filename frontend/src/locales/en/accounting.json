@@ -964,5 +964,12 @@
     "description": "You have unsaved changes in this document. Are you sure you want to close without saving?",
     "cancel": "Continue Editing",
     "closeWithoutSaving": "Discard Changes"
+  },
+  "coaTreePreview": {
+    "title": "Chart of Accounts Structure",
+    "subtitle": "{{count}} accounts in this template",
+    "header": "Header",
+    "posting": "Posting",
+    "noAccounts": "No accounts to preview"
   }
 }

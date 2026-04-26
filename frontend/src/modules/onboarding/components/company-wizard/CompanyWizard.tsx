@@ -8,6 +8,7 @@ import { StepContactInfo } from './StepContactInfo';
 import { StepReview } from './StepReview';
 import { StepSuccess } from './StepSuccess';
 import { CompanyFormData, WizardStep, Bundle } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface CompanyWizardProps {
   onCancel: () => void;
@@ -26,6 +27,7 @@ const initialData: CompanyFormData = {
 };
 
 const CompanyWizard: React.FC<CompanyWizardProps> = ({ onCancel, onComplete }) => {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState<WizardStep>(WizardStep.BasicInfo);
   // Initialize email with user's email if available
@@ -58,15 +60,30 @@ const CompanyWizard: React.FC<CompanyWizardProps> = ({ onCancel, onComplete }) =
   const getStepHeader = () => {
     switch (currentStep) {
       case WizardStep.BasicInfo:
-        return { title: "Company Basics", subtitle: "Let's start with the essentials." };
+        return { 
+          title: t('onboarding.companyWizard.basic.title', { defaultValue: "Company Basics" }), 
+          subtitle: t('onboarding.companyWizard.basic.subtitle', { defaultValue: "Let's start with the essentials." }) 
+        };
       case WizardStep.BundleSelection:
-        return { title: "Select a Bundle", subtitle: "Choose the feature set that fits your needs." };
-      case WizardStep.ContactInfo: // New header
-        return { title: "Admin & Contact", subtitle: "Set up the primary contact for this company." };
+        return { 
+          title: t('onboarding.companyWizard.bundle.title', { defaultValue: "Select a Bundle" }), 
+          subtitle: t('onboarding.companyWizard.bundle.subtitle', { defaultValue: "Choose the feature set that fits your needs." }) 
+        };
+      case WizardStep.ContactInfo:
+        return { 
+          title: t('onboarding.companyWizard.contact.title', { defaultValue: "Admin & Contact" }), 
+          subtitle: t('onboarding.companyWizard.contact.subtitle', { defaultValue: "Set up the primary contact for this company." }) 
+        };
       case WizardStep.Review:
-        return { title: "Review & Create", subtitle: "Verify details before initializing the company." };
+        return { 
+          title: t('onboarding.companyWizard.review.title', { defaultValue: "Review & Create" }), 
+          subtitle: t('onboarding.companyWizard.review.subtitle', { defaultValue: "Verify details before initializing the company." }) 
+        };
       case WizardStep.Success:
-        return { title: "All Set!", subtitle: "" };
+        return { 
+          title: t('onboarding.companyWizard.success.title', { defaultValue: "All Set!" }), 
+          subtitle: "" 
+        };
       default:
         return { title: "", subtitle: "" };
     }

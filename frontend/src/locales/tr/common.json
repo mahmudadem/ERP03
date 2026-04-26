@@ -1074,6 +1074,92 @@
           "english": "Ingilizce"
         },
         "customizeLater": "Bu ayarlar daha sonra sirket profilinizden degistirilebilir."
+      },
+      "bundle": {
+        "title": "Paket Seçin",
+        "subtitle": "İhtiyaçlarınıza en uygun özellik setini seçin.",
+        "searchPlaceholder": "Paketlerde ara...",
+        "recommended": "Önerilen",
+        "noModules": "Dahil edilen modül yok",
+        "noBundles": "Aramanızla eşleşen paket bulunamadı",
+        "bundleCount": "{{count}} paket mevcut",
+        "actions": {
+          "back": "Geri",
+          "nextStep": "Devam Et"
+        },
+        "errors": {
+          "selectBundle": "Devam etmek için lütfen bir paket seçin"
+        }
+      },
+      "contact": {
+        "title": "Yönetici ve İletişim",
+        "subtitle": "Bu şirket için birincil iletişim kişisini ayarlayın.",
+        "businessEmail": "İş E-posta Adresi",
+        "emailPlaceholder": "ör. admin@sirket.com",
+        "helper": "Bu kişi şirketin birincil yöneticisi olacaktır.",
+        "actions": {
+          "back": "Geri",
+          "nextStep": "Bilgileri İncele"
+        },
+        "errors": {
+          "invalidEmail": "Lütfen geçerli bir e-posta adresi girin"
+        }
+      },
+      "review": {
+        "title": "İncele ve Oluştur",
+        "subtitle": "Şirketi başlatmadan önce detayları doğrulayın.",
+        "companySummary": "Şirket Özeti",
+        "companyName": "Şirket Adı",
+        "location": "Konum",
+        "adminEmail": "Yönetici E-postası",
+        "selectedBundle": "Seçilen Paket",
+        "modulesIncluded": "{{count}} modül dahil",
+        "modulesToInstall": "Yüklenecek Modüller",
+        "noSpecificModules": "Belirli bir modül seçilmedi",
+        "legal": "Bu şirketi oluşturarak Hizmet Şartlarımızı kabul etmiş olursunuz.",
+        "actions": {
+          "back": "Geri",
+          "createCompany": "Şirketi Başlat",
+          "creating": "Oluşturuluyor...",
+          "close": "Kapat",
+          "tryAgain": "Tekrar Dene"
+        },
+        "progress": {
+          "creatingCompany": "Şirket kaydı oluşturuluyor...",
+          "installingModules": "Modüller yükleniyor...",
+          "settingPermissions": "İzinler ayarlanıyor...",
+          "finalizing": "Çalışma alanı tamamlanıyor..."
+        },
+        "errors": {
+          "missingInfo": "Lütfen geri dönün ve gerekli tüm bilgileri doldurun.",
+          "createFailed": "Şirket oluşturulamadı. Lütfen tekrar deneyin."
+        },
+        "modal": {
+          "creatingCompany": "Çalışma Alanınız Hazırlanıyor",
+          "companyCreated": "Şirket Hazır!",
+          "creationFailed": "Başlatma Başarısız",
+          "error": "Hata Detayları",
+          "pleaseWait": "Lütfen bekleyin, her şeyi sizin için ayarlıyoruz..."
+        },
+        "defaults": {
+          "country": "Uluslararası"
+        }
+      },
+      "success": {
+        "title": "Her Şey Hazır!",
+        "subtitle": "Şirketiniz başarıyla oluşturuldu. Artık sistemi kullanmaya başlayabilirsiniz.",
+        "whatsNext": "Sırada Ne Var?",
+        "steps": {
+          "setupAccounting": "Muhasebe kurulum sihirbazını tamamlayın",
+          "inviteUsers": "Ekip üyelerinizi katılmaya davet edin"
+        },
+        "goToDashboard": "Panele Git"
+      },
+      "stepper": {
+        "basicInfo": "Temel Bilgiler",
+        "selectBundle": "Paket Seçimi",
+        "contactInfo": "İletişim Bilgileri",
+        "review": "İnceleme"
       }
     }
   },
@@ -1428,28 +1514,5 @@
   },
   "success": {
     "SAVE": "Başarıyla kaydedildi"
-  },
-  "companyWizard": {
-    "errors": {
-      "submitStep": "Adım gönderilemedi",
-      "completeWizard": "Sihirbaz tamamlanamadı",
-      "missingSession": "Eksik oturum. Lütfen sihirbazı yeniden başlatın."
-    },
-    "success": {
-      "companyCreated": "Şirket başarıyla oluşturuldu"
-    },
-    "actions": {
-      "goToStart": "Sihirbaz Başlat'a git"
-    },
-    "loadingStep": "Sihirbaz adımı yükleniyor...",
-    "selectModel": {
-      "title": "Şirket Oluştur",
-      "subtitle": "Başlamak için bir iş modeli seçin. İhtiyaçlarınıza uyacak şekilde modülleri daha sonra istediğiniz zaman ekleyebilir veya devre dışı bırakabilirsiniz.",
-      "companyName": "Firma Adı",
-      "model": "Modeli",
-      "selectModel": "Bir model seçin",
-      "starting": "Başlangıç...",
-      "startWizard": "Sihirbazı Başlat"
-    }
   }
 }

@@ -29,10 +29,27 @@ import { errorHandler } from '../../../services/errorHandler';
 type ERPModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
 
 export default function ToolsFormsDesignerPage() {
-  const { companyId } = useCompanyAccess();
+  const { companyId, moduleBundles, isOwner, isSuperAdmin } = useCompanyAccess();
   const { user } = useAuth();
   
-  const [activeModule, setActiveModule] = useState<ERPModule>('ACCOUNTING');
+  // Map our domain types to bundle names used in the system
+  // NOTE: isSuperAdmin/isOwner might want to see all even if not active for testing? 
+  // User asked to restrict it, so I will restrict it.
+  const isModuleActive = (mod: ERPModule) => {
+    const mapping: Record<ERPModule, string> = {
+      'ACCOUNTING': 'accounting',
+      'SALES': 'sales',
+      'PURCHASE': 'purchases'
+    };
+    return moduleBundles.includes(mapping[mod]);
+  };
+
+  const [activeModule, setActiveModule] = useState<ERPModule>(() => {
+    if (moduleBundles.includes('accounting')) return 'ACCOUNTING';
+    if (moduleBundles.includes('sales')) return 'SALES';
+    if (moduleBundles.includes('purchases')) return 'PURCHASE';
+    return 'ACCOUNTING';
+  });
   const [forms, setForms] = useState<DocumentFormConfig[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,21 +152,6 @@ export default function ToolsFormsDesignerPage() {
   });
   
   const availableTableColumns: any[] = Array.from(uniqueTableColumnsMap.values());
-
-  // Add standard fallback columns if none were found in definitions
-  if (availableTableColumns.length === 0) {
-    const fallbacks = [
-      { id: 'item', label: 'Item/Service', type: 'select' },
-      { id: 'description', label: 'Description', type: 'text' },
-      { id: 'qty', label: 'Quantity', type: 'number' },
-      { id: 'price', label: 'Unit Price', type: 'amount' },
-      { id: 'discount', label: 'Discount %', type: 'number' },
-      { id: 'total', label: 'Line Total', type: 'amount' },
-      { id: 'account', label: 'GL Account', type: 'select' }
-    ];
-    fallbacks.forEach(f => availableTableColumns.push(f));
-  }
-
 
   const handleSaveForm = async (config: DocumentFormConfig, isEdit: boolean) => {
     if (!companyId || !user) return;
@@ -338,24 +340,30 @@ export default function ToolsFormsDesignerPage() {
 
           {/* Module Selector - Centered */}
           <div className="hidden lg:flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
-            <ModuleTab 
-              active={activeModule === 'ACCOUNTING'} 
-              onClick={() => setActiveModule('ACCOUNTING')}
-              icon={<FileText size={18} />}
-              label="Accounting"
-            />
-            <ModuleTab 
-              active={activeModule === 'SALES'} 
-              onClick={() => setActiveModule('SALES')}
-              icon={<ShoppingCart size={18} />}
-              label="Sales"
-            />
-            <ModuleTab 
-              active={activeModule === 'PURCHASE'} 
-              onClick={() => setActiveModule('PURCHASE')}
-              icon={<Package size={18} />}
-              label="Purchase"
-            />
+            {isModuleActive('ACCOUNTING') && (
+              <ModuleTab 
+                active={activeModule === 'ACCOUNTING'} 
+                onClick={() => setActiveModule('ACCOUNTING')}
+                icon={<FileText size={18} />}
+                label="Accounting"
+              />
+            )}
+            {isModuleActive('SALES') && (
+              <ModuleTab 
+                active={activeModule === 'SALES'} 
+                onClick={() => setActiveModule('SALES')}
+                icon={<ShoppingCart size={18} />}
+                label="Sales"
+              />
+            )}
+            {isModuleActive('PURCHASE') && (
+              <ModuleTab 
+                active={activeModule === 'PURCHASE'} 
+                onClick={() => setActiveModule('PURCHASE')}
+                icon={<Package size={18} />}
+                label="Purchase"
+              />
+            )}
           </div>
 
           {/* Actions - Right */}
@@ -378,24 +386,30 @@ export default function ToolsFormsDesignerPage() {
 
         {/* Mobile Module Selector (Visible only on small screens) */}
         <div className="lg:hidden bg-white border-b border-slate-200 p-2 flex justify-center gap-1">
-             <ModuleTab 
-              active={activeModule === 'ACCOUNTING'} 
-              onClick={() => setActiveModule('ACCOUNTING')}
-              icon={<FileText size={18} />}
-              label="Accounting"
-            />
-            <ModuleTab 
-              active={activeModule === 'SALES'} 
-              onClick={() => setActiveModule('SALES')}
-              icon={<ShoppingCart size={18} />}
-              label="Sales"
-            />
-            <ModuleTab 
-              active={activeModule === 'PURCHASE'} 
-              onClick={() => setActiveModule('PURCHASE')}
-              icon={<Package size={18} />}
-              label="Purchase"
-            />
+             {isModuleActive('ACCOUNTING') && (
+              <ModuleTab 
+                active={activeModule === 'ACCOUNTING'} 
+                onClick={() => setActiveModule('ACCOUNTING')}
+                icon={<FileText size={18} />}
+                label="Accounting"
+              />
+             )}
+             {isModuleActive('SALES') && (
+              <ModuleTab 
+                active={activeModule === 'SALES'} 
+                onClick={() => setActiveModule('SALES')}
+                icon={<ShoppingCart size={18} />}
+                label="Sales"
+              />
+             )}
+             {isModuleActive('PURCHASE') && (
+              <ModuleTab 
+                active={activeModule === 'PURCHASE'} 
+                onClick={() => setActiveModule('PURCHASE')}
+                icon={<Package size={18} />}
+                label="Purchase"
+              />
+             )}
         </div>
 
         {/* Main Designer Area */}

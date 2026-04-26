@@ -149,7 +149,7 @@ class OnboardingController {
             const { companyName, description, country, email, bundleId, logoData, currency, language, timezone, dateFormat } = req.body;
             // We need a resolver instance
             const resolver = new CompanyRolePermissionResolver_1.CompanyRolePermissionResolver(bindRepositories_1.diContainer.modulePermissionsDefinitionRepository, bindRepositories_1.diContainer.companyRoleRepository);
-            const useCase = new CreateCompanyUseCase_1.CreateCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.companySettingsRepository);
+            const useCase = new CreateCompanyUseCase_1.CreateCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.userRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository, bindRepositories_1.diContainer.companyRoleRepository, resolver, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.companySettingsRepository);
             const result = await useCase.execute({
                 userId,
                 companyName,

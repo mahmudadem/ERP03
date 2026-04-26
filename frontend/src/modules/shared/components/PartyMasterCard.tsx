@@ -279,13 +279,6 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                     <p className="text-[9px] text-slate-400 mt-1 italic uppercase tracking-tighter">Primary GL Posting Target for all transactions associated with this {role.toLowerCase()}.</p>
                  </Field>
                  
-                 <Field label={role === 'CUSTOMER' ? "Accounts Payable (A/P) fallback" : "Accounts Receivable (A/R) fallback"}>
-                    <AccountSelector 
-                        value={role === 'CUSTOMER' ? form.defaultAPAccountId : form.defaultARAccountId} 
-                        onChange={(a: any) => setForm(p => ({ ...p, [role === 'CUSTOMER' ? 'defaultAPAccountId' : 'defaultARAccountId']: a?.id }))} 
-                    />
-                    <p className="text-[9px] text-slate-400 mt-1 italic uppercase tracking-tighter">Secondary account for contra-entries or special adjustments.</p>
-                 </Field>
               </div>
            </FormSection>
         </div>

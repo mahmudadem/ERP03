@@ -145,7 +145,7 @@ class CreateGoodsReceiptUseCase {
 }
 exports.CreateGoodsReceiptUseCase = CreateGoodsReceiptUseCase;
 class PostGoodsReceiptUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, goodsReceiptRepo, purchaseOrderRepo, itemRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, goodsReceiptRepo, purchaseOrderRepo, itemRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.goodsReceiptRepo = goodsReceiptRepo;
@@ -155,15 +155,17 @@ class PostGoodsReceiptUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id) {
+    async execute(companyId, id, createAccountingEffect = true) {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
         const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
         const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const grn = await this.goodsReceiptRepo.getById(companyId, id);
         if (!grn)
             throw new Error(`Goods receipt not found: ${id}`);
@@ -292,25 +294,30 @@ class PostGoodsReceiptUseCase {
                     side: 'Credit',
                     amount: totalBase,
                 });
-                const voucher = await this.accountingPostingService.postInTransaction({
-                    companyId,
-                    voucherType: VoucherTypes_1.VoucherType.JOURNAL_ENTRY,
-                    voucherNo: `GRN-${grn.grnNumber}`,
-                    date: grn.receiptDate,
-                    description: `Goods Receipt ${grn.grnNumber}`,
-                    currency: baseCurrency,
-                    exchangeRate: 1,
-                    lines: voucherLines,
-                    metadata: {
-                        sourceModule: 'purchases',
-                        sourceType: 'GOODS_RECEIPT',
-                        sourceId: grn.id,
-                    },
-                    createdBy: grn.createdBy,
-                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
-                    reference: grn.grnNumber,
-                }, transaction);
-                grn.voucherId = voucher.id;
+                if (shouldPostAccounting) {
+                    const voucher = await this.accountingPostingService.postInTransaction({
+                        companyId,
+                        voucherType: VoucherTypes_1.VoucherType.JOURNAL_ENTRY,
+                        voucherNo: `GRN-${grn.grnNumber}`,
+                        date: grn.receiptDate,
+                        description: `Goods Receipt ${grn.grnNumber}`,
+                        currency: baseCurrency,
+                        exchangeRate: 1,
+                        lines: voucherLines,
+                        metadata: {
+                            sourceModule: 'purchases',
+                            sourceType: 'GOODS_RECEIPT',
+                            sourceId: grn.id,
+                        },
+                        createdBy: grn.createdBy,
+                        postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                        reference: grn.grnNumber,
+                    }, transaction);
+                    grn.voucherId = voucher.id;
+                }
+                else {
+                    grn.voucherId = null;
+                }
             }
             else {
                 grn.voucherId = null;
@@ -341,6 +348,10 @@ class PostGoodsReceiptUseCase {
             round: PurchasePostingHelpers_1.roundMoney,
             itemCode: item.code,
         });
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
 }
 exports.PostGoodsReceiptUseCase = PostGoodsReceiptUseCase;
@@ -432,27 +443,31 @@ class UpdateGoodsReceiptUseCase {
 }
 exports.UpdateGoodsReceiptUseCase = UpdateGoodsReceiptUseCase;
 class UnpostGoodsReceiptUseCase {
-    constructor(goodsReceiptRepo, purchaseOrderRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(goodsReceiptRepo, purchaseOrderRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.goodsReceiptRepo = goodsReceiptRepo;
         this.purchaseOrderRepo = purchaseOrderRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id) {
+    async execute(companyId, id, createAccountingEffect = true) {
         const grn = await this.goodsReceiptRepo.getById(companyId, id);
         if (!grn)
             throw new Error(`Goods receipt not found: ${id}`);
         if (grn.status !== 'POSTED')
             throw new Error('Only POSTED goods receipts can be unposted');
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         let po = null;
         if (grn.purchaseOrderId) {
             po = await this.purchaseOrderRepo.getById(companyId, grn.purchaseOrderId);
         }
         await this.transactionManager.runTransaction(async (transaction) => {
-            if (grn.voucherId) {
-                await this.accountingPostingService.deleteVoucherInTransaction(companyId, grn.voucherId, transaction);
-                grn.voucherId = null;
+            if (shouldPostAccounting) {
+                if (grn.voucherId) {
+                    await this.accountingPostingService.deleteVoucherInTransaction(companyId, grn.voucherId, transaction);
+                    grn.voucherId = null;
+                }
             }
             // 1. Reverse inventory movements
             for (const line of grn.lines) {
@@ -484,6 +499,10 @@ class UnpostGoodsReceiptUseCase {
         if (!unposted)
             throw new Error('Failed to retrieve goods receipt after unposting');
         return unposted;
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
 }
 exports.UnpostGoodsReceiptUseCase = UnpostGoodsReceiptUseCase;

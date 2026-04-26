@@ -13,6 +13,7 @@ import {
   Building2,
   Settings2,
   LayoutTemplate,
+  Palette,
 } from "lucide-react";
 import { Menu as HeadlessMenu, Transition } from "@headlessui/react";
 import { NotificationBell } from "../components/NotificationBell";
@@ -195,6 +196,23 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                     >
                       <User className="w-4 h-4" />
                       Your Profile
+                    </button>
+                  )}
+                </HeadlessMenu.Item>
+
+                <HeadlessMenu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => navigate("/settings/appearance")}
+                      className={clsx(
+                        "flex items-center gap-2.5 w-full px-3 py-2 text-left text-sm font-medium rounded-lg transition-colors",
+                        active
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
+                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]",
+                      )}
+                    >
+                      <Palette className="w-4 h-4" />
+                      Appearance
                     </button>
                   )}
                 </HeadlessMenu.Item>

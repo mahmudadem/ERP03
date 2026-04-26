@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi, Plan } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import {
+  SuperAdminBadge,
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminModal,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 export const PlansManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -118,68 +130,61 @@ export const PlansManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">{t('superAdmin.plans.loading', { defaultValue: 'Loading...' })}</div>;
+  if (loading) return <SuperAdminPage><SuperAdminLoading label={t('superAdmin.plans.loading', { defaultValue: 'Loading...' })} /></SuperAdminPage>;
 
   return (
-    <div className="plans-manager p-6">
-      <div className="header mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('superAdmin.plans.title', { defaultValue: 'Plans Management' })}</h1>
-          <p className="text-gray-600 mt-2">{t('superAdmin.plans.subtitle', { defaultValue: 'Manage user subscription plans (account signup tiers)' })}</p>
-          <p className="text-sm text-amber-600 mt-1">{t('superAdmin.plans.note', { defaultValue: 'Note: Plans are for user signup, Bundles are for company creation' })}</p>
-        </div>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.plans.title', { defaultValue: 'Plans Management' })}
+        description={`${t('superAdmin.plans.subtitle', { defaultValue: 'Manage user subscription plans (account signup tiers)' })}. ${t('superAdmin.plans.note', { defaultValue: 'Note: Plans are for user signup, Bundles are for company creation' })}`}
+        meta="Commercial"
+        actions={
         <button 
           onClick={handleCreate} 
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           + {t('superAdmin.plans.actions.create', { defaultValue: 'Create Plan' })}
         </button>
-      </div>
+        }
+      />
 
-      <div className="plans-list bg-white shadow rounded">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <SuperAdminTable>
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.id', { defaultValue: 'ID' })}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.name', { defaultValue: 'Name' })}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.price', { defaultValue: 'Price' })}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.status', { defaultValue: 'Status' })}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.limits', { defaultValue: 'Limits' })}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.plans.columns.actions', { defaultValue: 'Actions' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.id', { defaultValue: 'ID' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.name', { defaultValue: 'Name' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.price', { defaultValue: 'Price' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.status', { defaultValue: 'Status' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.limits', { defaultValue: 'Limits' })}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.actions', { defaultValue: 'Actions' })}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 bg-white">
             {plans.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  {t('superAdmin.plans.empty', { defaultValue: 'No plans found. Create your first plan to get started.' })}
-                </td>
+                <td colSpan={6}><SuperAdminEmptyState title={t('superAdmin.plans.empty', { defaultValue: 'No plans found. Create your first plan to get started.' })} /></td>
               </tr>
             ) : (
               plans.map((plan) => (
-                <tr key={plan.id} className="border-t hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm">{plan.id}</td>
-                  <td className="px-6 py-4 font-semibold">{plan.name}</td>
-                  <td className="px-6 py-4">${plan.price}/{t('superAdmin.plans.perMonth', { defaultValue: 'mo' })}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      plan.status === 'active' ? 'bg-green-100 text-green-800' :
-                      plan.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                <tr key={plan.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs`}>{plan.id}</td>
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{plan.name}</td>
+                  <td className={tableCellClass}>${plan.price}/{t('superAdmin.plans.perMonth', { defaultValue: 'mo' })}</td>
+                  <td className={tableCellClass}>
+                    <SuperAdminBadge tone={plan.status === 'active' ? 'green' : plan.status === 'inactive' ? 'slate' : 'red'}>
                       {plan.status}
-                    </span>
+                    </SuperAdminBadge>
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className={`${tableCellClass} text-xs text-slate-600`}>
                     <div>{plan.limits.maxCompanies} {t('superAdmin.plans.limits.companies', { defaultValue: 'companies' })}</div>
                     <div>{plan.limits.maxUsersPerCompany} {t('superAdmin.plans.limits.usersPerCompany', { defaultValue: 'users/company' })}</div>
                     <div>{plan.limits.maxModulesAllowed} {t('superAdmin.plans.limits.modules', { defaultValue: 'modules' })}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    <button onClick={() => handleEdit(plan)} className="text-blue-600 hover:underline mr-4">
+                  <td className={tableCellClass}>
+                    <button onClick={() => handleEdit(plan)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
                       {t('superAdmin.plans.actions.edit', { defaultValue: 'Edit' })}
                     </button>
-                    <button onClick={() => handleDelete(plan.id)} className="text-red-600 hover:underline">
+                    <button onClick={() => handleDelete(plan.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
                       {t('superAdmin.plans.actions.delete', { defaultValue: 'Delete' })}
                     </button>
                   </td>
@@ -187,16 +192,14 @@ export const PlansManagerPage: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
-      </div>
+      </SuperAdminTable>
 
       {isModalOpen && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingPlan ? t('superAdmin.plans.modal.editTitle', { defaultValue: 'Edit Plan' }) : t('superAdmin.plans.modal.createTitle', { defaultValue: 'Create Plan' })}
-            </h2>
-            
+        <SuperAdminModal
+          title={editingPlan ? t('superAdmin.plans.modal.editTitle', { defaultValue: 'Edit Plan' }) : t('superAdmin.plans.modal.createTitle', { defaultValue: 'Create Plan' })}
+          onClose={() => setIsModalOpen(false)}
+          size="lg"
+        >
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -205,7 +208,7 @@ export const PlansManagerPage: React.FC = () => {
                     type="text"
                     value={formData.id}
                     onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     required
                     disabled={!!editingPlan}
                     placeholder={t('superAdmin.plans.placeholders.id', { defaultValue: 'e.g., free-tier' })}
@@ -218,7 +221,7 @@ export const PlansManagerPage: React.FC = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     required
                     placeholder={t('superAdmin.plans.placeholders.name', { defaultValue: 'e.g., Free Tier' })}
                   />
@@ -229,7 +232,7 @@ export const PlansManagerPage: React.FC = () => {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     rows={2}
                     placeholder={t('superAdmin.plans.placeholders.description', { defaultValue: 'Describe this plan...' })}
                   />
@@ -241,7 +244,7 @@ export const PlansManagerPage: React.FC = () => {
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     required
                     min="0"
                     step="0.01"
@@ -253,7 +256,7 @@ export const PlansManagerPage: React.FC = () => {
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     required
                   >
                     <option value="active">{t('superAdmin.plans.status.active', { defaultValue: 'Active' })}</option>
@@ -275,7 +278,7 @@ export const PlansManagerPage: React.FC = () => {
                           ...formData,
                           limits: { ...formData.limits, maxCompanies: parseInt(e.target.value) }
                         })}
-                        className="w-full px-3 py-2 border rounded"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         required
                         min="1"
                       />
@@ -290,7 +293,7 @@ export const PlansManagerPage: React.FC = () => {
                           ...formData,
                           limits: { ...formData.limits, maxUsersPerCompany: parseInt(e.target.value) }
                         })}
-                        className="w-full px-3 py-2 border rounded"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         required
                         min="1"
                       />
@@ -305,7 +308,7 @@ export const PlansManagerPage: React.FC = () => {
                           ...formData,
                           limits: { ...formData.limits, maxModulesAllowed: parseInt(e.target.value) }
                         })}
-                        className="w-full px-3 py-2 border rounded"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         required
                         min="1"
                       />
@@ -320,7 +323,7 @@ export const PlansManagerPage: React.FC = () => {
                           ...formData,
                           limits: { ...formData.limits, maxStorageMB: parseInt(e.target.value) }
                         })}
-                        className="w-full px-3 py-2 border rounded"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         required
                         min="100"
                       />
@@ -335,7 +338,7 @@ export const PlansManagerPage: React.FC = () => {
                           ...formData,
                           limits: { ...formData.limits, maxTransactionsPerMonth: parseInt(e.target.value) }
                         })}
-                        className="w-full px-3 py-2 border rounded"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         required
                         min="100"
                       />
@@ -348,21 +351,20 @@ export const PlansManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
                 >
                   {t('superAdmin.plans.actions.cancel', { defaultValue: 'Cancel' })}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm text-white hover:bg-slate-800"
                 >
                   {editingPlan ? t('superAdmin.plans.actions.update', { defaultValue: 'Update' }) : t('superAdmin.plans.actions.create', { defaultValue: 'Create' })}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </SuperAdminModal>
       )}
-    </div>
+    </SuperAdminPage>
   );
 };

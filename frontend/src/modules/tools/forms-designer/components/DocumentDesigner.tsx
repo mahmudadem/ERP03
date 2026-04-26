@@ -1558,9 +1558,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                        <div>
                          <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Column Start</label>
                          <input 
-                           type="number" min="0" max="11"
+                           type="number" min="0" max="23"
                            value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.col || 0}
-                           onChange={(e) => updateSelectedField('col', Math.max(0, Math.min(11, parseInt(e.target.value) || 0)))}
+                           onChange={(e) => updateSelectedField('col', Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900 font-mono"
                          />
                        </div>

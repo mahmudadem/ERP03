@@ -11,7 +11,7 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
     }
     toDomain(data) {
         var _a, _b, _c, _d;
-        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', data.sidebarPinned !== undefined ? data.sidebarPinned : true, data.disabledNotificationCategories || [], data.notificationCategoryOverrides || {}, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.createdAt : new Date(), data.updatedAt ? ((_d = (_c = data.updatedAt).toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || data.updatedAt : new Date());
+        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', data.sidebarPinned !== undefined ? data.sidebarPinned : true, data.appearanceSettings || {}, data.disabledNotificationCategories || [], data.notificationCategoryOverrides || {}, data.createdAt ? ((_b = (_a = data.createdAt).toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || data.createdAt : new Date(), data.updatedAt ? ((_d = (_c = data.updatedAt).toDate) === null || _d === void 0 ? void 0 : _d.call(_c)) || data.updatedAt : new Date());
     }
     toPersistence(entity) {
         return {
@@ -21,6 +21,7 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
             theme: entity.theme,
             sidebarMode: entity.sidebarMode,
             sidebarPinned: entity.sidebarPinned,
+            appearanceSettings: entity.appearanceSettings,
             disabledNotificationCategories: entity.disabledNotificationCategories,
             notificationCategoryOverrides: entity.notificationCategoryOverrides,
             createdAt: entity.createdAt,
@@ -48,6 +49,7 @@ class FirestoreUserPreferencesRepository extends BaseFirestoreRepository_1.BaseF
                 'theme',
                 'sidebarMode',
                 'sidebarPinned',
+                'appearanceSettings',
                 'disabledNotificationCategories',
                 'notificationCategoryOverrides',
                 'createdAt',

@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Shield, Lock, Mail } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { authApi } from '../api/auth';
+import { useCompanyAccess } from '../context/CompanyAccessContext';
 
 /**
  * Super Admin Login Page
@@ -11,32 +13,58 @@ import { useTranslation } from 'react-i18next';
  */
 export const AdminLoginPage: React.FC = () => {
   const { t } = useTranslation('common');
-  const { login, user, loading: authLoading } = useAuth();
+  const { login, logout, user, loading: authLoading } = useAuth();
+  const { isSuperAdmin, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adminCheckInProgress, setAdminCheckInProgress] = useState(false);
 
-  // If already authenticated as super admin, redirect to super admin dashboard
-  if (!authLoading && user) {
-    // Will be redirected by AuthContext based on isSuperAdmin flag
-    return <Navigate to="/super-admin/overview" replace />;
-  }
+  useEffect(() => {
+    if (authLoading || accessLoading || !user || adminCheckInProgress || !permissionsLoaded) return;
+
+    if (isSuperAdmin) {
+      navigate('/super-admin/overview', { replace: true });
+      return;
+    }
+
+    let active = true;
+    void (async () => {
+      await logout();
+      if (active) {
+        setError('This account is not a super administrator. Use the regular login portal.');
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [authLoading, accessLoading, user, isSuperAdmin, logout, navigate, adminCheckInProgress, permissionsLoaded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setAdminCheckInProgress(true);
 
     try {
       await login({ email, password });
-      // AuthContext will handle redirect to super admin dashboard
-      navigate('/super-admin/overview');
+      const permissions = await authApi.getMyPermissions();
+
+      if (!permissions.isSuperAdmin) {
+        await logout();
+        setError('This account is not a super administrator. Use the regular login portal.');
+        return;
+      }
+
+      navigate('/super-admin/overview', { replace: true });
     } catch (err: any) {
       console.error('Admin login failed', err);
       setError(err.message || t('auth.admin.error'));
     } finally {
+      setAdminCheckInProgress(false);
       setLoading(false);
     }
   };

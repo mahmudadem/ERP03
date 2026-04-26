@@ -157,6 +157,7 @@ model UserPreferences {
   theme                           String   @default("light")
   sidebarMode                     String   @default("classic")
   sidebarPinned                   Boolean  @default(true)
+  appearanceSettings              Json?
   disabledNotificationCategories  String[] @default([])
   notificationCategoryOverrides   Json?
   createdAt                       DateTime @default(now())

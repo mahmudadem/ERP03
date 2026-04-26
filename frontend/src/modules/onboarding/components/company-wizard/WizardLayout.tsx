@@ -6,6 +6,7 @@ import { useAuth } from '../../../../context/AuthContext';
 import { Button } from '../../../../components/ui/Button';
 import { LogOut, Check } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface WizardLayoutProps {
   currentStep: WizardStep;
@@ -14,22 +15,23 @@ interface WizardLayoutProps {
   subtitle: string;
 }
 
-const steps = [
-  { id: WizardStep.BasicInfo, label: 'Basic Info' },
-  { id: WizardStep.BundleSelection, label: 'Select Bundle' },
-  { id: WizardStep.ContactInfo, label: 'Contact Info' },
-  { id: WizardStep.Review, label: 'Review' },
-];
-
 export const WizardLayout: React.FC<WizardLayoutProps> = ({ 
   currentStep, 
   children,
   title,
   subtitle
 }) => {
+  const { t } = useTranslation('common');
   const { logout } = useAuth();
   const navigate = useNavigate();
   const isComplete = currentStep === WizardStep.Success;
+
+  const steps = [
+    { id: WizardStep.BasicInfo, label: t('onboarding.companyWizard.stepper.basicInfo', { defaultValue: 'Basic Info' }) },
+    { id: WizardStep.BundleSelection, label: t('onboarding.companyWizard.stepper.selectBundle', { defaultValue: 'Select Bundle' }) },
+    { id: WizardStep.ContactInfo, label: t('onboarding.companyWizard.stepper.contactInfo', { defaultValue: 'Contact Info' }) },
+    { id: WizardStep.Review, label: t('onboarding.companyWizard.stepper.review', { defaultValue: 'Review' }) },
+  ];
 
   return (
     <div className="w-full h-full bg-[var(--color-bg-primary)] flex flex-col overflow-hidden transition-colors">
@@ -53,7 +55,7 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                  className="text-gray-500 hover:text-red-600 hover:bg-red-50"
                >
                  <LogOut className="h-4 w-4 mr-2" />
-                 Sign Out
+                 {t('common.actions.signOut', { defaultValue: 'Sign Out' })}
                </Button>
             </div>
         </div>

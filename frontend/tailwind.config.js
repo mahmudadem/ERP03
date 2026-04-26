@@ -114,6 +114,7 @@ export default {
         'soft-lg': '0 4px 16px -4px rgba(0, 0, 0, 0.08)',
         'glow': '0 0 20px rgba(59, 130, 246, 0.15)',
         'glow-accent': '0 0 20px rgba(217, 70, 239, 0.15)',
+      },
       gridTemplateColumns: {
         '24': 'repeat(24, minmax(0, 1fr))',
       },

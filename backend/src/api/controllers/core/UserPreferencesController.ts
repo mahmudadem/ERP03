@@ -9,6 +9,7 @@ const mapDto = (prefs: any) => ({
   theme: prefs?.theme || 'light',
   sidebarMode: prefs?.sidebarMode || 'classic',
   sidebarPinned: prefs?.sidebarPinned ?? true,
+  appearanceSettings: prefs?.appearanceSettings || {},
   disabledNotificationCategories: prefs?.disabledNotificationCategories || [],
   notificationCategoryOverrides: prefs?.notificationCategoryOverrides || {},
   updatedAt: prefs?.updatedAt,
@@ -38,6 +39,7 @@ export class UserPreferencesController {
         theme,
         sidebarMode,
         sidebarPinned,
+        appearanceSettings,
         disabledNotificationCategories,
         notificationCategoryOverrides
       } = req.body || {};
@@ -48,6 +50,7 @@ export class UserPreferencesController {
         theme,
         sidebarMode,
         sidebarPinned,
+        appearanceSettings,
         disabledNotificationCategories,
         notificationCategoryOverrides
       });

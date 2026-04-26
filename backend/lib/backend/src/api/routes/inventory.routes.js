@@ -11,6 +11,7 @@ router.post('/initialize', (0, permissionGuard_1.permissionGuard)('inventory.set
 router.get('/settings', (0, permissionGuard_1.permissionGuard)('inventory.view'), InventoryController_1.InventoryController.getSettings);
 router.use((0, moduleInitializedGuard_1.moduleInitializedGuard)('inventory'));
 router.put('/settings', (0, permissionGuard_1.permissionGuard)('inventory.settings.manage'), InventoryController_1.InventoryController.updateSettings);
+router.post('/financial-integration', (0, permissionGuard_1.permissionGuard)('inventory.settings.manage'), InventoryController_1.InventoryController.configureFinancialIntegration);
 router.get('/items/search', (0, permissionGuard_1.permissionGuard)('inventory.items.view'), InventoryController_1.InventoryController.searchItems);
 router.post('/items', (0, permissionGuard_1.permissionGuard)('inventory.items.manage'), InventoryController_1.InventoryController.createItem);
 router.get('/items', (0, permissionGuard_1.permissionGuard)('inventory.items.view'), InventoryController_1.InventoryController.listItems);

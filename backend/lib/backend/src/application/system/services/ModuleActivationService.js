@@ -26,7 +26,7 @@ class ModuleActivationService {
         await this.ensureInitialized(companyId, moduleCode, false);
     }
     /**
-     * Ensures a module is initialized for a company.
+     * Ensures a module is installed for a company.
      * @param isImplicit If true, the module is activated for "foundational" purposes
      *                   and might not show up in the main sidebar immediately.
      */
@@ -34,7 +34,6 @@ class ModuleActivationService {
         var _a;
         const existing = await this.companyModuleRepo.get(companyId, moduleCode);
         if (existing) {
-            // If it exists but was implicit and we are now activating it explicitly, update it.
             if (!isImplicit && ((_a = existing.config) === null || _a === void 0 ? void 0 : _a.isImplicit)) {
                 await this.companyModuleRepo.update(companyId, moduleCode, {
                     config: Object.assign(Object.assign({}, existing.config), { isImplicit: false }),
@@ -43,13 +42,12 @@ class ModuleActivationService {
             }
             return;
         }
-        // Create new module activation record
         const newModule = {
             companyId,
             moduleCode,
             installedAt: new Date(),
-            initialized: true,
-            initializationStatus: 'complete',
+            initialized: false,
+            initializationStatus: 'pending',
             config: {
                 isImplicit,
                 activatedAt: new Date().toISOString()
@@ -57,8 +55,6 @@ class ModuleActivationService {
             updatedAt: new Date()
         };
         await this.companyModuleRepo.create(newModule);
-        // TODO: Trigger module-specific seeding/foundational setup here
-        // e.g. If moduleCode === 'accounting', seed Fiscal Year / Tax Categories
     }
     /**
      * Gets all active modules, excluding implicit ones if requested.
@@ -75,11 +71,15 @@ exports.ModuleActivationService = ModuleActivationService;
  * Static dependency map.
  * Key: Module that depends on others
  * Value: Array of dependent module codes
+ *
+ * NOTE: Accounting is intentionally NOT listed as a dependency of operational
+ * modules (inventory, sales, purchase). Operational modules gracefully degrade
+ * when Accounting is disabled — the createAccountingEffect flag causes posting
+ * use cases to skip GL operations. Users opt into Accounting separately when
+ * they want financial integration.
  */
 ModuleActivationService.DEPENDENCIES = {
     'hr': ['accounting'],
-    'sales': ['accounting'],
-    'inventory': ['accounting'],
-    'procurement': ['accounting', 'inventory'],
+    'procurement': ['inventory'],
 };
 //# sourceMappingURL=ModuleActivationService.js.map

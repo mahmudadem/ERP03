@@ -326,7 +326,7 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
+            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -342,7 +342,7 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
+            const useCase = new GoodsReceiptUseCases_1.UnpostGoodsReceiptUseCase(bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -428,7 +428,7 @@ class PurchaseController {
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
-            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const pi = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -446,7 +446,7 @@ class PurchaseController {
             const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService();
-            const useCase = new PurchaseInvoiceUseCases_1.UnpostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseInvoiceUseCases_1.UnpostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const pi = await useCase.execute(companyId, id, userId);
             res.json({
                 success: true,
@@ -553,7 +553,7 @@ class PurchaseController {
             const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService();
-            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const pr = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -571,7 +571,7 @@ class PurchaseController {
             const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService();
-            const useCase = new PurchaseReturnUseCases_1.UnpostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, inventoryService, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseReturnUseCases_1.UnpostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
             const pr = await useCase.execute(companyId, id, userId);
             res.json({
                 success: true,

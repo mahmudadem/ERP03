@@ -305,6 +305,14 @@ const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PER
   })),
 });
 
+const makeCompanyModuleRepo = (initialized = true) => ({
+  get: jest.fn(async () => ({
+    companyId: COMPANY_ID,
+    moduleKey: 'accounting',
+    initialized,
+  })),
+});
+
 describe('Sales posting use-cases (Phase 2)', () => {
   it('1) PostDN creates SALES_DELIVERY inventory movement per line', async () => {
     const settings = makeSettings('CONTROLLED');
@@ -324,6 +332,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -364,6 +373,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -402,6 +412,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -431,6 +442,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -474,6 +486,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -528,6 +541,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -587,6 +601,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -632,6 +647,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -682,6 +698,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -744,6 +761,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -807,6 +825,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -864,6 +883,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -926,6 +946,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -977,6 +998,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -1038,6 +1060,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,

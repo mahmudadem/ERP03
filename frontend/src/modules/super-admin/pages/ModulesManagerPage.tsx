@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { superAdminApi, Module } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import {
+  SuperAdminBadge,
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminModal,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 const PROTECTED_MODULES = ['finance', 'inventory', 'hr'];
 const FORBIDDEN_IDS = ['core', 'companyAdmin'];
@@ -103,57 +115,55 @@ export const ModulesManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">{t('superAdmin.modules.loading')}</div>;
+  if (loading) return <SuperAdminPage><SuperAdminLoading label={t('superAdmin.modules.loading')} /></SuperAdminPage>;
 
   return (
-    <div className="modules-manager p-6">
-      <div className="header mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('superAdmin.modules.title')}</h1>
-          <p className="text-gray-600 mt-2">{t('superAdmin.modules.subtitle')}</p>
-        </div>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.modules.title')}
+        description={t('superAdmin.modules.subtitle')}
+        meta="Registry"
+        actions={
         <button 
           onClick={handleCreate} 
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           + {t('superAdmin.modules.actions.create')}
         </button>
-      </div>
+        }
+      />
 
-      <div className="modules-list bg-white shadow rounded">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <SuperAdminTable>
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left">{t('superAdmin.modules.columns.id')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.modules.columns.name')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.modules.columns.description')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.modules.columns.actions')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.modules.columns.id')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.modules.columns.name')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.modules.columns.description')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.modules.columns.actions')}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 bg-white">
             {modules.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  {t('superAdmin.modules.empty')}
-                </td>
+                <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.modules.empty')} /></td>
               </tr>
             ) : (
               modules.map((module) => (
-                <tr key={module.id} className="border-t hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm">
+                <tr key={module.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs`}>
                     {module.id}
                     {PROTECTED_MODULES.includes(module.id) && (
-                      <span className="ml-2 bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">{t('superAdmin.modules.protected')}</span>
+                      <span className="ml-2"><SuperAdminBadge tone="amber">{t('superAdmin.modules.protected')}</SuperAdminBadge></span>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-semibold">{module.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{module.description}</td>
-                  <td className="px-6 py-4">
-                    <button onClick={() => handleEdit(module)} className="text-blue-600 hover:underline mr-4">
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{module.name}</td>
+                  <td className={tableCellClass}>{module.description}</td>
+                  <td className={tableCellClass}>
+                    <button onClick={() => handleEdit(module)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
                       {t('superAdmin.modules.actions.edit')}
                     </button>
                     {!PROTECTED_MODULES.includes(module.id) && (
-                      <button onClick={() => handleDelete(module.id)} className="text-red-600 hover:underline">
+                      <button onClick={() => handleDelete(module.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
                         {t('superAdmin.modules.actions.delete')}
                       </button>
                     )}
@@ -162,16 +172,13 @@ export const ModulesManagerPage: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
-      </div>
+      </SuperAdminTable>
 
       {isModalOpen && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingModule ? t('superAdmin.modules.modal.editTitle') : t('superAdmin.modules.modal.createTitle')}
-            </h2>
-            
+        <SuperAdminModal
+          title={editingModule ? t('superAdmin.modules.modal.editTitle') : t('superAdmin.modules.modal.createTitle')}
+          onClose={() => setIsModalOpen(false)}
+        >
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">{t('superAdmin.modules.fields.id')}</label>
@@ -179,7 +186,7 @@ export const ModulesManagerPage: React.FC = () => {
                   type="text"
                   value={formData.id}
                   onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   disabled={!!editingModule}
                   placeholder={t('superAdmin.modules.placeholders.id')}
@@ -195,7 +202,7 @@ export const ModulesManagerPage: React.FC = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   placeholder={t('superAdmin.modules.placeholders.name')}
                 />
@@ -206,7 +213,7 @@ export const ModulesManagerPage: React.FC = () => {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   rows={3}
                   placeholder={t('superAdmin.modules.placeholders.description')}
                 />
@@ -216,21 +223,20 @@ export const ModulesManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
                 >
                   {t('superAdmin.modules.actions.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm text-white hover:bg-slate-800"
                 >
                   {editingModule ? t('superAdmin.modules.actions.update') : t('superAdmin.modules.actions.create')}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </SuperAdminModal>
       )}
-    </div>
+    </SuperAdminPage>
   );
 };

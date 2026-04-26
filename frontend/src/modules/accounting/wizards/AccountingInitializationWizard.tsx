@@ -120,7 +120,7 @@ export const AccountingInitializationWizard: React.FC = () => {
         const [currenciesData, templatesData, voucherTypesData] = await Promise.all([
           systemMetadataApi.getCurrencies(),
           systemMetadataApi.getCoaTemplates(),
-          loadSystemVoucherTypes(),
+          loadSystemVoucherTypes('ACCOUNTING'),
         ]);
         setCurrencies(currenciesData);
         setCoaTemplates(templatesData);
@@ -139,7 +139,7 @@ export const AccountingInitializationWizard: React.FC = () => {
           ...prev,
           fiscalYearStart: countryDefaults.fiscalYearStart,
           fiscalYearEnd: countryDefaults.fiscalYearEnd,
-          baseCurrency: countryDefaults.currency,
+          baseCurrency: prev.baseCurrency || countryDefaults.currency || company?.baseCurrency || '',
           selectedVoucherTypes: recommended.length > 0 ? recommended : voucherTypesData.map(vt => vt.id),
         }));
       } catch (err) {
@@ -151,7 +151,7 @@ export const AccountingInitializationWizard: React.FC = () => {
     };
 
     fetchMetadata();
-  }, [company?.country]); // Re-run if company country loads late
+  }, [company?.country, company?.baseCurrency]); // Re-run if company profile loads late
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -171,6 +171,11 @@ export const AccountingInitializationWizard: React.FC = () => {
     try {
       setIsCompleting(true);
       setError(null);
+
+      if (!setupData.baseCurrency) {
+        setError('Please select a base currency before completing setup.');
+        return;
+      }
 
       // Initialize module with setup data
       await companyModulesApi.initialize(companyId, 'accounting', setupData);
@@ -430,7 +435,13 @@ export const AccountingInitializationWizard: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  filteredTemplates.map((template) => (
+                  filteredTemplates
+                    .sort((a, b) => {
+                      if (a.id === 'standard') return -1;
+                      if (b.id === 'standard') return 1;
+                      return a.name.localeCompare(b.name);
+                    })
+                    .map((template) => (
                     <button
                       key={template.id}
                       onClick={() => setSetupData({ ...setupData, coaTemplate: template.id })}

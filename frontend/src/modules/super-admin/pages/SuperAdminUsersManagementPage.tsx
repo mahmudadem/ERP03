@@ -5,6 +5,7 @@ import { Users, Building2, Shield, Crown, Search, Filter, ChevronRight, Mail, Ca
 import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import { SuperAdminHeader, SuperAdminPage } from '../components/SuperAdminPage';
 
 interface UserWithCompanies extends SuperAdminUser {
   companies?: SuperAdminCompany[];
@@ -103,40 +104,37 @@ export default function SuperAdminUsersManagementPage() {
       title: t('superAdmin.usersManagement.stats.totalUsers'),
       value: users.length,
       icon: Users,
-      gradient: 'from-blue-500 to-cyan-500',
+      tone: 'bg-blue-50 text-blue-700',
     },
     {
       title: t('superAdmin.usersManagement.stats.superAdmins'),
       value: users.filter(u => u.globalRole === 'SUPER_ADMIN').length,
       icon: Crown,
-      gradient: 'from-purple-500 to-pink-500',
+      tone: 'bg-violet-50 text-violet-700',
     },
     {
       title: t('superAdmin.usersManagement.stats.regularUsers'),
       value: users.filter(u => u.globalRole === 'USER').length,
       icon: Shield,
-      gradient: 'from-green-500 to-emerald-500',
+      tone: 'bg-emerald-50 text-emerald-700',
     },
     {
       title: t('superAdmin.usersManagement.stats.totalCompanies'),
       value: companies.length,
       icon: Building2,
-      gradient: 'from-orange-500 to-red-500',
+      tone: 'bg-amber-50 text-amber-700',
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <SuperAdminPage>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-              {t('superAdmin.usersManagement.title')}
-            </h1>
-            <p className="text-slate-600 mt-1">{t('superAdmin.usersManagement.subtitle')}</p>
-          </div>
-          <Button 
+        <SuperAdminHeader
+          title={t('superAdmin.usersManagement.title')}
+          description={t('superAdmin.usersManagement.subtitle')}
+          meta="Access"
+          actions={
+            <Button
             variant="ghost" 
             size="sm" 
             onClick={loadData} 
@@ -151,25 +149,25 @@ export default function SuperAdminUsersManagementPage() {
             ) : (
               t('superAdmin.usersManagement.refresh')
             )}
-          </Button>
-        </div>
+            </Button>
+          }
+        />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((stat, index) => (
             <div
               key={index}
-              className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+              className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-600 text-sm font-medium">{stat.title}</p>
                     <p className="text-3xl font-bold text-slate-900 mt-2">{stat.value}</p>
                   </div>
-                  <div className={`p-3 rounded-lg bg-gradient-to-br ${stat.gradient}`}>
-                    <stat.icon className="w-6 h-6 text-white" />
+                  <div className={`rounded-md p-2.5 ${stat.tone}`}>
+                    <stat.icon className="h-5 w-5" />
                   </div>
                 </div>
               </div>
@@ -226,12 +224,12 @@ export default function SuperAdminUsersManagementPage() {
             filteredUsers.map((user) => (
               <div
                 key={user.id}
-                className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 group"
+                className="group rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-slate-300"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4 flex-1">
                     {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-lg font-semibold text-white">
                       {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
                     </div>
 
@@ -256,7 +254,7 @@ export default function SuperAdminUsersManagementPage() {
                   {/* Role Badge */}
                   <div>
                     {user.globalRole === 'SUPER_ADMIN' ? (
-                      <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      <div className="flex items-center gap-1 rounded bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
                         <Crown className="w-3 h-3" />
                         {t('superAdmin.usersManagement.role.superAdmin')}
                       </div>
@@ -326,7 +324,7 @@ export default function SuperAdminUsersManagementPage() {
                     <Button
                       size="sm"
                       onClick={() => handlePromote(user.id)}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                      className="flex-1"
                     >
                       {t('superAdmin.usersManagement.actions.promoteToSuperAdmin')}
                     </Button>
@@ -336,7 +334,7 @@ export default function SuperAdminUsersManagementPage() {
             ))
           )}
         </div>
-      </div>
+      
 
       {/* User Details Modal */}
       {selectedUser && (
@@ -345,7 +343,7 @@ export default function SuperAdminUsersManagementPage() {
           onClick={() => setSelectedUser(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-auto"
+            className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white border-b border-slate-200 p-6 z-10">
@@ -393,6 +391,6 @@ export default function SuperAdminUsersManagementPage() {
           </div>
         </div>
       )}
-    </div>
+    </SuperAdminPage>
   );
 }

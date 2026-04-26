@@ -14,6 +14,26 @@ import { IVoucherFormRepository, VoucherFormDefinition } from '../../../reposito
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
 
 const cloneTemplateValue = (val: any) => (val ? JSON.parse(JSON.stringify(val)) : null);
+const normalizeModule = (value: any) => String(value || '').trim().toUpperCase();
+
+const ensureVoucherTypeScope = async (
+  voucherTypeRepo: IVoucherTypeDefinitionRepository,
+  companyId: string,
+  voucherTypeId: string | undefined,
+  expectedModule: string,
+  fieldName: string
+): Promise<void> => {
+  if (!voucherTypeId) return;
+
+  const voucherType = await voucherTypeRepo.getVoucherType(companyId, voucherTypeId);
+  if (!voucherType) {
+    throw new Error(`${fieldName} not found: ${voucherTypeId}`);
+  }
+
+  if (normalizeModule(voucherType.module) !== expectedModule) {
+    throw new Error(`${fieldName} must belong to ${expectedModule} module`);
+  }
+};
 
 const cloneVoucherTypeForCompany = (
   companyId: string,
@@ -208,6 +228,13 @@ export class InitializePurchasesUseCase {
       this.voucherTypeRepo,
       this.voucherFormRepo
     );
+    await ensureVoucherTypeScope(
+      this.voucherTypeRepo,
+      input.companyId,
+      input.purchaseVoucherTypeId,
+      'PURCHASE',
+      'purchaseVoucherTypeId'
+    );
 
     const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
     const accountingMode = this.inventorySettingsRepo
@@ -304,6 +331,14 @@ export class UpdatePurchaseSettingsUseCase {
     if (!existing) {
       throw new Error('Purchase settings are not initialized');
     }
+
+    await ensureVoucherTypeScope(
+      this.voucherTypeRepo,
+      input.companyId,
+      input.purchaseVoucherTypeId,
+      'PURCHASE',
+      'purchaseVoucherTypeId'
+    );
 
     const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode ?? existing.workflowMode);
     const accountingMode = this.inventorySettingsRepo

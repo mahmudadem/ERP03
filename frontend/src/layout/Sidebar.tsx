@@ -27,7 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
     <aside
       className={clsx(
         "fixed inset-y-0 z-40 transition-all duration-300 ease-out flex flex-col print:hidden",
-        "bg-[var(--color-bg-primary)] border-[var(--color-border)]",
+        "bg-[var(--app-sidebar-surface)] border-[var(--color-border)]",
         isOpen ? 'w-64' : 'w-24',
         isRtl ? 'right-0 border-l' : 'left-0 border-r'
       )}
@@ -38,15 +38,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
           onClick={toggleSidebar}
           className="flex items-center gap-3 overflow-hidden transition-all duration-300 hover:opacity-80 outline-none"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
+          <div className="w-10 h-10 rounded-[var(--radius-xl)] bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
             <LayoutDashboard className="w-6 h-6 text-white" />
           </div>
           {isOpen && (
             <div className="flex flex-col items-start animate-in fade-in slide-in-from-left-2 duration-300">
-              <span className="text-lg font-black text-[var(--color-text-primary)] tracking-tighter leading-none">
+              <span className="text-lg font-black text-[var(--app-sidebar-text)] tracking-tighter leading-none">
                 ERP<span className="text-primary-600">03</span>
               </span>
-              <span className="text-[10px] text-[var(--color-text-muted)] font-bold uppercase tracking-widest mt-0.5">
+              <span className="text-[10px] text-[var(--app-sidebar-muted)] font-bold uppercase tracking-widest mt-0.5">
                 Enterprise
               </span>
             </div>

@@ -73,7 +73,9 @@ export class CompanyModulesController {
 
       const useCase = new EnableModuleForCompanyUseCase(
         diContainer.companyRepository,
-        diContainer.companyModuleRepository
+        diContainer.companyModuleRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
       );
       const result = await useCase.execute({ companyId, moduleName });
 

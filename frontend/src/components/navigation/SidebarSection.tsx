@@ -49,8 +49,8 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({
         className={clsx(
           "w-full flex transition-all duration-300 ease-out",
           isOpen ? "flex-row items-center gap-3 px-4 py-2" : "flex-col items-center gap-1.5 px-2 py-3 justify-center",
-          "text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-wider",
-          "hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]/50 group"
+          "text-[11px] font-bold text-[var(--app-sidebar-muted)] uppercase tracking-wider",
+          "hover:text-[var(--app-sidebar-text)] hover:bg-[var(--color-bg-tertiary)]/50 group"
         )}
       >
         {ResolvedIcon && (

@@ -2,6 +2,8 @@
 import { PostingRole } from './PostingRole';
 
 export type FieldType = 'STRING' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT' | 'REFERENCE';
+export type FieldClass = 'system_core' | 'system_optional' | 'computed' | 'custom_metadata';
+export type FieldBindingTarget = 'payload' | 'metadata.customFields';
 
 export interface ValidationRule {
   type: 'REQUIRED' | 'MIN' | 'MAX' | 'REGEX';
@@ -34,6 +36,10 @@ export class FieldDefinition {
     public schemaVersion: number = 2,
     public visibilityRules: VisibilityRule[] = [],
     public validationRules: ValidationRule[] = [],
-    public defaultValue?: any
+    public defaultValue?: any,
+    public fieldClass: FieldClass = 'system_optional',
+    public bindingTarget: FieldBindingTarget = 'payload',
+    public nameLocked: boolean = false,
+    public computed: boolean = false
   ) {}
 }

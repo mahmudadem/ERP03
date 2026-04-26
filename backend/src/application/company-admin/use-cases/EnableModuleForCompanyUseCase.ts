@@ -3,11 +3,16 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { ModuleRegistry } from '../../platform/ModuleRegistry';
 import { ApiError } from '../../../api/errors/ApiError';
 import { CompanyModuleEntity } from '../../../domain/company/entities/CompanyModule';
+import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
 export class EnableModuleForCompanyUseCase {
   constructor(
     private companyRepository: ICompanyRepository,
-    private companyModuleRepository: ICompanyModuleRepository
+    private companyModuleRepository: ICompanyModuleRepository,
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private voucherFormRepo: IVoucherFormRepository
   ) { }
 
   async execute(input: { companyId: string; moduleName: string }): Promise<any> {
@@ -46,6 +51,14 @@ export class EnableModuleForCompanyUseCase {
         });
       }
 
+      await syncCompanyVoucherTemplatesFromSystem({
+        companyId: input.companyId,
+        modules: [moduleName],
+        createdBy: 'SYSTEM',
+        voucherTypeRepo: this.voucherTypeRepo,
+        voucherFormRepo: this.voucherFormRepo,
+      });
+
       return { moduleName, status: 'already_enabled' };
     }
 
@@ -63,6 +76,14 @@ export class EnableModuleForCompanyUseCase {
         updatedAt: new Date(),
       });
     }
+
+    await syncCompanyVoucherTemplatesFromSystem({
+      companyId: input.companyId,
+      modules: [moduleName],
+      createdBy: 'SYSTEM',
+      voucherTypeRepo: this.voucherTypeRepo,
+      voucherFormRepo: this.voucherFormRepo,
+    });
 
     // Return success DTO
     return { moduleName, status: 'enabled' };

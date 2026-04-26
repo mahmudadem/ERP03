@@ -9,7 +9,7 @@
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, Loader2, Globe, ChevronDown, Check } from 'lucide-react';
+import { Search, X, Loader2, Globe, ChevronDown, Check, RefreshCw } from 'lucide-react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { useCompanyCurrencies, Currency } from '../../hooks/useCompanyCurrencies';
 
@@ -40,7 +40,8 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
   onBlur: externalBlur
 }, ref) => {
   const { t } = useTranslation('accounting');
-  const { data: currencies = [], isLoading, isError } = useCompanyCurrencies();
+  const { data: currencies = [], isLoading, isError, refetch } = useCompanyCurrencies();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -129,15 +130,13 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
       console.log('[CurrencySelector] BLUR: No change (inputValue matches value)');
       // No change
     } else {
-      const exactMatch = findExactMatch(inputValue);
-      console.log('[CurrencySelector] BLUR: Looking for match for:', inputValue, 'Found:', exactMatch?.code);
+      const filtered = getFilteredCurrencies(inputValue);
       
-      if (exactMatch) {
-        onChange(exactMatch.code);
-        setInputValue(exactMatch.code);
+      if (filtered.length === 1) {
+        onChange(filtered[0].code);
+        setInputValue(filtered[0].code);
       } else {
-        // CRITICAL FIX: Revert to previous valid value
-        console.warn(`[CurrencySelector] REVERTING invalid "${inputValue}" → "${value || ''}"`);
+        // Revert to previous valid value
         setInputValue(value || '');
       }
     }
@@ -160,15 +159,13 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
 
     if (e.key === 'Enter') {
       if (inputValue.trim()) {
-        const exactMatch = findExactMatch(inputValue);
-        if (exactMatch) {
-          onChange(exactMatch.code);
-          setInputValue(exactMatch.code);
+        const filtered = getFilteredCurrencies(inputValue);
+        if (filtered.length === 1) {
+          onChange(filtered[0].code);
+          setInputValue(filtered[0].code);
           if (externalKeyDown) externalKeyDown(e);
         } else {
             e.preventDefault();
-            // Revert to previous valid value
-            console.warn(`[CurrencySelector] Invalid currency on Enter: "${inputValue}"`);
             setInputValue(value || '');
             setModalSearch(inputValue.trim());
             setHighlightedIndex(0);
@@ -216,6 +213,18 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
     }
   };
 
+  const handleRefresh = async () => {
+    if (disabled || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Failed to refresh currencies', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleSelectCurrency = (currency: Currency) => {
     onChange(currency.code);
     setInputValue(currency.code);
@@ -237,12 +246,24 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           placeholder={placeholder || t('currencySelector.placeholder', { defaultValue: '...Cur' })}
-          disabled={disabled || isLoading}
           className={`w-full text-xs text-center font-bold transition-colors duration-200 ${noBorder ? 'p-1 border-none bg-transparent' : 'p-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)]'} 
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
-        {isLoading && <Loader2 className="absolute right-1 w-3 h-3 animate-spin text-[var(--color-text-muted)]" />}
+          <div className="absolute right-1 flex items-center gap-1">
+            {inputValue && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('');
+                  setInputValue('');
+                }}
+                className="p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
       </div>
 
       {/* Search Modal */}
@@ -271,6 +292,15 @@ export const CurrencySelector = forwardRef<HTMLInputElement, CurrencySelectorPro
                     className="flex-1 bg-transparent border-none outline-none text-sm uppercase text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
                     autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing || isLoading}
+                    title={t('currencySelector.refresh', 'Refresh currencies')}
+                    className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-[var(--color-text-secondary)] ${isRefreshing || isLoading ? 'animate-spin' : ''}`} />
+                  </button>
                   <button 
                     onClick={() => setShowModal(false)} 
                     className="p-1 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"

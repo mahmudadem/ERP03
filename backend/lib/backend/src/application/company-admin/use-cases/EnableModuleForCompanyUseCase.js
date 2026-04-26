@@ -4,10 +4,13 @@ exports.EnableModuleForCompanyUseCase = void 0;
 const ModuleRegistry_1 = require("../../platform/ModuleRegistry");
 const ApiError_1 = require("../../../api/errors/ApiError");
 const CompanyModule_1 = require("../../../domain/company/entities/CompanyModule");
+const CompanyVoucherTemplateSyncService_1 = require("../../system/services/CompanyVoucherTemplateSyncService");
 class EnableModuleForCompanyUseCase {
-    constructor(companyRepository, companyModuleRepository) {
+    constructor(companyRepository, companyModuleRepository, voucherTypeRepo, voucherFormRepo) {
         this.companyRepository = companyRepository;
         this.companyModuleRepository = companyModuleRepository;
+        this.voucherTypeRepo = voucherTypeRepo;
+        this.voucherFormRepo = voucherFormRepo;
     }
     async execute(input) {
         var _a, _b;
@@ -41,6 +44,13 @@ class EnableModuleForCompanyUseCase {
                     updatedAt: new Date(),
                 });
             }
+            await (0, CompanyVoucherTemplateSyncService_1.syncCompanyVoucherTemplatesFromSystem)({
+                companyId: input.companyId,
+                modules: [moduleName],
+                createdBy: 'SYSTEM',
+                voucherTypeRepo: this.voucherTypeRepo,
+                voucherFormRepo: this.voucherFormRepo,
+            });
             return { moduleName, status: 'already_enabled' };
         }
         // Update company active modules list
@@ -57,6 +67,13 @@ class EnableModuleForCompanyUseCase {
                 updatedAt: new Date(),
             });
         }
+        await (0, CompanyVoucherTemplateSyncService_1.syncCompanyVoucherTemplatesFromSystem)({
+            companyId: input.companyId,
+            modules: [moduleName],
+            createdBy: 'SYSTEM',
+            voucherTypeRepo: this.voucherTypeRepo,
+            voucherFormRepo: this.voucherFormRepo,
+        });
         // Return success DTO
         return { moduleName, status: 'enabled' };
     }

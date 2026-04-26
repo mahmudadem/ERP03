@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { superAdminApi, Permission } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import {
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminModal,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 export const PermissionsManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -82,51 +93,49 @@ export const PermissionsManagerPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="loading">{t('superAdmin.permissions.loading')}</div>;
+  if (loading) return <SuperAdminPage><SuperAdminLoading label={t('superAdmin.permissions.loading')} /></SuperAdminPage>;
 
   return (
-    <div className="permissions-manager p-6">
-      <div className="header mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('superAdmin.permissions.title')}</h1>
-          <p className="text-gray-600 mt-2">{t('superAdmin.permissions.subtitle')}</p>
-        </div>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.permissions.title')}
+        description={t('superAdmin.permissions.subtitle')}
+        meta="Registry"
+        actions={
         <button 
           onClick={handleCreate} 
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           + {t('superAdmin.permissions.actions.createPermission')}
         </button>
-      </div>
+        }
+      />
 
-      <div className="permissions-list bg-white shadow rounded">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+      <SuperAdminTable>
+          <thead className="bg-slate-50">
             <tr>
-              <th className="px-6 py-3 text-left">{t('superAdmin.permissions.columns.id')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.permissions.columns.name')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.permissions.columns.description')}</th>
-              <th className="px-6 py-3 text-left">{t('superAdmin.permissions.columns.actions')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.id')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.name')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.description')}</th>
+              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.actions')}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 bg-white">
             {permissions.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                  {t('superAdmin.permissions.empty')}
-                </td>
+                <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.permissions.empty')} /></td>
               </tr>
             ) : (
               permissions.map((permission) => (
-                <tr key={permission.id} className="border-t hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm">{permission.id}</td>
-                  <td className="px-6 py-4 font-semibold">{permission.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{permission.description}</td>
-                  <td className="px-6 py-4">
-                    <button onClick={() => handleEdit(permission)} className="text-blue-600 hover:underline mr-4">
+                <tr key={permission.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs`}>{permission.id}</td>
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{permission.name}</td>
+                  <td className={tableCellClass}>{permission.description}</td>
+                  <td className={tableCellClass}>
+                    <button onClick={() => handleEdit(permission)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
                       {t('superAdmin.permissions.actions.edit')}
                     </button>
-                    <button onClick={() => handleDelete(permission.id)} className="text-red-600 hover:underline">
+                    <button onClick={() => handleDelete(permission.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
                       {t('superAdmin.permissions.actions.delete')}
                     </button>
                   </td>
@@ -134,16 +143,13 @@ export const PermissionsManagerPage: React.FC = () => {
               ))
             )}
           </tbody>
-        </table>
-      </div>
+      </SuperAdminTable>
 
       {isModalOpen && (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="modal-content bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingPermission ? t('superAdmin.permissions.modal.editTitle') : t('superAdmin.permissions.modal.createTitle')}
-            </h2>
-            
+        <SuperAdminModal
+          title={editingPermission ? t('superAdmin.permissions.modal.editTitle') : t('superAdmin.permissions.modal.createTitle')}
+          onClose={() => setIsModalOpen(false)}
+        >
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">{t('superAdmin.permissions.fields.id')}</label>
@@ -151,7 +157,7 @@ export const PermissionsManagerPage: React.FC = () => {
                   type="text"
                   value={formData.id}
                   onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   disabled={!!editingPermission}
                   placeholder={t('superAdmin.permissions.placeholders.id')}
@@ -164,7 +170,7 @@ export const PermissionsManagerPage: React.FC = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   required
                   placeholder={t('superAdmin.permissions.placeholders.name')}
                 />
@@ -175,7 +181,7 @@ export const PermissionsManagerPage: React.FC = () => {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   rows={3}
                   placeholder={t('superAdmin.permissions.placeholders.description')}
                 />
@@ -185,21 +191,20 @@ export const PermissionsManagerPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
                 >
                   {t('superAdmin.permissions.actions.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="rounded-md bg-slate-950 px-4 py-2 text-sm text-white hover:bg-slate-800"
                 >
                   {editingPermission ? t('superAdmin.permissions.actions.update') : t('superAdmin.permissions.actions.create')}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </SuperAdminModal>
       )}
-    </div>
+    </SuperAdminPage>
   );
 };

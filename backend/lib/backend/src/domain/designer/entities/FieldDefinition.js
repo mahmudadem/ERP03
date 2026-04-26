@@ -8,7 +8,7 @@ exports.FieldDefinition = void 0;
  * Schema Version 2: Includes explicit posting classification.
  */
 class FieldDefinition {
-    constructor(id, name, label, type, required, readOnly, isPosting, postingRole, schemaVersion = 2, visibilityRules = [], validationRules = [], defaultValue) {
+    constructor(id, name, label, type, required, readOnly, isPosting, postingRole, schemaVersion = 2, visibilityRules = [], validationRules = [], defaultValue, fieldClass = 'system_optional', bindingTarget = 'payload', nameLocked = false, computed = false) {
         this.id = id;
         this.name = name;
         this.label = label;
@@ -21,6 +21,10 @@ class FieldDefinition {
         this.visibilityRules = visibilityRules;
         this.validationRules = validationRules;
         this.defaultValue = defaultValue;
+        this.fieldClass = fieldClass;
+        this.bindingTarget = bindingTarget;
+        this.nameLocked = nameLocked;
+        this.computed = computed;
     }
 }
 exports.FieldDefinition = FieldDefinition;

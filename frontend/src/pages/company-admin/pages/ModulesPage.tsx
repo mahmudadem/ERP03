@@ -6,18 +6,52 @@ import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useCompanyModules } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 
 export const ModulesPage: React.FC = () => {
   const { t } = useTranslation('common');
+  const { refreshPermissions } = useCompanyAccess();
   const { modules, activeModules, isLoading, enableModule, disableModule, isEnabling, isDisabling } = useCompanyModules();
 
-  const handleToggle = (moduleName: string, isEnabled: boolean) => {
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    moduleId: string;
+    moduleName: string;
+    isEnabled: boolean;
+  }>({
+    isOpen: false,
+    moduleId: '',
+    moduleName: '',
+    isEnabled: false,
+  });
+
+  const handleToggle = (moduleId: string, moduleName: string, isEnabled: boolean) => {
     if (isEnabled) {
-      if (window.confirm(t('companyAdmin.modules.confirmDisable', { moduleName }))) {
-        disableModule({ moduleName });
-      }
+      setConfirmDialog({
+        isOpen: true,
+        moduleId,
+        moduleName,
+        isEnabled,
+      });
     } else {
-      enableModule({ moduleName });
+      enableModule({ moduleName: moduleId }, {
+        onSuccess: () => refreshPermissions()
+      });
+    }
+  };
+
+  const handleConfirmToggle = () => {
+    const { moduleId, isEnabled } = confirmDialog;
+    if (isEnabled) {
+      disableModule({ moduleName: moduleId }, {
+        onSuccess: () => {
+          refreshPermissions();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      });
     }
   };
 
@@ -82,7 +116,7 @@ export const ModulesPage: React.FC = () => {
                   <Button
                     variant={isEnabled ? 'secondary' : 'primary'}
                     className="w-full"
-                    onClick={() => handleToggle(module.id, isEnabled)}
+                    onClick={() => handleToggle(module.id, module.name, isEnabled)}
                     disabled={isMandatory || isEnabling || isDisabling}
                   >
                     {isEnabling || isDisabling ? t('companyAdmin.modules.processing') : isEnabled ? t('companyAdmin.modules.disableModule') : t('companyAdmin.modules.enableModule')}
@@ -93,6 +127,25 @@ export const ModulesPage: React.FC = () => {
           })}
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={t('companyAdmin.modules.disableModule')}
+        message={
+          <div className="space-y-3">
+            <p>{t('companyAdmin.modules.confirmDisable', { moduleName: confirmDialog.moduleName })}</p>
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-xs text-amber-700 border border-amber-100">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <p>Disabling this module will hide all its related menu items and features from the sidebar for all users immediately.</p>
+            </div>
+          </div>
+        }
+        confirmLabel={t('companyAdmin.modules.disableModule')}
+        cancelLabel={t('companyAdmin.shared.cancel')}
+        onConfirm={handleConfirmToggle}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        isConfirming={isDisabling}
+        tone="danger"
+      />
     </CompanyAdminLayout>
   );
 };

@@ -287,6 +287,14 @@ const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PER
   })),
 });
 
+const makeCompanyModuleRepo = (initialized = true) => ({
+  get: jest.fn(async () => ({
+    companyId: COMPANY_ID,
+    moduleKey: 'accounting',
+    initialized,
+  })),
+});
+
 const makeAccountingPostingService = (voucherRepo?: any, ledgerRepo?: any) =>
   new SubledgerVoucherPostingService(
     (voucherRepo || {
@@ -336,6 +344,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       uomConversionRepo as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
@@ -382,6 +391,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       uomConversionRepo as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
@@ -417,6 +427,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       uomConversionRepo as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
@@ -452,6 +463,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       uomConversionRepo as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       makeAccountingPostingService(voucherRepo, ledgerRepo),
       transactionManager as any
     );
@@ -499,6 +511,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -551,6 +564,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -603,6 +617,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
@@ -648,6 +663,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -696,6 +712,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -757,6 +774,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
+      makeCompanyModuleRepo() as any,
       new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
@@ -782,6 +800,100 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     expect(voucher.metadata.sourceModule).toBe('purchases');
     expect(voucher.metadata.sourceType).toBe('PURCHASE_INVOICE');
     expect(voucher.metadata.sourceId).toBe(pi.id);
+  });
+
+  it('11) PostGRN skips GL voucher when accounting module is not initialized', async () => {
+    const settings = makeSettings('CONTROLLED');
+    const item = makeItem('stock-11', { trackInventory: true });
+    const po = makePO({ id: 'po-11', item, orderedQty: 10, receivedQty: 0 });
+    const grn = makeGRN({ id: 'grn-11', purchaseOrderId: po.id, item, receivedQty: 2 });
+
+    const transactionManager = makeTransactionManager();
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => ({ ...voucher, id: 'v-grn-11' })), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
+    const grnStore = new Map([[grn.id, grn]]);
+
+    const useCase = new PostGoodsReceiptUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERPETUAL') as any,
+      {
+        getById: jest.fn(async (_companyId: string, receiptId: string) => grnStore.get(receiptId) ?? null),
+        update: jest.fn(async (entity: GoodsReceipt) => { grnStore.set(entity.id, entity); }),
+      } as any,
+      {
+        getById: jest.fn(async () => po),
+        update: jest.fn(async () => undefined),
+      } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo(false) as any,
+      makeAccountingPostingService(voucherRepo, ledgerRepo),
+      transactionManager as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, grn.id);
+
+    expect(posted.status).toBe('POSTED');
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+    expect(posted.voucherId).toBeNull();
+  });
+
+  it('12) PostPI skips GL voucher when createAccountingEffect is false', async () => {
+    const settings = makeSettings('SIMPLE');
+    const vendor = makeVendor();
+    const stockItem = makeItem('stock-12', { trackInventory: true, inventoryAssetAccountId: 'INV-1200' });
+    const pi = makePI({
+      id: 'pi-12',
+      item: stockItem,
+      invoicedQty: 2,
+      unitPriceDoc: 15,
+      warehouseId: 'wh-1',
+    });
+
+    const inventoryService = makeInventoryService();
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) };
+    const invoiceStore = new Map([[pi.id, pi]]);
+
+    const useCase = new PostPurchaseInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, invoiceId: string) => invoiceStore.get(invoiceId) ?? null),
+        update: jest.fn(async (entity: PurchaseInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getItem: jest.fn(async () => stockItem) } as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, pi.id, false);
+
+    expect(posted.status).toBe('POSTED');
+    expect(inventoryService.processIN).toHaveBeenCalledTimes(1);
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+    expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
+    expect(posted.voucherId).toBeNull();
   });
 });
 

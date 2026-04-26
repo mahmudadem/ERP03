@@ -9,14 +9,18 @@ import {
   Shield, 
   Layers, 
   Package, 
+  FileText,
   Crown,
   LogOut,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Palette
 } from 'lucide-react';
 import { PageTitleManager } from '../components/common/PageTitleManager';
 import { useTranslation } from 'react-i18next';
+import { SuperAdminThemeProvider } from '../modules/super-admin/theme/SuperAdminThemeProvider';
 
 interface NavItem {
   path: string;
@@ -40,6 +44,8 @@ export const SuperAdminShell: React.FC = () => {
     { path: '/super-admin/permissions-registry', label: t('shell.superAdmin.nav.permissions'), icon: Shield },
     { path: '/super-admin/bundles-manager', label: t('shell.superAdmin.nav.bundles'), icon: Package },
     { path: '/super-admin/plans', label: t('shell.superAdmin.nav.plans'), icon: Crown },
+    { path: '/super-admin/voucher-templates', label: t('shell.superAdmin.nav.voucherTemplates', { defaultValue: 'Voucher Templates' }), icon: FileText },
+    { path: '/super-admin/appearance', label: t('shell.superAdmin.nav.appearance', { defaultValue: 'Appearance Lab' }), icon: Palette },
   ];
 
   const handleLogout = async () => {
@@ -50,42 +56,43 @@ export const SuperAdminShell: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <SuperAdminThemeProvider>
+    <div className="min-h-screen flex bg-[var(--sa-bg)] text-[var(--sa-text)]">
       <PageTitleManager />
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:sticky top-0 left-0 h-screen bg-slate-900/95 backdrop-blur-xl border-r border-purple-500/20
+          fixed lg:sticky top-0 left-0 h-screen border-r border-[var(--sa-border)] bg-[var(--sa-sidebar-bg)]
           transition-all duration-300 z-40
           ${isSidebarOpen ? 'w-64' : 'w-0 lg:w-20'}
         `}
       >
         <div className="h-full flex flex-col">
           {/* Header */}
-          <div className="p-6 border-b border-purple-500/20">
+          <div className="border-b border-[var(--sa-border)] p-5">
             {isSidebarOpen ? (
               <div>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Crown className="w-6 h-6 text-white" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[var(--sa-radius)] bg-[var(--sa-accent)]">
+                    <Crown className="h-5 w-5 text-[var(--sa-accent-contrast)]" />
                   </div>
-                  <div>
-                    <h1 className="text-white font-bold text-lg">{t('shell.superAdmin.title')}</h1>
-                    <p className="text-purple-300 text-xs">{t('shell.superAdmin.systemDashboard')}</p>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-base font-semibold text-[var(--sa-sidebar-text)]">{t('shell.superAdmin.title')}</h1>
+                    <p className="text-xs text-[var(--sa-sidebar-muted)]">{t('shell.superAdmin.systemDashboard')}</p>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="hidden lg:flex justify-center">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-[var(--sa-radius)] bg-[var(--sa-accent)]">
+                  <Crown className="h-5 w-5 text-[var(--sa-accent-contrast)]" />
                 </div>
               </div>
             )}
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
@@ -95,14 +102,14 @@ export const SuperAdminShell: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all group
+                    flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors group
                     ${isActive
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50'
-                      : 'text-slate-300 hover:bg-slate-800/50 hover:text-white'
+                      ? 'bg-[var(--sa-accent)] text-[var(--sa-accent-contrast)]'
+                      : 'text-[var(--sa-sidebar-text)] hover:bg-[var(--sa-sidebar-hover)]'
                     }
                   `}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-purple-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--sa-accent-contrast)]' : 'text-[var(--sa-sidebar-muted)]'}`} />
                   {isSidebarOpen && (
                     <span className="font-medium">{item.label}</span>
                   )}
@@ -115,30 +122,30 @@ export const SuperAdminShell: React.FC = () => {
           </nav>
 
           {/* User Section */}
-          <div className="p-4 border-t border-purple-500/20">
+          <div className="border-t border-[var(--sa-border)] p-3">
             {isSidebarOpen ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 px-3 py-2 bg-slate-800/50 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                <div className="flex items-center gap-3 rounded-[var(--sa-radius)] bg-[var(--sa-sidebar-hover)] px-3 py-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--sa-accent)] text-sm font-semibold text-[var(--sa-accent-contrast)]">
                     {user?.email?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{user?.email}</p>
-                    <p className="text-purple-300 text-xs">{t('shell.superAdmin.superAdministrator')}</p>
+                    <p className="truncate text-sm font-medium text-[var(--sa-sidebar-text)]">{user?.email}</p>
+                    <p className="text-xs text-[var(--sa-sidebar-muted)]">{t('shell.superAdmin.superAdministrator')}</p>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span className="font-medium">{t('shell.superAdmin.logout')}</span>
+                  <span>{t('shell.superAdmin.logout')}</span>
                 </button>
               </div>
             ) : (
               <div className="hidden lg:block space-y-3">
                 <div className="flex justify-center">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--sa-accent)] text-sm font-semibold text-[var(--sa-accent-contrast)]">
                     {user?.email?.charAt(0).toUpperCase()}
                   </div>
                 </div>
@@ -157,7 +164,7 @@ export const SuperAdminShell: React.FC = () => {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-900 text-white rounded-lg shadow-lg"
+        className="fixed left-4 top-4 z-50 rounded-[var(--sa-radius)] bg-[var(--sa-accent)] p-2 text-[var(--sa-accent-contrast)] shadow-lg lg:hidden"
       >
         {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
@@ -165,18 +172,23 @@ export const SuperAdminShell: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-slate-900/50 backdrop-blur-md border-b border-purple-500/20 px-6 py-4">
+        <header className="border-b border-[var(--sa-border)] bg-[var(--sa-surface)] px-5 py-3 lg:px-8">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="hidden lg:flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
+              className="hidden items-center gap-2 rounded-md px-2 py-1.5 text-[var(--sa-muted)] transition-colors hover:bg-[var(--sa-surface-muted)] hover:text-[var(--sa-text)] lg:flex"
             >
               <Menu className="w-5 h-5" />
             </button>
             
-            <div className="flex items-center gap-2 ml-auto">
-              <div className="px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-                <span className="text-purple-300 text-sm font-medium">{t('shell.superAdmin.systemAdminPanel')}</span>
+            <div className="ml-4 hidden max-w-md flex-1 items-center gap-2 rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface-muted)] px-3 py-2 text-sm text-[var(--sa-muted)] md:flex">
+              <Search className="h-4 w-4" />
+              <span>System owner workspace</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <div className="rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface-muted)] px-3 py-1">
+                <span className="text-sm font-medium text-[var(--sa-text)]">{t('shell.superAdmin.systemAdminPanel')}</span>
               </div>
             </div>
           </div>
@@ -196,5 +208,6 @@ export const SuperAdminShell: React.FC = () => {
         />
       )}
     </div>
+    </SuperAdminThemeProvider>
   );
 };

@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { ChevronRight, GripVertical, Search, Trash2 } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import { SuperAdminHeader, SuperAdminLoading, SuperAdminPage, SuperAdminPanel } from '../components/SuperAdminPage';
 
 const EditModulePermissionsPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -94,27 +95,26 @@ const EditModulePermissionsPage: React.FC = () => {
     }
   };
 
-  if (loading || !definition) return <div className="p-8 text-center text-gray-500">{t('superAdmin.modulePermissionsEditor.loading')}</div>;
+  if (loading || !definition) return <SuperAdminPage><SuperAdminLoading label={t('superAdmin.modulePermissionsEditor.loading')} /></SuperAdminPage>;
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">{t('superAdmin.modulePermissionsEditor.title')}</h1>
-          <p className="text-gray-500">{t('superAdmin.modulePermissionsEditor.moduleLabel')}: <span className="font-mono text-blue-600">{moduleId}</span></p>
-        </div>
-        <Button onClick={save} className="bg-green-600 hover:bg-green-700">{t('superAdmin.modulePermissionsEditor.actions.saveChanges')}</Button>
-      </div>
+    <SuperAdminPage className="h-[calc(100vh-4rem)]">
+      <SuperAdminHeader
+        title={t('superAdmin.modulePermissionsEditor.title')}
+        description={<>{t('superAdmin.modulePermissionsEditor.moduleLabel')}: <span className="font-mono text-slate-700">{moduleId}</span></>}
+        meta="Module permissions"
+        actions={<Button onClick={save}>{t('superAdmin.modulePermissionsEditor.actions.saveChanges')}</Button>}
+      />
 
       <div className="flex-1 grid grid-cols-2 gap-6 min-h-0">
         {/* LEFT: Source (Registry) */}
-        <div className="bg-white rounded-lg shadow border flex flex-col min-h-0">
-          <div className="p-4 border-b bg-gray-50">
-            <h2 className="font-semibold text-gray-700 mb-2">{t('superAdmin.modulePermissionsEditor.availablePermissions')}</h2>
+        <SuperAdminPanel className="flex min-h-0 flex-col">
+          <div className="border-b border-slate-200 bg-slate-50 p-4">
+            <h2 className="mb-2 font-semibold text-slate-800">{t('superAdmin.modulePermissionsEditor.availablePermissions')}</h2>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input 
-                className="w-full pl-9 pr-4 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-4 text-sm outline-none focus:border-slate-500"
                 placeholder={t('superAdmin.modulePermissionsEditor.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -124,7 +124,7 @@ const EditModulePermissionsPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scroll">
             {Object.entries(groupedAvailable).map(([group, perms]) => (
               <div key={group}>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{group}</h3>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{group}</h3>
                 <div className="space-y-2">
                   {perms.map(perm => (
                     <div 
@@ -132,11 +132,11 @@ const EditModulePermissionsPage: React.FC = () => {
                       draggable
                       onDragStart={(e) => handleDragStart(e, perm)}
                       onClick={() => addPermission(perm)}
-                      className="group flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded hover:border-blue-300 hover:bg-blue-50 cursor-grab active:cursor-grabbing transition-all"
+                      className="group flex cursor-grab items-center justify-between rounded-md border border-slate-200 bg-slate-50 p-3 transition-colors hover:border-slate-300 hover:bg-white active:cursor-grabbing"
                     >
                       <div>
-                        <div className="font-medium text-sm text-gray-800">{perm.name}</div>
-                        <div className="font-mono text-xs text-gray-500">{perm.id}</div>
+                        <div className="text-sm font-medium text-slate-900">{perm.name}</div>
+                        <div className="font-mono text-xs text-slate-500">{perm.id}</div>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500" />
                     </div>
@@ -153,13 +153,13 @@ const EditModulePermissionsPage: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </SuperAdminPanel>
 
         {/* RIGHT: Target (Module) */}
-        <div className="bg-white rounded-lg shadow border flex flex-col min-h-0">
-          <div className="p-4 border-b bg-blue-50/50">
-            <h2 className="font-semibold text-gray-700">{t('superAdmin.modulePermissionsEditor.assignedPermissions')}</h2>
-            <p className="text-xs text-gray-500 mt-1">{t('superAdmin.modulePermissionsEditor.dragHint')}</p>
+        <SuperAdminPanel className="flex min-h-0 flex-col">
+          <div className="border-b border-slate-200 bg-slate-50 p-4">
+            <h2 className="font-semibold text-slate-800">{t('superAdmin.modulePermissionsEditor.assignedPermissions')}</h2>
+            <p className="mt-1 text-xs text-slate-500">{t('superAdmin.modulePermissionsEditor.dragHint')}</p>
           </div>
           
           <div 
@@ -170,11 +170,11 @@ const EditModulePermissionsPage: React.FC = () => {
             {definition.permissions && definition.permissions.length > 0 ? (
               <div className="space-y-2">
                 {definition.permissions.map((perm: any) => (
-                  <div key={perm.id} className="flex items-center gap-3 p-3 bg-white border rounded shadow-sm group">
+                  <div key={perm.id} className="group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-3">
                     <GripVertical className="w-4 h-4 text-gray-300 cursor-move" />
                     <div className="flex-1">
-                      <div className="font-medium text-sm">{perm.label || perm.id}</div>
-                      <div className="font-mono text-xs text-gray-500">{perm.id}</div>
+                      <div className="text-sm font-medium text-slate-900">{perm.label || perm.id}</div>
+                      <div className="font-mono text-xs text-slate-500">{perm.id}</div>
                     </div>
                     <button 
                       onClick={() => removePermission(perm.id)}
@@ -192,10 +192,10 @@ const EditModulePermissionsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="p-4 border-t bg-gray-50 space-y-2">
-             <div className="font-semibold text-sm text-gray-700">{t('superAdmin.modulePermissionsEditor.autoAttach')}</div>
+          <div className="space-y-2 border-t border-slate-200 bg-slate-50 p-4">
+             <div className="text-sm font-semibold text-slate-700">{t('superAdmin.modulePermissionsEditor.autoAttach')}</div>
              <input
-               className="w-full border rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"
+               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500"
                placeholder={t('superAdmin.modulePermissionsEditor.autoAttachPlaceholder')}
                value={(definition.autoAttachToRoles || []).join(', ')}
                onChange={(e) =>
@@ -206,9 +206,9 @@ const EditModulePermissionsPage: React.FC = () => {
                }
              />
           </div>
-        </div>
+        </SuperAdminPanel>
       </div>
-    </div>
+    </SuperAdminPage>
   );
 };
 

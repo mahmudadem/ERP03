@@ -78,12 +78,12 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       isSystemGenerated: form.isSystemGenerated,
       isLocked: form.isLocked,
       enabled: form.enabled,
-      headerFields: form.headerFields,
-      tableColumns: form.tableColumns,
-      layout: form.layout || {},
-      uiModeOverrides: form.uiModeOverrides || null,
-      rules: form.rules || [],
-      actions: form.actions || [],
+      headerFields: this.stripUndefinedDeep(form.headerFields || []),
+      tableColumns: this.stripUndefinedDeep(form.tableColumns || []),
+      layout: this.stripUndefinedDeep(form.layout || {}),
+      uiModeOverrides: this.stripUndefinedDeep(form.uiModeOverrides || null),
+      rules: this.stripUndefinedDeep(form.rules || []),
+      actions: this.stripUndefinedDeep(form.actions || []),
       isMultiLine: form.isMultiLine ?? true,
       tableStyle: form.tableStyle || 'web',
       defaultCurrency: form.defaultCurrency || null,
@@ -95,54 +95,27 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
     };
   }
 
-  private static readonly SYSTEM_COMPANY_ID = 'SYSTEM';
-  private static readonly SYSTEM_COLLECTION_NAME = 'voucher_types';
-  private static readonly SYSTEM_METADATA_COLLECTION = 'system_metadata';
-
-  private getSystemCollection() {
-    return this.db.collection(FirestoreVoucherFormRepository.SYSTEM_METADATA_COLLECTION)
-      .doc(FirestoreVoucherFormRepository.SYSTEM_COLLECTION_NAME)
-      .collection('items');
-  }
-
-  private toSystemDomain(data: any): VoucherFormDefinition {
-    return this.toDomain({
-      ...data,
-      typeId: data.code || data.id,
-      isSystemGenerated: true
-    });
-  }
-
-  private mergeMissingSystemForms(
-    companyForms: VoucherFormDefinition[],
-    systemForms: VoucherFormDefinition[]
-  ): VoucherFormDefinition[] {
-    const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
-    const seenKeys = new Set<string>();
-
-    companyForms.forEach((form) => {
-      [form.id, form.code, form.typeId].forEach((value) => {
-        const key = normalize(value);
-        if (key) seenKeys.add(key);
-      });
-    });
-
-    const merged = [...companyForms];
-
-    for (const form of systemForms) {
-      const candidateKeys = [form.id, form.code, form.typeId]
-        .map((value) => normalize(value))
-        .filter(Boolean);
-
-      if (candidateKeys.some((key) => seenKeys.has(key))) {
-        continue;
-      }
-
-      merged.push(form);
-      candidateKeys.forEach((key) => seenKeys.add(key));
+  private stripUndefinedDeep<T>(value: T): T {
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .map((item) => this.stripUndefinedDeep(item))
+        .filter((item) => item !== undefined);
+      return cleaned as unknown as T;
     }
 
-    return merged;
+    if (value && typeof value === 'object') {
+      const proto = Object.getPrototypeOf(value);
+      if (proto === Object.prototype || proto === null) {
+        const cleaned: Record<string, any> = {};
+        for (const [key, raw] of Object.entries(value as Record<string, any>)) {
+          if (raw === undefined) continue;
+          cleaned[key] = this.stripUndefinedDeep(raw);
+        }
+        return cleaned as unknown as T;
+      }
+    }
+
+    return value;
   }
 
   async create(form: VoucherFormDefinition): Promise<VoucherFormDefinition> {
@@ -162,12 +135,6 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         if (doc.exists) {
           return this.toDomain({ ...doc.data(), id: doc.id });
         }
-      }
-
-      // Fallback to SYSTEM templates if not found in company collection
-      const systemDoc = await this.getSystemCollection().doc(formId).get();
-      if (systemDoc.exists) {
-        return this.toSystemDomain({ ...systemDoc.data(), id: systemDoc.id });
       }
 
       return null;
@@ -190,17 +157,6 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         });
       }
 
-      // If no company forms found for this type, check system
-      if (allForms.length === 0) {
-        const systemSnapshot = await this.getSystemCollection()
-          .where('code', '==', typeId)
-          .get();
-        
-        systemSnapshot.docs.forEach(doc => {
-          allForms.push(this.toSystemDomain({ ...doc.data(), id: doc.id }));
-        });
-      }
-
       return allForms;
     } catch (error) {
       throw new InfrastructureError('Error getting voucher forms by type', error);
@@ -217,22 +173,6 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
           .get();
         
         if (!snapshot.empty) return this.toDomain({ ...snapshot.docs[0].data(), id: snapshot.docs[0].id });
-      }
-
-      // Fallback to system default
-      const systemSnapshot = await this.getSystemCollection()
-        .where('code', '==', typeId)
-        .limit(1)
-        .get();
-      
-      if (!systemSnapshot.empty) {
-        return this.toDomain({
-          ...systemSnapshot.docs[0].data(),
-          id: systemSnapshot.docs[0].id,
-          typeId: systemSnapshot.docs[0].data().code || systemSnapshot.docs[0].id,
-          isDefault: true,
-          isSystemGenerated: true
-        });
       }
 
       return null;
@@ -252,10 +192,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         });
       }
 
-      const systemSnapshot = await this.getSystemCollection().get();
-      const systemForms = systemSnapshot.docs.map(doc => this.toSystemDomain({ ...doc.data(), id: doc.id }));
-
-      return this.mergeMissingSystemForms(companyForms, systemForms);
+      return companyForms;
     } catch (error) {
       throw new InfrastructureError('Error getting all voucher forms', error);
     }
@@ -288,6 +225,8 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       Object.keys(cleanUpdates).forEach(key => {
         if (cleanUpdates[key] === undefined) {
           delete cleanUpdates[key];
+        } else {
+          cleanUpdates[key] = this.stripUndefinedDeep(cleanUpdates[key]);
         }
       });
       

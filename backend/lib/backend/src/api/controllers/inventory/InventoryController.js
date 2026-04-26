@@ -22,6 +22,7 @@ const DashboardUseCases_1 = require("../../../application/inventory/use-cases/Da
 const StockReservationUseCases_1 = require("../../../application/inventory/use-cases/StockReservationUseCases");
 const CostQueryUseCases_1 = require("../../../application/inventory/use-cases/CostQueryUseCases");
 const ReferenceQueryUseCases_1 = require("../../../application/inventory/use-cases/ReferenceQueryUseCases");
+const ConfigureInventoryFinancialIntegrationUseCase_1 = require("../../../application/inventory/use-cases/ConfigureInventoryFinancialIntegrationUseCase");
 const SubledgerVoucherPostingService_1 = require("../../../application/accounting/services/SubledgerVoucherPostingService");
 const bindRepositories_1 = require("../../../infrastructure/di/bindRepositories");
 const InventoryDTOs_1 = require("../../dtos/InventoryDTOs");
@@ -1031,7 +1032,7 @@ class InventoryController {
             const userId = InventoryController.getUserId(req);
             const movementUseCase = InventoryController.buildMovementUseCase();
             const accountingPostingService = InventoryController.buildAccountingPostingService();
-            const useCase = new StockAdjustmentUseCases_1.PostStockAdjustmentUseCase(bindRepositories_1.diContainer.stockAdjustmentRepository, bindRepositories_1.diContainer.itemRepository, movementUseCase, bindRepositories_1.diContainer.transactionManager, accountingPostingService);
+            const useCase = new StockAdjustmentUseCases_1.PostStockAdjustmentUseCase(bindRepositories_1.diContainer.stockAdjustmentRepository, bindRepositories_1.diContainer.itemRepository, movementUseCase, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService);
             const adjustment = await useCase.execute(companyId, req.params.id, userId);
             res.json({
                 success: true,
@@ -1230,6 +1231,28 @@ class InventoryController {
             res.json({
                 success: true,
                 data: result,
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async configureFinancialIntegration(req, res, next) {
+        try {
+            const companyId = InventoryController.getCompanyId(req);
+            const useCase = new ConfigureInventoryFinancialIntegrationUseCase_1.ConfigureInventoryFinancialIntegrationUseCase(bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.stockMovementRepository);
+            await useCase.execute({
+                companyId,
+                accountingMethod: req.body.accountingMethod,
+                accountingMode: req.body.accountingMode,
+                defaultInventoryAssetAccountId: req.body.defaultInventoryAssetAccountId,
+                defaultCOGSAccountId: req.body.defaultCOGSAccountId,
+                accountingStartDate: req.body.accountingStartDate,
+            });
+            const settings = await bindRepositories_1.diContainer.inventorySettingsRepository.getSettings(companyId);
+            res.json({
+                success: true,
+                data: settings ? InventoryDTOs_1.InventoryDTOMapper.toSettingsDTO(settings) : null,
             });
         }
         catch (error) {

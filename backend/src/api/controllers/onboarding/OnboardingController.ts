@@ -174,6 +174,8 @@ export class OnboardingController {
         diContainer.rbacCompanyUserRepository,
         diContainer.companyRoleRepository,
         resolver,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository,
         diContainer.bundleRegistryRepository,
         diContainer.companyModuleRepository,
         diContainer.companySettingsRepository

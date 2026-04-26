@@ -10,15 +10,16 @@ exports.CreateCompanyUseCase = void 0;
 const Company_1 = require("../../../domain/core/entities/Company");
 const CompanyModule_1 = require("../../../domain/company/entities/CompanyModule");
 const ApiError_1 = require("../../../api/errors/ApiError");
+const CompanyVoucherTemplateSyncService_1 = require("../../system/services/CompanyVoucherTemplateSyncService");
 class CreateCompanyUseCase {
-    constructor(companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, 
-    // private voucherTypeRepo: IVoucherTypeDefinitionRepository, // TODO: Re-enable when implementing voucher template copy
-    bundleRepo, companyModuleRepo, companySettingsRepo) {
+    constructor(companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo, voucherFormRepo, bundleRepo, companyModuleRepo, companySettingsRepo) {
         this.companyRepo = companyRepo;
         this.userRepo = userRepo;
         this.rbacCompanyUserRepo = rbacCompanyUserRepo;
         this.rbacCompanyRoleRepo = rbacCompanyRoleRepo;
         this.rolePermissionResolver = rolePermissionResolver;
+        this.voucherTypeRepo = voucherTypeRepo;
+        this.voucherFormRepo = voucherFormRepo;
         this.bundleRepo = bundleRepo;
         this.companyModuleRepo = companyModuleRepo;
         this.companySettingsRepo = companySettingsRepo;
@@ -126,23 +127,14 @@ class CreateCompanyUseCase {
             await this.companyModuleRepo.batchCreate(moduleRecords);
             modulesCreated = true;
             console.log('[CreateCompanyUseCase] Module records persisted successfully');
-            // Copy system voucher templates (DISABLED - method doesn't exist yet)
-            // TODO: Re-enable when voucherTypeRepo.createVoucherType is available
-            console.log('[CreateCompanyUseCase] Skipping voucher template copy (not implemented)');
-            // try {
-            //   const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
-            //   for (const template of systemTemplates) {
-            //     const newTemplate = {
-            //       ...template,
-            //       id: this.generateId('vtd'),
-            //       companyId: company.id,
-            //       isSystemTemplate: false
-            //     };
-            //     await this.voucherTypeRepo.createVoucherType(newTemplate);
-            //   }
-            // } catch (templateError) {
-            //   console.warn('[CreateCompanyUseCase] Failed to copy voucher templates (non-critical):', templateError);
-            // }
+            const syncResult = await (0, CompanyVoucherTemplateSyncService_1.syncCompanyVoucherTemplatesFromSystem)({
+                companyId: company.id,
+                modules: finalModules,
+                createdBy: input.userId,
+                voucherTypeRepo: this.voucherTypeRepo,
+                voucherFormRepo: this.voucherFormRepo,
+            });
+            console.log('[CreateCompanyUseCase] Synced voucher templates:', syncResult);
             console.log('[CreateCompanyUseCase] Company creation completed successfully');
             return { companyId: company.id };
         }

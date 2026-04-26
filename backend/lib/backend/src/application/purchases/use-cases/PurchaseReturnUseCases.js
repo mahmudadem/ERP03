@@ -272,7 +272,7 @@ class CreatePurchaseReturnUseCase {
 }
 exports.CreatePurchaseReturnUseCase = CreatePurchaseReturnUseCase;
 class PostPurchaseReturnUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.purchaseReturnRepo = purchaseReturnRepo;
@@ -286,15 +286,17 @@ class PostPurchaseReturnUseCase {
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id) {
+    async execute(companyId, id, createAccountingEffect = true) {
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
         const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
         const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
         if (!purchaseReturn)
             throw new Error(`Purchase return not found: ${id}`);
@@ -581,26 +583,28 @@ class PostPurchaseReturnUseCase {
                         },
                     });
                 }
-                const voucher = await this.accountingPostingService.postInTransaction({
-                    companyId,
-                    voucherType: VoucherTypes_1.VoucherType.PURCHASE_RETURN,
-                    voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
-                    date: purchaseReturn.returnDate,
-                    description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
-                    currency: purchaseReturn.currency,
-                    exchangeRate: purchaseReturn.exchangeRate,
-                    lines: voucherLines,
-                    metadata: {
-                        sourceModule: 'purchases',
-                        sourceType: 'PURCHASE_RETURN',
-                        sourceId: purchaseReturn.id,
-                        originType: 'purchase_return',
-                    },
-                    createdBy: purchaseReturn.createdBy,
-                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
-                    reference: purchaseReturn.returnNumber,
-                }, transaction);
-                purchaseReturn.voucherId = voucher.id;
+                if (shouldPostAccounting) {
+                    const voucher = await this.accountingPostingService.postInTransaction({
+                        companyId,
+                        voucherType: VoucherTypes_1.VoucherType.PURCHASE_RETURN,
+                        voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+                        date: purchaseReturn.returnDate,
+                        description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+                        currency: purchaseReturn.currency,
+                        exchangeRate: purchaseReturn.exchangeRate,
+                        lines: voucherLines,
+                        metadata: {
+                            sourceModule: 'purchases',
+                            sourceType: 'PURCHASE_RETURN',
+                            sourceId: purchaseReturn.id,
+                            originType: 'purchase_return',
+                        },
+                        createdBy: purchaseReturn.createdBy,
+                        postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
+                        reference: purchaseReturn.returnNumber,
+                    }, transaction);
+                    purchaseReturn.voucherId = voucher.id;
+                }
                 if (isAfterInvoice) {
                     const invoice = purchaseInvoice;
                     invoice.outstandingAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(invoice.outstandingAmountBase - purchaseReturn.grandTotalBase);
@@ -626,26 +630,28 @@ class PostPurchaseReturnUseCase {
                         vendorId: purchaseReturn.vendorId,
                     },
                 });
-                const voucher = await this.accountingPostingService.postInTransaction({
-                    companyId,
-                    voucherType: VoucherTypes_1.VoucherType.PURCHASE_RETURN,
-                    voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
-                    date: purchaseReturn.returnDate,
-                    description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
-                    currency: purchaseReturn.currency,
-                    exchangeRate: purchaseReturn.exchangeRate,
-                    lines: voucherLines,
-                    metadata: {
-                        sourceModule: 'purchases',
-                        sourceType: 'PURCHASE_RETURN',
-                        sourceId: purchaseReturn.id,
-                        originType: 'purchase_return',
-                    },
-                    createdBy: purchaseReturn.createdBy,
-                    postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
-                    reference: purchaseReturn.returnNumber,
-                }, transaction);
-                purchaseReturn.voucherId = voucher.id;
+                if (shouldPostAccounting) {
+                    const voucher = await this.accountingPostingService.postInTransaction({
+                        companyId,
+                        voucherType: VoucherTypes_1.VoucherType.PURCHASE_RETURN,
+                        voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+                        date: purchaseReturn.returnDate,
+                        description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+                        currency: purchaseReturn.currency,
+                        exchangeRate: purchaseReturn.exchangeRate,
+                        lines: voucherLines,
+                        metadata: {
+                            sourceModule: 'purchases',
+                            sourceType: 'PURCHASE_RETURN',
+                            sourceId: purchaseReturn.id,
+                            originType: 'purchase_return',
+                        },
+                        createdBy: purchaseReturn.createdBy,
+                        postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
+                        reference: purchaseReturn.returnNumber,
+                    }, transaction);
+                    purchaseReturn.voucherId = voucher.id;
+                }
             }
             else {
                 purchaseReturn.voucherId = null;
@@ -736,6 +742,10 @@ class PostPurchaseReturnUseCase {
         }
         return undefined;
     }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
+    }
 }
 exports.PostPurchaseReturnUseCase = PostPurchaseReturnUseCase;
 class UpdatePurchaseReturnUseCase {
@@ -818,22 +828,24 @@ class UpdatePurchaseReturnUseCase {
 }
 exports.UpdatePurchaseReturnUseCase = UpdatePurchaseReturnUseCase;
 class UnpostPurchaseReturnUseCase {
-    constructor(purchaseReturnRepo, purchaseInvoiceRepo, purchaseOrderRepo, goodsReceiptRepo, inventoryService, accountingPostingService, transactionManager) {
+    constructor(purchaseReturnRepo, purchaseInvoiceRepo, purchaseOrderRepo, goodsReceiptRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
         this.purchaseReturnRepo = purchaseReturnRepo;
         this.purchaseInvoiceRepo = purchaseInvoiceRepo;
         this.purchaseOrderRepo = purchaseOrderRepo;
         this.goodsReceiptRepo = goodsReceiptRepo;
         this.inventoryService = inventoryService;
+        this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
         this.transactionManager = transactionManager;
     }
-    async execute(companyId, id, currentUser) {
+    async execute(companyId, id, currentUser, createAccountingEffect = true) {
         const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
         if (!purchaseReturn)
             throw new Error(`Purchase return not found: ${id}`);
         if (purchaseReturn.status !== 'POSTED') {
             throw new Error('Only POSTED purchase returns can be unposted');
         }
+        const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         let purchaseInvoice = null;
         let purchaseOrder = null;
         if (purchaseReturn.purchaseInvoiceId) {
@@ -843,9 +855,11 @@ class UnpostPurchaseReturnUseCase {
             purchaseOrder = await this.purchaseOrderRepo.getById(companyId, purchaseReturn.purchaseOrderId);
         }
         await this.transactionManager.runTransaction(async (transaction) => {
-            if (purchaseReturn.voucherId) {
-                await this.accountingPostingService.deleteVoucherInTransaction(companyId, purchaseReturn.voucherId, transaction);
-                purchaseReturn.voucherId = null;
+            if (shouldPostAccounting) {
+                if (purchaseReturn.voucherId) {
+                    await this.accountingPostingService.deleteVoucherInTransaction(companyId, purchaseReturn.voucherId, transaction);
+                    purchaseReturn.voucherId = null;
+                }
             }
             for (const line of purchaseReturn.lines) {
                 if (line.stockMovementId) {
@@ -882,6 +896,10 @@ class UnpostPurchaseReturnUseCase {
         if (!unposted)
             throw new Error('Failed to retrieve return after unposting');
         return unposted;
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
 }
 exports.UnpostPurchaseReturnUseCase = UnpostPurchaseReturnUseCase;

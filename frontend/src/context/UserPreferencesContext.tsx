@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import i18n from '../i18n/config';
 import { userPreferencesApi } from '../api/userPreferencesApi';
 import { useAuth } from './AuthContext';
+import {
+  applyUserAppearanceToDocument,
+  DEFAULT_USER_APPEARANCE,
+  loadLocalUserAppearance,
+  normalizeUserAppearance,
+  UserAppearanceSettings,
+} from '../theme/userAppearance';
 
 export type UiMode = 'classic' | 'windows';
 export type Theme = 'light' | 'dark';
@@ -11,11 +18,13 @@ interface UserPreferencesContextType {
   uiMode: UiMode;
   sidebarMode: SidebarMode;
   theme: Theme;
+  appearanceSettings: UserAppearanceSettings;
   language: string;
   sidebarPinned: boolean;
   setUiMode: (mode: UiMode) => void;
   setSidebarMode: (mode: SidebarMode) => void;
   setTheme: (theme: Theme) => void;
+  setAppearanceSettings: (settings: UserAppearanceSettings) => void;
   setLanguage: (lang: string) => void;
   setSidebarPinned: (pinned: boolean) => void;
   toggleUiMode: () => void;
@@ -36,6 +45,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
 
   const [theme, setThemeState] = useState<Theme>(() => {
     return (localStorage.getItem('erp_theme') as Theme) || 'light';
+  });
+
+  const [appearanceSettings, setAppearanceSettingsState] = useState<UserAppearanceSettings>(() => {
+    return loadLocalUserAppearance();
   });
 
   const [sidebarMode, setSidebarModeState] = useState<SidebarMode>(() => {
@@ -69,6 +82,7 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
         if (cancelled) return;
         if (prefs.uiMode) setUiModeState(prefs.uiMode);
         if (prefs.theme) setThemeState(prefs.theme);
+        if (prefs.appearanceSettings) setAppearanceSettingsState(normalizeUserAppearance(prefs.appearanceSettings));
         if (prefs.sidebarMode) setSidebarModeState(prefs.sidebarMode);
         if (prefs.sidebarPinned !== undefined) setSidebarPinnedState(prefs.sidebarPinned);
         if (prefs.language) {
@@ -96,6 +110,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   }, [theme]);
 
   useEffect(() => {
+    applyUserAppearanceToDocument(appearanceSettings || DEFAULT_USER_APPEARANCE);
+  }, [appearanceSettings]);
+
+  useEffect(() => {
     localStorage.setItem('erp_ui_mode', uiMode);
   }, [uiMode]);
 
@@ -117,11 +135,12 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   const setUiMode = (mode: UiMode) => setUiModeState(mode);
   const setSidebarMode = (mode: SidebarMode) => setSidebarModeState(mode);
   const setTheme = (t: Theme) => setThemeState(t);
+  const setAppearanceSettings = (settings: UserAppearanceSettings) => setAppearanceSettingsState(normalizeUserAppearance(settings));
   const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
   const setLanguagePref = (lang: string) => setLanguage(lang);
 
   const savePreferences = async () => {
-    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned };
+    const payload = { language, uiMode, theme, sidebarMode, sidebarPinned, appearanceSettings };
     if (!user) return;
     const saved = await userPreferencesApi.upsert(payload);
     console.debug('[Prefs] Saved to backend', { uid: user.uid, saved });
@@ -134,6 +153,9 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     }
     if (saved.theme) {
       setThemeState(saved.theme);
+    }
+    if (saved.appearanceSettings) {
+      setAppearanceSettingsState(normalizeUserAppearance(saved.appearanceSettings));
     }
     if (saved.sidebarMode) {
       setSidebarModeState(saved.sidebarMode);
@@ -164,11 +186,13 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
       uiMode,
       sidebarMode,
       theme,
+      appearanceSettings,
       language,
       sidebarPinned,
       setUiMode,
       setSidebarMode,
       setTheme,
+      setAppearanceSettings,
       setLanguage: setLanguagePref,
       setSidebarPinned,
       toggleUiMode,

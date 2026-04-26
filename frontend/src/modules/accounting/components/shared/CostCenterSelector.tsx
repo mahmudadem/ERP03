@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { useTranslation } from 'react-i18next';
 import { useCostCenters } from '../../../../context/CostCentersContext';
 import { CostCenterDTO } from '../../../../api/accountingApi';
-import { Search, X } from 'lucide-react';
+import { Search, X, RefreshCw } from 'lucide-react';
 
 interface CostCenterSelectorProps {
   value?: string;  // Cost center code or ID
@@ -35,7 +35,8 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
   onBlur: externalBlur
 }, ref) => {
   const { t } = useTranslation('accounting');
-  const { costCenters, loading } = useCostCenters();
+  const { costCenters, loading, refreshCostCenters } = useCostCenters();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -89,6 +90,10 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
     const codeMatch = activeCenters.find(cc => cc && typeof cc.code === 'string' && cc.code.toLowerCase() === search);
     if (codeMatch) return codeMatch;
 
+    // Try compound string match
+    const compoundMatch = activeCenters.find(cc => cc && typeof cc.code === 'string' && typeof cc.name === 'string' && `${cc.code} — ${cc.name}`.toLowerCase() === search);
+    if (compoundMatch) return compoundMatch;
+
     // Try exact name match
     const nameMatch = activeCenters.find(cc => cc && typeof cc.name === 'string' && cc.name.toLowerCase() === search);
     if (nameMatch) return nameMatch;
@@ -103,10 +108,10 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
     if (!search) return activeCenters.slice(0, 20);
 
     return activeCenters
-      .filter(cc =>
-        (cc && typeof cc.code === 'string' && cc.code.toLowerCase().includes(search)) ||
-        (cc && typeof cc.name === 'string' && cc.name.toLowerCase().includes(search))
-      )
+      .filter(cc => {
+        const compound = `${cc.code} — ${cc.name}`.toLowerCase();
+        return compound.includes(search);
+      })
       .sort((a, b) => {
         const aCode = a && typeof a.code === 'string' ? a.code.toLowerCase() : '';
         const bCode = b && typeof b.code === 'string' ? b.code.toLowerCase() : '';
@@ -143,11 +148,11 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
     // Try to find exact match
     const exactMatch = findExactMatch(inputValue);
 
-    if (exactMatch) {
-      if (exactMatch.code !== value && exactMatch.id !== value) {
-        onChange(exactMatch);
-      }
-      setInputValue(`${exactMatch.code} — ${exactMatch.name}`);
+    // Try to find exact match or unique match
+    const filtered = getFilteredCenters(inputValue);
+
+    if (filtered.length === 1) {
+      handleSelectCC(filtered[0]);
     } else {
       // No exact match - open modal to resolve
       setHighlightedIndex(0);
@@ -232,6 +237,18 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
     inputRef.current?.focus();
   };
 
+  const handleRefresh = async () => {
+    if (disabled || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshCostCenters();
+    } catch (error) {
+      console.error('Failed to refresh cost centers', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleClear = () => {
     onChange(null);
     setInputValue('');
@@ -257,14 +274,18 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
             focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
             ${disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : ''}`}
         />
-        {inputValue && !disabled && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute right-1 p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-          >
-            <X className="w-3 h-3" />
-          </button>
+        {!disabled && (
+          <div className="absolute right-1 flex items-center gap-1">
+            {inputValue && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -297,6 +318,15 @@ export const CostCenterSelector = forwardRef<HTMLInputElement, CostCenterSelecto
                     className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
                     autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    title={t('costCenterSelector.refresh', 'Refresh cost centers')}
+                    className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-[var(--color-text-secondary)] ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
                   <button
                     onClick={() => setShowModal(false)}
                     className="p-1.5 hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"

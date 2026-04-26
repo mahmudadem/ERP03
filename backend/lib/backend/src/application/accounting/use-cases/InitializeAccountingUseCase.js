@@ -214,6 +214,9 @@ class InitializeAccountingUseCase {
         }
         const copiedTypes = [];
         for (const systemTemplate of systemTemplates) {
+            if (String(systemTemplate.module || '').trim().toUpperCase() !== 'ACCOUNTING') {
+                continue;
+            }
             if (!selectedVoucherTypeIds.includes(systemTemplate.id)) {
                 continue;
             }

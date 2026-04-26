@@ -94,6 +94,10 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
     const codeMatch = selectableAccounts.find((a: Account) => a.code.toLowerCase() === search);
     if (codeMatch) return codeMatch;
     
+    // Try compound string match
+    const compoundMatch = selectableAccounts.find((a: Account) => `${a.code} - ${a.name}`.toLowerCase() === search);
+    if (compoundMatch) return compoundMatch;
+
     // Try exact name match
     const nameMatch = selectableAccounts.find((a: Account) => a.name.toLowerCase() === search);
     if (nameMatch) return nameMatch;
@@ -107,10 +111,10 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
     if (!search) return selectableAccounts.slice(0, 20); // Show first 20 if no search
     
     return selectableAccounts
-      .filter((a: Account) => 
-        a.code.toLowerCase().includes(search) || 
-        a.name.toLowerCase().includes(search)
-      )
+      .filter((a: Account) => {
+        const compound = `${a.code} - ${a.name}`.toLowerCase();
+        return compound.includes(search);
+      })
       .sort((a, b) => {
         // Prioritize: exact match > starts with > includes
         const aCode = a.code.toLowerCase();
@@ -145,21 +149,14 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
       }
     }
 
-    // Try to find exact match
-    const exactMatch = findExactMatch(inputValue);
+    // Try to find exact match or unique match
+    const filtered = getFilteredAccounts(inputValue);
     
-    if (exactMatch) {
-      // Found exact match - update selection
-      if (exactMatch.code !== value) {
-         onChange(exactMatch);
-      }
-      setInputValue(`${exactMatch.code} - ${exactMatch.name}`);
+    if (filtered.length === 1) {
+      handleSelectAccount(filtered[0]);
     } else {
-      // Logic for partial/no match
-      // If the input looks like a code (digits), keep it as is maybe? 
-      // Or just revert if it was valid before?
-      // For now: open modal to resolve
       setHighlightedIndex(0);
+      setModalSearch(inputValue.trim());
       setShowModal(true);
     }
 
@@ -313,18 +310,6 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         />
         {!disabled && (
           <div className="absolute right-1 flex items-center gap-1">
-            {!noBorder && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleRefreshAccounts}
-                disabled={isRefreshing}
-                title={t('accountSelector.refresh', 'Refresh accounts')}
-                className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </button>
-            )}
             {inputValue && (
               <button
                 type="button"
@@ -333,17 +318,6 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                 className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
               >
                 <X className="w-3 h-3" />
-              </button>
-            )}
-            {canCreate && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleCreateNewAccount}
-                title={t('accountSelector.createNewTooltip', 'Create as child of current account')}
-                className="rounded p-1 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              >
-                <Plus className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -400,6 +374,16 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                   >
                     <X className="w-5 h-5 text-[var(--color-text-secondary)]" />
                   </button>
+                  {canCreate && (
+                    <button
+                      type="button"
+                      onClick={handleCreateNewAccount}
+                      title={t('accountSelector.createNew', 'Create New Account')}
+                      className="p-1.5 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
               

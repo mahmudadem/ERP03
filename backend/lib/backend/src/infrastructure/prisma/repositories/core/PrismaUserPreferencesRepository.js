@@ -8,7 +8,7 @@ class PrismaUserPreferencesRepository {
     }
     toDomain(data) {
         var _a;
-        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', (_a = data.sidebarPinned) !== null && _a !== void 0 ? _a : true, data.disabledNotificationCategories || [], data.notificationCategoryOverrides || {}, data.createdAt, data.updatedAt);
+        return new UserPreferences_1.UserPreferences(data.userId, data.language || 'en', data.uiMode || 'windows', data.theme || 'light', data.sidebarMode || 'classic', (_a = data.sidebarPinned) !== null && _a !== void 0 ? _a : true, data.appearanceSettings || {}, data.disabledNotificationCategories || [], data.notificationCategoryOverrides || {}, data.createdAt, data.updatedAt);
     }
     async getByUserId(userId) {
         const data = await this.prisma.userPreferences.findUnique({
@@ -30,6 +30,8 @@ class PrismaUserPreferencesRepository {
             updateData.sidebarMode = prefs.sidebarMode;
         if (prefs.sidebarPinned !== undefined)
             updateData.sidebarPinned = prefs.sidebarPinned;
+        if (prefs.appearanceSettings !== undefined)
+            updateData.appearanceSettings = prefs.appearanceSettings;
         if (prefs.disabledNotificationCategories !== undefined)
             updateData.disabledNotificationCategories = prefs.disabledNotificationCategories;
         if (prefs.notificationCategoryOverrides !== undefined)

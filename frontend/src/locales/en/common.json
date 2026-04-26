@@ -1429,27 +1429,142 @@
   "success": {
     "SAVE": "Saved successfully"
   },
-  "companyWizard": {
-    "errors": {
-      "submitStep": "Failed to submit step",
-      "completeWizard": "Failed to complete wizard",
-      "missingSession": "Missing session. Please start the wizard again."
-    },
-    "success": {
-      "companyCreated": "Company created successfully"
-    },
-    "actions": {
-      "goToStart": "Go to Wizard Start"
-    },
-    "loadingStep": "Loading wizard step...",
-    "selectModel": {
-      "title": "Create Company",
-      "subtitle": "Select a business model to start. You can always add or disable modules later to fit your needs.",
-      "companyName": "Company Name",
-      "model": "Model",
-      "selectModel": "Select a model",
-      "starting": "Starting...",
-      "startWizard": "Start Wizard"
+  "onboarding": {
+    "companyWizard": {
+      "basic": {
+        "title": "Company Basics",
+        "subtitle": "Let's start with the essentials.",
+        "fields": {
+          "companyName": "Company Name",
+          "country": "Country / Region",
+          "description": "Description",
+          "companyLogo": "Company Logo"
+        },
+        "placeholders": {
+          "companyName": "e.g. Acme Corp",
+          "searchCountries": "Search countries...",
+          "description": "Briefly describe your company..."
+        },
+        "actions": {
+          "cancel": "Cancel",
+          "nextStep": "Next Step",
+          "upload": "Upload",
+          "removeLogo": "Remove logo"
+        },
+        "errors": {
+          "companyNameRequired": "Company name is required",
+          "countryRequired": "Please select a country",
+          "invalidImageType": "Only PNG, JPG, ICO or WEBP images are allowed.",
+          "logoSize": "Logo must be smaller than 5MB.",
+          "logoProcessFailed": "Failed to process image. Please try another one."
+        },
+        "optional": "Optional",
+        "optimizing": "Optimizing...",
+        "dragDrop": "or drag & drop",
+        "allowedFormats": "PNG, JPG, ICO, WEBP",
+        "readyForDocuments": "Ready for Documents",
+        "noCountriesFound": "No countries found",
+        "autoConfigEnabled": "Auto-Configuration Enabled",
+        "smartDefaultsIntro": "Based on {{country}}, we've applied the following smart defaults:",
+        "customizeLater": "These settings can be customized in your company profile later.",
+        "defaults": {
+          "currency": "Currency",
+          "language": "Language",
+          "timezone": "Timezone",
+          "dateFormat": "Date Format"
+        },
+        "languages": {
+          "arabic": "Arabic",
+          "turkish": "Turkish",
+          "english": "English"
+        }
+      },
+      "bundle": {
+        "title": "Select a Bundle",
+        "subtitle": "Choose the feature set that fits your needs.",
+        "searchPlaceholder": "Search bundles...",
+        "recommended": "Recommended",
+        "noModules": "No modules included",
+        "noBundles": "No bundles found matching your search",
+        "bundleCount": "{{count}} bundles available",
+        "actions": {
+          "back": "Back",
+          "nextStep": "Continue"
+        },
+        "errors": {
+          "selectBundle": "Please select a bundle to continue"
+        }
+      },
+      "contact": {
+        "title": "Admin & Contact",
+        "subtitle": "Set up the primary contact for this company.",
+        "businessEmail": "Business Email Address",
+        "emailPlaceholder": "e.g. admin@company.com",
+        "helper": "This will be the primary administrator for the company.",
+        "actions": {
+          "back": "Back",
+          "nextStep": "Review Details"
+        },
+        "errors": {
+          "invalidEmail": "Please enter a valid email address"
+        }
+      },
+      "review": {
+        "title": "Review & Create",
+        "subtitle": "Verify details before initializing the company.",
+        "companySummary": "Company Summary",
+        "companyName": "Company Name",
+        "location": "Location",
+        "adminEmail": "Admin Email",
+        "selectedBundle": "Selected Bundle",
+        "modulesIncluded": "{{count}} modules included",
+        "modulesToInstall": "Modules to be Installed",
+        "noSpecificModules": "No specific modules selected",
+        "legal": "By creating this company, you agree to our Terms of Service.",
+        "actions": {
+          "back": "Back",
+          "createCompany": "Initialize Company",
+          "creating": "Creating...",
+          "close": "Close",
+          "tryAgain": "Try Again"
+        },
+        "progress": {
+          "creatingCompany": "Creating company record...",
+          "installingModules": "Installing modules...",
+          "settingPermissions": "Setting up permissions...",
+          "finalizing": "Finalizing workspace..."
+        },
+        "errors": {
+          "missingInfo": "Please go back and fill in all required information.",
+          "createFailed": "Failed to create company. Please try again."
+        },
+        "modal": {
+          "creatingCompany": "Initializing Your Workspace",
+          "companyCreated": "Company Ready!",
+          "creationFailed": "Initialization Failed",
+          "error": "Error Details",
+          "pleaseWait": "Please wait, we are setting everything up for you..."
+        },
+        "defaults": {
+          "country": "International"
+        }
+      },
+      "success": {
+        "title": "All Set!",
+        "subtitle": "Your company has been created successfully. You can now start using the system.",
+        "whatsNext": "What's Next?",
+        "steps": {
+          "setupAccounting": "Complete the accounting setup wizard",
+          "inviteUsers": "Invite your team members to join"
+        },
+        "goToDashboard": "Go to Dashboard"
+      },
+      "stepper": {
+        "basicInfo": "Basic Info",
+        "selectBundle": "Select Bundle",
+        "contactInfo": "Contact Info",
+        "review": "Review"
+      }
     }
   }
 }

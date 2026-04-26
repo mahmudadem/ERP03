@@ -681,21 +681,21 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     if (!isInitialLoadRef.current && !isVoucherReadOnly) {
       setIsDirty(true);
     }
+    
     if (newData) {
+       // Sync currency
        if (newData.currency) {
          setLiveCurrency(newData.currency);
        }
+       
+       // Sync lines - Remove the restrictive hasRealData check to support semantic forms
+       // and ensure validation reacts to empty -> non-empty transitions immediately.
        if (newData.lines && Array.isArray(newData.lines)) {
-          // Only update liveLines if the new lines have actual data
-          const hasRealData = newData.lines.some((l: any) => 
-            (parseFloat(l.debit) || 0) > 0 || 
-            (parseFloat(l.credit) || 0) > 0 || 
-            l.accountId
-          );
-          if (hasRealData) {
-            setLiveLines(newData.lines);
-          }
+         setLiveLines([...newData.lines]);
        }
+       
+       // FORCE recalculation of totals and validation by triggering a re-render
+       forceUpdate(prev => prev + 1);
     }
   }, [isVoucherReadOnly]);
 

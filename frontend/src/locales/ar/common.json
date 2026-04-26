@@ -1074,6 +1074,92 @@
           "english": "إنجليزي"
         },
         "customizeLater": "يمكن تخصيص هذه الإعدادات في الملف التعريفي لشركتك لاحقًا."
+      },
+      "bundle": {
+        "title": "اختر الحزمة",
+        "subtitle": "اختر مجموعة الميزات التي تناسب احتياجاتك.",
+        "searchPlaceholder": "البحث في الحزم...",
+        "recommended": "موصى به",
+        "noModules": "لا توجد وحدات متضمنة",
+        "noBundles": "لم يتم العثور على حزم تطابق بحثك",
+        "bundleCount": "{{count}} حزم متوفرة",
+        "actions": {
+          "back": "رجوع",
+          "nextStep": "متابعة"
+        },
+        "errors": {
+          "selectBundle": "يرجى اختيار حزمة للمتابعة"
+        }
+      },
+      "contact": {
+        "title": "المسؤول والاتصال",
+        "subtitle": "قم بإعداد جهة الاتصال الأساسية لهذه الشركة.",
+        "businessEmail": "البريد الإلكتروني للعمل",
+        "emailPlaceholder": "مثال: admin@company.com",
+        "helper": "سيكون هذا هو المسؤول الأساسي للشركة.",
+        "actions": {
+          "back": "رجوع",
+          "nextStep": "مراجعة التفاصيل"
+        },
+        "errors": {
+          "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح"
+        }
+      },
+      "review": {
+        "title": "المراجعة والإنشاء",
+        "subtitle": "تحقق من التفاصيل قبل تهيئة الشركة.",
+        "companySummary": "ملخص الشركة",
+        "companyName": "اسم الشركة",
+        "location": "الموقع",
+        "adminEmail": "البريد الإلكتروني للمسؤول",
+        "selectedBundle": "الحزمة المختارة",
+        "modulesIncluded": "{{count}} وحدات متضمنة",
+        "modulesToInstall": "الوحدات التي سيتم تثبيتها",
+        "noSpecificModules": "لم يتم اختيار وحدات محدد",
+        "legal": "بإنشاء هذه الشركة، فإنك توافق على شروط الخدمة الخاصة بنا.",
+        "actions": {
+          "back": "رجوع",
+          "createCompany": "تهيئة الشركة",
+          "creating": "جاري الإنشاء...",
+          "close": "إغلاق",
+          "tryAgain": "إعادة المحاولة"
+        },
+        "progress": {
+          "creatingCompany": "جاري إنشاء سجل الشركة...",
+          "installingModules": "جاري تثبيت الوحدات...",
+          "settingPermissions": "جاري إعداد الأذونات...",
+          "finalizing": "جاري إنهاء مساحة العمل..."
+        },
+        "errors": {
+          "missingInfo": "يرجى الرجوع وتعبئة جميع المعلومات المطلوبة.",
+          "createFailed": "فشل إنشاء الشركة. يرجى المحاولة مرة أخرى."
+        },
+        "modal": {
+          "creatingCompany": "جاري تهيئة مساحة العمل الخاصة بك",
+          "companyCreated": "الشركة جاهزة!",
+          "creationFailed": "فشلت التهيئة",
+          "error": "تفاصيل الخطأ",
+          "pleaseWait": "يرجى الانتظار، نحن نقوم بإعداد كل شيء لك..."
+        },
+        "defaults": {
+          "country": "دولي"
+        }
+      },
+      "success": {
+        "title": "كل شيء جاهز!",
+        "subtitle": "تم إنشاء شركتك بنجاح. يمكنك الآن البدء في استخدام النظام.",
+        "whatsNext": "ماذا بعد؟",
+        "steps": {
+          "setupAccounting": "أكمل معالج إعداد المحاسبة",
+          "inviteUsers": "ادعُ أعضاء فريقك للانضمام"
+        },
+        "goToDashboard": "الذهاب إلى لوحة التحكم"
+      },
+      "stepper": {
+        "basicInfo": "معلومات أساسية",
+        "selectBundle": "اختر الحزمة",
+        "contactInfo": "معلومات الاتصال",
+        "review": "مراجعة"
       }
     }
   },
@@ -1428,28 +1514,5 @@
   },
   "success": {
     "SAVE": "تم الحفظ بنجاح"
-  },
-  "companyWizard": {
-    "errors": {
-      "submitStep": "فشل إرسال الخطوة",
-      "completeWizard": "فشل في إكمال المعالج",
-      "missingSession": "جلسة مفقودة. الرجاء بدء تشغيل المعالج مرة أخرى."
-    },
-    "success": {
-      "companyCreated": "تم إنشاء الشركة بنجاح"
-    },
-    "actions": {
-      "goToStart": "انتقل إلى \"بدء المعالج\"."
-    },
-    "loadingStep": "جارٍ تحميل خطوة المعالج...",
-    "selectModel": {
-      "title": "إنشاء شركة",
-      "subtitle": "حدد نموذج العمل للبدء. يمكنك دائمًا إضافة الوحدات النمطية أو تعطيلها لاحقًا لتناسب احتياجاتك.",
-      "companyName": "اسم الشركة",
-      "model": "نموذج",
-      "selectModel": "حدد نموذجًا",
-      "starting": "جارٍ البدء...",
-      "startWizard": "معالج البدء"
-    }
   }
 }

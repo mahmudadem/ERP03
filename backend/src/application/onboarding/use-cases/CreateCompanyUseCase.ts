@@ -11,13 +11,14 @@ import { IUserRepository } from '../../../repository/interfaces/core/IUserReposi
 import { ICompanyUserRepository as IRbacCompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRolePermissionResolver } from '../../rbac/CompanyRolePermissionResolver';
-// import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository'; // TODO: Re-enable
 import { IBundleRegistryRepository } from '../../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { CompanyModuleEntity } from '../../../domain/company/entities/CompanyModule';
 import { ApiError } from '../../../api/errors/ApiError';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
-import { CompanySettings } from '../../../domain/core/entities/CompanySettings';
+import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
 interface Input {
   userId: string;
@@ -40,7 +41,8 @@ export class CreateCompanyUseCase {
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
     private rolePermissionResolver: CompanyRolePermissionResolver,
-    // private voucherTypeRepo: IVoucherTypeDefinitionRepository, // TODO: Re-enable when implementing voucher template copy
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private voucherFormRepo: IVoucherFormRepository,
     private bundleRepo: IBundleRegistryRepository,
     private companyModuleRepo: ICompanyModuleRepository,
     private companySettingsRepo: ICompanySettingsRepository
@@ -171,23 +173,14 @@ export class CreateCompanyUseCase {
       modulesCreated = true;
       console.log('[CreateCompanyUseCase] Module records persisted successfully');
 
-      // Copy system voucher templates (DISABLED - method doesn't exist yet)
-      // TODO: Re-enable when voucherTypeRepo.createVoucherType is available
-      console.log('[CreateCompanyUseCase] Skipping voucher template copy (not implemented)');
-      // try {
-      //   const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
-      //   for (const template of systemTemplates) {
-      //     const newTemplate = {
-      //       ...template,
-      //       id: this.generateId('vtd'),
-      //       companyId: company.id,
-      //       isSystemTemplate: false
-      //     };
-      //     await this.voucherTypeRepo.createVoucherType(newTemplate);
-      //   }
-      // } catch (templateError) {
-      //   console.warn('[CreateCompanyUseCase] Failed to copy voucher templates (non-critical):', templateError);
-      // }
+      const syncResult = await syncCompanyVoucherTemplatesFromSystem({
+        companyId: company.id,
+        modules: finalModules,
+        createdBy: input.userId,
+        voucherTypeRepo: this.voucherTypeRepo,
+        voucherFormRepo: this.voucherFormRepo,
+      });
+      console.log('[CreateCompanyUseCase] Synced voucher templates:', syncResult);
 
       console.log('[CreateCompanyUseCase] Company creation completed successfully');
       return { companyId: company.id };

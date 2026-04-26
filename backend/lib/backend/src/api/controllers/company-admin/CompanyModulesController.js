@@ -68,7 +68,7 @@ class CompanyModulesController {
                 res.status(400).json({ success: false, error: 'Module name required' });
                 return;
             }
-            const useCase = new EnableModuleForCompanyUseCase_1.EnableModuleForCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository);
+            const useCase = new EnableModuleForCompanyUseCase_1.EnableModuleForCompanyUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.companyModuleRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
             const result = await useCase.execute({ companyId, moduleName });
             res.json({ success: true, data: result });
         }

@@ -130,6 +130,9 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
     const codeMatch = allWarehouses.find((warehouse) => warehouse.code.toLowerCase() === search);
     if (codeMatch) return codeMatch;
 
+    const compoundMatch = allWarehouses.find((warehouse) => `${warehouse.code} - ${warehouse.name}`.toLowerCase() === search);
+    if (compoundMatch) return compoundMatch;
+
     return allWarehouses.find((warehouse) => warehouse.name.toLowerCase() === search) || null;
   };
 
@@ -138,10 +141,10 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
     if (!search) return allWarehouses.slice(0, 20);
     
     return allWarehouses
-      .filter((warehouse) => 
-        warehouse.code.toLowerCase().includes(search) || 
-        warehouse.name.toLowerCase().includes(search)
-      )
+      .filter((warehouse) => {
+        const compound = `${warehouse.code} - ${warehouse.name}`.toLowerCase();
+        return compound.includes(search);
+      })
       .sort((left, right) => {
         const leftCode = left.code.toLowerCase();
         const rightCode = right.code.toLowerCase();
@@ -168,10 +171,15 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
       return;
     }
 
-    const exactMatch = findExactMatch(inputValue);
-    if (exactMatch) {
-      if (exactMatch.id !== value) onChange(exactMatch);
-      setInputValue(`${exactMatch.code} - ${exactMatch.name}`);
+    const query = inputValue.toLowerCase().trim();
+    const matches = allWarehouses.filter(w => 
+      w.code.toLowerCase() === query || 
+      w.name.toLowerCase() === query ||
+      `${w.code} - ${w.name}`.toLowerCase() === query
+    );
+
+    if (matches.length === 1) {
+      handleSelect(matches[0]);
     } else {
       setModalSearch(inputValue.trim());
       setHighlightedIndex(0);
@@ -297,18 +305,6 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
         />
         {!disabled && (
           <div className="absolute right-1 flex items-center gap-1">
-            {!noBorder && (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                title="Refresh warehouses"
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-              </button>
-            )}
             {inputValue && (
               <button
                 type="button"
@@ -364,6 +360,16 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                 >
                   <X size={16} />
                 </button>
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateModal}
+                    title="Create new warehouse"
+                    className="rounded p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                  >
+                    <Plus size={18} />
+                  </button>
+                )}
               </div>
               <div className="overflow-y-auto p-1">
                 {isLoading ? (

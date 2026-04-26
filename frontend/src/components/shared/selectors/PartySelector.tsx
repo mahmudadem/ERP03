@@ -58,6 +58,9 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
+  const [allParties, setAllParties] = useState<PartyDTO[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<PartyDTO[]>([]);
@@ -115,7 +118,24 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
     }
   }, [value, selectedParty?.id, selectedParty?.code]);
 
-  // Handle modal search
+  const loadAllParties = async (force = false) => {
+    if (hasLoadedOnce && !force) return;
+    setIsRefreshing(true);
+    try {
+      const results = await sharedApi.listParties({ active: true });
+      setAllParties(results);
+      setHasLoadedOnce(true);
+    } catch (error) {
+      console.error('Failed to load parties for cache', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllParties();
+  }, []);
+
   useEffect(() => {
     if (showModal) {
       performSearch(modalSearch);
@@ -133,21 +153,32 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   }, [currencyOptions, showCreateModal, createForm.defaultCurrency]);
 
   const performSearch = async (query: string) => {
+    const lowerQuery = query.toLowerCase().trim();
+    if (!lowerQuery) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Try local filter first
+    const localMatches = allParties.filter(p => {
+      const compound = `${p.code} - ${p.displayName}`.toLowerCase();
+      return (
+        compound.includes(lowerQuery) ||
+        p.email?.toLowerCase().includes(lowerQuery)
+      );
+    });
+
+    if (localMatches.length > 0) {
+      setSearchResults(localMatches.slice(0, 20));
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const results = await sharedApi.listParties({ active: true });
-      const lowerQuery = query.toLowerCase().trim();
-      
-      const filtered = results.filter(p => 
-        p.displayName.toLowerCase().includes(lowerQuery) || 
-        p.code.toLowerCase().includes(lowerQuery) ||
-        p.email?.toLowerCase().includes(lowerQuery)
-      ).slice(0, 20);
-
-      setSearchResults(filtered);
-    } catch (error) {
-      console.error('Party search failed', error);
-      setSearchResults([]);
+      // If we need a deeper search, we could call an API here, 
+      // but for now, we just use the cache we already have or call list again if needed.
+      // But since we have allParties, we stick to it unless forced.
+      setSearchResults(localMatches.slice(0, 20));
     } finally {
       setIsLoading(false);
     }
@@ -159,8 +190,35 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
       return;
     }
 
+    // 1. Check if it matches current selection display
     if (selectedParty && inputValue === `${selectedParty.code} - ${selectedParty.displayName}`) {
+      if (externalBlur) externalBlur();
       return;
+    }
+
+    const query = inputValue.toLowerCase().trim();
+
+    // 2. Try to find exact match or unique match in local cache first
+    const localMatches = allParties.filter(p => 
+      p.code.toLowerCase() === query || 
+      p.displayName.toLowerCase() === query ||
+      `${p.code} - ${p.displayName}`.toLowerCase() === query
+    );
+
+    if (localMatches.length === 1) {
+      handleSelect(localMatches[0]);
+      if (externalBlur) externalBlur();
+      return;
+    }
+
+    if (localMatches.length > 1) {
+       // More than one result - open modal to resolve
+       setSearchResults(localMatches.slice(0, 20));
+       setHighlightedIndex(0);
+       setModalSearch(inputValue.trim());
+       setShowModal(true);
+       if (externalBlur) externalBlur();
+       return;
     }
 
     // If typing manually, open modal if not matched
@@ -259,10 +317,18 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
             focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none
             ${disabled ? 'cursor-not-allowed opacity-50 bg-slate-50' : ''}`}
         />
-        {!disabled && inputValue && (
-          <button type="button" onClick={handleClear} className="absolute right-2 text-slate-400 hover:text-slate-600 p-1">
-            <X size={14} />
-          </button>
+        {!disabled && (
+          <div className="absolute right-2 flex items-center gap-1">
+            {inputValue && (
+              <button 
+                type="button" 
+                onClick={handleClear} 
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -291,7 +357,31 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                     if (e.key === 'Escape') setShowModal(false);
                   }}
                 />
-                {isLoading && <RefreshCw size={14} className="animate-spin text-indigo-500" />}
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => loadAllParties(true)}
+                  disabled={isRefreshing}
+                  title={t('partySelector.refresh', 'Refresh parties')}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenCreateModal}
+                  title={t('partySelector.create', 'Create new party')}
+                  className="rounded p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <Plus size={18} />
+                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-2">

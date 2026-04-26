@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
 import { superAdminApi, SuperAdminUser } from '../../../api/superAdmin';
-import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import {
+  SuperAdminBadge,
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminPage,
+  SuperAdminTable,
+  tableCellClass,
+  tableHeadCellClass,
+  tableRowClass,
+} from '../components/SuperAdminPage';
 
 export default function UsersListPage() {
   const { t } = useTranslation('common');
@@ -49,44 +59,39 @@ export default function UsersListPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('superAdmin.users.title')}</h1>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.users.title')}
+        description="Promote or demote global accounts across the platform."
+        meta="Access"
+        actions={
         <Button variant="ghost" size="sm" onClick={loadUsers} disabled={loading} className="text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]">
           {loading ? t('superAdmin.users.refreshing') : t('superAdmin.users.refresh')}
         </Button>
-      </div>
+        }
+      />
 
-      <Card className="overflow-hidden bg-[var(--color-bg-primary)] border-[var(--color-border)]">
-        {loading && users.length === 0 ? (
-          <div className="p-6 text-[var(--color-text-muted)]">{t('superAdmin.users.loading')}</div>
-        ) : (
-          <table className="min-w-full divide-y divide-[var(--color-border)]">
-            <thead className="bg-[var(--color-bg-secondary)]">
+      {loading && users.length === 0 ? (
+        <SuperAdminLoading label={t('superAdmin.users.loading')} />
+      ) : (
+        <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('superAdmin.users.columns.userId')}</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('superAdmin.users.columns.email')}</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('superAdmin.users.columns.globalRole')}</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('superAdmin.users.columns.actions')}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.users.columns.userId')}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.users.columns.email')}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.users.columns.globalRole')}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.users.columns.actions')}</th>
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border)]">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-[var(--color-bg-tertiary)]/30 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-primary)] font-mono">{user.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-secondary)]">{user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        user.globalRole === 'SUPER_ADMIN'
-                          ? 'bg-error-100 text-error-800 dark:bg-error-900/30 dark:text-error-400'
-                          : 'bg-primary-50 text-primary-800 dark:bg-primary-900/20 dark:text-primary-400'
-                      }`}
-                    >
-                      {user.globalRole}
-                    </span>
+                <tr key={user.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs`}>{user.id}</td>
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{user.email}</td>
+                  <td className={tableCellClass}>
+                    <SuperAdminBadge tone={user.globalRole === 'SUPER_ADMIN' ? 'red' : 'blue'}>{user.globalRole}</SuperAdminBadge>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className={tableCellClass}>
                     {user.globalRole === 'SUPER_ADMIN' ? (
                       <Button variant="secondary" size="sm" onClick={() => handleDemote(user.id)} className="bg-[var(--color-bg-tertiary)] border-[var(--color-border)] text-[var(--color-text-primary)]">
                         {t('superAdmin.users.actions.demote')}
@@ -101,15 +106,12 @@ export default function UsersListPage() {
               ))}
               {users.length === 0 && !loading && (
                 <tr>
-                  <td className="px-6 py-4 text-sm text-[var(--color-text-muted)] text-center italic" colSpan={4}>
-                    {t('superAdmin.users.empty')}
-                  </td>
+                  <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.users.empty')} /></td>
                 </tr>
               )}
             </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
+        </SuperAdminTable>
+      )}
+    </SuperAdminPage>
   );
 }

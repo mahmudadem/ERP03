@@ -1,11 +1,17 @@
 
 import { useEffect, useState } from 'react';
 import { superAdminApi, SystemOverview } from '../../../api/superAdmin';
-import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useTranslation } from 'react-i18next';
-
-const statStyles = ['border-t-4 border-blue-500', 'border-t-4 border-green-500', 'border-t-4 border-purple-500', 'border-t-4 border-orange-500', 'border-t-4 border-amber-500'];
+import {
+  SuperAdminEmptyState,
+  SuperAdminHeader,
+  SuperAdminLoading,
+  SuperAdminPage,
+  SuperAdminPanel,
+  SuperAdminStatCard,
+} from '../components/SuperAdminPage';
+import { Building2, FileText, Package, Shield, Users } from 'lucide-react';
 
 export default function SystemOverviewPage() {
   const { t } = useTranslation('common');
@@ -29,60 +35,56 @@ export default function SystemOverviewPage() {
   };
 
   const stats = [
-    { label: t('superAdmin.systemOverview.stats.totalUsers'), value: overview?.totalUsers ?? 0 },
-    { label: t('superAdmin.systemOverview.stats.totalCompanies'), value: overview?.totalCompanies ?? 0 },
-    { label: t('superAdmin.systemOverview.stats.totalVouchers'), value: overview?.totalVouchers ?? 0 },
-    { label: t('superAdmin.systemOverview.stats.inventoryItems'), value: overview?.totalInventoryItems ?? 0 },
-    { label: t('superAdmin.systemOverview.stats.roles'), value: overview?.totalRoles ?? 0 },
+    { label: t('superAdmin.systemOverview.stats.totalUsers'), value: overview?.totalUsers ?? 0, icon: Users },
+    { label: t('superAdmin.systemOverview.stats.totalCompanies'), value: overview?.totalCompanies ?? 0, icon: Building2 },
+    { label: t('superAdmin.systemOverview.stats.totalVouchers'), value: overview?.totalVouchers ?? 0, icon: FileText },
+    { label: t('superAdmin.systemOverview.stats.inventoryItems'), value: overview?.totalInventoryItems ?? 0, icon: Package },
+    { label: t('superAdmin.systemOverview.stats.roles'), value: overview?.totalRoles ?? 0, icon: Shield },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">{t('superAdmin.systemOverview.title')}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('superAdmin.systemOverview.subtitle')}</p>
-        </div>
+    <SuperAdminPage>
+      <SuperAdminHeader
+        title={t('superAdmin.systemOverview.title')}
+        description={t('superAdmin.systemOverview.subtitle')}
+        meta="System"
+        actions={
         <Button variant="ghost" size="sm" onClick={loadOverview} disabled={loading}>
           {loading ? t('superAdmin.systemOverview.refreshing') : t('superAdmin.systemOverview.refresh')}
         </Button>
-      </div>
+        }
+      />
 
       {loading && !overview && (
-        <Card className="p-6">
-          <div className="text-gray-500">{t('superAdmin.systemOverview.loading')}</div>
-        </Card>
+        <SuperAdminLoading label={t('superAdmin.systemOverview.loading')} />
       )}
 
       {overview && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {stats.map((stat, idx) => (
-            <Card key={stat.label} className={`p-5 hover:shadow-md transition-shadow ${statStyles[idx % statStyles.length]}`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">{stat.label}</p>
-              <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-            </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {stats.map((stat) => (
+            <SuperAdminStatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} />
           ))}
         </div>
       )}
 
       {!loading && !overview && (
-        <Card className="p-6">
-          <p className="text-gray-600">{t('superAdmin.systemOverview.noData')}</p>
-        </Card>
+        <SuperAdminPanel>
+          <SuperAdminEmptyState title={t('superAdmin.systemOverview.noData')} />
+        </SuperAdminPanel>
       )}
 
-      <Card className="p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <SuperAdminPanel className="p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">{t('superAdmin.systemOverview.quickActionsTitle')}</h2>
-            <p className="text-sm text-gray-500">{t('superAdmin.systemOverview.quickActionsSubtitle')}</p>
+            <h2 className="text-base font-semibold text-slate-950">{t('superAdmin.systemOverview.quickActionsTitle')}</h2>
+            <p className="text-sm text-slate-500">{t('superAdmin.systemOverview.quickActionsSubtitle')}</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={() => (window.location.href = '/#/super-admin/users')}>{t('superAdmin.systemOverview.actions.manageUsers')}</Button>
             <Button variant="secondary" onClick={() => (window.location.href = '/#/super-admin/companies')}>{t('superAdmin.systemOverview.actions.manageCompanies')}</Button>
           </div>
         </div>
-      </Card>
-    </div>
+      </SuperAdminPanel>
+    </SuperAdminPage>
   );
 }

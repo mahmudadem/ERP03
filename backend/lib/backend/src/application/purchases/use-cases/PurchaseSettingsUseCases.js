@@ -8,6 +8,18 @@ const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/Vouch
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
 const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
+const normalizeModule = (value) => String(value || '').trim().toUpperCase();
+const ensureVoucherTypeScope = async (voucherTypeRepo, companyId, voucherTypeId, expectedModule, fieldName) => {
+    if (!voucherTypeId)
+        return;
+    const voucherType = await voucherTypeRepo.getVoucherType(companyId, voucherTypeId);
+    if (!voucherType) {
+        throw new Error(`${fieldName} not found: ${voucherTypeId}`);
+    }
+    if (normalizeModule(voucherType.module) !== expectedModule) {
+        throw new Error(`${fieldName} must belong to ${expectedModule} module`);
+    }
+};
 const cloneVoucherTypeForCompany = (companyId, template) => {
     var _a;
     return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
@@ -107,6 +119,7 @@ class InitializePurchasesUseCase {
             }
         }
         await ensurePurchaseVoucherDefinitions(input.companyId, input.userId || 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
+        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.purchaseVoucherTypeId, 'PURCHASE', 'purchaseVoucherTypeId');
         const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
         const accountingMode = this.inventorySettingsRepo
             ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
@@ -197,6 +210,7 @@ class UpdatePurchaseSettingsUseCase {
         if (!existing) {
             throw new Error('Purchase settings are not initialized');
         }
+        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.purchaseVoucherTypeId, 'PURCHASE', 'purchaseVoucherTypeId');
         const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
         const accountingMode = this.inventorySettingsRepo
             ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
