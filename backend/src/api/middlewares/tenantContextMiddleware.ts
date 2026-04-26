@@ -1,6 +1,23 @@
+/**
+ * tenantContextMiddleware Build tenant context with proper 4-gate filtering:
+ * 
+ * Gates (in order):
+ * 1. Module availability passes (code exists, lifecycleStatus=ready, runtimeStatus=available)
+ * 2. Company is entitled (has bundle/trial/promotion entitlement)
+ * 3. CompanyModule is enabled (company.admin turned ON)
+ * 4. User role grants the module (role.moduleBundles includes it)
+ * 
+ * Never union company modules and role modules - intersect them.
+ * Owner/admin wildcard role behavior: use company-enabled modules if role has no moduleBundles.
+ */
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../errors/ApiError';
 import { diContainer } from '../../infrastructure/di/bindRepositories';
+import {
+    filterRuntimeAvailableModules,
+    resolveCompanyModuleAccess
+} from '../../application/company-admin/services/CompanyModuleAccessResolver';
+import { resolveEnabledCompanyCapabilityCodes } from '../../application/company-admin/services/CompanyCapabilityAccessResolver';
 
 declare global {
     namespace Express {
@@ -29,58 +46,56 @@ export const tenantContextMiddleware = async (req: Request, res: Response, next:
             return next(ApiError.badRequest('Company Context Required: No companyId found in user session.'));
         }
 
-        // CRITICAL: companyId MUST come ONLY from req.user.companyId
-        // Block any attempts to load companyId from req.body, req.query, or req.params
         const companyId = user.companyId;
 
-        // 1. Load Company to get Modules
         const company = await diContainer.companyRepository.findById(companyId);
 
-        // Tenant Isolation Check: Ensure company exists and matches authenticated user's company
         if (!company || company.id !== user.companyId) {
             return next(ApiError.forbidden('Invalid company context'));
         }
 
-        // 2. Load Permissions from User's Role
         let permissions: string[] = [];
         let roleModuleBundles: string[] = [];
+        let role: any = null;
         if (user.roleId) {
-            const role = await diContainer.companyRoleRepository.getById(companyId, user.roleId);
+            role = await diContainer.companyRoleRepository.getById(companyId, user.roleId);
             if (role) {
                 permissions = role.resolvedPermissions || role.permissions || [];
                 roleModuleBundles = role.moduleBundles || [];
             }
         }
 
-        // NOTE: Features were part of the old bundle structure
-        // With the new businessDomains-based bundle structure, features are not tracked
-        const features: string[] = [];
+        const companyModules = await diContainer.companyModuleRepository.listByCompany(companyId);
+        const entitledModules = await diContainer.entitlementService.getEntitledModules(companyId);
+        const finalModules = resolveCompanyModuleAccess({
+            companyModules,
+            legacyModules: (company.modules || []) as string[],
+            entitledModules,
+            roleModuleBundles,
+            role,
+            membership: {
+                roleId: user.roleId || undefined,
+                isOwner: user.isOwner,
+            },
+        });
+        const capabilityParentModules = await filterRuntimeAvailableModules(companyId, finalModules);
+        const enabledFeatures = await resolveEnabledCompanyCapabilityCodes({
+            companyId,
+            accessibleModules: capabilityParentModules,
+            capabilityRepository: diContainer.capabilityRegistryRepository,
+            entitlementRepository: diContainer.companyEntitlementRepository,
+        });
 
-        // 4. Set Tenant Context with ALL required fields
         console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);
-        console.log(`[TenantContext] Permissions: ${JSON.stringify(permissions)}`);
-
-        const companyModules = Array.isArray(company.modules) ? company.modules : [];
-        const normalizedCompanyModules = companyModules
-            .map((moduleId) => String(moduleId || '').trim().toLowerCase())
-            .filter(Boolean);
-
-        const normalizedRoleModuleBundles = roleModuleBundles
-            .map((moduleId) => String(moduleId || '').trim().toLowerCase())
-            .filter(Boolean);
-
-        const modules = Array.from(new Set([
-            ...normalizedCompanyModules,
-            ...normalizedRoleModuleBundles
-        ]));
+        console.log(`[TenantContext] Final modules: ${JSON.stringify(finalModules)}`);
 
         req.tenantContext = {
             userId: user.uid,
             companyId: companyId,
             roleId: user.roleId,
             permissions: permissions,
-            modules,
-            features: features
+            modules: finalModules,
+            features: enabledFeatures
         };
 
         next();

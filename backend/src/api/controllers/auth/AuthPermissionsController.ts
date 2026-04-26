@@ -1,6 +1,21 @@
+/**
+ * AuthPermissionsController
+ *
+ * Returns user permissions and module access.
+ * Applies 4-gate filtering (in order):
+ * 1. Module availability passes (code exists, lifecycleStatus=ready, runtimeStatus=available)
+ * 2. Company is entitled (has bundle/trial/promotion entitlement)
+ * 3. CompanyModule is enabled (company admin turned ON)
+ * 4. User role grants the module (role.moduleBundles includes it)
+ */
 import { Request, Response, NextFunction } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
-import { ModuleRegistry } from '../../../application/platform/ModuleRegistry';
+import { ModuleAvailabilityService, ModuleAvailabilityState } from '../../../application/platform/ModuleAvailabilityService';
+import {
+  filterRuntimeAvailableModules,
+  resolveCompanyModuleAccess
+} from '../../../application/company-admin/services/CompanyModuleAccessResolver';
+import { resolveEnabledCompanyCapabilityCodes } from '../../../application/company-admin/services/CompanyCapabilityAccessResolver';
 
 export class AuthPermissionsController {
   static async getMyPermissions(req: Request, res: Response, next: NextFunction) {
@@ -10,58 +25,102 @@ export class AuthPermissionsController {
       const isSuperAdmin = user.isSuperAdmin;
 
       if (!companyId) {
-        return res.json({ success: true, data: { roleId: null, roleName: null, moduleBundles: [], explicitPermissions: [], resolvedPermissions: [], isSuperAdmin } });
+        return res.json({
+          success: true,
+          data: {
+            roleId: null,
+            roleName: null,
+            moduleBundles: [],
+            explicitPermissions: [],
+            resolvedPermissions: [],
+            isSuperAdmin
+          }
+        });
       }
 
       const membership = await diContainer.rbacCompanyUserRepository.getByUserAndCompany(user.uid, companyId);
       if (!membership) {
-        return res.json({ success: true, data: { roleId: null, roleName: null, moduleBundles: [], explicitPermissions: [], resolvedPermissions: [], isSuperAdmin } });
+        return res.json({
+          success: true,
+          data: {
+            roleId: null,
+            roleName: null,
+            moduleBundles: [],
+            explicitPermissions: [],
+            resolvedPermissions: [],
+            isSuperAdmin
+          }
+        });
       }
 
       const role = await diContainer.companyRoleRepository.getById(companyId, membership.roleId);
       const resolvedPermissions = role?.resolvedPermissions || role?.permissions || [];
 
-      // Normalize/merge module assignments from company + role records.
+      const service = ModuleAvailabilityService.getInstance();
+
+      const entitledModules = await diContainer.entitlementService.getEntitledModules(companyId);
+      const entitledModuleSet = new Set<string>(entitledModules.map(m => m.toLowerCase()));
+
       const company = await diContainer.companyRepository.findById(companyId);
-      const moduleIds = new Set(
-        ModuleRegistry.getInstance()
-          .getAllModules()
-          .map((module) => String(module.metadata.id || '').trim().toLowerCase())
-          .filter(Boolean)
-      );
+      const companyModules = await diContainer.companyModuleRepository.listByCompany(companyId);
+      const legacyModulesList = (company as any)?.modules as string[] || [];
+      const legacyModuleSet = new Set<string>(legacyModulesList.map((m: string) => m.toLowerCase()).filter(Boolean));
+      const candidateModules = resolveCompanyModuleAccess({
+        companyModules,
+        legacyModules: legacyModulesList,
+        entitledModules,
+        roleModuleBundles: role?.moduleBundles || [],
+        role,
+        membership,
+      });
 
-      const companyModules = Array.isArray(company?.modules) ? company!.modules : [];
-      const roleModules = Array.isArray(role?.moduleBundles) ? role!.moduleBundles : [];
+      const availableForCompany = await service.getAvailableModulesForCompany(companyId);
 
-      const normalizedRawModules = [...companyModules, ...roleModules]
-        .map((moduleId) => String(moduleId || '').trim().toLowerCase())
-        .filter(Boolean);
+      const finalModules = candidateModules
+        .filter((moduleId: string) => {
+          const isEntitled = entitledModuleSet.has(moduleId) || legacyModuleSet.has(moduleId);
+          if (!isEntitled) return false;
 
-      let normalizedModules = Array.from(
-        new Set(normalizedRawModules.filter((moduleId) => moduleIds.has(moduleId)))
-      );
+          const info = service.getAvailabilityInfo(moduleId);
+          if (!info) return false;
+          
+          if (info.state === ModuleAvailabilityState.CODE_ONLY) return false;
+          if (info.state === ModuleAvailabilityState.DB_ONLY) return false;
+          if (info.state === ModuleAvailabilityState.VERSION_MISMATCH) return false;
+          if (info.state === ModuleAvailabilityState.IMPLEMENTATION_FAILED) return false;
+          if (info.state === ModuleAvailabilityState.IMPLEMENTATION_UNCHECKED) return false;
+          
+          if (info.state === ModuleAvailabilityState.NOT_READY) {
+            return availableForCompany.includes(moduleId);
+          }
+          
+          if (info.state === ModuleAvailabilityState.SUSPENDED) {
+            return availableForCompany.includes(moduleId);
+          }
+          
+          if (info.state === ModuleAvailabilityState.AVAILABLE) {
+            return availableForCompany.includes(moduleId);
+          }
+          return false;
+        });
 
-      const hasOnlyLegacyTokens = normalizedRawModules.length > 0 && normalizedModules.length === 0;
-      if (hasOnlyLegacyTokens) {
-        const moduleStates = await diContainer.companyModuleRepository.listByCompany(companyId);
-        normalizedModules = Array.from(
-          new Set(
-            moduleStates
-              .filter((state) => state.initialized || state.initializationStatus === 'complete')
-              .map((state) => String(state.moduleCode || '').trim().toLowerCase())
-              .filter((moduleId) => moduleIds.has(moduleId))
-          )
-        );
-      }
+      const capabilityParentModules = await filterRuntimeAvailableModules(companyId, finalModules, service);
+      const enabledCapabilities = await resolveEnabledCompanyCapabilityCodes({
+        companyId,
+        accessibleModules: capabilityParentModules,
+        capabilityRepository: diContainer.capabilityRegistryRepository,
+        entitlementRepository: diContainer.companyEntitlementRepository,
+      });
 
       return res.json({
         success: true,
         data: {
           roleId: membership.roleId,
           roleName: role?.name || null,
-          moduleBundles: normalizedModules,
+          moduleBundles: finalModules,
           explicitPermissions: role?.explicitPermissions || role?.permissions || [],
           resolvedPermissions,
+          enabledCapabilities,
           isSuperAdmin,
         },
       });

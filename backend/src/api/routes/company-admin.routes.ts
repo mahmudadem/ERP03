@@ -50,6 +50,13 @@ router.post('/modules/enable', CompanyModulesController.enableModule);
 router.post('/modules/disable', CompanyModulesController.disableModule);
 
 // ============================================================================
+// CAPABILITY ROUTES (Phase 3)
+// ============================================================================
+router.get('/capabilities', CompanyModulesController.listCapabilities);
+router.post('/capabilities/enable', CompanyModulesController.enableCapability);
+router.post('/capabilities/disable', CompanyModulesController.disableCapability);
+
+// ============================================================================
 // BUNDLE ROUTES
 // ============================================================================
 router.get('/bundle', CompanyBundleController.getCurrentBundle);
