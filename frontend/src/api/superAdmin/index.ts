@@ -84,6 +84,7 @@ export interface ModuleAvailabilityReport {
   dbOnly: Module[];
   codeOnly: { id: string; manifest: ModuleManifest; hasRouter: boolean }[];
   versionMismatch: { moduleId: string; dbVersion: string; codeVersion: string }[];
+  implementationFailed: Module[];
   notReady: Module[];
   implementationUnchecked: Module[];
   suspended: Module[];
@@ -114,6 +115,7 @@ export interface Bundle {
   description: string;
   businessDomains: string[];
   modulesIncluded: string[];
+  lifecycleStatus: 'draft' | 'ready' | 'deprecated' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
 }

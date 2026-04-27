@@ -6,6 +6,7 @@ import { EnableModuleForCompanyUseCase } from '../../../application/company-admi
 import { DisableModuleForCompanyUseCase } from '../../../application/company-admin/use-cases/DisableModuleForCompanyUseCase';
 import { EnableCapabilityForCompanyUseCase } from '../../../application/company-admin/use-cases/EnableCapabilityForCompanyUseCase';
 import { DisableCapabilityForCompanyUseCase } from '../../../application/company-admin/use-cases/DisableCapabilityForCompanyUseCase';
+import { syncCompanyVoucherTemplatesFromSystem } from '../../../application/system/services/CompanyVoucherTemplateSyncService';
 import {
   filterRuntimeAvailableModules,
   resolveCompanyEnabledModules
@@ -87,9 +88,7 @@ export class CompanyModulesController {
       const useCase = new EnableModuleForCompanyUseCase(
         diContainer.companyRepository,
         diContainer.companyModuleRepository,
-        diContainer.companyEntitlementRepository,
-        diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository
+        diContainer.companyEntitlementRepository
       );
       const result = await useCase.execute({ companyId, moduleName });
 
@@ -223,6 +222,38 @@ export class CompanyModulesController {
         diContainer.capabilityRegistryRepository
       );
       const result = await useCase.execute({ companyId, capabilityCode });
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /company-admin/modules/:module/sync-voucher-types
+   * Sync voucher types from system catalog for a specific module
+   */
+  static async syncVoucherTypes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = (req as any).tenantContext?.companyId;
+      const { module } = req.params;
+
+      if (!companyId) {
+        res.status(400).json({ success: false, error: 'Company ID required' });
+        return;
+      }
+      if (!module) {
+        res.status(400).json({ success: false, error: 'Module name required' });
+        return;
+      }
+
+      const result = await syncCompanyVoucherTemplatesFromSystem({
+        companyId,
+        modules: [module],
+        createdBy: 'SYSTEM',
+        voucherTypeRepo: diContainer.voucherTypeDefinitionRepository,
+        voucherFormRepo: diContainer.voucherFormRepository,
+      });
 
       res.json({ success: true, data: result });
     } catch (error) {

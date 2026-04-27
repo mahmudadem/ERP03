@@ -22,28 +22,45 @@ const PLANS = [
   { id: 'enterprise', name: 'Enterprise', price: 999, status: 'active', limits: { maxCompanies: 999, maxUsersPerCompany: 999, maxModulesAllowed: 999, maxStorageMB: 100000, maxTransactionsPerMonth: 100000 } },
 ];
 
+// Business Domains
+const BUSINESS_DOMAINS = [
+  { id: 'trading', name: 'Trading', description: 'General trading and wholesale' },
+  { id: 'retail', name: 'Retail', description: 'Retail shops and POS' },
+  { id: 'services', name: 'Services', description: 'IT, consulting, maintenance services' },
+  { id: 'hospitality', name: 'Hospitality', description: 'Restaurants, hotels, cafes' },
+  { id: 'manufacturing', name: 'Manufacturing', description: 'Factories and production' },
+  { id: 'construction', name: 'Construction', description: 'Contractors and builders' },
+  { id: 'real-estate', name: 'Real Estate', description: 'Property brokers and agencies' },
+  { id: 'education', name: 'Education', description: 'Training centers and schools' },
+  { id: 'healthcare', name: 'Healthcare', description: 'Clinics and medical practices' },
+  { id: 'logistics', name: 'Logistics', description: 'Transportation and delivery' },
+  { id: 'ecommerce', name: 'E-Commerce', description: 'Online sellers' },
+  { id: 'nonprofit', name: 'Non-Profit', description: 'NGOs and charities' },
+  { id: 'distribution', name: 'Distribution', description: 'Wholesale distribution' },
+];
+
 // Bundles
 const BUNDLES = [
-  { id: 'trading-basic', name: 'General Trading', description: 'Suitable for normal trading companies.', businessDomains: ['trading'], modulesIncluded: ['accounting', 'inventory'], lifecycleStatus: 'ready' },
-  { id: 'trading-plus', name: 'General Trading +', description: 'Trading company with HR support.', businessDomains: ['trading'], modulesIncluded: ['accounting', 'inventory', 'hr'], lifecycleStatus: 'ready' },
-  { id: 'retail-pos', name: 'Retail / POS', description: 'For retail shops and supermarkets.', businessDomains: ['retail'], modulesIncluded: ['pos', 'inventory', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'wholesale', name: 'Wholesale Trading', description: 'For wholesalers and distribution companies.', businessDomains: ['trading', 'distribution'], modulesIncluded: ['inventory', 'crm', 'accounting', 'purchase'], lifecycleStatus: 'ready' },
-  { id: 'services', name: 'Services Company', description: 'For IT, consulting, maintenance, etc.', businessDomains: ['services'], modulesIncluded: ['crm', 'hr', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'restaurant', name: 'Restaurant', description: 'POS + Inventory + HR for restaurants.', businessDomains: ['hospitality'], modulesIncluded: ['pos', 'inventory', 'hr', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'bakery', name: 'Bakery / Food Production', description: 'Suitable for bakeries and food factories.', businessDomains: ['manufacturing', 'hospitality'], modulesIncluded: ['pos', 'inventory', 'manufacturing', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'maintenance', name: 'Maintenance Workshop', description: 'Workshops handling repairs and service orders.', businessDomains: ['services'], modulesIncluded: ['crm', 'inventory', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'manufacturing-basic', name: 'Manufacturing – Basic', description: 'For small manufacturers.', businessDomains: ['manufacturing'], modulesIncluded: ['inventory', 'manufacturing', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'manufacturing-advanced', name: 'Manufacturing – Advanced', description: 'For medium and large factories.', businessDomains: ['manufacturing'], modulesIncluded: ['inventory', 'manufacturing', 'accounting', 'hr', 'purchase'], lifecycleStatus: 'ready' },
-  { id: 'construction', name: 'Construction / Contracting', description: 'Contractors, builders, and project companies.', businessDomains: ['construction'], modulesIncluded: ['projects', 'accounting', 'hr', 'inventory'], lifecycleStatus: 'ready' },
-  { id: 'real-estate', name: 'Real Estate Agency', description: 'Real estate brokers and agencies.', businessDomains: ['real-estate'], modulesIncluded: ['crm', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'education', name: 'Education / Training Center', description: 'Training institutes and educational centers.', businessDomains: ['education'], modulesIncluded: ['crm', 'hr', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'clinic', name: 'Clinic / Medical Office', description: 'Small medical practices.', businessDomains: ['healthcare'], modulesIncluded: ['crm', 'inventory', 'hr', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'logistics', name: 'Logistics & Transportation', description: 'Transport, delivery, and logistics services.', businessDomains: ['logistics'], modulesIncluded: ['accounting', 'hr', 'crm'], lifecycleStatus: 'ready' },
-  { id: 'ecommerce', name: 'E-Commerce Seller', description: 'Online sellers and marketplace merchants.', businessDomains: ['retail', 'ecommerce'], modulesIncluded: ['inventory', 'crm', 'accounting'], lifecycleStatus: 'ready' },
-  { id: 'freelancer', name: 'Freelancer / Solo Entrepreneur', description: 'For individual freelancers.', businessDomains: ['services'], modulesIncluded: ['accounting', 'crm'], lifecycleStatus: 'ready' },
-  { id: 'nonprofit', name: 'Non-Profit Organization', description: 'For NGOs and non-profit entities.', businessDomains: ['nonprofit'], modulesIncluded: ['accounting', 'crm', 'hr'], lifecycleStatus: 'ready' },
-  { id: 'salon', name: 'Beauty Salon & Spa', description: 'For salons, spas, and beauty centers.', businessDomains: ['services', 'retail'], modulesIncluded: ['pos', 'inventory', 'hr'], lifecycleStatus: 'ready' },
-  { id: 'empty-company', name: 'Empty Company', description: 'Start with no modules and configure manually.', businessDomains: [], modulesIncluded: [], lifecycleStatus: 'ready' },
+  { id: 'trading-basic', name: 'General Trading', description: 'Suitable for normal trading companies.', modulesIncluded: ['accounting', 'inventory'], lifecycleStatus: 'ready' },
+  { id: 'trading-plus', name: 'General Trading +', description: 'Trading company with HR support.', modulesIncluded: ['accounting', 'inventory', 'hr'], lifecycleStatus: 'ready' },
+  { id: 'retail-pos', name: 'Retail / POS', description: 'For retail shops and supermarkets.', modulesIncluded: ['pos', 'inventory', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'wholesale', name: 'Wholesale Trading', description: 'For wholesalers and distribution companies.', modulesIncluded: ['inventory', 'crm', 'accounting', 'purchase'], lifecycleStatus: 'ready' },
+  { id: 'services', name: 'Services Company', description: 'For IT, consulting, maintenance, etc.', modulesIncluded: ['crm', 'hr', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'restaurant', name: 'Restaurant', description: 'POS + Inventory + HR for restaurants.', modulesIncluded: ['pos', 'inventory', 'hr', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'bakery', name: 'Bakery / Food Production', description: 'Suitable for bakeries and food factories.', modulesIncluded: ['pos', 'inventory', 'manufacturing', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'maintenance', name: 'Maintenance Workshop', description: 'Workshops handling repairs and service orders.', modulesIncluded: ['crm', 'inventory', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'manufacturing-basic', name: 'Manufacturing – Basic', description: 'For small manufacturers.', modulesIncluded: ['inventory', 'manufacturing', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'manufacturing-advanced', name: 'Manufacturing – Advanced', description: 'For medium and large factories.', modulesIncluded: ['inventory', 'manufacturing', 'accounting', 'hr', 'purchase'], lifecycleStatus: 'ready' },
+  { id: 'construction', name: 'Construction / Contracting', description: 'Contractors, builders, and project companies.', modulesIncluded: ['projects', 'accounting', 'hr', 'inventory'], lifecycleStatus: 'ready' },
+  { id: 'real-estate', name: 'Real Estate Agency', description: 'Real estate brokers and agencies.', modulesIncluded: ['crm', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'education', name: 'Education / Training Center', description: 'Training institutes and educational centers.', modulesIncluded: ['crm', 'hr', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'clinic', name: 'Clinic / Medical Office', description: 'Small medical practices.', modulesIncluded: ['crm', 'inventory', 'hr', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'logistics', name: 'Logistics & Transportation', description: 'Transport, delivery, and logistics services.', modulesIncluded: ['accounting', 'hr', 'crm'], lifecycleStatus: 'ready' },
+  { id: 'ecommerce', name: 'E-Commerce Seller', description: 'Online sellers and marketplace merchants.', modulesIncluded: ['inventory', 'crm', 'accounting'], lifecycleStatus: 'ready' },
+  { id: 'freelancer', name: 'Freelancer / Solo Entrepreneur', description: 'For individual freelancers.', modulesIncluded: ['accounting', 'crm'], lifecycleStatus: 'ready' },
+  { id: 'nonprofit', name: 'Non-Profit Organization', description: 'For NGOs and non-profit entities.', modulesIncluded: ['accounting', 'crm', 'hr'], lifecycleStatus: 'ready' },
+  { id: 'salon', name: 'Beauty Salon & Spa', description: 'For salons, spas, and beauty centers.', modulesIncluded: ['pos', 'inventory', 'hr'], lifecycleStatus: 'ready' },
+  { id: 'empty-company', name: 'Empty Company', description: 'Start with no modules and configure manually.', modulesIncluded: [], lifecycleStatus: 'ready' },
 ];
 
 // Module Definitions for Permissions
@@ -122,16 +139,16 @@ const MODULE_DEFINITIONS = [
   {
     moduleId: 'manufacturing',
     permissions: [
-      { id: 'mfg.workOrder.view', label: 'View Work Orders', enabled: true },
-      { id: 'mfg.bom.view', label: 'View BoM', enabled: true },
+      { id: 'manufacturing.workOrders.view', label: 'View Work Orders', enabled: true },
+      { id: 'manufacturing.bom.view', label: 'View BoM', enabled: true },
     ],
     autoAttachToRoles: ['owner', 'admin']
   },
   {
     moduleId: 'projects',
     permissions: [
-      { id: 'project.view', label: 'View Projects', enabled: true },
-      { id: 'task.view', label: 'View Tasks', enabled: true },
+      { id: 'projects.view', label: 'View Projects', enabled: true },
+      { id: 'projects.tasks.view', label: 'View Tasks', enabled: true },
     ],
     autoAttachToRoles: ['owner', 'admin']
   },
@@ -227,6 +244,15 @@ async function seedPlans() {
   }
 }
 
+async function seedBusinessDomains() {
+  console.log('📦 Seeding Business Domains...');
+  const collection = db.collection('system_metadata').doc('business_domains').collection('items');
+  for (const domain of BUSINESS_DOMAINS) {
+    await collection.doc(domain.id).set({ ...domain, createdAt: new Date(), updatedAt: new Date() });
+    console.log(`  ✓ Domain: ${domain.name}`);
+  }
+}
+
 async function seedBundles() {
   console.log('📦 Seeding Bundles...');
   const collection = db.collection('system_metadata').doc('bundles').collection('items');
@@ -313,6 +339,7 @@ export async function seedOnboardingData() {
   console.log('🌱 Seeding Onboarding Data (Plans, Bundles, Permissions)...');
   try {
     await seedPlans();
+    await seedBusinessDomains();
     await seedBundles();
     await seedModuleDefinitions();
     await seedModulesRegistry();

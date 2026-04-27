@@ -12,6 +12,11 @@ import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces
 import { IVoucherFormRepository, VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { randomUUID } from 'crypto';
+import {
+  canonicalizeVoucherCode,
+  getVoucherFormLogicalKey,
+  isSystemDefaultVoucherForm,
+} from '../../../domain/designer/services/VoucherFormDeduper';
 
 interface InitializeAccountingRequest {
   companyId: string;
@@ -337,17 +342,18 @@ export class InitializeAccountingUseCase {
     companyId: string,
     types: { id: string; data: VoucherTypeDefinition }[]
   ): Promise<void> {
+    const existingForms = await this.voucherFormRepo.getAllByCompany(companyId);
+    const existingDefaultFormKeys = new Set(
+      existingForms
+        .filter(isSystemDefaultVoucherForm)
+        .map(getVoucherFormLogicalKey)
+    );
+    let createdCount = 0;
+
     for (const type of types) {
       const formId = type.id;
-      const code = String(type.data.code || type.id || '').toUpperCase();
-      const baseType = String(type.data.module || '').toUpperCase() || (
-        code.includes('RECEIPT') ? 'RECEIPT' :
-        code.includes('PAYMENT') ? 'PAYMENT' :
-        code.includes('JOURNAL') ? 'JOURNAL' :
-        code.includes('TRANSFER') ? 'TRANSFER' :
-        code.includes('INVOICE') ? 'INVOICE' :
-        code
-      );
+      const code = String(type.data.code || type.id || '').trim();
+      const baseType = canonicalizeVoucherCode(code) || code.toLowerCase();
 
       const headerFields = (type.data.headerFields || []).map((f: any) => ({
         id: f.id || f.fieldId,
@@ -394,10 +400,17 @@ export class InitializeAccountingUseCase {
         createdBy: 'system'
       };
 
+      const formKey = getVoucherFormLogicalKey(form);
+      if (existingDefaultFormKeys.has(formKey)) {
+        continue;
+      }
+
       await this.voucherFormRepo.create(form);
+      existingDefaultFormKeys.add(formKey);
+      createdCount++;
     }
 
-    console.log(`[InitializeAccountingUseCase] Created ${types.length} default forms in voucherForms collection`);
+    console.log(`[InitializeAccountingUseCase] Created ${createdCount} default forms in voucherForms collection`);
   }
 }
 

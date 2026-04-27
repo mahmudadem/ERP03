@@ -3,6 +3,7 @@ import { IPermissionRegistryRepository } from '../../../repository/interfaces/su
 import { CompanyRole } from '../../../domain/rbac/CompanyRole';
 import { ApiError } from '../../../api/errors/ApiError';
 import { PermissionCatalogSyncService } from '../../platform/PermissionCatalogSyncService';
+import { deriveModuleBundlesFromPermissions } from '../services/RoleModuleBundleDeriver';
 
 export interface CreateRoleInput {
   companyId: string;
@@ -44,6 +45,9 @@ export class CreateCompanyRoleUseCase {
       name: input.name,
       description: input.description || '',
       permissions: input.permissions || [],
+      explicitPermissions: input.permissions || [],
+      resolvedPermissions: input.permissions || [],
+      moduleBundles: deriveModuleBundlesFromPermissions(input.permissions || []),
       isSystem: false,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -59,6 +63,9 @@ export class CreateCompanyRoleUseCase {
       name: role.name,
       description: role.description,
       permissions: role.permissions,
+      explicitPermissions: role.explicitPermissions,
+      resolvedPermissions: role.resolvedPermissions,
+      moduleBundles: role.moduleBundles,
       isSystem: role.isSystem,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt

@@ -399,7 +399,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         notes: data.notes || data.description || undefined,
         lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
           itemId: l.itemId,
-          invoicedQty: Number(l.invoicedQty) || 0,
+          invoicedQty: Number(l.invoicedQty ?? l.qty ?? l.quantity) || 0,
           uomId: l.uomId || undefined,
           uom: l.uom || undefined,
           unitPriceDoc: Number(l.unitPriceDoc) || 0,
@@ -424,7 +424,7 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         notes: data.notes || data.description || undefined,
         lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
           itemId: l.itemId,
-          invoicedQty: Number(l.invoicedQty) || 0,
+          invoicedQty: Number(l.invoicedQty ?? l.qty ?? l.quantity) || 0,
           uomId: l.uomId || undefined,
           uom: l.uom || undefined,
           unitPriceDoc: Number(l.unitPriceDoc) || 0,

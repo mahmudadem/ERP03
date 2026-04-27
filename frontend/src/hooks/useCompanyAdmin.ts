@@ -78,10 +78,10 @@ export const useCompanyUsers = () => {
     mutationFn: companyAdminApi.inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User invited successfully');
+      toast.success('User added successfully');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to invite user');
+      toast.error(error?.response?.data?.message || 'Failed to add user');
     },
   });
 

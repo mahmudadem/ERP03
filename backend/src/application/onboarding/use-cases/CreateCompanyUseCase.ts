@@ -16,9 +16,6 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { CompanyModuleEntity } from '../../../domain/company/entities/CompanyModule';
 import { ApiError } from '../../../api/errors/ApiError';
 import { ICompanySettingsRepository } from '../../../repository/interfaces/core/ICompanySettingsRepository';
-import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
-import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
-import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 import { ICompanyEntitlementRepository, IBundleItemRepository } from '../../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
 import { CompanyEntitlement, CompanyEntitlementItem } from '../../../domain/super-admin/EntitlementDefinition';
 
@@ -43,8 +40,6 @@ export class CreateCompanyUseCase {
     private rbacCompanyUserRepo: IRbacCompanyUserRepository,
     private rbacCompanyRoleRepo: ICompanyRoleRepository,
     private rolePermissionResolver: CompanyRolePermissionResolver,
-    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
-    private voucherFormRepo: IVoucherFormRepository,
     private bundleRepo: IBundleRegistryRepository,
     private bundleItemRepo: IBundleItemRepository,
     private companyModuleRepo: ICompanyModuleRepository,
@@ -225,15 +220,6 @@ export class CreateCompanyUseCase {
       await this.companyModuleRepo.batchCreate(moduleRecords);
       modulesCreated = true;
       console.log('[CreateCompanyUseCase] Module records persisted successfully');
-
-      const syncResult = await syncCompanyVoucherTemplatesFromSystem({
-        companyId: company.id,
-        modules: finalModules,
-        createdBy: input.userId,
-        voucherTypeRepo: this.voucherTypeRepo,
-        voucherFormRepo: this.voucherFormRepo,
-      });
-      console.log('[CreateCompanyUseCase] Synced voucher templates:', syncResult);
 
       console.log('[CreateCompanyUseCase] Company creation completed successfully');
       return { companyId: company.id };

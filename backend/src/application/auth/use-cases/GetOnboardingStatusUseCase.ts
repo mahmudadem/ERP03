@@ -51,12 +51,12 @@ export class GetOnboardingStatusUseCase {
     // Determine next step
     let nextStep: OnboardingStatus['nextStep'];
     
-    if (!user.planId) {
-      nextStep = 'PLAN_SELECTION';
-    } else if (!hasCompanies) {
-      nextStep = 'COMPANY_SELECT';
-    } else if (user.activeCompanyId) {
+    if (hasCompanies && user.activeCompanyId) {
       nextStep = 'DASHBOARD';
+    } else if (hasCompanies) {
+      nextStep = 'COMPANY_SELECT';
+    } else if (!user.planId) {
+      nextStep = 'PLAN_SELECTION';
     } else {
       nextStep = 'COMPANY_SELECT';
     }

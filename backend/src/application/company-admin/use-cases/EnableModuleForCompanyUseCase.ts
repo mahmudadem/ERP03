@@ -10,6 +10,7 @@
  * 3. CompanyModule enabled state is set to true
  *
  * Does NOT create entitlements - only enables already-entitled modules.
+ * Does NOT create voucher forms - those are created during module initialization.
  */
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
@@ -17,17 +18,12 @@ import { ICompanyEntitlementRepository } from '../../../repository/interfaces/su
 import { ModuleAvailabilityService, ModuleAvailabilityState } from '../../platform/ModuleAvailabilityService';
 import { ApiError } from '../../../api/errors/ApiError';
 import { CompanyModuleEntity } from '../../../domain/company/entities/CompanyModule';
-import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
-import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
-import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
 export class EnableModuleForCompanyUseCase {
   constructor(
     private companyRepository: ICompanyRepository,
     private companyModuleRepository: ICompanyModuleRepository,
-    private entitlementRepository: ICompanyEntitlementRepository,
-    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
-    private voucherFormRepo: IVoucherFormRepository
+    private entitlementRepository: ICompanyEntitlementRepository
   ) {}
 
   async execute(input: { companyId: string; moduleName: string }): Promise<any> {
@@ -67,17 +63,9 @@ export class EnableModuleForCompanyUseCase {
       throw ApiError.forbidden('Company is not entitled to this module. Contact SuperAdmin to add subscription.');
     }
 
-    let moduleState = await this.companyModuleRepository.get(input.companyId, moduleName);
+    const moduleState = await this.companyModuleRepository.get(input.companyId, moduleName);
     
     if (moduleState && moduleState.isEnabled) {
-      await syncCompanyVoucherTemplatesFromSystem({
-        companyId: input.companyId,
-        modules: [moduleName],
-        createdBy: 'SYSTEM',
-        voucherTypeRepo: this.voucherTypeRepo,
-        voucherFormRepo: this.voucherFormRepo,
-      });
-
       return { moduleName, status: 'already_enabled' };
     }
 
@@ -91,14 +79,6 @@ export class EnableModuleForCompanyUseCase {
         CompanyModuleEntity.create(input.companyId, moduleName)
       );
     }
-
-    await syncCompanyVoucherTemplatesFromSystem({
-      companyId: input.companyId,
-      modules: [moduleName],
-      createdBy: 'SYSTEM',
-      voucherTypeRepo: this.voucherTypeRepo,
-      voucherFormRepo: this.voucherFormRepo,
-    });
 
     return { moduleName, status: 'enabled' };
   }

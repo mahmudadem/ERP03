@@ -11,6 +11,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { onboardingApi, OnboardingStatus } from '../../modules/onboarding';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1500;
+
 interface RequireOnboardingProps {
   children: React.ReactNode;
   skipOnboardingCheck?: boolean; // For pages that should skip the check (like plan selection itself)
@@ -26,6 +29,7 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState(false);
+  const [backendConnecting, setBackendConnecting] = useState(false);
 
   useEffect(() => {
     // Super Admins bypass all onboarding checks
@@ -39,23 +43,41 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
       return;
     }
 
-    const checkStatus = async () => {
-      try {
-        const status = await onboardingApi.getOnboardingStatus();
-        setOnboardingStatus(status);
-      } catch (err: any) {
-        // If it's a 401 error, the global interceptor will handle it
-        // Don't set statusError(true) which would trigger a redirect to plan page
-        if (err.response?.status !== 401) {
-          console.error('Failed to get onboarding status:', err);
+    const checkStatusWithRetry = async () => {
+      setBackendConnecting(true);
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const status = await onboardingApi.getOnboardingStatus();
+          setOnboardingStatus(status);
+          setBackendConnecting(false);
+          setStatusLoading(false);
+          return;
+        } catch (err: any) {
+          // 401 means not authenticated — let the auth guard handle it
+          if (err.response?.status === 401) {
+            setStatusLoading(false);
+            setBackendConnecting(false);
+            return;
+          }
+
+          // Network errors (connection refused, 502, timeout) — retry
+          const isNetworkError = !err.response || err.response.status >= 500;
+          if (isNetworkError && attempt < MAX_RETRIES) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+            continue;
+          }
+
+          // Exhausted retries or non-retryable error
+          console.error(`Failed to get onboarding status after ${attempt} attempt(s):`, err);
           setStatusError(true);
+          setBackendConnecting(false);
+          setStatusLoading(false);
+          return;
         }
-      } finally {
-        setStatusLoading(false);
       }
     };
 
-    checkStatus();
+    checkStatusWithRetry();
   }, [user, skipOnboardingCheck, isSuperAdmin]);
 
   // Still loading auth
@@ -77,16 +99,19 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     return <>{children}</>;
   }
 
-  // Still loading onboarding status
-  if (statusLoading) {
+  // Still checking onboarding status or retrying connection
+  if (statusLoading || backendConnecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+        {backendConnecting && (
+          <p className="mt-4 text-sm text-slate-500">Connecting to server...</p>
+        )}
       </div>
     );
   }
 
-  // Error getting status - redirect to plan selection (assume they need onboarding)
+  // Error getting status after retries — redirect to plan selection
   if (statusError) {
     if (location.pathname !== '/onboarding/plan') {
       return <Navigate to="/onboarding/plan" replace />;

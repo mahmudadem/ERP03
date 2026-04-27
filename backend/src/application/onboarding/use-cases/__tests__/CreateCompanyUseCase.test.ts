@@ -9,8 +9,6 @@ import { IUserRepository } from '../../../../repository/interfaces/core/IUserRep
 import { ICompanyUserRepository } from '../../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { ICompanyRoleRepository } from '../../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRolePermissionResolver } from '../../../rbac/CompanyRolePermissionResolver';
-import { IVoucherTypeDefinitionRepository } from '../../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
-import { IVoucherFormRepository } from '../../../../repository/interfaces/designer/IVoucherFormRepository';
 import { IBundleRegistryRepository } from '../../../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { ICompanyModuleRepository } from '../../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ICompanySettingsRepository } from '../../../../repository/interfaces/core/ICompanySettingsRepository';
@@ -24,8 +22,6 @@ describe('CreateCompanyUseCase - Phase 2 Entitlements', () => {
   let mockRbacCompanyUserRepo: jest.Mocked<ICompanyUserRepository>;
   let mockRbacCompanyRoleRepo: jest.Mocked<ICompanyRoleRepository>;
   let mockRolePermissionResolver: jest.Mocked<CompanyRolePermissionResolver>;
-  let mockVoucherTypeRepo: jest.Mocked<IVoucherTypeDefinitionRepository>;
-  let mockVoucherFormRepo: jest.Mocked<IVoucherFormRepository>;
   let mockBundleRepo: jest.Mocked<IBundleRegistryRepository>;
   let mockBundleItemRepo: jest.Mocked<IBundleItemRepository>;
   let mockCompanyModuleRepo: jest.Mocked<ICompanyModuleRepository>;
@@ -72,14 +68,6 @@ describe('CreateCompanyUseCase - Phase 2 Entitlements', () => {
       resolveRoleById: jest.fn(),
     } as any;
 
-    mockVoucherTypeRepo = {
-      findByCompany: jest.fn().mockResolvedValue([]),
-    } as any;
-
-    mockVoucherFormRepo = {
-      findByCompany: jest.fn().mockResolvedValue([]),
-    } as any;
-
     mockBundleRepo = {
       getById: jest.fn(),
     } as any;
@@ -111,8 +99,6 @@ describe('CreateCompanyUseCase - Phase 2 Entitlements', () => {
       mockRbacCompanyUserRepo,
       mockRbacCompanyRoleRepo,
       mockRolePermissionResolver,
-      mockVoucherTypeRepo,
-      mockVoucherFormRepo,
       mockBundleRepo,
       mockBundleItemRepo,
       mockCompanyModuleRepo,

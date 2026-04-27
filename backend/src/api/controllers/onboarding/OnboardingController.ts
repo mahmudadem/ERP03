@@ -174,8 +174,6 @@ const useCase = new CreateCompanyUseCase(
         diContainer.rbacCompanyUserRepository,
         diContainer.companyRoleRepository,
         resolver,
-        diContainer.voucherTypeDefinitionRepository,
-        diContainer.voucherFormRepository,
         diContainer.bundleRegistryRepository,
         diContainer.bundleRegistryRepository as any,
         diContainer.companyModuleRepository,

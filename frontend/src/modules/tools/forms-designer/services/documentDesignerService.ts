@@ -125,6 +125,34 @@ export async function saveDocumentForm(
 }
 
 /**
+ * Load system-level voucher type definitions from the platform catalog
+ * 
+ * @param module - The module name (e.g., 'ACCOUNTING', 'SALES', 'PURCHASE')
+ */
+export async function loadSystemVoucherTypes(module: string): Promise<any[]> {
+  try {
+    const { collection, getDocs } = await import('firebase/firestore');
+    const { db } = await import('../../../../config/firebase');
+    
+    const typesRef = collection(db, 'system_metadata/voucher_types/items');
+    const snapshot = await getDocs(typesRef);
+    
+    const definitions: any[] = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.module?.toUpperCase() === module.toUpperCase()) {
+        definitions.push({ id: docSnap.id, ...data, isSystemCatalog: true });
+      }
+    });
+    
+    return definitions;
+  } catch (error) {
+    console.error(`[loadSystemVoucherTypes] Failed for module ${module}:`, error);
+    return [];
+  }
+}
+
+/**
  * Lightweight metadata update — does NOT run the full canonical mapper.
  * Use this for simple field updates like toggling `enabled`, renaming, etc.
  */

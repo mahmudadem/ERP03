@@ -31,11 +31,11 @@ export class CheckModuleImplementationUseCase {
     const errors: string[] = [];
     const normalizedId = moduleId.toLowerCase();
 
-    const dbModule = await this.moduleRepo.getById(moduleId);
+    let dbModule = await this.moduleRepo.getById(moduleId);
     if (!dbModule) {
       const byCode = await this.moduleRepo.getByCode(normalizedId);
       if (byCode) {
-        errors.push(`Module found by code '${normalizedId}' but ID mismatch`);
+        dbModule = byCode;
       } else {
         errors.push(`Module not found in registry`);
       }
@@ -47,8 +47,9 @@ export class CheckModuleImplementationUseCase {
     }
 
     if (dbModule && codeModule) {
-      if (dbModule.code.toLowerCase() !== codeModule.metadata.id.toLowerCase()) {
-        errors.push(`Code module ID '${codeModule.metadata.id}' does not match DB code '${dbModule.code}'`);
+      const dbCode = (dbModule.code || dbModule.id).toLowerCase();
+      if (dbCode !== codeModule.metadata.id.toLowerCase()) {
+        errors.push(`Code module ID '${codeModule.metadata.id}' does not match DB code '${dbModule.code || dbModule.id}'`);
       }
 
       const manifest = this.extractManifest(codeModule);
@@ -86,7 +87,7 @@ export class CheckModuleImplementationUseCase {
 
     if (dbModule) {
       await this.moduleRepo.updateImplementationCheck(
-        moduleId,
+        dbModule.id,
         status,
         errors.length > 0 ? errors.join('; ') : null,
         result.checkedAt

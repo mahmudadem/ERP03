@@ -123,7 +123,7 @@ export const OverviewPage: React.FC = () => {
                variant="secondary"
                onClick={() => navigate('/company-admin/users')}
              >
-               {t('companyAdmin.overview.actions.inviteUser')}
+               {t('companyAdmin.overview.actions.addUser', { defaultValue: 'Add User' })}
              </Button>
              <Button 
                className="w-full justify-start" 

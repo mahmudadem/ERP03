@@ -83,25 +83,13 @@ export class AuthPermissionsController {
 
           const info = service.getAvailabilityInfo(moduleId);
           if (!info) return false;
-          
-          if (info.state === ModuleAvailabilityState.CODE_ONLY) return false;
-          if (info.state === ModuleAvailabilityState.DB_ONLY) return false;
-          if (info.state === ModuleAvailabilityState.VERSION_MISMATCH) return false;
-          if (info.state === ModuleAvailabilityState.IMPLEMENTATION_FAILED) return false;
-          if (info.state === ModuleAvailabilityState.IMPLEMENTATION_UNCHECKED) return false;
-          
-          if (info.state === ModuleAvailabilityState.NOT_READY) {
-            return availableForCompany.includes(moduleId);
+
+          if (info.state !== ModuleAvailabilityState.AVAILABLE &&
+              info.state !== ModuleAvailabilityState.SUSPENDED) {
+            return false;
           }
-          
-          if (info.state === ModuleAvailabilityState.SUSPENDED) {
-            return availableForCompany.includes(moduleId);
-          }
-          
-          if (info.state === ModuleAvailabilityState.AVAILABLE) {
-            return availableForCompany.includes(moduleId);
-          }
-          return false;
+
+          return availableForCompany.includes(moduleId);
         });
 
       const capabilityParentModules = await filterRuntimeAvailableModules(companyId, finalModules, service);

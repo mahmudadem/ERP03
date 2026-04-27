@@ -1,0 +1,14 @@
+{
+  "name": "erp03-command-center",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ERP03 Development Command Center — local dashboard for task tracking",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "marked": "^12.0.0"
+  }
+}

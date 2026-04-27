@@ -1,6 +1,7 @@
 import { ICompanyRoleRepository } from '../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { ApiError } from '../../../api/errors/ApiError';
 import { PermissionCatalogSyncService } from '../../platform/PermissionCatalogSyncService';
+import { deriveModuleBundlesFromPermissions } from '../services/RoleModuleBundleDeriver';
 
 export interface UpdateRoleInput {
   companyId: string;
@@ -43,16 +44,28 @@ export class UpdateCompanyRoleUseCase {
       }
     }
 
-    // Apply updates to name, description, permissions only
+    // Apply updates to name, description, permissions, and derived access metadata.
     const name = input.name !== undefined ? input.name : role.name;
     const description = input.description !== undefined ? input.description : role.description;
     const permissions = input.permissions !== undefined ? input.permissions : role.permissions;
+    const moduleBundles = input.permissions !== undefined
+      ? deriveModuleBundlesFromPermissions(permissions)
+      : role.moduleBundles;
+    const explicitPermissions = input.permissions !== undefined
+      ? permissions
+      : role.explicitPermissions;
+    const resolvedPermissions = input.permissions !== undefined
+      ? permissions
+      : role.resolvedPermissions;
 
     // Save
     await this.companyRoleRepository.update(input.companyId, input.roleId, {
       name,
       description,
       permissions,
+      explicitPermissions,
+      resolvedPermissions,
+      moduleBundles,
       updatedAt: new Date()
     });
   }

@@ -206,10 +206,10 @@ export const routesConfig: AppRoute[] = [
 
   // HR
   { path: '/hr', label: 'Overview', component: HrHomePage, section: 'HR', requiredModule: 'hr' },
-  { path: '/hr/employees', label: 'Employees', component: EmployeesListPage, section: 'HR', requiredModule: 'hr' },
+  { path: '/hr/employees', label: 'Employees', component: EmployeesListPage, section: 'HR', requiredPermission: 'hr.employees.view', requiredModule: 'hr' },
 
   // POS
-  { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredModule: 'pos' },
+  { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
 
   // SETTINGS
   { path: '/settings', label: 'General', component: SettingsHomePage, section: 'SETTINGS' },
@@ -259,16 +259,16 @@ export const routesConfig: AppRoute[] = [
   { path: '/company-admin/settings', label: 'Company Settings', component: CompanyAdminSettingsPage, section: 'SETTINGS' },
   
   // CRM
-  { path: '/crm/leads', label: 'CRM Overview', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredModule: 'crm' },
-  { path: '/crm/customers', label: 'Customers', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredModule: 'crm' },
+  { path: '/crm/leads', label: 'CRM Overview', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredPermission: 'crm.leads.view', requiredModule: 'crm' },
+  { path: '/crm/customers', label: 'Customers', component: lazy(() => import('../modules/crm/pages/CrmHomePage')), section: 'SETTINGS', requiredPermission: 'crm.customers.view', requiredModule: 'crm' },
 
   // Manufacturing
-  { path: '/manufacturing/work-orders', label: 'Manufacturing', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredModule: 'manufacturing' },
-  { path: '/manufacturing/bom', label: 'BoM', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredModule: 'manufacturing' },
+  { path: '/manufacturing/work-orders', label: 'Manufacturing', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredPermission: 'manufacturing.workOrders.view', requiredModule: 'manufacturing' },
+  { path: '/manufacturing/bom', label: 'BoM', component: lazy(() => import('../modules/manufacturing/pages/ManufacturingHomePage')), section: 'SETTINGS', requiredPermission: 'manufacturing.bom.view', requiredModule: 'manufacturing' },
 
   // Projects
-  { path: '/projects', label: 'Projects', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
-  { path: '/projects/tasks', label: 'Tasks', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredModule: 'projects' },
+  { path: '/projects', label: 'Projects', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredPermission: 'projects.view', requiredModule: 'projects' },
+  { path: '/projects/tasks', label: 'Tasks', component: lazy(() => import('../modules/projects/pages/ProjectsHomePage')), section: 'SETTINGS', requiredPermission: 'projects.tasks.view', requiredModule: 'projects' },
 
   // Sales
   { path: '/sales', label: 'Sales Overview', component: SalesHomePage, section: 'INVENTORY', requiredModule: 'sales' },

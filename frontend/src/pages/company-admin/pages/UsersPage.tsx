@@ -31,7 +31,7 @@ export const UsersPage: React.FC = () => {
   // Search State
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Invite Modal State
+  // Add User Modal State
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: '',
@@ -116,7 +116,7 @@ export const UsersPage: React.FC = () => {
         ]}
         action={
           <Button onClick={() => setShowInviteModal(true)}>
-            <UserPlus size={18} className="mr-2" /> {t('companyAdmin.users.inviteUser', { defaultValue: 'Invite User' })}
+            <UserPlus size={18} className="mr-2" /> {t('companyAdmin.users.addUser', { defaultValue: 'Add User' })}
           </Button>
         }
       />
@@ -155,11 +155,11 @@ export const UsersPage: React.FC = () => {
           description={
             searchTerm
               ? t('companyAdmin.users.empty.adjustSearch', { defaultValue: 'Try adjusting your search terms' })
-              : t('companyAdmin.users.empty.inviteHint', { defaultValue: 'Get started by inviting users to your company.' })
+              : t('companyAdmin.users.empty.addHint', { defaultValue: 'Get started by adding existing platform users to your company.' })
           }
           action={
             !searchTerm
-              ? <Button onClick={() => setShowInviteModal(true)}>{t('companyAdmin.users.inviteUser', { defaultValue: 'Invite User' })}</Button>
+              ? <Button onClick={() => setShowInviteModal(true)}>{t('companyAdmin.users.addUser', { defaultValue: 'Add User' })}</Button>
               : undefined
           }
         />
@@ -349,12 +349,17 @@ export const UsersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Invite Modal */}
+      {/* Add User Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-md p-6 shadow-xl border-0">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">{t('companyAdmin.users.inviteNewUser', { defaultValue: 'Invite New User' })}</h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{t('companyAdmin.users.addExistingUser', { defaultValue: 'Add Existing User' })}</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {t('companyAdmin.users.addExistingUserHint', { defaultValue: 'The user must sign up before you can add them.' })}
+                </p>
+              </div>
               <button 
                 onClick={() => setShowInviteModal(false)}
                 className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -416,8 +421,8 @@ export const UsersPage: React.FC = () => {
                 </Button>
                 <Button type="submit" disabled={isInviting}>
                   {isInviting
-                    ? t('companyAdmin.users.sending', { defaultValue: 'Sending...' })
-                    : t('companyAdmin.users.sendInvitation', { defaultValue: 'Send Invitation' })}
+                    ? t('companyAdmin.users.adding', { defaultValue: 'Adding...' })
+                    : t('companyAdmin.users.addUser', { defaultValue: 'Add User' })}
                 </Button>
               </div>
             </form>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DocumentFormConfig } from '../types';
 import { useFormUsageCheck } from '../../../../hooks/useFormUsageCheck';
-import { Plus, Edit3, Trash2, MoreVertical, Download, FileJson, FolderTree } from 'lucide-react';
+import { Plus, Edit3, Trash2, MoreVertical, Download, FileJson, FolderTree, DownloadCloud, CheckCircle, Package } from 'lucide-react';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
 
 interface FormCardProps {
@@ -13,6 +13,8 @@ interface FormCardProps {
   onToggleEnabled: (formId: string, enabled: boolean) => void;
   onExport: (form: DocumentFormConfig) => void;
   onUpdateSidebarGroup?: (formId: string, sidebarGroup: string | null) => void;
+  adoptionStatus?: 'active' | 'available' | 'custom';
+  onAdopt?: (templateId: string) => void;
 }
 
 const SIDEBAR_GROUP_PRESETS = ['Vouchers', 'Documents', 'Reports', 'Operations'];
@@ -25,7 +27,9 @@ export const FormCard: React.FC<FormCardProps> = ({
   onDelete,
   onToggleEnabled,
   onExport,
-  onUpdateSidebarGroup
+  onUpdateSidebarGroup,
+  adoptionStatus,
+  onAdopt
 }) => {
   const { isInUse, voucherCount, isChecking } = useFormUsageCheck(form.id);
   const isEnabled = form.enabled !== false; // Default to enabled
@@ -140,13 +144,17 @@ export const FormCard: React.FC<FormCardProps> = ({
         <p className="text-xs text-gray-500 truncate">ID: {form.id}</p>
         
         <div className="mt-6 flex gap-2 flex-wrap">
-          {isProtected ? (
-            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-              🔒 System
+          {adoptionStatus === 'available' ? (
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+              <DownloadCloud size={10} /> Available
+            </span>
+          ) : isProtected ? (
+            <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+              <CheckCircle size={10} /> Active
             </span>
           ) : (
-            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-              ✨ Custom
+            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+              <Package size={10} /> Custom
             </span>
           )}
           

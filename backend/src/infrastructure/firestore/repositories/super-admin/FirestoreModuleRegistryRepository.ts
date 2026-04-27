@@ -33,7 +33,7 @@ export class FirestoreModuleRegistryRepository implements IModuleRegistryReposit
   }
 
   async create(module: ModuleDefinition): Promise<void> {
-    await this.db.collection(this.collection).doc(this.subcollection).collection('items').doc(module.id).set({
+    await this.db.collection(this.collection).doc(this.subcollection).collection('items').doc(module.id).set(this.withoutUndefined({
       id: module.id,
       code: module.code,
       name: module.name,
@@ -49,11 +49,11 @@ export class FirestoreModuleRegistryRepository implements IModuleRegistryReposit
       businessDomainId: module.businessDomainId,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    }));
   }
 
   async update(id: string, module: Partial<ModuleDefinition>): Promise<void> {
-    const updateData: any = { ...module };
+    const updateData: any = this.withoutUndefined({ ...module });
     updateData.updatedAt = FieldValue.serverTimestamp();
     await this.db.collection(this.collection).doc(this.subcollection).collection('items').doc(id).update(updateData);
   }
@@ -98,9 +98,10 @@ export class FirestoreModuleRegistryRepository implements IModuleRegistryReposit
 
   private toDomain(doc: admin.firestore.DocumentSnapshot): ModuleDefinition {
     const data = doc.data()!;
+    const id = data.id ?? doc.id;
     return {
-      id: data.id,
-      code: data.code,
+      id,
+      code: data.code ?? id,
       name: data.name,
       description: data.description ?? '',
       version: data.version ?? '1.0.0',
@@ -115,5 +116,9 @@ export class FirestoreModuleRegistryRepository implements IModuleRegistryReposit
       createdAt: data.createdAt?.toDate() ?? new Date(),
       updatedAt: data.updatedAt?.toDate() ?? new Date(),
     };
+  }
+
+  private withoutUndefined<T extends Record<string, unknown>>(data: T): T {
+    return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as T;
   }
 }

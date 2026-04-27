@@ -30,6 +30,7 @@ export function companyModuleGuard(moduleName: string) {
     const service = ModuleAvailabilityService.getInstance();
 
     if (tenantModules.includes(normalizedModuleName)) {
+      await service.ensureCacheFresh();
       const info = service.getAvailabilityInfo(normalizedModuleName);
 
       if (!info) {

@@ -1,11 +1,16 @@
 import { randomUUID } from 'crypto';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
+import {
+  canonicalizeVoucherCode,
+  getVoucherFormLogicalKey,
+  isSystemDefaultVoucherForm,
+} from '../../../domain/designer/services/VoucherFormDeduper';
 import { IVoucherFormRepository, VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 
 const cloneValue = <T = any>(value: T): T => (value ? JSON.parse(JSON.stringify(value)) : value);
 const normalizeModule = (value: string | undefined | null): string => String(value || '').trim().toUpperCase();
-const normalizeCode = (value: string | undefined | null): string => String(value || '').trim().toLowerCase();
+const normalizeCode = (value: string | undefined | null): string => canonicalizeVoucherCode(value);
 const toFormFieldType = (type: string | undefined): 'text' | 'number' | 'date' | 'select' | 'currency' | 'textarea' | 'checkbox' => {
   const normalized = String(type || '').trim().toUpperCase();
   if (normalized.includes('DATE')) return 'date';
@@ -157,7 +162,13 @@ export const syncCompanyVoucherTemplatesFromSystem = async (
   let templatesUpserted = 0;
   let formsCreated = 0;
   const companyTypes = await input.voucherTypeRepo.getByCompanyId(input.companyId);
+  const companyForms = await input.voucherFormRepo.getAllByCompany(input.companyId);
   const existingByKey = new Map<string, VoucherTypeDefinition>();
+  const existingDefaultFormKeys = new Set(
+    companyForms
+      .filter(isSystemDefaultVoucherForm)
+      .map(getVoucherFormLogicalKey)
+  );
 
   for (const existingType of companyTypes) {
     if (existingType.companyId !== input.companyId) continue;
@@ -198,10 +209,12 @@ export const syncCompanyVoucherTemplatesFromSystem = async (
     }
     templatesUpserted++;
 
+    const formKey = `${normalizeModule(template.module)}::${normalizeCode(template.code)}`;
     const existingForms = await input.voucherFormRepo.getByTypeId(input.companyId, companyTypeId);
-    if (existingForms.length === 0) {
+    if (existingForms.length === 0 && !existingDefaultFormKeys.has(formKey)) {
       const defaultForm = cloneVoucherFormForCompany(input.companyId, companyTypeId, input.createdBy || 'SYSTEM', template);
       await input.voucherFormRepo.create(defaultForm);
+      existingDefaultFormKeys.add(formKey);
       formsCreated++;
     }
   }

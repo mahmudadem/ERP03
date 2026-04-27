@@ -49,7 +49,7 @@ export const moduleMenuMap: Record<
     icon: 'Boxes',
     items: [
       { label: 'Overview', path: '/inventory', icon: 'LayoutDashboard' },
-      { label: 'Items', path: '/inventory/items', permission: 'inventory.items.view', icon: 'Package' },
+      { label: 'Items', path: '/inventory/items', permission: 'inventory.items.manage', icon: 'Package' },
       { label: 'Categories', path: '/inventory/categories', permission: 'inventory.categories.view', icon: 'Tag' },
       { label: 'Warehouses', path: '/inventory/warehouses', permission: 'inventory.warehouses.view', icon: 'Warehouse' },
       { label: 'Stock Levels', path: '/inventory/stock-levels', permission: 'inventory.stock.view', icon: 'Layers' },
@@ -60,7 +60,7 @@ export const moduleMenuMap: Record<
         children: [
     { label: 'Opening Stock Documents', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
           { label: 'Adjustments', path: '/inventory/adjustments', permission: 'inventory.stock.adjust', icon: 'SlidersHorizontal' },
-          { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.warehouses.view', icon: 'ArrowLeftRight' },
+          { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.stock.adjust', icon: 'ArrowLeftRight' },
         ]
       },
       {
@@ -69,11 +69,10 @@ export const moduleMenuMap: Record<
         children: [
           { label: 'Low Stock Alerts', path: '/inventory/alerts/low-stock', permission: 'inventory.stock.view', icon: 'AlertTriangle' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'inventory.movements.view', icon: 'CircleDollarSign' },
-          { label: 'Valuation', path: '/inventory/valuation', permission: 'inventory.valuation.view', icon: 'PieChart' },
         ]
       },
       { label: 'UOM Master', path: '/inventory/uoms', permission: 'inventory.uom.view', icon: 'Ruler' },
-      { label: 'Settings', path: '/inventory/settings', permission: 'inventory.settings.view', icon: 'Settings' },
+      { label: 'Settings', path: '/inventory/settings', permission: 'inventory.settings.manage', icon: 'Settings' },
     ]
   },
   sales: {
@@ -120,9 +119,7 @@ export const moduleMenuMap: Record<
     label: 'HR',
     icon: 'Users',
     items: [
-      { label: 'Employees', path: '/hr/employees', permission: 'employee.list', icon: 'UserCheck' },
-      { label: 'Attendance', path: '/hr/attendance', permission: 'attendance.list', icon: 'Clock' },
-      { label: 'Payroll', path: '/hr/payroll', permission: 'payroll.list', icon: 'Wallet' }
+      { label: 'Employees', path: '/hr/employees', permission: 'hr.employees.view', icon: 'UserCheck' }
     ]
   },
   crm: {
@@ -137,24 +134,23 @@ export const moduleMenuMap: Record<
     label: 'POS',
     icon: 'Monitor',
     items: [
-      { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' },
-      { label: 'Sessions', path: '/pos/sessions', permission: 'pos.sessions.view', icon: 'History' }
+      { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' }
     ]
   },
   manufacturing: {
     label: 'Manufacturing',
     icon: 'Factory',
     items: [
-      { label: 'Work Orders', path: '/manufacturing/work-orders', permission: 'mfg.workOrder.view', icon: 'Wrench' },
-      { label: 'BOM', path: '/manufacturing/bom', permission: 'mfg.bom.view', icon: 'Layers' }
+      { label: 'Work Orders', path: '/manufacturing/work-orders', permission: 'manufacturing.workOrders.view', icon: 'Wrench' },
+      { label: 'BOM', path: '/manufacturing/bom', permission: 'manufacturing.bom.view', icon: 'Layers' }
     ]
   },
   projects: {
     label: 'Projects',
     icon: 'Briefcase',
     items: [
-      { label: 'Projects', path: '/projects', permission: 'project.view', icon: 'Folder' },
-      { label: 'Tasks', path: '/projects/tasks', permission: 'task.view', icon: 'CheckSquare' }
+      { label: 'Projects', path: '/projects', permission: 'projects.view', icon: 'Folder' },
+      { label: 'Tasks', path: '/projects/tasks', permission: 'projects.tasks.view', icon: 'CheckSquare' }
     ]
   },
   tools: {

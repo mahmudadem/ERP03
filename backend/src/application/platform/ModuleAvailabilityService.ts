@@ -54,12 +54,15 @@ export interface ModuleMismatchReport {
   versionMismatch: { moduleId: string; dbVersion: string; codeVersion: string }[];
 }
 
-const PLATFORM_IDS = ['companyadmin', 'core', 'auth', 'rbac', 'settings'];
+const PLATFORM_IDS = ['companyadmin', 'core', 'auth', 'rbac', 'settings', 'system'];
 
 export class ModuleAvailabilityService {
   private static instance: ModuleAvailabilityService;
   private availabilityMap: Map<string, ModuleAvailabilityInfo> = new Map();
   private initialized = false;
+  private lastRefreshedAt = 0;
+  private isRefreshing = false;
+  private readonly CACHE_TTL_MS = 30_000;
   private versionMismatchList: { moduleId: string; dbVersion: string; codeVersion: string }[] = [];
 
   private constructor(
@@ -88,16 +91,35 @@ export class ModuleAvailabilityService {
     return ModuleAvailabilityService.instance;
   }
 
+  private async refreshIfNeeded(): Promise<void> {
+    const now = Date.now();
+    if (!this.initialized || (now - this.lastRefreshedAt) < this.CACHE_TTL_MS) return;
+    if (this.isRefreshing) return;
+
+    this.isRefreshing = true;
+    try {
+      await this.buildAvailabilityMap();
+    } finally {
+      this.isRefreshing = false;
+    }
+  }
+
   async buildAvailabilityMap(): Promise<ModuleMismatchReport> {
     this.versionMismatchList = [];
     const report: ModuleMismatchReport = { dbOnly: [], codeOnly: [], versionMismatch: [] };
 
     const dbModules = await this.moduleRegistryRepo.getAll();
-    const dbModuleMap = new Map(dbModules.map((m) => [m.code.toLowerCase(), m]));
+    const dbModuleMap = new Map(
+      dbModules
+        .map((m) => [this.normalizeModuleId(m.code || m.id), m] as const)
+        .filter(([moduleId]) => Boolean(moduleId))
+    );
 
     const codeModules = this.codeModuleRegistry.getAllModules();
     const codeModuleMap = new Map(
-      codeModules.map((m) => [m.metadata.id.toLowerCase(), m])
+      codeModules
+        .map((m) => [this.normalizeModuleId(m.metadata?.id), m] as const)
+        .filter(([moduleId]) => Boolean(moduleId))
     );
 
     const allModuleIds = new Set([...dbModuleMap.keys(), ...codeModuleMap.keys()]);
@@ -160,6 +182,7 @@ export class ModuleAvailabilityService {
     }
 
     this.initialized = true;
+    this.lastRefreshedAt = Date.now();
     return report;
   }
 
@@ -228,10 +251,15 @@ export class ModuleAvailabilityService {
     return this.availabilityMap.get(moduleId.toLowerCase());
   }
 
+  async ensureCacheFresh(): Promise<void> {
+    await this.refreshIfNeeded();
+  }
+
   async isAvailableForCompany(
     moduleId: string,
     companyId: string
   ): Promise<{ available: boolean; state: ModuleAvailabilityState; reason?: string }> {
+    await this.refreshIfNeeded();
     const info = this.availabilityMap.get(moduleId.toLowerCase());
     if (!info) {
       return { available: false, state: ModuleAvailabilityState.DB_ONLY, reason: 'Module not found' };
@@ -321,6 +349,7 @@ export class ModuleAvailabilityService {
     dbOnly: ModuleDefinition[];
     codeOnly: { id: string; manifest: ModuleManifest; hasRouter: boolean }[];
     versionMismatch: { moduleId: string; dbVersion: string; codeVersion: string }[];
+    implementationFailed: ModuleDefinition[];
     notReady: ModuleDefinition[];
     implementationUnchecked: ModuleDefinition[];
     suspended: ModuleDefinition[];
@@ -328,17 +357,22 @@ export class ModuleAvailabilityService {
     const available: ModuleDefinition[] = [];
     const dbOnly: ModuleDefinition[] = [];
     const codeOnly: { id: string; manifest: ModuleManifest; hasRouter: boolean }[] = [];
+    const implementationFailed: ModuleDefinition[] = [];
     const notReady: ModuleDefinition[] = [];
     const implementationUnchecked: ModuleDefinition[] = [];
     const suspended: ModuleDefinition[] = [];
 
     for (const [moduleId, info] of this.availabilityMap) {
+      if (PLATFORM_IDS.includes(moduleId)) continue;
+
       if (info.state === ModuleAvailabilityState.AVAILABLE && info.dbRecord) {
         available.push(info.dbRecord);
       } else if (info.state === ModuleAvailabilityState.DB_ONLY && info.dbRecord) {
         dbOnly.push(info.dbRecord);
       } else if (info.state === ModuleAvailabilityState.CODE_ONLY && info.manifest) {
         codeOnly.push({ id: moduleId, manifest: info.manifest, hasRouter: info.hasRouter });
+      } else if (info.state === ModuleAvailabilityState.IMPLEMENTATION_FAILED && info.dbRecord) {
+        implementationFailed.push(info.dbRecord);
       } else if (info.state === ModuleAvailabilityState.NOT_READY && info.dbRecord) {
         notReady.push(info.dbRecord);
       } else if (info.state === ModuleAvailabilityState.IMPLEMENTATION_UNCHECKED && info.dbRecord) {
@@ -353,6 +387,7 @@ export class ModuleAvailabilityService {
       dbOnly,
       codeOnly,
       versionMismatch: this.versionMismatchList,
+      implementationFailed,
       notReady,
       implementationUnchecked,
       suspended,
@@ -365,6 +400,10 @@ export class ModuleAvailabilityService {
 
   async rebuildAvailabilityMap(): Promise<ModuleMismatchReport> {
     return this.buildAvailabilityMap();
+  }
+
+  private normalizeModuleId(moduleId?: string): string {
+    return String(moduleId || '').trim().toLowerCase();
   }
 
   private extractManifest(module: IModule): ModuleManifest {

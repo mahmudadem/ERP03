@@ -224,20 +224,11 @@ describe('Phase 3 Entitlement + Enabled State', () => {
       const entitlementRepo = {
         hasModule: jest.fn().mockResolvedValue(true),
       };
-      const voucherTypeRepo = {
-        getSystemTemplates: jest.fn().mockResolvedValue([]),
-        getByCompanyId: jest.fn().mockResolvedValue([]),
-      };
-      const voucherFormRepo = {
-        getByTypeId: jest.fn().mockResolvedValue([]),
-      };
 
       const useCase = new EnableModuleForCompanyUseCase(
         mockCompanyRepo,
         mockCompanyModuleRepo,
-        entitlementRepo as any,
-        voucherTypeRepo as any,
-        voucherFormRepo as any
+        entitlementRepo as any
       );
 
       await useCase.execute({ companyId: 'cmp_123', moduleName: 'sales' });

@@ -3,10 +3,12 @@ import express from 'express';
 import '../firebaseAdmin';
 import { registerAllModules } from '../modules';
 import { ModuleRegistry } from '../application/platform/ModuleRegistry';
+import { runModuleStartupValidation } from '../modules/moduleStartupValidation';
 
 // Register modules before loading server
 registerAllModules();
 ModuleRegistry.getInstance().initializeAll().catch(console.error);
+runModuleStartupValidation().catch(console.error);
 
 import server from '../api/server';
 

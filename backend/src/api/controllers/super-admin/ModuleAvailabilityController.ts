@@ -46,6 +46,7 @@ export class ModuleAvailabilityController {
   static async getAvailabilityReport(req: Request, res: Response, next: NextFunction) {
     try {
       const service = ModuleAvailabilityService.getInstance();
+      await service.rebuildAvailabilityMap();
       const report = service.getSuperAdminView();
 
       res.json({
@@ -65,6 +66,7 @@ export class ModuleAvailabilityController {
     try {
       const { id } = req.params;
       const service = ModuleAvailabilityService.getInstance();
+      await service.rebuildAvailabilityMap();
       const info = service.getAvailabilityInfo(id);
 
       if (!info) {

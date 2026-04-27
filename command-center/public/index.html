@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERP03 Command Center</title>
+  <meta name="description" content="Development task tracker and project command center for ERP03">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <h1>ERP03 <span class="accent">Command Center</span></h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="stats-pills" id="statsPills">
+        <div class="pill"><span class="pill-label">This Week</span><span class="pill-value" id="weekHours">—</span></div>
+        <div class="pill"><span class="pill-label">This Month</span><span class="pill-value" id="monthHours">—</span></div>
+        <div class="pill"><span class="pill-label">Sessions</span><span class="pill-value" id="totalSessions">—</span></div>
+      </div>
+      <div class="status-badge" id="statusBadge">
+        <span class="status-dot"></span>
+        <span class="status-text">Loading...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <!-- Current Focus Card -->
+    <section class="card card-focus" id="focusCard">
+      <div class="card-header">
+        <h2>🎯 Current Focus</h2>
+        <div class="card-actions">
+          <button class="btn btn-sm btn-success" id="btnMarkDone" title="Mark task as done">✅ Done</button>
+          <button class="btn btn-sm btn-warning" id="btnPause" title="Pause and switch task">⏸ Pause</button>
+        </div>
+      </div>
+      <div class="focus-content" id="focusContent">
+        <div class="focus-loading">Loading...</div>
+      </div>
+    </section>
+
+    <!-- Two-column layout -->
+    <div class="grid-2col">
+      <!-- Master Plan -->
+      <section class="card card-plan">
+        <div class="card-header">
+          <h2>📋 Master Plan</h2>
+          <span class="badge" id="planBadge">—</span>
+        </div>
+        <div class="plan-content" id="planContent">
+          <div class="plan-loading">Loading...</div>
+        </div>
+      </section>
+
+      <!-- Deferred / Backlog Tasks -->
+      <section class="card card-deferred">
+        <div class="card-header">
+          <h2>🐰 Deferred Tasks (Backlog)</h2>
+          <span class="badge badge-warn" id="deferredBadge">0</span>
+        </div>
+        <div class="deferred-content" id="deferredContent">
+          <p class="empty-state">No deferred tasks</p>
+        </div>
+        <div class="deferred-add">
+          <input type="text" id="deferredInput" placeholder="New task for later..." class="input-ghost">
+          <button class="btn btn-sm btn-accent" id="btnAddDeferred">+ Add for Later</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Done Tasks -->
+      <section class="card card-done">
+        <div class="card-header">
+          <h2>✅ Done Tasks</h2>
+          <span class="badge badge-success" id="doneBadge">0</span>
+        </div>
+        <div class="done-content" id="doneContent">
+          <div class="done-loading">Loading...</div>
+        </div>
+      </section>
+
+      <!-- Journal -->
+      <section class="card card-journal">
+        <div class="card-header">
+          <h2>📖 Recent Sessions</h2>
+        </div>
+        <div class="journal-content" id="journalContent">
+          <div class="journal-loading">Loading...</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom row: Services + Subscriptions -->
+    <div class="grid-2col">
+      <!-- Services Health -->
+      <section class="card card-services">
+        <div class="card-header">
+          <h2>🖥️ Services</h2>
+          <button class="btn btn-sm btn-ghost" id="btnRefreshHealth">↻ Check</button>
+        </div>
+        <div class="services-content" id="servicesContent">
+          <div class="plan-loading">Checking...</div>
+        </div>
+      </section>
+
+      <!-- AI Subscriptions -->
+      <section class="card card-subs">
+        <div class="card-header">
+          <h2>🤖 AI Subscriptions</h2>
+          <button class="btn btn-sm btn-accent" id="btnAddSub">+ Add</button>
+        </div>
+        <div class="subs-content" id="subsContent">
+          <p class="empty-state">No subscriptions tracked yet</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- New Task Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🆕 Start New Task</h3>
+        <button class="btn-close" id="btnCloseModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Task Name</label>
+        <input type="text" id="newTaskName" placeholder="e.g. Fix voucher save button" class="input">
+        <label>Plan File (optional)</label>
+        <input type="text" id="newTaskPlan" placeholder="e.g. 1-TODO/12-forms-designer.md" class="input">
+        <label>Agent / IDE</label>
+        <select id="newTaskAgent" class="input">
+          <option value="Antigravity (VS Code)">Antigravity (VS Code)</option>
+          <option value="OpenCode (VS Code)">OpenCode (VS Code)</option>
+          <option value="Codex (CLI)">Codex (CLI)</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnCancelModal">Cancel</button>
+        <button class="btn btn-accent" id="btnConfirmTask">🚀 Start Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End Session Modal -->
+  <div class="modal-overlay" id="endSessionOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📝 End Session Summary</h3>
+        <button class="btn-close" id="btnCloseEndSession">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>What did you do? (one per line)</label>
+        <textarea id="endItems" rows="4" class="input" placeholder="Fixed the save button&#10;Updated translations&#10;Refactored types"></textarea>
+        <label>Result</label>
+        <select id="endResult" class="input">
+          <option value="✅ Done">✅ Done</option>
+          <option value="🔶 Partial">🔶 Partial</option>
+          <option value="❌ Blocked">❌ Blocked</option>
+        </select>
+        <label>Duration</label>
+        <input type="text" id="endDuration" placeholder="e.g. 2h" class="input">
+        <label>Commit hash (optional)</label>
+        <input type="text" id="endCommit" placeholder="e.g. abc1234" class="input">
+        <label>Next step</label>
+        <input type="text" id="endNext" placeholder="What to do next session" class="input">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnCancelEndSession">Cancel</button>
+        <button class="btn btn-success" id="btnConfirmEndSession">✅ Save & Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Subscription Modal -->
+  <div class="modal-overlay" id="subModalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🤖 Add AI Subscription</h3>
+        <button class="btn-close" id="btnCloseSubModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Service Name</label>
+        <input type="text" id="subName" placeholder="e.g. OpenAI Pro, Google AI, Anthropic" class="input">
+        <label>Provider</label>
+        <select id="subProvider" class="input">
+          <option value="OpenAI">OpenAI</option>
+          <option value="Google">Google (Gemini)</option>
+          <option value="Anthropic">Anthropic (Claude)</option>
+          <option value="OpenCode">OpenCode</option>
+          <option value="Other">Other</option>
+        </select>
+        <label>Model</label>
+        <input type="text" id="subModel" placeholder="e.g. GPT-4o, Gemini 2.5 Pro, Claude Opus" class="input">
+        <label>API Key hint (last 4 chars only — for reference)</label>
+        <input type="text" id="subKeyHint" placeholder="e.g. ...x7k2" maxlength="10" class="input">
+        <label>Notes</label>
+        <input type="text" id="subNotes" placeholder="e.g. $20/mo, expires June 2026" class="input">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnCancelSubModal">Cancel</button>
+        <button class="btn btn-accent" id="btnConfirmSub">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

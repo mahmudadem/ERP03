@@ -53,6 +53,7 @@ router.get('/modules', CompanyModulesController.listModules);
 router.get('/modules/active', CompanyModulesController.listActiveModules);
 router.post('/modules/enable', CompanyModulesController.enableModule);
 router.post('/modules/disable', CompanyModulesController.disableModule);
+router.post('/modules/:module/sync-voucher-types', CompanyModulesController.syncVoucherTypes);
 
 // ============================================================================
 // CAPABILITY ROUTES (Phase 3)

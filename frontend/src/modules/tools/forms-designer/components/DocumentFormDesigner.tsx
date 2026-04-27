@@ -10,7 +10,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, FileSpreadsheet, Search, LayoutDashboard, ChevronDown, ChevronRight, Shield, User } from 'lucide-react';
+import { Plus, Edit3, Trash2, FileSpreadsheet, Search, LayoutDashboard, ChevronDown, ChevronRight, Shield, User, DownloadCloud } from 'lucide-react';
 import { DocumentFormConfig, AvailableField, DocumentRule, DocumentAction } from '../types';
 import { DocumentDesigner } from './DocumentDesigner';
 import { useWizard } from '../WizardContext';
@@ -158,35 +158,59 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
   const handleClone = (form: DocumentFormConfig) => {
     const timestamp = Date.now();
     
-    // Determine the base type (use existing baseType or fallback to code/id)
     const originalBaseType = (form as any).baseType || form.code || form.id;
-    
-    // Extract prefix from parent form (e.g., "JE-" -> "JE")
     const parentPrefix = (form.prefix || '').replace('-', '').replace(/[^A-Z]/g, '') || 'FORM';
-    
-    // Generate ID: PREFIX_TIMESTAMP_C (e.g., JE_1766619511000_C)
     const cloneId = `${parentPrefix}_${timestamp}_C`;
     
     const cloned: DocumentFormConfig = {
       ...form,
-      // Use new pattern: PREFIX_TIMESTAMP_C
       id: cloneId,
-      // Unique name with timestamp
       name: `${form.name} - Copy`,
-      // Unique prefix (add 'C' to differentiate)
       prefix: `${parentPrefix}C-`,
       isSystemDefault: false,
       isLocked: false,
       isDefault: false,
       isSystemGenerated: false,
-      // IMPORTANT: Preserve the base type for backend compatibility
       baseType: originalBaseType,
-      // Preserve sidebar placement from parent
       sidebarGroup: (form as any).sidebarGroup || null,
       module: (form as any).module || null,
     } as any;
     setEditingForm(cloned);
-    setIsCloning(true); // Mark as cloning, not editing
+    setIsCloning(true);
+    setViewMode('designer');
+  };
+
+  const handleAdoptCatalog = (template: any) => {
+    const timestamp = Date.now();
+    const prefix = (template.code || template.id).slice(0, 2).toUpperCase() || 'FORM';
+    const adoptId = `${prefix}_${timestamp}_A`;
+    
+    const adopted: DocumentFormConfig = {
+      id: adoptId,
+      name: template.name,
+      code: template.code,
+      prefix: `${prefix}-`,
+      description: `Custom ${template.name}`,
+      isSystemDefault: false,
+      isLocked: false,
+      isDefault: false,
+      isSystemGenerated: false,
+      enabled: true,
+      baseType: template.code || template.id,
+      module: template.module || null,
+      sidebarGroup: null,
+      headerFields: template.headerFields || [],
+      lineFields: template.lineFields || [],
+      tableColumns: template.tableColumns || [],
+      layout: template.layout || { sections: [] },
+      uiModeOverrides: null,
+      rules: defaultRules.map(r => ({ ...r, enabled: r.enabled ?? true })),
+      actions: defaultActions.map(a => ({ ...a, enabled: a.enabled ?? true })),
+      startNumber: 1,
+      numberFormat: '{prefix}{sequence}',
+    } as any;
+    setEditingForm(adopted);
+    setIsCloning(true);
     setViewMode('designer');
   };
 
@@ -409,7 +433,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
               </div>
             ) : (
               <div className="space-y-12">
-                {/* --- SECTION: SYSTEM DEFAULTS --- */}
+                {/* --- SECTION: COMPANY'S ACTIVE FORMS --- */}
                 {forms.filter(f => isProtected(f)).length > 0 && (
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <button 
@@ -421,8 +445,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <Shield size={20} />
                         </div>
                         <div className="text-left">
-                          <h2 className="text-lg font-bold text-slate-800">System Document Templates</h2>
-                          <p className="text-xs text-slate-500">Standard configurations provided by the platform</p>
+                          <h2 className="text-lg font-bold text-slate-800">Company's Active Forms</h2>
+                          <p className="text-xs text-slate-500">System templates adopted by your company</p>
                         </div>
                         <span className="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                           {forms.filter(f => isProtected(f)).length}
@@ -445,7 +469,77 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                               onToggleEnabled={handleToggleEnabled}
                               onExport={handleExportSingle}
                               onUpdateSidebarGroup={onUpdateSidebarGroup}
+                              adoptionStatus="active"
                             />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* --- SECTION: AVAILABLE IN CATALOG --- */}
+                {templates.filter((t: any) => t.adoptionStatus === 'available').length > 0 && (
+                  <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                    <button 
+                      onClick={() => setExpandedGroups(prev => prev.includes('catalog') ? prev.filter(g => g !== 'catalog') : [...prev, 'catalog'])}
+                      className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                          <DownloadCloud size={20} />
+                        </div>
+                        <div className="text-left">
+                          <h2 className="text-lg font-bold text-slate-800">Available in Catalog</h2>
+                          <p className="text-xs text-slate-500">Document types from the platform catalog — adopt to customize</p>
+                        </div>
+                        <span className="ml-2 bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                          {templates.filter((t: any) => t.adoptionStatus === 'available').length}
+                        </span>
+                      </div>
+                      {expandedGroups.includes('catalog') ? <ChevronDown size={20} className="text-gray-400" /> : <ChevronRight size={20} className="text-gray-400" />}
+                    </button>
+                    
+                    {expandedGroups.includes('catalog') && (
+                      <div className="p-6 bg-slate-50/30">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {templates.filter((t: any) => t.adoptionStatus === 'available').map((template: any) => (
+                            <div key={template.id} className="bg-white rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-shadow p-6">
+                              <div className="flex justify-between items-start mb-4">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">
+                                  {(template.code || template.id).slice(0, 2).toUpperCase()}
+                                </div>
+                                <RequirePermission permission="accounting.designer.create">
+                                  <button 
+                                    onClick={() => handleAdoptCatalog(template)}
+                                    className="p-2 text-blue-400 hover:text-green-600 hover:bg-green-50 rounded-full"
+                                    title="Adopt & Customize"
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                                </RequirePermission>
+                              </div>
+                              
+                              <h3 className="text-lg font-bold text-gray-900 mb-1">{template.name}</h3>
+                              <p className="text-xs text-gray-500 truncate">Code: {template.code}</p>
+                              
+                              <div className="mt-4 flex gap-2 flex-wrap">
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+                                  <DownloadCloud size={10} /> Available
+                                </span>
+                              </div>
+                              
+                              <div className="mt-4 pt-3 border-t border-gray-100">
+                                <RequirePermission permission="accounting.designer.create">
+                                  <button 
+                                    onClick={() => handleAdoptCatalog(template)}
+                                    className="w-full text-center text-sm font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-2 rounded-lg transition-colors"
+                                  >
+                                    Adopt & Customize
+                                  </button>
+                                </RequirePermission>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -489,12 +583,13 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                               onToggleEnabled={handleToggleEnabled}
                               onExport={handleExportSingle}
                               onUpdateSidebarGroup={onUpdateSidebarGroup}
+                              adoptionStatus="custom"
                             />
                           ))}
                         </div>
                       ) : (
                         <div className="py-12 text-center">
-                           <p className="text-gray-400 text-sm italic">No custom forms created yet. Clone a system template to get started.</p>
+                           <p className="text-gray-400 text-sm italic">No custom forms created yet. Clone a system template or adopt from the catalog to get started.</p>
                         </div>
                       )}
                     </div>

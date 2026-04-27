@@ -13,6 +13,7 @@ import {
   VoucherFormDefinition 
 } from '../../../../repository/interfaces/designer/IVoucherFormRepository';
 import { InfrastructureError } from '../../../errors/InfrastructureError';
+import { dedupeVoucherForms } from '../../../../domain/designer/services/VoucherFormDeduper';
 
 export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
   constructor(private db: admin.firestore.Firestore) {}
@@ -192,7 +193,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
         });
       }
 
-      return companyForms;
+      return dedupeVoucherForms(companyForms);
     } catch (error) {
       throw new InfrastructureError('Error getting all voucher forms', error);
     }

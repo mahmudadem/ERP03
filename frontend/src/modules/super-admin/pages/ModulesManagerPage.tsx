@@ -26,7 +26,8 @@ type ModuleRow = Module & {
   isCodeOnly?: boolean;
 };
 
-const FORBIDDEN_IDS = ['core', 'companyAdmin'];
+const PLATFORM_IDS = ['companyadmin', 'core', 'auth', 'rbac', 'settings', 'system'];
+const FORBIDDEN_IDS = ['core', 'companyadmin', 'system'];
 
 const lifecycleOptions: LifecycleStatus[] = ['draft', 'ready', 'deprecated', 'inactive'];
 const runtimeOptions: RuntimeStatus[] = ['available', 'suspended'];
@@ -34,6 +35,7 @@ const runtimeOptions: RuntimeStatus[] = ['available', 'suspended'];
 const unwrap = <T,>(response: any): T => (response?.data ?? response) as T;
 
 const normalize = (value: string | undefined | null) => String(value || '').trim().toLowerCase();
+const isPlatformModule = (value: string | undefined | null) => PLATFORM_IDS.includes(normalize(value));
 
 const statusTone = (status: string): 'slate' | 'green' | 'amber' | 'red' | 'blue' => {
   if (['available', 'ready', 'passed'].includes(status)) return 'green';
@@ -69,6 +71,8 @@ const buildRows = (registryModules: Module[], report?: ModuleAvailabilityReport)
   const rows = new Map<string, ModuleRow>();
 
   registryModules.forEach((module) => {
+    if (isPlatformModule(module.code || module.id)) return;
+
     rows.set(getModuleKey(module), {
       ...module,
       availabilityState: 'unknown',
@@ -79,6 +83,7 @@ const buildRows = (registryModules: Module[], report?: ModuleAvailabilityReport)
   if (report) {
     applyState(rows, report.available, 'available');
     applyState(rows, report.dbOnly, 'db_only');
+    applyState(rows, report.implementationFailed, 'implementation_failed');
     applyState(rows, report.notReady, 'not_ready');
     applyState(rows, report.implementationUnchecked, 'implementation_unchecked');
     applyState(rows, report.suspended, 'suspended');
@@ -98,6 +103,8 @@ const buildRows = (registryModules: Module[], report?: ModuleAvailabilityReport)
 
     (report.codeOnly || []).forEach((entry) => {
       const key = normalize(entry.id);
+      if (isPlatformModule(key)) return;
+
       rows.set(key, {
         id: entry.id,
         code: entry.id,
@@ -221,6 +228,25 @@ export const ModulesManagerPage: React.FC = () => {
     }
   };
 
+  const handleRegisterCodeModule = async (module: ModuleRow) => {
+    const moduleId = module.code || module.id;
+    if (!confirm(`Register ${module.name} from code manifest? It will be created as draft and unchecked.`)) return;
+
+    try {
+      await superAdminApi.createModule({
+        id: moduleId,
+        name: module.name,
+        description: module.description || '',
+        version: module.codeVersion || module.version || '1.0.0',
+        releaseNotes: 'Registered from code manifest',
+      });
+      errorHandler.showSuccess(`${module.name} registered as draft`);
+      await loadModules();
+    } catch (error: any) {
+      errorHandler.showError(error);
+    }
+  };
+
   const updateRuntimeStatus = async (module: ModuleRow, runtimeStatus: RuntimeStatus) => {
     const payload: { runtimeStatus: RuntimeStatus; suspendReason?: string } = { runtimeStatus };
     if (runtimeStatus === 'suspended') {
@@ -250,7 +276,7 @@ export const ModulesManagerPage: React.FC = () => {
       return;
     }
 
-    if (FORBIDDEN_IDS.includes(formData.id)) {
+    if (FORBIDDEN_IDS.includes(normalize(formData.id))) {
       errorHandler.showError({
         code: 'VAL_001',
         message: `Cannot create reserved module ID "${formData.id}"`,
@@ -379,13 +405,25 @@ export const ModulesManagerPage: React.FC = () => {
                     </div>
                   </td>
                   <td className={tableCellClass}>
-                    <div className="font-mono text-xs">DB {module.version}</div>
+                    {module.isCodeOnly ? (
+                      <div className="font-mono text-xs text-blue-700">Code {module.codeVersion || module.version}</div>
+                    ) : (
+                      <div className="font-mono text-xs">DB {module.version}</div>
+                    )}
                     {module.codeVersion && module.codeVersion !== module.version && (
                       <div className="font-mono text-xs text-red-600">Code {module.codeVersion}</div>
                     )}
                   </td>
                   <td className={tableCellClass}>
                     <div className="flex flex-wrap gap-2">
+                      {module.isCodeOnly && (
+                        <button
+                          onClick={() => handleRegisterCodeModule(module)}
+                          className="text-sm font-medium text-blue-700 hover:text-blue-900"
+                        >
+                          Register
+                        </button>
+                      )}
                       {canMutateRegistry && (
                         <>
                           <button onClick={() => handleEdit(module)} className="text-sm font-medium text-slate-700 hover:text-slate-950">

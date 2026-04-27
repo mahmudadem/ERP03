@@ -52,7 +52,7 @@ export class FirestoreCompanyEntitlementRepository implements ICompanyEntitlemen
   async createEntitlement(entitlement: CompanyEntitlement): Promise<void> {
     const batch = this.db.batch();
     const entRef = this.db.collection(ENTITLEMENTS_COLLECTION).doc(entitlement.id);
-    batch.set(entRef, {
+    batch.set(entRef, this.withoutUndefined({
       id: entitlement.id,
       companyId: entitlement.companyId,
       sourceType: entitlement.sourceType,
@@ -62,16 +62,16 @@ export class FirestoreCompanyEntitlementRepository implements ICompanyEntitlemen
       isActive: entitlement.isActive,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    }));
     for (const item of entitlement.items) {
       const itemRef = this.db.collection(ENTITLEMENT_ITEMS_COLLECTION).doc(item.id);
-      batch.set(itemRef, {
+      batch.set(itemRef, this.withoutUndefined({
         id: item.id,
         entitlementId: entitlement.id,
         itemType: item.itemType,
         itemKey: item.itemKey,
         createdAt: FieldValue.serverTimestamp(),
-      });
+      }));
     }
     await batch.commit();
   }
@@ -94,13 +94,13 @@ export class FirestoreCompanyEntitlementRepository implements ICompanyEntitlemen
   }
 
   async addItem(entitlementId: string, item: CompanyEntitlementItem): Promise<void> {
-    await this.db.collection(ENTITLEMENT_ITEMS_COLLECTION).doc(item.id).set({
+    await this.db.collection(ENTITLEMENT_ITEMS_COLLECTION).doc(item.id).set(this.withoutUndefined({
       id: item.id,
       entitlementId,
       itemType: item.itemType,
       itemKey: item.itemKey,
       createdAt: FieldValue.serverTimestamp(),
-    });
+    }));
   }
 
   async removeItem(entitlementId: string, itemKey: string): Promise<void> {
@@ -194,6 +194,10 @@ export class FirestoreCompanyEntitlementRepository implements ICompanyEntitlemen
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
     };
+  }
+
+  private withoutUndefined<T extends Record<string, unknown>>(data: T): T {
+    return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as T;
   }
 }
 

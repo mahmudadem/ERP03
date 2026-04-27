@@ -5,7 +5,6 @@
 
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { ICompanyUserRepository } from '../../../repository/interfaces/rbac/ICompanyUserRepository';
-import { User } from '../../../domain/core/entities/User';
 import { CompanyUser } from '../../../domain/rbac/CompanyUser';
 import { ApiError } from '../../../api/errors/ApiError';
 
@@ -46,37 +45,24 @@ export class InviteCompanyUserUseCase {
     let user = await this.userRepository.findByEmail(input.email);
     let userId: string;
 
-    if (user) {
-      console.log(`[Invite] Found existing user: ${user.id} (${user.email})`);
-      // User exists, check if they're already a member of this company
-      const existingMembership = await this.companyUserRepository.getByUserAndCompany(
-        user.id,
-        input.companyId
-      );
-
-      if (existingMembership) {
-        console.warn(`[Invite] User already member of company`);
-        throw ApiError.badRequest('User is already a member of this company');
-      }
-
-      userId = user.id;
-    } else {
-      console.log(`[Invite] User NOT found. Creating new placeholder user.`);
-      // User doesn't exist, create a pending user record
-      const newUserId = this.generateUserId();
-      const fullName = [input.firstName, input.lastName].filter(Boolean).join(' ') || input.email;
-
-      user = new User(
-        newUserId,
-        input.email,
-        fullName,
-        'USER',
-        new Date()
-      );
-
-      await this.userRepository.createUser(user);
-      userId = newUserId;
+    if (!user) {
+      console.warn(`[Invite] User not found. Refusing to create placeholder global user.`);
+      throw ApiError.notFound('User not found. Ask the user to sign up first, then add them again.');
     }
+
+    console.log(`[Invite] Found existing user: ${user.id} (${user.email})`);
+    // User exists, check if they're already a member of this company
+    const existingMembership = await this.companyUserRepository.getByUserAndCompany(
+      user.id,
+      input.companyId
+    );
+
+    if (existingMembership) {
+      console.warn(`[Invite] User already member of company`);
+      throw ApiError.badRequest('User is already a member of this company');
+    }
+
+    userId = user.id;
 
     console.log(`[Invite] Creating membership for userId: ${userId}`);
 
@@ -92,7 +78,7 @@ export class InviteCompanyUserUseCase {
     await this.companyUserRepository.create(companyUser);
     console.log(`[Invite] Membership created successfully.`);
 
-    // Generate invitation details
+    // Keep the legacy response shape for the existing endpoint, but access is active immediately.
     const invitationId = this.generateInvitationId();
     const invitedAt = new Date();
     const expiresAt = new Date(invitedAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -101,7 +87,7 @@ export class InviteCompanyUserUseCase {
       invitationId,
       email: input.email,
       roleId: input.roleId,
-      status: 'pending',
+      status: 'active',
       invitedAt,
       expiresAt
     };
@@ -124,10 +110,6 @@ export class InviteCompanyUserUseCase {
     if (!input.companyId || typeof input.companyId !== 'string') {
       throw ApiError.badRequest('Company ID is required');
     }
-  }
-
-  private generateUserId(): string {
-    return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   private generateInvitationId(): string {

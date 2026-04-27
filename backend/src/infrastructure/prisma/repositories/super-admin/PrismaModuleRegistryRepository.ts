@@ -129,7 +129,7 @@ export class PrismaModuleRegistryRepository implements IModuleRegistryRepository
   private toDomain(record: any): ModuleDefinition {
     return {
       id: record.id,
-      code: record.code,
+      code: record.code ?? record.id,
       name: record.name,
       description: record.description ?? '',
       version: record.version ?? '1.0.0',

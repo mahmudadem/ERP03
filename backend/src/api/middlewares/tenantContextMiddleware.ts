@@ -87,14 +87,14 @@ export const tenantContextMiddleware = async (req: Request, res: Response, next:
         });
 
         console.log(`[TenantContext] User: ${user.uid}, Role: ${user.roleId}, Company: ${companyId}`);
-        console.log(`[TenantContext] Final modules: ${JSON.stringify(finalModules)}`);
+        console.log(`[TenantContext] Final modules: ${JSON.stringify(capabilityParentModules)}`);
 
         req.tenantContext = {
             userId: user.uid,
             companyId: companyId,
             roleId: user.roleId,
             permissions: permissions,
-            modules: finalModules,
+            modules: capabilityParentModules,
             features: enabledFeatures
         };
 

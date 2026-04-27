@@ -28,7 +28,8 @@ export const BundlesManagerPage: React.FC = () => {
     name: '',
     description: '',
     businessDomains: [] as string[],
-    modulesIncluded: [] as string[]
+    modulesIncluded: [] as string[],
+    lifecycleStatus: 'draft' as Bundle['lifecycleStatus']
   });
 
   useEffect(() => {
@@ -61,7 +62,8 @@ export const BundlesManagerPage: React.FC = () => {
       name: '',
       description: '',
       businessDomains: [],
-      modulesIncluded: []
+      modulesIncluded: [],
+      lifecycleStatus: 'draft'
     });
     setIsModalOpen(true);
   };
@@ -73,7 +75,8 @@ export const BundlesManagerPage: React.FC = () => {
       name: bundle.name,
       description: bundle.description,
       businessDomains: bundle.businessDomains || [],
-      modulesIncluded: bundle.modulesIncluded || []
+      modulesIncluded: bundle.modulesIncluded || [],
+      lifecycleStatus: bundle.lifecycleStatus || 'draft'
     });
     setIsModalOpen(true);
   };
@@ -108,7 +111,8 @@ export const BundlesManagerPage: React.FC = () => {
           name: formData.name,
           description: formData.description,
           businessDomains: formData.businessDomains,
-          modulesIncluded: formData.modulesIncluded
+          modulesIncluded: formData.modulesIncluded,
+          lifecycleStatus: formData.lifecycleStatus
         });
         errorHandler.showSuccess(t('superAdmin.bundles.messages.updated', { defaultValue: 'Bundle updated' }));
       } else {
@@ -154,6 +158,7 @@ export const BundlesManagerPage: React.FC = () => {
             <tr>
               <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.id', { defaultValue: 'ID' })}</th>
               <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.name', { defaultValue: 'Name' })}</th>
+              <th className={tableHeadCellClass}>Lifecycle</th>
               <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.businessDomains', { defaultValue: 'Business Domains' })}</th>
               <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.modules', { defaultValue: 'Modules' })}</th>
               <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.actions', { defaultValue: 'Actions' })}</th>
@@ -162,7 +167,7 @@ export const BundlesManagerPage: React.FC = () => {
           <tbody className="divide-y divide-slate-100 bg-white">
             {bundles.length === 0 ? (
               <tr>
-                <td colSpan={5}><SuperAdminEmptyState title={t('superAdmin.bundles.empty', { defaultValue: 'No bundles found. Create your first bundle to get started.' })} /></td>
+                <td colSpan={6}><SuperAdminEmptyState title={t('superAdmin.bundles.empty', { defaultValue: 'No bundles found. Create your first bundle to get started.' })} /></td>
               </tr>
             ) : (
               bundles.map((bundle) => (
@@ -170,10 +175,20 @@ export const BundlesManagerPage: React.FC = () => {
                   <td className={`${tableCellClass} font-mono text-xs`}>{bundle.id}</td>
                   <td className={`${tableCellClass} font-medium text-slate-950`}>{bundle.name}</td>
                   <td className={tableCellClass}>
+                    <SuperAdminBadge tone={bundle.lifecycleStatus === 'ready' ? 'green' : 'amber'}>
+                      {bundle.lifecycleStatus || 'draft'}
+                    </SuperAdminBadge>
+                  </td>
+<td className={tableCellClass}>
                     <div className="flex flex-wrap gap-1">
-                      {bundle.businessDomains?.map(d => (
-                        <SuperAdminBadge key={d} tone="slate">{d}</SuperAdminBadge>
-                      ))}
+                      {bundle.businessDomains?.map(domainId => {
+                        const domain = businessDomains.find(d => d.id === domainId);
+                        return (
+                          <SuperAdminBadge key={domainId} tone="slate">
+                            {domain?.name || domainId}
+                          </SuperAdminBadge>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className={tableCellClass}>
@@ -238,6 +253,23 @@ export const BundlesManagerPage: React.FC = () => {
                   rows={3}
                   placeholder={t('superAdmin.bundles.placeholders.description', { defaultValue: 'Describe this bundle...' })}
                 />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Lifecycle Status *</label>
+                <select
+                  value={formData.lifecycleStatus}
+                  onChange={(e) => setFormData({ ...formData, lifecycleStatus: e.target.value as Bundle['lifecycleStatus'] })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="draft">Draft - hidden from onboarding</option>
+                  <option value="ready">Ready - visible in onboarding</option>
+                  <option value="deprecated">Deprecated - hidden from onboarding</option>
+                  <option value="inactive">Inactive - hidden from onboarding</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Only ready bundles are shown in the company onboarding wizard.
+                </p>
               </div>
 
               <div className="mb-4">

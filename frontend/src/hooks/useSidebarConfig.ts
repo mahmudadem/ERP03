@@ -13,6 +13,7 @@ import {
 type SidebarItem = {
   label: string;
   path?: string;
+  permission?: string;
   icon?: string;
   children?: SidebarItem[];
 };
@@ -133,6 +134,7 @@ export const useSidebarConfig = () => {
         children.push({
           label: translateLabel('All Vouchers'),
           path: '/accounting/vouchers',
+          permission: routeConfig.permission,
           icon: 'FileSearch'
         });
       }
@@ -143,6 +145,7 @@ export const useSidebarConfig = () => {
           path: moduleId === 'accounting' 
             ? `${routeConfig.baseRoute}?type=${form.id}`
             : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
+          permission: routeConfig.permission,
           icon: routeConfig.icon
         });
       });
@@ -161,11 +164,32 @@ export const useSidebarConfig = () => {
         path: moduleId === 'accounting'
           ? `${routeConfig.baseRoute}?type=${form.id}`
           : `${routeConfig.baseRoute}/${encodeURIComponent(form.id)}`,
+        permission: routeConfig.permission,
         icon: routeConfig.icon
       });
     });
 
     return result;
+  };
+
+  const filterSidebarItems = (items: SidebarItem[]): SidebarItem[] => {
+    return items.reduce<SidebarItem[]>((visibleItems, item) => {
+      const children = item.children ? filterSidebarItems(item.children) : undefined;
+      const hasAllowedOwnRoute = !!item.path && hasPermission(item.permission);
+      const hasVisibleChildren = !!children && children.length > 0;
+      const isAllowedGroup = !item.path && hasVisibleChildren && hasPermission(item.permission);
+
+      if (!hasAllowedOwnRoute && !hasVisibleChildren && !isAllowedGroup) {
+        return visibleItems;
+      }
+
+      visibleItems.push({
+        ...item,
+        children: hasVisibleChildren ? children : undefined,
+      });
+
+      return visibleItems;
+    }, []);
   };
 
   const sidebarSections = useMemo(() => {
@@ -196,8 +220,8 @@ export const useSidebarConfig = () => {
         icon: 'LayoutGrid',
         items: []
       };
-      let items = def.items.filter((item) => {
-        if (!hasPermission(item.permission)) return false;
+      let items = filterSidebarItems(def.items);
+      items = items.filter((item) => {
         if (
           moduleId === 'sales'
           && !showSalesOperationalDocs
@@ -256,6 +280,8 @@ export const useSidebarConfig = () => {
           }
         }
       }
+
+      items = filterSidebarItems(items);
       
       if (items.length > 0) {
         sections[translateLabel(def.label)] = {
@@ -263,6 +289,7 @@ export const useSidebarConfig = () => {
           items: items.map(i => ({
             label: translateLabel(i.label),
             path: i.path,
+            permission: i.permission,
             children: (i as any).children
               ? (i as any).children.map((c: any) => ({
                   label: translateLabel(c.label),

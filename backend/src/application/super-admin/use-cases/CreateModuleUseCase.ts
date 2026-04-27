@@ -13,8 +13,8 @@ export class CreateModuleUseCase {
   constructor(private moduleRepo: IModuleRegistryRepository) {}
 
   async execute(input: CreateModuleInput): Promise<void> {
-    if (input.id === 'core' || input.id === 'companyAdmin') {
-      throw new Error('Cannot create "core" or "companyAdmin" as modules - these are system components');
+    if (['core', 'companyadmin', 'system'].includes(input.id.toLowerCase())) {
+      throw new Error('Cannot create platform/system components as business modules');
     }
 
     if (!input.version || input.version.trim() === '') {

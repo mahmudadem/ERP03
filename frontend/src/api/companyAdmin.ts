@@ -40,6 +40,7 @@ export interface CompanyRole {
   name: string;
   description: string;
   permissions: string[];
+  moduleBundles?: string[];
   isSystem: boolean;
   createdAt: string;
   updatedAt: string;
@@ -220,6 +221,7 @@ export const createRole = async (payload: {
   name: string;
   description?: string;
   permissions?: string[];
+  moduleBundles?: string[];
 }): Promise<CompanyRole> => {
   const response = await client.post('/tenant/company-admin/roles/create', payload);
   return response as unknown as CompanyRole;
@@ -231,6 +233,7 @@ export const updateRole = async (
     name?: string;
     description?: string;
     permissions?: string[];
+    moduleBundles?: string[];
   }
 ): Promise<{ message: string }> => {
   const response = await client.post(`/tenant/company-admin/roles/${roleId}/update`, payload);

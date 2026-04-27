@@ -110,6 +110,18 @@ describe('ModuleAvailabilityService', () => {
       expect(info?.state).toBe(ModuleAvailabilityState.AVAILABLE);
     });
 
+    it('should fall back to id for legacy DB records missing code', async () => {
+      mockRepo.getAll.mockResolvedValue([
+        { ...createDbModule('sales', '1.0.0'), id: 'sales', code: undefined as any },
+      ]);
+      (codeRegistry as any).modules.set('sales', createMockModule('sales', '1.0.0'));
+
+      await ModuleAvailabilityService.getInstance().buildAvailabilityMap();
+
+      const info = ModuleAvailabilityService.getInstance().getAvailabilityInfo('sales');
+      expect(info?.state).toBe(ModuleAvailabilityState.AVAILABLE);
+    });
+
     it('should return VERSION_MISMATCH when versions differ', async () => {
       mockRepo.getAll.mockResolvedValue([
         createDbModule('sales', '1.0.0', {
@@ -375,6 +387,37 @@ describe('ModuleAvailabilityService', () => {
 
       expect(view.versionMismatch).toHaveLength(1);
       expect(view.versionMismatch[0].moduleId).toBe('sales');
+    });
+
+    it('should include implementation failures in report', async () => {
+      mockRepo.getAll.mockResolvedValue([
+        createDbModule('sales', '1.0.0', {
+          implementationStatus: 'failed',
+          implementationError: 'Router not found',
+        }),
+      ]);
+      (codeRegistry as any).modules.set('sales', createMockModule('sales', '1.0.0'));
+
+      await ModuleAvailabilityService.getInstance().buildAvailabilityMap();
+
+      const view = ModuleAvailabilityService.getInstance().getSuperAdminView();
+
+      expect(view.implementationFailed).toHaveLength(1);
+      expect(view.implementationFailed[0].code).toBe('sales');
+    });
+
+    it('should exclude platform modules from business module report', async () => {
+      mockRepo.getAll.mockResolvedValue([
+        createDbModule('companyAdmin', '1.0.0', { code: 'companyAdmin' }),
+        createDbModule('system', '1.0.0', { code: 'system' }),
+        createDbModule('crm', '1.0.0'),
+      ]);
+
+      await ModuleAvailabilityService.getInstance().buildAvailabilityMap();
+
+      const view = ModuleAvailabilityService.getInstance().getSuperAdminView();
+
+      expect(view.dbOnly.map((m) => m.code)).toEqual(['crm']);
     });
   });
 });

@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   DocumentFormDesigner, 
   DocumentFormConfig,
   AvailableField,
   loadModuleDocumentForms,
   loadModuleDocumentDefinitions,
+  loadSystemVoucherTypes,
   saveDocumentForm,
   updateFormMetadata,
   WizardProvider
 } from '../forms-designer';
+import { ModuleStatusBanner } from '../forms-designer/components/ModuleStatusBanner';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
 import { purchasesApi } from '../../../api/purchasesApi';
 import { salesApi } from '../../../api/salesApi';
 import { useAuth } from '../../../context/AuthContext';
@@ -19,29 +22,47 @@ import {
   ShoppingCart, 
   Package, 
   ChevronRight,
-  Database,
   RefreshCw,
   FileSpreadsheet,
-  Plus
+  Plus,
+  DownloadCloud
 } from 'lucide-react';
 import { errorHandler } from '../../../services/errorHandler';
 
 type ERPModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
 
+type ModuleInitStatus = 'loading' | 'not_installed' | 'not_initialized' | 'initializing' | 'ready';
+
+const MODULE_BUNDLE_MAP: Record<ERPModule, string> = {
+  'ACCOUNTING': 'accounting',
+  'SALES': 'sales',
+  'PURCHASE': 'purchases'
+};
+
+const MODULE_CODE_MAP: Record<ERPModule, string> = {
+  'ACCOUNTING': 'accounting',
+  'SALES': 'sales',
+  'PURCHASE': 'purchase'
+};
+
 export default function ToolsFormsDesignerPage() {
-  const { companyId, moduleBundles, isOwner, isSuperAdmin } = useCompanyAccess();
+  const { companyId, moduleBundles } = useCompanyAccess();
   const { user } = useAuth();
+  const { isModuleInitialized, getModuleStatus, loading: modulesLoading } = useCompanyModules();
   
-  // Map our domain types to bundle names used in the system
-  // NOTE: isSuperAdmin/isOwner might want to see all even if not active for testing? 
-  // User asked to restrict it, so I will restrict it.
   const isModuleActive = (mod: ERPModule) => {
-    const mapping: Record<ERPModule, string> = {
-      'ACCOUNTING': 'accounting',
-      'SALES': 'sales',
-      'PURCHASE': 'purchases'
-    };
-    return moduleBundles.includes(mapping[mod]);
+    return moduleBundles.includes(MODULE_BUNDLE_MAP[mod]);
+  };
+
+  const getModuleInitStatus = (mod: ERPModule): ModuleInitStatus => {
+    if (modulesLoading) return 'loading';
+    if (!isModuleActive(mod)) return 'not_installed';
+    const code = MODULE_CODE_MAP[mod];
+    const status = getModuleStatus(code);
+    if (!status) return 'not_initialized';
+    if (status.initializationStatus === 'in_progress') return 'initializing';
+    if (status.initialized) return 'ready';
+    return 'not_initialized';
   };
 
   const [activeModule, setActiveModule] = useState<ERPModule>(() => {
@@ -50,25 +71,31 @@ export default function ToolsFormsDesignerPage() {
     if (moduleBundles.includes('purchases')) return 'PURCHASE';
     return 'ACCOUNTING';
   });
+
   const [forms, setForms] = useState<DocumentFormConfig[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
+  const [catalogTypes, setCatalogTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Load data for the active module
+  const activeModuleStatus = getModuleInitStatus(activeModule);
+
   useEffect(() => {
     async function fetchData() {
       if (!companyId) return;
       
       setLoading(true);
       try {
-        const [loadedForms, loadedDefs] = await Promise.all([
+        const [loadedForms, loadedDefs, loadedCatalog] = await Promise.all([
           loadModuleDocumentForms(companyId, activeModule),
-          loadModuleDocumentDefinitions(companyId, activeModule)
+          loadModuleDocumentDefinitions(companyId, activeModule),
+          loadSystemVoucherTypes(activeModule)
         ]);
         
         setForms(loadedForms);
         setDefinitions(loadedDefs);
+        setCatalogTypes(loadedCatalog);
       } catch (error) {
         console.error('Failed to load module data:', error);
         errorHandler.showError('Could not load designer data');
@@ -80,9 +107,41 @@ export default function ToolsFormsDesignerPage() {
     fetchData();
   }, [companyId, activeModule]);
 
-  // Transform definitions into "Template Buttons" for the designer
-  // In the real mechanism, these are the "Document Types" a user can clone
-  const templates = definitions.map(def => ({
+  const mergedDefinitions = useMemo(() => {
+    const formTypeIds = new Set(forms.map(f => (f as any).typeId || f.id));
+    const defTypeIds = new Set(definitions.map(d => d.id));
+
+    const result = [...definitions];
+
+    for (const catalog of catalogTypes) {
+      if (!defTypeIds.has(catalog.id) && !formTypeIds.has(catalog.id)) {
+        result.push({
+          ...catalog,
+          adoptionStatus: 'available' as const,
+        });
+      }
+    }
+
+    for (const def of result) {
+      const hasForm = forms.some(f => (f as any).typeId === def.id || f.id === def.id);
+      const isCustom = forms.some(f => 
+        ((f as any).typeId === def.id || f.id === def.id) && 
+        !f.isSystemGenerated && !f.isLocked
+      );
+
+      if (isCustom) {
+        def.adoptionStatus = 'custom';
+      } else if (hasForm) {
+        def.adoptionStatus = 'active';
+      } else {
+        def.adoptionStatus = 'available';
+      }
+    }
+
+    return result;
+  }, [definitions, catalogTypes, forms]);
+
+  const templates = mergedDefinitions.map(def => ({
      id: def.id,
      name: def.name,
      code: def.code,
@@ -91,17 +150,16 @@ export default function ToolsFormsDesignerPage() {
      tableColumns: def.tableColumns || [],
      layout: def.layout || { sections: [] },
      module: def.module,
-     isSystemDefault: true
+     isSystemDefault: def.isSystemCatalog !== true,
+     adoptionStatus: def.adoptionStatus,
   }));
 
-  // Extra system fields that are always available for any module
   const systemFields: AvailableField[] = [
     { id: 'documentId', label: 'Document Number', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
     { id: 'status', label: 'Status', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
     { id: 'createdAt', label: 'Creation Date', type: 'date', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
     { id: 'createdBy', label: 'Created By', type: 'text', category: 'systemMetadata', autoManaged: true, sectionHint: 'HEADER' },
     
-    // Core Accounting Totals injected globally
     { id: 'beforeDiscountDoc', label: 'Sum Before Discount (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
     { id: 'beforeDiscountBase', label: 'Sum Before Discount (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
     { id: 'subtotalDoc', label: 'Subtotal (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
@@ -111,20 +169,15 @@ export default function ToolsFormsDesignerPage() {
     { id: 'grandTotalDoc', label: 'Grand Total (Doc)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
     { id: 'grandTotalBase', label: 'Grand Total (Base)', type: 'amount', category: 'systemMetadata', autoManaged: true, sectionHint: 'FOOTER' },
     
-    // Line Items Table Component
     { id: 'lineItems', label: 'Line Items Table', type: 'table', category: 'core', mandatory: true, sectionHint: 'BODY' },
   ];
 
-  // Resolve available fields dynamically from the active definitions
-  // Deduplicate by field ID to avoid duplicate rendering of shared fields
   const uniqueFieldsMap = new Map<string, any>();
-  definitions.flatMap(def => [
+  mergedDefinitions.flatMap(def => [
     ...(Array.isArray(def.headerFields) ? def.headerFields : []),
     ...(Array.isArray(def.lineFields) ? def.lineFields : [])
   ]).forEach(f => {
     if (f && f.id && !uniqueFieldsMap.has(f.id)) {
-      // NOTE: We don't inherit mandatory status globally here to avoid leakage 
-      // between different document types in the same module.
       uniqueFieldsMap.set(f.id, { ...f, mandatory: false, required: false });
     }
   });
@@ -138,9 +191,8 @@ export default function ToolsFormsDesignerPage() {
     mandatory: false
   }));
 
-  // Resolve available table columns dynamically from active definitions
   const uniqueTableColumnsMap = new Map<string, any>();
-  definitions.flatMap(def => def.tableColumns || []).forEach(col => {
+  mergedDefinitions.flatMap(def => def.tableColumns || []).forEach(col => {
     const colId = col?.id || col?.fieldId;
     if (colId && !uniqueTableColumnsMap.has(colId)) {
       uniqueTableColumnsMap.set(colId, {
@@ -169,9 +221,12 @@ export default function ToolsFormsDesignerPage() {
       
       if (result.success) {
         errorHandler.showInfo(`${config.name} saved successfully.`);
-        // Reload list
-        const updatedForms = await loadModuleDocumentForms(companyId, activeModule);
+        const [updatedForms, updatedDefs] = await Promise.all([
+          loadModuleDocumentForms(companyId, activeModule),
+          loadModuleDocumentDefinitions(companyId, activeModule)
+        ]);
         setForms(updatedForms);
+        setDefinitions(updatedDefs);
       }
     } catch (error) {
       errorHandler.showError('Failed to save document layout');
@@ -183,21 +238,17 @@ export default function ToolsFormsDesignerPage() {
   const handleToggleEnabled = async (id: string, enabled: boolean) => {
     if (!companyId || !user) return;
     try {
-      // Update local state immediately for visual feedback
       setForms(prev => prev.map(f => f.id === id ? { ...f, enabled } : f));
       
-      // Use lightweight updater — does NOT run the full canonical mapper
       const result = await updateFormMetadata(companyId, activeModule, id, { enabled }, user.uid);
       
       if (result.success) {
         errorHandler.showInfo(`Form ${enabled ? 'enabled' : 'disabled'} successfully.`);
       } else {
-        // Revert local state on failure
         setForms(prev => prev.map(f => f.id === id ? { ...f, enabled: !enabled } : f));
         errorHandler.showError(result.errors?.[0] || 'Failed to update form status');
       }
     } catch (error) {
-      // Revert local state on failure
       setForms(prev => prev.map(f => f.id === id ? { ...f, enabled: !enabled } : f));
       errorHandler.showError('Failed to update form status');
     }
@@ -206,7 +257,6 @@ export default function ToolsFormsDesignerPage() {
   const handleUpdateSidebarGroup = async (id: string, sidebarGroup: string | null) => {
     if (!companyId || !user) return;
     try {
-      // Update local state immediately
       setForms(prev => prev.map(f => f.id === id ? { ...f, sidebarGroup } as any : f));
       
       const result = await updateFormMetadata(companyId, activeModule, id, { sidebarGroup }, user.uid);
@@ -214,7 +264,6 @@ export default function ToolsFormsDesignerPage() {
       if (result.success) {
         errorHandler.showInfo(`Sidebar group ${sidebarGroup ? `set to "${sidebarGroup}"` : 'cleared'}.`);
       } else {
-        // Revert on failure
         setForms(prev => prev.map(f => f.id === id ? { ...f, sidebarGroup: (f as any).sidebarGroup } : f));
         errorHandler.showError(result.errors?.[0] || 'Failed to update sidebar group');
       }
@@ -224,16 +273,14 @@ export default function ToolsFormsDesignerPage() {
   };
 
   const handleDeleteForm = async (id: string) => {
-    // This logic is mostly handled by useWizard but we should trigger a reload
-    // In a real scenario, this would call specialized delete API
     setTimeout(async () => {
       const updatedForms = await loadModuleDocumentForms(companyId, activeModule);
       setForms(updatedForms);
     }, 500);
   };
 
-  const handleManualSync = async () => {
-    setLoading(true);
+  const handleSyncCatalog = async () => {
+    setIsSyncing(true);
     try {
       if (activeModule === 'PURCHASE') {
         await purchasesApi.getSettings();
@@ -241,24 +288,24 @@ export default function ToolsFormsDesignerPage() {
         await salesApi.getSettings();
       }
       
-      // Reload the data
-      const [loadedForms, loadedDefs] = await Promise.all([
+      const [loadedForms, loadedDefs, loadedCatalog] = await Promise.all([
         loadModuleDocumentForms(companyId, activeModule),
-        loadModuleDocumentDefinitions(companyId, activeModule)
+        loadModuleDocumentDefinitions(companyId, activeModule),
+        loadSystemVoucherTypes(activeModule)
       ]);
       
       setForms(loadedForms);
       setDefinitions(loadedDefs);
-      errorHandler.showInfo('Definitions synchronized with backend.');
+      setCatalogTypes(loadedCatalog);
+      errorHandler.showInfo('Catalog synchronized with platform.');
     } catch (error) {
-      console.error('Manual sync failed:', error);
+      console.error('Catalog sync failed:', error);
       errorHandler.showError('Synchronization failed');
     } finally {
-      setLoading(false);
+      setIsSyncing(false);
     }
   };
 
-  // Define module-specific default rules and actions
   const getDefaults = () => {
     switch (activeModule) {
       case 'ACCOUNTING':
@@ -308,7 +355,9 @@ export default function ToolsFormsDesignerPage() {
 
   const { rules: defaultRules, actions: defaultActions } = getDefaults();
 
-  if (loading && forms.length === 0) {
+  const showLoading = (loading || modulesLoading) && forms.length === 0;
+
+  if (showLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
         <Loader2 className="animate-spin h-10 w-10 text-indigo-600 mb-4" />
@@ -320,7 +369,6 @@ export default function ToolsFormsDesignerPage() {
   return (
     <WizardProvider initialForms={forms}>
       <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
-        {/* Unified Header */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
             <div className="text-indigo-600">
@@ -338,7 +386,6 @@ export default function ToolsFormsDesignerPage() {
             </div>
           </div>
 
-          {/* Module Selector - Centered */}
           <div className="hidden lg:flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
             {isModuleActive('ACCOUNTING') && (
               <ModuleTab 
@@ -346,6 +393,7 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('ACCOUNTING')}
                 icon={<FileText size={18} />}
                 label="Accounting"
+                status={getModuleInitStatus('ACCOUNTING')}
               />
             )}
             {isModuleActive('SALES') && (
@@ -354,6 +402,7 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('SALES')}
                 icon={<ShoppingCart size={18} />}
                 label="Sales"
+                status={getModuleInitStatus('SALES')}
               />
             )}
             {isModuleActive('PURCHASE') && (
@@ -362,19 +411,29 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('PURCHASE')}
                 icon={<Package size={18} />}
                 label="Purchase"
+                status={getModuleInitStatus('PURCHASE')}
               />
             )}
           </div>
 
-          {/* Actions - Right */}
           <div className="flex items-center gap-2">
             <button 
-                onClick={handleManualSync}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-all active:scale-95"
-                title="Synchronize Definitions"
+                onClick={handleSyncCatalog}
+                disabled={isSyncing}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+                title="Synchronize with Platform Catalog"
               >
-                <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-                <span className="hidden xl:inline">Sync DB</span>
+                <DownloadCloud size={18} className={isSyncing ? "animate-spin" : ""} />
+                <span className="hidden xl:inline">Sync Catalog</span>
+            </button>
+            <button 
+                onClick={handleSyncCatalog}
+                disabled={isSyncing}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
+                title="Refresh Data"
+              >
+                <RefreshCw size={18} className={isSyncing ? "animate-spin" : ""} />
+                <span className="hidden xl:inline">Refresh</span>
             </button>
             <div className="h-8 w-px bg-slate-200 mx-2"></div>
             <DocumentFormDesignerHeaderActions 
@@ -384,7 +443,6 @@ export default function ToolsFormsDesignerPage() {
           </div>
         </header>
 
-        {/* Mobile Module Selector (Visible only on small screens) */}
         <div className="lg:hidden bg-white border-b border-slate-200 p-2 flex justify-center gap-1">
              {isModuleActive('ACCOUNTING') && (
               <ModuleTab 
@@ -392,6 +450,7 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('ACCOUNTING')}
                 icon={<FileText size={18} />}
                 label="Accounting"
+                status={getModuleInitStatus('ACCOUNTING')}
               />
              )}
              {isModuleActive('SALES') && (
@@ -400,6 +459,7 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('SALES')}
                 icon={<ShoppingCart size={18} />}
                 label="Sales"
+                status={getModuleInitStatus('SALES')}
               />
              )}
              {isModuleActive('PURCHASE') && (
@@ -408,11 +468,11 @@ export default function ToolsFormsDesignerPage() {
                 onClick={() => setActiveModule('PURCHASE')}
                 icon={<Package size={18} />}
                 label="Purchase"
+                status={getModuleInitStatus('PURCHASE')}
               />
              )}
         </div>
 
-        {/* Main Designer Area */}
         <div className="flex-1 overflow-hidden relative">
           {isSaving && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[60] flex items-center justify-center">
@@ -423,33 +483,39 @@ export default function ToolsFormsDesignerPage() {
             </div>
           )}
 
-          <DocumentFormDesigner 
-            key={activeModule} // Re-mount when module changes to ensure clean state
-            templates={templates as any}
-            systemFields={systemFields}
-            availableFields={availableFields}
-            availableTableColumns={availableTableColumns}
-            defaultRules={defaultRules as any}
-            defaultActions={defaultActions as any}
-            onDocumentSaved={handleSaveForm}
-            onToggleEnabled={handleToggleEnabled}
-            onDeleteForm={handleDeleteForm}
-            onUpdateSidebarGroup={handleUpdateSidebarGroup}
-            hideHeader={true} 
-          />
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="px-6 py-4 shrink-0">
+              <ModuleStatusBanner 
+                moduleName={activeModule} 
+                status={activeModuleStatus} 
+                formsCount={forms.length}
+              />
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              <DocumentFormDesigner 
+                key={activeModule}
+                templates={templates as any}
+                systemFields={systemFields}
+                availableFields={availableFields}
+                availableTableColumns={availableTableColumns}
+                defaultRules={defaultRules as any}
+                defaultActions={defaultActions as any}
+                onDocumentSaved={handleSaveForm}
+                onToggleEnabled={handleToggleEnabled}
+                onDeleteForm={handleDeleteForm}
+                onUpdateSidebarGroup={handleUpdateSidebarGroup}
+                hideHeader={true} 
+              />
+            </div>
+          </div>
         </div>
       </div>
     </WizardProvider>
   );
 }
 
-/**
- * Extracted header actions for cleaner code
- */
 function DocumentFormDesignerHeaderActions({ onSaveForm, forms }: { onSaveForm: any, forms: any[] }) {
-    // This is a placeholder for the Export/Import/Create buttons 
-    // that were originally inside DocumentFormDesigner's internal header.
-    // By moving them here, we unify the UI.
     return (
         <div className="flex items-center gap-2">
              <button 
@@ -472,12 +538,12 @@ function DocumentFormDesignerHeaderActions({ onSaveForm, forms }: { onSaveForm: 
     );
 }
 
-function ModuleTab({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+function ModuleTab({ active, onClick, icon, label, status }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, status: ModuleInitStatus }) {
   return (
     <button 
       onClick={onClick}
       className={`
-        flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300
+        flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300 relative
         ${active 
           ? 'bg-white text-indigo-600 shadow-md ring-1 ring-slate-200/50 translate-y-0 scale-100' 
           : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 translate-y-0.5 scale-95'
@@ -486,6 +552,12 @@ function ModuleTab({ active, onClick, icon, label }: { active: boolean, onClick:
     >
       <span className={active ? 'text-indigo-600' : 'text-slate-400'}>{icon}</span>
       {label}
+      {status === 'not_initialized' && (
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Not initialized" />
+      )}
+      {status === 'initializing' && (
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse" title="Initializing" />
+      )}
     </button>
   );
 }

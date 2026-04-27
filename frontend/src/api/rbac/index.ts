@@ -25,6 +25,7 @@ export interface CompanyRole {
   name: string;
   description?: string;
   permissions: string[];
+  moduleBundles?: string[];
   sourceTemplateId?: string;
   isDefaultForNewUsers?: boolean;
   isSystem?: boolean;
