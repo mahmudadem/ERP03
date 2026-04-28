@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, Coins, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
-import { CompanyCurrencySettings } from './settings/CompanyCurrencySettings';
+import { Settings, Shield, Lock, Unlock, Pencil, Building2, DollarSign, AlertTriangle, Globe, Calendar, Layout, Save, CreditCard, Plus, Trash2, X, CheckCircle2, Info, RefreshCw, Check, Hash, RotateCcw, FileText, ArrowLeftRight, Layers } from 'lucide-react';
+
 import FXRevaluationTab from './settings/FXRevaluationTab';
 import AccountSelector from '../components/shared/AccountSelector';
 import { Account } from '../../../context/AccountsContext';
@@ -21,7 +21,6 @@ import { useAccounts } from '../../../context/AccountsContext';
 import { 
   InstructionsButton, 
   generalSettingsInstructions,
-  currenciesInstructions,
   policiesInstructions,
   paymentMethodsInstructions,
   costCenterInstructions,
@@ -76,7 +75,7 @@ interface PaymentMethodDefinition {
 
 const AccountingSettingsPageContent: React.FC = () => {
   const { t, i18n } = useTranslation('accounting');
-  const [activeTab, setActiveTab] = useState<'general' | 'currencies' | 'policies' | 'payment-methods' | 'cost-center' | 'cost-centers-manage' | 'error-mode' | 'fiscal' | 'numbering' | 'fx-revaluation'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'policies' | 'payment-methods' | 'cost-center' | 'cost-centers-manage' | 'error-mode' | 'fiscal' | 'numbering' | 'fx-revaluation'>('general');
   const { user } = useAuth();
   const { companyId } = useCompanyAccess();
   const { settings: coreSettings, updateSettings: updateCoreSettings } = useCompanySettings();
@@ -163,7 +162,6 @@ const AccountingSettingsPageContent: React.FC = () => {
   // Granular tabs as per implementation plan
   const tabs = [
     { id: 'general', label: t('settings.tabs.general', 'General Settings'), icon: Globe },
-    { id: 'currencies', label: t('settings.tabs.currencies', 'Currencies'), icon: Coins },
     { id: 'policies', label: t('settings.tabs.policies', 'Approval Workflow'), icon: Shield },
     { id: 'payment-methods', label: t('settings.tabs.paymentMethods', 'Payment Methods'), icon: CreditCard },
     { id: 'cost-center', label: t('settings.tabs.costCenter', 'Cost Center Required'), icon: DollarSign },
@@ -673,7 +671,7 @@ const AccountingSettingsPageContent: React.FC = () => {
         <InstructionsButton 
           instructions={
             activeTab === 'general' ? generalSettingsInstructions :
-            activeTab === 'currencies' ? currenciesInstructions :
+            
             activeTab === 'policies' ? policiesInstructions :
             activeTab === 'payment-methods' ? paymentMethodsInstructions :
             activeTab === 'cost-center' ? costCenterInstructions :
@@ -856,21 +854,6 @@ const AccountingSettingsPageContent: React.FC = () => {
                 </div>
         </SettingsSection>
       )}
-         
-      {/* Currencies Tab */}
-      {activeTab === 'currencies' && (
-        <SettingsSection 
-          title={t('settings.tabs.currencies')} 
-          description={t('settings.currencies.description')}
-          onSave={() => handleSave('currencies')}
-          disabled={saving}
-          saving={saving}
-          saveLabel={t('settings.saveLabel', { section: t('settings.tabs.currencies') })}
-        >
-          <CompanyCurrencySettings />
-        </SettingsSection>
-      )}
-
       {/* Policies Tab */}
       {activeTab === 'policies' && (
         <SettingsSection 

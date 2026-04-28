@@ -12,8 +12,8 @@ import { permissionGuard } from '../middlewares/guards/permissionGuard';
 const router = Router();
 
 // Currencies - available to all authenticated users with company context
-router.get('/currencies', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCurrencies);
-router.get('/currencies/:code', permissionGuard('accounting.accounts.view'), CurrencyCoreController.getCurrency);
+router.get('/', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCurrencies);
+router.get('/:code', permissionGuard('accounting.accounts.view'), CurrencyCoreController.getCurrency);
 router.get('/company/currencies', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCompanyCurrencies);
 router.post('/company/currencies', permissionGuard('accounting.settings.write'), CurrencyCoreController.enableCurrency);
 router.delete('/company/currencies/:code', permissionGuard('accounting.settings.write'), CurrencyCoreController.disableCurrency);

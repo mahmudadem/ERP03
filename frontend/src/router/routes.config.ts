@@ -1,4 +1,5 @@
 import { lazy, ComponentType } from 'react';
+const CompanyCurrencySettings = lazy(() => import('../modules/shared/pages/settings/CompanyCurrencySettings').then(m => ({ default: m.CompanyCurrencySettings })));
 
 // Core
 const DashboardPage = lazy(() => import('../modules/core/pages/DashboardPage'));
@@ -211,6 +212,7 @@ export const routesConfig: AppRoute[] = [
   // POS
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
 
+
   // SETTINGS
   { path: '/settings', label: 'General', component: SettingsHomePage, section: 'SETTINGS' },
   { path: '/settings/appearance', label: 'Appearance', component: AppearanceSettingsPage, section: 'SETTINGS', hideInMenu: true },
@@ -218,6 +220,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
   { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
+  { path: '/system/currencies', label: 'Currencies', component: CompanyCurrencySettings, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
 
   // RBAC
   { path: '/settings/rbac/roles', label: 'Roles', component: RolesListPage, section: 'SETTINGS', requiredPermission: 'system.roles.manage' },

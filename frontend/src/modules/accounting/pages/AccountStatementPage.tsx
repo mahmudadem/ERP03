@@ -15,7 +15,7 @@ import { CostCenterSelector } from '../components/shared/CostCenterSelector';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useVoucherTypes } from '../../../hooks/useVoucherTypes';
-import { useCompanyCurrencies } from '../hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
 import { VoucherFormConfig } from '../voucher-wizard/types';
 import { VoucherEntryModal } from '../components/VoucherEntryModal';
 import { useVoucherActions } from '../../../hooks/useVoucherActions';

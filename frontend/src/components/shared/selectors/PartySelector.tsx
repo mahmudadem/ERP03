@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, User, Mail, Phone, CreditCard } from 'lucide-react';
 import { sharedApi, PartyDTO, PartyRole } from '../../../api/sharedApi';
-import { useCompanyCurrencies } from '../../../modules/accounting/hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
 
 interface PartySelectorProps {
   value?: string;

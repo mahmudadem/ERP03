@@ -9,7 +9,7 @@ import { DatePicker } from '../components/shared/DatePicker';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { CalendarDays } from 'lucide-react';
-import { useCompanyCurrencies } from '../hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
 
 /* ── Types ────────────────────────────────────────────── */
 

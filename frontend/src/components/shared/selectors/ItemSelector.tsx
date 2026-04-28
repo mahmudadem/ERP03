@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, RefreshCw, Box } from 'lucide-react';
 import { inventoryApi, InventoryItemDTO, InventoryUomDTO } from '../../../api/inventoryApi';
-import { useCompanyCurrencies } from '../../../modules/accounting/hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
 
 interface ItemSelectorProps {
   value?: string;

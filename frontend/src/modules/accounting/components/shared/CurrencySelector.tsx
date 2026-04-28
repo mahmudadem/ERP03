@@ -11,7 +11,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { useTranslation } from 'react-i18next';
 import { Search, X, Loader2, Globe, ChevronDown, Check, RefreshCw } from 'lucide-react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
-import { useCompanyCurrencies, Currency } from '../../hooks/useCompanyCurrencies';
+import { useCompanyCurrencies, Currency } from '../../../../hooks/useCompanyCurrencies';
 
 const FALLBACK_CURRENCIES: Currency[] = [
   { code: 'USD', name: 'US Dollar', symbol: '$', decimalPlaces: 2 },

@@ -546,22 +546,22 @@ export const accountingApi = {
   
   /** Get all active currencies from the system */
   getCurrencies: (): Promise<{ currencies: CurrencyDTO[] }> => {
-    return client.get('/tenant/accounting/currencies');
+    return client.get('/tenant/currencies');
   },
 
   /** Get currencies enabled for the current company */
   getCompanyCurrencies: (): Promise<{ currencies: CompanyCurrencyDTO[] }> => {
-    return client.get('/tenant/accounting/company/currencies');
+    return client.get('/tenant/currencies/company/currencies');
   },
 
   /** Enable a currency for the company (requires initial rate) */
   enableCurrency: (currencyCode: string, initialRate: number, initialRateDate?: string): Promise<{ success: boolean; companyCurrency: CompanyCurrencyDTO }> => {
-    return client.post('/tenant/accounting/company/currencies', { currencyCode, initialRate, initialRateDate });
+    return client.post('/tenant/currencies/company/currencies', { currencyCode, initialRate, initialRateDate });
   },
 
   /** Disable a currency for the company */
   disableCurrency: (currencyCode: string): Promise<{ success: boolean }> => {
-    return client.delete(`/tenant/accounting/company/currencies/${currencyCode}`);
+    return client.delete(`/tenant/currencies/company/currencies/${currencyCode}`);
   },
 
   // --- EXCHANGE RATES ---
@@ -570,7 +570,7 @@ export const accountingApi = {
   getSuggestedRate: (fromCurrency: string, toCurrency: string, date?: string): Promise<SuggestedRateDTO> => {
     const params = new URLSearchParams({ fromCurrency, toCurrency });
     if (date) params.append('date', date);
-    return client.get(`/tenant/accounting/exchange-rates/suggested?${params.toString()}`);
+    return client.get(`/tenant/currencies/exchange-rates/suggested?${params.toString()}`);
   },
 
   /** Get exchange rate history */
@@ -579,22 +579,22 @@ export const accountingApi = {
     if (fromCurrency) params.append('fromCurrency', fromCurrency);
     if (toCurrency) params.append('toCurrency', toCurrency);
     if (limit) params.append('limit', limit.toString());
-    return client.get(`/tenant/accounting/exchange-rates/history?${params.toString()}`);
+    return client.get(`/tenant/currencies/exchange-rates/history?${params.toString()}`);
   },
 
   /** Get latest exchange rates matrix */
   getLatestRatesMatrix: (): Promise<{ matrix: Record<string, Record<string, number>>; currencies: string[] }> => {
-    return client.get('/tenant/accounting/exchange-rates/matrix');
+    return client.get('/tenant/currencies/exchange-rates/matrix');
   },
 
   /** Save a reference exchange rate */
   saveExchangeRate: (fromCurrency: string, toCurrency: string, rate: number, date?: string): Promise<{ success: boolean; exchangeRate: any }> => {
-    return client.post('/tenant/accounting/exchange-rates', { fromCurrency, toCurrency, rate, date });
+    return client.post('/tenant/currencies/exchange-rates', { fromCurrency, toCurrency, rate, date });
   },
 
   /** Check for rate deviation warnings */
   checkRateDeviation: (fromCurrency: string, toCurrency: string, proposedRate: number): Promise<RateDeviationDTO> => {
-    return client.post('/tenant/accounting/exchange-rates/check-deviation', { fromCurrency, toCurrency, proposedRate });
+    return client.post('/tenant/currencies/exchange-rates/check-deviation', { fromCurrency, toCurrency, proposedRate });
   },
 
   // --- BANK RECONCILIATION ---

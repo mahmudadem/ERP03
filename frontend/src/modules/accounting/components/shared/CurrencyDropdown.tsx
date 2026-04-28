@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useCompanyCurrencies } from '../../hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 

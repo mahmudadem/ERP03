@@ -21,7 +21,7 @@ import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
 import { sharedApi, TaxCodeDTO } from '../../../../api/sharedApi';
-import { useCompanyCurrencies } from '../../hooks/useCompanyCurrencies';
+import { useCompanyCurrencies } from '../../../../hooks/useCompanyCurrencies';
 import { CurrencyDropdown } from './CurrencyDropdown';
 import { PaymentMethodDropdown } from './PaymentMethodDropdown';
 import { roundMoney } from '../../../../utils/mathUtils';
