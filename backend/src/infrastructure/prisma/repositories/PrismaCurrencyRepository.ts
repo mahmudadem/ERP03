@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { Currency } from '../../../domain/accounting/entities/Currency';
-import { ICurrencyRepository } from '../../../repository/interfaces/accounting/ICurrencyRepository';
+import { Currency } from '../../../domain/core/entities/Currency';
+import { ICurrencyRepository } from '../../../repository/interfaces/core/ICurrencyRepository';
 
 /**
  * SQL MIGRATION STATUS: NOT IMPLEMENTED

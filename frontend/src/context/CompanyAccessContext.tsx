@@ -29,6 +29,7 @@ export interface CompanyAccessContextValue {
   switchCompany: (companyId: string) => Promise<void>;
   refreshPermissions: () => Promise<void>;
   loadPermissionsForActiveCompany: () => Promise<void>;
+  refreshCompany: () => Promise<void>;
 }
 
 const CompanyAccessContext = createContext<CompanyAccessContextValue | undefined>(undefined);
@@ -212,6 +213,26 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     }
   }, [loadActiveCompany]);
 
+  const refreshCompany = useCallback(async () => {
+    try {
+      const data = await companySelectorApi.getActiveCompany();
+      const activeId = data.activeCompanyId || '';
+      if (data.company) {
+        setCompany({
+          id: activeId,
+          name: data.company.name || 'Unknown Company',
+          baseCurrency: data.company.baseCurrency,
+          fiscalYearStart: data.company.fiscalYearStart,
+          logoUrl: data.company.logoUrl,
+          modules: data.company.modules,
+          country: (data.company as any).country,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh company', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (companyId) {
       refreshPermissions();
@@ -247,6 +268,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
       loading,
       permissionsLoaded,
       setCompanyId,
+      refreshCompany,
       loadActiveCompany,
       switchCompany,
       refreshPermissions,

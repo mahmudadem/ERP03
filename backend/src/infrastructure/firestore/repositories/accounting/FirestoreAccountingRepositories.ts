@@ -1,6 +1,6 @@
 import { ICostCenterRepository, IExchangeRateRepository } from '../../../../repository/interfaces/accounting';
 import { CostCenter, CostCenterStatus } from '../../../../domain/accounting/entities/CostCenter';
-import { ExchangeRate } from '../../../../domain/accounting/entities/ExchangeRate';
+import { ExchangeRate } from '../../../../domain/core/entities/ExchangeRate';
 import * as admin from 'firebase-admin';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { SettingsResolver } from '../../../../application/common/services/SettingsResolver';

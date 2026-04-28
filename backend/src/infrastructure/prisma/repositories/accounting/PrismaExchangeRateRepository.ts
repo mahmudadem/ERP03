@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { IExchangeRateRepository } from '../../../../repository/interfaces/accounting/IExchangeRateRepository';
-import { ExchangeRate } from '../../../../domain/accounting/entities/ExchangeRate';
+import { IExchangeRateRepository } from '../../../../repository/interfaces/core/IExchangeRateRepository';
+import { ExchangeRate } from '../../../../domain/core/entities/ExchangeRate';
 
 export class PrismaExchangeRateRepository implements IExchangeRateRepository {
   constructor(private prisma: PrismaClient) {}

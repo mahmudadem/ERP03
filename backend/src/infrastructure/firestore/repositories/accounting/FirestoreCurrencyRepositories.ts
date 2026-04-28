@@ -7,12 +7,12 @@
 
 import * as admin from 'firebase-admin';
 import { Firestore, Timestamp, DocumentSnapshot, FieldValue } from 'firebase-admin/firestore';
-import { Currency } from '../../../../domain/accounting/entities/Currency';
-import { ICurrencyRepository } from '../../../../repository/interfaces/accounting/ICurrencyRepository';
+import { Currency } from '../../../../domain/core/entities/Currency';
+import { ICurrencyRepository } from '../../../../repository/interfaces/core/ICurrencyRepository';
 import { 
   ICompanyCurrencyRepository, 
   CompanyCurrencyRecord 
-} from '../../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+} from '../../../../repository/interfaces/core/ICompanyCurrencyRepository';
 
 /**
  * Firestore implementation of ICurrencyRepository for Accounting.

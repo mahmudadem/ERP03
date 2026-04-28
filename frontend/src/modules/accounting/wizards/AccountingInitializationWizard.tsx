@@ -57,7 +57,7 @@ interface CoaTemplate {
  * Multi-step wizard to configure accounting module
  */
 export const AccountingInitializationWizard: React.FC = () => {
-  const { companyId, company } = useCompanyAccess();
+  const { companyId, company, refreshCompany } = useCompanyAccess();
   const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -181,6 +181,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       await companyModulesApi.initialize(companyId, 'accounting', setupData);
 
       // Redirect to accounting module
+      await refreshCompany();
       navigate('/accounting', { replace: true });
     } catch (err: any) {
       console.error('Failed to initialize accounting module:', err);

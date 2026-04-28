@@ -19,6 +19,7 @@ import rbacRoutes from '../routes/system.rbac.routes';
 import companyModuleSettingsRoutes from '../routes/company.moduleSettings.routes';
 import notificationRoutes from '../routes/notification.routes';
 import sharedRoutes from '../routes/shared.routes';
+import currencyRoutes from '../routes/currency.routes';
 
 const router = Router();
 
@@ -44,6 +45,7 @@ for (const module of modules) {
     console.log(`Mounted module: ${module.metadata.id} at /${module.metadata.id}`);
 }
 
+router.use('/currencies', currencyRoutes);
 router.use('/shared', sharedRoutes);
 router.use('/rbac', rbacRoutes);
 router.use(companyModuleSettingsRoutes);

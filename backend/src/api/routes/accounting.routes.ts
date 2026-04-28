@@ -10,7 +10,7 @@ import { ReportingController } from '../controllers/accounting/ReportingControll
 import { AccountingReportsController } from '../controllers/accounting/AccountingReportsController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
 import { SettingsController } from '../controllers/accounting/SettingsController';
-import { CurrencyController } from '../controllers/accounting/CurrencyController';
+import { CurrencyCoreController } from '../controllers/core/CurrencyCoreController'; // currency moved to core
 import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
 import { CostCenterController } from '../controllers/accounting/CostCenterController';
 import { VoucherSequenceController } from '../controllers/accounting/VoucherSequenceController';
@@ -150,18 +150,18 @@ router.delete('/voucher-forms/:id', permissionGuard('accounting.designer.modify'
 router.post('/voucher-forms/:id/clone', permissionGuard('accounting.designer.create'), VoucherFormController.clone);
 
 // Currencies
-router.get('/currencies', permissionGuard('accounting.accounts.view'), CurrencyController.listCurrencies);
-router.get('/currencies/:code', permissionGuard('accounting.accounts.view'), CurrencyController.getCurrency);
-router.get('/company/currencies', permissionGuard('accounting.accounts.view'), CurrencyController.listCompanyCurrencies);
-router.post('/company/currencies', permissionGuard('accounting.settings.write'), CurrencyController.enableCurrency);
-router.delete('/company/currencies/:code', permissionGuard('accounting.settings.write'), CurrencyController.disableCurrency);
+router.get('/currencies', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCurrencies);
+router.get('/currencies/:code', permissionGuard('accounting.accounts.view'), CurrencyCoreController.getCurrency);
+router.get('/company/currencies', permissionGuard('accounting.accounts.view'), CurrencyCoreController.listCompanyCurrencies);
+router.post('/company/currencies', permissionGuard('accounting.settings.write'), CurrencyCoreController.enableCurrency);
+router.delete('/company/currencies/:code', permissionGuard('accounting.settings.write'), CurrencyCoreController.disableCurrency);
 
 // Exchange Rates
-router.get('/exchange-rates/history', permissionGuard('accounting.vouchers.view'), CurrencyController.listRateHistory);
-router.get('/exchange-rates/matrix', permissionGuard('accounting.accounts.view'), CurrencyController.getLatestRatesMatrix);
-router.get('/exchange-rates/suggested', permissionGuard('accounting.vouchers.create'), CurrencyController.getSuggestedRate);
-router.post('/exchange-rates', permissionGuard('accounting.vouchers.create'), CurrencyController.saveRate);
-router.post('/exchange-rates/check-deviation', permissionGuard('accounting.vouchers.create'), CurrencyController.checkRateDeviation);
+router.get('/exchange-rates/history', permissionGuard('accounting.vouchers.view'), CurrencyCoreController.listRateHistory);
+router.get('/exchange-rates/matrix', permissionGuard('accounting.accounts.view'), CurrencyCoreController.getLatestRatesMatrix);
+router.get('/exchange-rates/suggested', permissionGuard('accounting.vouchers.create'), CurrencyCoreController.getSuggestedRate);
+router.post('/exchange-rates', permissionGuard('accounting.vouchers.create'), CurrencyCoreController.saveRate);
+router.post('/exchange-rates/check-deviation', permissionGuard('accounting.vouchers.create'), CurrencyCoreController.checkRateDeviation);
 
 // FX Revaluation
 router.post('/fx-revaluation/detect-currencies', permissionGuard('accounting.settings.write'), FXRevaluationController.detectCurrencies);

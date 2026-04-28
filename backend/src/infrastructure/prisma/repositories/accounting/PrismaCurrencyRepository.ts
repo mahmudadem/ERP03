@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { ICurrencyRepository } from '../../../../repository/interfaces/accounting/ICurrencyRepository';
-import { Currency } from '../../../../domain/accounting/entities/Currency';
+import { ICurrencyRepository } from '../../../../repository/interfaces/core/ICurrencyRepository';
+import { Currency } from '../../../../domain/core/entities/Currency';
 
 export class PrismaCurrencyRepository implements ICurrencyRepository {
   constructor(private prisma: PrismaClient) {}

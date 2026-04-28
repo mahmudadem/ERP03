@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { ExchangeRate } from '../../../domain/accounting/entities/ExchangeRate';
-import { IExchangeRateRepository } from '../../../repository/interfaces/accounting/IExchangeRateRepository';
+import { ExchangeRate } from '../../../domain/core/entities/ExchangeRate';
+import { IExchangeRateRepository } from '../../../repository/interfaces/core/IExchangeRateRepository';
 
 /**
  * SQL MIGRATION STATUS: NOT IMPLEMENTED

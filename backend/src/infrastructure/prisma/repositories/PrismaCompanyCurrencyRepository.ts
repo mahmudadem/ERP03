@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import {
   ICompanyCurrencyRepository,
   CompanyCurrencyRecord,
-} from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+} from '../../../repository/interfaces/core/ICompanyCurrencyRepository';
 
 /**
  * SQL MIGRATION STATUS: NOT IMPLEMENTED
