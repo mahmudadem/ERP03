@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { tenantContextMiddleware } from '../middlewares/tenantContextMiddleware';
+import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { ModuleRegistry } from '../../application/platform/ModuleRegistry';
 import { companyModuleGuard } from '../middlewares/guards/companyModuleGuard';
 import { ownerOrPermissionGuard } from '../middlewares/guards/ownerOrPermissionGuard';
@@ -45,7 +46,7 @@ for (const module of modules) {
     console.log(`Mounted module: ${module.metadata.id} at /${module.metadata.id}`);
 }
 
-router.use('/currencies', currencyRoutes);
+router.use('/currencies', companyContextMiddleware, currencyRoutes);
 router.use('/shared', sharedRoutes);
 router.use('/rbac', rbacRoutes);
 router.use(companyModuleSettingsRoutes);
