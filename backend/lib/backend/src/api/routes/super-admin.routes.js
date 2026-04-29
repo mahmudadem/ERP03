@@ -4,6 +4,7 @@ const express_1 = require("express");
 const SuperAdminController_1 = require("../controllers/super-admin/SuperAdminController");
 const PermissionRegistryController_1 = require("../controllers/super-admin/PermissionRegistryController");
 const ModuleRegistryController_1 = require("../controllers/super-admin/ModuleRegistryController");
+const ModuleAvailabilityController_1 = require("../controllers/super-admin/ModuleAvailabilityController");
 const BusinessDomainRegistryController_1 = require("../controllers/super-admin/BusinessDomainRegistryController");
 const BundleRegistryController_1 = require("../controllers/super-admin/BundleRegistryController");
 const PlanRegistryController_1 = require("../controllers/super-admin/PlanRegistryController");
@@ -31,6 +32,10 @@ router.get('/modules', ModuleRegistryController_1.ModuleRegistryController.list)
 router.post('/modules', ModuleRegistryController_1.ModuleRegistryController.create);
 router.patch('/modules/:id', ModuleRegistryController_1.ModuleRegistryController.update);
 router.delete('/modules/:id', ModuleRegistryController_1.ModuleRegistryController.delete);
+// Module Availability & Implementation Check
+router.get('/modules/availability', ModuleAvailabilityController_1.ModuleAvailabilityController.getAvailabilityReport);
+router.get('/modules/:id/availability', ModuleAvailabilityController_1.ModuleAvailabilityController.getModuleAvailability);
+router.post('/modules/:id/check-implementation', ModuleAvailabilityController_1.ModuleAvailabilityController.checkImplementation);
 // Business Domains
 router.get('/business-domains', BusinessDomainRegistryController_1.BusinessDomainRegistryController.list);
 router.post('/business-domains', BusinessDomainRegistryController_1.BusinessDomainRegistryController.create);

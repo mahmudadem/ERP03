@@ -67,6 +67,7 @@ const FirestoreModulePermissionsDefinitionRepository_1 = require("../firestore/r
 const FirestoreCompanyAdminRepository_1 = require("../firestore/company-admin/FirestoreCompanyAdminRepository");
 const PrismaCompanyAdminRepository_1 = require("../prisma/company-admin/PrismaCompanyAdminRepository");
 const FirestoreCompanyModuleRepository_1 = require("../firestore/repositories/company/FirestoreCompanyModuleRepository");
+const FirestoreCapabilityRegistryRepository_1 = require("../firestore/repositories/company/FirestoreCapabilityRegistryRepository");
 const SettingsResolver_1 = require("../../application/common/services/SettingsResolver");
 const ModuleActivationService_1 = require("../../application/system/services/ModuleActivationService");
 const FirestoreBusinessDomainRepository_1 = require("../firestore/repositories/super-admin/FirestoreBusinessDomainRepository");
@@ -109,6 +110,7 @@ const PrismaReconciliationRepository_1 = require("../prisma/repositories/account
 const PrismaRecurringVoucherTemplateRepository_1 = require("../prisma/repositories/accounting/PrismaRecurringVoucherTemplateRepository");
 const PrismaVoucherSequenceRepository_1 = require("../prisma/repositories/accounting/PrismaVoucherSequenceRepository");
 const PrismaCompanyModuleRepository_1 = require("../prisma/repositories/company/PrismaCompanyModuleRepository");
+const PrismaCapabilityRegistryRepository_1 = require("../prisma/repositories/company/PrismaCapabilityRegistryRepository");
 const PrismaChartOfAccountsTemplateRepository_1 = require("../prisma/repositories/company-wizard/PrismaChartOfAccountsTemplateRepository");
 const PrismaCompanyCreationSessionRepository_1 = require("../prisma/repositories/company-wizard/PrismaCompanyCreationSessionRepository");
 const PrismaCompanyWizardTemplateRepository_1 = require("../prisma/repositories/company-wizard/PrismaCompanyWizardTemplateRepository");
@@ -154,6 +156,9 @@ const PrismaModuleRegistryRepository_1 = require("../prisma/repositories/super-a
 const PrismaPermissionRegistryRepository_1 = require("../prisma/repositories/super-admin/PrismaPermissionRegistryRepository");
 const PrismaPlanRegistryRepository_1 = require("../prisma/repositories/super-admin/PrismaPlanRegistryRepository");
 const PrismaRoleTemplateRegistryRepository_1 = require("../prisma/repositories/super-admin/PrismaRoleTemplateRegistryRepository");
+const PrismaCompanyEntitlementRepository_1 = require("../prisma/repositories/super-admin/PrismaCompanyEntitlementRepository");
+const FirestoreCompanyEntitlementRepository_1 = require("../firestore/repositories/super-admin/FirestoreCompanyEntitlementRepository");
+const EntitlementService_1 = require("../../application/platform/EntitlementService");
 const PrismaRbacCompanyUserRepository_1 = require("../prisma/repositories/rbac/PrismaRbacCompanyUserRepository");
 const PrismaModuleSettingsDefinitionRepository_1 = require("../prisma/repositories/system/PrismaModuleSettingsDefinitionRepository");
 const PrismaModulePermissionsDefinitionRepository_1 = require("../prisma/repositories/system/PrismaModulePermissionsDefinitionRepository");
@@ -202,6 +207,11 @@ exports.diContainer = {
         return DB_TYPE === 'SQL'
             ? new PrismaCompanyModuleRepository_1.PrismaCompanyModuleRepository((0, prismaClient_1.getPrismaClient)())
             : new FirestoreCompanyModuleRepository_1.FirestoreCompanyModuleRepository(getDb());
+    },
+    get capabilityRegistryRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaCapabilityRegistryRepository_1.PrismaCapabilityRegistryRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreCapabilityRegistryRepository_1.FirestoreCapabilityRegistryRepository(getDb());
     },
     get moduleActivationService() { return moduleActivationService; },
     // SYSTEM
@@ -551,6 +561,14 @@ exports.diContainer = {
         return DB_TYPE === 'SQL'
             ? new PrismaBundleRegistryRepository_1.PrismaBundleRegistryRepository((0, prismaClient_1.getPrismaClient)())
             : new FirestoreBundleRegistryRepository_1.FirestoreBundleRegistryRepository(getDb());
+    },
+    get companyEntitlementRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaCompanyEntitlementRepository_1.PrismaCompanyEntitlementRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestoreCompanyEntitlementRepository_1.FirestoreCompanyEntitlementRepository(getDb());
+    },
+    get entitlementService() {
+        return new EntitlementService_1.EntitlementService(this.companyEntitlementRepository);
     },
     get planRegistryRepository() {
         return DB_TYPE === 'SQL'

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaExchangeRateRepository = void 0;
-const ExchangeRate_1 = require("../../../domain/accounting/entities/ExchangeRate");
+const ExchangeRate_1 = require("../../../domain/core/entities/ExchangeRate");
 /**
  * SQL MIGRATION STATUS: NOT IMPLEMENTED
  *

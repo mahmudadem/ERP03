@@ -14,7 +14,7 @@ const ReportingController_1 = require("../controllers/accounting/ReportingContro
 const AccountingReportsController_1 = require("../controllers/accounting/AccountingReportsController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
-const CurrencyController_1 = require("../controllers/accounting/CurrencyController");
+const CurrencyCoreController_1 = require("../controllers/core/CurrencyCoreController"); // currency moved to core
 const FiscalYearController_1 = require("../controllers/accounting/FiscalYearController");
 const CostCenterController_1 = require("../controllers/accounting/CostCenterController");
 const VoucherSequenceController_1 = require("../controllers/accounting/VoucherSequenceController");
@@ -138,17 +138,17 @@ router.put('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('account
 router.delete('/voucher-forms/:id', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), VoucherFormController_1.VoucherFormController.delete);
 router.post('/voucher-forms/:id/clone', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), VoucherFormController_1.VoucherFormController.clone);
 // Currencies
-router.get('/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.listCurrencies);
-router.get('/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.getCurrency);
-router.get('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.listCompanyCurrencies);
-router.post('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.enableCurrency);
-router.delete('/company/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyController_1.CurrencyController.disableCurrency);
+router.get('/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyCoreController_1.CurrencyCoreController.listCurrencies);
+router.get('/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyCoreController_1.CurrencyCoreController.getCurrency);
+router.get('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyCoreController_1.CurrencyCoreController.listCompanyCurrencies);
+router.post('/company/currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyCoreController_1.CurrencyCoreController.enableCurrency);
+router.delete('/company/currencies/:code', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), CurrencyCoreController_1.CurrencyCoreController.disableCurrency);
 // Exchange Rates
-router.get('/exchange-rates/history', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), CurrencyController_1.CurrencyController.listRateHistory);
-router.get('/exchange-rates/matrix', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyController_1.CurrencyController.getLatestRatesMatrix);
-router.get('/exchange-rates/suggested', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.getSuggestedRate);
-router.post('/exchange-rates', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.saveRate);
-router.post('/exchange-rates/check-deviation', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyController_1.CurrencyController.checkRateDeviation);
+router.get('/exchange-rates/history', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), CurrencyCoreController_1.CurrencyCoreController.listRateHistory);
+router.get('/exchange-rates/matrix', (0, permissionGuard_1.permissionGuard)('accounting.accounts.view'), CurrencyCoreController_1.CurrencyCoreController.getLatestRatesMatrix);
+router.get('/exchange-rates/suggested', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyCoreController_1.CurrencyCoreController.getSuggestedRate);
+router.post('/exchange-rates', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyCoreController_1.CurrencyCoreController.saveRate);
+router.post('/exchange-rates/check-deviation', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.create'), CurrencyCoreController_1.CurrencyCoreController.checkRateDeviation);
 // FX Revaluation
 router.post('/fx-revaluation/detect-currencies', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FXRevaluationController_1.FXRevaluationController.detectCurrencies);
 router.post('/fx-revaluation/calculate', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), FXRevaluationController_1.FXRevaluationController.calculate);

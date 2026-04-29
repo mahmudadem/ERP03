@@ -39,6 +39,15 @@ class InventoryModule {
             'inventory.reconcile.run'
         ];
     }
+    getManifest() {
+        return {
+            id: this.metadata.id,
+            name: this.metadata.name,
+            version: this.metadata.version,
+            description: this.metadata.description,
+            requiredPermissions: this.permissions,
+        };
+    }
     async initialize() {
         console.log('Initializing Inventory Module...');
     }

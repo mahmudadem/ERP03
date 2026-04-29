@@ -17,10 +17,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./IAccountRepository"), exports);
 // IVoucherRepository is now in domain/accounting/repositories/IVoucherRepository.ts
 __exportStar(require("./ICostCenterRepository"), exports);
-__exportStar(require("./IExchangeRateRepository"), exports);
+__exportStar(require("../core/IExchangeRateRepository"), exports); // moved to core;
 __exportStar(require("./ILedgerRepository"), exports);
-__exportStar(require("./ICurrencyRepository"), exports);
-__exportStar(require("./ICompanyCurrencyRepository"), exports);
+__exportStar(require("../core/ICurrencyRepository"), exports); // moved to core;
+__exportStar(require("../core/ICompanyCurrencyRepository"), exports); // moved to core;
 __exportStar(require("./IFiscalYearRepository"), exports);
 __exportStar(require("./IVoucherSequenceRepository"), exports);
 __exportStar(require("./IBankStatementRepository"), exports);

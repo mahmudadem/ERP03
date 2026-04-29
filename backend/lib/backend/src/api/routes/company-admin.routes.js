@@ -38,12 +38,23 @@ router.post('/roles/create', CompanyRolesController_1.CompanyRolesController.cre
 router.post('/roles/:roleId/update', CompanyRolesController_1.CompanyRolesController.updateRole);
 router.delete('/roles/:roleId', CompanyRolesController_1.CompanyRolesController.deleteRole);
 // ============================================================================
+// PERMISSION ROUTES (Phase 4)
+// ============================================================================
+router.get('/permissions', CompanyRolesController_1.CompanyRolesController.listPermissions);
+// ============================================================================
 // MODULE ROUTES
 // ============================================================================
 router.get('/modules', CompanyModulesController_1.CompanyModulesController.listModules);
 router.get('/modules/active', CompanyModulesController_1.CompanyModulesController.listActiveModules);
 router.post('/modules/enable', CompanyModulesController_1.CompanyModulesController.enableModule);
 router.post('/modules/disable', CompanyModulesController_1.CompanyModulesController.disableModule);
+router.post('/modules/:module/sync-voucher-types', CompanyModulesController_1.CompanyModulesController.syncVoucherTypes);
+// ============================================================================
+// CAPABILITY ROUTES (Phase 3)
+// ============================================================================
+router.get('/capabilities', CompanyModulesController_1.CompanyModulesController.listCapabilities);
+router.post('/capabilities/enable', CompanyModulesController_1.CompanyModulesController.enableCapability);
+router.post('/capabilities/disable', CompanyModulesController_1.CompanyModulesController.disableCapability);
 // ============================================================================
 // BUNDLE ROUTES
 // ============================================================================

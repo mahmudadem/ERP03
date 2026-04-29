@@ -8,7 +8,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreCompanyCurrencyRepository = exports.FirestoreAccountingCurrencyRepository = void 0;
 const firestore_1 = require("firebase-admin/firestore");
-const Currency_1 = require("../../../../domain/accounting/entities/Currency");
+const Currency_1 = require("../../../../domain/core/entities/Currency");
 /**
  * Firestore implementation of ICurrencyRepository for Accounting.
  * Reads global currencies from system_metadata/currencies/items collection.

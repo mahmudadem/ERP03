@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncCompanyVoucherTemplatesFromSystem = void 0;
 const crypto_1 = require("crypto");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
+const VoucherFormDeduper_1 = require("../../../domain/designer/services/VoucherFormDeduper");
 const cloneValue = (value) => (value ? JSON.parse(JSON.stringify(value)) : value);
 const normalizeModule = (value) => String(value || '').trim().toUpperCase();
-const normalizeCode = (value) => String(value || '').trim().toLowerCase();
+const normalizeCode = (value) => (0, VoucherFormDeduper_1.canonicalizeVoucherCode)(value);
 const toFormFieldType = (type) => {
     const normalized = String(type || '').trim().toUpperCase();
     if (normalized.includes('DATE'))
@@ -121,7 +122,11 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
     let templatesUpserted = 0;
     let formsCreated = 0;
     const companyTypes = await input.voucherTypeRepo.getByCompanyId(input.companyId);
+    const companyForms = await input.voucherFormRepo.getAllByCompany(input.companyId);
     const existingByKey = new Map();
+    const existingDefaultFormKeys = new Set(companyForms
+        .filter(VoucherFormDeduper_1.isSystemDefaultVoucherForm)
+        .map(VoucherFormDeduper_1.getVoucherFormLogicalKey));
     for (const existingType of companyTypes) {
         if (existingType.companyId !== input.companyId)
             continue;
@@ -160,10 +165,12 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
             existingByKey.set(templateKey, companyType);
         }
         templatesUpserted++;
+        const formKey = `${normalizeModule(template.module)}::${normalizeCode(template.code)}`;
         const existingForms = await input.voucherFormRepo.getByTypeId(input.companyId, companyTypeId);
-        if (existingForms.length === 0) {
+        if (existingForms.length === 0 && !existingDefaultFormKeys.has(formKey)) {
             const defaultForm = cloneVoucherFormForCompany(input.companyId, companyTypeId, input.createdBy || 'SYSTEM', template);
             await input.voucherFormRepo.create(defaultForm);
+            existingDefaultFormKeys.add(formKey);
             formsCreated++;
         }
     }

@@ -6,8 +6,7 @@ class ListAvailableBundlesUseCase {
         this.bundleRepo = bundleRepo;
     }
     async execute() {
-        // Return all bundles from Firestore
-        const bundles = await this.bundleRepo.getAll();
+        const bundles = await this.bundleRepo.getReady();
         return bundles.map(bundle => (Object.assign({ bundleId: bundle.id }, bundle)));
     }
 }

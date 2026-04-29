@@ -7,6 +7,7 @@ const GetCompanyRoleUseCase_1 = require("../../../application/company-admin/use-
 const CreateCompanyRoleUseCase_1 = require("../../../application/company-admin/use-cases/CreateCompanyRoleUseCase");
 const UpdateCompanyRoleUseCase_1 = require("../../../application/company-admin/use-cases/UpdateCompanyRoleUseCase");
 const DeleteCompanyRoleUseCase_1 = require("../../../application/company-admin/use-cases/DeleteCompanyRoleUseCase");
+const PermissionCatalogSyncService_1 = require("../../../application/platform/PermissionCatalogSyncService");
 /**
  * CompanyRolesController
  * Handles company role management operations
@@ -112,9 +113,9 @@ class CompanyRolesController {
         }
     }
     /**
-     * DELETE /company-admin/roles/:roleId
-     * Delete role
-     */
+        * DELETE /company-admin/roles/:roleId
+        * Delete role
+        */
     static async deleteRole(req, res, next) {
         var _a;
         try {
@@ -127,6 +128,26 @@ class CompanyRolesController {
             const useCase = new DeleteCompanyRoleUseCase_1.DeleteCompanyRoleUseCase(bindRepositories_1.diContainer.companyRoleRepository, bindRepositories_1.diContainer.rbacCompanyUserRepository);
             await useCase.execute(companyId, roleId);
             res.json({ success: true, message: 'Role deleted successfully' });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    /**
+     * GET /company-admin/permissions
+     * List available permissions from catalog
+     */
+    static async listPermissions(req, res, next) {
+        var _a;
+        try {
+            const companyId = (_a = req.tenantContext) === null || _a === void 0 ? void 0 : _a.companyId;
+            if (!companyId) {
+                res.status(400).json({ success: false, error: 'Company ID required' });
+                return;
+            }
+            const syncService = new PermissionCatalogSyncService_1.PermissionCatalogSyncService();
+            const permissions = await syncService.getAvailablePermissions(companyId);
+            res.json({ success: true, data: permissions });
         }
         catch (error) {
             next(error);

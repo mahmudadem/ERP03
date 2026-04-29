@@ -11,6 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const tenantContextMiddleware_1 = require("../middlewares/tenantContextMiddleware");
+const companyContextMiddleware_1 = require("../middlewares/companyContextMiddleware");
 const ModuleRegistry_1 = require("../../application/platform/ModuleRegistry");
 const companyModuleGuard_1 = require("../middlewares/guards/companyModuleGuard");
 const ownerOrPermissionGuard_1 = require("../middlewares/guards/ownerOrPermissionGuard");
@@ -21,6 +22,7 @@ const system_rbac_routes_1 = __importDefault(require("../routes/system.rbac.rout
 const company_moduleSettings_routes_1 = __importDefault(require("../routes/company.moduleSettings.routes"));
 const notification_routes_1 = __importDefault(require("../routes/notification.routes"));
 const shared_routes_1 = __importDefault(require("../routes/shared.routes"));
+const currency_routes_1 = __importDefault(require("../routes/currency.routes"));
 const router = (0, express_1.Router)();
 // Apply Auth & Tenant Context Middleware
 router.use(authMiddleware_1.authMiddleware);
@@ -36,6 +38,7 @@ for (const module of modules) {
     router.use(`/${module.metadata.id}`, (0, companyModuleGuard_1.companyModuleGuard)(module.metadata.id), moduleRouter);
     console.log(`Mounted module: ${module.metadata.id} at /${module.metadata.id}`);
 }
+router.use('/currencies', companyContextMiddleware_1.companyContextMiddleware, currency_routes_1.default);
 router.use('/shared', shared_routes_1.default);
 router.use('/rbac', system_rbac_routes_1.default);
 router.use(company_moduleSettings_routes_1.default);

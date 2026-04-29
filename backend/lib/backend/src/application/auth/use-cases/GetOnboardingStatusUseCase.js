@@ -33,14 +33,14 @@ class GetOnboardingStatusUseCase {
         const hasCompanies = userCompanies.length > 0;
         // Determine next step
         let nextStep;
-        if (!user.planId) {
-            nextStep = 'PLAN_SELECTION';
+        if (hasCompanies && user.activeCompanyId) {
+            nextStep = 'DASHBOARD';
         }
-        else if (!hasCompanies) {
+        else if (hasCompanies) {
             nextStep = 'COMPANY_SELECT';
         }
-        else if (user.activeCompanyId) {
-            nextStep = 'DASHBOARD';
+        else if (!user.planId) {
+            nextStep = 'PLAN_SELECTION';
         }
         else {
             nextStep = 'COMPANY_SELECT';

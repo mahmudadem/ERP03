@@ -29,9 +29,17 @@ class AccountingModule {
             'accounting.reports.view'
         ];
     }
+    getManifest() {
+        return {
+            id: this.metadata.id,
+            name: this.metadata.name,
+            version: this.metadata.version,
+            description: this.metadata.description,
+            requiredPermissions: this.permissions,
+        };
+    }
     async initialize() {
         console.log('Initializing Accounting Module...');
-        // Any module-specific initialization logic here
     }
     getRouter() {
         return accounting_routes_1.default;

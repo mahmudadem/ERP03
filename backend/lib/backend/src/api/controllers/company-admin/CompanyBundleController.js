@@ -61,7 +61,7 @@ class CompanyBundleController {
                 res.status(400).json({ success: false, error: 'Bundle ID required' });
                 return;
             }
-            const useCase = new UpgradeCompanyBundleUseCase_1.UpgradeCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.bundleRegistryRepository);
+            const useCase = new UpgradeCompanyBundleUseCase_1.UpgradeCompanyBundleUseCase(bindRepositories_1.diContainer.companyRepository, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.bundleRegistryRepository, bindRepositories_1.diContainer.companyEntitlementRepository);
             const result = await useCase.execute({ companyId, bundleId });
             res.json({ success: true, data: result });
         }

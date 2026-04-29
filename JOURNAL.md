@@ -306,4 +306,26 @@
 **Commit:** (hash if committed)
 **Next:** (what to do next session)
 
--->
+## 2026-04-28 (Tuesday) — 0.5h
+**Task:** Voucher Data Contract Mismatch (Task 43) — Audit Phase
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Audited `seedSystemVoucherTypes.ts` vs `SalesDTOs.ts` and `PurchaseDTOs.ts`.
+- Confirmed that PO, PI, SR, and PR templates in the seeder use `quantity` instead of the semantic names required by the DTOs (`orderedQty`, `invoicedQty`, `returnQty`).
+- Identified that `GenericVoucherRenderer.tsx` needs refinement to prioritize these semantic fields during data extraction.
+- Updated [Task 43](file:///d:/DEV2026/ERP03/1-TODO/43-voucher-data-contract-mismatch.md) with specific field mapping instructions.
+- Set Task 43 as the active focus in `ACTIVE.md`.
+**Result:** 🔶 Audit Complete, Execution Ready
+**Next:** Update seeder and renderer to align contracts.
+## 2026-04-29 (Wednesday) — 1.5h
+**Task:** Standardizing Sales Voucher Architecture (Task 43) — Planning Phase
+**Agent:** Antigravity (CTO Mode)
+**What I Did:**
+- Created a comprehensive **Sales Canonical Field Dictionary** to unify Frontend and Backend data contracts.
+- Defined five specialized Sales Personas (`sales_order`, `delivery_note`, `sales_invoice_direct`, `sales_invoice_linked`, `sales_invoice_service`).
+- Established strict validation rules for stock movements and item types based on persona.
+- Prepared the `payments[]` contract to handle future requirements while safely rejecting current inputs.
+- Decoupled Sales Workflows from Inventory Accounting methods in the policy layer.
+- Produced the final [Implementation Plan](file:///C:/Users/mahmu/.gemini/antigravity/brain/6bddc246-acf7-4502-aaeb-8af06294d785/implementation_plan.md).
+**Result:** ✅ Planning Complete
+**Next:** Executor Agent to perform the "Breaking Cleanup" and reseed.

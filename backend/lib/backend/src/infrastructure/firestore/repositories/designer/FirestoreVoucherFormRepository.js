@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreVoucherFormRepository = void 0;
 const firestore_1 = require("firebase-admin/firestore");
 const InfrastructureError_1 = require("../../../errors/InfrastructureError");
+const VoucherFormDeduper_1 = require("../../../../domain/designer/services/VoucherFormDeduper");
 class FirestoreVoucherFormRepository {
     constructor(db) {
         this.db = db;
@@ -176,7 +177,7 @@ class FirestoreVoucherFormRepository {
                     companyForms.push(this.toDomain(Object.assign(Object.assign({}, doc.data()), { id: doc.id })));
                 });
             }
-            return companyForms;
+            return (0, VoucherFormDeduper_1.dedupeVoucherForms)(companyForms);
         }
         catch (error) {
             throw new InfrastructureError_1.InfrastructureError('Error getting all voucher forms', error);

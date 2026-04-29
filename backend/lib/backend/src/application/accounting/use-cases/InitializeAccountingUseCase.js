@@ -5,6 +5,7 @@ const FiscalYear_1 = require("../../../domain/accounting/entities/FiscalYear");
 const FiscalPeriodGenerator_1 = require("../../../domain/accounting/services/FiscalPeriodGenerator");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
 const crypto_1 = require("crypto");
+const VoucherFormDeduper_1 = require("../../../domain/designer/services/VoucherFormDeduper");
 class InitializeAccountingUseCase {
     constructor(companyModuleRepo, accountRepo, systemMetadataRepo, settingsRepo, companySettingsRepo, currencyRepo, companyRepo, fiscalYearRepo, voucherTypeRepo, voucherFormRepo) {
         this.companyModuleRepo = companyModuleRepo;
@@ -236,15 +237,15 @@ class InitializeAccountingUseCase {
      */
     async createDefaultFormsForTypes(companyId, types) {
         var _a, _b;
+        const existingForms = await this.voucherFormRepo.getAllByCompany(companyId);
+        const existingDefaultFormKeys = new Set(existingForms
+            .filter(VoucherFormDeduper_1.isSystemDefaultVoucherForm)
+            .map(VoucherFormDeduper_1.getVoucherFormLogicalKey));
+        let createdCount = 0;
         for (const type of types) {
             const formId = type.id;
-            const code = String(type.data.code || type.id || '').toUpperCase();
-            const baseType = String(type.data.module || '').toUpperCase() || (code.includes('RECEIPT') ? 'RECEIPT' :
-                code.includes('PAYMENT') ? 'PAYMENT' :
-                    code.includes('JOURNAL') ? 'JOURNAL' :
-                        code.includes('TRANSFER') ? 'TRANSFER' :
-                            code.includes('INVOICE') ? 'INVOICE' :
-                                code);
+            const code = String(type.data.code || type.id || '').trim();
+            const baseType = (0, VoucherFormDeduper_1.canonicalizeVoucherCode)(code) || code.toLowerCase();
             const headerFields = (type.data.headerFields || []).map((f) => ({
                 id: f.id || f.fieldId,
                 label: f.label || f.name || '',
@@ -287,9 +288,15 @@ class InitializeAccountingUseCase {
                 updatedAt: new Date(),
                 createdBy: 'system'
             };
+            const formKey = (0, VoucherFormDeduper_1.getVoucherFormLogicalKey)(form);
+            if (existingDefaultFormKeys.has(formKey)) {
+                continue;
+            }
             await this.voucherFormRepo.create(form);
+            existingDefaultFormKeys.add(formKey);
+            createdCount++;
         }
-        console.log(`[InitializeAccountingUseCase] Created ${types.length} default forms in voucherForms collection`);
+        console.log(`[InitializeAccountingUseCase] Created ${createdCount} default forms in voucherForms collection`);
     }
 }
 exports.InitializeAccountingUseCase = InitializeAccountingUseCase;

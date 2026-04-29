@@ -169,6 +169,7 @@ class InitializePurchasesUseCase {
             await this.companyModuleRepo.create({
                 companyId: input.companyId,
                 moduleCode: 'purchase',
+                isEnabled: true,
                 installedAt: now,
                 initialized: true,
                 initializationStatus: 'complete',

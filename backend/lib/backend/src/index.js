@@ -28,12 +28,26 @@ require("./firebaseAdmin");
 const functions = __importStar(require("firebase-functions"));
 const modules_1 = require("./modules");
 const ModuleRegistry_1 = require("./application/platform/ModuleRegistry");
-// Register modules before the server (and tenant router) are loaded
-(0, modules_1.registerAllModules)();
-ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll().catch(() => { });
-// Load the server after modules are registered so tenant router can mount them
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const server = require('./api/server').default;
-exports.api = functions.https.onRequest(server);
+const moduleStartupValidation_1 = require("./modules/moduleStartupValidation");
+let server = null;
+let serverReady = false;
+async function initServer() {
+    (0, modules_1.registerAllModules)();
+    await ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll();
+    await (0, moduleStartupValidation_1.runModuleStartupValidation)();
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    server = require('./api/server').default;
+    serverReady = true;
+}
+initServer().catch((error) => {
+    console.error('Failed to initialize server:', error);
+});
+exports.api = functions.https.onRequest(async (req, res) => {
+    if (!serverReady || !server) {
+        res.status(503).json({ success: false, error: 'Server not ready, please retry' });
+        return;
+    }
+    server(req, res);
+});
 exports.accountingModule = {};
 //# sourceMappingURL=index.js.map

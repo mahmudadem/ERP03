@@ -6,15 +6,27 @@ class CreateBundleUseCase {
         this.bundleRepo = bundleRepo;
     }
     async execute(input) {
-        // Validate businessDomains is an array
         if (!Array.isArray(input.businessDomains)) {
             throw new Error('businessDomains must be an array');
         }
-        // Validate modulesIncluded is an array
         if (!Array.isArray(input.modulesIncluded)) {
             throw new Error('modulesIncluded must be an array');
         }
-        const bundle = Object.assign(Object.assign({}, input), { createdAt: new Date(), updatedAt: new Date() });
+        if (input.capabilities !== undefined && !Array.isArray(input.capabilities)) {
+            throw new Error('capabilities must be an array');
+        }
+        const bundle = {
+            id: input.id,
+            code: input.id,
+            name: input.name,
+            description: input.description,
+            businessDomains: input.businessDomains,
+            modulesIncluded: input.modulesIncluded,
+            capabilities: input.capabilities || [],
+            lifecycleStatus: input.lifecycleStatus || 'draft',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
         await this.bundleRepo.create(bundle);
     }
 }

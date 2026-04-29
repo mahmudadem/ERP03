@@ -3,35 +3,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisableModuleForCompanyUseCase = void 0;
 const ApiError_1 = require("../../../api/errors/ApiError");
 class DisableModuleForCompanyUseCase {
-    constructor(companyRepository) {
+    constructor(companyRepository, companyModuleRepository) {
         this.companyRepository = companyRepository;
+        this.companyModuleRepository = companyModuleRepository;
     }
     async execute(input) {
-        // Validate companyId + moduleName
         const moduleName = String(input.moduleName || '').trim().toLowerCase();
         if (!input.companyId || !moduleName) {
             throw ApiError_1.ApiError.badRequest("Missing required fields");
         }
-        // Load company
         const company = await this.companyRepository.findById(input.companyId);
         if (!company) {
             throw ApiError_1.ApiError.notFound("Company not found");
         }
-        // If module not active → throw error
-        const normalizedModules = (company.modules || [])
-            .map((m) => String(m || '').trim().toLowerCase())
-            .filter(Boolean);
-        if (!normalizedModules.includes(moduleName)) {
-            throw ApiError_1.ApiError.badRequest("Module is not enabled for this company");
-        }
-        // Ensure safe modules (DO NOT allow disabling "core" module)
         if (moduleName === 'core') {
             throw ApiError_1.ApiError.forbidden("Cannot disable core module");
         }
-        // Remove from list
-        const newModules = normalizedModules.filter((m) => m !== moduleName);
-        await this.companyRepository.update(input.companyId, { modules: newModules });
-        // Return success DTO
+        const moduleState = await this.companyModuleRepository.get(input.companyId, moduleName);
+        if (!moduleState || !moduleState.isEnabled) {
+            throw ApiError_1.ApiError.badRequest("Module is not enabled for this company");
+        }
+        await this.companyModuleRepository.update(input.companyId, moduleName, {
+            isEnabled: false,
+            updatedAt: new Date(),
+        });
         return { moduleName, status: 'disabled' };
     }
 }

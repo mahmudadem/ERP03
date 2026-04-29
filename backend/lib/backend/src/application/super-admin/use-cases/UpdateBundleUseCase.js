@@ -25,6 +25,9 @@ class UpdateBundleUseCase {
         if (updates.modulesIncluded !== undefined && !Array.isArray(updates.modulesIncluded)) {
             throw new Error('modulesIncluded must be an array');
         }
+        if (updates.capabilities !== undefined && !Array.isArray(updates.capabilities)) {
+            throw new Error('capabilities must be an array');
+        }
         await this.bundleRepo.update(id, Object.assign(Object.assign({}, updates), { updatedAt: new Date() }));
     }
 }

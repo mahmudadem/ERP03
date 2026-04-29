@@ -8,9 +8,11 @@ const express_1 = __importDefault(require("express"));
 require("../firebaseAdmin");
 const modules_1 = require("../modules");
 const ModuleRegistry_1 = require("../application/platform/ModuleRegistry");
+const moduleStartupValidation_1 = require("../modules/moduleStartupValidation");
 // Register modules before loading server
 (0, modules_1.registerAllModules)();
 ModuleRegistry_1.ModuleRegistry.getInstance().initializeAll().catch(console.error);
+(0, moduleStartupValidation_1.runModuleStartupValidation)().catch(console.error);
 const server_1 = __importDefault(require("../api/server"));
 const app = (0, express_1.default)();
 // Mount the server under the Firebase Functions path to match frontend config

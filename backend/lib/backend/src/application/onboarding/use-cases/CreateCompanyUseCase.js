@@ -10,19 +10,18 @@ exports.CreateCompanyUseCase = void 0;
 const Company_1 = require("../../../domain/core/entities/Company");
 const CompanyModule_1 = require("../../../domain/company/entities/CompanyModule");
 const ApiError_1 = require("../../../api/errors/ApiError");
-const CompanyVoucherTemplateSyncService_1 = require("../../system/services/CompanyVoucherTemplateSyncService");
 class CreateCompanyUseCase {
-    constructor(companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, voucherTypeRepo, voucherFormRepo, bundleRepo, companyModuleRepo, companySettingsRepo) {
+    constructor(companyRepo, userRepo, rbacCompanyUserRepo, rbacCompanyRoleRepo, rolePermissionResolver, bundleRepo, bundleItemRepo, companyModuleRepo, companySettingsRepo, entitlementRepo) {
         this.companyRepo = companyRepo;
         this.userRepo = userRepo;
         this.rbacCompanyUserRepo = rbacCompanyUserRepo;
         this.rbacCompanyRoleRepo = rbacCompanyRoleRepo;
         this.rolePermissionResolver = rolePermissionResolver;
-        this.voucherTypeRepo = voucherTypeRepo;
-        this.voucherFormRepo = voucherFormRepo;
         this.bundleRepo = bundleRepo;
+        this.bundleItemRepo = bundleItemRepo;
         this.companyModuleRepo = companyModuleRepo;
         this.companySettingsRepo = companySettingsRepo;
+        this.entitlementRepo = entitlementRepo;
     }
     generateId(prefix) {
         return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -39,30 +38,64 @@ class CreateCompanyUseCase {
         const bundle = await this.bundleRepo.getById(input.bundleId);
         if (!bundle)
             throw ApiError_1.ApiError.badRequest('Invalid bundle selected');
+        if (bundle.lifecycleStatus !== 'ready') {
+            throw ApiError_1.ApiError.badRequest(`Bundle '${bundle.name}' is not available. Please select a ready bundle.`);
+        }
+        const bundleItems = await this.bundleItemRepo.getByBundleId(input.bundleId);
+        const bundleModules = bundleItems.filter(i => i.itemType === 'module').map(i => i.itemKey);
+        const bundleCapabilities = bundleItems.filter(i => i.itemType === 'capability').map(i => i.itemKey);
         const now = new Date();
-        // Default fiscal year: Jan 1 to Dec 31
         const fiscalYearStart = new Date(now.getFullYear(), 0, 1);
         const fiscalYearEnd = new Date(now.getFullYear(), 11, 31);
-        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, input.currency || '', // Use input currency or empty
-        fiscalYearStart, fiscalYearEnd, Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin'])), // Force 'companyAdmin' module
-        [], // features
-        '', // Tax ID optional
-        bundle.name, // Subscription Plan / Bundle Name
-        undefined, // Address
-        input.country, input.logoData, // Logo URL (storing direct B64 for now)
-        { email: input.email } // Contact Info - Fixed object literal
-        );
+        const company = new Company_1.Company(this.generateId('cmp'), input.companyName, input.userId, now, now, input.currency || '', fiscalYearStart, fiscalYearEnd, bundleModules, [], '', input.bundleId, undefined, input.country, input.logoData, { email: input.email });
         // Track what we've created for rollback purposes
         let companyCreated = false;
         let rolesCreated = false;
         let userRoleAssigned = false;
         let modulesCreated = false;
+        let entitlementCreated = false;
         try {
             // Step 1: Save company
             console.log('[CreateCompanyUseCase] Saving company:', company.id);
             await this.companyRepo.save(company);
             companyCreated = true;
             console.log('[CreateCompanyUseCase] Company saved successfully');
+            // Step 2: Create entitlement from normalized BundleItem
+            console.log('[CreateCompanyUseCase] Creating entitlement from bundle:', input.bundleId);
+            const entitlementItems = [
+                ...bundleModules.map((moduleCode) => ({
+                    id: `item_${company.id}_${moduleCode}`,
+                    entitlementId: `ent_${company.id}`,
+                    itemType: 'module',
+                    itemKey: moduleCode,
+                    createdAt: now,
+                })),
+                ...bundleCapabilities.map((capabilityCode) => ({
+                    id: `item_${company.id}_${capabilityCode}`,
+                    entitlementId: `ent_${company.id}`,
+                    itemType: 'capability',
+                    itemKey: capabilityCode,
+                    createdAt: now,
+                })),
+            ];
+            const entitlement = {
+                id: `ent_${company.id}`,
+                companyId: company.id,
+                sourceType: 'bundle',
+                sourceId: input.bundleId,
+                validFrom: now,
+                isActive: true,
+                items: entitlementItems,
+                createdAt: now,
+                updatedAt: now,
+            };
+            await this.entitlementRepo.createEntitlement(entitlement);
+            entitlementCreated = true;
+            console.log('[CreateCompanyUseCase] Entitlement created with items:', entitlementItems.length);
+            // Get effective modules for roles (excluding platform modules)
+            const effectiveModules = await this.entitlementRepo.getEffectiveModules(company.id);
+            const finalModules = effectiveModules;
+            console.log('[CreateCompanyUseCase] Effective modules for roles:', finalModules);
             // Initialize company settings with defaults from wizard
             await this.companySettingsRepo.updateSettings(company.id, {
                 timezone: input.timezone || 'UTC',
@@ -72,7 +105,6 @@ class CreateCompanyUseCase {
                 uiMode: 'windows'
             });
             // Initialize Roles (OWNER, ADMIN, MEMBER)
-            const finalModules = Array.from(new Set([...bundle.modulesIncluded, 'companyAdmin']));
             const rolesToCreate = [
                 { id: 'OWNER', name: 'Owner', system: true, modules: finalModules, permissions: ['*'] },
                 { id: 'ADMIN', name: 'Administrator', system: true, modules: finalModules, permissions: [] },
@@ -127,14 +159,6 @@ class CreateCompanyUseCase {
             await this.companyModuleRepo.batchCreate(moduleRecords);
             modulesCreated = true;
             console.log('[CreateCompanyUseCase] Module records persisted successfully');
-            const syncResult = await (0, CompanyVoucherTemplateSyncService_1.syncCompanyVoucherTemplatesFromSystem)({
-                companyId: company.id,
-                modules: finalModules,
-                createdBy: input.userId,
-                voucherTypeRepo: this.voucherTypeRepo,
-                voucherFormRepo: this.voucherFormRepo,
-            });
-            console.log('[CreateCompanyUseCase] Synced voucher templates:', syncResult);
             console.log('[CreateCompanyUseCase] Company creation completed successfully');
             return { companyId: company.id };
         }
@@ -184,6 +208,16 @@ class CreateCompanyUseCase {
                     }
                     catch (err) {
                         console.error('[CreateCompanyUseCase] Rollback failed for company:', err);
+                    }
+                }
+                if (entitlementCreated) {
+                    console.log('[CreateCompanyUseCase] Rollback: Deleting entitlement');
+                    try {
+                        await this.entitlementRepo.deactivateEntitlement(`ent_${company.id}`);
+                        console.log('[CreateCompanyUseCase] Entitlement deactivated successfully');
+                    }
+                    catch (err) {
+                        console.error('[CreateCompanyUseCase] Rollback failed for entitlement:', err);
                     }
                 }
                 console.log('[CreateCompanyUseCase] Rollback completed');

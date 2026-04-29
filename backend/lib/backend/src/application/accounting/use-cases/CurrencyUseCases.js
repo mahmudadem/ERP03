@@ -1,46 +1,19 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GetCurrencyDecimalPlacesUseCase = exports.GetCurrencyUseCase = exports.ListCurrenciesUseCase = void 0;
-/**
- * Get all active currencies available for the current company.
- */
-class ListCurrenciesUseCase {
-    constructor(currencyRepo) {
-        this.currencyRepo = currencyRepo;
-    }
-    async execute(companyId) {
-        // We use the same interface but now scoped by companyId if the repo supports it.
-        // However, ICurrencyRepository (accounting) doesn't have companyId in findActive.
-        // I should probably update that interface too.
-        return this.currencyRepo.findActive(companyId);
-    }
-}
-exports.ListCurrenciesUseCase = ListCurrenciesUseCase;
-/**
- * Get a currency by its code.
- */
-class GetCurrencyUseCase {
-    constructor(currencyRepo) {
-        this.currencyRepo = currencyRepo;
-    }
-    async execute(code) {
-        return this.currencyRepo.findByCode(code);
-    }
-}
-exports.GetCurrencyUseCase = GetCurrencyUseCase;
-/**
- * Get decimal places for a currency code.
- * Returns 2 as fallback if currency not found.
- */
-class GetCurrencyDecimalPlacesUseCase {
-    constructor(currencyRepo) {
-        this.currencyRepo = currencyRepo;
-    }
-    async execute(code) {
-        var _a;
-        const currency = await this.currencyRepo.findByCode(code);
-        return (_a = currency === null || currency === void 0 ? void 0 : currency.decimalPlaces) !== null && _a !== void 0 ? _a : 2;
-    }
-}
-exports.GetCurrencyDecimalPlacesUseCase = GetCurrencyDecimalPlacesUseCase;
+// CurrencyUseCases moved to core - re-exported for backward compat
+__exportStar(require("../../core/use-cases/CurrencyUseCases"), exports);
 //# sourceMappingURL=CurrencyUseCases.js.map

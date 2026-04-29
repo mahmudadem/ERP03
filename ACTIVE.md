@@ -1,33 +1,35 @@
 # 🎯 Current Focus
 
-**Task:** (No active task — previous task completed)
-
-**Previous Task:** Onboarding Redirect Race Condition Fix (Task 47)
+**Task:** Standardizing Sales Voucher Architecture (Task 43)
 **Started:** 2026-04-28
+**Status:** 🟢 Executing
+**Agent/IDE:** Antigravity (CTO Mode)
+
+## Current Progress
+- [x] Audited Sales workflow modes and field naming discrepancies.
+- [x] Established Master Canonical Field Dictionary.
+- [x] Approved [Implementation Plan](file:///C:/Users/mahmu/.gemini/antigravity/brain/6bddc246-acf7-4502-aaeb-8af06294d785/implementation_plan.md).
+- [ ] Refactoring `seedSystemVoucherTypes.ts` for specialized SI personas.
+- [ ] Aligning Use Case logic and DTOs with canonical IDs.
+- [ ] Implementing strict persona-based validation.
+
+---
+
+## Previous Task: Onboarding Redirect Race Condition Fix (Task 47)
 **Completed:** 2026-04-28
-**Agent/IDE:** OpenCode
 **Status:** ✅ Done
 
-## What Was Done
-
-Fixed intermittent redirect to `/onboarding/plan` after backend rebuild + browser refresh. Root cause: `RequireOnboarding` guard treated any non-401 API error as "user needs onboarding" and redirected immediately. During backend startup, connection refused/502/timeout errors triggered the redirect.
-
-### Fixes Applied
-1. **`RequireOnboarding.tsx`** — Added 3 retries with exponential backoff (1.5s, 3s, 4.5s) for network errors
-2. **`RequireOnboarding.tsx`** — Added `backendConnecting` state with "Connecting to server..." message
-3. **`RequireOnboarding.tsx`** — Separated network errors from auth errors (401 bails out immediately)
-
-### Verification
-- `npx tsc --noEmit` (frontend) — ✅ zero errors
+### Summary
+Fixed intermittent redirect to `/onboarding/plan` after backend rebuild. Added retries and connection state handling to `RequireOnboarding.tsx`.
 
 ## Detours
 - None
 
-## Rabbit Holes Found (DO NOT START — just log here)
+## Rabbit Holes Found
 - None
 
 ## Blockers
 - None
 
 ## Recommended Next Step
-Select next task from ROADMAP.md.
+Proceed with execution of Task 43 based on the approved implementation plan.

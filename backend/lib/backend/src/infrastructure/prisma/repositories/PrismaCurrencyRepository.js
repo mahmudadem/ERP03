@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaCurrencyRepository = void 0;
-const Currency_1 = require("../../../domain/accounting/entities/Currency");
+const Currency_1 = require("../../../domain/core/entities/Currency");
 /**
  * SQL MIGRATION STATUS: NOT IMPLEMENTED
  *

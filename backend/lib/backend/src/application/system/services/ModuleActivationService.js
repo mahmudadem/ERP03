@@ -45,6 +45,7 @@ class ModuleActivationService {
         const newModule = {
             companyId,
             moduleCode,
+            isEnabled: true,
             installedAt: new Date(),
             initialized: false,
             initializationStatus: 'pending',

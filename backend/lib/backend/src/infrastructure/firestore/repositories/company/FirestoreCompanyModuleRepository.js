@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreCompanyModuleRepository = void 0;
 /**
  * Firestore implementation of CompanyModule repository
- * Collection path: companyModules/{companyId}/modules/{moduleCode}
+ * Collection path: companies/{companyId}/modules/{moduleCode}
  */
 class FirestoreCompanyModuleRepository {
     constructor(db) {
@@ -37,6 +37,7 @@ class FirestoreCompanyModuleRepository {
         await docRef.set(this.mapToFirestore(module));
     }
     async update(companyId, moduleCode, updates) {
+        var _a;
         const docRef = this.db
             .collection('companies')
             .doc(companyId)
@@ -45,6 +46,8 @@ class FirestoreCompanyModuleRepository {
         const snapshot = await docRef.get();
         const updatedAt = updates.updatedAt || new Date();
         const firestoreUpdates = {};
+        if (updates.isEnabled !== undefined)
+            firestoreUpdates.isEnabled = updates.isEnabled;
         if (updates.initialized !== undefined)
             firestoreUpdates.initialized = updates.initialized;
         if (updates.initializationStatus !== undefined)
@@ -52,12 +55,11 @@ class FirestoreCompanyModuleRepository {
         if (updates.config !== undefined)
             firestoreUpdates.config = updates.config;
         firestoreUpdates.updatedAt = updatedAt;
-        // Upsert behavior: initialization flows may call update before module record exists.
-        // Create a minimal module record on first update to avoid Firestore NOT_FOUND.
         if (!snapshot.exists) {
             firestoreUpdates.companyId = companyId;
             firestoreUpdates.moduleCode = moduleCode;
             firestoreUpdates.installedAt = updates.installedAt || new Date();
+            firestoreUpdates.isEnabled = (_a = updates.isEnabled) !== null && _a !== void 0 ? _a : true;
             if (firestoreUpdates.initialized === undefined)
                 firestoreUpdates.initialized = false;
             if (firestoreUpdates.initializationStatus === undefined)
@@ -88,10 +90,11 @@ class FirestoreCompanyModuleRepository {
         await batch.commit();
     }
     mapToFirestore(module) {
+        var _a;
         return {
             companyId: module.companyId,
             moduleCode: module.moduleCode,
-            // Store as Date - Firestore auto-converts to Timestamp
+            isEnabled: (_a = module.isEnabled) !== null && _a !== void 0 ? _a : true,
             installedAt: module.installedAt,
             initialized: module.initialized,
             initializationStatus: module.initializationStatus,
@@ -100,15 +103,16 @@ class FirestoreCompanyModuleRepository {
         };
     }
     mapFromFirestore(data) {
-        var _a, _b;
+        var _a, _b, _c;
         return {
             companyId: data.companyId,
             moduleCode: data.moduleCode,
-            installedAt: ((_a = data.installedAt) === null || _a === void 0 ? void 0 : _a.toDate()) || new Date(),
+            isEnabled: (_a = data.isEnabled) !== null && _a !== void 0 ? _a : true,
+            installedAt: ((_b = data.installedAt) === null || _b === void 0 ? void 0 : _b.toDate()) || new Date(),
             initialized: data.initialized || false,
             initializationStatus: data.initializationStatus || 'pending',
             config: data.config || {},
-            updatedAt: (_b = data.updatedAt) === null || _b === void 0 ? void 0 : _b.toDate()
+            updatedAt: (_c = data.updatedAt) === null || _c === void 0 ? void 0 : _c.toDate()
         };
     }
 }

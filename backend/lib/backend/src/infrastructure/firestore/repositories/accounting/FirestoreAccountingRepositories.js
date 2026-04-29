@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FirestoreExchangeRateRepository = exports.FirestoreCostCenterRepository = void 0;
 const CostCenter_1 = require("../../../../domain/accounting/entities/CostCenter");
-const ExchangeRate_1 = require("../../../../domain/accounting/entities/ExchangeRate");
+const ExchangeRate_1 = require("../../../../domain/core/entities/ExchangeRate");
 const firestore_1 = require("firebase-admin/firestore");
 // Simple Inline Mappers for brevity in this consolidated file or import from AccountingMappers
 class CostCenterMapper {

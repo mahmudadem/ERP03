@@ -28,6 +28,12 @@ class ApiError extends Error {
     static conflict(message, code = 'CONFLICT') {
         return new ApiError(409, message, code);
     }
+    static locked(message, code = 'LOCKED') {
+        return new ApiError(423, message, code);
+    }
+    static custom(statusCode, message, code) {
+        return new ApiError(statusCode, message, code || 'CUSTOM_ERROR');
+    }
     static internal(message = 'Internal Server Error', code = 'INTERNAL_ERROR') {
         return new ApiError(500, message, code);
     }

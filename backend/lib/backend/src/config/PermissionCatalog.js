@@ -83,6 +83,33 @@ exports.PERMISSION_CATALOG = [
         ]
     },
     {
+        moduleId: 'crm',
+        permissions: [
+            { id: 'crm.leads.view', label: 'View CRM Leads' },
+            { id: 'crm.customers.view', label: 'View CRM Customers' },
+        ]
+    },
+    {
+        moduleId: 'pos',
+        permissions: [
+            { id: 'pos.terminal.access', label: 'Access POS Terminal' },
+        ]
+    },
+    {
+        moduleId: 'manufacturing',
+        permissions: [
+            { id: 'manufacturing.workOrders.view', label: 'View Manufacturing Work Orders' },
+            { id: 'manufacturing.bom.view', label: 'View Bill of Materials' },
+        ]
+    },
+    {
+        moduleId: 'projects',
+        permissions: [
+            { id: 'projects.view', label: 'View Projects' },
+            { id: 'projects.tasks.view', label: 'View Project Tasks' },
+        ]
+    },
+    {
         moduleId: 'system',
         permissions: [
             { id: 'system.users.manage', label: 'Manage Users' },

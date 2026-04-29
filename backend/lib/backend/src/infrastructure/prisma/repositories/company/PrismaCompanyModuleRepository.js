@@ -21,10 +21,12 @@ class PrismaCompanyModuleRepository {
         return records.map((r) => this.toDomain(r));
     }
     async create(module) {
+        var _a;
         await this.prisma.companyModule.create({
             data: {
                 companyId: module.companyId,
                 moduleCode: module.moduleCode,
+                isEnabled: (_a = module.isEnabled) !== null && _a !== void 0 ? _a : true,
                 installedAt: module.installedAt,
                 initialized: module.initialized,
                 initializationStatus: module.initializationStatus,
@@ -34,6 +36,8 @@ class PrismaCompanyModuleRepository {
     }
     async update(companyId, moduleCode, updates) {
         const data = {};
+        if (updates.isEnabled !== undefined)
+            data.isEnabled = updates.isEnabled;
         if (updates.initialized !== undefined)
             data.initialized = updates.initialized;
         if (updates.initializationStatus !== undefined)
@@ -54,27 +58,32 @@ class PrismaCompanyModuleRepository {
         });
     }
     async batchCreate(modules) {
-        await this.prisma.$transaction(modules.map((m) => this.prisma.companyModule.create({
-            data: {
-                companyId: m.companyId,
-                moduleCode: m.moduleCode,
-                installedAt: m.installedAt,
-                initialized: m.initialized,
-                initializationStatus: m.initializationStatus,
-                config: m.config,
-            },
-        })));
+        await this.prisma.$transaction(modules.map((m) => {
+            var _a;
+            return this.prisma.companyModule.create({
+                data: {
+                    companyId: m.companyId,
+                    moduleCode: m.moduleCode,
+                    isEnabled: (_a = m.isEnabled) !== null && _a !== void 0 ? _a : true,
+                    installedAt: m.installedAt,
+                    initialized: m.initialized,
+                    initializationStatus: m.initializationStatus,
+                    config: m.config,
+                },
+            });
+        }));
     }
     toDomain(record) {
-        var _a;
+        var _a, _b;
         return {
             companyId: record.companyId,
             moduleCode: record.moduleCode,
+            isEnabled: (_a = record.isEnabled) !== null && _a !== void 0 ? _a : true,
             installedAt: record.installedAt,
             initialized: record.initialized,
             initializationStatus: record.initializationStatus,
             config: record.config || {},
-            updatedAt: (_a = record.updatedAt) !== null && _a !== void 0 ? _a : undefined,
+            updatedAt: (_b = record.updatedAt) !== null && _b !== void 0 ? _b : undefined,
         };
     }
 }
