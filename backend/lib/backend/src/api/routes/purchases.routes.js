@@ -24,12 +24,16 @@ router.put('/goods-receipts/:id', PurchaseController_1.PurchaseController.update
 router.post('/goods-receipts/:id/post', PurchaseController_1.PurchaseController.postGRN);
 router.post('/goods-receipts/:id/unpost', PurchaseController_1.PurchaseController.unpostGRN);
 router.post('/invoices', PurchaseController_1.PurchaseController.createPI);
+router.post('/invoices/create-and-post', PurchaseController_1.PurchaseController.createAndPostPI);
 router.get('/invoices', PurchaseController_1.PurchaseController.listPIs);
 router.get('/invoices/:id', PurchaseController_1.PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController_1.PurchaseController.updatePI);
+router.put('/invoices/:id/update-and-post', PurchaseController_1.PurchaseController.updateAndPostPI);
 router.post('/invoices/:id/post', PurchaseController_1.PurchaseController.postPI);
 router.post('/invoices/:id/unpost', PurchaseController_1.PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController_1.PurchaseController.updatePaymentStatus);
+router.post('/invoices/:id/record-payment', PurchaseController_1.PurchaseController.recordPayment);
+router.get('/invoices/:id/payments', PurchaseController_1.PurchaseController.getPaymentHistory);
 router.post('/returns', PurchaseController_1.PurchaseController.createReturn);
 router.get('/returns', PurchaseController_1.PurchaseController.listReturns);
 router.get('/returns/:id', PurchaseController_1.PurchaseController.getReturn);

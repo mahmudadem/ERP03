@@ -16,7 +16,8 @@ function mapFormToDefinition(form: any): any {
     module: 'accounting',
     headerFields: form.headerFields || [],
     tableColumns: form.tableColumns || [],
-    baseType: form.baseType || form.typeId,
+    formType: form.formType || form.baseType || form.typeId,
+    baseType: form.formType || form.baseType || form.typeId,
   };
 }
 
@@ -57,7 +58,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
       try {
         const allForms = await voucherFormApi.list();
         const match = (allForms || []).find(
-          (f: any) => f.code === voucherTypeCode || f.typeId === voucherTypeCode || f.baseType === voucherTypeCode
+          (f: any) => f.code === voucherTypeCode || f.typeId === voucherTypeCode || f.formType === voucherTypeCode || f.baseType === voucherTypeCode
         );
         if (match) {
           setDefinition(mapFormToDefinition(match));
@@ -78,7 +79,8 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
                code: formConfig.id,
                module: 'accounting',
                headerFields: formConfig.headerFields || [], 
-               baseType: (formConfig as any).baseType
+               formType: (formConfig as any).formType || (formConfig as any).baseType,
+                baseType: (formConfig as any).formType || (formConfig as any).baseType
             };
             setDefinition(mappedDefinition);
             setError(null);

@@ -128,6 +128,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
   const normalizedTypeKey = React.useMemo(() => {
     const rawType = (
       (win.data?.voucherConfig as any)?.module ||
+      (win.data?.voucherConfig as any)?.formType ||
       (win.data?.voucherConfig as any)?.baseType ||
       (win.data?.voucherConfig as any)?.code ||
       win.data?.type ||
@@ -296,12 +297,11 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
   }, [policyLoading]);
 
-
   const normalizeSemanticPayload = (rawData: any): any => {
     return rawData;
   };
 
-  const buildVoucherPayload = (formData: any, statusOverride?: string): any => {
+  const buildVoucherPayload = (formData: any, options: { statusOverride?: string, creationMode?: 'STRICT' | 'FLEXIBLE' } = {}): any => {
     const formId =
       formData?.formId ||
       win.data?.formId ||
@@ -309,6 +309,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
 
     const typeId =
       formData?.typeId ||
+      (win.data?.voucherConfig as any)?.formType ||
       (win.data?.voucherConfig as any)?.baseType ||
       win.data?.voucherConfig?.id;
     const effectiveId = formData?.id || win.data?.id;
@@ -321,15 +322,15 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
       metadata: {
         ...(formData?.metadata || {}),
         ...(formId ? { formId } : {}),
-        creationMode: settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE'
+        creationMode: options.creationMode ?? (settings?.strictApprovalMode ? 'STRICT' : 'FLEXIBLE')
       },
-      status: typeof statusOverride === 'string'
-        ? statusOverride
+      status: typeof options.statusOverride === 'string'
+        ? options.statusOverride
         : (formData?.status || win.data?.status || 'draft')
     };
   };
 
-  const handleSave = async () => {
+  const handleSave = async (intent?: 'STRICT' | 'FLEXIBLE') => {
     if (!rendererRef.current) {
       return;
     }
@@ -386,7 +387,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
 
         if (deviationResult.hasDeviations) {
           // Store data and show dialog
-          setPendingSaveData(formData);
+          setPendingSaveData({ ...formData, _saveIntent: intent });
           setRateDeviationResult(deviationResult);
           setIsCheckingRates(false);
           return; // Wait for user confirmation
@@ -400,13 +401,13 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     }
 
     // Proceed with normal save
-    await performSave(formData);
+    await performSave(formData, intent);
   };
 
-  const performSave = async (formData: any) => {
+  const performSave = async (formData: any, intent?: 'STRICT' | 'FLEXIBLE') => {
     setIsSaving(true);
     try {
-      const payload = buildVoucherPayload(formData);
+      const payload = buildVoucherPayload(formData, { creationMode: intent });
 
       const result = await onSave(win.id, payload);
       
@@ -445,12 +446,12 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
         errorHandler.showSuccess(`Synced ${rateDeviationResult.warnings.length} rate(s) to system for ${voucherDate}`);
         
         // Proceed with voucher save
-        await performSave(pendingSaveData);
+        await performSave(pendingSaveData, (pendingSaveData as any)._saveIntent);
       } catch (error) {
         console.error('Failed to sync rates:', error);
         errorHandler.showError('Successfully saved voucher with your rates, but some system rate updates failed.');
         // Fallback: Still save the voucher even if sync fails
-        await performSave(pendingSaveData);
+        await performSave(pendingSaveData, (pendingSaveData as any)._saveIntent);
       } finally {
         setPendingSaveData(null);
         setRateDeviationResult(null);
@@ -460,7 +461,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
 
   const handleRateDeviationConfirm = async () => {
     if (pendingSaveData) {
-      await performSave(pendingSaveData);
+      await performSave(pendingSaveData, (pendingSaveData as any)._saveIntent);
       setPendingSaveData(null);
       setRateDeviationResult(null);
     }
@@ -520,7 +521,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     setIsSubmitting(true);
     
     try {
-      const submissionData = buildVoucherPayload(formData, 'submitted');
+      const submissionData = buildVoucherPayload(formData, { statusOverride: 'submitted' });
 
       const result = await onSubmit(win.id, submissionData);
       
@@ -580,7 +581,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
   // Post-Success Action: Close
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
-    closeWindow(win.id);
+    // closeWindow(win.id);
   };
 
   // Post-Success Action: New
@@ -868,14 +869,30 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     // Use variables from main component scope: totalDebitVoucher, totalCreditVoucher, isBalancedVoucher, etc.
                             
     const currentRows = liveLines.length > 0 ? liveLines : (rendererRef.current?.getRows() || []);
+    const getLineNumber = (row: any, keys: string[]): number => {
+      for (const source of [row, row?.metadata]) {
+        if (!source || typeof source !== 'object') continue;
+        for (const key of keys) {
+          const raw = source[key];
+          if (raw === undefined || raw === null || raw === '') continue;
+          const value = Number(String(typeof raw === 'object' ? raw.value ?? raw.amount ?? raw.total : raw).replace(/,/g, ''));
+          if (Number.isFinite(value) && value > 0) return value;
+        }
+      }
+      return 0;
+    };
+    const hasSemanticAmount = (row: any): boolean => {
+      const directAmount = getLineNumber(row, ['amount', 'total', 'lineTotalDoc', 'lineTotal', 'rowTotal', 'totalDoc']);
+      const quantity = getLineNumber(row, ['quantity', 'qty', 'orderedQty', 'deliveredQty', 'invoicedQty', 'returnQty']);
+      const unitPrice = getLineNumber(row, ['unitPrice', 'unitPriceDoc', 'price', 'rate', 'salesPrice', 'sellingPrice']);
+      return directAmount > 0 || (quantity > 0 && unitPrice > 0);
+    };
     
     // OLD validation logic (kept for fallback when new validation is disabled)
     const semanticLineCount = isSemanticAmountType
       ? currentRows.filter((r: any) => {
           const accountVal = r?.[semanticLineAccountKey || ''] || r?.accountId || r?.account || r?.itemId || r?.item || r?.productId || r?.product || r?.serviceId || r?.service || r?.description || r?.name;
-          const directAmount = Number(r?.amount) || Number(r?.lineTotalDoc) || Number(r?.total) || Number(r?.rowTotal) || 0;
-          const computedAmount = Number(r?.quantity) > 0 && Number(r?.unitPrice) > 0;
-          return !!accountVal && (directAmount > 0 || computedAmount);
+          return !!accountVal && hasSemanticAmount(r);
         }).length
       : 0;
       
@@ -885,13 +902,19 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
     
     const finalHasLines = isEffectivelySemantic 
       ? currentRows.filter((r: any) => {
-          const directAmount = Number(r?.amount) || Number(r?.total) || Number(r?.lineTotalDoc) || Number(r?.lineTotal) || Number(r?.rowTotal) || 0;
-          const computedAmount = Number(r?.quantity) > 0 && Number(r?.unitPrice) > 0;
-          return (directAmount > 0 || computedAmount);
+          return hasSemanticAmount(r);
         }).length >= 1
       : hasLines;
 
     const oldCanSave = isBalancedVoucher && finalHasLines;
+    const legacyErrors = [
+      ...(!isBalancedVoucher ? [t('voucherWindow.mustBalance', 'Voucher must be balanced')] : []),
+      ...(!finalHasLines ? [
+        isSemanticAmountType || isEffectivelySemantic
+          ? t('voucherWindow.mustSemanticLines', 'Voucher needs at least 1 amount line')
+          : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines')
+      ] : []),
+    ];
     
     // NEW validation (from two-layer system) - ADDS to old validation, doesn't replace it
     // canSave = old validation (balance + lines) AND new validation (structural + business rules)
@@ -900,16 +923,18 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
       : oldCanSave;
     
     const validationErrors = validationEnabled 
-      ? [...newValidation.structuralErrors, ...newValidation.businessErrors]  // New errors
-      : (oldCanSave ? [] : ['Voucher must balance and have lines']);  // Old errors
+      ? [...legacyErrors, ...newValidation.structuralErrors, ...newValidation.businessErrors]  // Legacy gates plus new errors
+      : legacyErrors;  // Old errors
     
     const validationWarnings = validationEnabled 
       ? [...newValidation.businessWarnings, ...newValidation.systemWarnings] 
       : [];
+    const firstValidationIssue = validationErrors[0] || validationWarnings[0];
+    const validationIssueCount = validationErrors.length + validationWarnings.length;
 
     return (
       <>
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <VoucherTotalsDisplay
             totalDebit={totalDebitVoucher}
             totalCredit={totalCreditVoucher}
@@ -920,9 +945,29 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
             baseCurrency={settings?.baseCurrency || 'SYP'}
             headerRate={headerRate}
           />
+
+          {firstValidationIssue && (
+            <div
+              className={clsx(
+                "flex min-w-0 max-w-[420px] items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold",
+                validationErrors.length > 0
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              )}
+              title={[...validationErrors, ...validationWarnings].join(', ')}
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="truncate">{firstValidationIssue}</span>
+              {validationIssueCount > 1 && (
+                <span className="shrink-0 rounded bg-white/70 px-1.5 py-0.5 text-[10px]">
+                  +{validationIssueCount - 1}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             className="px-3 py-1.5 text-sm text-primary-600 hover:text-primary-700 font-bold transition-colors"
             onClick={handleNew}
@@ -942,7 +987,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
           </button>
 
           {(() => {
-            // UNIFIED LOADING STATE: Prevent button flicker while policies are fetching
             if (settingsLoading || policyLoading) {
               return (
                 <div className="flex items-center gap-2 px-6 py-2 bg-gray-100 text-gray-400 border border-gray-200 rounded-lg animate-pulse">
@@ -988,66 +1032,77 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
             }
 
             return (
-              <button
-                onClick={handleSave}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed border",
-                  (settingsLoading || policyLoading)
-                    ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]' 
-                    : forceStrictMode
-                      ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                      : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
-                  // HIDE "Save as Draft" if not draft (and not pending which has its own label)
-                  forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
+              <div className="flex items-center gap-2">
+                {!forceStrictMode && !win.data?.postedAt && isSemanticAmountType && (
+                  <button
+                    onClick={() => handleSave('STRICT')}
+                    disabled={isSaving || settingsLoading || policyLoading || !canSave}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {t('voucherWindow.saveDraft', 'Save as Draft')}
+                  </button>
                 )}
-                disabled={isSaving || settingsLoading || policyLoading || !canSave}
-                title={
-                  validationEnabled
-                    ? (validationErrors.length > 0
-                        ? validationErrors.join(', ')
-                        : validationWarnings.length > 0
-                          ? validationWarnings.join(', ')
-                          : '')
-                    : (!isBalancedVoucher
-                        ? t('voucherWindow.mustBalance', 'Voucher must be balanced')
-                        : !hasLines
-                          ? (isSemanticAmountType
-                            ? t('voucherWindow.mustSemanticLines', 'Voucher needs header account + at least 1 amount line')
-                            : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines'))
-                          : "")
-                }
-              >
-                {isSaving || settingsLoading || policyLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {settingsLoading || policyLoading ? t('voucherWindow.loading', 'Loading...') : (forceStrictMode ? t('voucherWindow.saving', 'Saving...') : t('voucherWindow.posting', 'Posting...'))}
-                  </>
-                ) : (
-                  <>
-                    {!forceStrictMode ? (
-                      validationWarnings.length > 0 ? (
-                        <AlertTriangle className="w-4 h-4 text-amber-300" />
+
+                <button
+                  onClick={() => handleSave('FLEXIBLE')}
+                  className={clsx(
+                    "flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed border",
+                    (settingsLoading || policyLoading)
+                      ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)]'
+                      : forceStrictMode
+                        ? 'bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                        : 'bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-sm',
+                    forceStrictMode && win.data?.status && win.data.status.toLowerCase() !== 'draft' && win.data.status.toLowerCase() !== 'pending' && 'hidden'
+                  )}
+                  disabled={isSaving || settingsLoading || policyLoading || !canSave}
+                  title={
+                    validationEnabled
+                      ? (validationErrors.length > 0
+                          ? validationErrors.join(', ')
+                          : validationWarnings.length > 0
+                            ? validationWarnings.join(', ')
+                            : '')
+                      : (!isBalancedVoucher
+                          ? t('voucherWindow.mustBalance', 'Voucher must be balanced')
+                          : !hasLines
+                            ? (isSemanticAmountType
+                              ? t('voucherWindow.mustSemanticLines', 'Voucher needs header account + at least 1 amount line')
+                              : t('voucherWindow.mustLines', 'Voucher must have at least 2 lines'))
+                            : "")
+                  }
+                >
+                  {isSaving || settingsLoading || policyLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {settingsLoading || policyLoading ? t('voucherWindow.loading', 'Loading...') : (forceStrictMode ? t('voucherWindow.saving', 'Saving...') : t('voucherWindow.posting', 'Posting...'))}
+                    </>
+                  ) : (
+                    <>
+                      {!forceStrictMode ? (
+                        validationWarnings.length > 0 ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-300" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4" />
+                        )
                       ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    {(() => {
-                      if (!forceStrictMode) {
-                        return win.data?.postedAt ? t('voucherWindow.updatePost', 'Update & Post') : t('voucherWindow.savePost', 'Save & Post');
-                      }
-                      const s = win.data?.status?.toLowerCase();
-                      if (s === 'pending') return t('voucherWindow.updatePending', 'Update Pending Voucher');
-                      return t('voucherWindow.saveDraft', 'Save as Draft');
-                    })()}
-                  </>
-                )}
-              </button>
+                        <Save className="w-4 h-4" />
+                      )}
+                      {(() => {
+                        if (!forceStrictMode) {
+                          return win.data?.postedAt ? t('voucherWindow.updatePost', 'Update & Post') : t('voucherWindow.savePost', 'Save & Post');
+                        }
+                        const s = win.data?.status?.toLowerCase();
+                        if (s === 'pending') return t('voucherWindow.updatePending', 'Update Pending Voucher');
+                        return t('voucherWindow.saveDraft', 'Save as Draft');
+                      })()}
+                    </>
+                  )}
+                </button>
+              </div>
             );
           })()}
-          
-          {/* Submit button shown when strict mode is true OR it's a reversal */}
+
           {(() => {
             return !settingsLoading && !policyLoading && forceStrictMode && (!win.data?.status || win.data?.status?.toLowerCase() === 'draft' || win.data?.status?.toLowerCase() === 'rejected') && (
               <button
@@ -1095,7 +1150,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                 {t('voucherWindow.approve', 'Approve')}
               </button>
 
-              {/* Confirm Custody Button - Only shown if user is a pending custodian (ID or Email check) */}
               {win.data?.metadata?.pendingCustodyConfirmations?.some((id: string) => 
                 id.toLowerCase() === user?.uid?.toLowerCase() || 
                 (user?.email && id.toLowerCase() === user.email.toLowerCase())
@@ -1147,7 +1201,6 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
             </>
           )}
 
-          {/* Post Button for APPROVED vouchers that are not yet posted */}
           {win.data?.status?.toLowerCase() === 'approved' && !win.data?.postedAt && (
             <button
               onClick={async () => {
@@ -1241,7 +1294,7 @@ const _VoucherWindow: React.FC<VoucherWindowProps> = ({
                   onClick={handleSuccessClose}
                   className="w-full px-4 py-3 text-sm font-bold text-gray-700 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 rounded-xl transition-all"
                 >
-                  {t('voucherWindow.success.close', 'Close Window')}
+                  {t('voucherWindow.success.view', 'View Voucher')}
                 </button>
               </div>
             </div>

@@ -19,6 +19,9 @@ import { FormCard } from './FormCard';
 import { WarningModal } from './WarningModal';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../../services/errorHandler';
+import { designerApi } from '../../../../api/designerApi';
+import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
+import { useAuth } from '../../../../hooks/useAuth';
 
 interface Props { // Renamed from DocumentFormDesignerProps as per the snippet
   templates?: DocumentFormConfig[]; // System-wide templates for Step 1
@@ -63,6 +66,10 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
   });
   const [expandedGroups, setExpandedGroups] = useState<string[]>(['custom']);
   const { forms: allForms, addForm, updateForm, deleteForm } = useWizard();
+  const { companyId: currentCompanyId } = useCompanyAccess();
+  const { user } = useAuth();
+  const currentUserId = user?.uid;
+  const catalogTemplates = templates.filter((t: any) => t.isSystemCatalog === true);
 
   // Filter forms based on search query
   const forms = allForms.filter(f => 
@@ -158,7 +165,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
   const handleClone = (form: DocumentFormConfig) => {
     const timestamp = Date.now();
     
-    const originalBaseType = (form as any).baseType || form.code || form.id;
+    const originalFormType = (form as any).formType || (form as any).baseType || form.code || form.id;
     const parentPrefix = (form.prefix || '').replace('-', '').replace(/[^A-Z]/g, '') || 'FORM';
     const cloneId = `${parentPrefix}_${timestamp}_C`;
     
@@ -171,7 +178,10 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
       isLocked: false,
       isDefault: false,
       isSystemGenerated: false,
-      baseType: originalBaseType,
+      formType: originalFormType,
+      voucherType: (form as any).voucherType,
+      persona: (form as any).persona,
+      baseType: originalFormType,
       sidebarGroup: (form as any).sidebarGroup || null,
       module: (form as any).module || null,
     } as any;
@@ -180,10 +190,23 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
     setViewMode('designer');
   };
 
-  const handleAdoptCatalog = (template: any) => {
+  const handleAdoptCatalog = async (template: any) => {
+    if (!currentUserId) {
+      errorHandler.showError({ code: 'AUTH_001' as any, message: 'Please log in to adopt templates' });
+      return;
+    }
+
     const timestamp = Date.now();
     const prefix = (template.code || template.id).slice(0, 2).toUpperCase() || 'FORM';
     const adoptId = `${prefix}_${timestamp}_A`;
+    
+    const module = template.module || 'ACCOUNTING';
+    
+    try {
+      await designerApi.adoptTemplate(currentCompanyId, currentUserId, template.id || template.code, module);
+    } catch (err) {
+      console.warn('[handleAdoptCatalog] Could not adopt template to company:', err);
+    }
     
     const adopted: DocumentFormConfig = {
       id: adoptId,
@@ -196,8 +219,11 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
       isDefault: false,
       isSystemGenerated: false,
       enabled: true,
+      formType: template.voucherType || template.code || template.id,
+      voucherType: template.voucherType || template.code,
+      persona: template.persona || undefined,
       baseType: template.code || template.id,
-      module: template.module || null,
+      module: module || null,
       sidebarGroup: null,
       headerFields: template.headerFields || [],
       lineFields: template.lineFields || [],
@@ -432,10 +458,10 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-12">
+              <div className="flex flex-col gap-12">
                 {/* --- SECTION: COMPANY'S ACTIVE FORMS --- */}
                 {forms.filter(f => isProtected(f)).length > 0 && (
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="order-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <button 
                       onClick={() => setExpandedGroups(prev => prev.includes('system') ? prev.filter(g => g !== 'system') : [...prev, 'system'])}
                       className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"
@@ -445,7 +471,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <Shield size={20} />
                         </div>
                         <div className="text-left">
-                          <h2 className="text-lg font-bold text-slate-800">Company's Active Forms</h2>
+                          <h2 className="text-lg font-bold text-slate-800">Default Forms</h2>
                           <p className="text-xs text-slate-500">System templates adopted by your company</p>
                         </div>
                         <span className="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
@@ -479,8 +505,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                 )}
 
                 {/* --- SECTION: AVAILABLE IN CATALOG --- */}
-                {templates.filter((t: any) => t.adoptionStatus === 'available').length > 0 && (
-                  <div className="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+                {catalogTemplates.length > 0 && (
+                  <div className="order-3 bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
                     <button 
                       onClick={() => setExpandedGroups(prev => prev.includes('catalog') ? prev.filter(g => g !== 'catalog') : [...prev, 'catalog'])}
                       className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"
@@ -494,7 +520,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <p className="text-xs text-slate-500">Document types from the platform catalog — adopt to customize</p>
                         </div>
                         <span className="ml-2 bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                          {templates.filter((t: any) => t.adoptionStatus === 'available').length}
+                          {catalogTemplates.length}
                         </span>
                       </div>
                       {expandedGroups.includes('catalog') ? <ChevronDown size={20} className="text-gray-400" /> : <ChevronRight size={20} className="text-gray-400" />}
@@ -503,7 +529,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                     {expandedGroups.includes('catalog') && (
                       <div className="p-6 bg-slate-50/30">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {templates.filter((t: any) => t.adoptionStatus === 'available').map((template: any) => (
+                          {catalogTemplates.map((template: any) => (
                             <div key={template.id} className="bg-white rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-shadow p-6">
                               <div className="flex justify-between items-start mb-4">
                                 <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl">
@@ -524,9 +550,19 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                               <p className="text-xs text-gray-500 truncate">Code: {template.code}</p>
                               
                               <div className="mt-4 flex gap-2 flex-wrap">
-                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
-                                  <DownloadCloud size={10} /> Available
-                                </span>
+                                {template.adoptionStatus === 'active' ? (
+                                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+                                    <Shield size={10} /> Active
+                                  </span>
+                                ) : template.adoptionStatus === 'custom' ? (
+                                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+                                    <User size={10} /> Customized
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1">
+                                    <DownloadCloud size={10} /> Available
+                                  </span>
+                                )}
                               </div>
                               
                               <div className="mt-4 pt-3 border-t border-gray-100">
@@ -548,7 +584,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                 )}
 
                 {/* --- SECTION: USER CUSTOMIZED --- */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="order-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                    <button 
                       onClick={() => setExpandedGroups(prev => prev.includes('custom') ? prev.filter(g => g !== 'custom') : [...prev, 'custom'])}
                       className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors border-b border-gray-50"

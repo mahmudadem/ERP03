@@ -147,4 +147,15 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
       postedAt: record.postedAt || undefined,
     });
   }
+
+  async hasUnpostedGoodsReceipts(companyId: string): Promise<boolean> {
+    const count = await this.prisma.goodsReceipt.count({
+      where: {
+        companyId,
+        status: 'DRAFT',
+      },
+      take: 1,
+    });
+    return count > 0;
+  }
 }

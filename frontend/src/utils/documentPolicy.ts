@@ -21,18 +21,25 @@ export const getAccountingModeLabel = (mode: InventoryAccountingMode): string =>
 export const getWorkflowModeLabel = (mode: WorkflowMode): string =>
   mode === 'SIMPLE' ? 'Simple' : 'Operational';
 
-const normalizeDocumentCode = (...values: Array<string | undefined | null>): string => {
-  const resolved = values.find((value) => !!value)?.trim().toLowerCase() || '';
-  return resolved.replace(/[\s-]+/g, '_');
+const normalizeDocumentCode = (...values: unknown[]): string => {
+  const resolved = values.find((value) => value !== undefined && value !== null && value !== '');
+  if (resolved && typeof resolved === 'object') {
+    const objectValue = resolved as Record<string, unknown>;
+    const identity = objectValue.id ?? objectValue.value ?? objectValue.code ?? objectValue.key ?? objectValue.name ?? objectValue.label;
+    return String(identity ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  }
+
+  const normalized = String(resolved ?? '').trim().toLowerCase();
+  return normalized.replace(/[\s-]+/g, '_');
 };
 
-export const isOperationalSalesDocument = (input: { code?: string; baseType?: string }): boolean => {
-  const normalized = normalizeDocumentCode(input.baseType, input.code);
+export const isOperationalSalesDocument = (input: { code?: unknown; formType?: unknown; baseType?: unknown }): boolean => {
+  const normalized = normalizeDocumentCode(input.formType || input.baseType, input.code);
   return normalized === 'sales_order' || normalized === 'delivery_note';
 };
 
-export const isOperationalPurchaseDocument = (input: { code?: string; baseType?: string }): boolean => {
-  const normalized = normalizeDocumentCode(input.baseType, input.code);
+export const isOperationalPurchaseDocument = (input: { code?: unknown; formType?: unknown; baseType?: unknown }): boolean => {
+  const normalized = normalizeDocumentCode(input.formType || input.baseType, input.code);
   return normalized === 'purchase_order' || normalized === 'grn' || normalized === 'goods_receipt';
 };
 

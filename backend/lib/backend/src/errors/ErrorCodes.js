@@ -55,7 +55,12 @@ var ErrorCode;
     ErrorCode["INFRA_NETWORK_ERROR"] = "INFRA_002";
     ErrorCode["INFRA_SERVICE_UNAVAILABLE"] = "INFRA_003";
     ErrorCode["INFRA_TIMEOUT"] = "INFRA_004";
+    ErrorCode["INFRA_TRANSACTION_CONFLICT"] = "INFRA_005";
     ErrorCode["INFRA_UNKNOWN_ERROR"] = "INFRA_999";
+    // ========== SALES BUSINESS LOGIC ==========
+    ErrorCode["SALES_TRANSITION_BLOCKED"] = "SALES_001";
+    // ========== PURCHASES BUSINESS LOGIC ==========
+    ErrorCode["PURCHASES_TRANSITION_BLOCKED"] = "PURCH_001";
 })(ErrorCode = exports.ErrorCode || (exports.ErrorCode = {}));
 /**
  * Severity levels for errors

@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
@@ -30,7 +31,7 @@ const makeSettings = (
     overDeliveryTolerancePct: 0,
     overInvoiceTolerancePct: 0,
     defaultPaymentTermsDays: 30,
-    salesVoucherTypeId: 'VT-SI',
+    governanceRules: [],
     defaultWarehouseId: 'wh-1',
     soNumberPrefix: 'SO',
     soNumberNextSeq: 1,
@@ -212,6 +213,9 @@ const makeSI = (input: {
     id: input.id,
     companyId: COMPANY_ID,
     invoiceNumber: `SI-${input.id}`,
+    formType: 'sales_invoice_direct',
+    voucherType: 'sales_invoice',
+    persona: 'direct',
     salesOrderId: input.salesOrderId,
     customerId: 'cus-1',
     customerName: 'Customer One',
@@ -284,17 +288,41 @@ const makeTransactionManager = () => ({
   runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => operation({ id: 'txn-1' })),
 });
 
-const makeInventoryService = () => {
+const makeStockLevel = (unitCostBase = 10, qtyOnHand = 100) =>
+  new StockLevel({
+    id: 'sl-1',
+    companyId: COMPANY_ID,
+    itemId: 'stock-1',
+    warehouseId: 'wh-1',
+    qtyOnHand,
+    reservedQty: 0,
+    avgCostBase: unitCostBase,
+    avgCostCCY: unitCostBase,
+    lastCostBase: unitCostBase,
+    lastCostCCY: unitCostBase,
+    postingSeq: 1,
+    maxBusinessDate: '2026-01-01',
+    totalMovements: 1,
+    lastMovementId: '',
+    version: 1,
+    updatedAt: new Date(),
+  });
+
+const makeInventoryService = (costBase = 10) => {
   let seq = 1;
   return {
     processOUT: jest.fn(async () => ({
       id: `mov-out-${seq++}`,
-      unitCostBase: 5,
+      unitCostBase: costBase,
       movementCurrency: 'USD',
       fxRateMovToBase: 1,
       fxRateCCYToBase: 1,
     })),
     processIN: jest.fn(async () => ({ id: `mov-in-${seq++}` })),
+    preFetchStockLevel: jest.fn(async () => makeStockLevel(costBase)),
+    writeStockMovement: jest.fn(async () => {}),
+    writeStockLevel: jest.fn(async () => {}),
+    deleteMovement: jest.fn(async () => {}),
   };
 };
 
@@ -320,7 +348,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const so = makeSO({ id: 'so-1', item, orderedQty: 10, deliveredQty: 0 });
     const dn = makeDN({ id: 'dn-1', salesOrderId: so.id, item, deliveredQty: 4 });
 
-    const inventoryService = makeInventoryService();
+    const inventoryService = makeInventoryService(5);
     const useCase = new PostDeliveryNoteUseCase(
       { getSettings: jest.fn(async () => settings) } as any,
       makeInventorySettingsRepository() as any,
@@ -338,16 +366,17 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
 
-    expect(inventoryService.processOUT).toHaveBeenCalledTimes(1);
-    const input = (inventoryService.processOUT as any).mock.calls[0][0];
-    expect(input.movementType).toBe('SALES_DELIVERY');
-    expect(input.refs.type).toBe('DELIVERY_NOTE');
-    expect(input.refs.docId).toBe(dn.id);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    const movement = (inventoryService.writeStockMovement as any).mock.calls[0][0];
+    expect(movement.movementType).toBe('SALES_DELIVERY');
+    expect(movement.referenceType).toBe('DELIVERY_NOTE');
+    expect(movement.referenceId).toBe(dn.id);
   });
 
   it('2) PostDN creates COGS GL voucher (Dr COGS, Cr Inventory)', async () => {
@@ -379,6 +408,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
@@ -418,6 +448,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
@@ -448,6 +479,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
@@ -553,7 +585,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const posted = await useCase.execute(COMPANY_ID, si.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processOUT).not.toHaveBeenCalled();
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     const voucher = (voucherRepo.save as any).mock.calls[0][0];
     expect(voucher.metadata.sourceModule).toBe('sales');
@@ -613,7 +645,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
 
     const posted = await useCase.execute(COMPANY_ID, si.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processOUT).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).toHaveBeenCalledTimes(2);
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(2);
   });
@@ -831,11 +863,12 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
     await expect(useCase.execute(COMPANY_ID, dn.id)).rejects.toThrow('Accounting failed');
-    expect(inventoryService.processOUT).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(dnRepo.update).not.toHaveBeenCalled();
     expect(soRepo.update).not.toHaveBeenCalled();
   });
@@ -864,7 +897,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
     const inventoryService = {
       ...makeInventoryService(),
-      processOUT: jest.fn(async () => {
+      writeStockMovement: jest.fn(async () => {
         throw new Error('Inventory failed');
       }),
     };
@@ -977,14 +1010,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     };
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
     const inventoryService = {
-      ...makeInventoryService(),
-      processOUT: jest.fn(async () => ({
-        id: 'mov-out-zero',
-        unitCostBase: 0,
-        movementCurrency: 'USD',
-        fxRateMovToBase: 1,
-        fxRateCCYToBase: 1,
-      })),
+      ...makeInventoryService(0),
     };
 
     const useCase = new PostDeliveryNoteUseCase(
@@ -1004,6 +1030,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      undefined,
       makeTransactionManager() as any
     );
 
@@ -1036,14 +1063,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     };
     const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
     const inventoryService = {
-      ...makeInventoryService(),
-      processOUT: jest.fn(async () => ({
-        id: 'mov-out-zero',
-        unitCostBase: 0,
-        movementCurrency: 'USD',
-        fxRateMovToBase: 1,
-        fxRateCCYToBase: 1,
-      })),
+      ...makeInventoryService(0),
     };
 
     const useCase = new PostSalesInvoiceUseCase(

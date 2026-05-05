@@ -88,15 +88,17 @@ export class FirestoreItemRepository implements IItemRepository {
 
     const list = await this.getCompanyItems(companyId, {
       ...opts,
-      limit: opts?.limit ?? 100,
-      offset: opts?.offset ?? 0,
+      limit: 5000, // Increased scan limit to find matches outside the first few items
+      offset: 0,   // Search should always scan from the top of the collection
     });
 
-    return list.filter((item) =>
+    const matches = list.filter((item) =>
       item.code.toLowerCase().includes(normalized) ||
       item.name.toLowerCase().includes(normalized) ||
       (item.barcode || '').toLowerCase().includes(normalized)
     );
+
+    return matches.slice(0, opts?.limit ?? 50);
   }
 
   async deleteItem(id: string): Promise<void> {

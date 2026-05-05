@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.errorHandler = void 0;
 const ApiError_1 = require("./ApiError");
 const InfrastructureError_1 = require("../../infrastructure/errors/InfrastructureError");
+const AppError_1 = require("../../errors/AppError");
 const errorHandler = (err, req, res, next) => {
     console.error(`[API Error] ${req.method} ${req.path}:`, err);
     if (err instanceof ApiError_1.ApiError) {
@@ -22,6 +23,20 @@ const errorHandler = (err, req, res, next) => {
             error: {
                 code: 'INFRASTRUCTURE_ERROR',
                 message: 'A system error occurred. Please try again later.',
+            },
+        });
+        return;
+    }
+    // Handle Domain/Business Errors
+    if (err instanceof AppError_1.AppError) {
+        res.status(400).json({
+            success: false,
+            error: {
+                code: err.code,
+                message: err.message,
+                severity: err.severity,
+                field: err.field,
+                context: err.context
             },
         });
         return;

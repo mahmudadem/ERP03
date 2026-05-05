@@ -5,6 +5,8 @@ const crypto_1 = require("crypto");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
+const StockMovement_1 = require("../../../domain/inventory/entities/StockMovement");
 const PurchaseReturn_1 = require("../../../domain/purchases/entities/PurchaseReturn");
 const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const PurchaseOrderUseCases_1 = require("./PurchaseOrderUseCases");
@@ -272,7 +274,7 @@ class CreatePurchaseReturnUseCase {
 }
 exports.CreatePurchaseReturnUseCase = CreatePurchaseReturnUseCase;
 class PostPurchaseReturnUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, purchaseReturnRepo, companySettingsRepo, purchaseInvoiceRepo, goodsReceiptRepo, purchaseOrderRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, accountRepo, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.purchaseReturnRepo = purchaseReturnRepo;
@@ -283,19 +285,25 @@ class PostPurchaseReturnUseCase {
         this.partyRepo = partyRepo;
         this.taxCodeRepo = taxCodeRepo;
         this.itemRepo = itemRepo;
+        this.itemCategoryRepo = itemCategoryRepo;
         this.uomConversionRepo = uomConversionRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
         this.inventoryService = inventoryService;
         this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
+        this.accountRepo = accountRepo;
         this.transactionManager = transactionManager;
     }
     async execute(companyId, id, createAccountingEffect = true) {
+        // ===================================================================
+        // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
+        // We pre-fetch ALL data here. The postingLogic callback only writes.
+        // ===================================================================
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
-        const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
-        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
         const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const purchaseReturn = await this.purchaseReturnRepo.getById(companyId, id);
         if (!purchaseReturn)
@@ -342,8 +350,44 @@ class PostPurchaseReturnUseCase {
         const vendor = await this.partyRepo.getById(companyId, purchaseReturn.vendorId);
         if (!vendor)
             throw new Error(`Vendor not found: ${purchaseReturn.vendorId}`);
-        const voucherLines = [];
+        // Pre-fetch global settings for exchange gain/loss account (may be needed inside voucher)
+        const globalSettings = await this.companySettingsRepo.getSettings(companyId);
+        const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || purchaseReturn.currency || 'USD';
+        // PHASE 1A: PRE-FETCH ALL MASTER DATA (bare reads before transaction)
+        const distinctItemIds = [...new Set(purchaseReturn.lines.map(l => l.itemId))];
+        const distinctTaxCodeIds = [...new Set(purchaseReturn.lines.filter(l => l.taxCodeId).map(l => l.taxCodeId))];
+        const [itemsMap, taxCodesMap] = await Promise.all([
+            Promise.all(distinctItemIds.map(id => this.itemRepo.getItem(id))).then(res => new Map(res.filter((i) => !!i && i.companyId === companyId).map(i => [i.id, i]))),
+            Promise.all(distinctTaxCodeIds.map(id => this.taxCodeRepo.getById(companyId, id))).then(res => new Map(res.filter((t) => !!t).map(t => [t.id, t]))),
+        ]);
+        // Validate all items
+        for (const line of purchaseReturn.lines) {
+            const item = itemsMap.get(line.itemId);
+            if (!item || item.companyId !== companyId)
+                throw new Error(`Item not found: ${line.itemId}`);
+        }
+        // Pre-fetch previously returned quantities (bare reads before transaction)
+        const previousReturnQtyMap = new Map();
         const currentRunQtyBySource = new Map();
+        for (const line of purchaseReturn.lines) {
+            if (isAfterInvoice && purchaseInvoice) {
+                const sourceLine = findPILine(purchaseInvoice, line.piLineId, line.itemId);
+                if (sourceLine) {
+                    const sourceKey = `PI:${sourceLine.lineId}`;
+                    const prevReturned = await this.getPreviouslyReturnedQtyForPILine(companyId, purchaseInvoice.id, sourceLine.lineId, purchaseReturn.id);
+                    previousReturnQtyMap.set(sourceKey, prevReturned);
+                }
+            }
+            else if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && goodsReceipt) {
+                const sourceLine = findGRNLine(goodsReceipt, line.grnLineId, line.itemId);
+                if (sourceLine) {
+                    const sourceKey = `GRN:${sourceLine.lineId}`;
+                    const prevReturned = await this.getPreviouslyReturnedQtyForGRNLine(companyId, goodsReceipt.id, sourceLine.lineId, purchaseReturn.id);
+                    previousReturnQtyMap.set(sourceKey, prevReturned);
+                }
+            }
+        }
+        // Pre-fetch GRN movement IDs for reversals (bare reads)
         const originalMovementByGRNLineId = new Map();
         if (isAfterInvoice && (purchaseInvoice === null || purchaseInvoice === void 0 ? void 0 : purchaseInvoice.purchaseOrderId)) {
             const grns = await this.goodsReceiptRepo.list(companyId, {
@@ -359,193 +403,317 @@ class PostPurchaseReturnUseCase {
                 });
             });
         }
-        await this.transactionManager.runTransaction(async (transaction) => {
-            for (const line of purchaseReturn.lines) {
-                const item = await this.itemRepo.getItem(line.itemId);
-                if (!item || item.companyId !== companyId) {
-                    throw new Error(`Item not found: ${line.itemId}`);
-                }
-                if (isAfterInvoice) {
-                    const sourceLine = findPILine(purchaseInvoice, line.piLineId, line.itemId);
-                    if (!sourceLine) {
-                        throw new Error(`Purchase invoice line not found for return line ${line.lineId}`);
-                    }
-                    const sourceKey = `PI:${sourceLine.lineId}`;
-                    const prevReturned = await this.getPreviouslyReturnedQtyForPILine(companyId, purchaseInvoice.id, sourceLine.lineId, purchaseReturn.id);
-                    const currentRun = currentRunQtyBySource.get(sourceKey) || 0;
-                    const remaining = (0, PurchasePostingHelpers_1.roundMoney)(sourceLine.invoicedQty - prevReturned - currentRun);
-                    if (line.returnQty > remaining + 0.000001) {
-                        throw new Error(`Return qty exceeds invoiced qty for ${line.itemName || sourceLine.itemName}`);
-                    }
-                    currentRunQtyBySource.set(sourceKey, (0, PurchasePostingHelpers_1.roundMoney)(currentRun + line.returnQty));
-                    line.accountId = line.accountId || sourceLine.accountId;
-                    line.taxCodeId = line.taxCodeId || sourceLine.taxCodeId;
-                    line.taxCode = line.taxCode || sourceLine.taxCode;
-                    line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
-                    line.unitCostDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc || sourceLine.unitPriceDoc);
-                    line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostBase || sourceLine.unitPriceBase);
-                }
-                else if (purchaseReturn.returnContext === 'BEFORE_INVOICE') {
-                    const sourceLine = findGRNLine(goodsReceipt, line.grnLineId, line.itemId);
-                    if (!sourceLine) {
-                        throw new Error(`Goods receipt line not found for return line ${line.lineId}`);
-                    }
-                    const sourceKey = `GRN:${sourceLine.lineId}`;
-                    const prevReturned = await this.getPreviouslyReturnedQtyForGRNLine(companyId, goodsReceipt.id, sourceLine.lineId, purchaseReturn.id);
-                    const currentRun = currentRunQtyBySource.get(sourceKey) || 0;
-                    const remaining = (0, PurchasePostingHelpers_1.roundMoney)(sourceLine.receivedQty - prevReturned - currentRun);
-                    if (line.returnQty > remaining + 0.000001) {
-                        throw new Error(`Return qty exceeds received qty for ${line.itemName || sourceLine.itemName}`);
-                    }
-                    currentRunQtyBySource.set(sourceKey, (0, PurchasePostingHelpers_1.roundMoney)(currentRun + line.returnQty));
-                    line.unitCostDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc || sourceLine.unitCostDoc);
-                    line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostBase || sourceLine.unitCostBase);
-                    line.taxRate = 0;
-                    line.taxCodeId = undefined;
-                    line.taxCode = undefined;
-                }
-                else if (isDirect) {
-                    line.accountId = line.accountId || settings.defaultPurchaseExpenseAccountId;
-                    if (!line.accountId) {
-                        throw new Error(`Account is required for manual return line ${line.lineId}`);
-                    }
-                    line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * purchaseReturn.exchangeRate);
-                    line.taxRate = 0;
-                }
-                const lineTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.returnQty * line.unitCostDoc);
-                const lineTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(line.returnQty * line.unitCostBase);
-                line.taxAmountDoc = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalDoc * (line.taxRate || 0));
-                line.taxAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalBase * (line.taxRate || 0));
-                if (item.trackInventory) {
-                    const conversionResult = await this.convertToBaseUom(companyId, line.returnQty, line.uomId, line.uom, item);
-                    const qtyInBaseUom = conversionResult.qtyInBaseUom;
-                    const reversesMovementId = this.findOriginalMovementId(line, purchaseInvoice, goodsReceipt, originalMovementByGRNLineId);
-                    const movement = await this.inventoryService.processOUT({
-                        companyId,
-                        itemId: line.itemId,
-                        warehouseId: purchaseReturn.warehouseId,
-                        qty: qtyInBaseUom,
-                        date: purchaseReturn.returnDate,
-                        movementType: 'RETURN_OUT',
-                        refs: {
-                            type: 'PURCHASE_RETURN',
-                            docId: purchaseReturn.id,
-                            lineId: line.lineId,
-                            reversesMovementId,
-                        },
-                        currentUser: purchaseReturn.createdBy,
-                        metadata: {
-                            uomConversion: {
-                                conversionId: conversionResult.trace.conversionId,
-                                mode: conversionResult.trace.mode,
-                                appliedFactor: conversionResult.trace.factor,
-                                sourceQty: line.returnQty,
-                                sourceUomId: line.uomId,
-                                sourceUom: line.uom,
-                                baseUomId: item.baseUomId,
-                                baseUom: item.baseUom,
-                            },
-                        },
-                        transaction,
-                    });
-                    line.stockMovementId = movement.id;
-                }
-                if (isAfterInvoice && shouldCreateVoucher) {
-                    const creditAccountId = item.trackInventory
-                        ? this.resolveInventoryAccount(item, inventorySettings === null || inventorySettings === void 0 ? void 0 : inventorySettings.defaultInventoryAssetAccountId)
-                        : line.accountId;
-                    if (!creditAccountId) {
-                        throw new Error(`accountId is required for AFTER_INVOICE return line ${line.lineId}`);
-                    }
-                    voucherLines.push({
-                        accountId: creditAccountId,
-                        side: 'Credit',
-                        baseAmount: lineTotalBase,
-                        docAmount: lineTotalDoc,
-                        notes: `Return: ${line.itemName} x ${line.returnQty}`,
-                        effectiveRate: line.unitCostDoc > 0 ? line.unitCostBase / line.unitCostDoc : purchaseReturn.exchangeRate,
-                        metadata: {
-                            sourceModule: 'purchases',
-                            sourceType: 'PURCHASE_RETURN',
-                            sourceId: purchaseReturn.id,
-                            lineId: line.lineId,
-                            itemId: line.itemId,
-                        },
-                    });
-                    if (line.taxAmountBase > 0) {
-                        const taxAccountId = await this.resolvePurchaseTaxAccount(companyId, line.taxCodeId);
-                        voucherLines.push({
-                            accountId: taxAccountId,
-                            side: 'Credit',
-                            baseAmount: line.taxAmountBase,
-                            docAmount: line.taxAmountDoc,
-                            notes: `Tax reversal: ${line.taxCode || line.taxCodeId || ''}`,
-                            effectiveRate: line.taxAmountDoc > 0 ? line.taxAmountBase / line.taxAmountDoc : purchaseReturn.exchangeRate,
-                            metadata: {
-                                sourceModule: 'purchases',
-                                sourceType: 'PURCHASE_RETURN',
-                                sourceId: purchaseReturn.id,
-                                lineId: line.lineId,
-                                taxCodeId: line.taxCodeId,
-                            },
-                        });
-                    }
-                }
-                else if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && shouldCreateVoucher) {
-                    const inventoryAccountId = this.resolveInventoryAccount(item, inventorySettings === null || inventorySettings === void 0 ? void 0 : inventorySettings.defaultInventoryAssetAccountId);
-                    voucherLines.push({
-                        accountId: inventoryAccountId,
-                        side: 'Credit',
-                        baseAmount: lineTotalBase,
-                        docAmount: lineTotalDoc,
-                        notes: `Return before invoice: ${line.itemName} x ${line.returnQty}`,
-                        metadata: {
-                            sourceModule: 'purchases',
-                            sourceType: 'PURCHASE_RETURN',
-                            sourceId: purchaseReturn.id,
-                            lineId: line.lineId,
-                            itemId: line.itemId,
-                        },
-                    });
-                }
-                else if (isDirect && shouldCreateVoucher) {
-                    if (!line.accountId)
-                        throw new Error(`Account is required for direct return line ${line.lineId}`);
-                    voucherLines.push({
-                        accountId: line.accountId,
-                        side: 'Credit',
-                        baseAmount: lineTotalBase,
-                        docAmount: lineTotalDoc,
-                        notes: `Direct Return: ${line.itemName} x ${line.returnQty}`,
-                        metadata: {
-                            sourceModule: 'purchases',
-                            sourceType: 'PURCHASE_RETURN',
-                            sourceId: purchaseReturn.id,
-                            lineId: line.lineId,
-                            itemId: line.itemId,
-                        },
-                    });
-                }
-                if (purchaseOrder) {
-                    const poLine = findPOLine(purchaseOrder, line.poLineId, line.itemId);
-                    if (poLine) {
-                        if (!isAfterInvoice) {
-                            const nextReceivedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.receivedQty - line.returnQty);
-                            if (nextReceivedQty < -0.000001) {
-                                throw new Error(`Return qty would make receivedQty negative for PO line ${poLine.lineId}`);
-                            }
-                            poLine.receivedQty = Math.max(0, nextReceivedQty);
-                        }
-                        poLine.returnedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.returnedQty + line.returnQty);
-                    }
+        // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
+        const warehouseId = purchaseReturn.warehouseId || settings.defaultWarehouseId || '';
+        const stockLevelMap = new Map();
+        for (const line of purchaseReturn.lines) {
+            const item = itemsMap.get(line.itemId);
+            if ((item === null || item === void 0 ? void 0 : item.trackInventory) && warehouseId) {
+                const key = `${line.itemId}|${warehouseId}`;
+                if (!stockLevelMap.has(key)) {
+                    const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
+                    stockLevelMap.set(key, existing !== null && existing !== void 0 ? existing : StockLevel_1.StockLevel.createNew(companyId, line.itemId, warehouseId));
                 }
             }
-            recalcReturnTotals(purchaseReturn);
+        }
+        // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
+        const uomConversionMap = new Map();
+        for (const itemId of distinctItemIds) {
+            const item = itemsMap.get(itemId);
+            if (item && item.trackInventory && !uomConversionMap.has(item.id)) {
+                const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+                uomConversionMap.set(item.id, convs);
+            }
+        }
+        // PHASE 1D: COMPUTE ALL DATA OUTSIDE TRANSACTION
+        const voucherLines = [];
+        for (const line of purchaseReturn.lines) {
+            const item = itemsMap.get(line.itemId);
+            if (isAfterInvoice) {
+                const sourceLine = findPILine(purchaseInvoice, line.piLineId, line.itemId);
+                if (!sourceLine)
+                    throw new Error(`Purchase invoice line not found for return line ${line.lineId}`);
+                const sourceKey = `PI:${sourceLine.lineId}`;
+                const prevReturned = previousReturnQtyMap.get(sourceKey) || 0;
+                const currentRun = currentRunQtyBySource.get(sourceKey) || 0;
+                const remaining = (0, PurchasePostingHelpers_1.roundMoney)(sourceLine.invoicedQty - prevReturned - currentRun);
+                if (line.returnQty > remaining + 0.000001) {
+                    throw new Error(`Return qty exceeds invoiced qty for ${line.itemName || sourceLine.itemName}`);
+                }
+                currentRunQtyBySource.set(sourceKey, (0, PurchasePostingHelpers_1.roundMoney)(currentRun + line.returnQty));
+                line.accountId = line.accountId || sourceLine.accountId;
+                line.taxCodeId = line.taxCodeId || sourceLine.taxCodeId;
+                line.taxCode = line.taxCode || sourceLine.taxCode;
+                line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
+                line.unitCostDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc || sourceLine.unitPriceDoc);
+                line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostBase || sourceLine.unitPriceBase);
+            }
+            else if (purchaseReturn.returnContext === 'BEFORE_INVOICE') {
+                const sourceLine = findGRNLine(goodsReceipt, line.grnLineId, line.itemId);
+                if (!sourceLine)
+                    throw new Error(`Goods receipt line not found for return line ${line.lineId}`);
+                const sourceKey = `GRN:${sourceLine.lineId}`;
+                const prevReturned = previousReturnQtyMap.get(sourceKey) || 0;
+                const currentRun = currentRunQtyBySource.get(sourceKey) || 0;
+                const remaining = (0, PurchasePostingHelpers_1.roundMoney)(sourceLine.receivedQty - prevReturned - currentRun);
+                if (line.returnQty > remaining + 0.000001) {
+                    throw new Error(`Return qty exceeds received qty for ${line.itemName || sourceLine.itemName}`);
+                }
+                currentRunQtyBySource.set(sourceKey, (0, PurchasePostingHelpers_1.roundMoney)(currentRun + line.returnQty));
+                line.unitCostDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc || sourceLine.unitCostDoc);
+                line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostBase || sourceLine.unitCostBase);
+                line.taxRate = 0;
+                line.taxCodeId = undefined;
+                line.taxCode = undefined;
+            }
+            else if (isDirect) {
+                line.accountId = line.accountId || settings.defaultPurchaseExpenseAccountId;
+                if (!line.accountId)
+                    throw new Error(`Account is required for manual return line ${line.lineId}`);
+                line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * purchaseReturn.exchangeRate);
+                line.taxRate = 0;
+            }
+            const lineTotalDoc = (0, PurchasePostingHelpers_1.roundMoney)(line.returnQty * line.unitCostDoc);
+            const lineTotalBase = (0, PurchasePostingHelpers_1.roundMoney)(line.returnQty * line.unitCostBase);
+            line.taxAmountDoc = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalDoc * (line.taxRate || 0));
+            line.taxAmountBase = (0, PurchasePostingHelpers_1.roundMoney)(lineTotalBase * (line.taxRate || 0));
+            // Compute inventory movement for tracked items
+            if (item.trackInventory) {
+                const convs = uomConversionMap.get(item.id) || [];
+                const conversionResult = (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+                    qty: line.returnQty,
+                    item,
+                    conversions: convs,
+                    fromUomId: line.uomId,
+                    fromUom: line.uom,
+                    round: VoucherLineEntity_1.roundMoney,
+                    itemCode: item.code,
+                });
+                const qtyInBaseUom = conversionResult.qtyInBaseUom;
+                const reversesMovementId = this.findOriginalMovementId(line, purchaseInvoice, goodsReceipt, originalMovementByGRNLineId);
+                // Compute OUT movement (mirrors processOUT logic)
+                const stockLevelKey = `${item.id}|${warehouseId}`;
+                const level = stockLevelMap.get(stockLevelKey);
+                if (!level)
+                    throw new Error(`Stock level not pre-fetched for item ${item.code}`);
+                const qtyBefore = level.qtyOnHand;
+                const oldMaxBusinessDate = level.maxBusinessDate;
+                let issueCostBase = 0;
+                let issueCostCCY = 0;
+                let costBasis = 'MISSING';
+                if (qtyBefore > 0) {
+                    issueCostBase = level.avgCostBase;
+                    issueCostCCY = level.avgCostCCY;
+                    costBasis = 'AVG';
+                }
+                else if (level.lastCostBase > 0) {
+                    issueCostBase = level.lastCostBase;
+                    issueCostCCY = level.lastCostCCY;
+                    costBasis = 'LAST_KNOWN';
+                }
+                const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
+                const unsettledQty = qtyInBaseUom - settledQty;
+                const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
+                const movement = new StockMovement_1.StockMovement({
+                    id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    companyId,
+                    date: purchaseReturn.returnDate,
+                    postingSeq: level.postingSeq + 1,
+                    createdAt: new Date(),
+                    createdBy: purchaseReturn.createdBy,
+                    postedAt: new Date(),
+                    itemId: item.id,
+                    warehouseId,
+                    direction: 'OUT',
+                    movementType: 'RETURN_OUT',
+                    qty: qtyInBaseUom,
+                    uom: item.baseUom,
+                    referenceType: 'PURCHASE_RETURN',
+                    referenceId: purchaseReturn.id,
+                    referenceLineId: line.lineId,
+                    reversesMovementId,
+                    unitCostBase: issueCostBase,
+                    totalCostBase: (0, PurchasePostingHelpers_1.roundMoney)(issueCostBase * qtyInBaseUom),
+                    unitCostCCY: issueCostCCY,
+                    totalCostCCY: (0, PurchasePostingHelpers_1.roundMoney)(issueCostCCY * qtyInBaseUom),
+                    movementCurrency: item.costCurrency,
+                    fxRateMovToBase: effectiveFxCCYToBase,
+                    fxRateCCYToBase: effectiveFxCCYToBase,
+                    fxRateKind: 'EFFECTIVE',
+                    avgCostBaseAfter: level.avgCostBase,
+                    avgCostCCYAfter: level.avgCostCCY,
+                    qtyBefore,
+                    qtyAfter: qtyBefore - qtyInBaseUom,
+                    settledQty,
+                    unsettledQty,
+                    unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
+                    negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
+                    costSettled: unsettledQty === 0,
+                    isBackdated: purchaseReturn.returnDate < oldMaxBusinessDate,
+                    costSource: 'RETURN',
+                    metadata: {
+                        uomConversion: {
+                            conversionId: conversionResult.trace.conversionId,
+                            mode: conversionResult.trace.mode,
+                            appliedFactor: conversionResult.trace.factor,
+                            sourceQty: line.returnQty,
+                            sourceUomId: line.uomId,
+                            sourceUom: line.uom,
+                            baseUomId: item.baseUomId,
+                            baseUom: item.baseUom,
+                        },
+                    },
+                });
+                level.qtyOnHand -= qtyInBaseUom;
+                level.postingSeq += 1;
+                level.version += 1;
+                level.totalMovements += 1;
+                level.maxBusinessDate = purchaseReturn.returnDate > oldMaxBusinessDate ? purchaseReturn.returnDate : oldMaxBusinessDate;
+                level.updatedAt = new Date();
+                level.lastMovementId = movement.id;
+                line.stockMovementId = movement.id;
+                // Store for writing in transaction
+                line._movement = movement;
+                line._updatedLevel = level;
+            }
+            // Pre-resolve account IDs for voucher lines (synchronous, uses pre-fetched data)
+            if (isAfterInvoice && shouldCreateVoucher) {
+                const creditAccountId = item.trackInventory
+                    ? (item.inventoryAssetAccountId || (invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId))
+                    : line.accountId;
+                if (!creditAccountId)
+                    throw new Error(`accountId is required for AFTER_INVOICE return line ${line.lineId}`);
+                voucherLines.push({
+                    accountId: creditAccountId,
+                    side: 'Credit',
+                    baseAmount: lineTotalBase,
+                    docAmount: lineTotalDoc,
+                    notes: `Return: ${line.itemName} x ${line.returnQty}`,
+                    effectiveRate: line.unitCostDoc > 0 ? line.unitCostBase / line.unitCostDoc : purchaseReturn.exchangeRate,
+                    metadata: {
+                        sourceModule: 'purchases',
+                        sourceType: 'PURCHASE_RETURN',
+                        sourceId: purchaseReturn.id,
+                        lineId: line.lineId,
+                        itemId: line.itemId,
+                    },
+                });
+                if (line.taxAmountBase > 0 && line.taxCodeId) {
+                    const sTaxCode = taxCodesMap.get(line.taxCodeId);
+                    const taxAccountId = sTaxCode === null || sTaxCode === void 0 ? void 0 : sTaxCode.purchaseTaxAccountId;
+                    if (!taxAccountId)
+                        throw new Error(`Tax code ${line.taxCodeId} has no purchase tax account`);
+                    voucherLines.push({
+                        accountId: taxAccountId,
+                        side: 'Credit',
+                        baseAmount: line.taxAmountBase,
+                        docAmount: line.taxAmountDoc,
+                        notes: `Tax reversal: ${line.taxCode || line.taxCodeId || ''}`,
+                        effectiveRate: line.taxAmountDoc > 0 ? line.taxAmountBase / line.taxAmountDoc : purchaseReturn.exchangeRate,
+                        metadata: {
+                            sourceModule: 'purchases',
+                            sourceType: 'PURCHASE_RETURN',
+                            sourceId: purchaseReturn.id,
+                            lineId: line.lineId,
+                            taxCodeId: line.taxCodeId,
+                        },
+                    });
+                }
+            }
+            else if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && shouldCreateVoucher) {
+                const inventoryAccountId = item.inventoryAssetAccountId || (invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
+                if (!inventoryAccountId)
+                    throw new Error(`No inventory account configured for item ${item.code}`);
+                voucherLines.push({
+                    accountId: inventoryAccountId,
+                    side: 'Credit',
+                    baseAmount: lineTotalBase,
+                    docAmount: lineTotalDoc,
+                    notes: `Return before invoice: ${line.itemName} x ${line.returnQty}`,
+                    metadata: {
+                        sourceModule: 'purchases',
+                        sourceType: 'PURCHASE_RETURN',
+                        sourceId: purchaseReturn.id,
+                        lineId: line.lineId,
+                        itemId: line.itemId,
+                    },
+                });
+            }
+            else if (isDirect && shouldCreateVoucher) {
+                if (!line.accountId)
+                    throw new Error(`Account is required for direct return line ${line.lineId}`);
+                voucherLines.push({
+                    accountId: line.accountId,
+                    side: 'Credit',
+                    baseAmount: lineTotalBase,
+                    docAmount: lineTotalDoc,
+                    notes: `Direct Return: ${line.itemName} x ${line.returnQty}`,
+                    metadata: {
+                        sourceModule: 'purchases',
+                        sourceType: 'PURCHASE_RETURN',
+                        sourceId: purchaseReturn.id,
+                        lineId: line.lineId,
+                        itemId: line.itemId,
+                    },
+                });
+            }
+            if (purchaseOrder) {
+                const poLine = findPOLine(purchaseOrder, line.poLineId, line.itemId);
+                if (poLine) {
+                    if (!isAfterInvoice) {
+                        const nextReceivedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.receivedQty - line.returnQty);
+                        if (nextReceivedQty < -0.000001) {
+                            throw new Error(`Return qty would make receivedQty negative for PO line ${poLine.lineId}`);
+                        }
+                        poLine.receivedQty = Math.max(0, nextReceivedQty);
+                    }
+                    poLine.returnedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.returnedQty + line.returnQty);
+                }
+            }
+        }
+        recalcReturnTotals(purchaseReturn);
+        // PHASE 1E: PRE-RESOLVE ALL ACCOUNT IDS (bare reads before transaction)
+        const accountCache = new Map();
+        const resolveAccountCached = async (idOrCode) => {
+            if (!idOrCode)
+                return '';
+            if (accountCache.has(idOrCode))
+                return accountCache.get(idOrCode);
+            const resolved = await this.resolveAccountId(companyId, idOrCode);
+            accountCache.set(idOrCode, resolved);
+            return resolved;
+        };
+        // Resolve AP and exchange gain/loss accounts
+        const apAccountId = this.resolveAPAccount(vendor, settings.defaultAPAccountId);
+        const resolvedAPId = await resolveAccountCached(apAccountId);
+        let resolvedGainLossId = settings.exchangeGainLossAccountId || (globalSettings === null || globalSettings === void 0 ? void 0 : globalSettings.exchangeGainLossAccountId) || '';
+        // Resolve all voucher line account IDs
+        for (const vl of voucherLines) {
+            vl.accountId = await resolveAccountCached(vl.accountId);
+        }
+        // Resolve GRNI account if needed
+        let resolvedGRNIAccountId = '';
+        if (purchaseReturn.returnContext === 'BEFORE_INVOICE' && shouldCreateVoucher && settings.defaultGRNIAccountId) {
+            resolvedGRNIAccountId = await resolveAccountCached(settings.defaultGRNIAccountId);
+        }
+        const resolvedBaseCurrency = (baseCurrency || purchaseReturn.currency || 'USD').toUpperCase();
+        // PHASE 2: TRANSACTION CALLBACK — WRITES ONLY
+        await this.transactionManager.runTransaction(async (transaction) => {
+            // Write inventory movements and stock levels for tracked items
+            for (const line of purchaseReturn.lines) {
+                const movement = line._movement;
+                const updatedLevel = line._updatedLevel;
+                if (movement && updatedLevel) {
+                    await this.inventoryService.writeStockMovement(movement, transaction);
+                    await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+                    delete line._movement;
+                    delete line._updatedLevel;
+                }
+            }
             if (isAfterInvoice || isDirect) {
-                const apAccountId = this.resolveAPAccount(vendor, settings.defaultAPAccountId);
                 const apDebitBase = (0, PurchasePostingHelpers_1.roundMoney)(purchaseReturn.grandTotalDoc * purchaseReturn.exchangeRate);
                 voucherLines.push({
-                    accountId: apAccountId,
+                    accountId: resolvedAPId,
                     side: 'Debit',
                     baseAmount: apDebitBase,
                     docAmount: purchaseReturn.grandTotalDoc,
@@ -561,16 +729,11 @@ class PostPurchaseReturnUseCase {
                 const inventoryTaxCreditBase = purchaseReturn.grandTotalBase;
                 const exchangeDiff = (0, PurchasePostingHelpers_1.roundMoney)(apDebitBase - inventoryTaxCreditBase);
                 if (Math.abs(exchangeDiff) > 0.001) {
-                    let gainLossAccountId = settings.exchangeGainLossAccountId;
-                    if (!gainLossAccountId) {
-                        const globalSettings = await this.companySettingsRepo.getSettings(companyId);
-                        gainLossAccountId = globalSettings === null || globalSettings === void 0 ? void 0 : globalSettings.exchangeGainLossAccountId;
-                    }
-                    if (!gainLossAccountId) {
+                    if (!resolvedGainLossId) {
                         throw new Error('Exchange Gain/Loss account is not configured in Purchases or Global Accounting Settings. Cannot post multi-currency return with rate difference.');
                     }
                     voucherLines.push({
-                        accountId: gainLossAccountId,
+                        accountId: resolvedGainLossId,
                         side: exchangeDiff > 0 ? 'Credit' : 'Debit',
                         baseAmount: Math.abs(exchangeDiff),
                         docAmount: 0,
@@ -602,6 +765,8 @@ class PostPurchaseReturnUseCase {
                         createdBy: purchaseReturn.createdBy,
                         postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
                         reference: purchaseReturn.returnNumber,
+                        baseCurrencyOverride: resolvedBaseCurrency,
+                        skipAccountValidation: true,
                     }, transaction);
                     purchaseReturn.voucherId = voucher.id;
                 }
@@ -614,11 +779,11 @@ class PostPurchaseReturnUseCase {
                 }
             }
             else if (shouldCreateVoucher) {
-                if (!settings.defaultGRNIAccountId) {
+                if (!resolvedGRNIAccountId) {
                     throw new Error('Default GRNI account is required for perpetual goods-return reversals before invoice.');
                 }
                 voucherLines.push({
-                    accountId: settings.defaultGRNIAccountId,
+                    accountId: resolvedGRNIAccountId,
                     side: 'Debit',
                     baseAmount: purchaseReturn.grandTotalBase,
                     docAmount: purchaseReturn.grandTotalDoc,
@@ -649,6 +814,8 @@ class PostPurchaseReturnUseCase {
                         createdBy: purchaseReturn.createdBy,
                         postingLockPolicy: VoucherTypes_1.PostingLockPolicy.STRICT_LOCKED,
                         reference: purchaseReturn.returnNumber,
+                        baseCurrencyOverride: resolvedBaseCurrency,
+                        skipAccountValidation: true,
                     }, transaction);
                     purchaseReturn.voucherId = voucher.id;
                 }
@@ -671,6 +838,18 @@ class PostPurchaseReturnUseCase {
             throw new Error(`Purchase return not found after posting: ${id}`);
         return posted;
     }
+    async resolveAccountId(companyId, idOrCode) {
+        if (!idOrCode)
+            return '';
+        if (!this.accountRepo)
+            return idOrCode;
+        const acc = (await this.accountRepo.getById(companyId, idOrCode)) || (await this.accountRepo.getByUserCode(companyId, idOrCode));
+        return acc ? acc.id : idOrCode;
+    }
+    async isAccountingEnabled(companyId) {
+        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
+        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
+    }
     resolveAPAccount(vendor, defaultAPAccountId) {
         return vendor.defaultAPAccountId || defaultAPAccountId;
     }
@@ -681,35 +860,22 @@ class PostPurchaseReturnUseCase {
         }
         return inventoryAccountId;
     }
-    async resolvePurchaseTaxAccount(companyId, taxCodeId) {
-        if (!taxCodeId)
-            throw new Error('taxCodeId is required for tax reversal line');
-        const taxCode = await this.taxCodeRepo.getById(companyId, taxCodeId);
-        if (!taxCode)
-            throw new Error(`Tax code not found: ${taxCodeId}`);
-        if (!taxCode.purchaseTaxAccountId) {
-            throw new Error(`TaxCode ${taxCode.code} has no purchase tax account`);
+    findOriginalMovementId(line, purchaseInvoice, goodsReceipt, grnMovementByLineId) {
+        if (line.grnLineId && goodsReceipt) {
+            const source = findGRNLine(goodsReceipt, line.grnLineId, line.itemId);
+            return source === null || source === void 0 ? void 0 : source.stockMovementId;
         }
-        return taxCode.purchaseTaxAccountId;
-    }
-    async convertToBaseUom(companyId, qty, uomId, uom, item) {
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
-        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
-            qty,
-            item,
-            conversions,
-            fromUomId: uomId,
-            fromUom: uom,
-            round: VoucherLineEntity_1.roundMoney,
-            itemCode: item.code,
-        });
+        if (line.grnLineId) {
+            return grnMovementByLineId.get(line.grnLineId);
+        }
+        return undefined;
     }
     async getPreviouslyReturnedQtyForPILine(companyId, purchaseInvoiceId, piLineId, excludeReturnId) {
         const returns = await this.purchaseReturnRepo.list(companyId, {
             purchaseInvoiceId,
             status: 'POSTED',
         });
-        return (0, PurchasePostingHelpers_1.roundMoney)(returns.reduce((sum, entry) => {
+        return (0, VoucherLineEntity_1.roundMoney)(returns.reduce((sum, entry) => {
             if (entry.id === excludeReturnId)
                 return sum;
             const qty = entry.lines
@@ -723,7 +889,7 @@ class PostPurchaseReturnUseCase {
             goodsReceiptId,
             status: 'POSTED',
         });
-        return (0, PurchasePostingHelpers_1.roundMoney)(returns.reduce((sum, entry) => {
+        return (0, VoucherLineEntity_1.roundMoney)(returns.reduce((sum, entry) => {
             if (entry.id === excludeReturnId)
                 return sum;
             const qty = entry.lines
@@ -731,20 +897,6 @@ class PostPurchaseReturnUseCase {
                 .reduce((lineSum, line) => lineSum + line.returnQty, 0);
             return sum + qty;
         }, 0));
-    }
-    findOriginalMovementId(line, purchaseInvoice, goodsReceipt, grnMovementByLineId) {
-        if (line.grnLineId && goodsReceipt) {
-            const source = findGRNLine(goodsReceipt, line.grnLineId, line.itemId);
-            return source === null || source === void 0 ? void 0 : source.stockMovementId;
-        }
-        if (line.grnLineId) {
-            return grnMovementByLineId.get(line.grnLineId);
-        }
-        return undefined;
-    }
-    async isAccountingEnabled(companyId) {
-        const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
-        return !!(accountingModule === null || accountingModule === void 0 ? void 0 : accountingModule.initialized);
     }
 }
 exports.PostPurchaseReturnUseCase = PostPurchaseReturnUseCase;

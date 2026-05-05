@@ -62,6 +62,13 @@ class FirestoreGoodsReceiptRepository {
         const snap = await query.get();
         return snap.docs.map((doc) => PurchaseMappers_1.GoodsReceiptMapper.toDomain(doc.data()));
     }
+    async hasUnpostedGoodsReceipts(companyId) {
+        const snap = await this.collection(companyId)
+            .where('status', '==', 'DRAFT')
+            .limit(1)
+            .get();
+        return !snap.empty;
+    }
 }
 exports.FirestoreGoodsReceiptRepository = FirestoreGoodsReceiptRepository;
 //# sourceMappingURL=FirestoreGoodsReceiptRepository.js.map

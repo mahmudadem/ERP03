@@ -2,17 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { superAdminApi, BusinessDomain } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import {
   SuperAdminEmptyState,
   SuperAdminHeader,
   SuperAdminLoading,
   SuperAdminModal,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export const BusinessDomainsManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -25,6 +30,18 @@ export const BusinessDomainsManagerPage: React.FC = () => {
   useEffect(() => {
     loadDomains();
   }, []);
+
+  const {
+    data: filteredDomains,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: domains,
+    searchFields: ['name', 'id', 'description'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const loadDomains = async () => {
     try {
@@ -111,45 +128,76 @@ export const BusinessDomainsManagerPage: React.FC = () => {
         }
       />
 
-      <SuperAdminTable>
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.id')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.name')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.description')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {domains.length === 0 ? (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SuperAdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search domains..."
+          />
+        </div>
+
+        <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.businessDomains.empty')} /></td>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('id')}
+                >
+                  {t('superAdmin.businessDomains.columns.id')}
+                  <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('name')}
+                >
+                  {t('superAdmin.businessDomains.columns.name')}
+                  <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('description')}
+                >
+                  {t('superAdmin.businessDomains.columns.description')}
+                  <SortIcon direction={sortConfig.field === 'description' ? sortConfig.direction : null} />
+                </th>
+                <th className={tableHeadCellClass}>{t('superAdmin.businessDomains.columns.actions')}</th>
               </tr>
-            ) : (
-              domains.map((domain) => (
-                <tr key={domain.id} className={tableRowClass}>
-                  <td className={`${tableCellClass} font-mono text-xs`}>{domain.id}</td>
-                  <td className={`${tableCellClass} font-medium text-slate-950`}>{domain.name}</td>
-                  <td className={tableCellClass}>{domain.description}</td>
-                  <td className={tableCellClass}>
-                    <button onClick={() => handleEdit(domain)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
-                      {t('superAdmin.businessDomains.actions.edit')}
-                    </button>
-                    <button onClick={() => handleDelete(domain.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
-                      {t('superAdmin.businessDomains.actions.delete')}
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredDomains.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <SuperAdminEmptyState 
+                      title={searchQuery ? "No domains found matching search" : t('superAdmin.businessDomains.empty')} 
+                    />
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-      </SuperAdminTable>
+              ) : (
+                filteredDomains.map((domain) => (
+                  <tr key={domain.id} className={tableRowClass}>
+                    <td className={`${tableCellClass} font-mono text-xs`}>{domain.id}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>{domain.name}</td>
+                    <td className={tableCellClass}>{domain.description}</td>
+                    <td className={tableCellClass}>
+                      <button onClick={() => handleEdit(domain)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
+                        {t('superAdmin.businessDomains.actions.edit')}
+                      </button>
+                      <button onClick={() => handleDelete(domain.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
+                        {t('superAdmin.businessDomains.actions.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+        </SuperAdminTable>
+      </div>
 
       {isModalOpen && (
         <SuperAdminModal
           title={editingDomain ? t('superAdmin.businessDomains.modal.editTitle') : t('superAdmin.businessDomains.modal.createTitle')}
           onClose={() => setIsModalOpen(false)}
-          footer={null}
         >
             <form onSubmit={handleSubmit}>
               <div className="mb-4">

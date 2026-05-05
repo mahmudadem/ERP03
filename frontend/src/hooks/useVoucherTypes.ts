@@ -24,6 +24,7 @@ export interface SidebarFormEntry {
   module: string;          // e.g., 'ACCOUNTING', 'SALES', 'PURCHASE'
   sidebarGroup?: string;   // e.g., 'Vouchers', 'Documents'. Null = top-level.
   enabled: boolean;
+  formType?: string;
   baseType?: string;
 }
 
@@ -63,7 +64,8 @@ export function useVoucherTypes() {
                 module: ((form as any).module || 'ACCOUNTING').toUpperCase(),
                 sidebarGroup: (form as any).sidebarGroup || null,
                 enabled: form.enabled,
-                baseType: (form as any).baseType || form.typeId || form.code,
+                formType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                baseType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
               }));
 
             setAllModuleForms(sidebarEntries);
@@ -91,7 +93,8 @@ export function useVoucherTypes() {
                 tableStyle: (form as any).tableStyle || 'web',
                 defaultCurrency: (form as any).defaultCurrency || '',
                 _typeId: form.typeId,
-                baseType: (form as any).baseType || form.typeId || form.code,
+                formType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
+                baseType: (form as any).formType || (form as any).baseType || form.typeId || form.code,
                 sidebarGroup: (form as any).sidebarGroup || 'Vouchers',
                 _isForm: true
               } as any));
@@ -120,7 +123,8 @@ export function useVoucherTypes() {
           module: (v.module || 'ACCOUNTING').toUpperCase(),
           sidebarGroup: v.sidebarGroup || 'Vouchers',
           enabled: v.enabled !== false,
-          baseType: v.baseType || v.code || v.id,
+          formType: v.formType || v.baseType || v.code || v.id,
+          baseType: v.formType || v.baseType || v.code || v.id,
         })));
       } catch (error) {
         console.error('Failed to load voucher types for sidebar:', error);

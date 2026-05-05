@@ -23,6 +23,8 @@ export interface PostSubledgerVoucherInput {
   createdBy: string;
   postingLockPolicy?: PostingLockPolicy;
   strategyPayload?: Record<string, any>;
+  baseCurrencyOverride?: string;
+  skipAccountValidation?: boolean;
 }
 
 export class SubledgerVoucherPostingService {
@@ -43,7 +45,8 @@ export class SubledgerVoucherPostingService {
     transaction?: unknown
   ): Promise<VoucherEntity> {
     const baseCurrency = (
-      (await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
+      input.baseCurrencyOverride
+      || (await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
       || input.currency
       || 'USD'
     ).toUpperCase();
@@ -111,7 +114,7 @@ export class SubledgerVoucherPostingService {
     );
 
     this.validationService.validateCore(postedVoucher);
-    if (this.accountRepo) {
+    if (!input.skipAccountValidation && this.accountRepo) {
       await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
     }
 

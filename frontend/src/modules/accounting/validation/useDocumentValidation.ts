@@ -34,6 +34,18 @@ export function useDocumentValidation(
   } = options;
 
   return useMemo(() => {
+    if (!enabled) {
+      return {
+        structuralErrors: [],
+        businessErrors: [],
+        businessWarnings: [],
+        systemWarnings: [],
+        canSave: true,
+        hasWarnings: false,
+        hasErrors: false,
+      };
+    }
+
     // Guard: No definition = defer to old validation
     if (!definition) {
       return {
@@ -77,7 +89,7 @@ export function useDocumentValidation(
     // Parallel run logging (development only)
     if (parallelRun && process.env.NODE_ENV === 'development') {
       console.log('[VALIDATION] Parallel run:', {
-        type: definition.code || definition.baseType,
+        type: definition.code || definition.formType || definition.baseType,
         formDataKeys: Object.keys(formData),
         linesCount: formData?.lines?.length,
         firstLineKeys: formData?.lines?.[0] ? Object.keys(formData.lines[0]) : 'no lines',

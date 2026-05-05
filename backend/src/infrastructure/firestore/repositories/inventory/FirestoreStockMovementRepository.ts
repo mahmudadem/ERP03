@@ -161,6 +161,11 @@ export class FirestoreStockMovementRepository implements IStockMovementRepositor
     return StockMovementMapper.toDomain(doc.data());
   }
 
+  async hasAnyMovements(companyId: string): Promise<boolean> {
+    const snap = await this.collection(companyId).limit(1).get();
+    return !snap.empty;
+  }
+
   async deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
     const ref = this.collection(companyId).doc(id);
     const txn = this.asTransaction(transaction);

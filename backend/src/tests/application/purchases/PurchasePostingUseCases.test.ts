@@ -4,6 +4,7 @@ import { PurchaseInvoice } from '../../../domain/purchases/entities/PurchaseInvo
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
 import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSettings';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import {
@@ -207,6 +208,9 @@ const makePI = (input: {
     id: input.id,
     companyId: COMPANY_ID,
     invoiceNumber: `PI-${input.id}`,
+    formType: 'purchase_invoice_direct',
+    voucherType: 'purchase_invoice',
+    persona: 'direct',
     purchaseOrderId: input.purchaseOrderId,
     vendorId: 'ven-1',
     vendorName: 'Vendor One',
@@ -272,11 +276,35 @@ const makeTransactionManager = () => ({
   runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => operation({ id: 'txn-1' })),
 });
 
+const makeStockLevel = (unitCostBase = 10, qtyOnHand = 100) =>
+  new StockLevel({
+    id: 'sl-1',
+    companyId: COMPANY_ID,
+    itemId: 'stock-1',
+    warehouseId: 'wh-1',
+    qtyOnHand,
+    reservedQty: 0,
+    avgCostBase: unitCostBase,
+    avgCostCCY: unitCostBase,
+    lastCostBase: unitCostBase,
+    lastCostCCY: unitCostBase,
+    postingSeq: 1,
+    maxBusinessDate: '2026-01-01',
+    totalMovements: 1,
+    lastMovementId: '',
+    version: 1,
+    updatedAt: new Date(),
+  });
+
 const makeInventoryService = () => {
   let seq = 1;
   return {
     processIN: jest.fn(async () => ({ id: `mov-${seq++}` })),
     processOUT: jest.fn(async () => ({ id: `mov-out-${seq++}` })),
+    preFetchStockLevel: jest.fn(async () => makeStockLevel()),
+    writeStockMovement: jest.fn(async () => {}),
+    writeStockLevel: jest.fn(async () => {}),
+    deleteMovement: jest.fn(async () => {}),
   };
 };
 
@@ -345,17 +373,18 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      makeAccountingPostingService(voucherRepo, ledgerRepo),
+makeAccountingPostingService(voucherRepo, ledgerRepo),
+      undefined,
       transactionManager as any
     );
 
     await useCase.execute(COMPANY_ID, grn.id);
 
-    expect(inventoryService.processIN).toHaveBeenCalledTimes(1);
-    const input = (inventoryService.processIN as any).mock.calls[0][0];
-    expect(input.movementType).toBe('PURCHASE_RECEIPT');
-    expect(input.refs.type).toBe('GOODS_RECEIPT');
-    expect(input.refs.docId).toBe(grn.id);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    const movement = (inventoryService.writeStockMovement as any).mock.calls[0][0];
+    expect(movement.movementType).toBe('PURCHASE_RECEIPT');
+    expect(movement.referenceType).toBe('GOODS_RECEIPT');
+    expect(movement.referenceId).toBe(grn.id);
   });
 
   it('2) PostGRN updates PO line receivedQty', async () => {
@@ -392,7 +421,8 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      makeAccountingPostingService(voucherRepo, ledgerRepo),
+makeAccountingPostingService(voucherRepo, ledgerRepo),
+      undefined,
       transactionManager as any
     );
 
@@ -428,7 +458,8 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      makeAccountingPostingService(voucherRepo, ledgerRepo),
+makeAccountingPostingService(voucherRepo, ledgerRepo),
+      undefined,
       transactionManager as any
     );
 
@@ -464,7 +495,8 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      makeAccountingPostingService(voucherRepo, ledgerRepo),
+makeAccountingPostingService(voucherRepo, ledgerRepo),
+      undefined,
       transactionManager as any
     );
 
@@ -576,7 +608,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processIN).not.toHaveBeenCalled();
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     expect(savedVouchers[0].metadata.sourceModule).toBe('purchases');
     expect(savedVouchers[0].metadata.sourceType).toBe('PURCHASE_INVOICE');
@@ -629,7 +661,7 @@ describe('Purchase posting use-cases (Phase 2)', () => {
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processIN).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(1);
   });
@@ -831,7 +863,8 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo(false) as any,
-      makeAccountingPostingService(voucherRepo, ledgerRepo),
+makeAccountingPostingService(voucherRepo, ledgerRepo),
+      undefined,
       transactionManager as any
     );
 
@@ -890,11 +923,12 @@ describe('Purchase posting use-cases (Phase 2)', () => {
     const posted = await useCase.execute(COMPANY_ID, pi.id, false);
 
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processIN).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).not.toHaveBeenCalled();
     expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
     expect(posted.voucherId).toBeNull();
   });
 });
+
 
 

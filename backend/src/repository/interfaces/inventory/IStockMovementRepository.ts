@@ -25,5 +25,6 @@ export interface IStockMovementRepository {
   getMovementsByDateRange(companyId: string, from: string, to: string, opts?: MovementQueryOptions): Promise<StockMovement[]>;
   getUnsettledMovements(companyId: string): Promise<StockMovement[]>;
   getMovement(id: string): Promise<StockMovement | null>;
+  hasAnyMovements(companyId: string): Promise<boolean>;
   deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
 }

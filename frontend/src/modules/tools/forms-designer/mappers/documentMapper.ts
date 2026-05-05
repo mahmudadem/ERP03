@@ -54,6 +54,8 @@ export function documentUiToCanonical(
       case 'account-selector': return 'account-selector';
       case 'cost-center-selector': return 'cost-center-selector';
       case 'party-selector': return 'party-selector';
+      case 'customer-account-selector': return 'customer-account-selector';
+      case 'vendor-account-selector': return 'vendor-account-selector';
       case 'item-selector': return 'item-selector';
       case 'warehouse-selector': return 'warehouse-selector';
       case 'currency-selector': return 'SELECT';
@@ -129,10 +131,18 @@ export function documentUiToCanonical(
     tableColumns: (uiConfig.tableColumns || []).map((col: any) => ({
         fieldId: typeof col === 'string' ? col : (col.id || col.fieldId),
         width: typeof col === 'string' ? undefined : col.width,
-        labelOverride: typeof col === 'string' ? undefined : col.labelOverride
+        labelOverride: typeof col === 'string' ? undefined : col.labelOverride,
+        type: typeof col === 'string' ? undefined : col.type,
+        required: typeof col === 'string' ? undefined : (col.required || col.mandatory || false),
+        mandatory: typeof col === 'string' ? undefined : (col.mandatory || col.required || false),
+        readOnly: typeof col === 'string' ? undefined : col.readOnly,
+        calculated: typeof col === 'string' ? undefined : col.calculated,
+        autoManaged: typeof col === 'string' ? undefined : col.autoManaged,
+        options: typeof col === 'string' ? undefined : col.options
     })),
     tableStyle: uiConfig.tableStyle || 'web',
-    baseType: uiConfig.baseType || uiConfig.id,
+    formType: uiConfig.formType || uiConfig.baseType || uiConfig.id,
+    baseType: uiConfig.formType || uiConfig.baseType || uiConfig.id,
     
     // Feature flags
     requiresApproval: getRuleFlag('require_approval'),

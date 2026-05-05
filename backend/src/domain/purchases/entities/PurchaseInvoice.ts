@@ -1,5 +1,6 @@
 export type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 
 export interface PurchaseInvoiceLine {
   lineId: string;
@@ -33,6 +34,10 @@ export interface PurchaseInvoiceProps {
   companyId: string;
   invoiceNumber: string;
   vendorInvoiceNumber?: string;
+  formType: string;
+  voucherType: string;
+  persona: string;
+  source?: DocumentSource | string;
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
@@ -62,8 +67,14 @@ export interface PurchaseInvoiceProps {
 
 const PI_STATUSES: PIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const normalizeDocumentSource = (value: any): DocumentSource => {
+  const source = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return DOCUMENT_SOURCES.includes(source as DocumentSource) ? source as DocumentSource : 'default_form';
+};
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();
@@ -77,6 +88,10 @@ export class PurchaseInvoice {
   readonly companyId: string;
   invoiceNumber: string;
   vendorInvoiceNumber?: string;
+  readonly formType: string;
+  readonly voucherType: string;
+  readonly persona: string;
+  readonly source: DocumentSource;
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
@@ -122,6 +137,10 @@ export class PurchaseInvoice {
     this.companyId = props.companyId;
     this.invoiceNumber = props.invoiceNumber.trim();
     this.vendorInvoiceNumber = props.vendorInvoiceNumber;
+    this.formType = props.formType?.trim() || 'purchase_invoice_direct';
+    this.voucherType = props.voucherType?.trim() || 'purchase_invoice';
+    this.persona = props.persona?.trim() || 'direct';
+    this.source = normalizeDocumentSource(props.source);
     this.purchaseOrderId = props.purchaseOrderId;
     this.vendorId = props.vendorId.trim();
     this.vendorName = props.vendorName || '';
@@ -219,6 +238,10 @@ export class PurchaseInvoice {
       companyId: this.companyId,
       invoiceNumber: this.invoiceNumber,
       vendorInvoiceNumber: this.vendorInvoiceNumber,
+      formType: this.formType,
+      voucherType: this.voucherType,
+      persona: this.persona,
+      source: this.source,
       purchaseOrderId: this.purchaseOrderId,
       vendorId: this.vendorId,
       vendorName: this.vendorName,
@@ -253,6 +276,10 @@ export class PurchaseInvoice {
       companyId: data.companyId,
       invoiceNumber: data.invoiceNumber,
       vendorInvoiceNumber: data.vendorInvoiceNumber,
+      formType: data.formType || data.baseType || 'purchase_invoice_direct',
+      voucherType: data.voucherType || 'purchase_invoice',
+      persona: data.persona || 'direct',
+      source: data.source || data.documentSource || 'default_form',
       purchaseOrderId: data.purchaseOrderId,
       vendorId: data.vendorId,
       vendorName: data.vendorName,

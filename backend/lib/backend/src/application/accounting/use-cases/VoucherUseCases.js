@@ -245,8 +245,8 @@ const buildFormData = (payload, existingFormData) => {
     }
     const detailLines = Array.isArray(payload.lines)
         ? payload.lines.map((line) => {
-            // Strip internal accounting fields from detail lines — keep business fields
-            const { side, baseAmount, baseCurrency: _bc, debitAmount, creditAmount } = line, rest = __rest(line, ["side", "baseAmount", "baseCurrency", "debitAmount", "creditAmount"]);
+            // Keep user-facing form fields like side; strip calculated accounting internals only.
+            const { baseAmount, baseCurrency: _bc, debitAmount, creditAmount } = line, rest = __rest(line, ["baseAmount", "baseCurrency", "debitAmount", "creditAmount"]);
             return sanitizeSnapshotValue(rest);
         }).filter(Boolean)
         : [];
@@ -307,7 +307,7 @@ class CreateVoucherUseCase {
             }
             const autoNumbering = (settings === null || settings === void 0 ? void 0 : settings.autoNumbering) !== false;
             const voucherId = payload.id || (0, crypto_1.randomUUID)();
-            const resolvedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.baseType || ((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.type) || ((_b = payload.metadata) === null || _b === void 0 ? void 0 : _b.typeId));
+            const resolvedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.formType || payload.baseType || ((_a = payload.metadata) === null || _a === void 0 ? void 0 : _a.type) || ((_b = payload.metadata) === null || _b === void 0 ? void 0 : _b.typeId));
             let voucherNo = payload.voucherNo || '';
             if (autoNumbering && this.sequenceRepo) {
                 const prefix = payload.prefix || (resolvedVoucherType || 'V').toString();
@@ -319,9 +319,21 @@ class CreateVoucherUseCase {
                 voucherNo = `V-${Date.now()}`;
             }
             let lines = [];
+            let rawSemanticLines = [];
             const voucherType = resolvedVoucherType;
             const strategy = VoucherPostingStrategyFactory_1.VoucherPostingStrategyFactory.getStrategy(voucherType);
-            if (strategy) {
+            // Subledger types have semantic lines (itemId, qty, unitPrice) that must NOT be
+            // converted to accounting lines (accountId, side, amount) on DRAFT save.
+            // Strategy execution is deferred to POST time.
+            const isSubledgerType = [
+                'sales_invoice', 'sales_return', 'sales_order', 'delivery_note',
+                'purchase_invoice', 'purchase_return', 'purchase_order', 'goods_receipt'
+            ].includes(voucherType);
+            if (strategy && isSubledgerType) {
+                rawSemanticLines = payload.lines || [];
+                lines = [];
+            }
+            else if (strategy) {
                 const voucherTypeDef = await this.voucherTypeRepo.getByCode(companyId, voucherType);
                 let strategyInput = payload;
                 if (voucherTypeDef && voucherTypeDef.headerFields && voucherTypeDef.headerFields.length > 0) {
@@ -334,8 +346,6 @@ class CreateVoucherUseCase {
                     }
                 }
                 lines = await strategy.generateLines(strategyInput, companyId, baseCurrency);
-                // Normalize/validate strategy-produced account refs to persisted UUIDs.
-                // Strategies may receive account codes from flexible/cloned forms.
                 const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
                 lines = await Promise.all(lines.map(async (line) => {
                     const account = await accountValidationService.validateAccountById(companyId, userId, line.accountId, voucherType, {
@@ -357,30 +367,17 @@ class CreateVoucherUseCase {
                         throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.VAL_REQUIRED_FIELD, `Line ${idx + 1}: Missing required V2 fields: side, amount`);
                     }
                     const lineCurrency = (l.currency || l.lineCurrency || payload.currency || baseCurrency).toUpperCase();
-                    // Resolve Code to UUID for persistence
                     const account = await accountValidationService.validateAccountById(companyId, userId, l.accountId, undefined, {
                         lineCurrency,
                         baseCurrency
                     });
                     const amount = Math.abs(Number(l.amount) || 0);
                     const lineBaseCurrency = (l.baseCurrency || baseCurrency).toUpperCase();
-                    // MULTI-CURRENCY FIX: Use triangulation formula
-                    // parity = rate from Line Currency → Voucher Currency (entered by user)
-                    // headerRate = rate from Voucher Currency → Base Currency (from header)
-                    // baseAmount = amount × parity × headerRate
                     const parity = Number(l.parity || l.exchangeRate || 1);
                     const headerRate = Number(payload.exchangeRate || 1);
-                    // The effective exchange rate for storage (Line → Base)
                     const effectiveExchangeRate = (0, VoucherLineEntity_1.roundMoney)(parity * headerRate);
-                    // CRITICAL: baseAmount calculated using triangulation
                     const baseAmount = (0, VoucherLineEntity_1.roundMoney)(amount * parity * headerRate);
-                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, // Use persistent ID
-                    l.side, baseAmount, // baseAmount (Calculated via triangulation)
-                    lineBaseCurrency, // baseCurrency  
-                    amount, // amount (FX)
-                    lineCurrency, // currency (FX)
-                    effectiveExchangeRate, // exchangeRate (Line → Base, for storage)
-                    l.notes || l.description, l.costCenterId || l.costCenter, l.metadata || {});
+                    return new VoucherLineEntity_1.VoucherLineEntity(idx + 1, account.id, l.side, baseAmount, lineBaseCurrency, amount, lineCurrency, effectiveExchangeRate, l.notes || l.description, l.costCenterId || l.costCenter, l.metadata || {});
                 }));
             }
             const totalDebit = lines.reduce((s, l) => s + l.debitAmount, 0);
@@ -397,7 +394,7 @@ class CreateVoucherUseCase {
             const sourcePayload = buildSourcePayload(payload);
             const cleanedPayloadMetadata = removeLegacySourceKeys(payload.metadata);
             const formData = buildFormData(payload);
-            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), cleanedPayloadMetadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix }));
+            const voucherMetadata = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, extraMetadata), cleanedPayloadMetadata), (payload.sourceModule && { sourceModule: payload.sourceModule })), (payload.formId && { formId: payload.formId })), (payload.prefix && { prefix: payload.prefix })), (rawSemanticLines.length > 0 && { rawSemanticLines }));
             // Check if Approval is OFF -> Auto-Post
             let approvalRequired = true;
             if (this.policyConfigProvider) {
@@ -570,7 +567,7 @@ class UpdateVoucherUseCase {
         const accountValidationService = new AccountValidationService_1.AccountValidationService(this.accountRepo);
         // CRITICAL: baseCurrency must remain the company's base currency, never from payload
         const baseCurrency = voucher.baseCurrency.toUpperCase(); // Use existing voucher's base currency (company's base)
-        const mergedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.baseType || ((_c = payload.metadata) === null || _c === void 0 ? void 0 : _c.type) || ((_d = payload.metadata) === null || _d === void 0 ? void 0 : _d.typeId), voucher.type);
+        const mergedVoucherType = normalizeVoucherTypeCode(payload.type || payload.typeId || payload.formType || payload.baseType || ((_c = payload.metadata) === null || _c === void 0 ? void 0 : _c.type) || ((_d = payload.metadata) === null || _d === void 0 ? void 0 : _d.typeId), voucher.type);
         let lines = [];
         let strategy = null;
         try {
@@ -807,7 +804,7 @@ class PostVoucherUseCase {
         const corrId = correlationId || uuidv4();
         await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.vouchers.post');
         return this.transactionManager.runTransaction(async (transaction) => {
-            var _a;
+            var _a, _b;
             const voucher = await this.voucherRepo.findById(companyId, voucherId);
             if (!voucher)
                 throw new Error('Voucher not found');
@@ -830,6 +827,40 @@ class PostVoucherUseCase {
                 correlationId: corrId
             });
             try {
+                // Subledger deferral: If raw semantic lines exist, run strategy NOW to generate accounting entries.
+                // This is deferred from CreateVoucherUseCase because DRAFT saves have itemId/qty, not accountId/side.
+                const rawSemanticLines = (_a = voucher.metadata) === null || _a === void 0 ? void 0 : _a.rawSemanticLines;
+                if (rawSemanticLines && Array.isArray(rawSemanticLines) && rawSemanticLines.length > 0) {
+                    const { VoucherPostingStrategyFactory } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/factories/VoucherPostingStrategyFactory')));
+                    const { PostingFieldExtractor } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/services/PostingFieldExtractor')));
+                    const { roundMoney } = await Promise.resolve().then(() => __importStar(require('../../../domain/accounting/entities/VoucherLineEntity')));
+                    const strategy = VoucherPostingStrategyFactory.getStrategy(voucher.type);
+                    if (!strategy) {
+                        throw new Error(`No posting strategy for voucher type: ${voucher.type}`);
+                    }
+                    const header = Object.assign(Object.assign({}, voucher.metadata), { currency: voucher.currency, exchangeRate: voucher.exchangeRate, lines: rawSemanticLines });
+                    const generatedLines = await strategy.generateLines(header, companyId, voucher.baseCurrency);
+                    if (generatedLines.length === 0) {
+                        throw new Error(`Strategy generated zero accounting lines for ${voucher.type}`);
+                    }
+                    // Validate and resolve account refs
+                    const resolvedLines = await Promise.all(generatedLines.map(async (line) => {
+                        const account = await this.accountValidationService.validateAccountById(companyId, userId, line.accountId, voucher.type);
+                        if (account.id === line.accountId)
+                            return line;
+                        return new VoucherLineEntity_1.VoucherLineEntity(line.id, account.id, line.side, line.baseAmount, line.baseCurrency, line.amount, line.currency, line.exchangeRate, line.notes, line.costCenterId, line.metadata);
+                    }));
+                    // Re-create voucher with generated accounting lines
+                    voucher.lines = resolvedLines;
+                    voucher.totalDebit = roundMoney(resolvedLines.reduce((s, l) => s + l.debitAmount, 0));
+                    voucher.totalCredit = roundMoney(resolvedLines.reduce((s, l) => s + l.creditAmount, 0));
+                    logger.info('POST_STRATEGY_GENERATED_LINES', {
+                        voucherId: voucher.id,
+                        voucherType: voucher.type,
+                        lineCount: resolvedLines.length,
+                        correlationId: corrId
+                    });
+                }
                 // 1. Core Invariants (Always enforced)
                 try {
                     this.validationService.validateCore(voucher, corrId);
@@ -856,7 +887,7 @@ class PostVoucherUseCase {
                 catch (error) {
                     // Log core rejection
                     logger.error('POST_REJECTED_CORE', {
-                        code: ((_a = error.appError) === null || _a === void 0 ? void 0 : _a.code) || 'UNKNOWN',
+                        code: ((_b = error.appError) === null || _b === void 0 ? void 0 : _b.code) || 'UNKNOWN',
                         message: error.message,
                         correlationId: corrId
                     });

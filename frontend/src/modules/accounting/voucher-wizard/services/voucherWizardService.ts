@@ -228,6 +228,13 @@ export async function saveVoucherForm(
           const id = typeof col === 'string' ? col : (col.id || col.fieldId);
           const label = typeof col === 'string' ? col : (col.labelOverride || col.label || id);
           const width = typeof col === 'string' ? undefined : col.width;
+          const type = typeof col === 'string' ? undefined : col.type;
+          const required = typeof col === 'string' ? undefined : (col.required || col.mandatory || false);
+          const mandatory = typeof col === 'string' ? undefined : (col.mandatory || col.required || false);
+          const readOnly = typeof col === 'string' ? undefined : col.readOnly;
+          const calculated = typeof col === 'string' ? undefined : col.calculated;
+          const autoManaged = typeof col === 'string' ? undefined : col.autoManaged;
+          const options = typeof col === 'string' ? undefined : col.options;
           
           return {
             id,
@@ -235,7 +242,13 @@ export async function saveVoucherForm(
             label,
             labelOverride: label,
             width,
-            type: 'text',
+            type: type || 'text',
+            required,
+            mandatory,
+            readOnly,
+            calculated,
+            autoManaged,
+            options,
             order: 0
           };
         });
@@ -246,8 +259,9 @@ export async function saveVoucherForm(
     const formData = {
       id: config.id,
       companyId,
-      typeId: (config as any).baseType || config.id,
-      baseType: (canonical as any).baseType || canonical.code || canonical.id,
+      typeId: (config as any).formType || (config as any).baseType || config.id,
+      formType: (canonical as any).formType || (canonical as any).baseType || canonical.code || canonical.id,
+      baseType: (canonical as any).formType || (canonical as any).baseType || canonical.code || canonical.id,
       name: config.name,
       code: config.id,
       prefix: config.prefix || config.id?.slice(0, 3).toUpperCase() || 'V',

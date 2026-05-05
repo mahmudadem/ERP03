@@ -4,7 +4,8 @@
  */
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from './ApiError';
-import { InfrastructureError } from '../../infrastructure/errors/InfrastructureError';
+import { InfrastructureError as InfraError } from '../../infrastructure/errors/InfrastructureError';
+import { AppError } from '../../errors/AppError';
 
 export const errorHandler = (
   err: Error,
@@ -26,12 +27,27 @@ export const errorHandler = (
   }
 
   // Handle Infrastructure Errors (Database, etc)
-  if (err instanceof InfrastructureError) {
+  if (err instanceof InfraError) {
     (res as any).status(500).json({
       success: false,
       error: {
         code: 'INFRASTRUCTURE_ERROR',
         message: 'A system error occurred. Please try again later.',
+      },
+    });
+    return;
+  }
+
+  // Handle Domain/Business Errors
+  if (err instanceof AppError) {
+    (res as any).status(400).json({
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        severity: (err as any).severity,
+        field: (err as any).field,
+        context: (err as any).context
       },
     });
     return;

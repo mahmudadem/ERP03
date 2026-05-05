@@ -32,7 +32,8 @@ export class JournalValidator extends DocumentValidator {
       const hasAccount = !!(l.accountId || l.account);
       const hasDebit = Number(l.debit) > 0;
       const hasCredit = Number(l.credit) > 0;
-      const hasAmount = hasDebit || hasCredit;
+      const hasSideAmount = Number(l.amount) > 0 && ['debit', 'credit'].includes(String(l.side || '').toLowerCase());
+      const hasAmount = hasDebit || hasCredit || hasSideAmount;
       return hasAccount && hasAmount;
     });
 
@@ -83,8 +84,8 @@ export class JournalValidator extends DocumentValidator {
     const lines = this.getLines();
 
     // Warning: Single-sided entry (all debit or all credit)
-    const hasDebit = lines.some((l) => Number(l.debit) > 0);
-    const hasCredit = lines.some((l) => Number(l.credit) > 0);
+    const hasDebit = lines.some((l) => Number(l.debit) > 0 || (String(l.side || '').toLowerCase() === 'debit' && Number(l.amount) > 0));
+    const hasCredit = lines.some((l) => Number(l.credit) > 0 || (String(l.side || '').toLowerCase() === 'credit' && Number(l.amount) > 0));
     
     if (hasDebit && !hasCredit) {
       warnings.push('All lines are debits - consider adding a credit line');
@@ -112,8 +113,13 @@ export class JournalValidator extends DocumentValidator {
     let creditTotal = 0;
 
     lines.forEach((l) => {
-      debitTotal += Number(l.debit) || 0;
-      creditTotal += Number(l.credit) || 0;
+      const debit = Number(l.debit) || 0;
+      const credit = Number(l.credit) || 0;
+      const amount = Number(l.amount) || 0;
+      const side = String(l.side || '').toLowerCase();
+
+      debitTotal += debit || (side === 'debit' ? amount : 0);
+      creditTotal += credit || (side === 'credit' ? amount : 0);
     });
 
     const tolerance = 0.05;

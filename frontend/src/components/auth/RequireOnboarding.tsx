@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useGlobalLoaderTask } from '../../context/GlobalLoaderContext';
 import { useCompanyAccess } from '../../context/CompanyAccessContext';
 import { onboardingApi, OnboardingStatus } from '../../modules/onboarding';
 
@@ -31,6 +32,20 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
   const [statusError, setStatusError] = useState(false);
   const [backendConnecting, setBackendConnecting] = useState(false);
 
+  const isAuthLoading = authLoading || accessLoading;
+  const isCheckingOnboarding = statusLoading || backendConnecting;
+  
+  useGlobalLoaderTask(
+    'onboarding-auth',
+    'Checking authentication...',
+    isAuthLoading
+  );
+
+  useGlobalLoaderTask(
+    'onboarding-check', 
+    backendConnecting ? 'Connecting to server...' : 'Checking company status...', 
+    isCheckingOnboarding && !isAuthLoading && !!user && !isSuperAdmin && !skipOnboardingCheck
+  );
   useEffect(() => {
     // Super Admins bypass all onboarding checks
     if (isSuperAdmin) {
@@ -81,12 +96,8 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
   }, [user, skipOnboardingCheck, isSuperAdmin]);
 
   // Still loading auth
-  if (authLoading || accessLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-      </div>
-    );
+  if (isAuthLoading) {
+    return null; // Global loader handles the spinner
   }
 
   // Not logged in - redirect to auth
@@ -99,16 +110,8 @@ export const RequireOnboarding: React.FC<RequireOnboardingProps> = ({
     return <>{children}</>;
   }
 
-  // Still checking onboarding status or retrying connection
-  if (statusLoading || backendConnecting) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-        {backendConnecting && (
-          <p className="mt-4 text-sm text-slate-500">Connecting to server...</p>
-        )}
-      </div>
-    );
+  if (isCheckingOnboarding) {
+    return null; // The global loader will render the spinner
   }
 
   // Error getting status after retries — redirect to plan selection

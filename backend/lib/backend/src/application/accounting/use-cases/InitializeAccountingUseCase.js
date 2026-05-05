@@ -222,7 +222,7 @@ class InitializeAccountingUseCase {
                 continue;
             }
             // Create a copy for this company
-            const companyVoucherType = new VoucherTypeDefinition_1.VoucherTypeDefinition(systemTemplate.id, companyId, systemTemplate.name, systemTemplate.code, systemTemplate.module, systemTemplate.headerFields, systemTemplate.tableColumns, systemTemplate.layout, systemTemplate.schemaVersion, systemTemplate.requiredPostingRoles, systemTemplate.workflow, systemTemplate.uiModeOverrides, systemTemplate.isMultiLine, systemTemplate.rules, systemTemplate.actions, systemTemplate.defaultCurrency);
+            const companyVoucherType = new VoucherTypeDefinition_1.VoucherTypeDefinition(systemTemplate.id, companyId, systemTemplate.name, systemTemplate.code, systemTemplate.module, systemTemplate.headerFields, systemTemplate.tableColumns, systemTemplate.layout, systemTemplate.schemaVersion, systemTemplate.requiredPostingRoles, systemTemplate.workflow, systemTemplate.uiModeOverrides, systemTemplate.isMultiLine, systemTemplate.rules, systemTemplate.actions, systemTemplate.defaultCurrency, systemTemplate.voucherType || systemTemplate.code, systemTemplate.persona || undefined);
             await this.voucherTypeRepo.createVoucherType(companyVoucherType);
             copiedTypes.push({ id: systemTemplate.id, data: companyVoucherType });
         }
@@ -255,9 +255,16 @@ class InitializeAccountingUseCase {
             }));
             const tableColumns = (type.data.tableColumns || []).map((c) => ({
                 id: c.fieldId || c.id || '',
+                fieldId: c.fieldId || c.id || '',
                 label: c.labelOverride || c.label || '',
                 type: c.type || 'text',
-                required: c.required || false,
+                readOnly: c.readOnly,
+                calculated: c.calculated,
+                autoManaged: c.autoManaged,
+                options: c.options,
+                width: c.width,
+                required: c.required || c.mandatory || false,
+                mandatory: c.mandatory || c.required || false,
                 order: c.order || 0,
             }));
             const form = {
@@ -280,6 +287,10 @@ class InitializeAccountingUseCase {
                 isMultiLine: (_b = type.data.isMultiLine) !== null && _b !== void 0 ? _b : true,
                 tableStyle: 'web',
                 defaultCurrency: type.data.defaultCurrency || '',
+                formType: type.data.code || type.id,
+                voucherType: type.data.voucherType || type.data.code || baseType,
+                persona: type.data.persona || undefined,
+                baseType: baseType || type.id,
                 layout: type.data.layout || {
                     theme: 'default',
                     showTotals: true

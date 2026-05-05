@@ -1,4 +1,4 @@
-﻿import { Firestore } from 'firebase-admin/firestore';
+import { Firestore } from 'firebase-admin/firestore';
 import { SalesSettings } from '../../../../domain/sales/entities/SalesSettings';
 import { ISalesSettingsRepository } from '../../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { SalesSettingsMapper } from '../../mappers/SalesMappers';
@@ -13,10 +13,15 @@ export class FirestoreSalesSettingsRepository implements ISalesSettingsRepositor
     return SalesSettingsMapper.toDomain(doc.data());
   }
 
-  async saveSettings(settings: SalesSettings): Promise<void> {
-    await getSalesSettingsRef(this.db, settings.companyId).set(
-      SalesSettingsMapper.toPersistence(settings),
-      { merge: true }
-    );
+  async saveSettings(settings: SalesSettings, transaction?: unknown): Promise<void> {
+    const ref = getSalesSettingsRef(this.db, settings.companyId);
+    const data = SalesSettingsMapper.toPersistence(settings);
+    
+    if (transaction) {
+      (transaction as any).set(ref, data, { merge: true });
+      return;
+    }
+    
+    await ref.set(data, { merge: true });
   }
 }

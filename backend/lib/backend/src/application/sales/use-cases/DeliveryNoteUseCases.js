@@ -5,6 +5,8 @@ const crypto_1 = require("crypto");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const DeliveryNote_1 = require("../../../domain/sales/entities/DeliveryNote");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
+const StockMovement_1 = require("../../../domain/inventory/entities/StockMovement");
 const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const SalesOrderUseCases_1 = require("./SalesOrderUseCases");
 const SalesPostingHelpers_1 = require("./SalesPostingHelpers");
@@ -136,7 +138,7 @@ class CreateDeliveryNoteUseCase {
 }
 exports.CreateDeliveryNoteUseCase = CreateDeliveryNoteUseCase;
 class PostDeliveryNoteUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, deliveryNoteRepo, salesOrderRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, accountRepo, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.deliveryNoteRepo = deliveryNoteRepo;
@@ -149,15 +151,20 @@ class PostDeliveryNoteUseCase {
         this.inventoryService = inventoryService;
         this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
+        this.accountRepo = accountRepo;
         this.transactionManager = transactionManager;
     }
     async execute(companyId, id, createAccountingEffect = true) {
-        var _a;
+        // ===================================================================
+        // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
+        // We pre-fetch ALL data here. The postingLogic callback only writes.
+        // ===================================================================
+        var _a, _b, _c, _d;
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
-        const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
-        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
         const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const dn = await this.deliveryNoteRepo.getById(companyId, id);
         if (!dn)
@@ -178,102 +185,215 @@ class PostDeliveryNoteUseCase {
             }
         }
         const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || ((_a = dn.lines[0]) === null || _a === void 0 ? void 0 : _a.moveCurrency) || 'USD';
+        // PHASE 1A: PRE-FETCH ALL MASTER DATA (bare reads before transaction)
+        const distinctItemIds = [...new Set(dn.lines.map(l => l.itemId))];
+        const [itemsMap, categoriesMap] = await Promise.all([
+            Promise.all(distinctItemIds.map(id => this.itemRepo.getItem(id))).then(res => new Map(res.filter((i) => !!i && i.companyId === companyId).map(i => [i.id, i]))),
+            this.itemCategoryRepo.getCompanyCategories(companyId).then(res => new Map(res.map(c => [c.id, c]))),
+        ]);
+        // Validate all items and track inventory requirement
+        for (const line of dn.lines) {
+            const item = itemsMap.get(line.itemId);
+            if (!item || item.companyId !== companyId)
+                throw new Error(`Item not found: ${line.itemId}`);
+            if (!item.trackInventory)
+                throw new Error(`Delivery note line item must track inventory: ${item.code}`);
+        }
+        // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
+        const stockLevelMap = new Map();
+        for (const line of dn.lines) {
+            const key = `${line.itemId}|${dn.warehouseId}`;
+            if (!stockLevelMap.has(key)) {
+                const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, dn.warehouseId);
+                stockLevelMap.set(key, existing !== null && existing !== void 0 ? existing : StockLevel_1.StockLevel.createNew(companyId, line.itemId, dn.warehouseId));
+            }
+        }
+        // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
+        const uomConversionMap = new Map();
+        for (const itemId of distinctItemIds) {
+            const item = itemsMap.get(itemId);
+            if (item && !uomConversionMap.has(item.id)) {
+                const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+                uomConversionMap.set(item.id, convs);
+            }
+        }
+        // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION (pure computation)
+        const inventoryMovements = new Map();
         const cogsBucket = new Map();
-        await this.transactionManager.runTransaction(async (transaction) => {
-            for (const line of dn.lines) {
-                const item = await this.itemRepo.getItem(line.itemId);
-                if (!item || item.companyId !== companyId) {
-                    throw new Error(`Item not found: ${line.itemId}`);
-                }
-                if (!item.trackInventory) {
-                    throw new Error(`Delivery note line item must track inventory: ${item.code}`);
-                }
-                const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
-                if (so && !soLine) {
-                    throw new Error(`SO line not found for DN line ${line.lineId}`);
-                }
-                if (soLine) {
-                    const openQty = soLine.orderedQty - soLine.deliveredQty;
-                    if (!settings.allowOverDelivery) {
-                        if (line.deliveredQty > openQty + 0.000001) {
-                            throw new Error(`Delivered qty exceeds open qty for item ${line.itemName || soLine.itemName}`);
-                        }
-                    }
-                    else {
-                        const maxQty = openQty * (1 + settings.overDeliveryTolerancePct / 100);
-                        if (line.deliveredQty > maxQty + 0.000001) {
-                            throw new Error(`Delivered qty exceeds tolerance for item ${line.itemName || soLine.itemName}`);
-                        }
+        for (const line of dn.lines) {
+            const item = itemsMap.get(line.itemId);
+            const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
+            if (so && !soLine) {
+                throw new Error(`SO line not found for DN line ${line.lineId}`);
+            }
+            if (soLine) {
+                const openQty = soLine.orderedQty - soLine.deliveredQty;
+                if (!settings.allowOverDelivery) {
+                    if (line.deliveredQty > openQty + 0.000001) {
+                        throw new Error(`Delivered qty exceeds open qty for item ${line.itemName || soLine.itemName}`);
                     }
                 }
-                const conversionResult = await this.convertToBaseUom(companyId, line.deliveredQty, line.uomId, line.uom, item);
-                const qtyInBaseUom = conversionResult.qtyInBaseUom;
-                const movement = await this.inventoryService.processOUT({
-                    companyId,
-                    itemId: line.itemId,
-                    warehouseId: dn.warehouseId,
-                    qty: qtyInBaseUom,
-                    date: dn.deliveryDate,
-                    movementType: 'SALES_DELIVERY',
-                    refs: {
-                        type: 'DELIVERY_NOTE',
-                        docId: dn.id,
-                        lineId: line.lineId,
-                    },
-                    currentUser: dn.createdBy,
-                    metadata: {
-                        uomConversion: {
-                            conversionId: conversionResult.trace.conversionId,
-                            mode: conversionResult.trace.mode,
-                            appliedFactor: conversionResult.trace.factor,
-                            sourceQty: line.deliveredQty,
-                            sourceUomId: line.uomId,
-                            sourceUom: line.uom,
-                            baseUomId: item.baseUomId,
-                            baseUom: item.baseUom,
-                        },
-                    },
-                    transaction,
-                });
-                line.stockMovementId = movement.id;
-                line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(movement.unitCostBase || 0);
-                line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase);
-                this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
-                line.moveCurrency = movement.movementCurrency;
-                line.fxRateMovToBase = movement.fxRateMovToBase;
-                line.fxRateCCYToBase = movement.fxRateCCYToBase;
-                const accounts = await this.resolveCOGSAccounts(companyId, item.id, settings.defaultCOGSAccountId, settings.defaultInventoryAccountId);
-                if (accounts.cogsAccountId && accounts.inventoryAccountId && line.lineCostBase > 0) {
-                    const key = `${accounts.cogsAccountId}|${accounts.inventoryAccountId}`;
-                    const existing = cogsBucket.get(key);
-                    if (existing) {
-                        existing.amountBase = (0, SalesPostingHelpers_1.roundMoney)(existing.amountBase + line.lineCostBase);
+                else {
+                    const maxQty = openQty * (1 + settings.overDeliveryTolerancePct / 100);
+                    if (line.deliveredQty > maxQty + 0.000001) {
+                        throw new Error(`Delivered qty exceeds tolerance for item ${line.itemName || soLine.itemName}`);
                     }
-                    else {
-                        cogsBucket.set(key, {
-                            cogsAccountId: accounts.cogsAccountId,
-                            inventoryAccountId: accounts.inventoryAccountId,
-                            amountBase: (0, SalesPostingHelpers_1.roundMoney)(line.lineCostBase),
-                        });
-                    }
-                }
-                if (soLine) {
-                    soLine.deliveredQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.deliveredQty + line.deliveredQty);
                 }
             }
+            const convs = uomConversionMap.get(item.id) || [];
+            const conversionResult = (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+                qty: line.deliveredQty,
+                item,
+                conversions: convs,
+                fromUomId: line.uomId,
+                fromUom: line.uom,
+                round: SalesPostingHelpers_1.roundMoney,
+                itemCode: item.code,
+            });
+            const qtyInBaseUom = conversionResult.qtyInBaseUom;
+            const stockLevelKey = `${item.id}|${dn.warehouseId}`;
+            const level = stockLevelMap.get(stockLevelKey);
+            if (!level)
+                throw new Error(`Stock level not pre-fetched for item ${item.code}`);
+            const qtyBefore = level.qtyOnHand;
+            const oldMaxBusinessDate = level.maxBusinessDate;
+            let issueCostBase = 0;
+            let issueCostCCY = 0;
+            let costBasis = 'MISSING';
+            if (qtyBefore > 0) {
+                issueCostBase = level.avgCostBase;
+                issueCostCCY = level.avgCostCCY;
+                costBasis = 'AVG';
+            }
+            else if (level.lastCostBase > 0) {
+                issueCostBase = level.lastCostBase;
+                issueCostCCY = level.lastCostCCY;
+                costBasis = 'LAST_KNOWN';
+            }
+            const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
+            const unsettledQty = qtyInBaseUom - settledQty;
+            const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
+            const movement = new StockMovement_1.StockMovement({
+                id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                companyId,
+                date: dn.deliveryDate,
+                postingSeq: level.postingSeq + 1,
+                createdAt: new Date(),
+                createdBy: dn.createdBy,
+                postedAt: new Date(),
+                itemId: item.id,
+                warehouseId: dn.warehouseId,
+                direction: 'OUT',
+                movementType: 'SALES_DELIVERY',
+                qty: qtyInBaseUom,
+                uom: item.baseUom,
+                referenceType: 'DELIVERY_NOTE',
+                referenceId: dn.id,
+                referenceLineId: line.lineId,
+                reversesMovementId: undefined,
+                transferPairId: undefined,
+                unitCostBase: issueCostBase,
+                totalCostBase: (0, SalesPostingHelpers_1.roundMoney)(issueCostBase * qtyInBaseUom),
+                unitCostCCY: issueCostCCY,
+                totalCostCCY: (0, SalesPostingHelpers_1.roundMoney)(issueCostCCY * qtyInBaseUom),
+                movementCurrency: item.costCurrency,
+                fxRateMovToBase: effectiveFxCCYToBase,
+                fxRateCCYToBase: effectiveFxCCYToBase,
+                fxRateKind: 'EFFECTIVE',
+                avgCostBaseAfter: level.avgCostBase,
+                avgCostCCYAfter: level.avgCostCCY,
+                qtyBefore,
+                qtyAfter: qtyBefore - qtyInBaseUom,
+                settledQty,
+                unsettledQty,
+                unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
+                negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
+                costSettled: unsettledQty === 0,
+                isBackdated: dn.deliveryDate < oldMaxBusinessDate,
+                costSource: 'PURCHASE',
+                metadata: {
+                    uomConversion: {
+                        conversionId: conversionResult.trace.conversionId,
+                        mode: conversionResult.trace.mode,
+                        appliedFactor: conversionResult.trace.factor,
+                        sourceQty: line.deliveredQty,
+                        sourceUomId: line.uomId,
+                        sourceUom: line.uom,
+                        baseUomId: item.baseUomId,
+                        baseUom: item.baseUom,
+                    },
+                },
+            });
+            level.qtyOnHand -= qtyInBaseUom;
+            level.postingSeq += 1;
+            level.version += 1;
+            level.totalMovements += 1;
+            level.maxBusinessDate = dn.deliveryDate > oldMaxBusinessDate ? dn.deliveryDate : oldMaxBusinessDate;
+            level.updatedAt = new Date();
+            level.lastMovementId = movement.id;
+            line.stockMovementId = movement.id;
+            line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(movement.unitCostBase || 0);
+            line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase);
+            this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
+            line.moveCurrency = movement.movementCurrency;
+            line.fxRateMovToBase = movement.fxRateMovToBase;
+            line.fxRateCCYToBase = movement.fxRateCCYToBase;
+            inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
+            // PHASE 1E: PRE-RESOLVE COGS ACCOUNTS (bare reads before transaction)
+            const cogsAccountId = item.cogsAccountId
+                || (item.categoryId ? (_b = categoriesMap.get(item.categoryId)) === null || _b === void 0 ? void 0 : _b.defaultCogsAccountId : null)
+                || settings.defaultCOGSAccountId;
+            const inventoryAccountId = item.inventoryAssetAccountId
+                || (item.categoryId ? (_c = categoriesMap.get(item.categoryId)) === null || _c === void 0 ? void 0 : _c.defaultInventoryAssetAccountId : null)
+                || settings.defaultInventoryAccountId;
+            if (!cogsAccountId)
+                throw new Error(`No COGS account configured for item ${item.code}`);
+            if (!inventoryAccountId)
+                throw new Error(`No inventory account configured for item ${item.code}`);
+            // Resolve account IDs through account repo (cache for duplicates)
+            const resolvedCogsId = await this.resolveAccountId(companyId, cogsAccountId);
+            const resolvedInventoryId = await this.resolveAccountId(companyId, inventoryAccountId);
+            if (resolvedCogsId && resolvedInventoryId && line.lineCostBase > 0) {
+                const key = `${resolvedCogsId}|${resolvedInventoryId}`;
+                const existing = cogsBucket.get(key);
+                if (existing) {
+                    existing.amountBase = (0, SalesPostingHelpers_1.roundMoney)(existing.amountBase + line.lineCostBase);
+                }
+                else {
+                    cogsBucket.set(key, {
+                        cogsAccountId: resolvedCogsId,
+                        inventoryAccountId: resolvedInventoryId,
+                        amountBase: (0, SalesPostingHelpers_1.roundMoney)(line.lineCostBase),
+                    });
+                }
+            }
+            if (soLine) {
+                soLine.deliveredQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.deliveredQty + line.deliveredQty);
+            }
+        }
+        // Pre-resolve base currency for voucher
+        const resolvedBaseCurrency = (baseCurrency || ((_d = dn.lines[0]) === null || _d === void 0 ? void 0 : _d.moveCurrency) || 'USD').toUpperCase();
+        // PHASE 2: TRANSACTION CALLBACK — WRITES ONLY
+        await this.transactionManager.runTransaction(async (transaction) => {
+            // Write inventory movements and stock levels
+            for (const [, { movement, updatedLevel }] of inventoryMovements) {
+                await this.inventoryService.writeStockMovement(movement, transaction);
+                await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+            }
+            // Create COGS voucher if needed
             if (shouldPostAccounting && DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostDeliveryNoteAccounting(accountingMode) && cogsBucket.size > 0) {
                 const cogsVoucherLines = [];
-                for (const line of Array.from(cogsBucket.values())) {
-                    const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
+                for (const entry of Array.from(cogsBucket.values())) {
+                    const amount = (0, SalesPostingHelpers_1.roundMoney)(entry.amountBase);
                     cogsVoucherLines.push({
-                        accountId: line.cogsAccountId,
+                        accountId: entry.cogsAccountId,
                         side: 'Debit',
                         amount,
                         baseAmount: amount,
                         docAmount: amount,
                     });
                     cogsVoucherLines.push({
-                        accountId: line.inventoryAccountId,
+                        accountId: entry.inventoryAccountId,
                         side: 'Credit',
                         amount,
                         baseAmount: amount,
@@ -286,7 +406,7 @@ class PostDeliveryNoteUseCase {
                     voucherNo: `DN-${dn.dnNumber}`,
                     date: dn.deliveryDate,
                     description: `Delivery Note ${dn.dnNumber} COGS`,
-                    currency: baseCurrency,
+                    currency: resolvedBaseCurrency,
                     exchangeRate: 1,
                     lines: cogsVoucherLines,
                     metadata: {
@@ -299,6 +419,8 @@ class PostDeliveryNoteUseCase {
                     createdBy: dn.createdBy,
                     postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
                     reference: dn.dnNumber,
+                    baseCurrencyOverride: resolvedBaseCurrency,
+                    skipAccountValidation: true,
                 }, transaction);
                 dn.cogsVoucherId = voucher.id;
             }
@@ -320,42 +442,13 @@ class PostDeliveryNoteUseCase {
             throw new Error(`Delivery note not found after posting: ${id}`);
         return posted;
     }
-    async resolveCOGSAccounts(companyId, itemId, defaultCOGSAccountId, defaultInventoryAccountId) {
-        const item = await this.itemRepo.getItem(itemId);
-        if (!item)
-            throw new Error(`Item not found while resolving COGS accounts: ${itemId}`);
-        let category = null;
-        if (item.categoryId) {
-            category = await this.itemCategoryRepo.getCategory(item.categoryId);
-            if ((category === null || category === void 0 ? void 0 : category.companyId) !== companyId) {
-                category = null;
-            }
-        }
-        const cogsAccountId = item.cogsAccountId
-            || (category === null || category === void 0 ? void 0 : category.defaultCogsAccountId)
-            || defaultCOGSAccountId;
-        const inventoryAccountId = item.inventoryAssetAccountId
-            || (category === null || category === void 0 ? void 0 : category.defaultInventoryAssetAccountId)
-            || defaultInventoryAccountId;
-        if (!cogsAccountId) {
-            throw new Error(`No COGS account configured for item ${item.code}`);
-        }
-        if (!inventoryAccountId) {
-            throw new Error(`No inventory account configured for item ${item.code}`);
-        }
-        return { cogsAccountId, inventoryAccountId };
-    }
-    async convertToBaseUom(companyId, qty, uomId, uom, item) {
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
-        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
-            qty,
-            item,
-            conversions,
-            fromUomId: uomId,
-            fromUom: uom,
-            round: SalesPostingHelpers_1.roundMoney,
-            itemCode: item.code,
-        });
+    async resolveAccountId(companyId, idOrCode) {
+        if (!idOrCode)
+            return '';
+        if (!this.accountRepo)
+            return idOrCode;
+        const acc = (await this.accountRepo.getById(companyId, idOrCode)) || (await this.accountRepo.getByUserCode(companyId, idOrCode));
+        return acc ? acc.id : idOrCode;
     }
     async isAccountingEnabled(companyId) {
         const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');

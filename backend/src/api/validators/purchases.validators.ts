@@ -17,6 +17,7 @@ const GRN_STATUSES: GRNStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PI_STATUSES: PIStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PR_STATUSES: PRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const VALID_DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 
 const ensureRequiredString = (value: any, fieldName: string) => {
   if (!value || typeof value !== 'string' || !value.trim()) {
@@ -64,6 +65,16 @@ const ensureOptionalNumber = (value: any, fieldName: string) => {
 const ensureOptionalString = (value: any, fieldName: string) => {
   if (value === undefined) return;
   ensureRequiredString(value, fieldName);
+};
+
+const normalizeDocumentSource = (value: any): string =>
+  typeof value === 'string' ? value.trim().toLowerCase() : '';
+
+const validateDocumentSource = (value: any) => {
+  ensureOptionalString(value, 'source');
+  if (value !== undefined && !VALID_DOCUMENT_SOURCES.includes(normalizeDocumentSource(value))) {
+    throw ApiError.badRequest(`source must be one of: ${VALID_DOCUMENT_SOURCES.join(', ')}`);
+  }
 };
 
 const ensureOptionalUuid = (value: any, fieldName: string) => {
@@ -309,6 +320,17 @@ export const validateListGoodsReceiptsQuery = (query: any) => {
 };
 
 export const validateCreatePurchaseInvoiceInput = (body: any) => {
+  validateDocumentSource(body.source);
+  const isNativeSource = normalizeDocumentSource(body.source) === 'native';
+  if (!isNativeSource) {
+    ensureRequiredString(body.formType || body.voucherTypeId, 'formType');
+    ensureRequiredString(body.voucherType, 'voucherType');
+    ensureRequiredString(body.persona, 'persona');
+  }
+  const validPersonas = ['direct', 'linked', 'service'];
+  if (body.persona !== undefined && !validPersonas.includes(body.persona)) {
+    throw ApiError.badRequest(`persona must be one of: ${validPersonas.join(', ')}`);
+  }
   if (body.purchaseOrderId !== undefined) ensureOptionalString(body.purchaseOrderId, 'purchaseOrderId');
   if (!body.purchaseOrderId) ensureRequiredString(body.vendorId, 'vendorId');
   if (body.vendorId !== undefined) ensureOptionalString(body.vendorId, 'vendorId');
@@ -325,6 +347,10 @@ export const validateCreatePurchaseInvoiceInput = (body: any) => {
     }
     body.lines.forEach((line: any, index: number) => validatePILine(line, index));
   }
+
+  if (body.settlementInput !== undefined) {
+    validateSettlementInput(body.settlementInput);
+  }
 };
 
 export const validateUpdatePurchaseInvoiceInput = (body: any) => {
@@ -340,6 +366,41 @@ export const validateUpdatePurchaseInvoiceInput = (body: any) => {
       throw ApiError.badRequest('lines must be a non-empty array when provided');
     }
     body.lines.forEach((line: any, index: number) => validatePILine(line, index));
+  }
+
+  if (body.settlementInput !== undefined) {
+    validateSettlementInput(body.settlementInput);
+  }
+};
+
+const VALID_SETTLEMENT_MODES = ['DEFERRED', 'CASH_FULL', 'MULTI'];
+const VALID_PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
+
+const validateSettlementInput = (settlement: any) => {
+  if (!settlement.settlementMode) {
+    throw ApiError.badRequest('settlementInput.settlementMode is required');
+  }
+  if (!VALID_SETTLEMENT_MODES.includes(settlement.settlementMode)) {
+    throw ApiError.badRequest(`settlementMode must be one of: ${VALID_SETTLEMENT_MODES.join(', ')}`);
+  }
+  if (settlement.receivablePayableAccountId !== undefined) {
+    ensureOptionalString(settlement.receivablePayableAccountId, 'receivablePayableAccountId');
+  }
+  if (settlement.settlements !== undefined) {
+    if (!Array.isArray(settlement.settlements)) {
+      throw ApiError.badRequest('settlementInput.settlements must be an array');
+    }
+    settlement.settlements.forEach((s: any, index: number) => {
+      if (!s.settlementAccountId) {
+        throw ApiError.badRequest(`settlements[${index}].settlementAccountId is required`);
+      }
+      if (typeof s.amountBase !== 'number' || s.amountBase <= 0) {
+        throw ApiError.badRequest(`settlements[${index}].amountBase must be a positive number`);
+      }
+      if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
+        throw ApiError.badRequest(`settlements[${index}].paymentMethod must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+      }
+    });
   }
 };
 
@@ -419,4 +480,8 @@ export const validateListPurchaseReturnsQuery = (query: any) => {
 
 export const validateUpdateInvoicePaymentStatusInput = (body: any) => {
   ensureNumber(body.paymentAmountBase, 'paymentAmountBase');
+};
+
+export const validateRecordPurchaseInvoicePaymentInput = (body: any) => {
+  ensurePositiveNumber(body.paymentAmountBase, 'paymentAmountBase');
 };

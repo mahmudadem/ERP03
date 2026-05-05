@@ -9,6 +9,7 @@ import { VoucherFormController } from '../controllers/accounting/VoucherFormCont
 import { ReportingController } from '../controllers/accounting/ReportingController';
 import { AccountingReportsController } from '../controllers/accounting/AccountingReportsController';
 import { AccountingDesignerController } from '../controllers/accounting/AccountingDesignerController';
+import { DesignerController } from '../controllers/designer/DesignerController';
 import { SettingsController } from '../controllers/accounting/SettingsController';
 import { CurrencyCoreController } from '../controllers/core/CurrencyCoreController'; // currency moved to core
 import { FiscalYearController } from '../controllers/accounting/FiscalYearController';
@@ -110,6 +111,7 @@ router.get('/designer/voucher-types/:code', permissionGuard('accounting.designer
 router.post('/designer/voucher-types', permissionGuard('accounting.designer.create'), AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', permissionGuard('accounting.designer.modify'), AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', permissionGuard('accounting.designer.modify'), AccountingDesignerController.saveVoucherTypeLayout);
+router.post('/designer/adopt-template', permissionGuard('accounting.designer.create'), DesignerController.adoptTemplate);
 
 // Policy Configuration
 router.get('/policy-config', permissionGuard('accounting.vouchers.view'), SettingsController.getSettings);

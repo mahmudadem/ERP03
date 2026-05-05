@@ -13,8 +13,14 @@ class FirestoreSalesSettingsRepository {
             return null;
         return SalesMappers_1.SalesSettingsMapper.toDomain(doc.data());
     }
-    async saveSettings(settings) {
-        await (0, SalesFirestorePaths_1.getSalesSettingsRef)(this.db, settings.companyId).set(SalesMappers_1.SalesSettingsMapper.toPersistence(settings), { merge: true });
+    async saveSettings(settings, transaction) {
+        const ref = (0, SalesFirestorePaths_1.getSalesSettingsRef)(this.db, settings.companyId);
+        const data = SalesMappers_1.SalesSettingsMapper.toPersistence(settings);
+        if (transaction) {
+            transaction.set(ref, data, { merge: true });
+            return;
+        }
+        await ref.set(data, { merge: true });
     }
 }
 exports.FirestoreSalesSettingsRepository = FirestoreSalesSettingsRepository;

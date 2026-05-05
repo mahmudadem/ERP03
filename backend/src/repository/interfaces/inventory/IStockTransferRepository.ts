@@ -7,7 +7,7 @@ export interface StockTransferListOptions {
 
 export interface IStockTransferRepository {
   createTransfer(transfer: StockTransfer): Promise<void>;
-  updateTransfer(id: string, data: Partial<StockTransfer>): Promise<void>;
+  updateTransfer(id: string, data: Partial<StockTransfer>, transaction?: unknown): Promise<void>;
   getTransfer(id: string): Promise<StockTransfer | null>;
   getCompanyTransfers(companyId: string, opts?: StockTransferListOptions): Promise<StockTransfer[]>;
   getByStatus(companyId: string, status: StockTransferStatus, opts?: StockTransferListOptions): Promise<StockTransfer[]>;

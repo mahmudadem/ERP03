@@ -37,7 +37,10 @@ class DocumentPolicyResolver {
     static shouldSalesReturnReverseInventoryAccounting(mode, returnContext) {
         if (mode === 'PERPETUAL')
             return true;
-        return returnContext === 'AFTER_INVOICE';
+        return returnContext === 'AFTER_INVOICE' || returnContext === 'DIRECT';
+    }
+    static shouldRequirePositiveCostOnReturn(mode) {
+        return mode === 'PERPETUAL';
     }
     static shouldPurchaseReturnCreateVoucher(mode, returnContext) {
         if (returnContext === 'DIRECT' || returnContext === 'AFTER_INVOICE')
@@ -51,9 +54,7 @@ class DocumentPolicyResolver {
         return String(mode || '').toUpperCase() === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL';
     }
     static enforceWorkflowAccountingCompatibility(workflowMode, accountingMode) {
-        if (workflowMode === 'SIMPLE' && accountingMode === 'PERPETUAL') {
-            throw new Error('Simple workflow is only supported with invoice-driven accounting.');
-        }
+        // Rigid block removed. Transition rules are now handled at the use-case level.
     }
     static applySalesWorkflowDefaults(workflowMode, values) {
         if (workflowMode === 'SIMPLE') {
@@ -72,6 +73,67 @@ class DocumentPolicyResolver {
             };
         }
         return values;
+    }
+    static getBasePolicyForMode(workflowMode) {
+        if (workflowMode === 'SIMPLE') {
+            return { direct: true, linked: false, service: true };
+        }
+        return { direct: false, linked: true, service: true };
+    }
+    static getSalesInvoiceBasePolicy(settings) {
+        const workflowMode = DocumentPolicyResolver.resolveSalesWorkflowMode(settings);
+        const basePolicy = Object.assign({}, DocumentPolicyResolver.getBasePolicyForMode(workflowMode));
+        if (settings.allowDirectInvoicing) {
+            basePolicy.direct = true;
+        }
+        return basePolicy;
+    }
+    static isSalesInvoicePersonaAllowed(settings, persona) {
+        var _a;
+        const basePolicy = DocumentPolicyResolver.getSalesInvoiceBasePolicy(settings);
+        let allowed = (_a = basePolicy[persona]) !== null && _a !== void 0 ? _a : false;
+        for (const rule of settings.governanceRules || []) {
+            if (rule.persona !== persona)
+                continue;
+            if (rule.scope === 'company') {
+                allowed = rule.action === 'allow';
+            }
+        }
+        return allowed;
+    }
+    static isPersonaAllowed(workflowMode, governanceRules, persona) {
+        var _a;
+        const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
+        let allowed = (_a = basePolicy[persona]) !== null && _a !== void 0 ? _a : false;
+        for (const rule of governanceRules) {
+            if (rule.persona !== persona)
+                continue;
+            if (rule.scope === 'company') {
+                allowed = rule.action === 'allow';
+            }
+        }
+        return allowed;
+    }
+    static getPurchaseInvoiceBasePolicy(settings) {
+        const workflowMode = DocumentPolicyResolver.resolvePurchaseWorkflowMode(settings);
+        const basePolicy = Object.assign({}, DocumentPolicyResolver.getBasePolicyForMode(workflowMode));
+        if (settings.allowDirectInvoicing) {
+            basePolicy.direct = true;
+        }
+        return basePolicy;
+    }
+    static isPurchaseInvoicePersonaAllowed(settings, persona) {
+        var _a;
+        const basePolicy = DocumentPolicyResolver.getPurchaseInvoiceBasePolicy(settings);
+        let allowed = (_a = basePolicy[persona]) !== null && _a !== void 0 ? _a : false;
+        for (const rule of settings.governanceRules || []) {
+            if (rule.persona !== persona)
+                continue;
+            if (rule.scope === 'company') {
+                allowed = rule.action === 'allow';
+            }
+        }
+        return allowed;
     }
 }
 exports.DocumentPolicyResolver = DocumentPolicyResolver;

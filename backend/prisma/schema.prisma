@@ -86,6 +86,7 @@ model Company {
   purchaseSettings PurchaseSettings[]
   salesSettings   SalesSettings[]
   uomConversions  UomConversion[]
+  paymentHistories PaymentHistory[]
 
   @@index([ownerId])
   @@map("companies")
@@ -2093,4 +2094,34 @@ model ImpersonationSession {
   @@index([companyId])
   @@index([active])
   @@map("impersonation_sessions")
+}
+
+// ============================================
+// SHARED — PAYMENT HISTORY
+// ============================================
+
+model PaymentHistory {
+  id            String   @id @default(uuid())
+  companyId     String
+  sourceType    String   // 'SALES_INVOICE' | 'PURCHASE_INVOICE'
+  sourceId      String
+  sourceNumber  String
+  amountBase    Float
+  currency      String
+  exchangeRate  Float    @default(1.0)
+  amountDoc     Float
+  paymentDate   String   // ISO date string (YYYY-MM-DD)
+  paymentMethod String   // 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER'
+  reference     String?
+  notes         String?
+  voucherId     String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, sourceType, sourceId])
+  @@index([companyId, paymentDate])
+  @@map("payment_history")
 }

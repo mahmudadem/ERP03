@@ -143,8 +143,7 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
   const handleClone = (form: VoucherFormConfig) => {
     const timestamp = Date.now();
     
-    // Determine the base type (use existing baseType or fallback to code/id)
-    const originalBaseType = (form as any).baseType || form.code || form.id;
+    const originalFormType = (form as any).formType || (form as any).baseType || form.code || form.id;
     
     // Extract prefix from parent form (e.g., "JE-" -> "JE")
     const parentPrefix = form.prefix.replace('-', '').replace(/[^A-Z]/g, '');
@@ -162,8 +161,11 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
       prefix: `${parentPrefix}C-`,
       isSystemDefault: false,
       isLocked: false,
-      // IMPORTANT: Preserve the base type for backend compatibility
-      baseType: originalBaseType,
+      // CRITICAL: Preserve formType, voucherType and persona — they define accounting behavior
+      formType: originalFormType,
+      baseType: originalFormType,
+      voucherType: form.voucherType,
+      persona: form.persona,
     } as any;
     setEditingForm(cloned);
     setIsCloning(true); // Mark as cloning, not editing

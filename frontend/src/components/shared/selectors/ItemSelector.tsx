@@ -67,6 +67,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   const [uoms, setUoms] = useState<InventoryUomDTO[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSearchingServer, setIsSearchingServer] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createForm, setCreateForm] = useState<CreateItemFormState>(() =>
     buildCreateSeed('', 'USD')
@@ -145,10 +146,23 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   }, [trackInventoryOnly]);
 
   useEffect(() => {
-    if (showModal) {
-      performSearch(modalSearch);
-    }
-  }, [modalSearch, showModal]);
+    if (!showModal) return;
+
+    const lowerQuery = modalSearch.toLowerCase().trim();
+
+    // 1. Immediate local search from cache (up to 1000 items)
+    const localMatches = allItems.filter(item => {
+      const compound = `${item.code} - ${item.name}`.toLowerCase();
+      return (
+        compound.includes(lowerQuery) ||
+        (item.barcode && item.barcode.toLowerCase().includes(lowerQuery))
+      );
+    });
+
+    // Update results immediately for local matches
+    setSearchResults(localMatches.slice(0, 20));
+    setIsLoading(false);
+  }, [modalSearch, showModal, allItems]);
 
   useEffect(() => {
     if (!showCreateModal || createForm.costCurrency) return;
@@ -191,27 +205,9 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
 
   const performSearch = async (query: string) => {
     const lowerQuery = query.toLowerCase().trim();
-    if (!lowerQuery) {
-      setSearchResults([]);
-      return;
-    }
+    if (!lowerQuery) return;
 
-    // Try local filter first
-    const localMatches = allItems.filter(item => {
-      const compound = `${item.code} - ${item.name}`.toLowerCase();
-      return (
-        compound.includes(lowerQuery) ||
-        (item.barcode && item.barcode.toLowerCase().includes(lowerQuery))
-      );
-    });
-
-    if (localMatches.length > 0) {
-      setSearchResults(localMatches.slice(0, 20));
-      return;
-    }
-
-    // If no local matches, or to be sure, do server search
-    setIsLoading(true);
+    setIsSearchingServer(true);
     try {
       const results = await inventoryApi.searchItems(
         query,
@@ -219,79 +215,69 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
         undefined,
         trackInventoryOnly ? { trackInventory: true } : undefined
       );
-      setSearchResults(results);
+      
+      setSearchResults(prev => {
+        // Merge with local results, avoiding duplicates
+        const merged = [...prev];
+        results.forEach(item => {
+          if (!merged.find(m => m.id === item.id)) {
+            merged.push(item);
+          }
+        });
+        return merged.slice(0, 20);
+      });
     } catch (error) {
       console.error('Item search failed', error);
-      setSearchResults([]);
     } finally {
-      setIsLoading(false);
+      setIsSearchingServer(false);
     }
   };
 
   const handleInputBlur = async () => {
-    if (!inputValue.trim()) {
+    const trimmedQuery = inputValue.trim();
+    if (!trimmedQuery) {
       if (value) onChange(null);
       return;
     }
 
-    if (selectedItem && inputValue === `${selectedItem.code} - ${selectedItem.name}`) {
+    if (selectedItem && trimmedQuery === `${selectedItem.code} - ${selectedItem.name}`) {
       return;
     }
 
-    // 2. Try to find exact match or unique match in local cache first
-    const query = inputValue.toLowerCase().trim();
-    const localMatches = allItems.filter(item => 
-      item.code.toLowerCase() === query || 
-      item.name.toLowerCase() === query ||
-      `${item.code} - ${item.name}`.toLowerCase() === query ||
-      `${item.code} — ${item.name}`.toLowerCase() === query ||
-      (item.barcode && item.barcode.toLowerCase() === query)
-    );
+    // 1. Check local cache (exact matches first, then partial)
+    const lowerQuery = trimmedQuery.toLowerCase();
+    
+    // Find all potential matches in the 1000-item cache
+    const matches = allItems.filter(item => {
+      const code = item.code.toLowerCase();
+      const name = item.name.toLowerCase();
+      const barcode = item.barcode?.toLowerCase();
+      const compound = `${item.code} - ${item.name}`.toLowerCase();
+      
+      return (
+        code === lowerQuery ||
+        name === lowerQuery ||
+        compound === lowerQuery ||
+        barcode === lowerQuery ||
+        code.includes(lowerQuery) ||
+        name.includes(lowerQuery) ||
+        (barcode && barcode.includes(lowerQuery))
+      );
+    });
 
-    // If we have an exact match or exactly one partial match, select it
-    if (localMatches.length === 1) {
-      handleSelect(localMatches[0]);
+    // Strategy A: Only one match found in cache -> Select it immediately
+    if (matches.length === 1) {
+      handleSelect(matches[0]);
       if (externalBlur) externalBlur();
       return;
     }
 
-    if (localMatches.length > 1) {
-       // More than one result - open modal to resolve
-       setSearchResults(localMatches.slice(0, 20));
-       setHighlightedIndex(0);
-       setModalSearch(inputValue.trim());
-       setShowModal(true);
-       if (externalBlur) externalBlur();
-       return;
-    }
-
-    try {
-      const exactResults = await inventoryApi.searchItems(
-        inputValue,
-        1,
-        undefined,
-        trackInventoryOnly ? { trackInventory: true } : undefined
-      );
-
-      if (
-        exactResults.length > 0 &&
-        (exactResults[0].code.toLowerCase() === query ||
-          exactResults[0].name.toLowerCase() === query ||
-          `${exactResults[0].code} - ${exactResults[0].name}`.toLowerCase() === query ||
-          `${exactResults[0].code} — ${exactResults[0].name}`.toLowerCase() === query ||
-          (exactResults[0].barcode && exactResults[0].barcode.toLowerCase() === query))
-      ) {
-        handleSelect(exactResults[0]);
-      } else {
-        setHighlightedIndex(0);
-        setModalSearch(inputValue);
-        setShowModal(true);
-      }
-    } catch (error) {
-      setHighlightedIndex(0);
-      setModalSearch(inputValue);
-      setShowModal(true);
-    }
+    // Strategy B: More than one match or zero matches -> Show modal instantly
+    // We don't wait for the server here to keep it snappy.
+    setSearchResults(matches.slice(0, 20));
+    setHighlightedIndex(0);
+    setModalSearch(trimmedQuery);
+    setShowModal(true);
 
     if (externalBlur) externalBlur();
   };
@@ -467,17 +453,37 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
               </div>
 
               <div className="flex-1 overflow-y-auto p-1">
-                {searchResults.length === 0 && !isLoading && (
+                {searchResults.length === 0 && !isSearchingServer && (
                   <div className="flex flex-col items-center p-8 text-center">
                     <Box size={32} className="mb-2 text-slate-200" />
-                    <p className="text-sm text-slate-500">No items found matching "{modalSearch}"</p>
-                    <button
-                      type="button"
-                      onClick={handleOpenCreateModal}
-                      className="mt-4 flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline"
-                    >
-                      <Plus size={14} /> Create New Item
-                    </button>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">No items found in local cache</p>
+                    <p className="mt-1 text-xs text-slate-500">Matching "{modalSearch}"</p>
+                    
+                    <div className="mt-6 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => performSearch(modalSearch)}
+                        className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                      >
+                        <Search size={14} /> Search Entire Database
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={handleOpenCreateModal}
+                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        <Plus size={14} /> Create "{modalSearch}"
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isSearchingServer && (
+                  <div className="flex flex-col items-center p-12 text-center">
+                    <RefreshCw size={32} className="mb-3 animate-spin text-indigo-500" />
+                    <p className="text-sm font-bold text-slate-700">Searching server...</p>
+                    <p className="text-xs text-slate-400">Scanning full item registry</p>
                   </div>
                 )}
 

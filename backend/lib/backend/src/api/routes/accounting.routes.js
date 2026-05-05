@@ -13,6 +13,7 @@ const VoucherFormController_1 = require("../controllers/accounting/VoucherFormCo
 const ReportingController_1 = require("../controllers/accounting/ReportingController");
 const AccountingReportsController_1 = require("../controllers/accounting/AccountingReportsController");
 const AccountingDesignerController_1 = require("../controllers/accounting/AccountingDesignerController");
+const DesignerController_1 = require("../controllers/designer/DesignerController");
 const SettingsController_1 = require("../controllers/accounting/SettingsController");
 const CurrencyCoreController_1 = require("../controllers/core/CurrencyCoreController"); // currency moved to core
 const FiscalYearController_1 = require("../controllers/accounting/FiscalYearController");
@@ -104,6 +105,7 @@ router.get('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuar
 router.post('/designer/voucher-types', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), AccountingDesignerController_1.AccountingDesignerController.create);
 router.put('/designer/voucher-types/:code', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.update);
 router.put('/designer/voucher-types/:code/layout', (0, permissionGuard_1.permissionGuard)('accounting.designer.modify'), AccountingDesignerController_1.AccountingDesignerController.saveVoucherTypeLayout);
+router.post('/designer/adopt-template', (0, permissionGuard_1.permissionGuard)('accounting.designer.create'), DesignerController_1.DesignerController.adoptTemplate);
 // Policy Configuration
 router.get('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.vouchers.view'), SettingsController_1.SettingsController.getSettings);
 router.put('/policy-config', (0, permissionGuard_1.permissionGuard)('accounting.settings.write'), SettingsController_1.SettingsController.updateSettings);

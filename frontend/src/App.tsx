@@ -10,6 +10,7 @@ import { QueryProvider } from './providers/QueryProvider';
 import { useAuth } from './hooks/useAuth';
 import { setAuthTokenGetter, setCompanyIdGetter } from './api/client';
 import { useCompanyAccess } from './context/CompanyAccessContext';
+import { GlobalLoaderProvider } from './context/GlobalLoaderContext';
 
 const AxiosInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { getToken } = useAuth();
@@ -32,7 +33,8 @@ import { userAppearanceStyleTag } from './theme/userAppearance';
 const App: React.FC = () => {
   return (
     <QueryProvider>
-      <AuthProvider>
+      <GlobalLoaderProvider>
+        <AuthProvider>
         <UserPreferencesProvider>
           {userAppearanceStyleTag}
           <CompanyAccessProvider>
@@ -45,7 +47,8 @@ const App: React.FC = () => {
             </AxiosInitializer>
           </CompanyAccessProvider>
         </UserPreferencesProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </GlobalLoaderProvider>
     </QueryProvider>
   );
 };

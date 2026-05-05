@@ -128,21 +128,21 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   // Skip Step 1 (template selection) if editing existing voucher
   const [currentStep, setCurrentStep] = useState(initialConfig ? 2 : 1);
   
-  const getCoreFieldIds = (baseType?: string) => {
+  const getCoreFieldIds = (formType?: string) => {
     return AVAILABLE_FIELDS.filter(f => {
       const isCore = f.category === 'core' || f.mandatory;
       if (!isCore) return false;
-      if (f.supportedTypes && baseType && !f.supportedTypes.includes(baseType)) return false;
-      if (f.excludedTypes && baseType && f.excludedTypes.includes(baseType)) return false;
+      if (f.supportedTypes && formType && !f.supportedTypes.includes(formType)) return false;
+      if (f.excludedTypes && formType && f.excludedTypes.includes(formType)) return false;
       return true;
     }).map(f => f.id);
   };
 
-  const isFieldAllowed = (fieldId: string, baseType?: string) => {
+  const isFieldAllowed = (fieldId: string, formType?: string) => {
     const field = AVAILABLE_FIELDS.find(f => f.id === fieldId);
     if (!field) return true; // System fields or unknown fields allowed by default
-    if (field.supportedTypes && baseType && !field.supportedTypes.includes(baseType)) return false;
-    if (field.excludedTypes && baseType && field.excludedTypes.includes(baseType)) return false;
+    if (field.supportedTypes && formType && !field.supportedTypes.includes(formType)) return false;
+    if (field.excludedTypes && formType && field.excludedTypes.includes(formType)) return false;
     return true;
   };
 
@@ -154,17 +154,17 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
        const existingFields = new Set<string>();
        Object.values(initialConfig.uiModeOverrides).forEach(mode => {
          Object.values(mode.sections).forEach(s => s.fields.forEach(f => {
-           if (!f.fieldId.startsWith('action_') && isFieldAllowed(f.fieldId, initialConfig.baseType)) {
+           if (!f.fieldId.startsWith('action_') && isFieldAllowed(f.fieldId, (initialConfig as any)?.formType || initialConfig.baseType)) {
              existingFields.add(f.fieldId);
            }
          }));
        });
        // Combine with mandatory fields
-       const mandatory = getCoreFieldIds(initialConfig.baseType);
+       const mandatory = getCoreFieldIds((initialConfig as any)?.formType || initialConfig.baseType);
        return Array.from(new Set([...Array.from(existingFields), ...mandatory]));
     }
     
-    return getCoreFieldIds(initialConfig?.baseType);
+    return getCoreFieldIds((initialConfig as any)?.formType || initialConfig?.baseType);
   });
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
@@ -231,7 +231,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               if (section?.fields && Array.isArray(section.fields)) {
                 section.fields.forEach((f: any) => {
                   const id = f.fieldId || f.id || f;
-                  if (isFieldAllowed(id, initialConfig.baseType)) {
+                  if (isFieldAllowed(id, (initialConfig as any)?.formType || initialConfig.baseType)) {
                     fieldIds.add(id);
                   }
                 });
@@ -242,7 +242,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       }
       
       // Always include required/core fields
-      getCoreFieldIds(initialConfig.baseType).forEach(id => {
+      getCoreFieldIds((initialConfig as any)?.formType || initialConfig.baseType).forEach(id => {
         fieldIds.add(id);
       });
       
@@ -312,6 +312,9 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         ...AVAILABLE_FIELDS.filter(f => {
           if (f.supportedTypes && sourceConfig.baseType && !f.supportedTypes.includes(sourceConfig.baseType)) return false;
           if (f.excludedTypes && sourceConfig.baseType && f.excludedTypes.includes(sourceConfig.baseType)) return false;
+          const effectiveType = (sourceConfig as any).formType || sourceConfig.baseType;
+          if (!sourceConfig.baseType && f.supportedTypes && effectiveType && !f.supportedTypes.includes(effectiveType)) return false;
+          if (!sourceConfig.baseType && f.excludedTypes && effectiveType && f.excludedTypes.includes(effectiveType)) return false;
           return f.category === 'core' || f.mandatory || selectedFieldIds.includes(f.id);
         }).map(f => f.id),
         ...sourceConfig.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
@@ -392,7 +395,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       ...prev,
       ...template.config,
       id: template.config.id || prev.id,
-      baseType: (template.config as any).baseType || template.id, // Store strategy reference
+      formType: (template.config as any).formType || (template.config as any).baseType || template.id,
+      baseType: (template.config as any).formType || (template.config as any).baseType || template.id,
       isSystemDefault: false, // New forms from templates are NOT system defaults
       isLocked: false,        // New forms from templates are NOT locked
       startNumber: 1000,
@@ -404,17 +408,17 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
     
     // Sync selectedFieldIds from template if available
     const fieldIds = new Set<string>();
-    const baseType = (template.config as any).baseType || template.id;
+    const formType = (template.config as any).formType || (template.config as any).baseType || template.id;
     
     // Always include core fields for this type
-    getCoreFieldIds(baseType).forEach(id => fieldIds.add(id));
+    getCoreFieldIds(formType).forEach(id => fieldIds.add(id));
 
     if (template.config.uiModeOverrides) {
       Object.values(template.config.uiModeOverrides).forEach(mode => {
         Object.values(mode.sections).forEach(section => {
           section.fields.forEach(f => {
             if (!f.fieldId.startsWith('action_') && !SYSTEM_FIELDS.some(sf => sf.id === f.fieldId)) {
-              if (isFieldAllowed(f.fieldId, baseType)) {
+              if (isFieldAllowed(f.fieldId, formType)) {
                 fieldIds.add(f.fieldId);
               }
             }
@@ -1583,8 +1587,10 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         );
       case 4: // Fields (Reorganized)
         const relevantFields = AVAILABLE_FIELDS.filter(f => {
-          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
-          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          if (f.supportedTypes && (config as any).formType && !f.supportedTypes.includes((config as any).formType)) return false;
+          if (f.excludedTypes && (config as any).formType && f.excludedTypes.includes((config as any).formType)) return false;
+          if (!(config as any).formType && f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
+          if (!(config as any).formType && f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
           return true;
         });
 

@@ -4,7 +4,7 @@ import {
   LegacyInventoryAccountingMethod,
 } from '../../../domain/inventory/entities/InventorySettings';
 import { PurchaseSettings, WorkflowMode } from '../../../domain/purchases/entities/PurchaseSettings';
-import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { SalesSettings, GovernanceRule } from '../../../domain/sales/entities/SalesSettings';
 
 export type SupportedAccountingMode = InventoryAccountingMode;
 export type SupportedWorkflowMode = WorkflowMode;
@@ -64,10 +64,16 @@ export class DocumentPolicyResolver {
 
   static shouldSalesReturnReverseInventoryAccounting(
     mode: SupportedAccountingMode,
-    returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE'
+    returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT'
   ): boolean {
     if (mode === 'PERPETUAL') return true;
-    return returnContext === 'AFTER_INVOICE';
+    return returnContext === 'AFTER_INVOICE' || returnContext === 'DIRECT';
+  }
+
+  static shouldRequirePositiveCostOnReturn(
+    mode: SupportedAccountingMode
+  ): boolean {
+    return mode === 'PERPETUAL';
   }
 
   static shouldPurchaseReturnCreateVoucher(
@@ -93,9 +99,7 @@ export class DocumentPolicyResolver {
     workflowMode: SupportedWorkflowMode,
     accountingMode: SupportedAccountingMode
   ): void {
-    if (workflowMode === 'SIMPLE' && accountingMode === 'PERPETUAL') {
-      throw new Error('Simple workflow is only supported with invoice-driven accounting.');
-    }
+    // Rigid block removed. Transition rules are now handled at the use-case level.
   }
 
   static applySalesWorkflowDefaults(
@@ -124,5 +128,94 @@ export class DocumentPolicyResolver {
     }
 
     return values;
+  }
+
+  static getBasePolicyForMode(workflowMode: SupportedWorkflowMode): Record<'direct' | 'linked' | 'service', boolean> {
+    if (workflowMode === 'SIMPLE') {
+      return { direct: true, linked: false, service: true };
+    }
+    return { direct: false, linked: true, service: true };
+  }
+
+  static getSalesInvoiceBasePolicy(
+    settings: Pick<SalesSettings, 'workflowMode' | 'allowDirectInvoicing'>
+  ): Record<'direct' | 'linked' | 'service', boolean> {
+    const workflowMode = DocumentPolicyResolver.resolveSalesWorkflowMode(settings);
+    const basePolicy = {
+      ...DocumentPolicyResolver.getBasePolicyForMode(workflowMode),
+    };
+
+    if (settings.allowDirectInvoicing) {
+      basePolicy.direct = true;
+    }
+
+    return basePolicy;
+  }
+
+  static isSalesInvoicePersonaAllowed(
+    settings: Pick<SalesSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
+    persona: 'direct' | 'linked' | 'service'
+  ): boolean {
+    const basePolicy = DocumentPolicyResolver.getSalesInvoiceBasePolicy(settings);
+    let allowed = basePolicy[persona] ?? false;
+
+    for (const rule of settings.governanceRules || []) {
+      if (rule.persona !== persona) continue;
+      if (rule.scope === 'company') {
+        allowed = rule.action === 'allow';
+      }
+    }
+
+    return allowed;
+  }
+
+  static isPersonaAllowed(
+    workflowMode: SupportedWorkflowMode,
+    governanceRules: GovernanceRule[],
+    persona: 'direct' | 'linked' | 'service'
+  ): boolean {
+    const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
+    let allowed = basePolicy[persona] ?? false;
+    
+    for (const rule of governanceRules) {
+      if (rule.persona !== persona) continue;
+      if (rule.scope === 'company') {
+        allowed = rule.action === 'allow';
+      }
+    }
+
+    return allowed;
+  }
+
+  static getPurchaseInvoiceBasePolicy(
+    settings: Pick<PurchaseSettings, 'workflowMode' | 'allowDirectInvoicing'>
+  ): Record<'direct' | 'linked' | 'service', boolean> {
+    const workflowMode = DocumentPolicyResolver.resolvePurchaseWorkflowMode(settings);
+    const basePolicy = {
+      ...DocumentPolicyResolver.getBasePolicyForMode(workflowMode),
+    };
+
+    if (settings.allowDirectInvoicing) {
+      basePolicy.direct = true;
+    }
+
+    return basePolicy;
+  }
+
+  static isPurchaseInvoicePersonaAllowed(
+    settings: Pick<PurchaseSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
+    persona: 'direct' | 'linked' | 'service'
+  ): boolean {
+    const basePolicy = DocumentPolicyResolver.getPurchaseInvoiceBasePolicy(settings);
+    let allowed = basePolicy[persona] ?? false;
+
+    for (const rule of settings.governanceRules || []) {
+      if (rule.persona !== persona) continue;
+      if (rule.scope === 'company') {
+        allowed = rule.action === 'allow';
+      }
+    }
+
+    return allowed;
   }
 }

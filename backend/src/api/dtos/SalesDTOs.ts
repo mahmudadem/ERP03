@@ -4,6 +4,15 @@ import { SalesOrder, SalesOrderLine } from '../../domain/sales/entities/SalesOrd
 import { SalesReturn, SalesReturnLine } from '../../domain/sales/entities/SalesReturn';
 import { SalesSettings } from '../../domain/sales/entities/SalesSettings';
 
+export interface GovernanceRuleDTO {
+  id: string;
+  scope: 'company' | 'branch' | 'form';
+  action: 'allow' | 'block';
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
+}
+
 export interface SalesSettingsDTO {
   companyId: string;
   workflowMode: 'SIMPLE' | 'OPERATIONAL';
@@ -18,7 +27,8 @@ export interface SalesSettingsDTO {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
-  salesVoucherTypeId?: string;
+  governanceRules: GovernanceRuleDTO[];
+  defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix: string;
   soNumberNextSeq: number;
@@ -157,6 +167,12 @@ export interface SalesInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  /** @deprecated Use formType instead */
+  voucherTypeId?: string;
+  formType: string;
+  voucherType: string;
+  persona: string;
+  source?: string;
   salesOrderId?: string;
   customerId: string;
   customerName: string;
@@ -222,7 +238,7 @@ export interface SalesReturnDTO {
   salesOrderId?: string;
   customerId: string;
   customerName: string;
-  returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+  returnContext: 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
   returnDate: string;
   warehouseId: string;
   currency: string;
@@ -276,7 +292,8 @@ export class SalesDTOMapper {
       overDeliveryTolerancePct: settings.overDeliveryTolerancePct,
       overInvoiceTolerancePct: settings.overInvoiceTolerancePct,
       defaultPaymentTermsDays: settings.defaultPaymentTermsDays,
-      salesVoucherTypeId: settings.salesVoucherTypeId,
+      governanceRules: settings.governanceRules,
+      defaultSalesInvoicePersona: settings.defaultSalesInvoicePersona,
       defaultWarehouseId: settings.defaultWarehouseId,
       soNumberPrefix: settings.soNumberPrefix,
       soNumberNextSeq: settings.soNumberNextSeq,
@@ -427,6 +444,11 @@ export class SalesDTOMapper {
       companyId: si.companyId,
       invoiceNumber: si.invoiceNumber,
       customerInvoiceNumber: si.customerInvoiceNumber,
+      voucherTypeId: si.formType,
+      formType: si.formType,
+      voucherType: si.voucherType,
+      persona: si.persona,
+      source: si.source,
       salesOrderId: si.salesOrderId,
       customerId: si.customerId,
       customerName: si.customerName,

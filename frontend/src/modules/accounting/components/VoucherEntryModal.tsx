@@ -136,7 +136,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   const normalizedTypeKey = React.useMemo(() => {
     const rawType = (
-      (voucherType as any)?.baseType ||
+      (voucherType as any)?.formType || (voucherType as any)?.baseType ||
       voucherType?.code ||
       voucherType?.id ||
       headerData?.type ||
@@ -294,7 +294,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       ...((formData?.id || effectiveData?.id || initialData?.id)
         ? { id: formData?.id || effectiveData?.id || initialData?.id }
         : {}),
-      typeId: (voucherType as any).baseType || voucherType.id,
+      typeId: (voucherType as any).formType || (voucherType as any).baseType || voucherType.id,
       metadata: {
         ...(formData.metadata || {}),
         formId: voucherType.id,

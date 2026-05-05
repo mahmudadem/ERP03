@@ -12,7 +12,7 @@ echo.
 set PROJECT=d:\DEV2026\ERP03
 
 echo [1/4] Starting Firebase Emulators...
-start "ERP03-Emulators" cmd /k "cd /d %PROJECT% && npx firebase emulators:start --import=emulator-data"
+start "ERP03-Emulators" cmd /k "cd /d %PROJECT% && npx firebase emulators:start --import=emulator-data --export-on-exit=emulator-data"
 timeout /t 3 /nobreak >nul
 
 echo [2/4] Building Backend...

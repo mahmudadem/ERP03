@@ -93,19 +93,7 @@ export const moduleMenuMap: Record<
     label: 'Purchases',
     icon: 'ClipboardList',
     items: [
-      { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
-      { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
-      { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },
-      { label: 'Goods Receipts', path: '/purchases/goods-receipts', icon: 'Truck' },
-      { label: 'Purchase Invoices', path: '/purchases/invoices', icon: 'Receipt' },
-      { label: 'Purchase Returns', path: '/purchases/returns', icon: 'Undo2' },
-      { label: 'Settings', path: '/purchases/settings', icon: 'Settings' }
-    ]
-  },
-  purchases: {
-    label: 'Purchases',
-    icon: 'ClipboardList',
-    items: [
+      { label: 'Overview', path: '/purchases', icon: 'LayoutDashboard' },
       { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
       { label: 'Purchase Orders', path: '/purchases/orders', icon: 'ShoppingCart' },

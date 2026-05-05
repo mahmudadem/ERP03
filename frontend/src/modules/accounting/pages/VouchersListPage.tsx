@@ -98,7 +98,7 @@ const VouchersListPage: React.FC = () => {
       if (!found && typesLoading) return;
 
       const targetId = found?.id || typeFromUrl || '';
-      const backendType = found ? (found as any).baseType || found.code || found.id : typeFromUrl;
+      const backendType = found ? (found as any).formType || (found as any).baseType || found.code || found.id : typeFromUrl;
       
       if (selectedType !== targetId) {
         setSelectedType(targetId);
@@ -147,7 +147,7 @@ const VouchersListPage: React.FC = () => {
 
     const getJournalFallbackForm = () =>
       voucherTypes.find(t => {
-        const baseType = String((t as any)?.baseType || '').toLowerCase();
+        const baseType = String((t as any)?.formType || (t as any)?.baseType || '').toLowerCase();
         const code = String(t?.code || '').toLowerCase();
         const id = String(t?.id || '').toLowerCase();
         const name = String(t?.name || '').toLowerCase();

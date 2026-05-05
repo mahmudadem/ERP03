@@ -36,7 +36,7 @@ type ModuleInitStatus = 'loading' | 'not_installed' | 'not_initialized' | 'initi
 const MODULE_BUNDLE_MAP: Record<ERPModule, string> = {
   'ACCOUNTING': 'accounting',
   'SALES': 'sales',
-  'PURCHASE': 'purchases'
+  'PURCHASE': 'purchase'
 };
 
 const MODULE_CODE_MAP: Record<ERPModule, string> = {
@@ -68,7 +68,7 @@ export default function ToolsFormsDesignerPage() {
   const [activeModule, setActiveModule] = useState<ERPModule>(() => {
     if (moduleBundles.includes('accounting')) return 'ACCOUNTING';
     if (moduleBundles.includes('sales')) return 'SALES';
-    if (moduleBundles.includes('purchases')) return 'PURCHASE';
+    if (moduleBundles.includes('purchase')) return 'PURCHASE';
     return 'ACCOUNTING';
   });
 
@@ -110,8 +110,14 @@ export default function ToolsFormsDesignerPage() {
   const mergedDefinitions = useMemo(() => {
     const formTypeIds = new Set(forms.map(f => (f as any).typeId || f.id));
     const defTypeIds = new Set(definitions.map(d => d.id));
+    const catalogById = new Map(catalogTypes.map((c: any) => [c.id, c]));
 
-    const result = [...definitions];
+    const result = definitions.map((def: any) => {
+      const catalog = catalogById.get(def.id);
+      return catalog
+        ? { ...def, ...catalog, isSystemCatalog: true }
+        : { ...def };
+    });
 
     for (const catalog of catalogTypes) {
       if (!defTypeIds.has(catalog.id) && !formTypeIds.has(catalog.id)) {
@@ -150,6 +156,7 @@ export default function ToolsFormsDesignerPage() {
      tableColumns: def.tableColumns || [],
      layout: def.layout || { sections: [] },
      module: def.module,
+     isSystemCatalog: !!def.isSystemCatalog,
      isSystemDefault: def.isSystemCatalog !== true,
      adoptionStatus: def.adoptionStatus,
   }));

@@ -43,6 +43,8 @@ export const useVoucherTotals = (
       const eq = parseFloat(row.equivalent as string) || 0;
       const debit = parseFloat(row.debit as string) || 0;
       const credit = parseFloat(row.credit as string) || 0;
+      const side = String((row as any).side || '').toLowerCase();
+      const sideAmount = parseFloat(row.amount as string) || 0;
 
       if (debit > 0) {
         debitEqSum += eq || debit; 
@@ -50,6 +52,12 @@ export const useVoucherTotals = (
       } else if (credit > 0) {
         creditEqSum += eq || credit;
         creditAmountSum += credit;
+      } else if (sideAmount > 0 && side === 'debit') {
+        debitEqSum += eq || sideAmount;
+        debitAmountSum += sideAmount;
+      } else if (sideAmount > 0 && side === 'credit') {
+        creditEqSum += eq || sideAmount;
+        creditAmountSum += sideAmount;
       }
     });
 

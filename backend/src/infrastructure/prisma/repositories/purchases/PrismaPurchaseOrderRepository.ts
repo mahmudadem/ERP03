@@ -156,6 +156,17 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
     });
   }
 
+  async hasOpenOrders(companyId: string): Promise<boolean> {
+    const count = await this.prisma.purchaseOrder.count({
+      where: {
+        companyId,
+        status: { notIn: ['CLOSED', 'CANCELLED'] },
+      },
+      take: 1,
+    });
+    return count > 0;
+  }
+
   private toDomain(record: any): PurchaseOrder {
     const lines = (record.lines || []).map((line: any) => ({
       lineId: line.id,

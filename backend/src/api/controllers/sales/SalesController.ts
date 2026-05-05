@@ -9,12 +9,17 @@ import {
 } from '../../../application/sales/use-cases/DeliveryNoteUseCases';
 import {
   CreateSalesInvoiceUseCase,
+  CreateAndPostSalesInvoiceUseCase,
   GetSalesInvoiceUseCase,
   ListSalesInvoicesUseCase,
   PostSalesInvoiceUseCase,
   UpdateSalesInvoiceUseCase,
+  UpdateAndPostSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
-import { UpdateSalesInvoicePaymentStatusUseCase } from '../../../application/sales/use-cases/PaymentSyncUseCases';
+import {
+  RecordSalesInvoicePaymentUseCase,
+  UpdateSalesInvoicePaymentStatusUseCase,
+} from '../../../application/sales/use-cases/PaymentSyncUseCases';
 import {
   CancelSalesOrderUseCase,
   CloseSalesOrderUseCase,
@@ -54,6 +59,7 @@ import {
   validateListSalesOrdersQuery,
   validateListSalesReturnsQuery,
   validateUpdateSalesInvoiceInput,
+  validateRecordSalesInvoicePaymentInput,
   validateUpdateSalesInvoicePaymentStatusInput,
   validateUpdateSalesOrderInput,
   validateUpdateSalesSettingsInput,
@@ -155,6 +161,35 @@ export class SalesController {
     );
   }
 
+  private static buildPostSalesInvoiceUseCase(): PostSalesInvoiceUseCase {
+    const inventoryService = SalesController.buildSalesInventoryService();
+    const accountingPostingService = SalesController.buildAccountingPostingService(true);
+
+    return new PostSalesInvoiceUseCase(
+      diContainer.salesSettingsRepository,
+      diContainer.inventorySettingsRepository,
+      diContainer.salesInvoiceRepository,
+      diContainer.salesOrderRepository,
+      diContainer.deliveryNoteRepository,
+      diContainer.partyRepository,
+      diContainer.taxCodeRepository,
+      diContainer.itemRepository,
+      diContainer.itemCategoryRepository,
+      diContainer.warehouseRepository,
+      diContainer.uomConversionRepository,
+      diContainer.companyCurrencyRepository,
+      inventoryService,
+      diContainer.companyModuleRepository,
+      accountingPostingService,
+      diContainer.accountRepository,
+      diContainer.transactionManager,
+      diContainer.paymentHistoryRepository,
+      diContainer.voucherRepository,
+      diContainer.voucherSequenceRepository,
+      diContainer.ledgerRepository
+    );
+  }
+
   static async initializeSales(req: Request, res: Response, next: NextFunction) {
     try {
       validateInitializeSalesInput((req as any).body);
@@ -214,6 +249,8 @@ export class SalesController {
         diContainer.accountRepository,
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
+        diContainer.salesOrderRepository,
+        diContainer.deliveryNoteRepository,
         diContainer.inventorySettingsRepository
       );
 
@@ -463,6 +500,7 @@ export class SalesController {
         inventoryService,
         diContainer.companyModuleRepository,
         accountingPostingService,
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 
@@ -500,6 +538,81 @@ export class SalesController {
       });
 
       (res as any).status(201).json({
+        success: true,
+        data: SalesDTOMapper.toSalesInvoiceDTO(si),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createAndPostSI(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateCreateSalesInvoiceInput((req as any).body);
+      const companyId = SalesController.getCompanyId(req);
+      const userId = SalesController.getUserId(req);
+
+      const createUseCase = new CreateSalesInvoiceUseCase(
+        diContainer.salesSettingsRepository,
+        diContainer.salesInvoiceRepository,
+        diContainer.salesOrderRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository,
+        diContainer.itemCategoryRepository,
+        diContainer.taxCodeRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+
+      const useCase = new CreateAndPostSalesInvoiceUseCase(
+        createUseCase,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const si = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        createdBy: userId,
+      }, settlementInput);
+
+      (res as any).status(201).json({
+        success: true,
+        data: SalesDTOMapper.toSalesInvoiceDTO(si),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateAndPostSI(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateSalesInvoiceInput((req as any).body);
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const userId = SalesController.getUserId(req);
+
+      const updateUseCase = new UpdateSalesInvoiceUseCase(
+        diContainer.salesInvoiceRepository,
+        diContainer.partyRepository
+      );
+
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+
+      const useCase = new UpdateAndPostSalesInvoiceUseCase(
+        updateUseCase,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const si = await useCase.execute({
+        ...((req as any).body || {}),
+        id,
+        companyId,
+      }, settlementInput);
+
+      (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),
       });
@@ -597,10 +710,15 @@ export class SalesController {
         diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.paymentHistoryRepository,
+        diContainer.voucherRepository,
+        diContainer.voucherSequenceRepository,
+        diContainer.ledgerRepository
       );
 
-      const si = await useCase.execute(companyId, id, true);
+      const settlementInput = (req as any).body?.settlementInput;
+      const si = await useCase.execute(companyId, id, true, undefined, settlementInput);
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(si),
@@ -699,6 +817,7 @@ export class SalesController {
         inventoryService,
         diContainer.companyModuleRepository,
         accountingPostingService,
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 
@@ -725,6 +844,71 @@ export class SalesController {
       (res as any).json({
         success: true,
         data: SalesDTOMapper.toSalesInvoiceDTO(invoice),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async recordPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateRecordSalesInvoicePaymentInput((req as any).body || {});
+      const companyId = SalesController.getCompanyId(req);
+      const userId = SalesController.getUserId(req);
+      const id = String((req as any).params.id);
+      const body = (req as any).body || {};
+
+      const useCase = new RecordSalesInvoicePaymentUseCase(
+        diContainer.salesInvoiceRepository,
+        diContainer.paymentHistoryRepository,
+        diContainer.salesSettingsRepository,
+        diContainer.voucherRepository,
+        diContainer.voucherSequenceRepository,
+        diContainer.ledgerRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.transactionManager
+      );
+      const result = await useCase.execute(companyId, userId, id, {
+        settlementMode: body.settlementMode || 'CASH_FULL',
+        receivablePayableAccountId: body.receivablePayableAccountId || body.arAccountId,
+        settlements: [{
+          settlementAccountId: body.settlementAccountId || body.cashAccountId,
+          amountBase: Number(body.paymentAmountBase),
+          paymentMethod: body.paymentMethod,
+          reference: body.reference,
+          notes: body.notes,
+          paymentDate: body.paymentDate,
+        }],
+      });
+
+      (res as any).json({
+        success: true,
+        data: {
+          invoice: SalesDTOMapper.toSalesInvoiceDTO(result.invoice),
+          payments: result.payments.map(p => p.toJSON()),
+          voucherIds: result.voucherIds,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPaymentHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const invoice = await diContainer.salesInvoiceRepository.getById(companyId, id);
+      if (!invoice) {
+        return (res as any).status(404).json({ success: false, error: 'Sales invoice not found' });
+      }
+
+      const payments = await diContainer.paymentHistoryRepository.getBySource(companyId, 'SALES_INVOICE', id);
+
+      (res as any).json({
+        success: true,
+        data: payments.map((p) => p.toJSON()),
       });
     } catch (error) {
       next(error);

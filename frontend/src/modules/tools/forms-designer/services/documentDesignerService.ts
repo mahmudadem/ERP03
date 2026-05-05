@@ -9,6 +9,38 @@ import { DocumentFormConfig, AvailableField } from '../types';
 import { documentUiToCanonical } from '../mappers/documentMapper';
 import { db } from '../../../../config/firebase';
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { voucherFormApi } from '../../../../api/voucherFormApi';
+
+function normalizeModule(value: any): string {
+  const raw = String(value || '').trim().toUpperCase();
+  if (raw === 'PURCHASES') return 'PURCHASE';
+  if (raw === 'SALES_MODULE') return 'SALES';
+  return raw;
+}
+
+function inferFormModule(form: any): string {
+  const explicit = normalizeModule(form.module);
+  if (explicit) return explicit;
+
+  const candidates = [
+    form.formType,
+    form.baseType,
+    form.voucherType,
+    form.typeId,
+    form.code,
+    form.id,
+  ].map((value) => String(value || '').toLowerCase());
+
+  if (candidates.some((value) => value.startsWith('sales_') || value === 'sales_invoice')) {
+    return 'SALES';
+  }
+
+  if (candidates.some((value) => value.startsWith('purchase_') || value === 'purchase_invoice')) {
+    return 'PURCHASE';
+  }
+
+  return 'ACCOUNTING';
+}
 
 /**
  * Remove undefined values from object (Firestore restriction)
@@ -36,6 +68,20 @@ function removeUndefined(obj: any): any {
  */
 export async function loadModuleDocumentForms(companyId: string, module: string): Promise<DocumentFormConfig[]> {
   try {
+    const targetModule = normalizeModule(module);
+    try {
+      const apiForms = await voucherFormApi.list();
+      const filteredApiForms = apiForms
+        .filter((form: any) => inferFormModule(form) === targetModule)
+        .map((form: any) => ({ ...form, id: form.id } as DocumentFormConfig));
+
+      if (filteredApiForms.length > 0) {
+        return filteredApiForms;
+      }
+    } catch (apiError) {
+      console.warn('[loadModuleDocumentForms] API load failed, falling back to Firestore path:', apiError);
+    }
+
     const baseModule = module.toLowerCase();
     const collectionName = 'voucherForms';
     
@@ -133,6 +179,13 @@ export async function loadSystemVoucherTypes(module: string): Promise<any[]> {
   try {
     const { collection, getDocs } = await import('firebase/firestore');
     const { db } = await import('../../../../config/firebase');
+
+    const normalizeModule = (value: any): string => {
+      const raw = String(value || '').trim().toUpperCase();
+      if (raw === 'PURCHASES') return 'PURCHASE';
+      return raw;
+    };
+    const targetModule = normalizeModule(module);
     
     const typesRef = collection(db, 'system_metadata/voucher_types/items');
     const snapshot = await getDocs(typesRef);
@@ -140,7 +193,14 @@ export async function loadSystemVoucherTypes(module: string): Promise<any[]> {
     const definitions: any[] = [];
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
-      if (data.module?.toUpperCase() === module.toUpperCase()) {
+      const moduleCandidates = [
+        data.module,
+        data.moduleCode,
+        data.moduleId,
+        data.domain,
+      ];
+      const matched = moduleCandidates.some((candidate) => normalizeModule(candidate) === targetModule);
+      if (matched) {
         definitions.push({ id: docSnap.id, ...data, isSystemCatalog: true });
       }
     });

@@ -26,15 +26,13 @@ const ForbiddenPage = lazy(() => import('../pages/ForbiddenPage'));
 const CompanySelectorPageLazy = lazy(() => import('../modules/company-selector/CompanySelectorPage'));
 const NewCompanyWizardPage = lazy(() => import('../modules/onboarding/pages/NewCompanyWizardPage'));
 
+import { useGlobalLoaderTask } from '../context/GlobalLoaderContext';
+
 // Loading component
 const PageLoader = () => {
   const { t } = useTranslation('common');
-  return (
-    <div className="flex items-center justify-center h-full min-h-[400px] text-gray-400">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-      <span>{t('auth.loadingResource')}</span>
-    </div>
-  );
+  useGlobalLoaderTask('page-loader', t('auth.loadingResource', 'Loading page...'), true);
+  return null;
 };
 
 // Routes

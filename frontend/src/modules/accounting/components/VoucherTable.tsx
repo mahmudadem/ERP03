@@ -418,7 +418,7 @@ export const VoucherTable: React.FC<Props> = ({
           formMatch = true;
         } else if (!itemFormId) {
           // LEGACY FALLBACK: If item has no formId, match if its type matches the requested form's base type
-          const filterBaseType = (filterVT as any)?.baseType?.toLowerCase();
+          const filterBaseType = ((filterVT as any)?.formType || (filterVT as any)?.baseType)?.toLowerCase();
           formMatch = !!(filterVT && (itemType === filterBaseType || 
                        (itemType === 'jv' && filterBaseType === 'journal_entry') ||
                        (itemType === 'journal_entry' && filterBaseType === 'jv')));

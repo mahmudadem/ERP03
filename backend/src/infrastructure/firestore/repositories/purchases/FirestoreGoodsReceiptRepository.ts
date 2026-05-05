@@ -67,4 +67,12 @@ export class FirestoreGoodsReceiptRepository implements IGoodsReceiptRepository 
     const snap = await query.get();
     return snap.docs.map((doc) => GoodsReceiptMapper.toDomain(doc.data()));
   }
+
+  async hasUnpostedGoodsReceipts(companyId: string): Promise<boolean> {
+    const snap = await this.collection(companyId)
+      .where('status', '==', 'DRAFT')
+      .limit(1)
+      .get();
+    return !snap.empty;
+  }
 }

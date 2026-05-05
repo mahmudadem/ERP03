@@ -3,7 +3,7 @@
  * DesignerController.ts
  */
 import { Request, Response, NextFunction } from 'express';
-import { CreateFormDefinitionUseCase, CreateVoucherTypeDefinitionUseCase } from '../../../application/designer/use-cases/DesignerUseCases';
+import { CreateFormDefinitionUseCase, CreateVoucherTypeDefinitionUseCase, AdoptTemplateUseCase } from '../../../application/designer/use-cases/DesignerUseCases';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 
 export class DesignerController {
@@ -22,6 +22,20 @@ export class DesignerController {
       const useCase = new CreateVoucherTypeDefinitionUseCase(diContainer.voucherTypeDefinitionRepository);
       await useCase.execute((req as any).body);
       (res as any).status(201).json({ success: true, message: 'Voucher type saved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async adoptTemplate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { companyId, userId, templateId, module } = (req as any).body;
+      const useCase = new AdoptTemplateUseCase(
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
+      const result = await useCase.execute({ companyId, userId, templateId, module });
+      (res as any).status(201).json({ success: true, ...result });
     } catch (error) {
       next(error);
     }

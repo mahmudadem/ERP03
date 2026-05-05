@@ -230,7 +230,7 @@ export const useSidebarConfig = () => {
           return false;
         }
         if (
-          (moduleId === 'purchase' || moduleId === 'purchases')
+          moduleId === 'purchase'
           && !showPurchaseOperationalDocs
           && (item.path === '/purchases/orders' || item.path === '/purchases/goods-receipts')
         ) {
@@ -243,7 +243,7 @@ export const useSidebarConfig = () => {
       // For modules with dynamic forms (accounting, sales, purchase),
       // inject form entries grouped by sidebarGroup
       
-      const dynamicModuleId = moduleId === 'purchases' ? 'purchase' : moduleId;
+      const dynamicModuleId = moduleId;
       
       if (MODULE_ROUTE_MAP[dynamicModuleId]) {
         const dynamicGroups = buildDynamicFormGroups(dynamicModuleId);

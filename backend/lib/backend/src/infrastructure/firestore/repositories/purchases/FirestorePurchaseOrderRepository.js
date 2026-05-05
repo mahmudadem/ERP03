@@ -81,6 +81,13 @@ class FirestorePurchaseOrderRepository {
             return;
         await ref.delete();
     }
+    async hasOpenOrders(companyId) {
+        const snap = await this.collection(companyId)
+            .where('status', 'not-in', ['CLOSED', 'CANCELLED'])
+            .limit(1)
+            .get();
+        return !snap.empty;
+    }
 }
 exports.FirestorePurchaseOrderRepository = FirestorePurchaseOrderRepository;
 //# sourceMappingURL=FirestorePurchaseOrderRepository.js.map

@@ -4,16 +4,21 @@ import { Button } from '../../../components/ui/Button';
 import { errorHandler } from '../../../services/errorHandler';
 import { formatCompanyDate } from '../../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import {
   SuperAdminEmptyState,
   SuperAdminHeader,
   SuperAdminLoading,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export default function CompaniesListPage() {
   const { t } = useTranslation('common');
@@ -23,6 +28,18 @@ export default function CompaniesListPage() {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  const {
+    data: filteredCompanies,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: companies,
+    searchFields: ['name', 'id', 'ownerUid'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const loadCompanies = async () => {
     setLoading(true);
@@ -63,41 +80,75 @@ export default function CompaniesListPage() {
       {loading && companies.length === 0 ? (
         <SuperAdminLoading label={t('superAdmin.companies.loading')} />
       ) : (
-        <SuperAdminTable>
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.companyId')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.name')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.ownerUid')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.created')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {companies.map((company) => (
-              <tr key={company.id} className={tableRowClass}>
-                <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{company.id}</td>
-                <td className={`${tableCellClass} font-medium text-slate-950`}>{company.name}</td>
-                <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{company.ownerUid}</td>
-                <td className={`${tableCellClass} text-slate-500`}>
-                  {company.createdAt ? formatCompanyDate(company.createdAt, null) : '-'}
-                </td>
-                <td className={tableCellClass}>
-                  <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>
-                    {t('superAdmin.companies.actions.impersonate')}
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {companies.length === 0 && !loading && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <SuperAdminSearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search companies..."
+            />
+          </div>
+
+          <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={5}>
-                  <SuperAdminEmptyState title={t('superAdmin.companies.empty')} />
-                </td>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('id')}
+                >
+                  {t('superAdmin.companies.columns.companyId')}
+                  <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('name')}
+                >
+                  {t('superAdmin.companies.columns.name')}
+                  <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('ownerUid')}
+                >
+                  {t('superAdmin.companies.columns.ownerUid')}
+                  <SortIcon direction={sortConfig.field === 'ownerUid' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('createdAt')}
+                >
+                  {t('superAdmin.companies.columns.created')}
+                  <SortIcon direction={sortConfig.field === 'createdAt' ? sortConfig.direction : null} />
+                </th>
+                <th className={tableHeadCellClass}>{t('superAdmin.companies.columns.actions')}</th>
               </tr>
-            )}
-          </tbody>
-        </SuperAdminTable>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredCompanies.map((company) => (
+                <tr key={company.id} className={tableRowClass}>
+                  <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{company.id}</td>
+                  <td className={`${tableCellClass} font-medium text-slate-950`}>{company.name}</td>
+                  <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{company.ownerUid}</td>
+                  <td className={`${tableCellClass} text-slate-500`}>
+                    {company.createdAt ? formatCompanyDate(company.createdAt, null) : '-'}
+                  </td>
+                  <td className={tableCellClass}>
+                    <Button variant="secondary" size="sm" onClick={() => handleImpersonate(company.id)}>
+                      {t('superAdmin.companies.actions.impersonate')}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {filteredCompanies.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={5}>
+                    <SuperAdminEmptyState title={searchQuery ? "No companies found" : t('superAdmin.companies.empty')} />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </SuperAdminTable>
+        </div>
       )}
     </SuperAdminPage>
   );

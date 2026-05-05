@@ -8,6 +8,7 @@ import { IStockAdjustmentRepository } from '../../../repository/interfaces/inven
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { ProcessINInput, ProcessOUTInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 
 export interface CreateStockAdjustmentInput {
   companyId: string;
@@ -87,13 +88,25 @@ export class PostStockAdjustmentUseCase {
     }
 
     const itemCache = new Map<string, any>();
+    const baseCurrencyCache = new Map<string, string>();
+    const levelCache = new Map<string, StockLevel>();
     for (const line of adjustment.lines) {
       if (line.adjustmentQty === 0) continue;
-      const item = await this.itemRepo.getItem(line.itemId);
+      const { item, baseCurrency } = await this.movementUseCase.preFetchItemContext(companyId, line.itemId);
       if (!item || item.companyId !== companyId) {
         throw new Error(`Item not found for adjustment line: ${line.itemId}`);
       }
       itemCache.set(line.itemId, item);
+      baseCurrencyCache.set(line.itemId, baseCurrency);
+      const level = await this.movementUseCase.preFetchStockLevel(
+        companyId,
+        line.itemId,
+        adjustment.warehouseId
+      );
+      levelCache.set(
+        line.itemId,
+        level ?? StockLevel.createNew(companyId, line.itemId, adjustment.warehouseId)
+      );
     }
 
     await this.transactionManager.runTransaction(async (transaction) => {
@@ -121,6 +134,10 @@ export class PostStockAdjustmentUseCase {
             fxRateMovToBase: fxRate,
             fxRateCCYToBase: fxRate,
             transaction,
+            preFetchedItem: item,
+            baseCurrency: baseCurrencyCache.get(line.itemId),
+            preFetchedLevel: levelCache.get(line.itemId),
+            skipWarehouseValidation: true,
           };
 
           await this.movementUseCase.processIN(inInput);
@@ -139,6 +156,9 @@ export class PostStockAdjustmentUseCase {
             currentUser: userId,
             notes: adjustment.notes,
             transaction,
+            preFetchedItem: item,
+            preFetchedLevel: levelCache.get(line.itemId),
+            skipWarehouseValidation: true,
           };
 
           await this.movementUseCase.processOUT(outInput);
@@ -152,6 +172,7 @@ export class PostStockAdjustmentUseCase {
           userId,
           adjustment,
           itemCache,
+          Array.from(baseCurrencyCache.values())[0],
           transaction
         );
       }
@@ -178,6 +199,7 @@ export class PostStockAdjustmentUseCase {
     userId: string,
     adjustment: StockAdjustment,
     itemCache: Map<string, any>,
+    baseCurrencyOverride?: string,
     transaction?: unknown
   ): Promise<string | undefined> {
     if (!this.accountingPostingService) {
@@ -263,6 +285,12 @@ export class PostStockAdjustmentUseCase {
       return undefined;
     }
 
+    if (!baseCurrencyOverride) {
+      throw new Error(
+        `[Inventory][PostStockAdjustmentUseCase] Missing base currency for adjustment ${adjustment.id}.`
+      );
+    }
+
     const expectedAmount = roundMoney(adjustment.adjustmentValueBase);
     if (Math.abs(computedAmountBase - expectedAmount) > 0.01) {
       console.warn(
@@ -291,6 +319,8 @@ export class PostStockAdjustmentUseCase {
         createdBy: userId,
         postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
         reference: adjustment.id,
+        baseCurrencyOverride,
+        skipAccountValidation: true,
       }, transaction);
 
       return voucher.id;

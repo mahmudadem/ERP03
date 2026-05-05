@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi, Plan } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import { clsx } from 'clsx';
 import {
   SuperAdminBadge,
   SuperAdminEmptyState,
@@ -9,11 +10,15 @@ import {
   SuperAdminLoading,
   SuperAdminModal,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export const PlansManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -39,6 +44,18 @@ export const PlansManagerPage: React.FC = () => {
   useEffect(() => {
     loadPlans();
   }, []);
+
+  const {
+    data: filteredPlans,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: plans,
+    searchFields: ['name', 'id', 'description'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const loadPlans = async () => {
     try {
@@ -148,51 +165,89 @@ export const PlansManagerPage: React.FC = () => {
         }
       />
 
-      <SuperAdminTable>
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.id', { defaultValue: 'ID' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.name', { defaultValue: 'Name' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.price', { defaultValue: 'Price' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.status', { defaultValue: 'Status' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.limits', { defaultValue: 'Limits' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.actions', { defaultValue: 'Actions' })}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {plans.length === 0 ? (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SuperAdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search plans..."
+          />
+        </div>
+
+        <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={6}><SuperAdminEmptyState title={t('superAdmin.plans.empty', { defaultValue: 'No plans found. Create your first plan to get started.' })} /></td>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('id')}
+                >
+                  {t('superAdmin.plans.columns.id', { defaultValue: 'ID' })}
+                  <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('name')}
+                >
+                  {t('superAdmin.plans.columns.name', { defaultValue: 'Name' })}
+                  <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('price')}
+                >
+                  {t('superAdmin.plans.columns.price', { defaultValue: 'Price' })}
+                  <SortIcon direction={sortConfig.field === 'price' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('status')}
+                >
+                  {t('superAdmin.plans.columns.status', { defaultValue: 'Status' })}
+                  <SortIcon direction={sortConfig.field === 'status' ? sortConfig.direction : null} />
+                </th>
+                <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.limits', { defaultValue: 'Limits' })}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.plans.columns.actions', { defaultValue: 'Actions' })}</th>
               </tr>
-            ) : (
-              plans.map((plan) => (
-                <tr key={plan.id} className={tableRowClass}>
-                  <td className={`${tableCellClass} font-mono text-xs`}>{plan.id}</td>
-                  <td className={`${tableCellClass} font-medium text-slate-950`}>{plan.name}</td>
-                  <td className={tableCellClass}>${plan.price}/{t('superAdmin.plans.perMonth', { defaultValue: 'mo' })}</td>
-                  <td className={tableCellClass}>
-                    <SuperAdminBadge tone={plan.status === 'active' ? 'green' : plan.status === 'inactive' ? 'slate' : 'red'}>
-                      {plan.status}
-                    </SuperAdminBadge>
-                  </td>
-                  <td className={`${tableCellClass} text-xs text-slate-600`}>
-                    <div>{plan.limits.maxCompanies} {t('superAdmin.plans.limits.companies', { defaultValue: 'companies' })}</div>
-                    <div>{plan.limits.maxUsersPerCompany} {t('superAdmin.plans.limits.usersPerCompany', { defaultValue: 'users/company' })}</div>
-                    <div>{plan.limits.maxModulesAllowed} {t('superAdmin.plans.limits.modules', { defaultValue: 'modules' })}</div>
-                  </td>
-                  <td className={tableCellClass}>
-                    <button onClick={() => handleEdit(plan)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
-                      {t('superAdmin.plans.actions.edit', { defaultValue: 'Edit' })}
-                    </button>
-                    <button onClick={() => handleDelete(plan.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
-                      {t('superAdmin.plans.actions.delete', { defaultValue: 'Delete' })}
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredPlans.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <SuperAdminEmptyState 
+                      title={searchQuery ? "No plans found matching search" : t('superAdmin.plans.empty', { defaultValue: 'No plans found. Create your first plan to get started.' })} 
+                    />
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-      </SuperAdminTable>
+              ) : (
+                filteredPlans.map((plan) => (
+                  <tr key={plan.id} className={tableRowClass}>
+                    <td className={`${tableCellClass} font-mono text-xs`}>{plan.id}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>{plan.name}</td>
+                    <td className={tableCellClass}>${plan.price}/{t('superAdmin.plans.perMonth', { defaultValue: 'mo' })}</td>
+                    <td className={tableCellClass}>
+                      <SuperAdminBadge tone={plan.status === 'active' ? 'green' : plan.status === 'inactive' ? 'slate' : 'red'}>
+                        {plan.status}
+                      </SuperAdminBadge>
+                    </td>
+                    <td className={`${tableCellClass} text-xs text-slate-600`}>
+                      <div>{plan.limits.maxCompanies} {t('superAdmin.plans.limits.companies', { defaultValue: 'companies' })}</div>
+                      <div>{plan.limits.maxUsersPerCompany} {t('superAdmin.plans.limits.usersPerCompany', { defaultValue: 'users/company' })}</div>
+                      <div>{plan.limits.maxModulesAllowed} {t('superAdmin.plans.limits.modules', { defaultValue: 'modules' })}</div>
+                    </td>
+                    <td className={tableCellClass}>
+                      <button onClick={() => handleEdit(plan)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
+                        {t('superAdmin.plans.actions.edit', { defaultValue: 'Edit' })}
+                      </button>
+                      <button onClick={() => handleDelete(plan.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
+                        {t('superAdmin.plans.actions.delete', { defaultValue: 'Delete' })}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+        </SuperAdminTable>
+      </div>
 
       {isModalOpen && (
         <SuperAdminModal

@@ -78,15 +78,16 @@ class FirestoreItemRepository {
         return snap.docs.map((doc) => InventoryMappers_1.ItemMapper.toDomain(doc.data()));
     }
     async searchItems(companyId, query, opts) {
-        var _a, _b;
+        var _a;
         const normalized = (query || '').trim().toLowerCase();
         if (!normalized) {
             return this.getCompanyItems(companyId, opts);
         }
-        const list = await this.getCompanyItems(companyId, Object.assign(Object.assign({}, opts), { limit: (_a = opts === null || opts === void 0 ? void 0 : opts.limit) !== null && _a !== void 0 ? _a : 100, offset: (_b = opts === null || opts === void 0 ? void 0 : opts.offset) !== null && _b !== void 0 ? _b : 0 }));
-        return list.filter((item) => item.code.toLowerCase().includes(normalized) ||
+        const list = await this.getCompanyItems(companyId, Object.assign(Object.assign({}, opts), { limit: 5000, offset: 0 }));
+        const matches = list.filter((item) => item.code.toLowerCase().includes(normalized) ||
             item.name.toLowerCase().includes(normalized) ||
             (item.barcode || '').toLowerCase().includes(normalized));
+        return matches.slice(0, (_a = opts === null || opts === void 0 ? void 0 : opts.limit) !== null && _a !== void 0 ? _a : 50);
     }
     async deleteItem(id) {
         const ref = await this.resolveRefById(id);

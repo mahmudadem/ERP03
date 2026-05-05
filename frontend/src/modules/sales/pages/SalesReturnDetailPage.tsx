@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import client from '../../../api/client';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
@@ -27,18 +28,20 @@ const SalesReturnDetailPage: React.FC = () => {
     ? 'AFTER_INVOICE'
     : initialDeliveryNoteId
       ? 'BEFORE_INVOICE'
-      : 'AFTER_INVOICE';
+      : 'DIRECT';
 
   const [salesReturn, setSalesReturn] = useState<SalesReturnDTO | null>(null);
   const [salesInvoiceId, setSalesInvoiceId] = useState(initialSalesInvoiceId);
   const [deliveryNoteId, setDeliveryNoteId] = useState(initialDeliveryNoteId);
   const [returnContext, setReturnContext] = useState<ReturnContext>(initialContext);
   const [returnDate, setReturnDate] = useState(todayIso());
+  const [customerId, setCustomerId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const [salesInvoices, setSalesInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNoteDTO[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -72,19 +75,23 @@ const SalesReturnDetailPage: React.FC = () => {
   );
 
   const loadReferenceData = async () => {
-    const [invoiceResult, deliveryNoteResult, warehouseResult] = await Promise.all([
+    const [invoiceResult, deliveryNoteResult, warehouseResult, customerResult] = await Promise.all([
       salesApi.listSIs({ status: 'POSTED', limit: 500 }),
       salesApi.listDNs({ status: 'POSTED', limit: 500 }),
       inventoryApi.listWarehouses({ active: true, limit: 200 }),
+      client.get('/tenant/sales/customers', { params: { active: true, limit: 1000 } }),
     ]);
 
     const invoiceList = unwrap<SalesInvoiceDTO[]>(invoiceResult);
     const deliveryNoteList = unwrap<DeliveryNoteDTO[]>(deliveryNoteResult);
     const warehouseList = unwrap<InventoryWarehouseDTO[]>(warehouseResult);
 
+    const customerList = unwrap<any[]>(customerResult);
+    
     setSalesInvoices(Array.isArray(invoiceList) ? invoiceList : []);
     setDeliveryNotes(Array.isArray(deliveryNoteList) ? deliveryNoteList : []);
     setWarehouses(Array.isArray(warehouseList) ? warehouseList : []);
+    setCustomers(Array.isArray(customerList) ? customerList : []);
   };
 
   const load = async () => {
@@ -139,8 +146,13 @@ const SalesReturnDetailPage: React.FC = () => {
 
     if (nextContext === 'AFTER_INVOICE') {
       setDeliveryNoteId('');
+      setCustomerId('');
+    } else if (nextContext === 'BEFORE_INVOICE') {
+      setSalesInvoiceId('');
+      setCustomerId('');
     } else {
       setSalesInvoiceId('');
+      setDeliveryNoteId('');
     }
   };
 
@@ -173,6 +185,10 @@ const SalesReturnDetailPage: React.FC = () => {
         setError('A posted delivery note is required for BEFORE_INVOICE returns.');
         return;
       }
+      if (returnContext === 'DIRECT' && !customerId) {
+        setError('A customer is required for standalone returns.');
+        return;
+      }
       if (!returnDate) {
         setError('Return date is required.');
         return;
@@ -183,6 +199,8 @@ const SalesReturnDetailPage: React.FC = () => {
       }
 
       const payload: CreateSalesReturnPayload = {
+        returnContext,
+        customerId: returnContext === 'DIRECT' ? customerId : undefined,
         salesInvoiceId: returnContext === 'AFTER_INVOICE' ? salesInvoiceId || undefined : undefined,
         deliveryNoteId: returnContext === 'BEFORE_INVOICE' ? deliveryNoteId || undefined : undefined,
         returnDate,
@@ -256,7 +274,7 @@ const SalesReturnDetailPage: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Return Mode</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-sm font-medium ${
@@ -281,6 +299,18 @@ const SalesReturnDetailPage: React.FC = () => {
                 >
                   Before Invoice
                 </button>
+                <button
+                  type="button"
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+                    returnContext === 'DIRECT'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-slate-300 text-slate-700'
+                  }`}
+                  onClick={() => handleContextChange('DIRECT')}
+                  disabled={busy}
+                >
+                  Direct Return
+                </button>
               </div>
             </div>
             <div>
@@ -290,7 +320,7 @@ const SalesReturnDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {returnContext === 'AFTER_INVOICE' ? (
+            {returnContext === 'AFTER_INVOICE' && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Posted Sales Invoice</label>
                 <select
@@ -307,7 +337,9 @@ const SalesReturnDetailPage: React.FC = () => {
                   ))}
                 </select>
               </div>
-            ) : (
+            )}
+            
+            {returnContext === 'BEFORE_INVOICE' && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Posted Delivery Note</label>
                 <select
@@ -320,6 +352,25 @@ const SalesReturnDetailPage: React.FC = () => {
                   {deliveryNotes.map((note) => (
                     <option key={note.id} value={note.id}>
                       {note.dnNumber} - {note.customerName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {returnContext === 'DIRECT' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Customer</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  disabled={busy}
+                >
+                  <option value="">Select customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>

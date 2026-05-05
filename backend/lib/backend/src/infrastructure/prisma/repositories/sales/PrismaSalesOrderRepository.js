@@ -154,6 +154,17 @@ class PrismaSalesOrderRepository {
             where: { id, companyId },
         });
     }
+    async hasOpenOrders(companyId) {
+        const count = await this.prisma.salesOrder.count({
+            where: {
+                companyId,
+                status: {
+                    in: ['DRAFT', 'CONFIRMED', 'PARTIALLY_DELIVERED'],
+                },
+            },
+        });
+        return count > 0;
+    }
     toDomain(record) {
         const lines = (record.lines || []).map((line) => ({
             lineId: line.id,

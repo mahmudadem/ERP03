@@ -43,11 +43,18 @@ export interface ProcessINInput extends BaseMovementInput {
   moveCurrency: string;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
+  preFetchedLevel?: StockLevel;
+  preFetchedItem?: Item;
+  baseCurrency?: string;
+  skipWarehouseValidation?: boolean;
 }
 
 export interface ProcessOUTInput extends BaseMovementInput {
   forcedUnitCostBase?: number;
   forcedUnitCostCCY?: number;
+  preFetchedLevel?: StockLevel;
+  preFetchedItem?: Item;
+  skipWarehouseValidation?: boolean;
 }
 
 export interface ProcessTRANSFERInput {
@@ -63,6 +70,10 @@ export interface ProcessTRANSFERInput {
   currentUser: string;
   notes?: string;
   metadata?: Record<string, any>;
+  preFetchedItem?: Item;
+  preFetchedSourceLevel?: StockLevel;
+  preFetchedDestinationLevel?: StockLevel;
+  skipWarehouseValidation?: boolean;
 }
 
 export interface TransferResult {
@@ -86,8 +97,13 @@ export class RecordStockMovementUseCase {
     this.validateDate(input.date);
     this.validateQty(input.qty);
 
-    const { item, baseCurrency } = await this.loadItemContext(input.companyId, input.itemId);
-    await this.ensureWarehouseExists(input.warehouseId);
+    const context = input.preFetchedItem && input.baseCurrency
+      ? { item: input.preFetchedItem, baseCurrency: input.baseCurrency }
+      : await this.loadItemContext(input.companyId, input.itemId);
+    const { item, baseCurrency } = context;
+    if (!input.skipWarehouseValidation) {
+      await this.ensureWarehouseExists(input.warehouseId);
+    }
 
     const converted = this.convertCosts(
       input.unitCostInMoveCurrency,
@@ -99,7 +115,9 @@ export class RecordStockMovementUseCase {
     );
 
     const execute = async (txn: unknown) => {
-      const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
+      const level = input.preFetchedLevel
+        ? StockLevel.fromJSON(input.preFetchedLevel.toJSON())
+        : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
       const qtyBefore = level.qtyOnHand;
       const oldMaxBusinessDate = level.maxBusinessDate;
 
@@ -196,11 +214,15 @@ export class RecordStockMovementUseCase {
     this.validateDate(input.date);
     this.validateQty(input.qty);
 
-    const { item } = await this.loadItemContext(input.companyId, input.itemId);
-    await this.ensureWarehouseExists(input.warehouseId);
+    const item = input.preFetchedItem ?? (await this.loadItemContext(input.companyId, input.itemId)).item;
+    if (!input.skipWarehouseValidation) {
+      await this.ensureWarehouseExists(input.warehouseId);
+    }
 
     const execute = async (txn: unknown) => {
-      const level = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
+      const level = input.preFetchedLevel
+        ? StockLevel.fromJSON(input.preFetchedLevel.toJSON())
+        : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.warehouseId);
       const qtyBefore = level.qtyOnHand;
       const oldMaxBusinessDate = level.maxBusinessDate;
 
@@ -312,15 +334,19 @@ export class RecordStockMovementUseCase {
       throw new Error('Source and destination warehouses must be different');
     }
 
-    const { item } = await this.loadItemContext(input.companyId, input.itemId);
-    await this.ensureWarehouseExists(input.sourceWarehouseId);
-    await this.ensureWarehouseExists(input.destinationWarehouseId);
+    const item = input.preFetchedItem ?? (await this.loadItemContext(input.companyId, input.itemId)).item;
+    if (!input.skipWarehouseValidation) {
+      await this.ensureWarehouseExists(input.sourceWarehouseId);
+      await this.ensureWarehouseExists(input.destinationWarehouseId);
+    }
 
     const executeTransfer = async (txn: unknown): Promise<TransferResult> => {
       const pairId = input.transferPairId?.trim() || randomUUID();
       const now = new Date();
 
-      const srcLevel = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.sourceWarehouseId);
+      const srcLevel = input.preFetchedSourceLevel
+        ? StockLevel.fromJSON(input.preFetchedSourceLevel.toJSON())
+        : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.sourceWarehouseId);
       const srcQtyBefore = srcLevel.qtyOnHand;
       const srcOldMaxDate = srcLevel.maxBusinessDate;
 
@@ -394,7 +420,9 @@ export class RecordStockMovementUseCase {
 
       srcLevel.lastMovementId = outMov.id;
 
-      const dstLevel = await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.destinationWarehouseId);
+      const dstLevel = input.preFetchedDestinationLevel
+        ? StockLevel.fromJSON(input.preFetchedDestinationLevel.toJSON())
+        : await this.getOrCreateStockLevel(txn, input.companyId, item.id, input.destinationWarehouseId);
       const dstQtyBefore = dstLevel.qtyOnHand;
       const dstOldMaxDate = dstLevel.maxBusinessDate;
 
@@ -551,6 +579,33 @@ export class RecordStockMovementUseCase {
         return 'PURCHASE';
       default:
         return 'SETTLEMENT';
+    }
+  }
+
+  async preFetchStockLevel(
+    companyId: string,
+    itemId: string,
+    warehouseId: string
+  ): Promise<StockLevel | null> {
+    return this.deps.stockLevelRepository.getLevel(companyId, itemId, warehouseId);
+  }
+
+  async preFetchItemContext(
+    companyId: string,
+    itemId: string
+  ): Promise<{ item: Item; baseCurrency: string }> {
+    return this.loadItemContext(companyId, itemId);
+  }
+
+  async writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void> {
+    await this.deps.stockMovementRepository.recordMovement(movement, transaction);
+  }
+
+  async writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void> {
+    if (transaction) {
+      await this.deps.stockLevelRepository.upsertLevelInTransaction(transaction, level);
+    } else {
+      await this.deps.stockLevelRepository.upsertLevel(level);
     }
   }
 

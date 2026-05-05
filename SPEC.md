@@ -1,5 +1,5 @@
 # Module, Feature, Bundle, Entitlement Architecture
-
+not all prject spec still valid we need to update this doc
 ## Purpose
 
 This document replaces the earlier fix plan. The issue is not only that Company Admin reads modules from code instead of the database. The real problem is a missing architecture contract between:

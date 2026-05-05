@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockTransfer, StockTransferStatus } from '../../../domain/inventory/entities/StockTransfer';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
@@ -122,6 +123,8 @@ export class CreateStockTransferUseCase {
 export class CompleteStockTransferUseCase {
   constructor(
     private readonly transferRepo: IStockTransferRepository,
+    private readonly itemRepo: IItemRepository,
+    private readonly stockLevelRepo: IStockLevelRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly transactionManager: ITransactionManager
   ) {}
@@ -138,16 +141,35 @@ export class CompleteStockTransferUseCase {
 
     const completedAt = new Date();
 
+    const lineContexts = await Promise.all(
+      transfer.lines.map(async (line) => {
+        const item = await this.itemRepo.getItem(line.itemId);
+        if (!item || item.companyId !== companyId) {
+          throw new Error(`Item not found for transfer line: ${line.itemId}`);
+        }
+        const [sourceLevel, destinationLevel] = await Promise.all([
+          this.stockLevelRepo.getLevel(companyId, line.itemId, transfer.sourceWarehouseId),
+          this.stockLevelRepo.getLevel(companyId, line.itemId, transfer.destinationWarehouseId),
+        ]);
+        return {
+          line,
+          item,
+          sourceLevel: sourceLevel ?? StockLevel.createNew(companyId, line.itemId, transfer.sourceWarehouseId),
+          destinationLevel: destinationLevel ?? StockLevel.createNew(companyId, line.itemId, transfer.destinationWarehouseId),
+        };
+      })
+    );
+
     const lineResults = await this.transactionManager.runTransaction(async (txn) => {
       const costs: Array<{ unitCostBase: number; unitCostCCY: number }> = [];
 
-      for (const line of transfer.lines) {
+      for (const context of lineContexts) {
         const result = await this.movementUseCase.processTRANSFER({
           companyId,
-          itemId: line.itemId,
+          itemId: context.line.itemId,
           sourceWarehouseId: transfer.sourceWarehouseId,
           destinationWarehouseId: transfer.destinationWarehouseId,
-          qty: line.qty,
+          qty: context.line.qty,
           date: transfer.date,
           transferDocId: transfer.id,
           transferPairId: transfer.transferPairId,
@@ -158,6 +180,10 @@ export class CompleteStockTransferUseCase {
             source: 'stock-transfer',
             transferId: transfer.id,
           },
+          preFetchedItem: context.item,
+          preFetchedSourceLevel: context.sourceLevel,
+          preFetchedDestinationLevel: context.destinationLevel,
+          skipWarehouseValidation: true,
         });
 
         costs.push({
@@ -166,20 +192,20 @@ export class CompleteStockTransferUseCase {
         });
       }
 
+      const completedLines = transfer.lines.map((line, index) => ({
+        ...line,
+        unitCostBaseAtTransfer: costs[index]?.unitCostBase ?? line.unitCostBaseAtTransfer,
+        unitCostCCYAtTransfer: costs[index]?.unitCostCCY ?? line.unitCostCCYAtTransfer,
+      }));
+
+      await this.transferRepo.updateTransfer(transfer.id, {
+        status: 'COMPLETED',
+        completedAt,
+        lines: completedLines,
+      } as Partial<StockTransfer>, txn);
+
       return costs;
     });
-
-    const completedLines = transfer.lines.map((line, index) => ({
-      ...line,
-      unitCostBaseAtTransfer: lineResults[index]?.unitCostBase ?? line.unitCostBaseAtTransfer,
-      unitCostCCYAtTransfer: lineResults[index]?.unitCostCCY ?? line.unitCostCCYAtTransfer,
-    }));
-
-    await this.transferRepo.updateTransfer(transfer.id, {
-      status: 'COMPLETED',
-      completedAt,
-      lines: completedLines,
-    } as Partial<StockTransfer>);
 
     const updated = await this.transferRepo.getTransfer(transfer.id);
     if (!updated) {

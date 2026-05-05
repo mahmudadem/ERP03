@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { inventoryApi } from '../../../api/inventoryApi';
-import { PurchaseSettingsDTO, purchasesApi } from '../../../api/purchasesApi';
+import { PurchaseSettingsDTO, PurchaseGovernanceRuleDTO, purchasesApi } from '../../../api/purchasesApi';
 import { Card } from '../../../components/ui/Card';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 import { useAccounts } from '../../../context/AccountsContext';
-import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info } from 'lucide-react';
+import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
@@ -16,9 +17,10 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
-type TabId = 'policy' | 'accounts' | 'numbering';
+type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 
 const PurchaseSettingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<PurchaseSettingsDTO | null>(null);
@@ -26,6 +28,12 @@ const PurchaseSettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { validAccounts, getAccountById } = useAccounts();
+  const [newRule, setNewRule] = useState<Partial<PurchaseGovernanceRuleDTO>>({
+    scope: 'company',
+    action: 'allow',
+    persona: 'direct',
+  });
+  const [showAddRule, setShowAddRule] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -70,6 +78,29 @@ const PurchaseSettingsPage: React.FC = () => {
   const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings);
   const accountingMode = resolveInventoryAccountingMode(invSettings);
   const simpleWorkflowDisabled = accountingMode === 'PERPETUAL';
+
+  const addRule = () => {
+    if (!newRule.persona || !newRule.action || !newRule.scope) return;
+
+    const rule: PurchaseGovernanceRuleDTO = {
+      id: Date.now().toString(36),
+      persona: newRule.persona as any,
+      action: newRule.action as any,
+      scope: newRule.scope as any,
+      branchId: newRule.branchId,
+      formType: newRule.formType,
+    };
+
+    const currentRules = settings?.governanceRules || [];
+    updateSetting('governanceRules', [...currentRules, rule]);
+    setNewRule({ scope: 'company', action: 'allow', persona: 'direct' });
+    setShowAddRule(false);
+  };
+
+  const removeRule = (id: string) => {
+    const currentRules = settings?.governanceRules || [];
+    updateSetting('governanceRules', currentRules.filter((r) => r.id !== id));
+  };
 
   const liabilityAccounts = useMemo(
     () =>
@@ -124,6 +155,8 @@ const PurchaseSettingsPage: React.FC = () => {
         prNumberPrefix: settings.prNumberPrefix,
         prNumberNextSeq: settings.prNumberNextSeq,
         exchangeGainLossAccountId: settings.exchangeGainLossAccountId || undefined,
+        governanceRules: settings.governanceRules || [],
+        defaultPurchaseInvoicePersona: settings.defaultPurchaseInvoicePersona,
       };
 
       const result = await purchasesApi.updateSettings(payload);
@@ -153,6 +186,7 @@ const PurchaseSettingsPage: React.FC = () => {
     { id: 'policy', label: 'Procurement Policy', icon: ShieldCheck },
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
     { id: 'numbering', label: 'No. Series', icon: Hash },
+    { id: 'governance', label: 'Governance', icon: Shield },
   ];
 
   return (
@@ -437,6 +471,200 @@ const PurchaseSettingsPage: React.FC = () => {
               ))}
             </div>
           </Card>
+        </SettingsSection>
+      )}
+
+      {activeTab === 'governance' && (
+        <SettingsSection
+          title="Governance Rules"
+          description="Override default document policies at the company, branch, or form level."
+          onSave={handleSave}
+          disabled={!hasChanges || saving}
+          saving={saving}
+        >
+          <div className="space-y-6">
+            <Card className="p-6 border-indigo-100 bg-indigo-50/30">
+              <div className="flex items-center gap-2 mb-4">
+                <Shield className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-sm font-bold text-gray-900">
+                  Base Policy (Workflow: {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
+                </h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { persona: 'Direct', key: 'direct' as const, allowed: settings.workflowMode === 'SIMPLE' || settings.allowDirectInvoicing },
+                  { persona: 'Linked', key: 'linked' as const, allowed: settings.workflowMode === 'OPERATIONAL' },
+                  { persona: 'Service', key: 'service' as const, allowed: true },
+                ].map((p) => (
+                  <div key={p.persona} className="flex flex-col items-center p-3 rounded-xl border border-white bg-white/50 shadow-sm">
+                    <span className="text-xs font-medium text-gray-500 mb-2">{p.persona}</span>
+                    {p.allowed ? (
+                      <div className="flex items-center gap-1.5 text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase">Allow</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-red-600">
+                        <XCircle className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase">Block</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs text-gray-500 italic">
+                Base policies are derived from your active workflow mode. Use governance rules below to override these defaults.
+              </p>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">Active Overrides</h3>
+                  <p className="text-xs text-gray-500">Specific rules that change the base policy behavior.</p>
+                </div>
+                {!showAddRule && (
+                  <button
+                    onClick={() => setShowAddRule(true)}
+                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Rule
+                  </button>
+                )}
+              </div>
+
+              {showAddRule && (
+                <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Persona</label>
+                      <select
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={newRule.persona}
+                        onChange={(e) => setNewRule({ ...newRule, persona: e.target.value as any })}
+                      >
+                        <option value="direct">Direct</option>
+                        <option value="linked">Linked</option>
+                        <option value="service">Service</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Action</label>
+                      <select
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={newRule.action}
+                        onChange={(e) => setNewRule({ ...newRule, action: e.target.value as any })}
+                      >
+                        <option value="allow">Allow</option>
+                        <option value="block">Block</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Scope</label>
+                      <select
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={newRule.scope}
+                        onChange={(e) => setNewRule({ ...newRule, scope: e.target.value as any })}
+                      >
+                        <option value="company">Company</option>
+                        <option value="branch">Branch</option>
+                        <option value="form">Form</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {newRule.scope === 'branch' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Branch ID</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. branch-001"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={newRule.branchId || ''}
+                          onChange={(e) => setNewRule({ ...newRule, branchId: e.target.value })}
+                        />
+                      </div>
+                    )}
+                    {newRule.scope === 'form' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Form Type</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. purchase_invoice_direct"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          value={newRule.formType || ''}
+                          onChange={(e) => setNewRule({ ...newRule, formType: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setShowAddRule(false)}
+                      className="rounded-lg px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={addRule}
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition"
+                    >
+                      Add Override Rule
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-hidden rounded-xl border border-gray-100 shadow-sm text-gray-900">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    <tr>
+                      <th className="px-4 py-3">Persona</th>
+                      <th className="px-4 py-3">Scope</th>
+                      <th className="px-4 py-3">Target</th>
+                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {settings.governanceRules && settings.governanceRules.length > 0 ? (
+                      settings.governanceRules.map((rule) => (
+                        <tr key={rule.id} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3 font-medium capitalize">{rule.persona}</td>
+                          <td className="px-4 py-3 capitalize text-gray-600">{rule.scope}</td>
+                          <td className="px-4 py-3 text-gray-500 italic">
+                            {rule.scope === 'company' ? 'Global' : rule.scope === 'branch' ? rule.branchId : rule.formType}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rule.action === 'allow' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {rule.action}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => removeRule(rule.id)}
+                              className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500 italic">
+                          No override rules defined. Base policy applies to all documents.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
         </SettingsSection>
       )}
     </ModuleSettingsLayout>

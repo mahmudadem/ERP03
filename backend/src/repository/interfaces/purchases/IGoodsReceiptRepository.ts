@@ -11,4 +11,5 @@ export interface IGoodsReceiptRepository {
   update(grn: GoodsReceipt, transaction?: unknown): Promise<void>;
   getById(companyId: string, id: string): Promise<GoodsReceipt | null>;
   list(companyId: string, opts?: GoodsReceiptListOptions): Promise<GoodsReceipt[]>;
+  hasUnpostedGoodsReceipts(companyId: string): Promise<boolean>;
 }

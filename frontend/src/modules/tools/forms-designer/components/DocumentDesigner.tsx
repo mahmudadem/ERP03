@@ -89,31 +89,60 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // Skip Step 1 (template selection) if editing existing document
   const [currentStep, setCurrentStep] = useState(initialConfig ? 2 : 1);
   
-  const isFieldMandatory = (fieldId: string, baseType?: string) => {
+  const getTemplateFieldId = (field: any): string => String(field?.id || field?.fieldId || field?.name || '').trim();
+  const isTemplateFieldRequired = (field: any): boolean => Boolean(field?.mandatory || field?.required);
+
+  const isFieldMandatory = (fieldId: string, formType?: string, scope: 'field' | 'table' = 'field') => {
     // 1. Check system fields first (hardcoded logic)
     const systemField = systemFields.find(f => f.id === fieldId);
     if (systemField?.mandatory || systemField?.category === 'core') return true;
 
     // 2. Check the base template definition if available in the props
-    const effectiveBaseType = baseType || config?.baseType;
-    const baseTemplate = availableTemplates.find(t => t.id === effectiveBaseType || t.code === effectiveBaseType);
+    const effectiveFormType = formType || (config as any)?.formType || config?.baseType;
+    const baseTemplate = availableTemplates.find(t => t.id === effectiveFormType || t.code === effectiveFormType);
     if (baseTemplate) {
-      const isHeaderMandatory = (baseTemplate.headerFields || []).some((f: any) => (f.id === fieldId || f.name === fieldId) && (f.mandatory || f.required));
-      const isLineMandatory = (baseTemplate.lineFields || []).some((f: any) => (f.id === fieldId || f.name === fieldId) && (f.mandatory || f.required));
-      if (isHeaderMandatory || isLineMandatory) return true;
+      if (scope === 'table') {
+        const isTableMandatory = (baseTemplate.tableColumns || []).some((f: any) => getTemplateFieldId(f) === fieldId && isTemplateFieldRequired(f));
+        const isLineMandatory = ((baseTemplate as any).lineFields || []).some((f: any) => getTemplateFieldId(f) === fieldId && isTemplateFieldRequired(f));
+        if (isTableMandatory || isLineMandatory) return true;
+        const tableColumn = availableTableColumns.find((f: any) => getTemplateFieldId(f) === fieldId);
+        return Boolean(tableColumn && isTemplateFieldRequired(tableColumn));
+      }
+
+      const isHeaderMandatory = (baseTemplate.headerFields || []).some((f: any) => getTemplateFieldId(f) === fieldId && isTemplateFieldRequired(f));
+      if (isHeaderMandatory) return true;
     }
 
     // 3. Fallback to the field's own mandatory flag if it exists (for standalone fields)
+    if (scope === 'table') {
+      const tableColumn = availableTableColumns.find((f: any) => getTemplateFieldId(f) === fieldId);
+      return Boolean(tableColumn && isTemplateFieldRequired(tableColumn));
+    }
+
     const field = availableFields.find(f => f.id === fieldId);
     return field?.mandatory || false;
   };
 
-  const getCoreFieldIds = (baseType?: string) => {
+  const createTableColumnConfig = (field: any) => ({
+    id: field.id,
+    fieldId: field.fieldId || field.id,
+    labelOverride: field.label,
+    type: field.type,
+    required: field.required || field.mandatory || false,
+    mandatory: field.mandatory || field.required || false,
+    readOnly: field.readOnly,
+    calculated: field.calculated,
+    autoManaged: field.autoManaged,
+    options: field.options,
+    width: field.width
+  });
+
+  const getCoreFieldIds = (formType?: string) => {
     return [...systemFields, ...availableFields].filter(f => {
-      const mandatory = isFieldMandatory(f.id, baseType);
+      const mandatory = isFieldMandatory(f.id, formType);
       if (!mandatory) return false;
-      if (f.supportedTypes && baseType && !f.supportedTypes.includes(baseType)) return false;
-      if (f.excludedTypes && baseType && f.excludedTypes.includes(baseType)) return false;
+      if (f.supportedTypes && formType && !f.supportedTypes.includes(formType)) return false;
+      if (f.excludedTypes && formType && f.excludedTypes.includes(formType)) return false;
       return true;
     }).map(f => f.id);
   };
@@ -121,11 +150,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   // --- GRID CONSTANTS ---
   const GRID_COLS = 24;
 
-  const isFieldAllowed = (fieldId: string, baseType?: string) => {
+  const isFieldAllowed = (fieldId: string, formType?: string) => {
     const field = availableFields.find(f => f.id === fieldId);
     if (!field) return true; // System fields or unknown fields allowed by default
-    if (field.supportedTypes && baseType && !field.supportedTypes.includes(baseType)) return false;
-    if (field.excludedTypes && baseType && field.excludedTypes.includes(baseType)) return false;
+    if (field.supportedTypes && formType && !field.supportedTypes.includes(formType)) return false;
+    if (field.excludedTypes && formType && field.excludedTypes.includes(formType)) return false;
     return true;
   };
 
@@ -169,7 +198,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
              Object.values(mode.sections).forEach((s: any) => {
                 if (s?.fields && Array.isArray(s.fields)) {
                   s.fields.forEach((f: any) => {
-                    if (f?.fieldId && !f.fieldId.startsWith('action_') && isFieldAllowed(f.fieldId, initialConfig.baseType)) {
+                    if (f?.fieldId && !f.fieldId.startsWith('action_') && isFieldAllowed(f.fieldId, (initialConfig as any)?.formType || initialConfig.baseType)) {
                       existingFields.add(f.fieldId);
                     }
                   });
@@ -179,11 +208,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
          });
        }
        // Combine with mandatory fields
-       const mandatory = getCoreFieldIds(initialConfig.baseType);
+       const mandatory = getCoreFieldIds((initialConfig as any)?.formType || initialConfig.baseType);
        return Array.from(new Set([...Array.from(existingFields), ...mandatory]));
     }
     
-    return getCoreFieldIds(initialConfig?.baseType);
+    return getCoreFieldIds((initialConfig as any)?.formType || initialConfig?.baseType);
   });
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
@@ -263,6 +292,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   });
 
   const [previewMode, setPreviewMode] = useState<UIMode>('windows');
+  const normalizeColumnLabel = (columnId: string, fallback?: string): string => {
+    const normalized = String(columnId || '').trim().toLowerCase();
+    if (normalized === 'exchangerate' || normalized === 'parity') return 'Exchange Rate';
+    return fallback || columnId;
+  };
   
   // UI State
   const [selectedField, setSelectedField] = useState<{ id: string, section: string } | null>(null);
@@ -300,7 +334,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
               if (section?.fields && Array.isArray(section.fields)) {
                 section.fields.forEach((f: any) => {
                   const id = f.fieldId || f.id || f;
-                  if (id && isFieldAllowed(id, initialConfig.baseType)) {
+                  if (id && isFieldAllowed(id, (initialConfig as any)?.formType || initialConfig.baseType)) {
                     fieldIds.add(id);
                   }
                 });
@@ -311,7 +345,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       }
       
       // Always include required/core fields
-      getCoreFieldIds(initialConfig.baseType).forEach(id => {
+      getCoreFieldIds((initialConfig as any)?.formType || initialConfig.baseType).forEach(id => {
         fieldIds.add(id);
       });
       
@@ -407,8 +441,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       // 2. Identify missing fields
       const allRequiredFieldIds = Array.from(new Set([
         ...[...systemFields, ...availableFields].filter(f => {
-          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
-          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          if (f.supportedTypes && (config as any).formType && !f.supportedTypes.includes((config as any).formType)) return false;
+          if (f.excludedTypes && (config as any).formType && f.excludedTypes.includes((config as any).formType)) return false;
+          // Also keep backward compat with baseType
+          if (!((config as any).formType) && f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
+          if (!((config as any).formType) && f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
           return selectedFieldIds.includes(f.id);
         }).map(f => f.id),
         ...config.actions.filter(a => a.enabled).map(a => `action_${a.type}`)
@@ -478,7 +515,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       ...prev,
       ...template.config,
       id: template.config.id || prev.id,
-      baseType: (template.config as any).baseType || template.id, // Store strategy reference
+      formType: (template.config as any).formType || (template.config as any).baseType || template.id,
+      baseType: (template.config as any).formType || (template.config as any).baseType || template.id,
       isSystemDefault: false, // New forms from templates are NOT system defaults
       isLocked: false,        // New forms from templates are NOT locked
       startNumber: 1000,
@@ -490,17 +528,17 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
     
     // Sync selectedFieldIds from template if available
     const fieldIds = new Set<string>();
-    const baseType = (template.config as any).baseType || template.id;
+    const formType = (template.config as any).formType || (template.config as any).baseType || template.id;
     
     // Always include core fields for this type
-    getCoreFieldIds(baseType).forEach(id => fieldIds.add(id));
+    getCoreFieldIds(formType).forEach(id => fieldIds.add(id));
 
     if (template.config.uiModeOverrides) {
       Object.values(template.config.uiModeOverrides).forEach(mode => {
         Object.values(mode.sections).forEach(section => {
           section.fields.forEach(f => {
             if (!f.fieldId.startsWith('action_') && !systemFields.some(sf => sf.id === f.fieldId)) {
-              if (isFieldAllowed(f.fieldId, baseType)) {
+              if (isFieldAllowed(f.fieldId, formType)) {
                 fieldIds.add(f.fieldId);
               }
             }
@@ -1159,7 +1197,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                             if (isSelected) {
                                                updated = currentCols.filter(c => (typeof c === 'string' ? c : c.id) !== col.id);
                                             } else {
-                                               updated = [...currentCols, { id: col.id, labelOverride: col.label }];
+                                               updated = [...currentCols, createTableColumnConfig(col)];
                                             }
                                             setConfig({...config, tableColumns: updated});
                                          }}
@@ -1189,7 +1227,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                             const colId = typeof col === 'string' ? col : col.id;
                                             const isSelected = activeColumnId === colId;
                                             const meta = availableTableColumns.find(m => m.id === colId);
-                                            const columnLabel = typeof col === 'string' ? (meta?.label || colId) : (col.labelOverride || meta?.label || colId);
+                                            const baseLabel = typeof col === 'string' ? (meta?.label || colId) : (col.labelOverride || meta?.label || colId);
+                                            const columnLabel = normalizeColumnLabel(colId, baseLabel);
                                             const colWidth = (typeof col !== 'string' && col.width) || 'auto';
 
                                             return (
@@ -1300,10 +1339,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                                    const col = config.tableColumns?.find((c: any) => (typeof c === 'string' ? c : c.id) === activeColumnId);
                                                    const meta = availableTableColumns.find(m => m.id === activeColumnId);
                                                    if (typeof col === 'object' && col !== null) {
-                                                      return col.labelOverride || meta?.label || activeColumnId;
+                                                      return normalizeColumnLabel(activeColumnId, col.labelOverride || meta?.label || activeColumnId);
                                                    }
-                                                   return meta?.label || activeColumnId;
-                                                })()}
+                                                   return normalizeColumnLabel(activeColumnId, meta?.label || activeColumnId);
+                                                 })()}
                                                 onChange={(e) => {
                                                    const updated = (config.tableColumns || []).map((c: any) => {
                                                       const id = typeof c === 'string' ? c : c.id;
@@ -1336,16 +1375,26 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                                          const id = typeof c === 'string' ? c : c.id;
                                                          if (id === activeColumnId) {
                                                             const base = typeof c === 'string' ? { id: c } : c;
-                                                            let val = e.target.value;
-                                                            if (val && !val.includes('%') && !isNaN(parseInt(val))) {
-                                                               val = val + '%';
-                                                            }
-                                                            return { ...base, width: val || 'auto' };
+                                                            return { ...base, width: e.target.value || 'auto' };
                                                          }
                                                          return c;
+                                                       });
+                                                       setConfig({...config, tableColumns: updated});
+                                                    }}
+                                                  onBlur={(e) => {
+                                                      const rawValue = String(e.target.value || '').trim();
+                                                      if (!rawValue || rawValue.toLowerCase() === 'auto') return;
+                                                      const updated = (config.tableColumns || []).map((c: any) => {
+                                                         const id = typeof c === 'string' ? c : c.id;
+                                                         if (id !== activeColumnId) return c;
+                                                         const base = typeof c === 'string' ? { id: c } : c;
+                                                         if (/^\d+$/.test(rawValue)) {
+                                                           return { ...base, width: `${rawValue}%` };
+                                                         }
+                                                         return { ...base, width: rawValue };
                                                       });
-                                                      setConfig({...config, tableColumns: updated});
-                                                   }}
+                                                      setConfig({ ...config, tableColumns: updated });
+                                                  }}
                                                   className="w-20 px-2 py-1 text-xs font-mono border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-center"
                                                />
                                                <button 
@@ -1879,8 +1928,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       case 4: // Fields (Reorganized)
         const allPossibleFields = [...systemFields, ...availableFields];
         const relevantFields = allPossibleFields.filter(f => {
-          if (f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
-          if (f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
+          if (f.supportedTypes && (config as any).formType && !f.supportedTypes.includes((config as any).formType)) return false;
+          if (f.excludedTypes && (config as any).formType && f.excludedTypes.includes((config as any).formType)) return false;
+          if (!(config as any).formType && f.supportedTypes && config.baseType && !f.supportedTypes.includes(config.baseType)) return false;
+          if (!(config as any).formType && f.excludedTypes && config.baseType && f.excludedTypes.includes(config.baseType)) return false;
           return true;
         });
 
@@ -1893,13 +1944,13 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
             <div 
               key={field.id} 
               onClick={() => {
-                if (isFieldMandatory(field.id, config.baseType) && isSelected) return;
+                if (isFieldMandatory(field.id, (config as any).formType || config.baseType, isTableCol ? 'table' : 'field') && isSelected) return;
                 if (isTableCol) {
                   let updated;
                   if (isSelected) {
                     updated = (config.tableColumns || []).filter((c: any) => (typeof c === 'string' ? c : c.id) !== field.id);
                   } else {
-                    updated = [...(config.tableColumns || []), { id: field.id, labelOverride: field.label }];
+                    updated = [...(config.tableColumns || []), createTableColumnConfig(field)];
                   }
                   setConfig({...config, tableColumns: updated as any});
                 } else {
@@ -1917,7 +1968,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                 <div className="flex flex-col min-w-0 overflow-hidden">
                   <div className="flex items-center gap-1 min-w-0">
                     <span className="text-[10px] font-bold truncate">{field.label}</span>
-                    {isFieldMandatory(field.id, config.baseType) && (
+                    {isFieldMandatory(field.id, (config as any).formType || config.baseType, isTableCol ? 'table' : 'field') && (
                       <span className={`text-[7px] px-1 py-0.5 rounded font-black uppercase tracking-tighter shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Req</span>
                     )}
                   </div>
@@ -1970,8 +2021,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         };
 
         const systemList = relevantFields.filter(f => f.category === 'systemMetadata' || f.autoManaged);
-        const requiredList = relevantFields.filter(f => isFieldMandatory(f.id, config.baseType) && !systemList.includes(f));
-        const optionalList = relevantFields.filter(f => !isFieldMandatory(f.id, config.baseType) && !systemList.includes(f));
+        const requiredList = relevantFields.filter(f => isFieldMandatory(f.id, (config as any).formType || config.baseType) && !systemList.includes(f));
+        const optionalList = relevantFields.filter(f => !isFieldMandatory(f.id, (config as any).formType || config.baseType) && !systemList.includes(f));
 
         return (
           <div className="max-w-6xl mx-auto py-2">

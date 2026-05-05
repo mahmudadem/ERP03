@@ -3,13 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.asyncHandler = exports.errorHandler = void 0;
 const AppError_1 = require("./AppError");
 const ErrorCodes_1 = require("./ErrorCodes");
-/**
- * Global Error Handler Middleware
- *
- * Catches all errors and formats them into consistent API responses
- */
+function isFirestoreTransactionError(err) {
+    const msg = err.message || '';
+    return (msg.includes('all reads to be executed before all writes') ||
+        msg.includes('Firestore transactions require') ||
+        err.code === 'INVALID_ARGUMENT' ||
+        err.code === 'ABORTED');
+}
 function errorHandler(err, req, res, next) {
-    // Log error for debugging
     console.error('[Error Handler]', {
         name: err.name,
         message: err.message,
@@ -17,7 +18,6 @@ function errorHandler(err, req, res, next) {
         url: req.url,
         method: req.method,
     });
-    // Check if it's our custom AppError
     if (err instanceof AppError_1.AppError) {
         const response = {
             success: false,
@@ -25,6 +25,21 @@ function errorHandler(err, req, res, next) {
         };
         const statusCode = getStatusCode(err.severity);
         return res.status(statusCode).json(response);
+    }
+    // Detect Firestore transaction read-after-write violations
+    if (isFirestoreTransactionError(err)) {
+        const response = {
+            success: false,
+            error: {
+                code: ErrorCodes_1.ErrorCode.INFRA_TRANSACTION_CONFLICT,
+                message: process.env.NODE_ENV === 'production'
+                    ? 'A transaction conflict occurred. Please retry the operation.'
+                    : err.message,
+                severity: ErrorCodes_1.ErrorSeverity.CRITICAL,
+                timestamp: new Date().toISOString(),
+            },
+        };
+        return res.status(409).json(response);
     }
     // Handle unknown errors
     const response = {

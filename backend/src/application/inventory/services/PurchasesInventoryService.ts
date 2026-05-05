@@ -3,6 +3,8 @@ import {
   InventoryProcessOUTContractInput,
   IPurchasesInventoryService,
 } from '../contracts/InventoryIntegrationContracts';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
+import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { RecordStockMovementUseCase } from '../use-cases/RecordStockMovementUseCase';
 
 export class PurchasesInventoryService implements IPurchasesInventoryService {
@@ -25,6 +27,7 @@ export class PurchasesInventoryService implements IPurchasesInventoryService {
       notes: input.notes,
       metadata: input.metadata,
       transaction: input.transaction,
+      preFetchedLevel: input.preFetchedStockLevel,
     });
   }
 
@@ -41,10 +44,25 @@ export class PurchasesInventoryService implements IPurchasesInventoryService {
       notes: input.notes,
       metadata: input.metadata,
       transaction: input.transaction,
+      preFetchedLevel: input.preFetchedStockLevel,
+      preFetchedItem: input.preFetchedItem,
+      skipWarehouseValidation: input.skipWarehouseValidation,
     });
   }
 
   async deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
     return this.movementUseCase.deleteMovement(companyId, id, transaction);
+  }
+
+  preFetchStockLevel(companyId: string, itemId: string, warehouseId: string): Promise<StockLevel | null> {
+    return this.movementUseCase.preFetchStockLevel(companyId, itemId, warehouseId);
+  }
+
+  writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void> {
+    return this.movementUseCase.writeStockMovement(movement, transaction);
+  }
+
+  writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void> {
+    return this.movementUseCase.writeStockLevel(level, transaction);
   }
 }

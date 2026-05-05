@@ -17,6 +17,7 @@ import { DatePicker } from './DatePicker';
 import { PartySelector } from '../../../../components/shared/selectors/PartySelector';
 import { ItemSelector } from '../../../../components/shared/selectors/ItemSelector';
 import { WarehouseSelector } from '../../../../components/shared/selectors/WarehouseSelector';
+import { CustomerAccountSelector, VendorAccountSelector } from '../../../../components/shared/selectors/PartyAccountSelector';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
@@ -126,7 +127,6 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       case 'rate':
       case 'unitPriceDoc':
         return 'unitPrice';
-      case 'amount':
       case 'total':
       case 'totalDoc':
       case 'lineTotalDoc':
@@ -181,28 +181,43 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   };
 
   const normalizeFieldType = (type?: string): string => String(type || '').trim().toLowerCase();
-  const normalizedDefinitionType = (() => {
-    const normalized = String(
-      (definition as any).baseType ||
-      definition.code ||
-      definition.id ||
-      ''
-    )
-      .trim()
-      .replace(/[\s-]+/g, '_')
-      .toLowerCase();
+  const normalizeLineSideValue = (side: any): '' | 'debit' | 'credit' => {
+    const normalized = String(side || '').trim().toLowerCase();
+    if (normalized === 'debit' || normalized === 'dr') return 'debit';
+    if (normalized === 'credit' || normalized === 'cr') return 'credit';
+    return '';
+  };
+  const DEFAULT_SIDE_OPTIONS = [
+    { value: 'debit', label: 'Debit' },
+    { value: 'credit', label: 'Credit' },
+  ];
+  const normalizeSelectOptions = (options: any): Array<{ value: string; label: string }> => {
+    if (!Array.isArray(options)) return [];
 
-    if (normalized.includes('si') || normalized.includes('salesinvoice') || normalized.includes('invoice')) return 'sales_invoice';
-    if (normalized.includes('so') || normalized.includes('salesorder') || normalized.includes('order')) return 'sales_order';
-    if (normalized.includes('dn') || normalized.includes('deliverynote') || normalized.includes('delivery')) return 'delivery_note';
-    if (normalized.includes('sr') || normalized.includes('salesreturn') || normalized.includes('return')) return 'sales_return';
-    if (normalized.includes('pi') || normalized.includes('purchaseinvoice')) return 'purchase_invoice';
-    if (normalized.includes('po') || normalized.includes('purchaseorder')) return 'purchase_order';
-    if (normalized.includes('grn') || normalized.includes('goodsreceipt') || normalized.includes('receipt')) return 'goods_receipt';
-    if (normalized.includes('pr') || normalized.includes('purchasereturn')) return 'purchase_return';
-
-    return normalized;
-  })();
+    return options.flatMap((option: any) => {
+      if (option === null || option === undefined) return [];
+      if (typeof option === 'object') {
+        const rawValue = option.value ?? option.id ?? option.code ?? option.label ?? option.name;
+        if (rawValue === null || rawValue === undefined) return [];
+        const rawLabel = option.label ?? option.name ?? option.value ?? rawValue;
+        return [{ value: String(rawValue), label: String(rawLabel) }];
+      }
+      return [{ value: String(option), label: String(option) }];
+    });
+  };
+  const getTableSelectOptions = (col: any, colId: string): Array<{ value: string; label: string }> => {
+    const normalizedColId = normalizeTableColumnId(colId);
+    const options = normalizeSelectOptions(col?.options).map((option) => ({
+      ...option,
+      value: normalizedColId === 'side' ? (normalizeLineSideValue(option.value) || option.value) : option.value,
+    }));
+    if (options.length > 0) return options;
+    if ((normalizeFieldType(col?.type) === 'select' || normalizeFieldType(col?.type) === 'dropdown') && normalizedColId === 'side') {
+      return DEFAULT_SIDE_OPTIONS;
+    }
+    return [];
+  };
+  const definitionCode = String(definition.code || '').trim().toLowerCase();
 
   const headerFieldMeta = useMemo(() => {
     const allFields = [
@@ -345,7 +360,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       
       // Safety Net: If it's a Journal Entry or FX Revaluation, include multi-currency columns in the default view
       const isJE = definition.code?.toLowerCase().includes('journal') || 
-                   (definition as any).baseType?.toLowerCase().includes('journal-entry');
+                   (definition as any).formType?.toLowerCase().includes('journal-entry') || (definition as any).baseType?.toLowerCase().includes('journal-entry');
       const isReval = definition.code?.toLowerCase().includes('revaluation') || (definition as any)._typeId?.toLowerCase().includes('revaluation');
                    
       if (isJE || isReval) {
@@ -396,7 +411,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         fieldId: col.fieldId || colId,
         label: shouldTranslate ? t(`voucherRenderer.fields.${normalizedColId}`, { defaultValue: fallbackLabel }) : (col.labelOverride || col.label || fallbackLabel),
         width: col.width || 'auto',
-        readOnly: col.readOnly || normalizedColId === 'lineTotal'
+        readOnly: col.readOnly === true || (normalizedColId === 'lineTotal' && col.readOnly !== false)
       };
     });
 
@@ -471,7 +486,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
   useEffect(() => {
     const needsSalesContext =
-      normalizedDefinitionType === 'sales_invoice' ||
+      !!headerFieldMeta.customerId ||
       !!headerFieldMeta.salesOrderId;
 
     if (!needsSalesContext) {
@@ -501,7 +516,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return () => {
       cancelled = true;
     };
-  }, [headerFieldMeta.salesOrderId, normalizedDefinitionType]);
+  }, [headerFieldMeta.salesOrderId, headerFieldMeta.customerId]);
 
   // ─── Reopen Hydration ─────────────────────────────────────────────────────
   // Priority chain for restoring form state from a persisted voucher:
@@ -607,12 +622,17 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const canonicalLines: any[] = Array.isArray(initialData.lines) ? initialData.lines : [];
       const mappedLines = deduplicateRowIds(
         detailLines.map((l: any, i: number) => {
+          const detailMetadata = l.metadata || {};
+          const canonicalLine = canonicalLines[i] || {};
           const accountId = resolveAccountRef(
             l.receiveFromAccountId || l.payToAccountId || l.accountId || l.account
           );
           const accountObj = accountId ? getAccountById(accountId) : undefined;
           const accountCode = accountObj?.code || (typeof l.account === 'string' ? l.account : (accountId || ''));
           const amount = Math.abs(Number(l.amount ?? l.debit ?? l.credit ?? 0));
+          const lineSide = normalizeLineSideValue(
+            l.side ?? detailMetadata.side ?? canonicalLine.side ?? canonicalLine.metadata?.side
+          );
 
           // Resolve debit/credit: prefer explicit fields, then side field, then canonical line side
           let debit = 0;
@@ -621,19 +641,15 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             // Explicit debit/credit stored — use them directly
             debit = Number(l.debit ?? 0);
             credit = Number(l.credit ?? 0);
-          } else if (l.side) {
-            // Side field present on the detail line
-            debit = l.side === 'Debit' ? amount : 0;
-            credit = l.side === 'Credit' ? amount : 0;
-          } else if (canonicalLines[i] && canonicalLines[i].side) {
-            // Fallback: look up the canonical line at the same index for side info
-            debit = canonicalLines[i].side === 'Debit' ? amount : 0;
-            credit = canonicalLines[i].side === 'Credit' ? amount : 0;
+          } else if (lineSide) {
+            debit = lineSide === 'debit' ? amount : 0;
+            credit = lineSide === 'credit' ? amount : 0;
           } else {
             // Last resort: everything goes to debit (preserves old behavior)
             debit = amount;
             credit = 0;
           }
+          const rowSide = lineSide || (Number(debit) > 0 ? 'debit' : (Number(credit) > 0 ? 'credit' : ''));
 
           return {
             ...l,
@@ -644,11 +660,12 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             amount,
             debit,
             credit,
+            side: rowSide,
             notes: l.notes || l.description || '',
             currency: l.currency || l.lineCurrency || initialData.currency || '',
             parity: Number(l.exchangeRate || l.parity || 1) || 1.0,
             equivalent: l.baseAmount || l.equivalent || 0,
-            metadata: l.metadata || {},
+            metadata: { ...detailMetadata, ...(rowSide ? { side: rowSide } : {}) },
           };
         })
       );
@@ -711,6 +728,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         RECEIPT: 'receipt', OPENING_BALANCE: 'opening_balance', REVERSAL: 'reversal'
       };
       if (defAny._typeId && typeMap[String(defAny._typeId).toUpperCase()]) return typeMap[String(defAny._typeId).toUpperCase()];
+      if (defAny.formType && typeMap[String(defAny.formType).toUpperCase()]) return typeMap[String(defAny.formType).toUpperCase()];
       if (defAny.baseType && typeMap[String(defAny.baseType).toUpperCase()]) return typeMap[String(defAny.baseType).toUpperCase()];
       if (definition.code && typeMap[String(definition.code).toUpperCase()]) return typeMap[String(definition.code).toUpperCase()];
       const nameLower = String(definition.name || '').toLowerCase();
@@ -904,6 +922,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
             mappedLines = semanticSourceLines
               .map((l: any, i: number) => {
+                const lineSide = normalizeLineSideValue(l.side ?? l.metadata?.side) || normalizeLineSideValue(expectedLineSide);
                 const semanticAccountId =
                   resolveAccountRef(resolveFieldCI(l, semanticLineKey)) ||
                   resolveAccountRef(l.accountId) ||
@@ -919,20 +938,23 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                   accountId: semanticAccountId,
                   account: accountCode,
                   amount,
-                  debit: amount,
-                  credit: 0,
+                  debit: lineSide === 'credit' ? 0 : amount,
+                  credit: lineSide === 'credit' ? amount : 0,
+                  side: lineSide,
                   notes: l.notes || l.description || '',
                   currency: l.currency || l.lineCurrency || hydratedInitialData.currency || '',
                   parity: Number(l.exchangeRate || l.parity || 1) || 1.0,
                   equivalent: l.baseAmount || l.equivalent || 0,
-                  metadata: l.metadata || {}
+                  metadata: { ...(l.metadata || {}), ...(lineSide ? { side: lineSide } : {}) }
                 };
               })
               .filter((line: any) => line.accountId && line.amount > 0);
           } else {
             mappedLines = rawLines.map((l: any, i: number) => {
-              const debit = l.debit !== undefined ? l.debit : (l.side === 'Debit' ? l.amount : 0);
-              const credit = l.credit !== undefined ? l.credit : (l.side === 'Credit' ? l.amount : 0);
+              const lineSide = normalizeLineSideValue(l.side ?? l.metadata?.side);
+              const debit = l.debit !== undefined ? l.debit : (lineSide === 'debit' ? l.amount : 0);
+              const credit = l.credit !== undefined ? l.credit : (lineSide === 'credit' ? l.amount : 0);
+              const rowSide = lineSide || (Number(debit) > 0 ? 'debit' : (Number(credit) > 0 ? 'credit' : ''));
               const semanticAccountId = l.accountId || l.account || l.receiveFromAccountId || l.payToAccountId;
               let accountCode = l.account || '';
               if (!accountCode && semanticAccountId) {
@@ -943,6 +965,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                 ...l,
                 debit, credit,
                 amount: amountOf(l),
+                side: rowSide,
                 id: l.id ?? -(Date.now() + i),
                 _rowId: i + 1,
                 account: accountCode,
@@ -951,7 +974,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                 currency: l.currency || l.lineCurrency || '',
                 parity: l.exchangeRate || l.parity || 1.0,
                 equivalent: l.baseAmount || l.equivalent || 0,
-                metadata: l.metadata || {}
+                metadata: { ...(l.metadata || {}), ...(rowSide ? { side: rowSide } : {}) }
               };
             });
           }
@@ -1542,8 +1565,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       const defAny = definition as any;
       let backendType = 'journal_entry'; // Default fallback
       
-      // 0. Check explicit baseType (stored when form is cloned/created)
-      if (defAny.baseType && typeMap[defAny.baseType.toUpperCase()]) {
+      // 0. Check explicit formType/baseType (stored when form is cloned/created)
+      if (defAny.formType && typeMap[defAny.formType.toUpperCase()]) {
+        backendType = typeMap[defAny.formType.toUpperCase()];
+      } else if (defAny.baseType && typeMap[defAny.baseType.toUpperCase()]) {
         backendType = typeMap[defAny.baseType.toUpperCase()];
       }
       // 1. Check explicit _typeId (from custom forms)
@@ -1663,10 +1688,15 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       } else if (backendType === 'journal_entry' || backendType === 'opening_balance' || backendType === 'fx_revaluation' || backendType === 'reversal') {
         // Journal-style types: require account + debit/credit
         backendLines = rows
-          .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0))
+          .filter(row => row.account && ((Number(row.debit) || 0) > 0 || (Number(row.credit) || 0) > 0 || (Number((row as any).amount) || 0) > 0))
           .map(row => {
-            const isDebit = (Number(row.debit) || 0) > 0;
-            const amt = isDebit ? row.debit : row.credit;
+            const debitAmount = Number(row.debit) || 0;
+            const creditAmount = Number(row.credit) || 0;
+            const amount = Number((row as any).amount) || 0;
+            const normalizedSide = normalizeLineSideValue((row as any).side || row.metadata?.side);
+            const isDebit = debitAmount > 0 || (!creditAmount && normalizedSide !== 'credit');
+            const amt = debitAmount > 0 ? debitAmount : (creditAmount > 0 ? creditAmount : amount);
+            const sideValue = isDebit ? 'debit' : 'credit';
             
             return {
               accountId: row.accountId || row.account,
@@ -1677,7 +1707,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
               exchangeRate: Number(row.parity) || 1,
               costCenterId: (row as any).costCenterId || (row as any).costCenter || null,
               costCenter: (row as any).costCenter || (row as any).costCenterId || null,
-              metadata: row.metadata || {}
+              metadata: { ...(row.metadata || {}), side: normalizedSide || sideValue }
             };
           });
       } else {
@@ -1786,6 +1816,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         ...(backendType === 'payment' ? { payFromAccountId: normalizedHeaderAccountId || paymentHeaderAccountRaw } : {}),
         lines: backendLines,
         type: backendType,  // Backend type for strategy (payment, receipt, journal_entry, opening_balance)
+        code: definition.code, // Template code (e.g., sales_invoice_direct) for persona/workflow lookup
         formId: resultFormId, // Which form was used for rendering
         prefix: resultPrefix, // Voucher number prefix
         numberFormat: resultNumberFormat, // Custom number format template
@@ -1826,19 +1857,6 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
         };
       } else {
         next = { ...prev, [fieldId]: value };
-      }
-
-      if (normalizedDefinitionType === 'sales_invoice') {
-        const lowerFieldId = fieldId.toLowerCase();
-        if (lowerFieldId === 'date') {
-          next.invoiceDate = value;
-        } else if (lowerFieldId === 'customername' || lowerFieldId === 'customer') {
-          next.customerId = value;
-        } else if (lowerFieldId === 'description') {
-          next.notes = value;
-        } else if (lowerFieldId === 'soreference' || lowerFieldId === 'salesorderreference') {
-          next.salesOrderId = value;
-        }
       }
       
       onChangeRef.current?.({ ...next, lines: rows });
@@ -1987,14 +2005,35 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
           }
 
           // Mutual exclusion: debit and credit cannot both have values
+          const normalizedSide = normalizeLineSideValue((updated as any).side);
           if (field === 'debit' && value > 0) {
             updated.credit = 0;
-            (updated as any).side = 'Debit';
+            (updated as any).side = 'debit';
             (updated as any).amount = value;
           } else if (field === 'credit' && value > 0) {
             updated.debit = 0;
-            (updated as any).side = 'Credit';
+            (updated as any).side = 'credit';
             (updated as any).amount = value;
+          } else if (field === 'amount') {
+            const numericAmount = parseFloat(value as any) || 0;
+            if (normalizedSide === 'debit') {
+              updated.debit = numericAmount;
+              updated.credit = 0;
+            } else if (normalizedSide === 'credit') {
+              updated.debit = 0;
+              updated.credit = numericAmount;
+            }
+          } else if (field === 'side') {
+            const numericAmount = parseFloat((updated as any).amount as any) || parseFloat(updated.debit as any) || parseFloat(updated.credit as any) || 0;
+            const nextSide = normalizeLineSideValue(value);
+            (updated as any).side = nextSide;
+            if (nextSide === 'debit') {
+              updated.debit = numericAmount;
+              updated.credit = 0;
+            } else if (nextSide === 'credit') {
+              updated.debit = 0;
+              updated.credit = numericAmount;
+            }
           }
 
           // Handle numeric fields safely without stripping partial decimals
@@ -2018,7 +2057,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
           const debit = parseFloat(updated.debit as any) || 0;
           const credit = parseFloat(updated.credit as any) || 0;
           const parity = parseFloat(updated.parity as any) || 1.0;
-          const amount = debit || credit || 0;
+          const amount = debit || credit || parseFloat((updated as any).amount) || 0;
           
           // ALWAYS Recalculate Equivalent to ensure it matches Amount * Parity
           // Rounding to 2 decimal places is standard for currency values in accounting.
@@ -2153,18 +2192,13 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   const getAliasedFieldLabel = (fieldId: string) => {
     const lowerFieldId = fieldId.toLowerCase();
 
-    if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'date' || lowerFieldId === 'invoicedate')) return 'Invoice Date';
-    if (normalizedDefinitionType === 'sales_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
-    if (normalizedDefinitionType === 'sales_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
-    if (normalizedDefinitionType === 'delivery_note' && (lowerFieldId === 'date' || lowerFieldId === 'deliverydate')) return 'Delivery Date';
-    if (normalizedDefinitionType === 'purchase_invoice' && (lowerFieldId === 'date' || lowerFieldId === 'invoicedate')) return 'Invoice Date';
-    if (normalizedDefinitionType === 'purchase_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
-    if (normalizedDefinitionType === 'purchase_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
-    if (normalizedDefinitionType === 'goods_receipt' && (lowerFieldId === 'date' || lowerFieldId === 'receiptdate')) return 'Receipt Date';
-    
-    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'customername') return 'Customer';
-    if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'soreference' || lowerFieldId === 'salesorderreference')) return 'Sales Order';
-    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'description') return 'Notes';
+    if (definitionCode === 'sales_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
+    if (definitionCode === 'sales_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
+    if (definitionCode === 'delivery_note' && (lowerFieldId === 'date' || lowerFieldId === 'deliverydate')) return 'Delivery Date';
+    if (definitionCode === 'purchase_invoice' && (lowerFieldId === 'date' || lowerFieldId === 'invoicedate')) return 'Invoice Date';
+    if (definitionCode === 'purchase_order' && (lowerFieldId === 'date' || lowerFieldId === 'orderdate')) return 'Order Date';
+    if (definitionCode === 'purchase_return' && (lowerFieldId === 'date' || lowerFieldId === 'returndate')) return 'Return Date';
+    if (definitionCode === 'goods_receipt' && (lowerFieldId === 'date' || lowerFieldId === 'receiptdate')) return 'Receipt Date';
     
     if (lowerFieldId === 'beforediscountdoc') return 'Before Discount';
     if (lowerFieldId === 'beforediscountbase') return 'Before Discount (Base)';
@@ -2215,18 +2249,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     }
 
     switch (lower) {
-      case 'date':
-        if (normalizedDefinitionType === 'sales_invoice') {
-          return formData.invoiceDate ?? formData.date ?? '';
-        }
-        return '';
       case 'customername':
         return formData.customerId ?? formData.customerName ?? '';
-      case 'description':
-        if (normalizedDefinitionType === 'sales_invoice') {
-          return formData.notes ?? formData.description ?? '';
-        }
-        return '';
       case 'documentid':
         return (
           formData.documentId ??
@@ -2345,11 +2369,10 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       readOnly ||
       fieldMeta.readOnly ||
       fieldMeta.calculated ||
-      fieldMeta.autoManaged ||
-      (normalizedDefinitionType === 'sales_invoice' && isDerivedTotalField)
+      fieldMeta.autoManaged
     );
     const relationTarget = String(fieldMeta.relationTarget || '').trim().toLowerCase();
-    const selectOptions = Array.isArray(fieldMeta.options) ? fieldMeta.options : [];
+    const selectOptions = normalizeSelectOptions(fieldMeta.options);
     const finalLabel = getFieldDisplayLabel(fieldId, labelOverride);
     
     // 0. Suppress standalone exchangeRate if it's handled by CurrencyExchangeWidget (at currency slot)
@@ -2435,6 +2458,43 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       );
     }
 
+    const isCustomerAccountSelector =
+      effectiveType === 'customer-account-selector' ||
+      typeOverride === 'CustomerAccountSelector';
+    const isVendorAccountSelector =
+      effectiveType === 'vendor-account-selector' ||
+      typeOverride === 'VendorAccountSelector';
+
+    if (isCustomerAccountSelector || isVendorAccountSelector) {
+      const isCustomer = isCustomerAccountSelector;
+      const accountFieldId = isCustomer ? 'customerAccountId' : 'vendorAccountId';
+      const fallbackAccountFieldId = 'receivablePayableAccountId';
+      const accountValue =
+        getFieldValue(accountFieldId) ||
+        getFieldValue(fallbackAccountFieldId) ||
+        getFieldValue(isCustomer ? 'arAccountId' : 'apAccountId') ||
+        '';
+      const CompositeSelector = isCustomer ? CustomerAccountSelector : VendorAccountSelector;
+
+      return (
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide">{finalLabel}</label>
+          <CompositeSelector
+            value={{ partyId: String(getFieldValue(fieldId) || ''), accountId: String(accountValue || '') }}
+            accountValue={String(accountValue || '')}
+            disabled={effectiveReadOnly}
+            onChange={(next) => {
+              const nextPartyId = String(next?.partyId || '');
+              const nextAccountId = String(next?.accountId || '');
+              handleInputChange(fieldId, nextPartyId);
+              handleInputChange(accountFieldId, nextAccountId);
+              handleInputChange(fallbackAccountFieldId, nextAccountId);
+            }}
+          />
+        </div>
+      );
+    }
+
     // 0.6. Specialized Business Selectors (Party, Item, Warehouse)
     const lowerLabel = (finalLabel || '').toLowerCase();
     const isLineItemsField = lowerFieldId === 'lineitems';
@@ -2501,9 +2561,6 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             onChange={(val: any) => {
               const nextPartyId = val?.id || val?.code || '';
               handleInputChange(fieldId, nextPartyId);
-              if (normalizedDefinitionType === 'sales_invoice' && (lowerFieldId === 'customername' || lowerFieldId === 'customer')) {
-                handleInputChange('customerId', nextPartyId);
-              }
             }}
           />
         </div>
@@ -2797,6 +2854,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                      {columns.map((col, colIndex) => {
                                          const colId = col.id;
                                          const normalizedColId = normalizeTableColumnId(colId);
+                                         const normalizedColType = normalizeFieldType(col.type);
+                                         const selectOptions = getTableSelectOptions(col, colId);
                                          const totalCols = columns.length;
                                          
                                          const colWidthOverride = columnWidths[colId];
@@ -2871,7 +2930,27 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                          />
                                                      </div>
 
-                                                  ) : (colId === 'debit' || colId === 'credit' || colId === 'equivalent' || col.type === 'number' || col.type === 'amount') ? (
+                                                  ) : ((normalizedColType === 'select' || normalizedColType === 'dropdown') && selectOptions.length > 0) ? (
+                                                      <div className="p-0.5">
+                                                        <select
+                                                          ref={(el) => registerCellRef(index, colIndex, el)}
+                                                          value={String(getRowValue(row, colId) ?? '')}
+                                                          disabled={readOnly || col.readOnly}
+                                                          onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                                          onKeyDown={(e) => handleCellKeyDown(e, index, colIndex, totalCols)}
+                                                          onBlur={() => onBlurRef.current?.()}
+                                                          className={`w-full h-8 px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                                        >
+                                                          <option value="">Select...</option>
+                                                          {selectOptions.map((option) => (
+                                                            <option key={option.value} value={option.value}>
+                                                              {option.label}
+                                                            </option>
+                                                          ))}
+                                                        </select>
+                                                      </div>
+
+                                                  ) : (colId === 'debit' || colId === 'credit' || colId === 'amount' || colId === 'equivalent' || normalizedColType === 'number' || normalizedColType === 'amount') ? (
                                                       <AmountInput
                                                           ref={(el) => registerCellRef(index, colIndex, el)}
                                                           value={parseFloat(getRowValue(row, colId) as any) || 0}
@@ -3083,6 +3162,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                              {columns.map((col, colIdx) => {
                                  const colId = col.id;
                                  const normalizedColId = normalizeTableColumnId(colId);
+                                 const normalizedColType = normalizeFieldType(col.type);
+                                 const selectOptions = getTableSelectOptions(col, colId);
                                  return (
                                      <td 
                                        key={`${row.id}-${colId}`} 
@@ -3141,7 +3222,24 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                  </div>
                                                )}
                                              </div>
-                                         ) : (colId === 'debit' || colId === 'credit' || colId === 'equivalent' || col.type === 'number' || col.type === 'amount') ? (
+                                         ) : ((normalizedColType === 'select' || normalizedColType === 'dropdown') && selectOptions.length > 0) ? (
+                                             <select
+                                               ref={(el) => registerCellRef(index, colIdx, el)}
+                                               value={String(getRowValue(row, colId) ?? '')}
+                                               disabled={readOnly || col.readOnly}
+                                               onChange={(e) => handleRowChange(row.id, colId as any, e.target.value)}
+                                               onKeyDown={(e) => handleCellKeyDown(e, index, colIdx, columns.length)}
+                                               onBlur={() => onBlurRef.current?.()}
+                                               className={`w-full h-8 p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
+                                             >
+                                               <option value="">Select...</option>
+                                               {selectOptions.map((option) => (
+                                                 <option key={option.value} value={option.value}>
+                                                   {option.label}
+                                                 </option>
+                                               ))}
+                                             </select>
+                                         ) : (colId === 'debit' || colId === 'credit' || colId === 'amount' || colId === 'equivalent' || normalizedColType === 'number' || normalizedColType === 'amount') ? (
                                             <AmountInput
                                                ref={(el) => registerCellRef(index, colIdx, el)}
                                                value={parseFloat(getRowValue(row, colId) as any) || 0}
@@ -3511,39 +3609,27 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     return elements;
   };
 
-  const defaultFooterFields = normalizedDefinitionType === 'sales_invoice'
-    ? [
-        'beforeDiscountDoc',
-        'beforeDiscountBase',
-        'subtotalDoc',
-        'subtotalBase',
-        'taxTotalDoc',
-        'taxTotalBase',
-        'grandTotalDoc',
-        'grandTotalBase',
-      ].map((fieldId, index) => ({
-        fieldId,
-        row: Math.floor(index / 4),
-        col: (index % 4) * 6,
-        colSpan: 6,
-      }))
-    : [];
+  const defaultFooterFields = [
+    'beforeDiscountDoc',
+    'beforeDiscountBase',
+    'subtotalDoc',
+    'subtotalBase',
+    'taxTotalDoc',
+    'taxTotalBase',
+    'grandTotalDoc',
+    'grandTotalBase',
+  ].map((fieldId, index) => ({
+    fieldId,
+    row: Math.floor(index / 4),
+    col: (index % 4) * 6,
+    colSpan: 6,
+  }));
 
   const shouldRenderLayoutField = (field: any) => {
     // If we are in the designer or a "Test Run", show everything 
     // so the user can see their design regardless of data presence.
     if (isPreview || !formData.id) {
        return true;
-    }
-
-    const lowerFieldId = String(field?.fieldId || '').toLowerCase();
-
-    if (normalizedDefinitionType === 'sales_invoice' && lowerFieldId === 'orderdate') {
-      return Boolean(
-        formData.salesOrderId ||
-        formData.orderDate ||
-        salesOrderById[formData.salesOrderId || '']?.orderDate
-      );
     }
 
     return true;

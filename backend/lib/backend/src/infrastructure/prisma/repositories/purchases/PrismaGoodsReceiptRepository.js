@@ -145,6 +145,16 @@ class PrismaGoodsReceiptRepository {
             postedAt: record.postedAt || undefined,
         });
     }
+    async hasUnpostedGoodsReceipts(companyId) {
+        const count = await this.prisma.goodsReceipt.count({
+            where: {
+                companyId,
+                status: 'DRAFT',
+            },
+            take: 1,
+        });
+        return count > 0;
+    }
 }
 exports.PrismaGoodsReceiptRepository = PrismaGoodsReceiptRepository;
 //# sourceMappingURL=PrismaGoodsReceiptRepository.js.map

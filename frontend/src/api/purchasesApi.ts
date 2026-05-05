@@ -13,6 +13,7 @@ export type PIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
+export type DocumentSource = 'native' | 'default_form' | 'custom_form';
 
 export interface PurchaseSettingsDTO {
   companyId: string;
@@ -37,6 +38,17 @@ export interface PurchaseSettingsDTO {
   prNumberPrefix: string;
   prNumberNextSeq: number;
   exchangeGainLossAccountId?: string;
+  governanceRules: PurchaseGovernanceRuleDTO[];
+  defaultPurchaseInvoicePersona: 'direct' | 'linked' | 'service';
+}
+
+export interface PurchaseGovernanceRuleDTO {
+  id: string;
+  scope: 'company' | 'branch' | 'form';
+  action: 'allow' | 'block';
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
 }
 
 export interface PurchaseOrderLineDTO {
@@ -162,6 +174,10 @@ export interface PurchaseInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   vendorInvoiceNumber?: string;
+  formType: string;
+  voucherType: string;
+  persona: string;
+  source?: DocumentSource | string;
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
@@ -368,8 +384,14 @@ export interface PurchaseInvoiceLineInputDTO {
 }
 
 export interface CreatePurchaseInvoicePayload {
+  formType?: string;
+  voucherType?: string;
+  persona?: string;
+  source?: DocumentSource;
   purchaseOrderId?: string;
   vendorId: string;
+  vendorAccountId?: string;
+  receivablePayableAccountId?: string;
   vendorInvoiceNumber?: string;
   invoiceDate: string;
   dueDate?: string;
@@ -377,10 +399,17 @@ export interface CreatePurchaseInvoicePayload {
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInputDTO[];
   notes?: string;
+  settlementInput?: SettlementInputPayload;
 }
 
 export interface UpdatePurchaseInvoicePayload {
+  formType?: string;
+  voucherType?: string;
+  persona?: string;
+  source?: DocumentSource;
   vendorId?: string;
+  vendorAccountId?: string;
+  receivablePayableAccountId?: string;
   vendorInvoiceNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
@@ -388,6 +417,22 @@ export interface UpdatePurchaseInvoicePayload {
   exchangeRate?: number;
   lines?: PurchaseInvoiceLineInputDTO[];
   notes?: string;
+  settlementInput?: SettlementInputPayload;
+}
+
+export interface SettlementInputPayload {
+  settlementMode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  receivablePayableAccountId?: string;
+  settlements: SettlementRowPayload[];
+}
+
+export interface SettlementRowPayload {
+  settlementAccountId: string;
+  amountBase: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
 }
 
 export interface ListPurchaseInvoicesOptions {
@@ -435,6 +480,10 @@ export interface ListPurchaseReturnsOptions {
 }
 
 export interface UpdateInvoicePaymentStatusPayload {
+  paymentAmountBase: number;
+}
+
+export interface RecordPurchaseInvoicePaymentPayload {
   paymentAmountBase: number;
 }
 
@@ -490,8 +539,14 @@ export const purchasesApi = {
   createPI: (payload: CreatePurchaseInvoicePayload): Promise<PurchaseInvoiceDTO> =>
     client.post('/tenant/purchase/invoices', payload),
 
+  createAndPostPI: (payload: CreatePurchaseInvoicePayload): Promise<PurchaseInvoiceDTO> =>
+    client.post('/tenant/purchase/invoices/create-and-post', payload),
+
   updatePI: (id: string, payload: UpdatePurchaseInvoicePayload): Promise<PurchaseInvoiceDTO> =>
     client.put(`/tenant/purchase/invoices/${id}`, payload),
+
+  updateAndPostPI: (id: string, payload: UpdatePurchaseInvoicePayload): Promise<PurchaseInvoiceDTO> =>
+    client.put(`/tenant/purchase/invoices/${id}/update-and-post`, payload),
 
   listPIs: (opts?: ListPurchaseInvoicesOptions): Promise<PurchaseInvoiceDTO[]> =>
     client.get('/tenant/purchase/invoices', { params: opts }),
@@ -499,14 +554,20 @@ export const purchasesApi = {
   getPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.get(`/tenant/purchase/invoices/${id}`),
 
-  postPI: (id: string): Promise<PurchaseInvoiceDTO> =>
-    client.post(`/tenant/purchase/invoices/${id}/post`, {}),
+  postPI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
+    client.post(`/tenant/purchase/invoices/${id}/post`, { settlementInput }),
 
   unpostPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/unpost`, {}),
 
   updatePaymentStatus: (invoiceId: string, payload: UpdateInvoicePaymentStatusPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${invoiceId}/payment-update`, payload),
+
+  recordPayment: (invoiceId: string, payload: RecordPurchaseInvoicePaymentPayload): Promise<{ invoice: PurchaseInvoiceDTO; payment: Record<string, unknown>; voucherId?: string }> =>
+    client.post(`/tenant/purchase/invoices/${invoiceId}/record-payment`, payload),
+
+  getPaymentHistory: (invoiceId: string): Promise<Record<string, unknown>[]> =>
+    client.get(`/tenant/purchase/invoices/${invoiceId}/payments`),
 
   createReturn: (payload: CreatePurchaseReturnPayload): Promise<PurchaseReturnDTO> =>
     client.post('/tenant/purchase/returns', payload),

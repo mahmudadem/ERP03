@@ -47,6 +47,8 @@ export function uiToCanonical(
       case 'checkbox': return 'CHECKBOX';
       case 'select': return 'SELECT';
       case 'account-selector': return 'account-selector';
+      case 'customer-account-selector': return 'customer-account-selector';
+      case 'vendor-account-selector': return 'vendor-account-selector';
       case 'cost-center-selector': return 'cost-center-selector';
       case 'textarea': return 'TEXTAREA';
       case 'relation': return 'RELATION';
@@ -127,11 +129,19 @@ export function uiToCanonical(
       return {
         fieldId: col.id || col.fieldId,
         width: col.width,
-        labelOverride: col.labelOverride
+        labelOverride: col.labelOverride,
+        type: col.type,
+        required: col.required,
+        mandatory: col.mandatory,
+        readOnly: col.readOnly,
+        calculated: col.calculated,
+        autoManaged: col.autoManaged,
+        options: col.options
       };
     }),
     tableStyle: uiConfig.tableStyle || 'web',
-    baseType: uiConfig.baseType || uiConfig.id, // Ensure base strategy is preserved
+    formType: uiConfig.formType || uiConfig.baseType || uiConfig.id,
+    baseType: uiConfig.formType || uiConfig.baseType || uiConfig.id,
     requiresApproval,
     preventNegativeCash,
     allowFutureDates,

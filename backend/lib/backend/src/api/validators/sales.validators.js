@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateUpdateSalesInvoicePaymentStatusInput = exports.validateListSalesReturnsQuery = exports.validateCreateSalesReturnInput = exports.validateListSalesInvoicesQuery = exports.validateUpdateSalesInvoiceInput = exports.validateCreateSalesInvoiceInput = exports.validateListDeliveryNotesQuery = exports.validateCreateDeliveryNoteInput = exports.validateListSalesOrdersQuery = exports.validateUpdateSalesOrderInput = exports.validateCreateSalesOrderInput = exports.validateUpdateSalesSettingsInput = exports.validateInitializeSalesInput = void 0;
+exports.validateRecordSalesInvoicePaymentInput = exports.validateUpdateSalesInvoicePaymentStatusInput = exports.validateListSalesReturnsQuery = exports.validateCreateSalesReturnInput = exports.validateListSalesInvoicesQuery = exports.validateUpdateSalesInvoiceInput = exports.validateCreateSalesInvoiceInput = exports.validateListDeliveryNotesQuery = exports.validateCreateDeliveryNoteInput = exports.validateListSalesOrdersQuery = exports.validateUpdateSalesOrderInput = exports.validateCreateSalesOrderInput = exports.validateUpdateSalesSettingsInput = exports.validateInitializeSalesInput = void 0;
 const ApiError_1 = require("../errors/ApiError");
 const SO_STATUSES = [
     'DRAFT',
@@ -14,6 +14,7 @@ const DN_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const SI_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const SR_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const VALID_DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 const ensureRequiredString = (value, fieldName) => {
     if (!value || typeof value !== 'string' || !value.trim()) {
         throw ApiError_1.ApiError.badRequest(`${fieldName} is required`);
@@ -56,6 +57,13 @@ const ensureOptionalString = (value, fieldName) => {
     if (value === undefined)
         return;
     ensureRequiredString(value, fieldName);
+};
+const normalizeDocumentSource = (value) => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const validateDocumentSource = (value) => {
+    ensureOptionalString(value, 'source');
+    if (value !== undefined && !VALID_DOCUMENT_SOURCES.includes(normalizeDocumentSource(value))) {
+        throw ApiError_1.ApiError.badRequest(`source must be one of: ${VALID_DOCUMENT_SOURCES.join(', ')}`);
+    }
 };
 const ensureOptionalUuid = (value, fieldName) => {
     if (value === undefined)
@@ -173,7 +181,28 @@ const validateInitializeSalesInput = (body) => {
     ensureOptionalString(body.defaultCOGSAccountId, 'defaultCOGSAccountId');
     ensureOptionalUuid(body.defaultInventoryAccountId, 'defaultInventoryAccountId');
     ensureOptionalString(body.defaultSalesExpenseAccountId, 'defaultSalesExpenseAccountId');
-    ensureOptionalString(body.salesVoucherTypeId, 'salesVoucherTypeId');
+    if (body.governanceRules !== undefined) {
+        if (!Array.isArray(body.governanceRules)) {
+            throw ApiError_1.ApiError.badRequest('governanceRules must be an array');
+        }
+        for (const rule of body.governanceRules) {
+            if (!rule.scope || !['company', 'branch', 'form'].includes(rule.scope)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.scope must be company, branch, or form');
+            }
+            if (!rule.action || !['allow', 'block'].includes(rule.action)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.action must be allow or block');
+            }
+            if (!rule.persona || !['direct', 'linked', 'service'].includes(rule.persona)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.persona must be direct, linked, or service');
+            }
+        }
+    }
+    if (body.defaultSalesInvoicePersona !== undefined) {
+        ensureRequiredString(body.defaultSalesInvoicePersona, 'defaultSalesInvoicePersona');
+        if (!['direct', 'linked', 'service'].includes(body.defaultSalesInvoicePersona)) {
+            throw ApiError_1.ApiError.badRequest('defaultSalesInvoicePersona must be direct, linked, or service');
+        }
+    }
     ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
     ensureOptionalString(body.soNumberPrefix, 'soNumberPrefix');
     ensureOptionalString(body.dnNumberPrefix, 'dnNumberPrefix');
@@ -210,8 +239,28 @@ const validateUpdateSalesSettingsInput = (body) => {
         ensureNonNegativeNumber(body.overInvoiceTolerancePct, 'overInvoiceTolerancePct');
     if (body.defaultPaymentTermsDays !== undefined)
         ensureNonNegativeNumber(body.defaultPaymentTermsDays, 'defaultPaymentTermsDays');
-    if (body.salesVoucherTypeId !== undefined)
-        ensureOptionalString(body.salesVoucherTypeId, 'salesVoucherTypeId');
+    if (body.governanceRules !== undefined) {
+        if (!Array.isArray(body.governanceRules)) {
+            throw ApiError_1.ApiError.badRequest('governanceRules must be an array');
+        }
+        for (const rule of body.governanceRules) {
+            if (!rule.scope || !['company', 'branch', 'form'].includes(rule.scope)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.scope must be company, branch, or form');
+            }
+            if (!rule.action || !['allow', 'block'].includes(rule.action)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.action must be allow or block');
+            }
+            if (!rule.persona || !['direct', 'linked', 'service'].includes(rule.persona)) {
+                throw ApiError_1.ApiError.badRequest('governanceRules.persona must be direct, linked, or service');
+            }
+        }
+    }
+    if (body.defaultSalesInvoicePersona !== undefined) {
+        ensureRequiredString(body.defaultSalesInvoicePersona, 'defaultSalesInvoicePersona');
+        if (!['direct', 'linked', 'service'].includes(body.defaultSalesInvoicePersona)) {
+            throw ApiError_1.ApiError.badRequest('defaultSalesInvoicePersona must be direct, linked, or service');
+        }
+    }
     if (body.defaultWarehouseId !== undefined)
         ensureOptionalString(body.defaultWarehouseId, 'defaultWarehouseId');
     if (body.soNumberPrefix !== undefined)
@@ -324,6 +373,17 @@ const validateListDeliveryNotesQuery = (query) => {
 };
 exports.validateListDeliveryNotesQuery = validateListDeliveryNotesQuery;
 const validateCreateSalesInvoiceInput = (body) => {
+    validateDocumentSource(body.source);
+    const isNativeSource = normalizeDocumentSource(body.source) === 'native';
+    if (!isNativeSource) {
+        ensureRequiredString(body.formType || body.voucherTypeId, 'formType');
+        ensureRequiredString(body.voucherType, 'voucherType');
+        ensureRequiredString(body.persona, 'persona');
+    }
+    const validPersonas = ['direct', 'linked', 'service'];
+    if (body.persona !== undefined && !validPersonas.includes(body.persona)) {
+        throw ApiError_1.ApiError.badRequest(`persona must be one of: ${validPersonas.join(', ')}`);
+    }
     if (body.salesOrderId !== undefined)
         ensureOptionalString(body.salesOrderId, 'salesOrderId');
     ensureRequiredString(body.customerId, 'customerId');
@@ -341,6 +401,9 @@ const validateCreateSalesInvoiceInput = (body) => {
             throw ApiError_1.ApiError.badRequest('lines must be a non-empty array when provided');
         }
         body.lines.forEach((line, index) => validateSILine(line, index));
+    }
+    if (body.settlementInput !== undefined) {
+        validateSettlementInput(body.settlementInput);
     }
 };
 exports.validateCreateSalesInvoiceInput = validateCreateSalesInvoiceInput;
@@ -363,8 +426,40 @@ const validateUpdateSalesInvoiceInput = (body) => {
         }
         body.lines.forEach((line, index) => validateSILine(line, index));
     }
+    if (body.settlementInput !== undefined) {
+        validateSettlementInput(body.settlementInput);
+    }
 };
 exports.validateUpdateSalesInvoiceInput = validateUpdateSalesInvoiceInput;
+const VALID_SETTLEMENT_MODES = ['DEFERRED', 'CASH_FULL', 'MULTI'];
+const VALID_PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
+const validateSettlementInput = (settlement) => {
+    if (!settlement.settlementMode) {
+        throw ApiError_1.ApiError.badRequest('settlementInput.settlementMode is required');
+    }
+    if (!VALID_SETTLEMENT_MODES.includes(settlement.settlementMode)) {
+        throw ApiError_1.ApiError.badRequest(`settlementMode must be one of: ${VALID_SETTLEMENT_MODES.join(', ')}`);
+    }
+    if (settlement.receivablePayableAccountId !== undefined) {
+        ensureOptionalString(settlement.receivablePayableAccountId, 'receivablePayableAccountId');
+    }
+    if (settlement.settlements !== undefined) {
+        if (!Array.isArray(settlement.settlements)) {
+            throw ApiError_1.ApiError.badRequest('settlementInput.settlements must be an array');
+        }
+        settlement.settlements.forEach((s, index) => {
+            if (!s.settlementAccountId) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].settlementAccountId is required`);
+            }
+            if (typeof s.amountBase !== 'number' || s.amountBase <= 0) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].amountBase must be a positive number`);
+            }
+            if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].paymentMethod must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+            }
+        });
+    }
+};
 const validateListSalesInvoicesQuery = (query) => {
     if (query.status !== undefined) {
         const status = String(query.status).toUpperCase();
@@ -439,4 +534,8 @@ const validateUpdateSalesInvoicePaymentStatusInput = (body) => {
     ensureNumber(body.paidAmountBase, 'paidAmountBase');
 };
 exports.validateUpdateSalesInvoicePaymentStatusInput = validateUpdateSalesInvoicePaymentStatusInput;
+const validateRecordSalesInvoicePaymentInput = (body) => {
+    ensurePositiveNumber(body.paymentAmountBase, 'paymentAmountBase');
+};
+exports.validateRecordSalesInvoicePaymentInput = validateRecordSalesInvoicePaymentInput;
 //# sourceMappingURL=sales.validators.js.map

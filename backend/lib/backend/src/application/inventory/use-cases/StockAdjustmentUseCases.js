@@ -5,6 +5,7 @@ const crypto_1 = require("crypto");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const StockAdjustment_1 = require("../../../domain/inventory/entities/StockAdjustment");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
 class CreateStockAdjustmentUseCase {
     constructor(adjustmentRepo) {
         this.adjustmentRepo = adjustmentRepo;
@@ -56,14 +57,19 @@ class PostStockAdjustmentUseCase {
             throw new Error('Only DRAFT adjustments can be posted');
         }
         const itemCache = new Map();
+        const baseCurrencyCache = new Map();
+        const levelCache = new Map();
         for (const line of adjustment.lines) {
             if (line.adjustmentQty === 0)
                 continue;
-            const item = await this.itemRepo.getItem(line.itemId);
+            const { item, baseCurrency } = await this.movementUseCase.preFetchItemContext(companyId, line.itemId);
             if (!item || item.companyId !== companyId) {
                 throw new Error(`Item not found for adjustment line: ${line.itemId}`);
             }
             itemCache.set(line.itemId, item);
+            baseCurrencyCache.set(line.itemId, baseCurrency);
+            const level = await this.movementUseCase.preFetchStockLevel(companyId, line.itemId, adjustment.warehouseId);
+            levelCache.set(line.itemId, level !== null && level !== void 0 ? level : StockLevel_1.StockLevel.createNew(companyId, line.itemId, adjustment.warehouseId));
         }
         await this.transactionManager.runTransaction(async (transaction) => {
             for (const line of adjustment.lines) {
@@ -90,6 +96,10 @@ class PostStockAdjustmentUseCase {
                         fxRateMovToBase: fxRate,
                         fxRateCCYToBase: fxRate,
                         transaction,
+                        preFetchedItem: item,
+                        baseCurrency: baseCurrencyCache.get(line.itemId),
+                        preFetchedLevel: levelCache.get(line.itemId),
+                        skipWarehouseValidation: true,
                     };
                     await this.movementUseCase.processIN(inInput);
                 }
@@ -108,13 +118,16 @@ class PostStockAdjustmentUseCase {
                         currentUser: userId,
                         notes: adjustment.notes,
                         transaction,
+                        preFetchedItem: item,
+                        preFetchedLevel: levelCache.get(line.itemId),
+                        skipWarehouseValidation: true,
                     };
                     await this.movementUseCase.processOUT(outInput);
                 }
             }
             let voucherId;
             if (shouldPostAccounting && this.accountingPostingService) {
-                voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction);
+                voucherId = await this.createVoucherForAdjustment(companyId, userId, adjustment, itemCache, Array.from(baseCurrencyCache.values())[0], transaction);
             }
             const updatePatch = {
                 status: 'POSTED',
@@ -129,7 +142,7 @@ class PostStockAdjustmentUseCase {
         }
         return posted;
     }
-    async createVoucherForAdjustment(companyId, userId, adjustment, itemCache, transaction) {
+    async createVoucherForAdjustment(companyId, userId, adjustment, itemCache, baseCurrencyOverride, transaction) {
         if (!this.accountingPostingService) {
             console.warn(`[Inventory][PostStockAdjustmentUseCase] Accounting dependencies not provided; skipping GL voucher for adjustment ${adjustment.id}.`);
             return undefined;
@@ -188,6 +201,9 @@ class PostStockAdjustmentUseCase {
             console.warn(`[Inventory][PostStockAdjustmentUseCase] Skipping GL voucher for adjustment ${adjustment.id}: no monetary adjustment lines.`);
             return undefined;
         }
+        if (!baseCurrencyOverride) {
+            throw new Error(`[Inventory][PostStockAdjustmentUseCase] Missing base currency for adjustment ${adjustment.id}.`);
+        }
         const expectedAmount = (0, VoucherLineEntity_1.roundMoney)(adjustment.adjustmentValueBase);
         if (Math.abs(computedAmountBase - expectedAmount) > 0.01) {
             console.warn(`[Inventory][PostStockAdjustmentUseCase] Adjustment amount mismatch for ${adjustment.id}: expected=${expectedAmount}, computed=${computedAmountBase}.`);
@@ -213,6 +229,8 @@ class PostStockAdjustmentUseCase {
                 createdBy: userId,
                 postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
                 reference: adjustment.id,
+                baseCurrencyOverride,
+                skipAccountValidation: true,
             }, transaction);
             return voucher.id;
         }

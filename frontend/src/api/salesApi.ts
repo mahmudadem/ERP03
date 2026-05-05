@@ -12,8 +12,18 @@ export type SOStatus =
 export type DNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type SIStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
+export type DocumentSource = 'native' | 'default_form' | 'custom_form';
+
+export interface GovernanceRuleDTO {
+  id: string;
+  scope: 'company' | 'branch' | 'form';
+  action: 'allow' | 'block';
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
+}
 
 export interface SalesSettingsDTO {
   companyId: string;
@@ -29,7 +39,8 @@ export interface SalesSettingsDTO {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
-  salesVoucherTypeId?: string;
+  governanceRules: GovernanceRuleDTO[];
+  defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix: string;
   soNumberNextSeq: number;
@@ -168,6 +179,7 @@ export interface SalesInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   customerInvoiceNumber?: string;
+  source?: DocumentSource | string;
   salesOrderId?: string;
   customerId: string;
   customerName: string;
@@ -211,12 +223,15 @@ export interface SalesReturnLineDTO {
   unitPriceDoc?: number;
   unitPriceBase?: number;
   unitCostBase: number;
+  lineTotalDoc?: number;
+  lineTotalBase?: number;
   fxRateMovToBase: number;
   fxRateCCYToBase: number;
   taxCodeId?: string;
   taxRate: number;
   taxAmountDoc: number;
   taxAmountBase: number;
+  warehouseId?: string;
   revenueAccountId?: string;
   cogsAccountId?: string;
   inventoryAccountId?: string;
@@ -367,8 +382,14 @@ export interface SalesInvoiceLineInputDTO {
 }
 
 export interface CreateSalesInvoicePayload {
+  formType?: string;
+  voucherType?: string;
+  persona?: 'direct' | 'linked' | 'service';
+  source?: DocumentSource;
   salesOrderId?: string;
   customerId: string;
+  customerAccountId?: string;
+  receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;
   invoiceDate: string;
   dueDate?: string;
@@ -376,10 +397,17 @@ export interface CreateSalesInvoicePayload {
   exchangeRate?: number;
   lines?: SalesInvoiceLineInputDTO[];
   notes?: string;
+  settlementInput?: SettlementInputPayload;
 }
 
 export interface UpdateSalesInvoicePayload {
+  formType?: string;
+  voucherType?: string;
+  persona?: 'direct' | 'linked' | 'service';
+  source?: DocumentSource;
   customerId?: string;
+  customerAccountId?: string;
+  receivablePayableAccountId?: string;
   customerInvoiceNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
@@ -387,6 +415,22 @@ export interface UpdateSalesInvoicePayload {
   exchangeRate?: number;
   lines?: SalesInvoiceLineInputDTO[];
   notes?: string;
+  settlementInput?: SettlementInputPayload;
+}
+
+export interface SettlementInputPayload {
+  settlementMode: 'DEFERRED' | 'CASH_FULL' | 'MULTI';
+  receivablePayableAccountId?: string;
+  settlements: SettlementRowPayload[];
+}
+
+export interface SettlementRowPayload {
+  settlementAccountId: string;
+  amountBase: number;
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
+  reference?: string;
+  notes?: string;
+  paymentDate?: string;
 }
 
 export interface ListSalesInvoicesOptions {
@@ -407,15 +451,22 @@ export interface SalesReturnLineInputDTO {
   returnQty?: number;
   uomId?: string;
   uom?: string;
+  unitPriceDoc?: number;
+  taxCodeId?: string;
+  warehouseId?: string;
   description?: string;
 }
 
 export interface CreateSalesReturnPayload {
+  returnContext?: ReturnContext;
+  customerId?: string;
   salesInvoiceId?: string;
   deliveryNoteId?: string;
   salesOrderId?: string;
   returnDate: string;
   warehouseId?: string;
+  currency?: string;
+  exchangeRate?: number;
   reason: string;
   notes?: string;
   lines?: SalesReturnLineInputDTO[];
@@ -430,6 +481,10 @@ export interface ListSalesReturnsOptions {
 
 export interface UpdateSalesInvoicePaymentStatusPayload {
   paidAmountBase: number;
+}
+
+export interface RecordSalesInvoicePaymentPayload {
+  paymentAmountBase: number;
 }
 
 export const salesApi = {
@@ -481,17 +536,29 @@ export const salesApi = {
   updateSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}`, payload),
 
+  createAndPostSI: (payload: CreateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
+    client.post('/tenant/sales/invoices/create-and-post', payload),
+
+  updateAndPostSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
+    client.put(`/tenant/sales/invoices/${id}/update-and-post`, payload),
+
   listSIs: (opts?: ListSalesInvoicesOptions): Promise<SalesInvoiceDTO[]> =>
     client.get('/tenant/sales/invoices', { params: opts }),
 
   getSI: (id: string): Promise<SalesInvoiceDTO> =>
     client.get(`/tenant/sales/invoices/${id}`),
 
-  postSI: (id: string): Promise<SalesInvoiceDTO> =>
-    client.post(`/tenant/sales/invoices/${id}/post`, {}),
+  postSI: (id: string, settlementInput?: SettlementInputPayload): Promise<SalesInvoiceDTO> =>
+    client.post(`/tenant/sales/invoices/${id}/post`, { settlementInput }),
 
   updatePaymentStatus: (id: string, payload: UpdateSalesInvoicePaymentStatusPayload): Promise<SalesInvoiceDTO> =>
     client.post(`/tenant/sales/invoices/${id}/payment-status`, payload),
+
+  recordPayment: (id: string, payload: RecordSalesInvoicePaymentPayload): Promise<{ invoice: SalesInvoiceDTO; payment: Record<string, unknown>; voucherId?: string }> =>
+    client.post(`/tenant/sales/invoices/${id}/record-payment`, payload),
+
+  getPaymentHistory: (id: string): Promise<Record<string, unknown>[]> =>
+    client.get(`/tenant/sales/invoices/${id}/payments`),
 
   createReturn: (payload: CreateSalesReturnPayload): Promise<SalesReturnDTO> =>
     client.post('/tenant/sales/returns', payload),

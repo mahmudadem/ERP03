@@ -27,10 +27,14 @@ class FirestoreStockTransferRepository {
     async createTransfer(transfer) {
         await this.collection(transfer.companyId).doc(transfer.id).set(InventoryMappers_1.StockTransferMapper.toPersistence(transfer));
     }
-    async updateTransfer(id, data) {
+    async updateTransfer(id, data, transaction) {
         const ref = await this.resolveRefById(id);
         if (!ref)
             return;
+        if (transaction && typeof transaction.update === 'function') {
+            transaction.update(ref, data);
+            return;
+        }
         await ref.update(data);
     }
     async getTransfer(id) {

@@ -1,4 +1,4 @@
-﻿import { DocumentReference, Firestore, Query, Transaction } from 'firebase-admin/firestore';
+import { DocumentReference, Firestore, Query, Transaction } from 'firebase-admin/firestore';
 import { SalesOrder } from '../../../../domain/sales/entities/SalesOrder';
 import {
   ISalesOrderRepository,
@@ -79,6 +79,14 @@ export class FirestoreSalesOrderRepository implements ISalesOrderRepository {
 
     const snap = await query.get();
     return snap.docs.map((doc) => SalesOrderMapper.toDomain(doc.data()));
+  }
+
+  async hasOpenOrders(companyId: string): Promise<boolean> {
+    const snap = await this.collection(companyId)
+      .where('status', 'in', ['CONFIRMED', 'PARTIALLY_DELIVERED', 'FULLY_DELIVERED'])
+      .limit(1)
+      .get();
+    return !snap.empty;
   }
 
   async delete(companyId: string, id: string): Promise<void> {

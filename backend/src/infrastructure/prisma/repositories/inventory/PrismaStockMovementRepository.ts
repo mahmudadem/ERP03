@@ -152,6 +152,13 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
     return this.toDomain(record);
   }
 
+  async hasAnyMovements(companyId: string): Promise<boolean> {
+    const count = await this.prisma.stockMovement.count({
+      where: { companyId },
+    });
+    return count > 0;
+  }
+
   async deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
     const prisma = (transaction as any) || this.prisma;
     await prisma.stockMovement.delete({

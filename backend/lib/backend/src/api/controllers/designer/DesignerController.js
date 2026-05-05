@@ -24,6 +24,17 @@ class DesignerController {
             next(error);
         }
     }
+    static async adoptTemplate(req, res, next) {
+        try {
+            const { companyId, userId, templateId, module } = req.body;
+            const useCase = new DesignerUseCases_1.AdoptTemplateUseCase(bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository);
+            const result = await useCase.execute({ companyId, userId, templateId, module });
+            res.status(201).json(Object.assign({ success: true }, result));
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.DesignerController = DesignerController;
 //# sourceMappingURL=DesignerController.js.map

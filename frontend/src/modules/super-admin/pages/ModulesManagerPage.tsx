@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { superAdminApi, Module, ModuleAvailabilityReport } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import {
   SuperAdminBadge,
   SuperAdminEmptyState,
@@ -9,11 +10,15 @@ import {
   SuperAdminLoading,
   SuperAdminModal,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 type LifecycleStatus = Module['lifecycleStatus'];
 type RuntimeStatus = Module['runtimeStatus'];
@@ -97,7 +102,8 @@ const buildRows = (registryModules: Module[], report?: ModuleAvailabilityReport)
           availabilityState: 'version_mismatch',
           availabilityReason: `DB ${mismatch.dbVersion} does not match code ${mismatch.codeVersion}`,
           codeVersion: mismatch.codeVersion,
-        });
+          dbVersion: mismatch.dbVersion
+        } as any);
       }
     });
 
@@ -126,7 +132,7 @@ const buildRows = (registryModules: Module[], report?: ModuleAvailabilityReport)
     });
   }
 
-  return Array.from(rows.values()).sort((a, b) => getModuleKey(a).localeCompare(getModuleKey(b)));
+  return Array.from(rows.values());
 };
 
 export const ModulesManagerPage: React.FC = () => {
@@ -150,6 +156,18 @@ export const ModulesManagerPage: React.FC = () => {
   useEffect(() => {
     loadModules();
   }, []);
+
+  const {
+    data: filteredModules,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: modules,
+    searchFields: ['name', 'id', 'description'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const stats = useMemo(() => ({
     dbOnly: modules.filter((module) => module.availabilityState === 'db_only').length,
@@ -357,113 +375,163 @@ export const ModulesManagerPage: React.FC = () => {
         }
       />
 
-      <SuperAdminTable>
-        <thead className="bg-slate-50">
-          <tr>
-            <th className={tableHeadCellClass}>Module</th>
-            <th className={tableHeadCellClass}>Availability</th>
-            <th className={tableHeadCellClass}>Lifecycle</th>
-            <th className={tableHeadCellClass}>Runtime</th>
-            <th className={tableHeadCellClass}>Implementation</th>
-            <th className={tableHeadCellClass}>Version</th>
-            <th className={tableHeadCellClass}>Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
-          {modules.length === 0 ? (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SuperAdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search modules..."
+          />
+        </div>
+
+        <SuperAdminTable>
+          <thead className="bg-slate-50">
             <tr>
-              <td colSpan={7}><SuperAdminEmptyState title={t('superAdmin.modules.empty', { defaultValue: 'No modules found' })} /></td>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('name')}
+              >
+                Module
+                <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+              </th>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('availabilityState')}
+              >
+                Availability
+                <SortIcon direction={sortConfig.field === 'availabilityState' ? sortConfig.direction : null} />
+              </th>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('lifecycleStatus')}
+              >
+                Lifecycle
+                <SortIcon direction={sortConfig.field === 'lifecycleStatus' ? sortConfig.direction : null} />
+              </th>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('runtimeStatus')}
+              >
+                Runtime
+                <SortIcon direction={sortConfig.field === 'runtimeStatus' ? sortConfig.direction : null} />
+              </th>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('implementationStatus')}
+              >
+                Implementation
+                <SortIcon direction={sortConfig.field === 'implementationStatus' ? sortConfig.direction : null} />
+              </th>
+              <th 
+                className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                onClick={() => handleSort('version')}
+              >
+                Version
+                <SortIcon direction={sortConfig.field === 'version' ? sortConfig.direction : null} />
+              </th>
+              <th className={tableHeadCellClass}>Actions</th>
             </tr>
-          ) : (
-            modules.map((module) => {
-              const moduleId = module.code || module.id;
-              const canMutateRegistry = !module.isCodeOnly;
-              return (
-                <tr key={`${module.availabilityState}:${moduleId}`} className={tableRowClass}>
-                  <td className={tableCellClass}>
-                    <div className="font-medium text-slate-950">{module.name}</div>
-                    <div className="font-mono text-xs text-slate-500">{moduleId}</div>
-                    {module.availabilityReason && (
-                      <div className="mt-1 max-w-xs text-xs text-slate-500">{module.availabilityReason}</div>
-                    )}
-                  </td>
-                  <td className={tableCellClass}>
-                    <SuperAdminBadge tone={statusTone(module.availabilityState)}>{module.availabilityState}</SuperAdminBadge>
-                  </td>
-                  <td className={tableCellClass}>
-                    <SuperAdminBadge tone={statusTone(module.lifecycleStatus)}>{module.lifecycleStatus}</SuperAdminBadge>
-                  </td>
-                  <td className={tableCellClass}>
-                    <SuperAdminBadge tone={statusTone(module.runtimeStatus)}>{module.runtimeStatus}</SuperAdminBadge>
-                  </td>
-                  <td className={tableCellClass}>
-                    <div className="flex flex-col gap-1">
-                      <SuperAdminBadge tone={statusTone(module.implementationStatus)}>{module.implementationStatus}</SuperAdminBadge>
-                      {module.implementationError && (
-                        <span className="max-w-xs text-xs text-red-600">{module.implementationError}</span>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {filteredModules.length === 0 ? (
+              <tr>
+                <td colSpan={7}>
+                  <SuperAdminEmptyState 
+                    title={searchQuery ? "No modules found matching search" : t('superAdmin.modules.empty', { defaultValue: 'No modules found' })} 
+                  />
+                </td>
+              </tr>
+            ) : (
+              filteredModules.map((module) => {
+                const moduleId = module.code || module.id;
+                const canMutateRegistry = !module.isCodeOnly;
+                return (
+                  <tr key={`${module.availabilityState}:${moduleId}`} className={tableRowClass}>
+                    <td className={tableCellClass}>
+                      <div className="font-medium text-slate-950">{module.name}</div>
+                      <div className="font-mono text-xs text-slate-500">{moduleId}</div>
+                      {module.availabilityReason && (
+                        <div className="mt-1 max-w-xs text-xs text-slate-500">{module.availabilityReason}</div>
                       )}
-                    </div>
-                  </td>
-                  <td className={tableCellClass}>
-                    {module.isCodeOnly ? (
-                      <div className="font-mono text-xs text-blue-700">Code {module.codeVersion || module.version}</div>
-                    ) : (
-                      <div className="font-mono text-xs">DB {module.version}</div>
-                    )}
-                    {module.codeVersion && module.codeVersion !== module.version && (
-                      <div className="font-mono text-xs text-red-600">Code {module.codeVersion}</div>
-                    )}
-                  </td>
-                  <td className={tableCellClass}>
-                    <div className="flex flex-wrap gap-2">
-                      {module.isCodeOnly && (
-                        <button
-                          onClick={() => handleRegisterCodeModule(module)}
-                          className="text-sm font-medium text-blue-700 hover:text-blue-900"
-                        >
-                          Register
-                        </button>
+                    </td>
+                    <td className={tableCellClass}>
+                      <SuperAdminBadge tone={statusTone(module.availabilityState)}>{module.availabilityState}</SuperAdminBadge>
+                    </td>
+                    <td className={tableCellClass}>
+                      <SuperAdminBadge tone={statusTone(module.lifecycleStatus)}>{module.lifecycleStatus}</SuperAdminBadge>
+                    </td>
+                    <td className={tableCellClass}>
+                      <SuperAdminBadge tone={statusTone(module.runtimeStatus)}>{module.runtimeStatus}</SuperAdminBadge>
+                    </td>
+                    <td className={tableCellClass}>
+                      <div className="flex flex-col gap-1">
+                        <SuperAdminBadge tone={statusTone(module.implementationStatus)}>{module.implementationStatus}</SuperAdminBadge>
+                        {module.implementationError && (
+                          <span className="max-w-xs text-xs text-red-600">{module.implementationError}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={tableCellClass}>
+                      {module.isCodeOnly ? (
+                        <div className="font-mono text-xs text-blue-700">Code {module.codeVersion || module.version}</div>
+                      ) : (
+                        <div className="font-mono text-xs">DB {module.version}</div>
                       )}
-                      {canMutateRegistry && (
-                        <>
-                          <button onClick={() => handleEdit(module)} className="text-sm font-medium text-slate-700 hover:text-slate-950">
-                            Edit
-                          </button>
+                      {module.codeVersion && module.codeVersion !== module.version && (
+                        <div className="font-mono text-xs text-red-600">Code {module.codeVersion}</div>
+                      )}
+                    </td>
+                    <td className={tableCellClass}>
+                      <div className="flex flex-wrap gap-2">
+                        {module.isCodeOnly && (
                           <button
-                            onClick={() => handleCheckImplementation(module.id)}
-                            disabled={checkingId === module.id}
-                            className="text-sm font-medium text-blue-700 hover:text-blue-900 disabled:opacity-50"
+                            onClick={() => handleRegisterCodeModule(module)}
+                            className="text-sm font-medium text-blue-700 hover:text-blue-900"
                           >
-                            {checkingId === module.id ? 'Checking...' : 'Check'}
+                            Register
                           </button>
-                          {module.runtimeStatus === 'suspended' ? (
-                            <button
-                              onClick={() => updateRuntimeStatus(module, 'available')}
-                              className="text-sm font-medium text-emerald-700 hover:text-emerald-900"
-                            >
-                              Resume
+                        )}
+                        {canMutateRegistry && (
+                          <>
+                            <button onClick={() => handleEdit(module)} className="text-sm font-medium text-slate-700 hover:text-slate-950">
+                              Edit
                             </button>
-                          ) : (
                             <button
-                              onClick={() => updateRuntimeStatus(module, 'suspended')}
-                              className="text-sm font-medium text-amber-700 hover:text-amber-900"
+                              onClick={() => handleCheckImplementation(module.id)}
+                              disabled={checkingId === module.id}
+                              className="text-sm font-medium text-blue-700 hover:text-blue-900 disabled:opacity-50"
                             >
-                              Suspend
+                              {checkingId === module.id ? 'Checking...' : 'Check'}
                             </button>
-                          )}
-                          <button onClick={() => handleDelete(module.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </SuperAdminTable>
+                            {module.runtimeStatus === 'suspended' ? (
+                              <button
+                                onClick={() => updateRuntimeStatus(module, 'available')}
+                                className="text-sm font-medium text-emerald-700 hover:text-emerald-900"
+                              >
+                                Resume
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => updateRuntimeStatus(module, 'suspended')}
+                                className="text-sm font-medium text-amber-700 hover:text-amber-900"
+                              >
+                                Suspend
+                              </button>
+                            )}
+                            <button onClick={() => handleDelete(module.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </SuperAdminTable>
+      </div>
 
       {isModalOpen && (
         <SuperAdminModal

@@ -6,6 +6,13 @@ export interface TableColumn {
   fieldId: string;
   width?: string;
   labelOverride?: string;
+  type?: string;
+  required?: boolean;
+  mandatory?: boolean;
+  readOnly?: boolean;
+  calculated?: boolean;
+  autoManaged?: boolean;
+  options?: Array<{ value: string | number; label: string }>;
 }
 
 /**
@@ -23,14 +30,16 @@ export class VoucherTypeDefinition {
     public module: string,
     public headerFields: FieldDefinition[],
     public tableColumns: TableColumn[],
-    public layout: Record<string, any>, // JSON layout config
+    public layout: Record<string, any>,
     public schemaVersion: number = 2,
     public requiredPostingRoles?: PostingRole[],
-    public workflow?: any, // Workflow metadata
-    public uiModeOverrides?: any, // For Schema V2 layout
+    public workflow?: any,
+    public uiModeOverrides?: any,
     public isMultiLine?: boolean,
     public rules?: any[],
     public actions?: any[],
-    public defaultCurrency?: string
+    public defaultCurrency?: string,
+    public voucherType?: string,
+    public persona?: string
   ) {}
 }

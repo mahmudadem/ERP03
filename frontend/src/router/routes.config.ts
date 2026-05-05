@@ -106,7 +106,7 @@ const CompanyAdminModulesPage = lazy(() => import('../pages/company-admin/pages/
 const CompanyAdminFeaturesPage = lazy(() => import('../pages/company-admin/pages/FeaturesPage'));
 const CompanyAdminBundlesPage = lazy(() => import('../pages/company-admin/pages/BundlesPage'));
 const CompanyAdminSettingsPage = lazy(() => import('../pages/company-admin/pages/SettingsPage'));
-const PurchaseHomePage = lazy(() => import('../modules/purchase/pages/PurchaseHomePage'));
+const PurchaseHomePage = lazy(() => import('../modules/purchases/pages/PurchaseHomePage'));
 const PurchaseOrdersListPage = lazy(() => import('../modules/purchases/pages/PurchaseOrdersListPage'));
 const PurchaseOrderDetailPage = lazy(() => import('../modules/purchases/pages/PurchaseOrderDetailPage'));
 const PurchaseSettingsPage = lazy(() => import('../modules/purchases/pages/PurchaseSettingsPage'));

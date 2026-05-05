@@ -150,6 +150,7 @@ const PrismaSalesReturnRepository_1 = require("../prisma/repositories/sales/Pris
 const PrismaSalesSettingsRepository_1 = require("../prisma/repositories/sales/PrismaSalesSettingsRepository");
 const PrismaPartyRepository_1 = require("../prisma/repositories/shared/PrismaPartyRepository");
 const PrismaTaxCodeRepository_1 = require("../prisma/repositories/shared/PrismaTaxCodeRepository");
+const PrismaPaymentHistoryRepository_1 = require("../prisma/repositories/shared/PrismaPaymentHistoryRepository");
 const PrismaBundleRegistryRepository_1 = require("../prisma/repositories/super-admin/PrismaBundleRegistryRepository");
 const PrismaBusinessDomainRepository_1 = require("../prisma/repositories/super-admin/PrismaBusinessDomainRepository");
 const PrismaModuleRegistryRepository_1 = require("../prisma/repositories/super-admin/PrismaModuleRegistryRepository");
@@ -165,6 +166,7 @@ const PrismaModulePermissionsDefinitionRepository_1 = require("../prisma/reposit
 const FirestoreTransactionManager_1 = require("../firestore/transaction/FirestoreTransactionManager");
 const FirestorePartyRepository_1 = require("../firestore/repositories/shared/FirestorePartyRepository");
 const FirestoreTaxCodeRepository_1 = require("../firestore/repositories/shared/FirestoreTaxCodeRepository");
+const FirestorePaymentHistoryRepository_1 = require("../firestore/repositories/shared/FirestorePaymentHistoryRepository");
 const FirebaseTokenVerifier_1 = require("../auth/FirebaseTokenVerifier");
 // Helper to get Firestore instance
 const getDb = () => firebaseAdmin_1.default.firestore();
@@ -590,6 +592,11 @@ exports.diContainer = {
         return DB_TYPE === 'SQL'
             ? new PrismaTaxCodeRepository_1.PrismaTaxCodeRepository((0, prismaClient_1.getPrismaClient)())
             : new FirestoreTaxCodeRepository_1.FirestoreTaxCodeRepository(getDb());
+    },
+    get paymentHistoryRepository() {
+        return DB_TYPE === 'SQL'
+            ? new PrismaPaymentHistoryRepository_1.PrismaPaymentHistoryRepository((0, prismaClient_1.getPrismaClient)())
+            : new FirestorePaymentHistoryRepository_1.FirestorePaymentHistoryRepository(getDb());
     },
     get transactionManager() {
         return DB_TYPE === 'SQL'

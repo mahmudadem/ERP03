@@ -75,7 +75,7 @@ export class DocumentValidatorFactory {
   ): string {
     // Collect all possible type identifiers
     const candidates = [
-      definition.baseType,
+      definition.formType || definition.baseType,
       definition.code,
       definition.module,
       formData?.type,
@@ -96,6 +96,19 @@ export class DocumentValidatorFactory {
         return 'JOURNAL_ENTRY';
       }
 
+      // Purchase types must be checked before generic INVOICE/ORDER/RETURN sales matches.
+      if (
+        candidate.includes('PURCHASE') ||
+        candidate.includes('BILL') ||
+        candidate === 'PI' ||
+        candidate === 'PO' ||
+        candidate === 'GRN' ||
+        candidate.includes('GOODS_RECEIPT') ||
+        candidate === 'PR'
+      ) {
+        return 'PURCHASE';
+      }
+
       // Sales types
       if (
         candidate.includes('SALES') ||
@@ -109,19 +122,6 @@ export class DocumentValidatorFactory {
         candidate === 'SR'
       ) {
         return 'SALES';
-      }
-
-      // Purchase types
-      if (
-        candidate.includes('PURCHASE') ||
-        candidate.includes('BILL') ||
-        candidate === 'PI' ||
-        candidate.includes('PO') ||
-        candidate.includes('GRN') ||
-        candidate.includes('GOODS_RECEIPT') ||
-        candidate === 'PR'
-      ) {
-        return 'PURCHASE';
       }
 
       // Receipt

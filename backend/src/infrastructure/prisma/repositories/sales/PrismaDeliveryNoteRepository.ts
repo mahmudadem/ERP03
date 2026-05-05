@@ -117,6 +117,18 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
     return records.map((r) => this.toDomain(r));
   }
 
+  async hasUnpostedDeliveryNotes(companyId: string): Promise<boolean> {
+    const count = await this.prisma.deliveryNote.count({
+      where: {
+        companyId,
+        status: {
+          not: 'POSTED',
+        },
+      },
+    });
+    return count > 0;
+  }
+
   private toDomain(record: any): DeliveryNote {
     const lines = (record.lines || []).map((line: any) => ({
       lineId: line.id,

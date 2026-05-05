@@ -3,7 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PurchaseInvoice = void 0;
 const PI_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+const normalizeDocumentSource = (value) => {
+    const source = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return DOCUMENT_SOURCES.includes(source) ? source : 'default_form';
+};
 const toDate = (value) => {
     if (!value)
         return new Date();
@@ -15,7 +20,7 @@ const toDate = (value) => {
 };
 class PurchaseInvoice {
     constructor(props) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         if (!((_a = props.id) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('PurchaseInvoice id is required');
         if (!((_b = props.companyId) === null || _b === void 0 ? void 0 : _b.trim()))
@@ -40,6 +45,10 @@ class PurchaseInvoice {
         this.companyId = props.companyId;
         this.invoiceNumber = props.invoiceNumber.trim();
         this.vendorInvoiceNumber = props.vendorInvoiceNumber;
+        this.formType = ((_h = props.formType) === null || _h === void 0 ? void 0 : _h.trim()) || 'purchase_invoice_direct';
+        this.voucherType = ((_j = props.voucherType) === null || _j === void 0 ? void 0 : _j.trim()) || 'purchase_invoice';
+        this.persona = ((_k = props.persona) === null || _k === void 0 ? void 0 : _k.trim()) || 'direct';
+        this.source = normalizeDocumentSource(props.source);
         this.purchaseOrderId = props.purchaseOrderId;
         this.vendorId = props.vendorId.trim();
         this.vendorName = props.vendorName || '';
@@ -54,8 +63,8 @@ class PurchaseInvoice {
         this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
         this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
         this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
-        this.paymentTermsDays = (_h = props.paymentTermsDays) !== null && _h !== void 0 ? _h : 0;
-        this.paidAmountBase = (_j = props.paidAmountBase) !== null && _j !== void 0 ? _j : 0;
+        this.paymentTermsDays = (_l = props.paymentTermsDays) !== null && _l !== void 0 ? _l : 0;
+        this.paidAmountBase = (_m = props.paidAmountBase) !== null && _m !== void 0 ? _m : 0;
         const status = props.status || 'DRAFT';
         if (!PI_STATUSES.includes(status)) {
             throw new Error(`Invalid purchase invoice status: ${status}`);
@@ -69,7 +78,7 @@ class PurchaseInvoice {
         this.outstandingAmountBase = roundMoney(props.outstandingAmountBase !== undefined
             ? props.outstandingAmountBase
             : this.grandTotalBase - this.paidAmountBase);
-        this.voucherId = (_k = props.voucherId) !== null && _k !== void 0 ? _k : null;
+        this.voucherId = (_o = props.voucherId) !== null && _o !== void 0 ? _o : null;
         this.notes = props.notes;
         this.createdBy = props.createdBy;
         this.createdAt = props.createdAt;
@@ -130,6 +139,10 @@ class PurchaseInvoice {
             companyId: this.companyId,
             invoiceNumber: this.invoiceNumber,
             vendorInvoiceNumber: this.vendorInvoiceNumber,
+            formType: this.formType,
+            voucherType: this.voucherType,
+            persona: this.persona,
+            source: this.source,
             purchaseOrderId: this.purchaseOrderId,
             vendorId: this.vendorId,
             vendorName: this.vendorName,
@@ -164,6 +177,10 @@ class PurchaseInvoice {
             companyId: data.companyId,
             invoiceNumber: data.invoiceNumber,
             vendorInvoiceNumber: data.vendorInvoiceNumber,
+            formType: data.formType || data.baseType || 'purchase_invoice_direct',
+            voucherType: data.voucherType || 'purchase_invoice',
+            persona: data.persona || 'direct',
+            source: data.source || data.documentSource || 'default_form',
             purchaseOrderId: data.purchaseOrderId,
             vendorId: data.vendorId,
             vendorName: data.vendorName,

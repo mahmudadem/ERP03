@@ -32,6 +32,13 @@ export class ConfigureInventoryFinancialIntegrationUseCase {
       throw new Error('Inventory module must be initialized before configuring financial integration');
     }
 
+    if (settings.accountingMode && settings.accountingMode !== input.accountingMode) {
+      const hasMovements = await this.stockMovementRepo.hasAnyMovements(input.companyId);
+      if (hasMovements) {
+        throw new Error('Cannot change inventory accounting mode after stock movements have been recorded. A migration or cutover is required.');
+      }
+    }
+
     if (input.accountingMethod === 'PERPETUAL') {
       if (!input.defaultInventoryAssetAccountId) {
         throw new Error('Default Inventory Asset Account is required for perpetual mode');
@@ -74,10 +81,13 @@ export class ConfigureInventoryFinancialIntegrationUseCase {
     movementCount: number;
     earliestDate: string | null;
   }> {
-    const movements = await this.stockMovementRepo.getItemMovements(companyId, '', { limit: 1 });
-    const hasHistoricalData = movements.length > 0;
+    const hasHistoricalData = await this.stockMovementRepo.hasAnyMovements(companyId);
     let earliestDate: string | null = null;
-    let movementCount = movements.length;
+    let movementCount = 0;
+    if (hasHistoricalData) {
+      // For now we don't have a count method, but we can return 1+ if data exists
+      movementCount = 1; 
+    }
 
     if (hasHistoricalData) {
       const allMovements = await this.stockMovementRepo.getMovementsByDateRange(

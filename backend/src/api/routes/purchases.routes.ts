@@ -29,12 +29,16 @@ router.post('/goods-receipts/:id/post', PurchaseController.postGRN);
 router.post('/goods-receipts/:id/unpost', PurchaseController.unpostGRN);
 
 router.post('/invoices', PurchaseController.createPI);
+router.post('/invoices/create-and-post', PurchaseController.createAndPostPI);
 router.get('/invoices', PurchaseController.listPIs);
 router.get('/invoices/:id', PurchaseController.getPI);
 router.put('/invoices/:id', PurchaseController.updatePI);
+router.put('/invoices/:id/update-and-post', PurchaseController.updateAndPostPI);
 router.post('/invoices/:id/post', PurchaseController.postPI);
 router.post('/invoices/:id/unpost', PurchaseController.unpostPI);
 router.post('/invoices/:id/payment-update', PurchaseController.updatePaymentStatus);
+router.post('/invoices/:id/record-payment', PurchaseController.recordPayment);
+router.get('/invoices/:id/payments', PurchaseController.getPaymentHistory);
 
 router.post('/returns', PurchaseController.createReturn);
 router.get('/returns', PurchaseController.listReturns);

@@ -5,6 +5,8 @@ const crypto_1 = require("crypto");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const PurchaseSettings_1 = require("../../../domain/purchases/entities/PurchaseSettings");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
+const AppError_1 = require("../../../errors/AppError");
+const ErrorCodes_1 = require("../../../errors/ErrorCodes");
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
 const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
@@ -22,7 +24,7 @@ const ensureVoucherTypeScope = async (voucherTypeRepo, companyId, voucherTypeId,
 };
 const cloneVoucherTypeForCompany = (companyId, template) => {
     var _a;
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
+    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency, template.voucherType || template.code, template.persona || undefined);
 };
 const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Can be from system metadata too
 ) => {
@@ -51,6 +53,9 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Ca
         isMultiLine: (_b = template.isMultiLine) !== null && _b !== void 0 ? _b : true,
         tableStyle: template.tableStyle || 'web',
         defaultCurrency: template.defaultCurrency,
+        formType: template.formType || template.baseType || template.code,
+        voucherType: template.voucherType || template.code,
+        persona: template.persona || undefined,
         baseType: template.baseType || template.code,
         createdAt: now,
         updatedAt: now,
@@ -198,21 +203,35 @@ class GetPurchaseSettingsUseCase {
 }
 exports.GetPurchaseSettingsUseCase = GetPurchaseSettingsUseCase;
 class UpdatePurchaseSettingsUseCase {
-    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
+    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, purchaseOrderRepo, goodsReceiptRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.purchaseOrderRepo = purchaseOrderRepo;
+        this.goodsReceiptRepo = goodsReceiptRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
         const existing = await this.settingsRepo.getSettings(input.companyId);
         if (!existing) {
             throw new Error('Purchase settings are not initialized');
         }
+        const oldWorkflowMode = existing.workflowMode || 'OPERATIONAL';
+        const newWorkflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
+        if (input.workflowMode === 'SIMPLE' && oldWorkflowMode !== 'SIMPLE') {
+            const hasOpenPO = await this.purchaseOrderRepo.hasOpenOrders(input.companyId);
+            if (hasOpenPO) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.PURCHASES_TRANSITION_BLOCKED, 'Cannot switch to Simple workflow while there are open Purchase Orders. Please close or cancel all open orders first.');
+            }
+            const hasUnpostedGRN = await this.goodsReceiptRepo.hasUnpostedGoodsReceipts(input.companyId);
+            if (hasUnpostedGRN) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.PURCHASES_TRANSITION_BLOCKED, 'Cannot switch to Simple workflow while there are draft goods receipts. Please process or delete them first.');
+            }
+        }
         await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.purchaseVoucherTypeId, 'PURCHASE', 'purchaseVoucherTypeId');
-        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
+        const workflowMode = newWorkflowMode;
         const accountingMode = this.inventorySettingsRepo
             ? DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
             : 'INVOICE_DRIVEN';
@@ -262,6 +281,8 @@ class UpdatePurchaseSettingsUseCase {
             piNumberNextSeq: (_t = input.piNumberNextSeq) !== null && _t !== void 0 ? _t : existing.piNumberNextSeq,
             prNumberPrefix: (_u = input.prNumberPrefix) !== null && _u !== void 0 ? _u : existing.prNumberPrefix,
             prNumberNextSeq: (_v = input.prNumberNextSeq) !== null && _v !== void 0 ? _v : existing.prNumberNextSeq,
+            governanceRules: (_w = input.governanceRules) !== null && _w !== void 0 ? _w : existing.governanceRules,
+            defaultPurchaseInvoicePersona: (_x = input.defaultPurchaseInvoicePersona) !== null && _x !== void 0 ? _x : existing.defaultPurchaseInvoicePersona,
         });
         await this.settingsRepo.saveSettings(updated);
         return updated;

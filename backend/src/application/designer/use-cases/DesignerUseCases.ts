@@ -40,3 +40,64 @@ export class ValidateDynamicFieldRulesUseCase {
     return true; // Placeholder for logic
   }
 }
+
+export interface AdoptTemplateInput {
+  companyId: string;
+  userId: string;
+  templateId: string;
+  module: string;
+}
+
+export class AdoptTemplateUseCase {
+  constructor(
+    private voucherTypeRepo: IVoucherTypeDefinitionRepository,
+    private voucherFormRepo: any
+  ) {}
+
+  async execute(input: AdoptTemplateInput): Promise<{ formId: string; voucherTypeId: string }> {
+    const { companyId, userId, templateId, module } = input;
+
+    // 1. Get system template
+    const systemTemplates = await this.voucherTypeRepo.getSystemTemplates();
+    const template = systemTemplates.find(t => t.id === templateId || t.code === templateId);
+    if (!template) {
+      throw new Error(`Template not found: ${templateId}`);
+    }
+
+    // 2. Check if company already has this voucher type
+    const existingType = await this.voucherTypeRepo.getByCode(companyId, template.code);
+    let voucherTypeId: string;
+
+    if (existingType) {
+      voucherTypeId = existingType.id;
+    } else {
+      // 3. Clone voucher type to company
+      const { randomUUID } = await import('crypto');
+      const newType = new VoucherTypeDefinition(
+        randomUUID(),
+        companyId,
+        template.name,
+        template.code,
+        module,
+        template.headerFields,
+        template.tableColumns,
+        template.layout,
+        template.schemaVersion || 2,
+        template.requiredPostingRoles,
+        template.workflow,
+        template.uiModeOverrides,
+        template.isMultiLine ?? true,
+        template.rules,
+        template.actions,
+        template.defaultCurrency,
+        template.voucherType,
+        template.persona
+      );
+      await this.voucherTypeRepo.createVoucherType(newType);
+      voucherTypeId = newType.id;
+    }
+
+    // 4. Return the formId (same as voucherTypeId for default forms)
+    return { formId: voucherTypeId, voucherTypeId };
+  }
+}

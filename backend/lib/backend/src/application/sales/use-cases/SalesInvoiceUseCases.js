@@ -1,13 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ListSalesInvoicesUseCase = exports.GetSalesInvoiceUseCase = exports.UpdateSalesInvoiceUseCase = exports.PostSalesInvoiceUseCase = exports.CreateSalesInvoiceUseCase = void 0;
+exports.ListSalesInvoicesUseCase = exports.GetSalesInvoiceUseCase = exports.UpdateSalesInvoiceUseCase = exports.UpdateAndPostSalesInvoiceUseCase = exports.CreateAndPostSalesInvoiceUseCase = exports.PostSalesInvoiceUseCase = exports.CreateSalesInvoiceUseCase = exports.VALID_PAYMENT_METHODS = exports.SETTLEMENT_MODES = void 0;
 const crypto_1 = require("crypto");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const SalesInvoice_1 = require("../../../domain/sales/entities/SalesInvoice");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
+const StockMovement_1 = require("../../../domain/inventory/entities/StockMovement");
+const PaymentHistory_1 = require("../../../domain/shared/entities/PaymentHistory");
+const VoucherEntity_1 = require("../../../domain/accounting/entities/VoucherEntity");
+const VoucherLineEntity_1 = require("../../../domain/accounting/entities/VoucherLineEntity");
 const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const SalesPostingHelpers_1 = require("./SalesPostingHelpers");
 const SalesOrderUseCases_1 = require("./SalesOrderUseCases");
+exports.SETTLEMENT_MODES = ['DEFERRED', 'CASH_FULL', 'MULTI'];
+exports.VALID_PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
+const DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 const findSOLine = (so, soLineId, itemId) => {
     if (soLineId) {
         return so.lines.find((line) => line.lineId === soLineId) || null;
@@ -23,6 +31,55 @@ const assertValidSalesTaxCode = (taxCode, taxCodeId) => {
         throw new Error(`Tax code is not valid for sales: ${taxCodeId}`);
     }
 };
+const SALES_INVOICE_PERSONA_FORM_TYPES = {
+    sales_invoice: 'direct',
+    sales_invoice_direct: 'direct',
+    sales_invoice_linked: 'linked',
+    sales_invoice_service: 'service',
+};
+const normalizeSalesInvoiceToken = (value) => String(value || '').trim().toLowerCase();
+const resolveDocumentSource = (value) => {
+    const source = normalizeSalesInvoiceToken(value);
+    return DOCUMENT_SOURCES.includes(source) ? source : 'default_form';
+};
+const hasNativeLinkedSalesSource = (input) => {
+    if (input.salesOrderId)
+        return true;
+    return (input.lines || []).some((line) => !!line.soLineId || !!line.dnLineId);
+};
+const resolveSalesInvoicePersona = (input) => {
+    if (resolveDocumentSource(input.source) === 'native') {
+        return hasNativeLinkedSalesSource(input) ? 'linked' : 'direct';
+    }
+    const persona = normalizeSalesInvoiceToken(input.persona);
+    if (persona === 'direct' || persona === 'linked' || persona === 'service') {
+        return persona;
+    }
+    const formType = normalizeSalesInvoiceToken(input.formType || input.voucherType);
+    if (SALES_INVOICE_PERSONA_FORM_TYPES[formType]) {
+        return SALES_INVOICE_PERSONA_FORM_TYPES[formType];
+    }
+    if (persona === 'operational' || formType.includes('linked'))
+        return 'linked';
+    if (formType.includes('service'))
+        return 'service';
+    return 'direct';
+};
+const resolveSalesInvoiceFormType = (input, persona) => {
+    const formType = normalizeSalesInvoiceToken(input.formType);
+    if (formType)
+        return formType;
+    const voucherType = normalizeSalesInvoiceToken(input.voucherType);
+    if (SALES_INVOICE_PERSONA_FORM_TYPES[voucherType])
+        return voucherType;
+    return persona === 'direct' ? 'sales_invoice_direct' : `sales_invoice_${persona}`;
+};
+const resolveSalesInvoiceVoucherType = (input) => {
+    const voucherType = normalizeSalesInvoiceToken(input.voucherType || input.formType);
+    if (!voucherType)
+        return 'sales_invoice';
+    return SALES_INVOICE_PERSONA_FORM_TYPES[voucherType] ? 'sales_invoice' : voucherType;
+};
 class CreateSalesInvoiceUseCase {
     constructor(settingsRepo, salesInvoiceRepo, salesOrderRepo, partyRepo, itemRepo, itemCategoryRepo, taxCodeRepo, companyCurrencyRepo) {
         this.settingsRepo = settingsRepo;
@@ -34,11 +91,25 @@ class CreateSalesInvoiceUseCase {
         this.taxCodeRepo = taxCodeRepo;
         this.companyCurrencyRepo = companyCurrencyRepo;
     }
-    async execute(input) {
+    async execute(input, transaction) {
         var _a, _b, _c, _d, _e, _f;
+        const source = resolveDocumentSource(input.source);
+        const persona = resolveSalesInvoicePersona(input);
+        input = Object.assign(Object.assign({}, input), { source, formType: resolveSalesInvoiceFormType(input, persona), voucherType: resolveSalesInvoiceVoucherType(input), persona });
         const settings = await this.settingsRepo.getSettings(input.companyId);
         if (!settings)
             throw new Error('Sales module is not initialized');
+        if (input.voucherType !== 'sales_invoice') {
+            throw new Error(`Invalid voucher type for sales invoice: ${input.voucherType}`);
+        }
+        const validPersonas = ['direct', 'linked', 'service'];
+        if (!validPersonas.includes(input.persona)) {
+            throw new Error(`Invalid sales invoice persona: ${input.persona}. Must be one of: ${validPersonas.join(', ')}`);
+        }
+        const isPersonaAllowed = DocumentPolicyResolver_1.DocumentPolicyResolver.isSalesInvoicePersonaAllowed(settings, input.persona);
+        if (!isPersonaAllowed) {
+            throw new Error(`Sales invoice persona '${input.persona}' is not allowed by company governance policy`);
+        }
         let so = null;
         if (input.salesOrderId) {
             so = await this.salesOrderRepo.getById(input.companyId, input.salesOrderId);
@@ -74,6 +145,12 @@ class CreateSalesInvoiceUseCase {
             const item = await this.itemRepo.getItem(itemId);
             if (!item || item.companyId !== input.companyId) {
                 throw new Error(`Item not found: ${itemId}`);
+            }
+            if (input.persona === 'service' && item.type !== 'SERVICE') {
+                throw new Error(`Service invoice cannot include stock item: ${item.name}`);
+            }
+            if (input.persona === 'linked' && item.trackInventory && !sourceLine.dnLineId) {
+                throw new Error(`Linked invoice requires delivery note reference for stock item: ${item.name}`);
             }
             const invoicedQty = sourceLine.invoicedQty;
             const unitPriceDoc = (_d = (_c = sourceLine.unitPriceDoc) !== null && _c !== void 0 ? _c : soLine === null || soLine === void 0 ? void 0 : soLine.unitPriceDoc) !== null && _d !== void 0 ? _d : 0;
@@ -132,6 +209,10 @@ class CreateSalesInvoiceUseCase {
             companyId: input.companyId,
             invoiceNumber,
             customerInvoiceNumber: input.customerInvoiceNumber,
+            formType: input.formType || 'sales_invoice_direct',
+            voucherType: input.voucherType || 'sales_invoice',
+            persona: input.persona || 'direct',
+            source: input.source,
             salesOrderId: so === null || so === void 0 ? void 0 : so.id,
             customerId: customer.id,
             customerName: customer.displayName,
@@ -159,8 +240,8 @@ class CreateSalesInvoiceUseCase {
             updatedAt: now,
         });
         si.outstandingAmountBase = si.grandTotalBase;
-        await this.salesInvoiceRepo.create(si);
-        await this.settingsRepo.saveSettings(settings);
+        await this.salesInvoiceRepo.create(si, transaction);
+        await this.settingsRepo.saveSettings(settings, transaction);
         return si;
     }
     assertCustomer(customer, customerId) {
@@ -236,7 +317,7 @@ class CreateSalesInvoiceUseCase {
 }
 exports.CreateSalesInvoiceUseCase = CreateSalesInvoiceUseCase;
 class PostSalesInvoiceUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, salesInvoiceRepo, salesOrderRepo, deliveryNoteRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, accountRepo, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, salesInvoiceRepo, salesOrderRepo, deliveryNoteRepo, partyRepo, taxCodeRepo, itemRepo, itemCategoryRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, accountRepo, transactionManager, paymentHistoryRepo, voucherRepo, voucherSequenceRepo, ledgerRepo) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.salesInvoiceRepo = salesInvoiceRepo;
@@ -252,19 +333,31 @@ class PostSalesInvoiceUseCase {
         this.inventoryService = inventoryService;
         this.companyModuleRepo = companyModuleRepo;
         this.transactionManager = transactionManager;
+        this.paymentHistoryRepo = paymentHistoryRepo;
+        this.voucherRepo = voucherRepo;
+        this.voucherSequenceRepo = voucherSequenceRepo;
+        this.ledgerRepo = ledgerRepo;
         this.accountingPostingService = accountingPostingService;
         this.accountRepo = accountRepo;
     }
-    async execute(companyId, id, createAccountingEffect = true) {
+    async execute(companyId, idOrSI, createAccountingEffect = true, externalTransaction, settlementInput) {
+        // ===================================================================
+        // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
+        // We pre-fetch ALL data here. The postingLogic callback only writes.
+        // ===================================================================
+        var _a, _b, _c, _d, _e;
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Sales module not initialized');
         const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
         const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
         const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
-        const si = await this.salesInvoiceRepo.getById(companyId, id);
+        const si = typeof idOrSI === 'string'
+            ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
+            : idOrSI;
         if (!si || si.status !== 'DRAFT')
             throw new Error('Invalid sales invoice state');
+        const id = si.id;
         const customer = await this.partyRepo.getById(companyId, si.customerId);
         if (!customer)
             throw new Error(`Customer not found: ${si.customerId}`);
@@ -272,7 +365,7 @@ class PostSalesInvoiceUseCase {
         if (si.salesOrderId) {
             so = await this.salesOrderRepo.getById(companyId, si.salesOrderId);
         }
-        // PHASE 1: PRE-FETCH ALL DATA (Thunder-Fast)
+        // PHASE 1A: PRE-FETCH ALL MASTER DATA (bare reads — before transaction)
         const distinctItemIds = [...new Set(si.lines.map(l => l.itemId))];
         const distinctTaxCodeIds = [...new Set(si.lines.filter(l => l.taxCodeId).map(l => l.taxCodeId))];
         const distinctWarehouseIds = [...new Set(si.lines.filter(l => l.warehouseId).map(l => l.warehouseId))];
@@ -286,90 +379,246 @@ class PostSalesInvoiceUseCase {
             this.companyCurrencyRepo.getBaseCurrency(companyId),
             so ? this.deliveryNoteRepo.list(companyId, { salesOrderId: so.id, status: 'POSTED', limit: 200 }) : Promise.resolve([])
         ]);
-        const arAccountId = this.resolveARAccount(customer, settings);
-        const revenueCredits = new Map();
-        const taxCredits = new Map();
-        const cogsBucket = new Map();
-        // PHASE 2: ATOMIC POSTING (Writes Only)
-        await this.transactionManager.runTransaction(async (transaction) => {
-            for (const line of si.lines) {
+        // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
+        const stockLevelMap = new Map();
+        for (const line of si.lines) {
+            if (line.trackInventory) {
+                const warehouseId = line.warehouseId || settings.defaultWarehouseId;
+                if (warehouseId && line.itemId) {
+                    const key = `${line.itemId}|${warehouseId}`;
+                    if (!stockLevelMap.has(key)) {
+                        const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
+                        stockLevelMap.set(key, existing !== null && existing !== void 0 ? existing : StockLevel_1.StockLevel.createNew(companyId, line.itemId, warehouseId));
+                    }
+                }
+            }
+        }
+        // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
+        const uomConversionMap = new Map();
+        for (const line of si.lines) {
+            if (line.trackInventory) {
                 const item = itemsMap.get(line.itemId);
-                if (!item)
-                    throw new Error(`Item not found: ${line.itemId}`);
-                line.trackInventory = item.trackInventory;
+                if (item && !uomConversionMap.has(item.id)) {
+                    const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+                    uomConversionMap.set(item.id, convs);
+                }
+            }
+        }
+        // PHASE 1C-2: VALIDATE POSTING QUANTITIES (before expensive computation)
+        const allowDirect = (_a = settings.allowDirectInvoicing) !== null && _a !== void 0 ? _a : false;
+        const isSOLinked = !!si.salesOrderId;
+        for (const line of si.lines) {
+            const item = itemsMap.get(line.itemId);
+            const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
+            line.trackInventory = (_b = item === null || item === void 0 ? void 0 : item.trackInventory) !== null && _b !== void 0 ? _b : false;
+            this.validatePostingQuantity(line, soLine, allowDirect, (_c = settings.overInvoiceTolerancePct) !== null && _c !== void 0 ? _c : 0, isSOLinked);
+        }
+        // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION
+        // This sets line.trackInventory, line.stockMovementId, line.unitCostBase, line.lineCostBase
+        // which are needed for COGS account resolution below.
+        const inventoryMovements = new Map();
+        for (const line of si.lines) {
+            line.trackInventory = (_e = (_d = itemsMap.get(line.itemId)) === null || _d === void 0 ? void 0 : _d.trackInventory) !== null && _e !== void 0 ? _e : false;
+            if (!line.trackInventory)
+                continue;
+            const item = itemsMap.get(line.itemId);
+            if (!item)
+                continue;
+            const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
+            const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
+            const hasOperationalDelivery = matchedDeliveryLines.length > 0;
+            if (!hasOperationalDelivery && settings.allowDirectInvoicing) {
+                const warehouseId = line.warehouseId || settings.defaultWarehouseId;
+                if (!warehouseId || !warehousesMap.has(warehouseId))
+                    throw new Error(`Warehouse required for ${item.name}`);
+                const convs = uomConversionMap.get(item.id) || [];
+                const conversionResult = (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+                    qty: line.invoicedQty,
+                    item,
+                    conversions: convs,
+                    fromUomId: line.uomId,
+                    fromUom: line.uom,
+                    round: SalesPostingHelpers_1.roundMoney,
+                    itemCode: item.code,
+                });
+                const qtyInBaseUom = conversionResult.qtyInBaseUom;
+                const stockLevelKey = `${item.id}|${warehouseId}`;
+                const level = stockLevelMap.get(stockLevelKey);
+                if (!level)
+                    continue;
+                const qtyBefore = level.qtyOnHand;
+                const oldMaxBusinessDate = level.maxBusinessDate;
+                let issueCostBase = 0;
+                let issueCostCCY = 0;
+                let costBasis = 'MISSING';
+                if (qtyBefore > 0) {
+                    issueCostBase = level.avgCostBase;
+                    issueCostCCY = level.avgCostCCY;
+                    costBasis = 'AVG';
+                }
+                else if (level.lastCostBase > 0) {
+                    issueCostBase = level.lastCostBase;
+                    issueCostCCY = level.lastCostCCY;
+                    costBasis = 'LAST_KNOWN';
+                }
+                const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
+                const unsettledQty = qtyInBaseUom - settledQty;
+                const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
+                const movement = new StockMovement_1.StockMovement({
+                    id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    companyId,
+                    date: si.invoiceDate,
+                    postingSeq: level.postingSeq + 1,
+                    createdAt: new Date(),
+                    createdBy: si.createdBy,
+                    postedAt: new Date(),
+                    itemId: item.id,
+                    warehouseId,
+                    direction: 'OUT',
+                    movementType: 'SALES_DELIVERY',
+                    qty: qtyInBaseUom,
+                    uom: item.baseUom,
+                    referenceType: 'SALES_INVOICE',
+                    referenceId: si.id,
+                    referenceLineId: line.lineId,
+                    reversesMovementId: undefined,
+                    transferPairId: undefined,
+                    unitCostBase: issueCostBase,
+                    totalCostBase: (0, SalesPostingHelpers_1.roundMoney)(issueCostBase * qtyInBaseUom),
+                    unitCostCCY: issueCostCCY,
+                    totalCostCCY: (0, SalesPostingHelpers_1.roundMoney)(issueCostCCY * qtyInBaseUom),
+                    movementCurrency: item.costCurrency,
+                    fxRateMovToBase: effectiveFxCCYToBase,
+                    fxRateCCYToBase: effectiveFxCCYToBase,
+                    fxRateKind: 'EFFECTIVE',
+                    avgCostBaseAfter: level.avgCostBase,
+                    avgCostCCYAfter: level.avgCostCCY,
+                    qtyBefore,
+                    qtyAfter: qtyBefore - qtyInBaseUom,
+                    settledQty,
+                    unsettledQty,
+                    unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
+                    negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
+                    costSettled: unsettledQty === 0,
+                    isBackdated: si.invoiceDate < oldMaxBusinessDate,
+                    costSource: 'PURCHASE',
+                    notes: undefined,
+                    metadata: {
+                        uomConversion: {
+                            conversionId: conversionResult.trace.conversionId,
+                            mode: conversionResult.trace.mode,
+                            appliedFactor: conversionResult.trace.factor,
+                            sourceQty: line.invoicedQty,
+                            sourceUomId: line.uomId,
+                            sourceUom: line.uom,
+                            baseUomId: item.baseUomId,
+                            baseUom: item.baseUom,
+                        },
+                    },
+                });
+                const movementQty = qtyInBaseUom;
+                level.qtyOnHand -= movementQty;
+                level.postingSeq += 1;
+                level.version += 1;
+                level.totalMovements += 1;
+                level.maxBusinessDate = si.invoiceDate > oldMaxBusinessDate ? si.invoiceDate : oldMaxBusinessDate;
+                level.updatedAt = new Date();
+                level.lastMovementId = movement.id;
+                line.stockMovementId = movement.id;
+                line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(movement.unitCostBase || 0);
+                line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase);
+                if (accountingMode === 'PERPETUAL') {
+                    this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
+                }
+                inventoryMovements.set(line.lineId, { movement, updatedLevel: level, qtyInBaseUom });
+            }
+            else {
+                const operationalQty = (0, SalesPostingHelpers_1.roundMoney)(line.invoicedQty);
+                line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(this.resolveControlledUnitCost(line, soLine, postedDNs));
+                line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(operationalQty * line.unitCostBase);
+                if (accountingMode === 'PERPETUAL') {
+                    this.assertPositiveTrackedCost(operationalQty, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
+                }
+            }
+        }
+        // PHASE 1E: PRE-RESOLVE ALL ACCOUNT IDS (bare reads before transaction)
+        // Must come after Phase 1D because COGS resolution needs computed lineCostBase.
+        // Also need to compute tax amounts first to know whether to resolve tax accounts.
+        for (const line of si.lines) {
+            const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
+            this.freezeTaxSnapshotSync(line, si.exchangeRate, taxCode || undefined);
+        }
+        const accountCache = new Map();
+        const resolveAccountCached = async (idOrCode) => {
+            if (!idOrCode)
+                return '';
+            if (accountCache.has(idOrCode))
+                return accountCache.get(idOrCode);
+            const resolved = await this.resolveAccountId(companyId, idOrCode);
+            accountCache.set(idOrCode, resolved);
+            return resolved;
+        };
+        const lineResolvedAccounts = new Map();
+        for (const line of si.lines) {
+            const item = itemsMap.get(line.itemId);
+            if (!item)
+                throw new Error(`Item not found: ${line.itemId}`);
+            const revenueId = await resolveAccountCached(this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId));
+            let taxId;
+            if (line.taxAmountBase > 0 && line.taxCodeId) {
+                const sTaxCode = taxCodesMap.get(line.taxCodeId);
+                if (sTaxCode === null || sTaxCode === void 0 ? void 0 : sTaxCode.salesTaxAccountId) {
+                    taxId = await resolveAccountCached(sTaxCode.salesTaxAccountId);
+                }
+            }
+            let cogsId;
+            let inventoryId;
+            if (line.trackInventory && line.lineCostBase > 0) {
                 const soLine = so ? findSOLine(so, line.soLineId, line.itemId) : null;
-                this.validatePostingQuantity(line, soLine, settings.allowDirectInvoicing, settings.overInvoiceTolerancePct, !!so);
+                const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
+                const hasOperationalDelivery = matchedDeliveryLines.length > 0;
+                if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldInvoiceRecognizeInventory(accountingMode, hasOperationalDelivery)) {
+                    const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultCOGSAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
+                    if (accounts) {
+                        cogsId = await resolveAccountCached(accounts.cogsAccountId);
+                        inventoryId = await resolveAccountCached(accounts.inventoryAccountId);
+                    }
+                }
+            }
+            lineResolvedAccounts.set(line.lineId, { revenueId, taxId, cogsId, inventoryId });
+        }
+        const arAccountId = this.resolveARAccount(customer, settings);
+        const resolvedARId = await resolveAccountCached(arAccountId);
+        const postingLogic = async (transaction) => {
+            // --- Write inventory movements and stock levels ---
+            for (const [lineId, { movement, updatedLevel }] of inventoryMovements) {
+                await this.inventoryService.writeStockMovement(movement, transaction);
+                await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+            }
+            // --- Accumulate voucher lines using pre-resolved accounts ---
+            const revenueCredits = new Map();
+            const taxCredits = new Map();
+            const cogsBucket = new Map();
+            for (const line of si.lines) {
                 const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
                 this.freezeTaxSnapshotSync(line, si.exchangeRate, taxCode || undefined);
-                line.revenueAccountId = this.resolveRevenueAccountSync(companyId, item, categoriesMap, settings.defaultRevenueAccountId);
-                const resolvedRevId = await this.resolveAccountId(companyId, line.revenueAccountId);
-                this.addToBucket(revenueCredits, resolvedRevId, line.lineTotalBase, line.lineTotalDoc);
-                if (line.taxAmountBase > 0 && line.taxCodeId) {
-                    const sTaxCode = taxCodesMap.get(line.taxCodeId);
-                    if (sTaxCode === null || sTaxCode === void 0 ? void 0 : sTaxCode.salesTaxAccountId) {
-                        const resolvedTaxId = await this.resolveAccountId(companyId, sTaxCode.salesTaxAccountId);
-                        this.addToBucket(taxCredits, resolvedTaxId, line.taxAmountBase, line.taxAmountDoc);
+                const accounts = lineResolvedAccounts.get(line.lineId);
+                if (accounts) {
+                    this.addToBucket(revenueCredits, accounts.revenueId, line.lineTotalBase, line.lineTotalDoc);
+                    if (line.taxAmountBase > 0 && accounts.taxId) {
+                        this.addToBucket(taxCredits, accounts.taxId, line.taxAmountBase, line.taxAmountDoc);
+                    }
+                    if (accounts.cogsId && accounts.inventoryId) {
+                        this.addToCOGSBucket(cogsBucket, accounts.cogsId, accounts.inventoryId, line.lineCostBase);
                     }
                 }
-                // Inventory movement / cost recognition
-                if (line.trackInventory) {
-                    const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
-                    const hasOperationalDelivery = matchedDeliveryLines.length > 0;
-                    if (!hasOperationalDelivery && settings.allowDirectInvoicing) {
-                        const warehouseId = line.warehouseId || settings.defaultWarehouseId;
-                        if (!warehouseId || !warehousesMap.has(warehouseId))
-                            throw new Error(`Warehouse required for ${item.name}`);
-                        const conversionResult = await this.convertToBaseUom(companyId, line.invoicedQty, line.uomId, line.uom, item);
-                        const qtyInBaseUom = conversionResult.qtyInBaseUom;
-                        const movement = await this.inventoryService.processOUT({
-                            companyId,
-                            itemId: line.itemId,
-                            warehouseId,
-                            qty: qtyInBaseUom,
-                            date: si.invoiceDate,
-                            movementType: 'SALES_DELIVERY',
-                            refs: { type: 'SALES_INVOICE', docId: si.id, lineId: line.lineId },
-                            currentUser: si.createdBy,
-                            metadata: {
-                                uomConversion: {
-                                    conversionId: conversionResult.trace.conversionId,
-                                    mode: conversionResult.trace.mode,
-                                    appliedFactor: conversionResult.trace.factor,
-                                    sourceQty: line.invoicedQty,
-                                    sourceUomId: line.uomId,
-                                    sourceUom: line.uom,
-                                    baseUomId: item.baseUomId,
-                                    baseUom: item.baseUom,
-                                },
-                            },
-                            transaction,
-                        });
-                        line.stockMovementId = movement.id;
-                        line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(movement.unitCostBase || 0);
-                        line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase);
-                        this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
-                    }
-                    else {
-                        const operationalQty = (0, SalesPostingHelpers_1.roundMoney)(line.invoicedQty);
-                        line.unitCostBase = (0, SalesPostingHelpers_1.roundMoney)(this.resolveControlledUnitCost(line, soLine, postedDNs));
-                        line.lineCostBase = (0, SalesPostingHelpers_1.roundMoney)(operationalQty * line.unitCostBase);
-                        this.assertPositiveTrackedCost(operationalQty, line.unitCostBase, line.itemName || item.name, `sales invoice ${si.invoiceNumber}`);
-                    }
-                    if (line.lineCostBase
-                        && DocumentPolicyResolver_1.DocumentPolicyResolver.shouldInvoiceRecognizeInventory(accountingMode, hasOperationalDelivery)) {
-                        const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultCOGSAccountId, invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
-                        if (accounts) {
-                            const resCOGSId = await this.resolveAccountId(companyId, accounts.cogsAccountId);
-                            const resInvId = await this.resolveAccountId(companyId, accounts.inventoryAccountId);
-                            this.addToCOGSBucket(cogsBucket, resCOGSId, resInvId, line.lineCostBase);
-                        }
-                    }
+                if (so) {
+                    const soLine = findSOLine(so, line.soLineId, line.itemId);
+                    if (soLine)
+                        soLine.invoicedQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.invoicedQty + line.invoicedQty);
                 }
-                if (soLine)
-                    soLine.invoicedQty = (0, SalesPostingHelpers_1.roundMoney)(soLine.invoicedQty + line.invoicedQty);
             }
             this.recalcInvoiceTotals(si);
-            const resolvedARId = await this.resolveAccountId(companyId, arAccountId);
             if (shouldPostAccounting) {
                 // Create main invoice voucher (AR vs Revenue + Tax)
                 const revenueVoucherLines = [
@@ -400,6 +649,8 @@ class PostSalesInvoiceUseCase {
                     createdBy: si.createdBy,
                     postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
                     reference: si.invoiceNumber,
+                    baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+                    skipAccountValidation: true,
                 }, transaction);
                 si.voucherId = revVoucher.id;
                 // Create inventory recognition voucher (COGS vs Inventory)
@@ -407,6 +658,8 @@ class PostSalesInvoiceUseCase {
                     const cogsVoucherLines = [];
                     for (const line of Array.from(cogsBucket.values())) {
                         const amount = (0, SalesPostingHelpers_1.roundMoney)(line.amountBase);
+                        if (amount <= 0 && accountingMode === 'PERPETUAL')
+                            continue;
                         cogsVoucherLines.push({
                             accountId: line.cogsAccountId,
                             side: 'Debit',
@@ -420,26 +673,30 @@ class PostSalesInvoiceUseCase {
                             docAmount: amount,
                         });
                     }
-                    const cogsVoucher = await this.accountingPostingService.postInTransaction({
-                        companyId,
-                        voucherType: VoucherTypes_1.VoucherType.SALES_INVOICE,
-                        voucherNo: `SI-COGS-${si.invoiceNumber}`,
-                        date: si.invoiceDate,
-                        description: `Sales Invoice ${si.invoiceNumber} COGS`,
-                        currency: (baseCurrency || si.currency).toUpperCase(),
-                        exchangeRate: 1,
-                        lines: cogsVoucherLines,
-                        metadata: {
-                            sourceModule: 'sales',
-                            sourceType: 'SALES_INVOICE',
-                            sourceId: si.id,
-                            voucherPart: 'COGS',
-                        },
-                        createdBy: si.createdBy,
-                        postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
-                        reference: si.invoiceNumber,
-                    }, transaction);
-                    si.cogsVoucherId = cogsVoucher.id;
+                    if (cogsVoucherLines.length > 0) {
+                        const cogsVoucher = await this.accountingPostingService.postInTransaction({
+                            companyId,
+                            voucherType: VoucherTypes_1.VoucherType.SALES_INVOICE,
+                            voucherNo: `SI-COGS-${si.invoiceNumber}`,
+                            date: si.invoiceDate,
+                            description: `Sales Invoice ${si.invoiceNumber} COGS`,
+                            currency: (baseCurrency || si.currency).toUpperCase(),
+                            exchangeRate: 1,
+                            lines: cogsVoucherLines,
+                            metadata: {
+                                sourceModule: 'sales',
+                                sourceType: 'SALES_INVOICE',
+                                sourceId: si.id,
+                                voucherPart: 'COGS',
+                            },
+                            createdBy: si.createdBy,
+                            postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
+                            reference: si.invoiceNumber,
+                            baseCurrencyOverride: (baseCurrency || si.currency || 'USD').toUpperCase(),
+                            skipAccountValidation: true,
+                        }, transaction);
+                        si.cogsVoucherId = cogsVoucher.id;
+                    }
                 }
                 else {
                     si.cogsVoucherId = null;
@@ -449,6 +706,16 @@ class PostSalesInvoiceUseCase {
                 si.voucherId = null;
                 si.cogsVoucherId = null;
             }
+            // --- Process settlements inside the same transaction (atomic) ---
+            if (settlementInput && settlementInput.settlementMode !== 'DEFERRED') {
+                await this.processSettlementsInTransaction(companyId, si, settlementInput, baseCurrency, transaction);
+            }
+            else {
+                // DEFERRED: ensure payment fields reflect unpaid state
+                si.paymentStatus = 'UNPAID';
+                si.paidAmountBase = 0;
+                si.outstandingAmountBase = si.grandTotalBase;
+            }
             if (so) {
                 so.updatedAt = new Date();
                 await this.salesOrderRepo.update(so, transaction);
@@ -456,11 +723,14 @@ class PostSalesInvoiceUseCase {
             si.status = 'POSTED';
             si.postedAt = new Date();
             si.updatedAt = new Date();
-            si.paymentStatus = 'UNPAID';
-            si.paidAmountBase = 0;
-            si.outstandingAmountBase = si.grandTotalBase;
             await this.salesInvoiceRepo.update(si, transaction);
-        });
+        };
+        if (externalTransaction) {
+            await postingLogic(externalTransaction);
+        }
+        else {
+            await this.transactionManager.runTransaction(postingLogic);
+        }
         return (await this.salesInvoiceRepo.getById(companyId, id));
     }
     async resolveAccountId(companyId, idOrCode) {
@@ -512,6 +782,95 @@ class PostSalesInvoiceUseCase {
         if (!aid)
             throw new Error(`No AR account resolved for ${customer.displayName}`);
         return aid;
+    }
+    async processSettlementsInTransaction(companyId, si, settlementInput, baseCurrency, transaction) {
+        var _a;
+        const { settlementMode, receivablePayableAccountId, settlements } = settlementInput;
+        const now = new Date();
+        if (!this.paymentHistoryRepo || !this.voucherRepo || !this.voucherSequenceRepo || !this.ledgerRepo) {
+            throw new Error('Payment settlement requires payment history, voucher, sequence, and ledger repositories');
+        }
+        if (!(receivablePayableAccountId === null || receivablePayableAccountId === void 0 ? void 0 : receivablePayableAccountId.trim())) {
+            throw new Error('receivablePayableAccountId is required for settlement');
+        }
+        const settlementTotal = settlements.reduce((sum, s) => sum + (0, SalesPostingHelpers_1.roundMoney)(s.amountBase), 0);
+        if (settlementMode === 'CASH_FULL') {
+            const outstanding = (0, SalesPostingHelpers_1.roundMoney)(si.grandTotalBase - (si.paidAmountBase || 0));
+            if (Math.abs(settlementTotal - outstanding) > 0.01) {
+                throw new Error(`CASH_FULL settlement total (${settlementTotal}) must equal outstanding amount (${outstanding})`);
+            }
+            if (settlements.length !== 1) {
+                throw new Error('CASH_FULL mode requires exactly one settlement row');
+            }
+        }
+        if (settlementMode === 'MULTI') {
+            const outstanding = (0, SalesPostingHelpers_1.roundMoney)(si.grandTotalBase - (si.paidAmountBase || 0));
+            if (settlementTotal > outstanding + 0.01) {
+                throw new Error(`MULTI settlement total (${settlementTotal}) exceeds outstanding amount (${outstanding})`);
+            }
+            if (settlements.length === 0) {
+                throw new Error('MULTI mode requires at least one settlement row');
+            }
+            for (const s of settlements) {
+                if (!((_a = s.settlementAccountId) === null || _a === void 0 ? void 0 : _a.trim())) {
+                    throw new Error('Each settlement row requires a settlementAccountId');
+                }
+                if (s.amountBase <= 0 || Number.isNaN(s.amountBase)) {
+                    throw new Error('Each settlement row amount must be positive');
+                }
+                if (s.paymentMethod && !exports.VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
+                    throw new Error(`Invalid paymentMethod: ${s.paymentMethod}`);
+                }
+            }
+        }
+        const baseCurrencyUpper = (baseCurrency || si.currency || 'USD').toUpperCase();
+        for (const settlement of settlements) {
+            const settlementAmountBase = (0, SalesPostingHelpers_1.roundMoney)(settlement.amountBase);
+            const settlementDate = settlement.paymentDate || now.toISOString().split('T')[0];
+            const settlementMethod = settlement.paymentMethod || 'CASH';
+            const voucherNo = await this.voucherSequenceRepo.getNextNumber(companyId, 'RV');
+            const voucherId = `vch_${(0, crypto_1.randomUUID)()}`;
+            const docAmount = (0, SalesPostingHelpers_1.roundMoney)(settlementAmountBase / si.exchangeRate);
+            const drLine = new VoucherLineEntity_1.VoucherLineEntity(1, settlement.settlementAccountId, 'Debit', settlementAmountBase, baseCurrencyUpper, docAmount, si.currency, si.exchangeRate, `Receipt for ${si.invoiceNumber}${settlement.reference ? ` (${settlement.reference})` : ''}`);
+            const crLine = new VoucherLineEntity_1.VoucherLineEntity(2, receivablePayableAccountId, 'Credit', settlementAmountBase, baseCurrencyUpper, docAmount, si.currency, si.exchangeRate, `Receipt for ${si.invoiceNumber}${settlement.reference ? ` (${settlement.reference})` : ''}`);
+            const totalDebit = (0, SalesPostingHelpers_1.roundMoney)(drLine.debitAmount);
+            const totalCredit = (0, SalesPostingHelpers_1.roundMoney)(crLine.creditAmount);
+            const approvedVoucher = new VoucherEntity_1.VoucherEntity(voucherId, companyId, voucherNo, VoucherTypes_1.VoucherType.RECEIPT, settlementDate, `Receipt for Sales Invoice ${si.invoiceNumber}`, si.currency.toUpperCase(), baseCurrencyUpper, si.exchangeRate, [drLine, crLine], totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, { sourceModule: 'sales', sourceInvoiceId: si.id, settlementMode }, si.createdBy, now, si.createdBy, now, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, settlement.reference || null);
+            const postedVoucher = approvedVoucher.post(si.createdBy, now, VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
+            await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);
+            await this.voucherRepo.save(postedVoucher, transaction);
+            const paymentId = `pay_${(0, crypto_1.randomUUID)()}`;
+            const payment = new PaymentHistory_1.PaymentHistory({
+                id: paymentId,
+                companyId,
+                sourceType: 'SALES_INVOICE',
+                sourceId: si.id,
+                sourceNumber: si.invoiceNumber,
+                amountBase: settlementAmountBase,
+                currency: si.currency,
+                exchangeRate: si.exchangeRate,
+                amountDoc: docAmount,
+                paymentDate: settlementDate,
+                paymentMethod: settlementMethod,
+                reference: settlement.reference || undefined,
+                notes: settlement.notes || undefined,
+                voucherId,
+                createdBy: si.createdBy,
+                createdAt: now,
+            });
+            await this.paymentHistoryRepo.create(payment, transaction);
+            si.paidAmountBase = (0, SalesPostingHelpers_1.roundMoney)((si.paidAmountBase || 0) + settlementAmountBase);
+            si.outstandingAmountBase = (0, SalesPostingHelpers_1.roundMoney)(Math.max(si.grandTotalBase - si.paidAmountBase, 0));
+            if (si.outstandingAmountBase <= 0) {
+                si.paymentStatus = 'PAID';
+            }
+            else if (si.paidAmountBase > 0) {
+                si.paymentStatus = 'PARTIALLY_PAID';
+            }
+            else {
+                si.paymentStatus = 'UNPAID';
+            }
+        }
     }
     addToBucket(bucket, aid, base, doc) {
         const existing = bucket.get(aid);
@@ -575,17 +934,39 @@ class PostSalesInvoiceUseCase {
     }
     assertPositiveTrackedCost(qty, unitCostBase, itemName, documentLabel) {
         if (qty > 0 && !(unitCostBase > 0)) {
-            throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}`);
+            throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}. Perpetual accounting requires immediate cost recognition.`);
         }
     }
 }
 exports.PostSalesInvoiceUseCase = PostSalesInvoiceUseCase;
+class CreateAndPostSalesInvoiceUseCase {
+    constructor(createUseCase, postUseCase) {
+        this.createUseCase = createUseCase;
+        this.postUseCase = postUseCase;
+    }
+    async execute(input, settlementInput) {
+        const si = await this.createUseCase.execute(input);
+        return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+    }
+}
+exports.CreateAndPostSalesInvoiceUseCase = CreateAndPostSalesInvoiceUseCase;
+class UpdateAndPostSalesInvoiceUseCase {
+    constructor(updateUseCase, postUseCase) {
+        this.updateUseCase = updateUseCase;
+        this.postUseCase = postUseCase;
+    }
+    async execute(input, settlementInput) {
+        const si = await this.updateUseCase.execute(input);
+        return this.postUseCase.execute(input.companyId, si.id, true, undefined, settlementInput);
+    }
+}
+exports.UpdateAndPostSalesInvoiceUseCase = UpdateAndPostSalesInvoiceUseCase;
 class UpdateSalesInvoiceUseCase {
     constructor(salesInvoiceRepo, partyRepo) {
         this.salesInvoiceRepo = salesInvoiceRepo;
         this.partyRepo = partyRepo;
     }
-    async execute(input) {
+    async execute(input, transaction) {
         const current = await this.salesInvoiceRepo.getById(input.companyId, input.id);
         if (!current)
             throw new Error(`Sales invoice not found: ${input.id}`);
@@ -658,7 +1039,7 @@ class UpdateSalesInvoiceUseCase {
         }
         current.updatedAt = new Date();
         const updated = new SalesInvoice_1.SalesInvoice(current.toJSON());
-        await this.salesInvoiceRepo.update(updated);
+        await this.salesInvoiceRepo.update(updated, transaction);
         return updated;
     }
 }

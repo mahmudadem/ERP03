@@ -18,6 +18,7 @@ const nowDate = () => new Date('2026-01-01T00:00:00.000Z');
 const makeSettings = (): SalesSettings =>
   new SalesSettings({
     companyId: COMPANY_ID,
+    workflowMode: 'SIMPLE',
     allowDirectInvoicing: true,
     requireSOForStockItems: true,
     defaultARAccountId: 'AR-100',
@@ -27,7 +28,7 @@ const makeSettings = (): SalesSettings =>
     overDeliveryTolerancePct: 0,
     overInvoiceTolerancePct: 0,
     defaultPaymentTermsDays: 30,
-    salesVoucherTypeId: 'VT-SI',
+    governanceRules: [],
     defaultWarehouseId: 'wh-1',
     soNumberPrefix: 'SO',
     soNumberNextSeq: 1,
@@ -129,6 +130,9 @@ const makePostedInvoice = (item: Item): SalesInvoice =>
     id: 'si-1',
     companyId: COMPANY_ID,
     invoiceNumber: 'SI-EXISTING',
+    formType: 'sales_invoice_direct',
+    voucherType: 'sales_invoice',
+    persona: 'direct',
     salesOrderId: 'so-1',
     customerId: 'cus-1',
     customerName: 'Customer One',
@@ -285,6 +289,9 @@ describe('Sales document number uniqueness', () => {
 
     await useCase.execute({
       companyId: COMPANY_ID,
+      formType: 'sales_invoice_direct',
+      voucherType: 'sales_invoice',
+      persona: 'direct',
       customerId: 'cus-1',
       invoiceDate: '2026-01-12',
       currency: 'USD',
@@ -296,6 +303,54 @@ describe('Sales document number uniqueness', () => {
     expect(createdInvoices).toHaveLength(1);
     expect(createdInvoices[0].invoiceNumber).toBe('SI-00002');
     expect(settings.siNumberNextSeq).toBe(3);
+  });
+
+  it('allows direct sales invoices in operational mode when direct invoicing is enabled', async () => {
+    const settings = makeSettings();
+    settings.workflowMode = 'OPERATIONAL';
+    settings.allowDirectInvoicing = true;
+    const item = makeItem();
+    const createdInvoices: any[] = [];
+    const useCase = new CreateSalesInvoiceUseCase(
+      {
+        getSettings: jest.fn(async () => settings),
+        saveSettings: jest.fn(async () => undefined),
+      } as any,
+      {
+        create: jest.fn(async (si: any) => createdInvoices.push(si)),
+        update: jest.fn(),
+        getById: jest.fn(),
+        getByNumber: jest.fn(async () => null),
+        list: jest.fn(),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn() } as any,
+      { getById: jest.fn(async () => makeCustomer()) } as any,
+      { getItem: jest.fn(async () => item) } as any,
+      { getCategory: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      {
+        getBaseCurrency: jest.fn(async () => 'USD'),
+        isEnabled: jest.fn(async () => true),
+      } as any
+    );
+
+    await useCase.execute({
+      companyId: COMPANY_ID,
+      formType: 'sales_invoice_direct',
+      voucherType: 'sales_invoice_direct',
+      persona: 'direct',
+      customerId: 'cus-1',
+      invoiceDate: '2026-01-12',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [{ itemId: 'item-1', invoicedQty: 1, unitPriceDoc: 10, warehouseId: 'wh-1' }],
+      createdBy: USER_ID,
+    });
+
+    expect(createdInvoices).toHaveLength(1);
+    expect(createdInvoices[0].formType).toBe('sales_invoice_direct');
+    expect(createdInvoices[0].voucherType).toBe('sales_invoice');
+    expect(createdInvoices[0].persona).toBe('direct');
   });
 
   it('skips an already-used sales return number', async () => {

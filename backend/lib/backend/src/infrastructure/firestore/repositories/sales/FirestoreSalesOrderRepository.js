@@ -75,6 +75,13 @@ class FirestoreSalesOrderRepository {
         const snap = await query.get();
         return snap.docs.map((doc) => SalesMappers_1.SalesOrderMapper.toDomain(doc.data()));
     }
+    async hasOpenOrders(companyId) {
+        const snap = await this.collection(companyId)
+            .where('status', 'in', ['CONFIRMED', 'PARTIALLY_DELIVERED', 'FULLY_DELIVERED'])
+            .limit(1)
+            .get();
+        return !snap.empty;
+    }
     async delete(companyId, id) {
         const ref = await this.resolveRefById(companyId, id);
         if (!ref)

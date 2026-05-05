@@ -5,6 +5,8 @@ const crypto_1 = require("crypto");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const SalesSettings_1 = require("../../../domain/sales/entities/SalesSettings");
 const VoucherTypeDefinition_1 = require("../../../domain/designer/entities/VoucherTypeDefinition");
+const AppError_1 = require("../../../errors/AppError");
+const ErrorCodes_1 = require("../../../errors/ErrorCodes");
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
 const cloneTemplateValue = (val) => (val ? JSON.parse(JSON.stringify(val)) : null);
@@ -22,7 +24,7 @@ const ensureVoucherTypeScope = async (voucherTypeRepo, companyId, voucherTypeId,
 };
 const cloneVoucherTypeForCompany = (companyId, template) => {
     var _a;
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency);
+    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneTemplateValue(template.headerFields), cloneTemplateValue(template.tableColumns), cloneTemplateValue(template.layout), template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneTemplateValue(template.workflow), cloneTemplateValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneTemplateValue(template.rules) || [], cloneTemplateValue(template.actions) || [], template.defaultCurrency, template.voucherType, template.persona);
 };
 const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Can be from system metadata too
 ) => {
@@ -50,6 +52,9 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Ca
         actions: cloneTemplateValue(template.actions) || [],
         isMultiLine: (_b = template.isMultiLine) !== null && _b !== void 0 ? _b : true,
         tableStyle: template.tableStyle || 'web',
+        formType: template.formType || template.baseType || template.code,
+        voucherType: template.voucherType || template.code,
+        persona: template.persona || undefined,
         baseType: template.baseType || template.code,
         createdAt: now,
         updatedAt: now,
@@ -57,40 +62,18 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template // Ca
     };
 };
 const ensureSalesVoucherDefinitions = async (companyId, createdBy, voucherTypeRepo, voucherFormRepo) => {
-    // Fetch ALL system templates from the unified source of truth
     const systemTemplates = await voucherTypeRepo.getSystemTemplates();
     const salesTemplates = systemTemplates.filter(t => t.module === 'SALES');
     if (salesTemplates.length === 0) {
         console.warn('[SalesSettingsUseCases] No SALES system templates found. Check seeder!');
     }
     for (const template of salesTemplates) {
-        let existingType = await voucherTypeRepo.getByCode(companyId, template.code);
-        // If it exists but in the WRONG module, we need to re-home it
-        if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
-            console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
-            await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
-            existingType = null;
-        }
-        const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
-            ? existingType
-            : cloneVoucherTypeForCompany(companyId, template);
-        if (!existingType) {
-            companyVoucherType.module = template.module;
-            await voucherTypeRepo.createVoucherType(companyVoucherType);
-        }
-        // FORM MIGRATION / RE-HOMING
-        const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-        for (const form of allExistingForms) {
-            if (form.module !== template.module) {
-                console.log(`Re-homing Sales Form ${form.name} from ${form.module} to ${template.module}`);
-                await voucherFormRepo.delete(companyId, form.id);
-                await voucherFormRepo.create(Object.assign(Object.assign({}, form), { module: template.module }));
-            }
-        }
-        const companyForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-        if (companyForms.length > 0)
-            continue;
-        // Create default form from template
+        const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
+        if (existingType)
+            continue; // Already exists, skip
+        const companyVoucherType = cloneVoucherTypeForCompany(companyId, template);
+        companyVoucherType.module = template.module;
+        await voucherTypeRepo.createVoucherType(companyVoucherType);
         const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
         await voucherFormRepo.create(companyForm);
     }
@@ -105,7 +88,7 @@ class InitializeSalesUseCase {
         this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         const [revenueAccount, inventoryAccount, arAccount] = await Promise.all([
             this.accountRepo.getById(input.companyId, input.defaultRevenueAccountId),
             input.defaultInventoryAccountId
@@ -125,17 +108,12 @@ class InitializeSalesUseCase {
             throw new Error(`Default AR account not found: ${input.defaultARAccountId}`);
         }
         await ensureSalesVoucherDefinitions(input.companyId, input.userId || 'SYSTEM', this.voucherTypeRepo, this.voucherFormRepo);
-        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.salesVoucherTypeId, 'SALES', 'salesVoucherTypeId');
         const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
-        if (this.inventorySettingsRepo) {
-            const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
-            const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
-            DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
-        }
         const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
             allowDirectInvoicing: (_a = input.allowDirectInvoicing) !== null && _a !== void 0 ? _a : true,
             requireSOForStockItems: (_b = input.requireSOForStockItems) !== null && _b !== void 0 ? _b : false,
         });
+        const defaultSalesInvoicePersona = workflowMode === 'SIMPLE' ? 'direct' : 'linked';
         const settings = new SalesSettings_1.SalesSettings({
             companyId: input.companyId,
             workflowMode,
@@ -150,16 +128,17 @@ class InitializeSalesUseCase {
             overDeliveryTolerancePct: (_d = input.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
             overInvoiceTolerancePct: (_e = input.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,
             defaultPaymentTermsDays: (_f = input.defaultPaymentTermsDays) !== null && _f !== void 0 ? _f : 30,
-            salesVoucherTypeId: input.salesVoucherTypeId,
+            governanceRules: (_g = input.governanceRules) !== null && _g !== void 0 ? _g : [],
+            defaultSalesInvoicePersona: (_h = input.defaultSalesInvoicePersona) !== null && _h !== void 0 ? _h : defaultSalesInvoicePersona,
             defaultWarehouseId: input.defaultWarehouseId,
             soNumberPrefix: input.soNumberPrefix || 'SO',
-            soNumberNextSeq: (_g = input.soNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
+            soNumberNextSeq: (_j = input.soNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
             dnNumberPrefix: input.dnNumberPrefix || 'DN',
-            dnNumberNextSeq: (_h = input.dnNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
+            dnNumberNextSeq: (_k = input.dnNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
             siNumberPrefix: input.siNumberPrefix || 'SI',
-            siNumberNextSeq: (_j = input.siNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
+            siNumberNextSeq: (_l = input.siNumberNextSeq) !== null && _l !== void 0 ? _l : 1,
             srNumberPrefix: input.srNumberPrefix || 'SR',
-            srNumberNextSeq: (_k = input.srNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
+            srNumberNextSeq: (_m = input.srNumberNextSeq) !== null && _m !== void 0 ? _m : 1,
         });
         await this.settingsRepo.saveSettings(settings);
         const now = new Date();
@@ -203,27 +182,35 @@ class GetSalesSettingsUseCase {
 }
 exports.GetSalesSettingsUseCase = GetSalesSettingsUseCase;
 class UpdateSalesSettingsUseCase {
-    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, inventorySettingsRepo) {
+    constructor(settingsRepo, accountRepo, voucherTypeRepo, voucherFormRepo, salesOrderRepo, deliveryNoteRepo, inventorySettingsRepo) {
         this.settingsRepo = settingsRepo;
         this.accountRepo = accountRepo;
         this.voucherTypeRepo = voucherTypeRepo;
         this.voucherFormRepo = voucherFormRepo;
+        this.salesOrderRepo = salesOrderRepo;
+        this.deliveryNoteRepo = deliveryNoteRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
     }
     async execute(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
         const existing = await this.settingsRepo.getSettings(input.companyId);
         if (!existing) {
             throw new Error('Sales settings are not initialized');
         }
-        await ensureVoucherTypeScope(this.voucherTypeRepo, input.companyId, input.salesVoucherTypeId, 'SALES', 'salesVoucherTypeId');
-        const workflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
-        if (this.inventorySettingsRepo) {
-            const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
-            const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
-            DocumentPolicyResolver_1.DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+        const oldWorkflowMode = existing.workflowMode || 'OPERATIONAL';
+        const newWorkflowMode = DocumentPolicyResolver_1.DocumentPolicyResolver.normalizeWorkflowMode((_a = input.workflowMode) !== null && _a !== void 0 ? _a : existing.workflowMode);
+        // Guard: SIMPLE mode blocks if there are open commitments
+        if (input.workflowMode === 'SIMPLE' && existing.workflowMode !== 'SIMPLE') {
+            const hasOpenSO = await this.salesOrderRepo.hasOpenOrders(input.companyId);
+            if (hasOpenSO) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.SALES_TRANSITION_BLOCKED, 'Cannot switch to Simple workflow while there are open Sales Orders. Please close or cancel all open orders first.');
+            }
+            const hasUnpostedDN = await this.deliveryNoteRepo.hasUnpostedDeliveryNotes(input.companyId);
+            if (hasUnpostedDN) {
+                throw new AppError_1.BusinessError(ErrorCodes_1.ErrorCode.SALES_TRANSITION_BLOCKED, 'Cannot switch to Simple workflow while there are draft or posted delivery notes. Please process or delete them first.');
+            }
         }
-        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
+        const workflowDefaults = DocumentPolicyResolver_1.DocumentPolicyResolver.applySalesWorkflowDefaults(newWorkflowMode, {
             allowDirectInvoicing: (_b = input.allowDirectInvoicing) !== null && _b !== void 0 ? _b : existing.allowDirectInvoicing,
             requireSOForStockItems: (_c = input.requireSOForStockItems) !== null && _c !== void 0 ? _c : existing.requireSOForStockItems,
         });
@@ -252,7 +239,7 @@ class UpdateSalesSettingsUseCase {
         }
         const updated = new SalesSettings_1.SalesSettings({
             companyId: existing.companyId,
-            workflowMode,
+            workflowMode: newWorkflowMode,
             allowDirectInvoicing: nextAllowDirectInvoicing,
             requireSOForStockItems: workflowDefaults.requireSOForStockItems,
             defaultARAccountId: nextARAccountId,
@@ -264,16 +251,17 @@ class UpdateSalesSettingsUseCase {
             overDeliveryTolerancePct: (_k = input.overDeliveryTolerancePct) !== null && _k !== void 0 ? _k : existing.overDeliveryTolerancePct,
             overInvoiceTolerancePct: (_l = input.overInvoiceTolerancePct) !== null && _l !== void 0 ? _l : existing.overInvoiceTolerancePct,
             defaultPaymentTermsDays: (_m = input.defaultPaymentTermsDays) !== null && _m !== void 0 ? _m : existing.defaultPaymentTermsDays,
-            salesVoucherTypeId: (_o = input.salesVoucherTypeId) !== null && _o !== void 0 ? _o : existing.salesVoucherTypeId,
-            defaultWarehouseId: (_p = input.defaultWarehouseId) !== null && _p !== void 0 ? _p : existing.defaultWarehouseId,
-            soNumberPrefix: (_q = input.soNumberPrefix) !== null && _q !== void 0 ? _q : existing.soNumberPrefix,
-            soNumberNextSeq: (_r = input.soNumberNextSeq) !== null && _r !== void 0 ? _r : existing.soNumberNextSeq,
-            dnNumberPrefix: (_s = input.dnNumberPrefix) !== null && _s !== void 0 ? _s : existing.dnNumberPrefix,
-            dnNumberNextSeq: (_t = input.dnNumberNextSeq) !== null && _t !== void 0 ? _t : existing.dnNumberNextSeq,
-            siNumberPrefix: (_u = input.siNumberPrefix) !== null && _u !== void 0 ? _u : existing.siNumberPrefix,
-            siNumberNextSeq: (_v = input.siNumberNextSeq) !== null && _v !== void 0 ? _v : existing.siNumberNextSeq,
-            srNumberPrefix: (_w = input.srNumberPrefix) !== null && _w !== void 0 ? _w : existing.srNumberPrefix,
-            srNumberNextSeq: (_x = input.srNumberNextSeq) !== null && _x !== void 0 ? _x : existing.srNumberNextSeq,
+            governanceRules: (_o = input.governanceRules) !== null && _o !== void 0 ? _o : existing.governanceRules,
+            defaultSalesInvoicePersona: (_p = input.defaultSalesInvoicePersona) !== null && _p !== void 0 ? _p : existing.defaultSalesInvoicePersona,
+            defaultWarehouseId: (_q = input.defaultWarehouseId) !== null && _q !== void 0 ? _q : existing.defaultWarehouseId,
+            soNumberPrefix: (_r = input.soNumberPrefix) !== null && _r !== void 0 ? _r : existing.soNumberPrefix,
+            soNumberNextSeq: (_s = input.soNumberNextSeq) !== null && _s !== void 0 ? _s : existing.soNumberNextSeq,
+            dnNumberPrefix: (_t = input.dnNumberPrefix) !== null && _t !== void 0 ? _t : existing.dnNumberPrefix,
+            dnNumberNextSeq: (_u = input.dnNumberNextSeq) !== null && _u !== void 0 ? _u : existing.dnNumberNextSeq,
+            siNumberPrefix: (_v = input.siNumberPrefix) !== null && _v !== void 0 ? _v : existing.siNumberPrefix,
+            siNumberNextSeq: (_w = input.siNumberNextSeq) !== null && _w !== void 0 ? _w : existing.siNumberNextSeq,
+            srNumberPrefix: (_x = input.srNumberPrefix) !== null && _x !== void 0 ? _x : existing.srNumberPrefix,
+            srNumberNextSeq: (_y = input.srNumberNextSeq) !== null && _y !== void 0 ? _y : existing.srNumberNextSeq,
         });
         await this.settingsRepo.saveSettings(updated);
         return updated;

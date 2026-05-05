@@ -204,6 +204,7 @@ import { PrismaSalesSettingsRepository } from '../prisma/repositories/sales/Pris
 
 import { PrismaPartyRepository } from '../prisma/repositories/shared/PrismaPartyRepository';
 import { PrismaTaxCodeRepository } from '../prisma/repositories/shared/PrismaTaxCodeRepository';
+import { PrismaPaymentHistoryRepository } from '../prisma/repositories/shared/PrismaPaymentHistoryRepository';
 
 import { PrismaBundleRegistryRepository } from '../prisma/repositories/super-admin/PrismaBundleRegistryRepository';
 import { PrismaBusinessDomainRepository } from '../prisma/repositories/super-admin/PrismaBusinessDomainRepository';
@@ -223,9 +224,11 @@ import { PrismaModulePermissionsDefinitionRepository } from '../prisma/repositor
 import { ITransactionManager } from '../../repository/interfaces/shared/ITransactionManager';
 import { IPartyRepository } from '../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../repository/interfaces/shared/ITaxCodeRepository';
+import { IPaymentHistoryRepository } from '../../repository/interfaces/shared/IPaymentHistoryRepository';
 import { FirestoreTransactionManager } from '../firestore/transaction/FirestoreTransactionManager';
 import { FirestorePartyRepository } from '../firestore/repositories/shared/FirestorePartyRepository';
 import { FirestoreTaxCodeRepository } from '../firestore/repositories/shared/FirestoreTaxCodeRepository';
+import { FirestorePaymentHistoryRepository } from '../firestore/repositories/shared/FirestorePaymentHistoryRepository';
 
 // AUTH
 import { ITokenVerifier } from '../../application/auth/interfaces/ITokenVerifier';
@@ -679,6 +682,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaTaxCodeRepository(getPrismaClient())
       : new FirestoreTaxCodeRepository(getDb());
+  },
+  get paymentHistoryRepository(): IPaymentHistoryRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPaymentHistoryRepository(getPrismaClient())
+      : new FirestorePaymentHistoryRepository(getDb());
   },
   get transactionManager(): ITransactionManager {
     return DB_TYPE === 'SQL'

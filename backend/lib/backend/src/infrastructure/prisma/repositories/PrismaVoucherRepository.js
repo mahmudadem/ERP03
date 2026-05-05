@@ -306,13 +306,14 @@ class PrismaVoucherRepository {
         }
         return voucher;
     }
-    async delete(companyId, voucherId) {
-        const existing = await this.prisma.voucher.findFirst({
+    async delete(companyId, voucherId, transaction) {
+        const tx = transaction || this.prisma;
+        const existing = await tx.voucher.findFirst({
             where: { id: voucherId, companyId }
         });
         if (!existing)
             return false;
-        await this.prisma.voucher.delete({
+        await tx.voucher.delete({
             where: { id: voucherId }
         });
         return true;

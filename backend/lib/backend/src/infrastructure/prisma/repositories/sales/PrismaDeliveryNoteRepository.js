@@ -116,6 +116,17 @@ class PrismaDeliveryNoteRepository {
         });
         return records.map((r) => this.toDomain(r));
     }
+    async hasUnpostedDeliveryNotes(companyId) {
+        const count = await this.prisma.deliveryNote.count({
+            where: {
+                companyId,
+                status: {
+                    not: 'POSTED',
+                },
+            },
+        });
+        return count > 0;
+    }
     toDomain(record) {
         const lines = (record.lines || []).map((line) => ({
             lineId: line.id,

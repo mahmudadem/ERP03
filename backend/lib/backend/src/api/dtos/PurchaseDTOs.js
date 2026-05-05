@@ -25,6 +25,16 @@ class PurchaseDTOMapper {
             piNumberNextSeq: settings.piNumberNextSeq,
             prNumberPrefix: settings.prNumberPrefix,
             prNumberNextSeq: settings.prNumberNextSeq,
+            exchangeGainLossAccountId: settings.exchangeGainLossAccountId,
+            governanceRules: (settings.governanceRules || []).map(rule => ({
+                id: rule.id,
+                scope: rule.scope,
+                action: rule.action,
+                persona: rule.persona,
+                branchId: rule.branchId,
+                formType: rule.formType,
+            })),
+            defaultPurchaseInvoicePersona: settings.defaultPurchaseInvoicePersona,
         };
     }
     static toLineDTO(line) {
@@ -161,6 +171,10 @@ class PurchaseDTOMapper {
             companyId: pi.companyId,
             invoiceNumber: pi.invoiceNumber,
             vendorInvoiceNumber: pi.vendorInvoiceNumber,
+            formType: pi.formType,
+            voucherType: pi.voucherType,
+            persona: pi.persona,
+            source: pi.source,
             purchaseOrderId: pi.purchaseOrderId,
             vendorId: pi.vendorId,
             vendorName: pi.vendorName,

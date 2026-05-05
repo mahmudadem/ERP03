@@ -12,6 +12,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { errorHandler } from '../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
 
+import { useGlobalLoaderTask } from '../../context/GlobalLoaderContext';
+
 const CompanySelectorPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { companies, loading, error, refresh } = useCompanies();
@@ -19,6 +21,9 @@ const CompanySelectorPage: React.FC = () => {
   const { switchCompany } = useCompanyAccess();
   const { setUiMode } = useUserPreferences();
   const { logout } = useAuth();
+
+  const isInitialLoading = loading && companies.length === 0;
+  useGlobalLoaderTask('company-selector', 'Loading your companies...', isInitialLoading);
 
   const handleEnter = async (companyId: string) => {
     try {
@@ -44,12 +49,8 @@ const CompanySelectorPage: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (loading && companies.length === 0) {
-      return (
-        <div className="flex justify-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      );
+    if (isInitialLoading) {
+      return null;
     }
 
     if (error) {

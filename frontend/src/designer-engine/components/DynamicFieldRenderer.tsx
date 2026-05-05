@@ -9,6 +9,7 @@ import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../utils/dateUtils';
 import { DatePicker } from '../../modules/accounting/components/shared/DatePicker';
 import { PartySelector, ItemSelector, WarehouseSelector } from '../../components/shared/selectors';
+import { CustomerAccountSelector, VendorAccountSelector } from '../../components/shared/selectors/PartyAccountSelector';
 import { AccountSelector } from '../../modules/accounting/components/shared/AccountSelector';
 import { CostCenterSelector } from '../../modules/accounting/components/shared/CostCenterSelector';
 
@@ -169,6 +170,24 @@ export const DynamicFieldRenderer: React.FC<Props> = ({ field, value, error, onC
             value={value || ''}
             onChange={(accId) => onChange(accId)}
             disabled={field.readOnly || readOnly}
+          />
+        );
+
+      case 'customer-account-selector':
+        return (
+          <CustomerAccountSelector
+            value={value || { partyId: '', accountId: '' }}
+            disabled={field.readOnly || readOnly}
+            onChange={(next) => onChange(next)}
+          />
+        );
+
+      case 'vendor-account-selector':
+        return (
+          <VendorAccountSelector
+            value={value || { partyId: '', accountId: '' }}
+            disabled={field.readOnly || readOnly}
+            onChange={(next) => onChange(next)}
           />
         );
 

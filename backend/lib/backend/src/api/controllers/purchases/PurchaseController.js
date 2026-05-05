@@ -129,7 +129,7 @@ class PurchaseController {
         try {
             (0, purchases_validators_1.validateUpdatePurchaseSettingsInput)(req.body);
             const companyId = PurchaseController.getCompanyId(req);
-            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
+            const useCase = new PurchaseSettingsUseCases_1.UpdatePurchaseSettingsUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -326,7 +326,7 @@ class PurchaseController {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
-            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.transactionManager);
+            const useCase = new GoodsReceiptUseCases_1.PostGoodsReceiptUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const grn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -423,13 +423,15 @@ class PurchaseController {
         }
     }
     static async postPI(req, res, next) {
+        var _a;
         try {
             const companyId = PurchaseController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
-            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
-            const pi = await useCase.execute(companyId, id);
+            const useCase = new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const pi = await useCase.execute(companyId, id, true, settlementInput);
             res.json({
                 success: true,
                 data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
@@ -438,6 +440,52 @@ class PurchaseController {
         catch (error) {
             next(error);
         }
+    }
+    static async createAndPostPI(req, res, next) {
+        var _a;
+        try {
+            (0, purchases_validators_1.validateCreatePurchaseInvoiceInput)(req.body);
+            const companyId = PurchaseController.getCompanyId(req);
+            const userId = PurchaseController.getUserId(req);
+            const createUseCase = new PurchaseInvoiceUseCases_1.CreatePurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
+            const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
+            const useCase = new PurchaseInvoiceUseCases_1.CreateAndPostPurchaseInvoiceUseCase(createUseCase, postUseCase);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const pi = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId, createdBy: userId }), settlementInput);
+            res.status(201).json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateAndPostPI(req, res, next) {
+        var _a;
+        try {
+            (0, purchases_validators_1.validateUpdatePurchaseInvoiceInput)(req.body);
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const updateUseCase = new PurchaseInvoiceUseCases_1.UpdatePurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.partyRepository);
+            const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
+            const useCase = new PurchaseInvoiceUseCases_1.UpdateAndPostPurchaseInvoiceUseCase(updateUseCase, postUseCase);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const pi = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { id,
+                companyId }), settlementInput);
+            res.json({
+                success: true,
+                data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static buildPostPurchaseInvoiceUseCase() {
+        const inventoryService = PurchaseController.buildPurchasesInventoryService();
+        const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
+        return new PurchaseInvoiceUseCases_1.PostPurchaseInvoiceUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.exchangeRateRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository);
     }
     static async unpostPI(req, res, next) {
         try {
@@ -468,6 +516,57 @@ class PurchaseController {
             res.json({
                 success: true,
                 data: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(invoice),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async recordPayment(req, res, next) {
+        try {
+            (0, purchases_validators_1.validateRecordPurchaseInvoicePaymentInput)(req.body);
+            const companyId = PurchaseController.getCompanyId(req);
+            const userId = PurchaseController.getUserId(req);
+            const id = String(req.params.id);
+            const body = req.body || {};
+            const useCase = new PaymentSyncUseCases_1.RecordPurchaseInvoicePaymentUseCase(bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.transactionManager);
+            const result = await useCase.execute(companyId, userId, id, {
+                settlementMode: body.settlementMode || 'CASH_FULL',
+                receivablePayableAccountId: body.receivablePayableAccountId || body.apAccountId,
+                settlements: [{
+                        settlementAccountId: body.settlementAccountId || body.cashAccountId,
+                        amountBase: Number(body.paymentAmountBase),
+                        paymentMethod: body.paymentMethod,
+                        reference: body.reference,
+                        notes: body.notes,
+                        paymentDate: body.paymentDate,
+                    }],
+            });
+            res.json({
+                success: true,
+                data: {
+                    invoice: PurchaseDTOs_1.PurchaseDTOMapper.toPurchaseInvoiceDTO(result.invoice),
+                    payments: result.payments.map(p => p.toJSON()),
+                    voucherIds: result.voucherIds,
+                },
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getPaymentHistory(req, res, next) {
+        try {
+            const companyId = PurchaseController.getCompanyId(req);
+            const id = String(req.params.id);
+            const invoice = await bindRepositories_1.diContainer.purchaseInvoiceRepository.getById(companyId, id);
+            if (!invoice) {
+                return res.status(404).json({ success: false, error: 'Purchase invoice not found' });
+            }
+            const payments = await bindRepositories_1.diContainer.paymentHistoryRepository.getBySource(companyId, 'PURCHASE_INVOICE', id);
+            res.json({
+                success: true,
+                data: payments.map((p) => p.toJSON()),
             });
         }
         catch (error) {
@@ -553,7 +652,7 @@ class PurchaseController {
             const userId = PurchaseController.getUserId(req);
             const inventoryService = PurchaseController.buildPurchasesInventoryService();
             const accountingPostingService = PurchaseController.buildAccountingPostingService();
-            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new PurchaseReturnUseCases_1.PostPurchaseReturnUseCase(bindRepositories_1.diContainer.purchaseSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.purchaseReturnRepository, bindRepositories_1.diContainer.companySettingsRepository, bindRepositories_1.diContainer.purchaseInvoiceRepository, bindRepositories_1.diContainer.goodsReceiptRepository, bindRepositories_1.diContainer.purchaseOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, PurchaseController.buildAccountingPostingService(), bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const pr = await useCase.execute(companyId, id);
             res.json({
                 success: true,

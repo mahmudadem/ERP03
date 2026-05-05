@@ -15,6 +15,13 @@ export interface TableColumn {
   fieldId: string;
   width?: string;
   labelOverride?: string;
+  type?: string;
+  required?: boolean;
+  mandatory?: boolean;
+  readOnly?: boolean;
+  calculated?: boolean;
+  autoManaged?: boolean;
+  options?: Array<{ value: string | number; label: string }>;
 }
 
 /**
@@ -67,5 +74,8 @@ export interface VoucherTypeDefinition {
   allowFutureDates?: boolean;
   mandatoryAttachments?: boolean;
   enabledActions?: string[];
-  baseType?: string;
+  formType?: string;          // Which form template (e.g., "sales_invoice_direct")
+  voucherType?: string;       // Which accounting type (e.g., "sales_invoice")
+  persona?: string;           // Which validation rules (e.g., "direct", "linked")
+  baseType?: string;          // @deprecated Use formType instead. Kept for backward compat.
 }

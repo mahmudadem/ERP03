@@ -32,7 +32,7 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       .collection('voucherForms');
   }
 
-  private toDomain(data: any): VoucherFormDefinition {
+private toDomain(data: any): VoucherFormDefinition {
     return {
       id: data.id,
       companyId: data.companyId,
@@ -56,7 +56,10 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       isMultiLine: data.isMultiLine ?? true,
       tableStyle: data.tableStyle || 'web',
       defaultCurrency: data.defaultCurrency || null,
-      baseType: data.baseType || null,
+      formType: data.formType || data.baseType || null,
+      voucherType: data.voucherType || null,
+      persona: data.persona || null,
+      baseType: data.baseType || data.formType || null,
       sidebarGroup: data.sidebarGroup || null,
       createdAt: data.createdAt?.toDate?.() || data.createdAt || new Date(),
       updatedAt: data.updatedAt?.toDate?.() || data.updatedAt || new Date(),
@@ -88,7 +91,10 @@ export class FirestoreVoucherFormRepository implements IVoucherFormRepository {
       isMultiLine: form.isMultiLine ?? true,
       tableStyle: form.tableStyle || 'web',
       defaultCurrency: form.defaultCurrency || null,
-      baseType: form.baseType || null,
+      formType: form.formType || form.baseType || null,
+      voucherType: form.voucherType || null,
+      persona: form.persona || null,
+      baseType: form.baseType || form.formType || null,
       sidebarGroup: form.sidebarGroup || null,
       createdAt: form.createdAt || FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),

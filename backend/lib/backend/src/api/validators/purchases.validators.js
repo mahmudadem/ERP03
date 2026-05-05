@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateUpdateInvoicePaymentStatusInput = exports.validateListPurchaseReturnsQuery = exports.validateCreatePurchaseReturnInput = exports.validateListPurchaseInvoicesQuery = exports.validateUpdatePurchaseInvoiceInput = exports.validateCreatePurchaseInvoiceInput = exports.validateListGoodsReceiptsQuery = exports.validateCreateGoodsReceiptInput = exports.validateListPurchaseOrdersQuery = exports.validateUpdatePurchaseOrderInput = exports.validateCreatePurchaseOrderInput = exports.validateUpdatePurchaseSettingsInput = exports.validateInitializePurchasesInput = void 0;
+exports.validateRecordPurchaseInvoicePaymentInput = exports.validateUpdateInvoicePaymentStatusInput = exports.validateListPurchaseReturnsQuery = exports.validateCreatePurchaseReturnInput = exports.validateListPurchaseInvoicesQuery = exports.validateUpdatePurchaseInvoiceInput = exports.validateCreatePurchaseInvoiceInput = exports.validateListGoodsReceiptsQuery = exports.validateCreateGoodsReceiptInput = exports.validateListPurchaseOrdersQuery = exports.validateUpdatePurchaseOrderInput = exports.validateCreatePurchaseOrderInput = exports.validateUpdatePurchaseSettingsInput = exports.validateInitializePurchasesInput = void 0;
 const ApiError_1 = require("../errors/ApiError");
 const PO_STATUSES = [
     'DRAFT',
@@ -14,6 +14,7 @@ const GRN_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PI_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PR_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const VALID_DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 const ensureRequiredString = (value, fieldName) => {
     if (!value || typeof value !== 'string' || !value.trim()) {
         throw ApiError_1.ApiError.badRequest(`${fieldName} is required`);
@@ -55,6 +56,13 @@ const ensureOptionalString = (value, fieldName) => {
     if (value === undefined)
         return;
     ensureRequiredString(value, fieldName);
+};
+const normalizeDocumentSource = (value) => typeof value === 'string' ? value.trim().toLowerCase() : '';
+const validateDocumentSource = (value) => {
+    ensureOptionalString(value, 'source');
+    if (value !== undefined && !VALID_DOCUMENT_SOURCES.includes(normalizeDocumentSource(value))) {
+        throw ApiError_1.ApiError.badRequest(`source must be one of: ${VALID_DOCUMENT_SOURCES.join(', ')}`);
+    }
 };
 const ensureOptionalUuid = (value, fieldName) => {
     if (value === undefined)
@@ -332,6 +340,17 @@ const validateListGoodsReceiptsQuery = (query) => {
 };
 exports.validateListGoodsReceiptsQuery = validateListGoodsReceiptsQuery;
 const validateCreatePurchaseInvoiceInput = (body) => {
+    validateDocumentSource(body.source);
+    const isNativeSource = normalizeDocumentSource(body.source) === 'native';
+    if (!isNativeSource) {
+        ensureRequiredString(body.formType || body.voucherTypeId, 'formType');
+        ensureRequiredString(body.voucherType, 'voucherType');
+        ensureRequiredString(body.persona, 'persona');
+    }
+    const validPersonas = ['direct', 'linked', 'service'];
+    if (body.persona !== undefined && !validPersonas.includes(body.persona)) {
+        throw ApiError_1.ApiError.badRequest(`persona must be one of: ${validPersonas.join(', ')}`);
+    }
     if (body.purchaseOrderId !== undefined)
         ensureOptionalString(body.purchaseOrderId, 'purchaseOrderId');
     if (!body.purchaseOrderId)
@@ -352,6 +371,9 @@ const validateCreatePurchaseInvoiceInput = (body) => {
             throw ApiError_1.ApiError.badRequest('lines must be a non-empty array when provided');
         }
         body.lines.forEach((line, index) => validatePILine(line, index));
+    }
+    if (body.settlementInput !== undefined) {
+        validateSettlementInput(body.settlementInput);
     }
 };
 exports.validateCreatePurchaseInvoiceInput = validateCreatePurchaseInvoiceInput;
@@ -374,8 +396,40 @@ const validateUpdatePurchaseInvoiceInput = (body) => {
         }
         body.lines.forEach((line, index) => validatePILine(line, index));
     }
+    if (body.settlementInput !== undefined) {
+        validateSettlementInput(body.settlementInput);
+    }
 };
 exports.validateUpdatePurchaseInvoiceInput = validateUpdatePurchaseInvoiceInput;
+const VALID_SETTLEMENT_MODES = ['DEFERRED', 'CASH_FULL', 'MULTI'];
+const VALID_PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
+const validateSettlementInput = (settlement) => {
+    if (!settlement.settlementMode) {
+        throw ApiError_1.ApiError.badRequest('settlementInput.settlementMode is required');
+    }
+    if (!VALID_SETTLEMENT_MODES.includes(settlement.settlementMode)) {
+        throw ApiError_1.ApiError.badRequest(`settlementMode must be one of: ${VALID_SETTLEMENT_MODES.join(', ')}`);
+    }
+    if (settlement.receivablePayableAccountId !== undefined) {
+        ensureOptionalString(settlement.receivablePayableAccountId, 'receivablePayableAccountId');
+    }
+    if (settlement.settlements !== undefined) {
+        if (!Array.isArray(settlement.settlements)) {
+            throw ApiError_1.ApiError.badRequest('settlementInput.settlements must be an array');
+        }
+        settlement.settlements.forEach((s, index) => {
+            if (!s.settlementAccountId) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].settlementAccountId is required`);
+            }
+            if (typeof s.amountBase !== 'number' || s.amountBase <= 0) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].amountBase must be a positive number`);
+            }
+            if (s.paymentMethod && !VALID_PAYMENT_METHODS.includes(s.paymentMethod)) {
+                throw ApiError_1.ApiError.badRequest(`settlements[${index}].paymentMethod must be one of: ${VALID_PAYMENT_METHODS.join(', ')}`);
+            }
+        });
+    }
+};
 const validateListPurchaseInvoicesQuery = (query) => {
     if (query.status !== undefined) {
         const status = String(query.status).toUpperCase();
@@ -452,4 +506,8 @@ const validateUpdateInvoicePaymentStatusInput = (body) => {
     ensureNumber(body.paymentAmountBase, 'paymentAmountBase');
 };
 exports.validateUpdateInvoicePaymentStatusInput = validateUpdateInvoicePaymentStatusInput;
+const validateRecordPurchaseInvoicePaymentInput = (body) => {
+    ensurePositiveNumber(body.paymentAmountBase, 'paymentAmountBase');
+};
+exports.validateRecordPurchaseInvoicePaymentInput = validateRecordPurchaseInvoicePaymentInput;
 //# sourceMappingURL=purchases.validators.js.map

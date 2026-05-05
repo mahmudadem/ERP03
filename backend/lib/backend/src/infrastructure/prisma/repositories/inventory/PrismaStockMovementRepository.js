@@ -143,6 +143,12 @@ class PrismaStockMovementRepository {
             return null;
         return this.toDomain(record);
     }
+    async hasAnyMovements(companyId) {
+        const count = await this.prisma.stockMovement.count({
+            where: { companyId },
+        });
+        return count > 0;
+    }
     async deleteMovement(companyId, id, transaction) {
         const prisma = transaction || this.prisma;
         await prisma.stockMovement.delete({

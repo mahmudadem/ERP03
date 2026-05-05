@@ -112,6 +112,10 @@ class FirestoreStockMovementRepository {
             return null;
         return InventoryMappers_1.StockMovementMapper.toDomain(doc.data());
     }
+    async hasAnyMovements(companyId) {
+        const snap = await this.collection(companyId).limit(1).get();
+        return !snap.empty;
+    }
     async deleteMovement(companyId, id, transaction) {
         const ref = this.collection(companyId).doc(id);
         const txn = this.asTransaction(transaction);

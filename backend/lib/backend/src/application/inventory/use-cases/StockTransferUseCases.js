@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListStockTransfersUseCase = exports.CompleteStockTransferUseCase = exports.CreateStockTransferUseCase = void 0;
 const crypto_1 = require("crypto");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
 const StockTransfer_1 = require("../../../domain/inventory/entities/StockTransfer");
 class CreateStockTransferUseCase {
     constructor(transferRepo, warehouseRepo, itemRepo, stockLevelRepo) {
@@ -85,8 +86,10 @@ class CreateStockTransferUseCase {
 }
 exports.CreateStockTransferUseCase = CreateStockTransferUseCase;
 class CompleteStockTransferUseCase {
-    constructor(transferRepo, movementUseCase, transactionManager) {
+    constructor(transferRepo, itemRepo, stockLevelRepo, movementUseCase, transactionManager) {
         this.transferRepo = transferRepo;
+        this.itemRepo = itemRepo;
+        this.stockLevelRepo = stockLevelRepo;
         this.movementUseCase = movementUseCase;
         this.transactionManager = transactionManager;
     }
@@ -99,15 +102,31 @@ class CompleteStockTransferUseCase {
             throw new Error('Only DRAFT stock transfers can be completed');
         }
         const completedAt = new Date();
+        const lineContexts = await Promise.all(transfer.lines.map(async (line) => {
+            const item = await this.itemRepo.getItem(line.itemId);
+            if (!item || item.companyId !== companyId) {
+                throw new Error(`Item not found for transfer line: ${line.itemId}`);
+            }
+            const [sourceLevel, destinationLevel] = await Promise.all([
+                this.stockLevelRepo.getLevel(companyId, line.itemId, transfer.sourceWarehouseId),
+                this.stockLevelRepo.getLevel(companyId, line.itemId, transfer.destinationWarehouseId),
+            ]);
+            return {
+                line,
+                item,
+                sourceLevel: sourceLevel !== null && sourceLevel !== void 0 ? sourceLevel : StockLevel_1.StockLevel.createNew(companyId, line.itemId, transfer.sourceWarehouseId),
+                destinationLevel: destinationLevel !== null && destinationLevel !== void 0 ? destinationLevel : StockLevel_1.StockLevel.createNew(companyId, line.itemId, transfer.destinationWarehouseId),
+            };
+        }));
         const lineResults = await this.transactionManager.runTransaction(async (txn) => {
             const costs = [];
-            for (const line of transfer.lines) {
+            for (const context of lineContexts) {
                 const result = await this.movementUseCase.processTRANSFER({
                     companyId,
-                    itemId: line.itemId,
+                    itemId: context.line.itemId,
                     sourceWarehouseId: transfer.sourceWarehouseId,
                     destinationWarehouseId: transfer.destinationWarehouseId,
-                    qty: line.qty,
+                    qty: context.line.qty,
                     date: transfer.date,
                     transferDocId: transfer.id,
                     transferPairId: transfer.transferPairId,
@@ -118,22 +137,26 @@ class CompleteStockTransferUseCase {
                         source: 'stock-transfer',
                         transferId: transfer.id,
                     },
+                    preFetchedItem: context.item,
+                    preFetchedSourceLevel: context.sourceLevel,
+                    preFetchedDestinationLevel: context.destinationLevel,
+                    skipWarehouseValidation: true,
                 });
                 costs.push({
                     unitCostBase: result.outMov.unitCostBase,
                     unitCostCCY: result.outMov.unitCostCCY,
                 });
             }
+            const completedLines = transfer.lines.map((line, index) => {
+                var _a, _b, _c, _d;
+                return (Object.assign(Object.assign({}, line), { unitCostBaseAtTransfer: (_b = (_a = costs[index]) === null || _a === void 0 ? void 0 : _a.unitCostBase) !== null && _b !== void 0 ? _b : line.unitCostBaseAtTransfer, unitCostCCYAtTransfer: (_d = (_c = costs[index]) === null || _c === void 0 ? void 0 : _c.unitCostCCY) !== null && _d !== void 0 ? _d : line.unitCostCCYAtTransfer }));
+            });
+            await this.transferRepo.updateTransfer(transfer.id, {
+                status: 'COMPLETED',
+                completedAt,
+                lines: completedLines,
+            }, txn);
             return costs;
-        });
-        const completedLines = transfer.lines.map((line, index) => {
-            var _a, _b, _c, _d;
-            return (Object.assign(Object.assign({}, line), { unitCostBaseAtTransfer: (_b = (_a = lineResults[index]) === null || _a === void 0 ? void 0 : _a.unitCostBase) !== null && _b !== void 0 ? _b : line.unitCostBaseAtTransfer, unitCostCCYAtTransfer: (_d = (_c = lineResults[index]) === null || _c === void 0 ? void 0 : _c.unitCostCCY) !== null && _d !== void 0 ? _d : line.unitCostCCYAtTransfer }));
-        });
-        await this.transferRepo.updateTransfer(transfer.id, {
-            status: 'COMPLETED',
-            completedAt,
-            lines: completedLines,
         });
         const updated = await this.transferRepo.getTransfer(transfer.id);
         if (!updated) {

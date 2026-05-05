@@ -89,6 +89,19 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
 
   const setCompanyId = (newCompanyId: string) => setCompanyIdState(newCompanyId);
 
+  const withRetry = async <T,>(fn: () => Promise<T>, retries = 3, delay = 1500): Promise<T> => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        if (err?.response?.status === 401) throw err; // Don't retry auth errors
+        if (i === retries - 1) throw err;
+        await new Promise(r => setTimeout(r, delay * (i + 1))); // exponential backoff
+      }
+    }
+    throw new Error('Unreachable');
+  };
+
   const loadPermissionsForActiveCompany = useCallback(async () => {
     if (authLoading || !user) {
       setPermissionsLoaded(resolvedPermissions.length > 0);
@@ -97,7 +110,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     try {
-      const data = await authApi.getMyPermissions();
+      const data = await withRetry(() => authApi.getMyPermissions());
       const normalizedBundles = normalizeModuleList(data.moduleBundles);
       setPermissions(data.resolvedPermissions || []);
       setResolvedPermissions(data.resolvedPermissions || []);
@@ -140,7 +153,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('activeModules');
     
     try {
-      const permData = await authApi.getMyPermissions();
+      const permData = await withRetry(() => authApi.getMyPermissions());
       const isUserSuperAdmin = !!permData.isSuperAdmin;
       setIsSuperAdminState(isUserSuperAdmin);
       
@@ -157,7 +170,7 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      const data = await companySelectorApi.getActiveCompany();
+      const data = await withRetry(() => companySelectorApi.getActiveCompany());
       const activeId = data.activeCompanyId || '';
       setCompanyIdState(activeId);
       if (data.company) {
@@ -233,11 +246,8 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    if (companyId) {
-      refreshPermissions();
-    }
-  }, [companyId, authLoading, user]);
+  // Removed redundant useEffect watching companyId to prevent double fetches.
+  // Both loadActiveCompany and switchCompany handle permissions loading directly.
 
   useEffect(() => {
     loadActiveCompany();

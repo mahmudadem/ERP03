@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
-import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
+import { SalesSettings, GovernanceRule } from '../../../domain/sales/entities/SalesSettings';
 import { PostingRole } from '../../../domain/designer/entities/PostingRole';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
@@ -12,6 +12,10 @@ import {
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
+import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/IDeliveryNoteRepository';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -58,7 +62,9 @@ const cloneVoucherTypeForCompany = (
     template.isMultiLine ?? true,
     cloneTemplateValue(template.rules) || [],
     cloneTemplateValue(template.actions) || [],
-    template.defaultCurrency
+    template.defaultCurrency,
+    template.voucherType,
+    template.persona
   );
 };
 
@@ -92,6 +98,9 @@ const cloneVoucherFormForCompany = (
     actions: cloneTemplateValue(template.actions) || [],
     isMultiLine: template.isMultiLine ?? true,
     tableStyle: template.tableStyle || 'web',
+    formType: template.formType || template.baseType || template.code,
+    voucherType: template.voucherType || template.code,
+    persona: template.persona || undefined,
     baseType: template.baseType || template.code,
     createdAt: now,
     updatedAt: now,
@@ -105,7 +114,6 @@ const ensureSalesVoucherDefinitions = async (
   voucherTypeRepo: IVoucherTypeDefinitionRepository,
   voucherFormRepo: IVoucherFormRepository
 ): Promise<void> => {
-  // Fetch ALL system templates from the unified source of truth
   const systemTemplates = await voucherTypeRepo.getSystemTemplates();
   const salesTemplates = systemTemplates.filter(t => t.module === 'SALES');
 
@@ -114,38 +122,13 @@ const ensureSalesVoucherDefinitions = async (
   }
 
   for (const template of salesTemplates) {
-    let existingType = await voucherTypeRepo.getByCode(companyId, template.code);
-    
-    // If it exists but in the WRONG module, we need to re-home it
-    if (existingType && existingType.module !== template.module && existingType.companyId === companyId) {
-       console.log(`Re-homing ${template.code} from ${existingType.module} to ${template.module}`);
-       await voucherTypeRepo.deleteVoucherType(companyId, existingType.id);
-       existingType = null;
-    }
+    const existingType = await voucherTypeRepo.getByCode(companyId, template.code);
+    if (existingType) continue; // Already exists, skip
 
-    const companyVoucherType = existingType && existingType.module === template.module && existingType.companyId === companyId
-        ? existingType
-        : cloneVoucherTypeForCompany(companyId, template);
+    const companyVoucherType = cloneVoucherTypeForCompany(companyId, template);
+    companyVoucherType.module = template.module;
+    await voucherTypeRepo.createVoucherType(companyVoucherType);
 
-    if (!existingType) {
-      companyVoucherType.module = template.module;
-      await voucherTypeRepo.createVoucherType(companyVoucherType);
-    }
-
-    // FORM MIGRATION / RE-HOMING
-    const allExistingForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-    for (const form of allExistingForms) {
-      if (form.module !== template.module) {
-        console.log(`Re-homing Sales Form ${form.name} from ${form.module} to ${template.module}`);
-        await voucherFormRepo.delete(companyId, form.id);
-        await voucherFormRepo.create({ ...form, module: template.module });
-      }
-    }
-
-    const companyForms = await voucherFormRepo.getByTypeId(companyId, companyVoucherType.id);
-    if (companyForms.length > 0) continue;
-
-    // Create default form from template
     const companyForm = cloneVoucherFormForCompany(companyId, companyVoucherType.id, createdBy, template);
     await voucherFormRepo.create(companyForm);
   }
@@ -166,7 +149,8 @@ export interface InitializeSalesInput {
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
-  salesVoucherTypeId?: string;
+  governanceRules?: GovernanceRule[];
+  defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix?: string;
   soNumberNextSeq?: number;
@@ -192,7 +176,8 @@ export interface UpdateSalesSettingsInput {
   overDeliveryTolerancePct?: number;
   overInvoiceTolerancePct?: number;
   defaultPaymentTermsDays?: number;
-  salesVoucherTypeId?: string;
+  governanceRules?: GovernanceRule[];
+  defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix?: string;
   soNumberNextSeq?: number;
@@ -241,24 +226,14 @@ export class InitializeSalesUseCase {
       this.voucherTypeRepo,
       this.voucherFormRepo
     );
-    await ensureVoucherTypeScope(
-      this.voucherTypeRepo,
-      input.companyId,
-      input.salesVoucherTypeId,
-      'SALES',
-      'salesVoucherTypeId'
-    );
 
     const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode);
-    if (this.inventorySettingsRepo) {
-      const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
-      const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
-      DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
-    }
     const workflowDefaults = DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
       allowDirectInvoicing: input.allowDirectInvoicing ?? true,
       requireSOForStockItems: input.requireSOForStockItems ?? false,
     });
+
+    const defaultSalesInvoicePersona = workflowMode === 'SIMPLE' ? 'direct' as const : 'linked' as const;
 
     const settings = new SalesSettings({
       companyId: input.companyId,
@@ -274,7 +249,8 @@ export class InitializeSalesUseCase {
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? 30,
-      salesVoucherTypeId: input.salesVoucherTypeId,
+      governanceRules: input.governanceRules ?? [],
+      defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId,
       soNumberPrefix: input.soNumberPrefix || 'SO',
       soNumberNextSeq: input.soNumberNextSeq ?? 1,
@@ -336,6 +312,8 @@ export class UpdateSalesSettingsUseCase {
     private readonly accountRepo: IAccountRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
+    private readonly salesOrderRepo: ISalesOrderRepository,
+    private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
@@ -345,24 +323,33 @@ export class UpdateSalesSettingsUseCase {
       throw new Error('Sales settings are not initialized');
     }
 
-    await ensureVoucherTypeScope(
-      this.voucherTypeRepo,
-      input.companyId,
-      input.salesVoucherTypeId,
-      'SALES',
-      'salesVoucherTypeId'
-    );
+    const oldWorkflowMode = existing.workflowMode || 'OPERATIONAL';
+    const newWorkflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode ?? existing.workflowMode);
 
-    const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode ?? existing.workflowMode);
-    if (this.inventorySettingsRepo) {
-      const inventorySettings = await this.inventorySettingsRepo.getSettings(input.companyId);
-      const accountingMode = DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
-      DocumentPolicyResolver.enforceWorkflowAccountingCompatibility(workflowMode, accountingMode);
+    // Guard: SIMPLE mode blocks if there are open commitments
+    if (input.workflowMode === 'SIMPLE' && existing.workflowMode !== 'SIMPLE') {
+      const hasOpenSO = await this.salesOrderRepo.hasOpenOrders(input.companyId);
+      if (hasOpenSO) {
+        throw new BusinessError(
+          ErrorCode.SALES_TRANSITION_BLOCKED,
+          'Cannot switch to Simple workflow while there are open Sales Orders. Please close or cancel all open orders first.'
+        );
+      }
+
+      const hasUnpostedDN = await this.deliveryNoteRepo.hasUnpostedDeliveryNotes(input.companyId);
+      if (hasUnpostedDN) {
+        throw new BusinessError(
+          ErrorCode.SALES_TRANSITION_BLOCKED,
+          'Cannot switch to Simple workflow while there are draft or posted delivery notes. Please process or delete them first.'
+        );
+      }
     }
-    const workflowDefaults = DocumentPolicyResolver.applySalesWorkflowDefaults(workflowMode, {
+
+    const workflowDefaults = DocumentPolicyResolver.applySalesWorkflowDefaults(newWorkflowMode, {
       allowDirectInvoicing: input.allowDirectInvoicing ?? existing.allowDirectInvoicing,
       requireSOForStockItems: input.requireSOForStockItems ?? existing.requireSOForStockItems,
     });
+
     const nextAllowDirectInvoicing = workflowDefaults.allowDirectInvoicing;
     const nextARAccountId = input.defaultARAccountId ?? existing.defaultARAccountId;
     const nextRevenueAccountId = input.defaultRevenueAccountId ?? existing.defaultRevenueAccountId;
@@ -379,6 +366,7 @@ export class UpdateSalesSettingsUseCase {
         ? this.accountRepo.getById(input.companyId, nextARAccountId)
         : Promise.resolve(null),
     ]);
+
     if (!revenueAccount) throw new Error(`Default revenue account not found: ${nextRevenueAccountId}`);
     if (nextDefaultInventoryAccountId && !inventoryAccount) {
       throw new Error(`Default inventory account not found: ${nextDefaultInventoryAccountId}`);
@@ -389,7 +377,7 @@ export class UpdateSalesSettingsUseCase {
 
     const updated = new SalesSettings({
       companyId: existing.companyId,
-      workflowMode,
+      workflowMode: newWorkflowMode,
       allowDirectInvoicing: nextAllowDirectInvoicing,
       requireSOForStockItems: workflowDefaults.requireSOForStockItems,
       defaultARAccountId: nextARAccountId,
@@ -401,7 +389,8 @@ export class UpdateSalesSettingsUseCase {
       overDeliveryTolerancePct: input.overDeliveryTolerancePct ?? existing.overDeliveryTolerancePct,
       overInvoiceTolerancePct: input.overInvoiceTolerancePct ?? existing.overInvoiceTolerancePct,
       defaultPaymentTermsDays: input.defaultPaymentTermsDays ?? existing.defaultPaymentTermsDays,
-      salesVoucherTypeId: input.salesVoucherTypeId ?? existing.salesVoucherTypeId,
+      governanceRules: input.governanceRules ?? existing.governanceRules,
+      defaultSalesInvoicePersona: input.defaultSalesInvoicePersona ?? existing.defaultSalesInvoicePersona,
       defaultWarehouseId: input.defaultWarehouseId ?? existing.defaultWarehouseId,
       soNumberPrefix: input.soNumberPrefix ?? existing.soNumberPrefix,
       soNumberNextSeq: input.soNumberNextSeq ?? existing.soNumberNextSeq,

@@ -1,5 +1,5 @@
-﻿export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE';
+export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 
 export interface SalesReturnLine {
   lineId: string;
@@ -62,7 +62,7 @@ export interface SalesReturnProps {
 }
 
 const SR_STATUSES: SRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
-const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE'];
+const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: any): Date => {

@@ -12,8 +12,12 @@ import {
   SRStatus,
 } from '../../../domain/sales/entities/SalesReturn';
 import { Party } from '../../../domain/shared/entities/Party';
+import { TaxCode } from '../../../domain/shared/entities/TaxCode';
+import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
+import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
-import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
@@ -29,7 +33,6 @@ import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCo
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import {
-  ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
 import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
@@ -45,6 +48,9 @@ export interface SalesReturnLineInput {
   returnQty?: number;
   uomId?: string;
   uom?: string;
+  unitPriceDoc?: number;    // Selling price — needed for revenue reversal
+  taxCodeId?: string;       // Tax code for the return line
+  warehouseId?: string;     // Per-line warehouse override
   description?: string;
 }
 
@@ -53,6 +59,8 @@ export interface CreateSalesReturnInput {
   salesInvoiceId?: string;
   deliveryNoteId?: string;
   salesOrderId?: string;
+  customerId?: string;      // Required for DIRECT returns
+  customerName?: string;    // Required for DIRECT returns
   returnDate: string;
   warehouseId?: string;
   reason: string;
@@ -82,7 +90,7 @@ interface COGSBucketLine {
 const determineReturnContext = (input: CreateSalesReturnInput): ReturnContext => {
   if (input.salesInvoiceId) return 'AFTER_INVOICE';
   if (input.deliveryNoteId) return 'BEFORE_INVOICE';
-  throw new Error('salesInvoiceId or deliveryNoteId is required to create a sales return');
+  return 'DIRECT';
 };
 
 const findSILine = (
@@ -174,29 +182,59 @@ export class CreateSalesReturnUseCase {
 
     let salesInvoice: SalesInvoice | null = null;
     let deliveryNote: DeliveryNote | null = null;
+    let lines: SalesReturnLine[];
+
     if (returnContext === 'AFTER_INVOICE') {
       salesInvoice = await this.salesInvoiceRepo.getById(input.companyId, input.salesInvoiceId as string);
       if (!salesInvoice) throw new Error(`Sales invoice not found: ${input.salesInvoiceId}`);
       if (salesInvoice.status !== 'POSTED') {
         throw new Error('AFTER_INVOICE returns require a posted sales invoice');
       }
-    } else {
+      lines = this.prefillLinesFromSalesInvoice(salesInvoice, input.lines);
+    } else if (returnContext === 'BEFORE_INVOICE') {
       deliveryNote = await this.deliveryNoteRepo.getById(input.companyId, input.deliveryNoteId as string);
       if (!deliveryNote) throw new Error(`Delivery note not found: ${input.deliveryNoteId}`);
       if (deliveryNote.status !== 'POSTED') {
         throw new Error('BEFORE_INVOICE returns require a posted delivery note');
       }
+      lines = this.prefillLinesFromDeliveryNote(deliveryNote, input.lines);
+    } else {
+      // DIRECT: standalone return
+      if (!input.lines?.length) {
+        throw new Error('Standalone returns require at least one line with item details');
+      }
+      if (!input.warehouseId && !settings.defaultWarehouseId) {
+        throw new Error('warehouseId is required for standalone returns');
+      }
+      lines = input.lines.map((inputLine, index) => ({
+        lineId: inputLine.lineId || randomUUID(),
+        lineNo: inputLine.lineNo ?? index + 1,
+        itemId: inputLine.itemId || '',
+        itemCode: '',
+        itemName: '',
+        returnQty: inputLine.returnQty || 0,
+        uomId: inputLine.uomId,
+        uom: inputLine.uom || 'EA',
+        unitPriceDoc: inputLine.unitPriceDoc ?? 0,
+        unitPriceBase: inputLine.unitPriceDoc ?? 0, // will be FX-adjusted at posting
+        unitCostBase: 0,
+        fxRateMovToBase: 1,
+        fxRateCCYToBase: 1,
+        taxCodeId: inputLine.taxCodeId,
+        taxRate: 0,
+        taxAmountDoc: 0,
+        taxAmountBase: 0,
+        stockMovementId: null,
+        description: inputLine.description,
+      }));
     }
 
-    const lines = salesInvoice
-      ? this.prefillLinesFromSalesInvoice(salesInvoice, input.lines)
-      : this.prefillLinesFromDeliveryNote(deliveryNote as DeliveryNote, input.lines);
-
     const warehouseId =
-      input.warehouseId
-      || deliveryNote?.warehouseId
-      || salesInvoice?.lines[0]?.warehouseId
-      || settings.defaultWarehouseId;
+      input.warehouseId ||
+      deliveryNote?.warehouseId ||
+      salesInvoice?.lines[0]?.warehouseId ||
+      settings.defaultWarehouseId;
+
     if (!warehouseId) {
       throw new Error('warehouseId is required to create sales return');
     }
@@ -214,8 +252,8 @@ export class CreateSalesReturnUseCase {
       salesInvoiceId: salesInvoice?.id,
       deliveryNoteId: deliveryNote?.id,
       salesOrderId: input.salesOrderId || salesInvoice?.salesOrderId || deliveryNote?.salesOrderId,
-      customerId: salesInvoice?.customerId || (deliveryNote as DeliveryNote).customerId,
-      customerName: salesInvoice?.customerName || (deliveryNote as DeliveryNote).customerName,
+      customerId: input.customerId || salesInvoice?.customerId || (deliveryNote as DeliveryNote)?.customerId,
+      customerName: input.customerName || salesInvoice?.customerName || (deliveryNote as DeliveryNote)?.customerName,
       returnContext,
       returnDate: input.returnDate,
       warehouseId,
@@ -298,7 +336,7 @@ export class CreateSalesReturnUseCase {
   ): SalesReturnLine {
     const returnQty = inputLine?.returnQty ?? salesInvoiceLine.invoicedQty;
     const taxRate = salesInvoiceLine.taxRate || 0;
-    const unitPriceDoc = salesInvoiceLine.unitPriceDoc;
+    const unitPriceDoc = inputLine?.unitPriceDoc ?? salesInvoiceLine.unitPriceDoc;
     const unitPriceBase = salesInvoiceLine.unitPriceBase || roundMoney(unitPriceDoc * (exchangeRate || 1));
 
     return {
@@ -376,6 +414,7 @@ export class PostSalesReturnUseCase {
     private readonly inventoryService: ISalesInventoryService,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager
   ) {}
 
@@ -393,9 +432,8 @@ export class PostSalesReturnUseCase {
     }
 
     const isAfterInvoice = salesReturn.returnContext === 'AFTER_INVOICE';
-    if (!isAfterInvoice && !settings.requireSOForStockItems) {
-      throw new Error('BEFORE_INVOICE returns require "Require Sales Orders for Stock Items" to be enabled.');
-    }
+    const isBeforeInvoice = salesReturn.returnContext === 'BEFORE_INVOICE';
+    const isDirect = salesReturn.returnContext === 'DIRECT';
 
     let salesInvoice: SalesInvoice | null = null;
     let deliveryNote: DeliveryNote | null = null;
@@ -408,7 +446,7 @@ export class PostSalesReturnUseCase {
       if (salesInvoice.status !== 'POSTED') {
         throw new Error('AFTER_INVOICE returns require a posted sales invoice');
       }
-    } else {
+    } else if (isBeforeInvoice) {
       if (!salesReturn.deliveryNoteId) {
         throw new Error('deliveryNoteId is required for BEFORE_INVOICE return');
       }
@@ -416,6 +454,10 @@ export class PostSalesReturnUseCase {
       if (!deliveryNote) throw new Error(`Delivery note not found: ${salesReturn.deliveryNoteId}`);
       if (deliveryNote.status !== 'POSTED') {
         throw new Error('BEFORE_INVOICE returns require a posted delivery note');
+      }
+    } else if (isDirect) {
+      if (accountingMode === 'PERPETUAL') {
+        throw new Error('Standalone returns require a source document in Real-Time Costing mode');
       }
     }
 
@@ -431,218 +473,369 @@ export class PostSalesReturnUseCase {
     if (!customer) throw new Error(`Customer not found: ${salesReturn.customerId}`);
 
     const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || salesReturn.currency;
+
+    const distinctItemIds = [...new Set(salesReturn.lines.map(l => l.itemId))];
+    const distinctTaxCodeIds = [...new Set(salesReturn.lines.filter(l => l.taxCodeId).map(l => l.taxCodeId as string))];
+
+    const [itemsMap, categoriesMap, taxCodesMap] = await Promise.all([
+      Promise.all(distinctItemIds.map(id => this.itemRepo.getItem(id))).then(res =>
+        new Map(res.filter((i): i is Item => !!i && i.companyId === companyId).map(i => [i.id, i]))
+      ),
+      this.itemCategoryRepo.getCompanyCategories(companyId).then(res =>
+        new Map(res.map(c => [c.id, c]))
+      ),
+      Promise.all(distinctTaxCodeIds.map(id => this.taxCodeRepo.getById(companyId, id))).then(res =>
+        new Map(res.filter((t): t is TaxCode => !!t).map(t => [t!.id, t!]))
+      ),
+    ]);
+
+    const previousReturnQtyMap = new Map<string, number>();
+    const currentRunQtyBySource = new Map<string, number>();
+    for (const line of salesReturn.lines) {
+      if (isAfterInvoice && salesInvoice) {
+        const sourceLine = findSILine(salesInvoice, line.siLineId, line.itemId);
+        if (sourceLine) {
+          const sourceKey = `SI:${sourceLine.lineId}`;
+          const previousReturned = await this.getPreviouslyReturnedQtyForSILine(
+            companyId, salesInvoice.id, sourceLine.lineId, salesReturn.id
+          );
+          previousReturnQtyMap.set(sourceKey, previousReturned);
+        }
+      } else if (isBeforeInvoice && deliveryNote) {
+        const sourceLine = findDNLine(deliveryNote, line.dnLineId, line.itemId);
+        if (sourceLine) {
+          const sourceKey = `DN:${sourceLine.lineId}`;
+          const previousReturned = await this.getPreviouslyReturnedQtyForDNLine(
+            companyId, deliveryNote.id, sourceLine.lineId, salesReturn.id
+          );
+          previousReturnQtyMap.set(sourceKey, previousReturned);
+        }
+      }
+    }
+
+    const warehouseId = salesReturn.warehouseId || settings.defaultWarehouseId || '';
+    const stockLevelMap = new Map<string, StockLevel>();
+    for (const line of salesReturn.lines) {
+      const item = itemsMap.get(line.itemId);
+      if (item?.trackInventory && warehouseId) {
+        const key = `${line.itemId}|${warehouseId}`;
+        if (!stockLevelMap.has(key)) {
+          const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
+          stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
+        }
+      }
+    }
+
+    const uomConversionMap = new Map<string, any>();
+    for (const itemId of distinctItemIds) {
+      const item = itemsMap.get(itemId);
+      if (item && !uomConversionMap.has(item.id)) {
+        const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+        uomConversionMap.set(item.id, convs);
+      }
+    }
+
     const revenueDebitBucket = new Map<string, VoucherBucketLine>();
     const taxDebitBucket = new Map<string, VoucherBucketLine>();
     const cogsBucket = new Map<string, COGSBucketLine>();
-    const currentRunQtyBySource = new Map<string, number>();
+    const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel }>();
 
-    await this.transactionManager.runTransaction(async (transaction) => {
-      for (const line of salesReturn.lines) {
-        const item = await this.itemRepo.getItem(line.itemId);
-        if (!item || item.companyId !== companyId) {
-          throw new Error(`Item not found: ${line.itemId}`);
+    for (const line of salesReturn.lines) {
+      const item = itemsMap.get(line.itemId);
+      if (!item || item.companyId !== companyId) {
+        throw new Error(`Item not found: ${line.itemId}`);
+      }
+
+      if (isAfterInvoice) {
+        const sourceLine = findSILine(salesInvoice as SalesInvoice, line.siLineId, line.itemId);
+        if (!sourceLine) {
+          throw new Error(`Sales invoice line not found for return line ${line.lineId}`);
         }
 
-        if (isAfterInvoice) {
-          const sourceLine = findSILine(salesInvoice as SalesInvoice, line.siLineId, line.itemId);
-          if (!sourceLine) {
-            throw new Error(`Sales invoice line not found for return line ${line.lineId}`);
-          }
+        line.siLineId = sourceLine.lineId;
+        line.dnLineId = line.dnLineId || sourceLine.dnLineId;
+        line.soLineId = line.soLineId || sourceLine.soLineId;
+        line.itemCode = line.itemCode || sourceLine.itemCode;
+        line.itemName = line.itemName || sourceLine.itemName;
+        line.uomId = line.uomId || sourceLine.uomId;
+        line.uom = line.uom || sourceLine.uom;
+        line.unitPriceDoc = line.unitPriceDoc ?? sourceLine.unitPriceDoc;
+        line.unitPriceBase = line.unitPriceBase ?? sourceLine.unitPriceBase;
+        line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
+        line.taxCodeId = line.taxCodeId || sourceLine.taxCodeId;
+        line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
+        line.revenueAccountId = line.revenueAccountId || sourceLine.revenueAccountId;
+        line.cogsAccountId = line.cogsAccountId || sourceLine.cogsAccountId;
+        line.inventoryAccountId = line.inventoryAccountId || sourceLine.inventoryAccountId;
 
-          line.siLineId = sourceLine.lineId;
-          line.dnLineId = line.dnLineId || sourceLine.dnLineId;
-          line.soLineId = line.soLineId || sourceLine.soLineId;
-          line.itemCode = line.itemCode || sourceLine.itemCode;
-          line.itemName = line.itemName || sourceLine.itemName;
-          line.uomId = line.uomId || sourceLine.uomId;
-          line.uom = line.uom || sourceLine.uom;
-          line.unitPriceDoc = line.unitPriceDoc ?? sourceLine.unitPriceDoc;
-          line.unitPriceBase = line.unitPriceBase ?? sourceLine.unitPriceBase;
-          line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
-          line.taxCodeId = line.taxCodeId || sourceLine.taxCodeId;
-          line.taxRate = Number.isNaN(line.taxRate) ? sourceLine.taxRate : line.taxRate;
-          line.revenueAccountId = line.revenueAccountId || sourceLine.revenueAccountId;
-          line.cogsAccountId = line.cogsAccountId || sourceLine.cogsAccountId;
-          line.inventoryAccountId = line.inventoryAccountId || sourceLine.inventoryAccountId;
-
-          const sourceKey = `SI:${sourceLine.lineId}`;
-          const previousReturned = await this.getPreviouslyReturnedQtyForSILine(
-            companyId,
-            (salesInvoice as SalesInvoice).id,
-            sourceLine.lineId,
-            salesReturn.id
-          );
-          const currentRunQty = currentRunQtyBySource.get(sourceKey) || 0;
-          const remainingQty = roundMoney(sourceLine.invoicedQty - previousReturned - currentRunQty);
-          if (line.returnQty > remainingQty + 0.000001) {
-            throw new Error(`Return qty exceeds invoiced qty for ${line.itemName || sourceLine.itemName}`);
-          }
-          currentRunQtyBySource.set(sourceKey, roundMoney(currentRunQty + line.returnQty));
-        } else {
-          const sourceLine = findDNLine(deliveryNote as DeliveryNote, line.dnLineId, line.itemId);
-          if (!sourceLine) {
-            throw new Error(`Delivery note line not found for return line ${line.lineId}`);
-          }
-
-          line.dnLineId = sourceLine.lineId;
-          line.soLineId = line.soLineId || sourceLine.soLineId;
-          line.itemCode = line.itemCode || sourceLine.itemCode;
-          line.itemName = line.itemName || sourceLine.itemName;
-          line.uomId = line.uomId || sourceLine.uomId;
-          line.uom = line.uom || sourceLine.uom;
-          line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
-          line.fxRateMovToBase = line.fxRateMovToBase || sourceLine.fxRateMovToBase || 1;
-          line.fxRateCCYToBase = line.fxRateCCYToBase || sourceLine.fxRateCCYToBase || 1;
-          line.taxRate = 0;
-          line.taxAmountDoc = 0;
-          line.taxAmountBase = 0;
-
-          const sourceKey = `DN:${sourceLine.lineId}`;
-          const previousReturned = await this.getPreviouslyReturnedQtyForDNLine(
-            companyId,
-            (deliveryNote as DeliveryNote).id,
-            sourceLine.lineId,
-            salesReturn.id
-          );
-          const currentRunQty = currentRunQtyBySource.get(sourceKey) || 0;
-          const remainingQty = roundMoney(sourceLine.deliveredQty - previousReturned - currentRunQty);
-          if (line.returnQty > remainingQty + 0.000001) {
-            throw new Error(`Return qty exceeds delivered qty for ${line.itemName || sourceLine.itemName}`);
-          }
-          currentRunQtyBySource.set(sourceKey, roundMoney(currentRunQty + line.returnQty));
+        const sourceKey = `SI:${sourceLine.lineId}`;
+        const previousReturned = previousReturnQtyMap.get(sourceKey) || 0;
+        const currentRunQty = currentRunQtyBySource.get(sourceKey) || 0;
+        const remainingQty = roundMoney(sourceLine.invoicedQty - previousReturned - currentRunQty);
+        if (line.returnQty > remainingQty + 0.000001) {
+          throw new Error(`Return qty exceeds invoiced qty for ${line.itemName || sourceLine.itemName}`);
+        }
+        currentRunQtyBySource.set(sourceKey, roundMoney(currentRunQty + line.returnQty));
+      } else if (isBeforeInvoice) {
+        const sourceLine = findDNLine(deliveryNote as DeliveryNote, line.dnLineId, line.itemId);
+        if (!sourceLine) {
+          throw new Error(`Delivery note line not found for return line ${line.lineId}`);
         }
 
-        const lineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc || 0));
-        const lineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase || 0));
-        line.taxAmountDoc = roundMoney(lineTotalDoc * line.taxRate);
-        line.taxAmountBase = roundMoney(lineTotalBase * line.taxRate);
+        line.dnLineId = sourceLine.lineId;
+        line.soLineId = line.soLineId || sourceLine.soLineId;
+        line.itemCode = line.itemCode || sourceLine.itemCode;
+        line.itemName = line.itemName || sourceLine.itemName;
+        line.uomId = line.uomId || sourceLine.uomId;
+        line.uom = line.uom || sourceLine.uom;
+        line.unitCostBase = line.unitCostBase || sourceLine.unitCostBase || 0;
+        line.fxRateMovToBase = line.fxRateMovToBase || sourceLine.fxRateMovToBase || 1;
+        line.fxRateCCYToBase = line.fxRateCCYToBase || sourceLine.fxRateCCYToBase || 1;
+        line.taxRate = 0;
+        line.taxAmountDoc = 0;
+        line.taxAmountBase = 0;
 
-        if (isAfterInvoice) {
-          if (!line.revenueAccountId) {
-            line.revenueAccountId = await this.resolveRevenueAccount(companyId, item, settings.defaultRevenueAccountId);
-          }
-          addToBucket(revenueDebitBucket, line.revenueAccountId, lineTotalBase, lineTotalDoc);
-
-          if (line.taxAmountBase > 0) {
-            const taxAccountId = await this.resolveSalesTaxAccount(companyId, line.taxCodeId);
-            addToBucket(taxDebitBucket, taxAccountId, line.taxAmountBase, line.taxAmountDoc);
-          }
+        const sourceKey = `DN:${sourceLine.lineId}`;
+        const previousReturned = previousReturnQtyMap.get(sourceKey) || 0;
+        const currentRunQty = currentRunQtyBySource.get(sourceKey) || 0;
+        const remainingQty = roundMoney(sourceLine.deliveredQty - previousReturned - currentRunQty);
+        if (line.returnQty > remainingQty + 0.000001) {
+          throw new Error(`Return qty exceeds delivered qty for ${line.itemName || sourceLine.itemName}`);
         }
-        if (item.trackInventory) {
-          const conversionResult = await this.convertToBaseUom(
-            companyId,
-            line.returnQty,
-            line.uomId,
-            line.uom,
-            item
-          );
-          const qtyInBaseUom = conversionResult.qtyInBaseUom;
+        currentRunQtyBySource.set(sourceKey, roundMoney(currentRunQty + line.returnQty));
+      } else {
+        if (!item) throw new Error(`Item not found: ${line.itemId}`);
+        line.itemCode = line.itemCode || item.code;
+        line.itemName = line.itemName || item.name;
+        line.uomId = line.uomId || item.salesUomId || item.baseUomId;
+        line.uom = line.uom || item.salesUom || item.baseUom;
+      }
 
-          const unitCostBase = roundMoney(line.unitCostBase || 0);
-          line.unitCostBase = unitCostBase;
-          const lineCostBase = roundMoney(qtyInBaseUom * unitCostBase);
+      const lineTotalDoc = roundMoney(line.returnQty * (line.unitPriceDoc || 0));
+      const lineTotalBase = roundMoney(line.returnQty * (line.unitPriceBase || 0));
+      line.taxAmountDoc = roundMoney(lineTotalDoc * line.taxRate);
+      line.taxAmountBase = roundMoney(lineTotalBase * line.taxRate);
+
+      if (isAfterInvoice || isDirect) {
+        if (!line.revenueAccountId) {
+          const category = item.categoryId ? categoriesMap.get(item.categoryId) : null;
+          line.revenueAccountId = item.revenueAccountId || category?.defaultRevenueAccountId || settings.defaultRevenueAccountId;
+        }
+        addToBucket(revenueDebitBucket, line.revenueAccountId, lineTotalBase, lineTotalDoc);
+
+        if (line.taxAmountBase > 0 && line.taxCodeId) {
+          const sTaxCode = taxCodesMap.get(line.taxCodeId);
+          const taxAccountId = sTaxCode?.salesTaxAccountId;
+          addToBucket(taxDebitBucket, taxAccountId || '', line.taxAmountBase, line.taxAmountDoc);
+        }
+      }
+
+      if (item.trackInventory) {
+        const convs = uomConversionMap.get(item.id) || [];
+        const conversionResult = convertItemQtyToBaseUomDetailed({
+          qty: line.returnQty,
+          item,
+          conversions: convs,
+          fromUomId: line.uomId,
+          fromUom: line.uom,
+          round: roundMoney,
+          itemCode: item.code,
+        });
+        const qtyInBaseUom = conversionResult.qtyInBaseUom;
+
+        const stockLevelKey = `${item.id}|${warehouseId}`;
+        const level = stockLevelMap.get(stockLevelKey);
+        if (!level) throw new Error(`Stock level not pre-fetched for item ${item.code}`);
+
+        const sourceLineCost = isAfterInvoice && salesInvoice
+          ? findSILine(salesInvoice, line.siLineId, line.itemId)?.unitCostBase
+          : isBeforeInvoice && deliveryNote
+            ? findDNLine(deliveryNote, line.dnLineId, line.itemId)?.unitCostBase
+            : undefined;
+
+        const unitCostBase = roundMoney(
+          this.resolveReturnUnitCostBase(line.unitCostBase, level, sourceLineCost)
+        );
+        line.unitCostBase = unitCostBase;
+        const lineCostBase = roundMoney(qtyInBaseUom * unitCostBase);
+
+        if (DocumentPolicyResolver.shouldRequirePositiveCostOnReturn(accountingMode)) {
           this.assertPositiveTrackedCost(
             qtyInBaseUom,
             unitCostBase,
             line.itemName || item.name,
             `sales return ${salesReturn.returnNumber}`
           );
-
-          const fxRateMovToBase = line.fxRateMovToBase > 0 ? line.fxRateMovToBase : (salesReturn.exchangeRate || 1);
-          const fxRateCCYToBase = line.fxRateCCYToBase > 0 ? line.fxRateCCYToBase : (salesReturn.exchangeRate || 1);
-          const unitCostInMoveCurrency = roundMoney(unitCostBase / fxRateMovToBase);
-
-          const movement = await this.inventoryService.processIN({
-            companyId,
-            itemId: line.itemId,
-            warehouseId: salesReturn.warehouseId,
-            qty: qtyInBaseUom,
-            date: salesReturn.returnDate,
-            movementType: 'RETURN_IN',
-            refs: {
-              type: 'SALES_RETURN',
-              docId: salesReturn.id,
-              lineId: line.lineId,
-            },
-            currentUser: salesReturn.createdBy,
-            unitCostInMoveCurrency,
-            moveCurrency: salesReturn.currency,
-            fxRateMovToBase,
-            fxRateCCYToBase,
-            metadata: {
-              uomConversion: {
-                conversionId: conversionResult.trace.conversionId,
-                mode: conversionResult.trace.mode,
-                appliedFactor: conversionResult.trace.factor,
-                sourceQty: line.returnQty,
-                sourceUomId: line.uomId,
-                sourceUom: line.uom,
-                baseUomId: item.baseUomId,
-                baseUom: item.baseUom,
-              },
-            },
-            transaction,
-          });
-
-          line.stockMovementId = movement.id;
-
-          if (
-            DocumentPolicyResolver.shouldSalesReturnReverseInventoryAccounting(
-              accountingMode,
-              salesReturn.returnContext
-            )
-          ) {
-            const accounts = await this.resolveCOGSAccounts(
-              companyId,
-              item,
-              invSettings?.defaultCOGSAccountId,
-              invSettings?.defaultInventoryAssetAccountId,
-              true
-            );
-            if (lineCostBase > 0) {
-              line.cogsAccountId = line.cogsAccountId || accounts.cogsAccountId;
-              line.inventoryAccountId = line.inventoryAccountId || accounts.inventoryAccountId;
-              const key = `${accounts.inventoryAccountId}|${accounts.cogsAccountId}`;
-              const existing = cogsBucket.get(key);
-              if (existing) {
-                existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
-              } else {
-                cogsBucket.set(key, {
-                  inventoryAccountId: accounts.inventoryAccountId,
-                  cogsAccountId: accounts.cogsAccountId,
-                  amountBase: lineCostBase,
-                });
-              }
-            }
-          }
         }
 
-        if (salesOrder) {
-          const soLine = findSOLine(salesOrder, line.soLineId, line.itemId);
-          if (soLine) {
-            soLine.returnedQty = roundMoney(soLine.returnedQty + line.returnQty);
-            if (isAfterInvoice) {
-              soLine.invoicedQty = Math.max(0, roundMoney(soLine.invoicedQty - line.returnQty));
+        const fxRateMovToBase = line.fxRateMovToBase > 0 ? line.fxRateMovToBase : (salesReturn.exchangeRate || 1);
+        const fxRateCCYToBase = line.fxRateCCYToBase > 0 ? line.fxRateCCYToBase : (salesReturn.exchangeRate || 1);
+        const unitCostInMoveCurrency = roundMoney(unitCostBase / fxRateMovToBase);
+
+        const qtyBefore = level.qtyOnHand;
+        const oldMaxBusinessDate = level.maxBusinessDate;
+        let newAvgBase = unitCostBase;
+        let newAvgCCY = unitCostInMoveCurrency;
+        if (qtyBefore > 0) {
+          const newQty = qtyBefore + qtyInBaseUom;
+          newAvgBase = roundMoney(((level.avgCostBase * qtyBefore) + (unitCostBase * qtyInBaseUom)) / newQty);
+          newAvgCCY = roundMoney(((level.avgCostCCY * qtyBefore) + (unitCostInMoveCurrency * qtyInBaseUom)) / newQty);
+        }
+        const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
+        const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
+        const qtyAfter = qtyBefore + qtyInBaseUom;
+
+        const movement = new StockMovement({
+          id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          companyId,
+          date: salesReturn.returnDate,
+          postingSeq: level.postingSeq + 1,
+          createdAt: new Date(),
+          createdBy: salesReturn.createdBy,
+          postedAt: new Date(),
+          itemId: item.id,
+          warehouseId,
+          direction: 'IN',
+          movementType: 'RETURN_IN',
+          qty: qtyInBaseUom,
+          uom: item.baseUom,
+          referenceType: 'SALES_RETURN',
+          referenceId: salesReturn.id,
+          referenceLineId: line.lineId,
+          unitCostBase,
+          totalCostBase: roundMoney(unitCostBase * qtyInBaseUom),
+          unitCostCCY: newAvgCCY,
+          totalCostCCY: roundMoney(newAvgCCY * qtyInBaseUom),
+          movementCurrency: salesReturn.currency.toUpperCase(),
+          fxRateMovToBase,
+          fxRateCCYToBase,
+          fxRateKind: 'DOCUMENT',
+          avgCostBaseAfter: newAvgBase,
+          avgCostCCYAfter: newAvgCCY,
+          qtyBefore,
+          qtyAfter,
+          settlesNegativeQty,
+          newPositiveQty,
+          negativeQtyAtPosting: qtyAfter < 0,
+          costSettled: unitCostBase > 0,
+          isBackdated: salesReturn.returnDate < oldMaxBusinessDate,
+          costSource: 'RETURN',
+          metadata: {
+            uomConversion: {
+              conversionId: conversionResult.trace.conversionId,
+              mode: conversionResult.trace.mode,
+              appliedFactor: conversionResult.trace.factor,
+              sourceQty: line.returnQty,
+              sourceUomId: line.uomId,
+              sourceUom: line.uom,
+              baseUomId: item.baseUomId,
+              baseUom: item.baseUom,
+            },
+          },
+        });
+
+        level.qtyOnHand += qtyInBaseUom;
+        level.avgCostBase = newAvgBase;
+        level.avgCostCCY = newAvgCCY;
+        level.lastCostBase = unitCostBase;
+        level.lastCostCCY = newAvgCCY;
+        level.postingSeq += 1;
+        level.version += 1;
+        level.totalMovements += 1;
+        level.maxBusinessDate = salesReturn.returnDate > oldMaxBusinessDate ? salesReturn.returnDate : oldMaxBusinessDate;
+        level.updatedAt = new Date();
+        level.lastMovementId = movement.id;
+
+        line.stockMovementId = movement.id;
+        inventoryMovements.set(line.lineId, { movement, updatedLevel: level });
+
+        if (
+          DocumentPolicyResolver.shouldSalesReturnReverseInventoryAccounting(
+            accountingMode,
+            salesReturn.returnContext
+          )
+        ) {
+          const category = item.categoryId ? categoriesMap.get(item.categoryId) : null;
+          const cogsAccountId = item.cogsAccountId || category?.defaultCogsAccountId || invSettings?.defaultCOGSAccountId;
+          const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId || invSettings?.defaultInventoryAssetAccountId;
+          if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
+          if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
+
+          if (lineCostBase > 0) {
+            line.cogsAccountId = line.cogsAccountId || cogsAccountId;
+            line.inventoryAccountId = line.inventoryAccountId || inventoryAccountId;
+            const key = `${inventoryAccountId}|${cogsAccountId}`;
+            const existing = cogsBucket.get(key);
+            if (existing) {
+              existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
             } else {
-              soLine.deliveredQty = Math.max(0, roundMoney(soLine.deliveredQty - line.returnQty));
+              cogsBucket.set(key, {
+                inventoryAccountId,
+                cogsAccountId,
+                amountBase: lineCostBase,
+              });
             }
           }
         }
       }
 
-      recalcReturnTotals(salesReturn);
+      if (salesOrder) {
+        const soLine = findSOLine(salesOrder, line.soLineId, line.itemId);
+        if (soLine) {
+          soLine.returnedQty = roundMoney(soLine.returnedQty + line.returnQty);
+          if (isAfterInvoice) {
+            soLine.invoicedQty = Math.max(0, roundMoney(soLine.invoicedQty - line.returnQty));
+          } else {
+            soLine.deliveredQty = Math.max(0, roundMoney(soLine.deliveredQty - line.returnQty));
+          }
+        }
+      }
+    }
+
+    recalcReturnTotals(salesReturn);
+
+    const accountCache = new Map<string, string>();
+    const resolveAccountCached = async (idOrCode: string): Promise<string> => {
+      if (!idOrCode) return '';
+      if (accountCache.has(idOrCode)) return accountCache.get(idOrCode)!;
+      const resolved = await this.resolveAccountId(companyId, idOrCode);
+      accountCache.set(idOrCode, resolved);
+      return resolved;
+    };
+
+    const arAccountId = this.resolveARAccount(customer);
+    const resolvedARId = await resolveAccountCached(arAccountId);
+
+    for (const [, line] of revenueDebitBucket) {
+      line.accountId = await resolveAccountCached(line.accountId);
+    }
+    for (const [, line] of taxDebitBucket) {
+      line.accountId = await resolveAccountCached(line.accountId);
+    }
+    for (const [, cogsLine] of cogsBucket) {
+      cogsLine.inventoryAccountId = await resolveAccountCached(cogsLine.inventoryAccountId);
+      cogsLine.cogsAccountId = await resolveAccountCached(cogsLine.cogsAccountId);
+    }
+
+    const resolvedBaseCurrency = (baseCurrency || salesReturn.currency).toUpperCase();
+
+    await this.transactionManager.runTransaction(async (transaction) => {
+      for (const [, { movement, updatedLevel }] of inventoryMovements) {
+        await this.inventoryService.writeStockMovement(movement, transaction);
+        await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+      }
 
       if (shouldPostAccounting && cogsBucket.size > 0) {
         const cogsVoucherLines: VoucherBucketLine[] = [];
-        for (const line of Array.from(cogsBucket.values())) {
-          const amount = roundMoney(line.amountBase);
+        for (const cogsLine of Array.from(cogsBucket.values())) {
+          const amount = roundMoney(cogsLine.amountBase);
           cogsVoucherLines.push({
-            accountId: line.inventoryAccountId,
+            accountId: cogsLine.inventoryAccountId,
             baseAmount: amount,
             docAmount: amount,
           });
           cogsVoucherLines.push({
-            accountId: line.cogsAccountId,
+            accountId: cogsLine.cogsAccountId,
             baseAmount: amount,
             docAmount: amount,
           });
@@ -655,10 +848,10 @@ export class PostSalesReturnUseCase {
             voucherNo: `SR-COGS-${salesReturn.returnNumber}`,
             date: salesReturn.returnDate,
             description: `Sales Return ${salesReturn.returnNumber} COGS Reversal`,
-            currency: baseCurrency,
+            currency: resolvedBaseCurrency,
             exchangeRate: 1,
-            lines: cogsVoucherLines.map((line, idx) => ({
-              ...line,
+            lines: cogsVoucherLines.map((vl, idx) => ({
+              ...vl,
               side: idx % 2 === 0 ? 'Debit' : 'Credit',
             })),
             metadata: {
@@ -672,6 +865,8 @@ export class PostSalesReturnUseCase {
             createdBy: salesReturn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
+            baseCurrencyOverride: resolvedBaseCurrency,
+            skipAccountValidation: true,
           },
           transaction
         );
@@ -680,13 +875,12 @@ export class PostSalesReturnUseCase {
         salesReturn.cogsVoucherId = null;
       }
 
-      if (shouldPostAccounting && isAfterInvoice) {
-        const arAccountId = this.resolveARAccount(customer);
+      if (shouldPostAccounting && (isAfterInvoice || isDirect)) {
         const revenueVoucherLines = [
           ...Array.from(revenueDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
           ...Array.from(taxDebitBucket.values()).map((line) => ({ ...line, side: 'Debit' as const })),
           {
-            accountId: arAccountId,
+            accountId: resolvedARId,
             side: 'Credit' as const,
             baseAmount: roundMoney(salesReturn.grandTotalBase),
             docAmount: roundMoney(salesReturn.grandTotalDoc),
@@ -714,16 +908,20 @@ export class PostSalesReturnUseCase {
             createdBy: salesReturn.createdBy,
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: salesReturn.returnNumber,
+            baseCurrencyOverride: resolvedBaseCurrency,
+            skipAccountValidation: true,
           },
           transaction
         );
         salesReturn.revenueVoucherId = revenueVoucher.id;
 
-        const invoice = salesInvoice as SalesInvoice;
-        invoice.outstandingAmountBase = roundMoney(invoice.outstandingAmountBase - salesReturn.grandTotalBase);
-        invoice.paymentStatus = recalcPaymentStatus(invoice);
-        invoice.updatedAt = new Date();
-        await this.salesInvoiceRepo.update(invoice, transaction);
+        if (isAfterInvoice && salesInvoice) {
+          const invoice = salesInvoice as SalesInvoice;
+          invoice.outstandingAmountBase = roundMoney(invoice.outstandingAmountBase - salesReturn.grandTotalBase);
+          invoice.paymentStatus = recalcPaymentStatus(invoice);
+          invoice.updatedAt = new Date();
+          await this.salesInvoiceRepo.update(invoice, transaction);
+        }
       } else {
         salesReturn.revenueVoucherId = null;
       }
@@ -745,6 +943,13 @@ export class PostSalesReturnUseCase {
     return posted;
   }
 
+  private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
+    if (!idOrCode) return '';
+    if (!this.accountRepo) return idOrCode;
+    const acc = (await this.accountRepo.getById(companyId, idOrCode)) || (await this.accountRepo.getByUserCode(companyId, idOrCode));
+    return acc ? acc.id : idOrCode;
+  }
+
   private async isAccountingEnabled(companyId: string): Promise<boolean> {
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
     return !!accountingModule?.initialized;
@@ -755,88 +960,6 @@ export class PostSalesReturnUseCase {
       throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
     }
     return customer.defaultARAccountId;
-  }
-
-  private async resolveRevenueAccount(
-    companyId: string,
-    item: any,
-    defaultRevenueAccountId: string
-  ): Promise<string> {
-    if (item.revenueAccountId) return item.revenueAccountId;
-
-    if (item.categoryId) {
-      const category = await this.itemCategoryRepo.getCategory(item.categoryId);
-      if (category && category.companyId === companyId && category.defaultRevenueAccountId) {
-        return category.defaultRevenueAccountId;
-      }
-    }
-
-    if (!defaultRevenueAccountId) {
-      throw new Error(`No revenue account configured for item ${item.code}`);
-    }
-
-    return defaultRevenueAccountId;
-  }
-  private async resolveCOGSAccounts(
-    companyId: string,
-    item: any,
-    defaultCOGSAccountId: string | undefined,
-    defaultInventoryAssetAccountId: string | undefined,
-    strict: boolean
-  ): Promise<{ cogsAccountId: string; inventoryAccountId: string } | null> {
-    let category: any = null;
-    if (item.categoryId) {
-      category = await this.itemCategoryRepo.getCategory(item.categoryId);
-      if (category?.companyId !== companyId) {
-        category = null;
-      }
-    }
-
-    const cogsAccountId = item.cogsAccountId || category?.defaultCogsAccountId || defaultCOGSAccountId;
-    const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId || defaultInventoryAssetAccountId;
-
-    if (!cogsAccountId || !inventoryAccountId) {
-      if (strict) {
-        if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
-        throw new Error(`No inventory account configured for item ${item.code}`);
-      }
-      return null;
-    }
-
-    return { cogsAccountId, inventoryAccountId };
-  }
-
-  private async resolveSalesTaxAccount(companyId: string, taxCodeId?: string): Promise<string> {
-    if (!taxCodeId) {
-      throw new Error('taxCodeId is required for sales tax reversal');
-    }
-
-    const taxCode = await this.taxCodeRepo.getById(companyId, taxCodeId);
-    if (!taxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
-    if (!taxCode.salesTaxAccountId) {
-      throw new Error(`Tax code ${taxCode.code} has no sales tax account`);
-    }
-
-    return taxCode.salesTaxAccountId;
-  }
-
-  private async convertToBaseUom(
-    companyId: string,
-    qty: number,
-    uomId: string | undefined,
-    uom: string,
-    item: NonNullable<Awaited<ReturnType<IItemRepository['getItem']>>>
-  ): Promise<ItemQtyToBaseUomResult> {
-    const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
-    return convertItemQtyToBaseUomDetailed({
-      qty,
-      item,
-      conversions,
-      fromUomId: uomId,
-      fromUom: uom,
-      round: roundMoney,
-      itemCode: item.code,
-    });
   }
 
   private async getPreviouslyReturnedQtyForSILine(
@@ -887,6 +1010,23 @@ export class PostSalesReturnUseCase {
     if (qty > 0 && !(unitCostBase > 0)) {
       throw new Error(`Missing positive inventory cost for ${itemName} on ${documentLabel}`);
     }
+  }
+
+  private resolveReturnUnitCostBase(
+    currentCostBase: number | undefined,
+    level: StockLevel,
+    sourceLineCost?: number
+  ): number {
+    if (sourceLineCost !== undefined && sourceLineCost !== null && sourceLineCost > 0) {
+      return roundMoney(sourceLineCost);
+    }
+    const current = roundMoney(currentCostBase || 0);
+    if (current > 0) return current;
+
+    const avg = roundMoney(level.avgCostBase || 0);
+    if (avg > 0) return avg;
+
+    return roundMoney(level.lastCostBase || 0);
   }
 }
 

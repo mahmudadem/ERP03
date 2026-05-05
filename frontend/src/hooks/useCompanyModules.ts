@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { companyModulesApi, CompanyModuleStatus } from '../api/companyModules';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import {
@@ -11,33 +12,24 @@ import {
  */
 export function useCompanyModules() {
   const { companyId } = useCompanyAccess();
-  const [modules, setModules] = useState<CompanyModuleStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchModules = useCallback(async () => {
-    if (!companyId) {
-      setModules([]);
-      setError(null);
-      setLoading(false);
-      return;
-    }
+  const {
+    data: modules = [],
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey: ['companyModules', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      return await companyModulesApi.list(companyId);
+    },
+    enabled: !!companyId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    try {
-      setLoading(true);
-      const data = await companyModulesApi.list(companyId);
-      setModules(data);
-      setError(null);
-    } catch (err) {
-      setError('Failed to load module status');
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId]);
-
-  useEffect(() => {
-    void fetchModules();
-  }, [fetchModules]);
+  const error = queryError ? 'Failed to load module status' : null;
 
   useEffect(() => {
     if (!companyId) return;
@@ -50,25 +42,29 @@ export function useCompanyModules() {
         return;
       }
 
-      void fetchModules();
+      void refetch();
     };
 
     window.addEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
     return () => window.removeEventListener(COMPANY_MODULES_REFRESH_EVENT, handleRefresh);
-  }, [companyId, fetchModules]);
+  }, [companyId, refetch]);
 
-  const isModuleInstalled = (moduleCode: string): boolean => {
+  const refreshModules = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  const isModuleInstalled = useCallback((moduleCode: string): boolean => {
     return modules.some((m) => m.moduleCode === moduleCode);
-  };
+  }, [modules]);
 
-  const isModuleInitialized = (moduleCode: string): boolean => {
+  const isModuleInitialized = useCallback((moduleCode: string): boolean => {
     const module = modules.find((m) => m.moduleCode === moduleCode);
     return module?.initialized ?? false;
-  };
+  }, [modules]);
 
-  const getModuleStatus = (moduleCode: string): CompanyModuleStatus | undefined => {
+  const getModuleStatus = useCallback((moduleCode: string): CompanyModuleStatus | undefined => {
     return modules.find((m) => m.moduleCode === moduleCode);
-  };
+  }, [modules]);
 
   return {
     modules,
@@ -77,6 +73,6 @@ export function useCompanyModules() {
     isModuleInstalled,
     isModuleInitialized,
     getModuleStatus,
-    refreshModules: fetchModules,
+    refreshModules,
   };
 }

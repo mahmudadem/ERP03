@@ -27,11 +27,15 @@ router.get('/delivery-notes/:id', SalesController.getDN);
 router.post('/delivery-notes/:id/post', SalesController.postDN);
 
 router.post('/invoices', SalesController.createSI);
+router.post('/invoices/create-and-post', SalesController.createAndPostSI);
 router.get('/invoices', SalesController.listSIs);
 router.get('/invoices/:id', SalesController.getSI);
 router.put('/invoices/:id', SalesController.updateSI);
+router.put('/invoices/:id/update-and-post', SalesController.updateAndPostSI);
 router.post('/invoices/:id/post', SalesController.postSI);
 router.post('/invoices/:id/payment-status', SalesController.updatePaymentStatus);
+router.post('/invoices/:id/record-payment', SalesController.recordPayment);
+router.get('/invoices/:id/payments', SalesController.getPaymentHistory);
 
 router.post('/returns', SalesController.createReturn);
 router.get('/returns', SalesController.listReturns);

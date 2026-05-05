@@ -154,6 +154,16 @@ class PrismaPurchaseOrderRepository {
             where: { id, companyId },
         });
     }
+    async hasOpenOrders(companyId) {
+        const count = await this.prisma.purchaseOrder.count({
+            where: {
+                companyId,
+                status: { notIn: ['CLOSED', 'CANCELLED'] },
+            },
+            take: 1,
+        });
+        return count > 0;
+    }
     toDomain(record) {
         const lines = (record.lines || []).map((line) => ({
             lineId: line.id,

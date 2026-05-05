@@ -3,7 +3,77 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalesInvoice = void 0;
 const SI_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
 const PAYMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
+const DOCUMENT_SOURCES = ['native', 'default_form', 'custom_form'];
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+const REF_KEYS = [
+    'id',
+    'value',
+    'code',
+    'key',
+    'uid',
+    'uuid',
+    'customerId',
+    'itemId',
+    'warehouseId',
+    'accountId',
+    'lineId',
+    'uomId',
+    'formType',
+    'baseType',
+    'voucherType',
+    'name',
+    'label',
+];
+const TEXT_KEYS = [
+    'label',
+    'name',
+    'displayName',
+    'text',
+    'code',
+    'value',
+    'id',
+    'key',
+];
+const toStringRef = (value) => {
+    if (value === undefined || value === null || value === '')
+        return '';
+    if (typeof value === 'object') {
+        for (const key of REF_KEYS) {
+            const candidate = value[key];
+            if (candidate === undefined || candidate === null || candidate === '')
+                continue;
+            return String(candidate).trim();
+        }
+        return '';
+    }
+    return String(value).trim();
+};
+const toOptionalStringRef = (value) => {
+    const text = toStringRef(value);
+    return text || undefined;
+};
+const normalizeDocumentSource = (value) => {
+    const source = toStringRef(value).toLowerCase();
+    return DOCUMENT_SOURCES.includes(source) ? source : 'default_form';
+};
+const toDisplayText = (value) => {
+    if (value === undefined || value === null || value === '')
+        return '';
+    if (typeof value === 'object') {
+        for (const key of TEXT_KEYS) {
+            const candidate = value[key];
+            if (candidate === undefined || candidate === null || candidate === '')
+                continue;
+            return String(candidate).trim();
+        }
+        return '';
+    }
+    return String(value).trim();
+};
+const toOptionalDisplayText = (value) => {
+    const text = toDisplayText(value);
+    return text || undefined;
+};
 const toDate = (value) => {
     if (!value)
         return new Date();
@@ -15,38 +85,57 @@ const toDate = (value) => {
 };
 class SalesInvoice {
     constructor(props) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
-        if (!((_a = props.id) === null || _a === void 0 ? void 0 : _a.trim()))
+        var _a, _b, _c, _d;
+        const id = toStringRef(props.id);
+        const companyId = toStringRef(props.companyId);
+        const invoiceNumber = toStringRef(props.invoiceNumber);
+        const formType = toStringRef(props.formType);
+        const voucherType = toStringRef(props.voucherType);
+        const persona = toStringRef(props.persona);
+        const customerId = toStringRef(props.customerId);
+        const invoiceDate = toStringRef(props.invoiceDate);
+        const currency = toStringRef(props.currency);
+        const createdBy = toStringRef(props.createdBy);
+        const exchangeRate = Number(props.exchangeRate);
+        if (!id)
             throw new Error('SalesInvoice id is required');
-        if (!((_b = props.companyId) === null || _b === void 0 ? void 0 : _b.trim()))
+        if (!companyId)
             throw new Error('SalesInvoice companyId is required');
-        if (!((_c = props.invoiceNumber) === null || _c === void 0 ? void 0 : _c.trim()))
+        if (!invoiceNumber)
             throw new Error('SalesInvoice invoiceNumber is required');
-        if (!((_d = props.customerId) === null || _d === void 0 ? void 0 : _d.trim()))
+        if (!voucherType)
+            throw new Error('SalesInvoice voucherType is required');
+        if (!persona)
+            throw new Error('SalesInvoice persona is required');
+        if (!customerId)
             throw new Error('SalesInvoice customerId is required');
-        if (!((_e = props.invoiceDate) === null || _e === void 0 ? void 0 : _e.trim()))
+        if (!invoiceDate)
             throw new Error('SalesInvoice invoiceDate is required');
-        if (!((_f = props.currency) === null || _f === void 0 ? void 0 : _f.trim()))
+        if (!currency)
             throw new Error('SalesInvoice currency is required');
-        if (!((_g = props.createdBy) === null || _g === void 0 ? void 0 : _g.trim()))
+        if (!createdBy)
             throw new Error('SalesInvoice createdBy is required');
-        if (props.exchangeRate <= 0 || Number.isNaN(props.exchangeRate)) {
+        if (exchangeRate <= 0 || Number.isNaN(exchangeRate)) {
             throw new Error('SalesInvoice exchangeRate must be greater than 0');
         }
         if (!Array.isArray(props.lines) || props.lines.length === 0) {
             throw new Error('SalesInvoice must contain at least one line');
         }
-        this.id = props.id;
-        this.companyId = props.companyId;
-        this.invoiceNumber = props.invoiceNumber.trim();
-        this.customerInvoiceNumber = props.customerInvoiceNumber;
-        this.salesOrderId = props.salesOrderId;
-        this.customerId = props.customerId.trim();
-        this.customerName = props.customerName || '';
-        this.invoiceDate = props.invoiceDate;
-        this.dueDate = props.dueDate;
-        this.currency = props.currency.toUpperCase().trim();
-        this.exchangeRate = props.exchangeRate;
+        this.id = id;
+        this.companyId = companyId;
+        this.invoiceNumber = invoiceNumber;
+        this.customerInvoiceNumber = toOptionalStringRef(props.customerInvoiceNumber);
+        this.formType = formType;
+        this.voucherType = voucherType;
+        this.persona = persona;
+        this.source = normalizeDocumentSource(props.source);
+        this.salesOrderId = toOptionalStringRef(props.salesOrderId);
+        this.customerId = customerId;
+        this.customerName = toDisplayText(props.customerName);
+        this.invoiceDate = invoiceDate;
+        this.dueDate = toOptionalStringRef(props.dueDate);
+        this.currency = currency.toUpperCase();
+        this.exchangeRate = exchangeRate;
         this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
         this.subtotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalDoc, 0));
         this.taxTotalDoc = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountDoc, 0));
@@ -54,14 +143,14 @@ class SalesInvoice {
         this.subtotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
         this.taxTotalBase = roundMoney(this.lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
         this.grandTotalBase = roundMoney(this.subtotalBase + this.taxTotalBase);
-        this.paymentTermsDays = (_h = props.paymentTermsDays) !== null && _h !== void 0 ? _h : 0;
-        this.paidAmountBase = (_j = props.paidAmountBase) !== null && _j !== void 0 ? _j : 0;
-        const status = props.status || 'DRAFT';
+        this.paymentTermsDays = (_a = props.paymentTermsDays) !== null && _a !== void 0 ? _a : 0;
+        this.paidAmountBase = (_b = props.paidAmountBase) !== null && _b !== void 0 ? _b : 0;
+        const status = (toStringRef(props.status) || 'DRAFT');
         if (!SI_STATUSES.includes(status)) {
             throw new Error(`Invalid sales invoice status: ${status}`);
         }
         this.status = status;
-        const paymentStatus = props.paymentStatus || 'UNPAID';
+        const paymentStatus = (toStringRef(props.paymentStatus) || 'UNPAID');
         if (!PAYMENT_STATUSES.includes(paymentStatus)) {
             throw new Error(`Invalid sales invoice paymentStatus: ${paymentStatus}`);
         }
@@ -69,63 +158,69 @@ class SalesInvoice {
         this.outstandingAmountBase = roundMoney(props.outstandingAmountBase !== undefined
             ? props.outstandingAmountBase
             : this.grandTotalBase - this.paidAmountBase);
-        this.voucherId = (_k = props.voucherId) !== null && _k !== void 0 ? _k : null;
-        this.cogsVoucherId = (_l = props.cogsVoucherId) !== null && _l !== void 0 ? _l : null;
-        this.notes = props.notes;
-        this.createdBy = props.createdBy;
+        this.voucherId = (_c = props.voucherId) !== null && _c !== void 0 ? _c : null;
+        this.cogsVoucherId = (_d = props.cogsVoucherId) !== null && _d !== void 0 ? _d : null;
+        this.notes = toOptionalDisplayText(props.notes);
+        this.createdBy = createdBy;
         this.createdAt = props.createdAt;
         this.updatedAt = props.updatedAt;
         this.postedAt = props.postedAt;
     }
     normalizeLine(line, index) {
-        var _a, _b, _c, _d;
-        if (!((_a = line.lineId) === null || _a === void 0 ? void 0 : _a.trim()))
+        var _a;
+        const lineId = toStringRef(line.lineId);
+        const itemId = toStringRef(line.itemId);
+        const uom = toDisplayText(line.uom);
+        const invoicedQty = Number(line.invoicedQty);
+        const unitPriceDoc = Number(line.unitPriceDoc);
+        if (!lineId)
             throw new Error(`SalesInvoice line ${index + 1}: lineId is required`);
-        if (!((_b = line.itemId) === null || _b === void 0 ? void 0 : _b.trim()))
+        if (!itemId)
             throw new Error(`SalesInvoice line ${index + 1}: itemId is required`);
-        if (line.invoicedQty <= 0 || Number.isNaN(line.invoicedQty)) {
+        if (invoicedQty <= 0 || Number.isNaN(invoicedQty)) {
             throw new Error(`SalesInvoice line ${index + 1}: invoicedQty must be greater than 0`);
         }
-        if (!((_c = line.uom) === null || _c === void 0 ? void 0 : _c.trim()))
+        if (!uom)
             throw new Error(`SalesInvoice line ${index + 1}: uom is required`);
-        if (line.unitPriceDoc < 0 || Number.isNaN(line.unitPriceDoc)) {
+        if (unitPriceDoc < 0 || Number.isNaN(unitPriceDoc)) {
             throw new Error(`SalesInvoice line ${index + 1}: unitPriceDoc must be greater than or equal to 0`);
         }
-        const taxRate = Number.isNaN(line.taxRate) ? 0 : line.taxRate;
-        const lineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-        const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
+        const taxRateValue = Number(line.taxRate);
+        const taxRate = Number.isNaN(taxRateValue) ? 0 : taxRateValue;
+        const lineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
+        const unitPriceBase = roundMoney(unitPriceDoc * this.exchangeRate);
         const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
         const taxAmountDoc = roundMoney(lineTotalDoc * taxRate);
         const taxAmountBase = roundMoney(lineTotalBase * taxRate);
         return {
-            lineId: line.lineId,
+            lineId,
             lineNo: line.lineNo || index + 1,
-            soLineId: line.soLineId,
-            dnLineId: line.dnLineId,
-            itemId: line.itemId,
-            itemCode: line.itemCode || '',
-            itemName: line.itemName || '',
+            soLineId: toOptionalStringRef(line.soLineId),
+            dnLineId: toOptionalStringRef(line.dnLineId),
+            itemId,
+            itemCode: toDisplayText(line.itemCode),
+            itemName: toDisplayText(line.itemName),
             trackInventory: !!line.trackInventory,
-            invoicedQty: line.invoicedQty,
-            uomId: line.uomId,
-            uom: line.uom,
-            unitPriceDoc: line.unitPriceDoc,
+            invoicedQty,
+            uomId: toOptionalStringRef(line.uomId),
+            uom,
+            unitPriceDoc,
             lineTotalDoc,
             unitPriceBase,
             lineTotalBase,
-            taxCodeId: line.taxCodeId,
-            taxCode: line.taxCode,
+            taxCodeId: toOptionalStringRef(line.taxCodeId),
+            taxCode: toOptionalDisplayText(line.taxCode),
             taxRate,
             taxAmountDoc,
             taxAmountBase,
-            warehouseId: line.warehouseId,
-            revenueAccountId: line.revenueAccountId || '',
-            cogsAccountId: line.cogsAccountId,
-            inventoryAccountId: line.inventoryAccountId,
+            warehouseId: toOptionalStringRef(line.warehouseId),
+            revenueAccountId: toStringRef(line.revenueAccountId),
+            cogsAccountId: toOptionalStringRef(line.cogsAccountId),
+            inventoryAccountId: toOptionalStringRef(line.inventoryAccountId),
             unitCostBase: line.unitCostBase,
             lineCostBase: line.lineCostBase,
-            stockMovementId: (_d = line.stockMovementId) !== null && _d !== void 0 ? _d : null,
-            description: line.description,
+            stockMovementId: (_a = toOptionalStringRef(line.stockMovementId)) !== null && _a !== void 0 ? _a : null,
+            description: toOptionalDisplayText(line.description),
         };
     }
     toJSON() {
@@ -135,6 +230,11 @@ class SalesInvoice {
             companyId: this.companyId,
             invoiceNumber: this.invoiceNumber,
             customerInvoiceNumber: this.customerInvoiceNumber,
+            voucherTypeId: this.formType,
+            formType: this.formType,
+            voucherType: this.voucherType,
+            persona: this.persona,
+            source: this.source,
             salesOrderId: this.salesOrderId,
             customerId: this.customerId,
             customerName: this.customerName,
@@ -165,11 +265,27 @@ class SalesInvoice {
     }
     static fromJSON(data) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+        const formType = toStringRef(data.formType || data.voucherTypeId);
+        const formToken = formType.toLowerCase();
+        const inferredPersona = formToken.includes('linked')
+            ? 'linked'
+            : formToken.includes('service')
+                ? 'service'
+                : 'direct';
+        const rawVoucherType = toStringRef(data.voucherType);
+        const voucherTypeToken = rawVoucherType.toLowerCase();
+        const voucherType = voucherTypeToken.startsWith('sales_invoice')
+            ? 'sales_invoice'
+            : rawVoucherType || (formToken.startsWith('sales_invoice') ? 'sales_invoice' : formType);
         return new SalesInvoice({
             id: data.id,
             companyId: data.companyId,
             invoiceNumber: data.invoiceNumber,
             customerInvoiceNumber: data.customerInvoiceNumber,
+            formType,
+            voucherType,
+            persona: data.persona || inferredPersona,
+            source: data.source || data.documentSource || 'default_form',
             salesOrderId: data.salesOrderId,
             customerId: data.customerId,
             customerName: data.customerName,

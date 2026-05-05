@@ -30,6 +30,13 @@ interface VoucherTypeDefinition {
     fieldId: string;
     width?: string;
     labelOverride?: string;
+    type?: string;
+    required?: boolean;
+    mandatory?: boolean;
+    readOnly?: boolean;
+    calculated?: boolean;
+    autoManaged?: boolean;
+    options?: Array<{ value: string | number; label: string }>;
   }>;
   
   requiresApproval?: boolean;
@@ -113,8 +120,16 @@ export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherFormConf
       if (typeof col === 'string') return { id: col };
       return {
         id: col.fieldId || col.id,
+        fieldId: col.fieldId || col.id,
         width: col.width,
-        labelOverride: col.labelOverride || ''
+        type: col.type,
+        labelOverride: col.labelOverride || '',
+        required: col.required,
+        mandatory: col.mandatory,
+        readOnly: col.readOnly,
+        calculated: col.calculated,
+        autoManaged: col.autoManaged,
+        options: col.options
       };
     }),
     actions,
@@ -123,7 +138,8 @@ export function canonicalToUi(canonical: VoucherTypeDefinition): VoucherFormConf
     isSystemDefault: canonical.isSystemDefault || (canonical as any).isSystemGenerated || (canonical as any).isDefault,
     isLocked: canonical.isSystemDefault || (canonical as any).isLocked,
     inUse: canonical.inUse,
-    baseType: (canonical as any).baseType || canonical.code || canonical.id,
+    formType: (canonical as any).formType || (canonical as any).baseType || canonical.code || canonical.id,
+    baseType: (canonical as any).formType || (canonical as any).baseType || canonical.code || canonical.id,
     tableStyle: canonical.tableStyle || 'web',
     metadata: (canonical as any).metadata || {}
   };

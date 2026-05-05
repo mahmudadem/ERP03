@@ -180,17 +180,88 @@ const sanitizeSourceSnapshot = (value: any): any => {
   return out;
 };
 
-const toAccountRef = (value: any): string | undefined => {
+const ENTITY_REF_KEYS = [
+  'id',
+  'value',
+  'code',
+  'key',
+  'uid',
+  'uuid',
+  'accountId',
+  'itemId',
+  'warehouseId',
+  'customerId',
+  'vendorId',
+  'partyId',
+  'formType',
+  'baseType',
+  'voucherType',
+  'name',
+  'label',
+];
+
+const DISPLAY_TEXT_KEYS = [
+  'label',
+  'name',
+  'displayName',
+  'text',
+  'code',
+  'value',
+  'id',
+  'key',
+];
+
+const toEntityRef = (value: any): string | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const text = String(value).trim();
+    return text || undefined;
+  }
   if (typeof value === 'object') {
-    if (typeof value.id === 'string' && value.id) return value.id;
-    if (typeof value.accountId === 'string' && value.accountId) return value.accountId;
-    if (typeof value.code === 'string' && value.code) return value.code;
-    if (typeof value.account === 'string' && value.account) return value.account;
+    for (const key of ENTITY_REF_KEYS) {
+      const candidate = value[key];
+      if (candidate === undefined || candidate === null || candidate === '') continue;
+      const text = String(candidate).trim();
+      if (text) return text;
+    }
   }
   return undefined;
 };
+
+const toDisplayText = (value: any): string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const text = String(value).trim();
+    return text || undefined;
+  }
+  if (typeof value === 'object') {
+    for (const key of DISPLAY_TEXT_KEYS) {
+      const candidate = value[key];
+      if (candidate === undefined || candidate === null || candidate === '') continue;
+      const text = String(candidate).trim();
+      if (text) return text;
+    }
+  }
+  return undefined;
+};
+
+const firstEntityRef = (...values: any[]): string | undefined => {
+  for (const value of values) {
+    const ref = toEntityRef(value);
+    if (ref) return ref;
+  }
+  return undefined;
+};
+
+const firstDisplayText = (...values: any[]): string | undefined => {
+  for (const value of values) {
+    const text = toDisplayText(value);
+    if (text) return text;
+  }
+  return undefined;
+};
+
+const toAccountRef = (value: any): string | undefined => toEntityRef(value);
 
 const sanitizeMetadata = (metadata: any): Record<string, any> | undefined => {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return undefined;
@@ -203,13 +274,52 @@ const sanitizeMetadata = (metadata: any): Record<string, any> | undefined => {
   return Object.keys(cleaned).length > 0 ? cleaned : undefined;
 };
 
+type DocumentSource = 'native' | 'default_form' | 'custom_form';
+
+const resolveDocumentSource = (data: any): DocumentSource => {
+  const config = data?.voucherConfig || {};
+  const rawSource = firstEntityRef(
+    data?.documentSource,
+    data?.source,
+    data?.metadata?.documentSource,
+    config.documentSource,
+    config.source
+  );
+  const source = String(rawSource || '').trim().toLowerCase();
+
+  if (source === 'native') return 'native';
+  if (source === 'default_form' || source === 'default' || source === 'system_form') return 'default_form';
+  if (source === 'custom_form' || source === 'custom' || source === 'cloned') return 'custom_form';
+
+  const isDefaultForm = Boolean(
+    data?.isSystemDefault ||
+    data?.isSystemGenerated ||
+    data?.isDefault ||
+    data?.isLocked ||
+    config.isSystemDefault ||
+    config.isSystemGenerated ||
+    config.isDefault ||
+    config.isLocked
+  );
+
+  return isDefaultForm ? 'default_form' : 'custom_form';
+};
+
 /**
  * Internal save logic — transforms UI data to V2 API payload
  */
 const saveVoucherInternal = async (data: any): Promise<any> => {
   const normalizeType = (value: any): string => {
-    const raw = String(value || '').trim().toLowerCase();
+    const raw = String(toEntityRef(value) || '').trim().toLowerCase();
     if (!raw) return 'journal_entry';
+    if (raw.includes('purchase_invoice')) return raw;
+    if (raw.includes('purchase_order')) return 'purchase_order';
+    if (raw.includes('purchase_return')) return 'purchase_return';
+    if (raw.includes('goods_receipt') || raw === 'grn') return 'goods_receipt';
+    if (raw.includes('sales_invoice')) return raw;
+    if (raw.includes('sales_order')) return 'sales_order';
+    if (raw.includes('sales_return')) return 'sales_return';
+    if (raw.includes('delivery_note')) return 'delivery_note';
     if (raw.includes('receipt')) return 'receipt';
     if (raw.includes('payment')) return 'payment';
     if (raw.includes('opening')) return 'opening_balance';
@@ -234,29 +344,31 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
   };
 
   const detectedTypeFromLines = detectSemanticTypeFromLines(data.lines || []);
-  const resolvedType = normalizeType(
+  const resolvedType = normalizeType(firstEntityRef(
     data.type ||
-    data.typeId ||
-    data.baseType ||
-    data.metadata?.type ||
-    data.metadata?.typeId ||
+    data.typeId,
+    data.formType,
+    data.baseType,
+    data.metadata?.type,
+    data.metadata?.typeId,
     detectedTypeFromLines ||
-    data.voucherConfig?.baseType ||
+    data.voucherConfig?.formType,
+    data.voucherConfig?.baseType,
     data.voucherConfig?.code
-  );
+  ));
   const isReceipt = resolvedType === 'receipt';
   const isPayment = resolvedType === 'payment';
-  const explicitHeaderCurrency = String(data.currency || '').toUpperCase();
-  const fallbackHeaderCurrency = String(
+  const explicitHeaderCurrency = String(toEntityRef(data.currency) || '').toUpperCase();
+  const fallbackHeaderCurrency = String(firstEntityRef(
     data.baseCurrency ||
-    data.voucherConfig?.defaultCurrency ||
-    ''
-  ).toUpperCase();
+    data.voucherConfig?.defaultCurrency
+  ) || '').toUpperCase();
   // Never infer header currency from lines on save; preserve explicit source state.
   const headerCurrency = explicitHeaderCurrency || fallbackHeaderCurrency;
-  const baseCurrency = String(data.baseCurrency || '').toUpperCase();
+  const baseCurrency = String(toEntityRef(data.baseCurrency) || '').toUpperCase();
   const exchangeRate = Number(data.exchangeRate) || 1;
   const metadata = sanitizeMetadata(data.metadata);
+  const documentSource = resolveDocumentSource(data);
   const explicitSnapshot = sanitizeSourceSnapshot(
     data && isPlainObject(data.sourcePayload) ? data.sourcePayload : undefined
   );
@@ -272,14 +384,14 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         ? toAccountRef(line.receiveFromAccountId || line.accountId || line.account)
         : toAccountRef(line.payToAccountId || line.accountId || line.account);
       const amount = Math.abs(Number(line.amount || line.debit || line.credit || 0));
-      const lineCurrency = String(line.currency || line.lineCurrency || '').toUpperCase();
+      const lineCurrency = String(firstEntityRef(line.currency, line.lineCurrency) || '').toUpperCase();
       const lineParity = Number(line.exchangeRate || line.parity || 1) || 1;
       return isReceipt
         ? {
             receiveFromAccountId: accountRef,
             amount,
-            notes: line.description || line.notes || '',
-            costCenterId: line.costCenterId || line.category || null,
+            notes: firstDisplayText(line.description, line.notes) || '',
+            costCenterId: firstEntityRef(line.costCenterId, line.category) || null,
             currency: lineCurrency || undefined,
             lineCurrency: lineCurrency || undefined,
             exchangeRate: lineParity,
@@ -289,8 +401,8 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
         : {
             payToAccountId: accountRef,
             amount,
-            notes: line.description || line.notes || '',
-            costCenterId: line.costCenterId || line.category || null,
+            notes: firstDisplayText(line.description, line.notes) || '',
+            costCenterId: firstEntityRef(line.costCenterId, line.category) || null,
             currency: lineCurrency || undefined,
             lineCurrency: lineCurrency || undefined,
             exchangeRate: lineParity,
@@ -307,13 +419,13 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     type: resolvedType,
     ...(data.id ? { id: data.id } : {}),
     voucherNo: data.voucherNumber || data.voucherNo || undefined,
-    description: data.description || data.notes, 
-    formId: data.formId || undefined, 
-    typeId: data.typeId || undefined,
-    prefix: data.prefix || undefined,
-    numberFormat: data.numberFormat || undefined,
-    date: data.date || undefined,
-    reference: data.reference || undefined,
+    description: firstDisplayText(data.description, data.notes),
+    formId: toEntityRef(data.formId),
+    typeId: toEntityRef(data.typeId),
+    prefix: firstDisplayText(data.prefix),
+    numberFormat: firstDisplayText(data.numberFormat),
+    date: firstDisplayText(data.date),
+    reference: firstDisplayText(data.reference),
     postingPeriodNo: data.postingPeriodNo ?? undefined,
     status: data.status || undefined,
     sourceModule: data.sourceModule || 'accounting',
@@ -324,12 +436,12 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     ...(metadata ? { metadata } : {}),
     ...(isReceipt
       ? {
-          depositToAccountId: toAccountRef(data.depositToAccountId || data.accountId || data.account),
+          depositToAccountId: firstEntityRef(data.depositToAccountId, data.accountId, data.account),
           lines: semanticLines
         }
       : isPayment
         ? {
-          payFromAccountId: toAccountRef(data.payFromAccountId || data.accountId || data.account),
+          payFromAccountId: firstEntityRef(data.payFromAccountId, data.accountId, data.account),
             lines: semanticLines
           }
         : {
@@ -342,19 +454,19 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
                 baseAmount = fxAmount * exchangeRate;
               }
 
-              const lineCurrency = line.currency || line.lineCurrency || data.currency || baseCurrency;
+              const lineCurrency = firstEntityRef(line.currency, line.lineCurrency, data.currency) || baseCurrency;
 
               return {
-                id: line.id && typeof line.id === 'string' ? line.id : undefined,
-                accountId: line.accountId || line.account,
+                id: toEntityRef(line.id),
+                accountId: firstEntityRef(line.accountId, line.account),
                 side,
                 amount: fxAmount,
                 currency: lineCurrency,
                 baseAmount,
                 baseCurrency,
                 exchangeRate: Number(line.exchangeRate || line.parity || exchangeRate),
-                notes: line.description || line.notes,
-                costCenterId: line.costCenterId || line.category || null,
+                notes: firstDisplayText(line.description, line.notes),
+                costCenterId: firstEntityRef(line.costCenterId, line.category) || null,
                 metadata: sanitizeMetadata(line.metadata) || {}
               };
             })
@@ -373,12 +485,90 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     delete cleanPayload.id;
   }
 
+  const SALES_INVOICE_PERSONA_CODES = new Set([
+    'sales_invoice',
+    'sales_invoice_direct',
+    'sales_invoice_linked',
+    'sales_invoice_service',
+  ]);
+
+  const SALES_INVOICE_VOUCHER_TYPES = new Set([
+    'sales_invoice',
+    'sales_invoice_direct',
+    'sales_invoice_linked',
+    'sales_invoice_service',
+  ]);
+
+  const resolvePersona = (code: string): 'direct' | 'linked' | 'service' => {
+    const normalized = String(toEntityRef(code) || '').toLowerCase();
+    if (normalized.includes('linked') || normalized.includes('operational')) return 'linked';
+    if (normalized.includes('service')) return 'service';
+    return 'direct';
+  };
+
+  const resolveVoucherType = (code: string): string => {
+    const normalized = String(toEntityRef(code) || '').toLowerCase();
+    if (SALES_INVOICE_VOUCHER_TYPES.has(normalized)) return 'sales_invoice';
+    if (normalized === 'purchase_invoice' || normalized.startsWith('purchase_invoice_')) return 'purchase_invoice';
+    if (normalized === 'sales_order') return 'sales_order';
+    if (normalized === 'sales_return') return 'sales_return';
+    if (normalized === 'delivery_note') return 'delivery_note';
+    if (normalized === 'purchase_invoice') return 'purchase_invoice';
+    if (normalized === 'purchase_order') return 'purchase_order';
+    if (normalized === 'purchase_return') return 'purchase_return';
+    if (normalized === 'goods_receipt') return 'goods_receipt';
+    return normalized;
+  };
+
+  const formType = firstEntityRef(
+    data.formType,
+    data.voucherConfig?.formType,
+    data.code,
+    data.formId,
+    data.voucherTypeId,
+    resolvedType
+  ) || resolvedType;
+  const voucherType = resolveVoucherType(
+    firstEntityRef(
+      data.voucherType,
+      data.voucherConfig?.voucherType,
+      data.voucherConfig?.baseType,
+      resolvedType
+    ) ||
+    resolvedType
+  );
+  const rawPersona = firstEntityRef(data.persona, data.voucherConfig?.persona, formType, resolvedType) || resolvedType;
+  const persona = ['direct', 'linked', 'service'].includes(String(rawPersona).toLowerCase())
+    ? String(rawPersona).toLowerCase() as 'direct' | 'linked' | 'service'
+    : resolvePersona(rawPersona);
+
+  const PURCHASE_INVOICE_PERSONA_CODES = new Set([
+    'purchase_invoice',
+    'purchase_invoice_direct',
+    'purchase_invoice_linked',
+    'purchase_invoice_service',
+  ]);
+
+  const PURCHASE_INVOICE_VOUCHER_TYPES = new Set([
+    'purchase_invoice',
+    'purchase_invoice_direct',
+    'purchase_invoice_linked',
+    'purchase_invoice_service',
+  ]);
+
+  const resolvePurchasePersona = (code: string): 'direct' | 'linked' | 'service' => {
+    const normalized = String(toEntityRef(code) || '').toLowerCase();
+    if (normalized.includes('linked') || normalized.includes('operational')) return 'linked';
+    if (normalized.includes('service')) return 'service';
+    return 'direct';
+  };
+
   // Route to correct API based on voucher type
-  const isSalesInvoice = resolvedType === 'sales_invoice';
+const isSalesInvoice = SALES_INVOICE_PERSONA_CODES.has(resolvedType);
   const isSalesOrder = resolvedType === 'sales_order';
   const isSalesReturn = resolvedType === 'sales_return';
   const isDeliveryNote = resolvedType === 'delivery_note';
-  const isPurchaseInvoice = resolvedType === 'purchase_invoice';
+  const isPurchaseInvoice = PURCHASE_INVOICE_PERSONA_CODES.has(resolvedType);
   const isPurchaseOrder = resolvedType === 'purchase_order';
   const isPurchaseReturn = resolvedType === 'purchase_return';
   const isGoodsReceipt = resolvedType === 'goods_receipt';
@@ -391,57 +581,220 @@ const saveVoucherInternal = async (data: any): Promise<any> => {
     // Route to subledger-specific API (sales/purchase)
     if (isSalesInvoice) {
       const siPayload = {
-        customerId: data.customerId || '',
-        invoiceDate: data.date || data.invoiceDate || new Date().toISOString().split('T')[0],
-        dueDate: data.dueDate || undefined,
+        formType,
+        voucherType,
+        persona,
+        source: documentSource,
+        customerId: firstEntityRef(data.customerId, data.partyId, data.customer) || '',
+        customerAccountId: firstEntityRef(data.customerAccountId, data.receivablePayableAccountId, data.arAccountId),
+        receivablePayableAccountId: firstEntityRef(data.customerAccountId, data.receivablePayableAccountId, data.arAccountId),
+        salesOrderId: firstEntityRef(data.salesOrderId, data.soId, data.sourceDocumentId),
+        invoiceDate: firstDisplayText(data.invoiceDate, data.date) || new Date().toISOString().split('T')[0],
+        dueDate: firstDisplayText(data.dueDate),
         currency: headerCurrency || undefined,
         exchangeRate: exchangeRate || 1,
-        notes: data.notes || data.description || undefined,
-        lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
-          itemId: l.itemId,
-          invoicedQty: Number(l.invoicedQty ?? l.qty ?? l.quantity) || 0,
-          uomId: l.uomId || undefined,
-          uom: l.uom || undefined,
-          unitPriceDoc: Number(l.unitPriceDoc) || 0,
-          taxCodeId: l.taxCodeId || undefined,
-          warehouseId: l.warehouseId || data.warehouseId || undefined,
-          description: l.description || undefined,
-        })),
+        notes: firstDisplayText(data.notes, data.description),
+        lines: (data.lines || [])
+          .map((l: any, index: number) => {
+            const itemId = firstEntityRef(l.itemId, l.item, l.productId);
+            const warehouseId = firstEntityRef(l.warehouseId, l.warehouse, data.warehouseId, data.warehouse);
+            return {
+            lineId: firstEntityRef(l.lineId, l.id),
+            lineNo: l.lineNo || index + 1,
+            soLineId: firstEntityRef(l.soLineId, l.salesOrderLineId, l.sourceLineId),
+            dnLineId: firstEntityRef(l.dnLineId, l.deliveryNoteLineId),
+            itemId,
+            invoicedQty: Number(l.invoicedQty ?? l.qty ?? l.quantity ?? l.deliveredQty ?? l.orderedQty) || 0,
+            uomId: firstEntityRef(l.uomId, l.uom),
+            uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+            unitPriceDoc: Number(l.unitPriceDoc ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+            taxCodeId: firstEntityRef(l.taxCodeId, l.taxCode),
+            warehouseId,
+            description: firstDisplayText(l.description, l.notes),
+          };
+          })
+          .filter((l: any) => !!l.itemId && Number(l.invoicedQty) > 0),
       };
       
       if (cleanPayload.id) {
-        savedVoucher = await salesApi.updateSI(cleanPayload.id, siPayload);
+        const isDirect = persona === 'direct';
+        const isFlexible = metadata?.creationMode === 'FLEXIBLE';
+        
+        if (isDirect && isFlexible) {
+          savedVoucher = await salesApi.updateAndPostSI(cleanPayload.id, siPayload);
+        } else {
+          savedVoucher = await salesApi.updateSI(cleanPayload.id, siPayload);
+        }
       } else {
-        savedVoucher = await salesApi.createSI(siPayload);
+        // If it's a Direct Sales Invoice and we are in FLEXIBLE mode, 
+        // use the atomic create-and-post endpoint.
+        const isDirect = persona === 'direct';
+        const isFlexible = metadata?.creationMode === 'FLEXIBLE';
+        
+        if (isDirect && isFlexible) {
+          savedVoucher = await salesApi.createAndPostSI(siPayload);
+        } else {
+          savedVoucher = await salesApi.createSI(siPayload);
+        }
       }
-    } else if (isPurchaseInvoice) {
+} else if (isPurchaseInvoice) {
+      const purchaseVoucherType = resolveVoucherType(
+        firstEntityRef(
+          data.voucherType,
+          data.voucherConfig?.voucherType,
+          data.voucherConfig?.baseType,
+          resolvedType
+        ) ||
+        resolvedType
+      );
+      const purchaseFormType = firstEntityRef(
+        data.formType,
+        data.voucherConfig?.formType,
+        data.code,
+        data.formId,
+        data.voucherTypeId,
+        resolvedType
+      ) || resolvedType;
+      const purchaseRawPersona = firstEntityRef(data.persona, data.voucherConfig?.persona, purchaseFormType, resolvedType) || resolvedType;
+      const purchasePersona = ['direct', 'linked', 'service'].includes(String(purchaseRawPersona).toLowerCase())
+        ? String(purchaseRawPersona).toLowerCase() as 'direct' | 'linked' | 'service'
+        : resolvePurchasePersona(purchaseRawPersona);
+
       const piPayload = {
-        vendorId: data.vendorId || data.supplierId || data.partyId || '',
-        invoiceDate: data.date || data.invoiceDate || new Date().toISOString().split('T')[0],
-        dueDate: data.dueDate || undefined,
+        formType: purchaseFormType,
+        voucherType: purchaseVoucherType,
+        persona: purchasePersona,
+        source: documentSource,
+        purchaseOrderId: firstEntityRef(data.purchaseOrderId, data.poId, data.sourceDocumentId),
+        vendorId: firstEntityRef(data.vendorId, data.supplierId, data.partyId, data.vendor) || '',
+        vendorAccountId: firstEntityRef(data.vendorAccountId, data.receivablePayableAccountId, data.apAccountId),
+        receivablePayableAccountId: firstEntityRef(data.vendorAccountId, data.receivablePayableAccountId, data.apAccountId),
+        vendorInvoiceNumber: firstDisplayText(data.vendorInvoiceNumber, data.supplierInvoiceNo, data.invoiceNumber),
+        invoiceDate: firstDisplayText(data.invoiceDate, data.date) || new Date().toISOString().split('T')[0],
+        dueDate: firstDisplayText(data.dueDate),
         currency: headerCurrency || undefined,
         exchangeRate: exchangeRate || 1,
-        notes: data.notes || data.description || undefined,
-        lines: (data.lines || []).filter((l: any) => l.itemId).map((l: any) => ({
-          itemId: l.itemId,
+        notes: firstDisplayText(data.notes, data.description),
+        lines: (data.lines || []).map((l: any) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo,
+          poLineId: firstEntityRef(l.poLineId, l.purchaseOrderLineId, l.sourceLineId),
+          grnLineId: firstEntityRef(l.grnLineId, l.goodsReceiptLineId),
+          itemId: firstEntityRef(l.itemId, l.item, l.productId),
           invoicedQty: Number(l.invoicedQty ?? l.qty ?? l.quantity) || 0,
-          uomId: l.uomId || undefined,
-          uom: l.uom || undefined,
-          unitPriceDoc: Number(l.unitPriceDoc) || 0,
-          taxCodeId: l.taxCodeId || undefined,
-          warehouseId: l.warehouseId || data.warehouseId || undefined,
-          description: l.description || undefined,
-        })),
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          unitPriceDoc: Number(l.unitPriceDoc ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          taxCodeId: firstEntityRef(l.taxCodeId, l.taxCode),
+          warehouseId: firstEntityRef(l.warehouseId, l.warehouse, data.warehouseId, data.warehouse),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId),
       };
       
       if (cleanPayload.id) {
-        savedVoucher = await purchasesApi.updatePI(cleanPayload.id, piPayload);
+        const isDirect = purchasePersona === 'direct';
+        const isFlexible = metadata?.creationMode === 'FLEXIBLE';
+
+        if (isDirect && isFlexible) {
+          savedVoucher = await purchasesApi.updateAndPostPI(cleanPayload.id, piPayload);
+        } else {
+          savedVoucher = await purchasesApi.updatePI(cleanPayload.id, piPayload);
+        }
       } else {
-        savedVoucher = await purchasesApi.createPI(piPayload);
+        const isDirect = purchasePersona === 'direct';
+        const isFlexible = metadata?.creationMode === 'FLEXIBLE';
+
+        if (isDirect && isFlexible) {
+          savedVoucher = await purchasesApi.createAndPostPI(piPayload);
+        } else {
+          savedVoucher = await purchasesApi.createPI(piPayload);
+        }
       }
+    } else if (isPurchaseOrder) {
+      const poPayload = {
+        vendorId: firstEntityRef(data.vendorId, data.supplierId, data.partyId, data.vendor, data.supplier) || '',
+        orderDate: firstDisplayText(data.orderDate, data.date) || new Date().toISOString().split('T')[0],
+        expectedDeliveryDate: firstDisplayText(data.expectedDeliveryDate),
+        currency: headerCurrency || 'USD',
+        exchangeRate: exchangeRate || 1,
+        notes: firstDisplayText(data.notes, data.description),
+        internalNotes: firstDisplayText(data.internalNotes),
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          itemId: firstEntityRef(l.itemId, l.item, l.productId) || '',
+          orderedQty: Number(l.orderedQty ?? l.qty ?? l.quantity) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          unitPriceDoc: Number(l.unitPriceDoc ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          taxCodeId: firstEntityRef(l.taxCodeId, l.taxCode),
+          warehouseId: firstEntityRef(l.warehouseId, l.warehouse, data.warehouseId, data.warehouse),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.orderedQty) > 0),
+      };
+
+      savedVoucher = cleanPayload.id
+        ? await purchasesApi.updatePO(cleanPayload.id, poPayload)
+        : await purchasesApi.createPO(poPayload);
+    } else if (isGoodsReceipt) {
+      const grnPayload = {
+        purchaseOrderId: firstEntityRef(data.purchaseOrderId, data.poId, data.sourceDocumentId),
+        vendorId: firstEntityRef(data.vendorId, data.supplierId, data.partyId, data.vendor, data.supplier),
+        receiptDate: firstDisplayText(data.receiptDate, data.date) || new Date().toISOString().split('T')[0],
+        warehouseId: firstEntityRef(data.warehouseId, data.warehouse) || '',
+        notes: firstDisplayText(data.notes, data.description),
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          poLineId: firstEntityRef(l.poLineId, l.purchaseOrderLineId, l.sourceLineId),
+          itemId: firstEntityRef(l.itemId, l.item, l.productId),
+          receivedQty: Number(l.receivedQty ?? l.qty ?? l.quantity ?? l.orderedQty) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          unitCostDoc: Number(l.unitCostDoc ?? l.unitPriceDoc ?? l.unitCost ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          moveCurrency: firstEntityRef(l.moveCurrency, l.currency) || headerCurrency || undefined,
+          fxRateMovToBase: Number(l.fxRateMovToBase) || undefined,
+          fxRateCCYToBase: Number(l.fxRateCCYToBase) || undefined,
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.receivedQty) > 0),
+      };
+
+      savedVoucher = cleanPayload.id
+        ? await purchasesApi.updateGRN(cleanPayload.id, grnPayload)
+        : await purchasesApi.createGRN(grnPayload);
+    } else if (isPurchaseReturn) {
+      const prPayload = {
+        purchaseInvoiceId: firstEntityRef(data.purchaseInvoiceId, data.invoiceId),
+        goodsReceiptId: firstEntityRef(data.goodsReceiptId, data.grnId),
+        purchaseOrderId: firstEntityRef(data.purchaseOrderId, data.poId),
+        vendorId: firstEntityRef(data.vendorId, data.supplierId, data.partyId, data.vendor, data.supplier),
+        returnDate: firstDisplayText(data.returnDate, data.date) || new Date().toISOString().split('T')[0],
+        warehouseId: firstEntityRef(data.warehouseId, data.warehouse),
+        reason: firstDisplayText(data.reason) || 'Purchase return',
+        notes: firstDisplayText(data.notes, data.description),
+        currency: headerCurrency || undefined,
+        exchangeRate: exchangeRate || 1,
+        lines: (data.lines || []).map((l: any, index: number) => ({
+          lineId: firstEntityRef(l.lineId, l.id),
+          lineNo: l.lineNo || index + 1,
+          piLineId: firstEntityRef(l.piLineId, l.purchaseInvoiceLineId),
+          grnLineId: firstEntityRef(l.grnLineId, l.goodsReceiptLineId),
+          poLineId: firstEntityRef(l.poLineId, l.purchaseOrderLineId, l.sourceLineId),
+          itemId: firstEntityRef(l.itemId, l.item, l.productId),
+          returnQty: Number(l.returnQty ?? l.qty ?? l.quantity) || 0,
+          unitCostDoc: Number(l.unitCostDoc ?? l.unitPriceDoc ?? l.unitCost ?? l.unitPrice ?? l.price ?? l.rate) || 0,
+          uomId: firstEntityRef(l.uomId, l.uom),
+          uom: firstDisplayText(l.uom, l.uomCode, l.uomName),
+          accountId: firstEntityRef(l.accountId, l.account),
+          description: firstDisplayText(l.description, l.notes),
+        })).filter((l: any) => !!l.itemId && Number(l.returnQty) > 0),
+      };
+
+      savedVoucher = cleanPayload.id
+        ? await purchasesApi.updateReturn(cleanPayload.id, prPayload)
+        : await purchasesApi.createReturn(prPayload);
     } else {
-      // For other subledger types (SO, SR, DN, PO, PR, GRN), fall back to accounting API
-      // These don't have dedicated API endpoints yet
+      // Sales non-invoice documents still use the legacy accounting-voucher path.
       if (cleanPayload.id && !cleanPayload.id.toString().startsWith('voucher-')) {
         await accountingApi.updateVoucher(cleanPayload.id, cleanPayload);
         savedVoucher = await accountingApi.getVoucher(cleanPayload.id);

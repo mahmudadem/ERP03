@@ -15,7 +15,7 @@ interface Props {
   onChange: (partial: Partial<VoucherFilters>) => void;
   onClear?: () => void;
   hideTypeFilter?: boolean;
-  voucherTypes?: Array<{ id: string; name: string; code?: string; baseType?: string }>;
+  voucherTypes?: Array<{ id: string; name: string; code?: string; formType?: string; baseType?: string }>;
 }
 
 export const VoucherFiltersBar: React.FC<Props> = ({ 
@@ -35,7 +35,7 @@ export const VoucherFiltersBar: React.FC<Props> = ({
   // Derive unique categories from voucherTypes plus standard types
   const categories = React.useMemo(() => {
     const staticTypes = ['journal_entry', 'payment_voucher', 'receipt_voucher', 'reversal'];
-    const dynamicTypes = voucherTypes.map(vt => vt.baseType).filter(Boolean) as string[];
+    const dynamicTypes = voucherTypes.map(vt => vt.formType || vt.baseType).filter(Boolean) as string[];
     return Array.from(new Set([...staticTypes, ...dynamicTypes]));
   }, [voucherTypes]);
 

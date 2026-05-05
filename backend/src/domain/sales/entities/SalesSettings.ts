@@ -1,5 +1,17 @@
 export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 
+export type GovernanceRuleScope = 'company' | 'branch' | 'form';
+export type GovernanceAction = 'allow' | 'block';
+
+export interface GovernanceRule {
+  id: string;
+  scope: GovernanceRuleScope;
+  action: GovernanceAction;
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
+}
+
 export interface SalesSettingsProps {
   companyId: string;
   workflowMode?: WorkflowMode;
@@ -14,7 +26,8 @@ export interface SalesSettingsProps {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
-  salesVoucherTypeId?: string;
+  governanceRules?: GovernanceRule[];
+  defaultSalesInvoicePersona?: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix: string;
   soNumberNextSeq: number;
@@ -40,7 +53,8 @@ export class SalesSettings {
   overDeliveryTolerancePct: number;
   overInvoiceTolerancePct: number;
   defaultPaymentTermsDays: number;
-  salesVoucherTypeId?: string;
+  governanceRules: GovernanceRule[];
+  defaultSalesInvoicePersona: 'direct' | 'linked' | 'service';
   defaultWarehouseId?: string;
   soNumberPrefix: string;
   soNumberNextSeq: number;
@@ -68,7 +82,8 @@ export class SalesSettings {
     this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
     this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
     this.defaultPaymentTermsDays = props.defaultPaymentTermsDays;
-    this.salesVoucherTypeId = props.salesVoucherTypeId;
+    this.governanceRules = props.governanceRules ?? [];
+    this.defaultSalesInvoicePersona = props.defaultSalesInvoicePersona ?? 'direct';
     this.defaultWarehouseId = props.defaultWarehouseId;
     this.soNumberPrefix = props.soNumberPrefix || 'SO';
     this.soNumberNextSeq = props.soNumberNextSeq || 1;
@@ -96,6 +111,8 @@ export class SalesSettings {
       overDeliveryTolerancePct: 0,
       overInvoiceTolerancePct: 0,
       defaultPaymentTermsDays: 30,
+      governanceRules: [],
+      defaultSalesInvoicePersona: 'direct',
       soNumberPrefix: 'SO',
       soNumberNextSeq: 1,
       dnNumberPrefix: 'DN',
@@ -121,8 +138,9 @@ export class SalesSettings {
       allowOverDelivery: this.allowOverDelivery,
       overDeliveryTolerancePct: this.overDeliveryTolerancePct,
       overInvoiceTolerancePct: this.overInvoiceTolerancePct,
-      defaultPaymentTermsDays: this.defaultPaymentTermsDays,
-      salesVoucherTypeId: this.salesVoucherTypeId,
+      defaultPaymentTermsDays:     this.defaultPaymentTermsDays,
+      governanceRules: this.governanceRules,
+      defaultSalesInvoicePersona: this.defaultSalesInvoicePersona,
       defaultWarehouseId: this.defaultWarehouseId,
       soNumberPrefix: this.soNumberPrefix,
       soNumberNextSeq: this.soNumberNextSeq,
@@ -150,7 +168,8 @@ export class SalesSettings {
       overDeliveryTolerancePct: data.overDeliveryTolerancePct ?? 0,
       overInvoiceTolerancePct: data.overInvoiceTolerancePct ?? 0,
       defaultPaymentTermsDays: data.defaultPaymentTermsDays ?? 30,
-      salesVoucherTypeId: data.salesVoucherTypeId,
+      governanceRules: data.governanceRules ?? [],
+      defaultSalesInvoicePersona: data.defaultSalesInvoicePersona ?? 'direct',
       defaultWarehouseId: data.defaultWarehouseId,
       soNumberPrefix: data.soNumberPrefix || 'SO',
       soNumberNextSeq: data.soNumberNextSeq ?? 1,

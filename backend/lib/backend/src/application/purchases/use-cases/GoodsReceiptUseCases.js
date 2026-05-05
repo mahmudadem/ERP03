@@ -5,6 +5,8 @@ const crypto_1 = require("crypto");
 const DocumentPolicyResolver_1 = require("../../common/services/DocumentPolicyResolver");
 const VoucherTypes_1 = require("../../../domain/accounting/types/VoucherTypes");
 const GoodsReceipt_1 = require("../../../domain/purchases/entities/GoodsReceipt");
+const StockLevel_1 = require("../../../domain/inventory/entities/StockLevel");
+const StockMovement_1 = require("../../../domain/inventory/entities/StockMovement");
 const UomResolutionService_1 = require("../../inventory/services/UomResolutionService");
 const PurchaseOrderUseCases_1 = require("./PurchaseOrderUseCases");
 const PurchasePostingHelpers_1 = require("./PurchasePostingHelpers");
@@ -145,7 +147,7 @@ class CreateGoodsReceiptUseCase {
 }
 exports.CreateGoodsReceiptUseCase = CreateGoodsReceiptUseCase;
 class PostGoodsReceiptUseCase {
-    constructor(settingsRepo, inventorySettingsRepo, goodsReceiptRepo, purchaseOrderRepo, itemRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, transactionManager) {
+    constructor(settingsRepo, inventorySettingsRepo, goodsReceiptRepo, purchaseOrderRepo, itemRepo, warehouseRepo, uomConversionRepo, companyCurrencyRepo, inventoryService, companyModuleRepo, accountingPostingService, accountRepo, transactionManager) {
         this.settingsRepo = settingsRepo;
         this.inventorySettingsRepo = inventorySettingsRepo;
         this.goodsReceiptRepo = goodsReceiptRepo;
@@ -157,14 +159,19 @@ class PostGoodsReceiptUseCase {
         this.inventoryService = inventoryService;
         this.companyModuleRepo = companyModuleRepo;
         this.accountingPostingService = accountingPostingService;
+        this.accountRepo = accountRepo;
         this.transactionManager = transactionManager;
     }
     async execute(companyId, id, createAccountingEffect = true) {
+        // ===================================================================
+        // FIRESTORE TRANSACTION RULE: All reads must complete before any writes.
+        // We pre-fetch ALL data here. The postingLogic callback only writes.
+        // ===================================================================
         const settings = await this.settingsRepo.getSettings(companyId);
         if (!settings)
             throw new Error('Purchases module is not initialized');
-        const inventorySettings = await this.inventorySettingsRepo.getSettings(companyId);
-        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(inventorySettings);
+        const invSettings = await this.inventorySettingsRepo.getSettings(companyId);
+        const accountingMode = DocumentPolicyResolver_1.DocumentPolicyResolver.resolveAccountingMode(invSettings);
         const shouldPostAccounting = createAccountingEffect && await this.isAccountingEnabled(companyId);
         const grn = await this.goodsReceiptRepo.getById(companyId, id);
         if (!grn)
@@ -190,95 +197,202 @@ class PostGoodsReceiptUseCase {
             }
         }
         const baseCurrency = (await this.companyCurrencyRepo.getBaseCurrency(companyId)) || 'USD';
+        // PHASE 1A: PRE-FETCH ALL MASTER DATA (bare reads before transaction)
+        const distinctItemIds = [...new Set(grn.lines.map(l => l.itemId))];
+        const itemsMap = new Map();
+        for (const itemId of distinctItemIds) {
+            const item = await this.itemRepo.getItem(itemId);
+            if (item && item.companyId === companyId) {
+                itemsMap.set(item.id, item);
+            }
+        }
+        // Validate all items track inventory
+        for (const line of grn.lines) {
+            const item = itemsMap.get(line.itemId);
+            if (!item || item.companyId !== companyId)
+                throw new Error(`Item not found: ${line.itemId}`);
+            if (!item.trackInventory)
+                throw new Error(`Goods receipt line item must track inventory: ${item.code}`);
+        }
+        // PHASE 1B: PRE-FETCH STOCK LEVELS (bare reads before transaction)
+        const stockLevelMap = new Map();
+        for (const line of grn.lines) {
+            const key = `${line.itemId}|${grn.warehouseId}`;
+            if (!stockLevelMap.has(key)) {
+                const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, grn.warehouseId);
+                stockLevelMap.set(key, existing !== null && existing !== void 0 ? existing : StockLevel_1.StockLevel.createNew(companyId, line.itemId, grn.warehouseId));
+            }
+        }
+        // PHASE 1C: PRE-FETCH UOM CONVERSIONS (bare reads before transaction)
+        const uomConversionMap = new Map();
+        for (const itemId of distinctItemIds) {
+            const item = itemsMap.get(itemId);
+            if (item && !uomConversionMap.has(item.id)) {
+                const convs = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
+                uomConversionMap.set(item.id, convs);
+            }
+        }
+        // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION (pure computation)
+        const inventoryMovements = new Map();
         const receiptAccountingBucket = new Map();
-        await this.transactionManager.runTransaction(async (transaction) => {
-            for (const line of grn.lines) {
-                const item = await this.itemRepo.getItem(line.itemId);
-                if (!item || item.companyId !== companyId) {
-                    throw new Error(`Item not found: ${line.itemId}`);
+        for (const line of grn.lines) {
+            const item = itemsMap.get(line.itemId);
+            const poLine = po ? findPOLine(po, line.poLineId, line.itemId) : null;
+            if (po && !poLine) {
+                throw new Error(`PO line not found for GRN line ${line.lineId}`);
+            }
+            // Guarantee a meaningful inbound cost
+            if (line.unitCostDoc <= 0) {
+                if (poLine && poLine.unitPriceDoc > 0) {
+                    line.unitCostDoc = poLine.unitPriceDoc;
+                    line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * line.fxRateMovToBase);
                 }
-                if (!item.trackInventory) {
-                    throw new Error(`Goods receipt line item must track inventory: ${item.code}`);
-                }
-                const poLine = po ? findPOLine(po, line.poLineId, line.itemId) : null;
-                if (po && !poLine) {
-                    throw new Error(`PO line not found for GRN line ${line.lineId}`);
-                }
-                // Guarantee a meaningful inbound cost so stock valuation and gross profit stay reliable.
-                if (line.unitCostDoc <= 0) {
-                    if (poLine && poLine.unitPriceDoc > 0) {
-                        line.unitCostDoc = poLine.unitPriceDoc;
-                        line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * line.fxRateMovToBase);
-                    }
-                    else {
-                        throw new Error(`Unit cost must be greater than 0 for stock item ${line.itemCode || item.code}`);
-                    }
-                }
-                if (poLine) {
-                    const openQty = poLine.orderedQty - poLine.receivedQty;
-                    if (!settings.allowOverDelivery) {
-                        if (line.receivedQty > openQty + 0.000001) {
-                            throw new Error(`Received qty exceeds open qty for item ${line.itemName || poLine.itemName}`);
-                        }
-                    }
-                    else {
-                        const maxQty = openQty * (1 + settings.overDeliveryTolerancePct / 100);
-                        if (line.receivedQty > maxQty + 0.000001) {
-                            throw new Error(`Received qty exceeds tolerance for item ${line.itemName || poLine.itemName}`);
-                        }
-                    }
-                }
-                const conversionResult = await this.convertToBaseUom(companyId, line.receivedQty, line.uomId, line.uom, item);
-                const qtyInBaseUom = conversionResult.qtyInBaseUom;
-                const movement = await this.inventoryService.processIN({
-                    companyId,
-                    itemId: line.itemId,
-                    warehouseId: grn.warehouseId,
-                    qty: qtyInBaseUom,
-                    date: grn.receiptDate,
-                    movementType: 'PURCHASE_RECEIPT',
-                    refs: {
-                        type: 'GOODS_RECEIPT',
-                        docId: grn.id,
-                        lineId: line.lineId,
-                    },
-                    currentUser: grn.createdBy,
-                    unitCostInMoveCurrency: line.unitCostDoc,
-                    moveCurrency: line.moveCurrency,
-                    fxRateMovToBase: line.fxRateMovToBase,
-                    fxRateCCYToBase: line.fxRateCCYToBase,
-                    metadata: {
-                        uomConversion: {
-                            conversionId: conversionResult.trace.conversionId,
-                            mode: conversionResult.trace.mode,
-                            appliedFactor: conversionResult.trace.factor,
-                            sourceQty: line.receivedQty,
-                            sourceUomId: line.uomId,
-                            sourceUom: line.uom,
-                            baseUomId: item.baseUomId,
-                            baseUom: item.baseUom,
-                        },
-                    },
-                    transaction,
-                });
-                line.stockMovementId = movement.id;
-                line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(movement.unitCostBase || line.unitCostBase);
-                if (poLine) {
-                    poLine.receivedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.receivedQty + line.receivedQty);
-                }
-                if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostGoodsReceiptAccounting(accountingMode)) {
-                    const inventoryAccountId = item.inventoryAssetAccountId || (inventorySettings === null || inventorySettings === void 0 ? void 0 : inventorySettings.defaultInventoryAssetAccountId);
-                    if (!inventoryAccountId) {
-                        throw new Error(`No inventory account configured for item ${item.code}`);
-                    }
-                    const current = receiptAccountingBucket.get(inventoryAccountId) || 0;
-                    receiptAccountingBucket.set(inventoryAccountId, (0, PurchasePostingHelpers_1.roundMoney)(current + (movement.totalCostBase || (0, PurchasePostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase))));
+                else {
+                    throw new Error(`Unit cost must be greater than 0 for stock item ${line.itemCode || item.code}`);
                 }
             }
+            if (poLine) {
+                const openQty = poLine.orderedQty - poLine.receivedQty;
+                if (!settings.allowOverDelivery) {
+                    if (line.receivedQty > openQty + 0.000001) {
+                        throw new Error(`Received qty exceeds open qty for item ${line.itemName || poLine.itemName}`);
+                    }
+                }
+                else {
+                    const maxQty = openQty * (1 + settings.overDeliveryTolerancePct / 100);
+                    if (line.receivedQty > maxQty + 0.000001) {
+                        throw new Error(`Received qty exceeds tolerance for item ${line.itemName || poLine.itemName}`);
+                    }
+                }
+            }
+            const convs = uomConversionMap.get(item.id) || [];
+            const conversionResult = (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
+                qty: line.receivedQty,
+                item,
+                conversions: convs,
+                fromUomId: line.uomId,
+                fromUom: line.uom,
+                round: PurchasePostingHelpers_1.roundMoney,
+                itemCode: item.code,
+            });
+            const qtyInBaseUom = conversionResult.qtyInBaseUom;
+            // Compute IN movement (mirrors processIN logic but without DB reads)
+            const stockLevelKey = `${item.id}|${grn.warehouseId}`;
+            const level = stockLevelMap.get(stockLevelKey);
+            if (!level)
+                throw new Error(`Stock level not pre-fetched for item ${item.code}`);
+            const qtyBefore = level.qtyOnHand;
+            const oldMaxBusinessDate = level.maxBusinessDate;
+            const unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * line.fxRateMovToBase);
+            const unitCostCCY = (0, PurchasePostingHelpers_1.roundMoney)(line.unitCostDoc * (line.fxRateCCYToBase || line.fxRateMovToBase));
+            const totalCostBase = (0, PurchasePostingHelpers_1.roundMoney)(unitCostBase * qtyInBaseUom);
+            const totalCostCCY = (0, PurchasePostingHelpers_1.roundMoney)(unitCostCCY * qtyInBaseUom);
+            const moveCurrency = (line.moveCurrency || item.costCurrency || 'USD').toUpperCase();
+            const fxRateMovToBase = line.fxRateMovToBase || 1;
+            const fxRateCCYToBase = line.fxRateCCYToBase || fxRateMovToBase;
+            // AVG cost recalculation
+            let newAvgBase = unitCostBase;
+            let newAvgCCY = unitCostCCY;
+            if (qtyBefore > 0) {
+                const newQty = qtyBefore + qtyInBaseUom;
+                newAvgBase = (0, PurchasePostingHelpers_1.roundMoney)(((level.avgCostBase * qtyBefore) + (unitCostBase * qtyInBaseUom)) / newQty);
+                newAvgCCY = (0, PurchasePostingHelpers_1.roundMoney)(((level.avgCostCCY * qtyBefore) + (unitCostCCY * qtyInBaseUom)) / newQty);
+            }
+            const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
+            const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
+            const qtyAfter = qtyBefore + qtyInBaseUom;
+            const movement = new StockMovement_1.StockMovement({
+                id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                companyId,
+                date: grn.receiptDate,
+                postingSeq: level.postingSeq + 1,
+                createdAt: new Date(),
+                createdBy: grn.createdBy,
+                postedAt: new Date(),
+                itemId: item.id,
+                warehouseId: grn.warehouseId,
+                direction: 'IN',
+                movementType: 'PURCHASE_RECEIPT',
+                qty: qtyInBaseUom,
+                uom: item.baseUom,
+                referenceType: 'GOODS_RECEIPT',
+                referenceId: grn.id,
+                referenceLineId: line.lineId,
+                unitCostBase,
+                totalCostBase,
+                unitCostCCY,
+                totalCostCCY,
+                movementCurrency: moveCurrency,
+                fxRateMovToBase,
+                fxRateCCYToBase,
+                fxRateKind: 'DOCUMENT',
+                avgCostBaseAfter: newAvgBase,
+                avgCostCCYAfter: newAvgCCY,
+                qtyBefore,
+                qtyAfter,
+                settlesNegativeQty,
+                newPositiveQty,
+                negativeQtyAtPosting: qtyAfter < 0,
+                costSettled: true,
+                isBackdated: grn.receiptDate < oldMaxBusinessDate,
+                costSource: 'PURCHASE',
+                metadata: {
+                    uomConversion: {
+                        conversionId: conversionResult.trace.conversionId,
+                        mode: conversionResult.trace.mode,
+                        appliedFactor: conversionResult.trace.factor,
+                        sourceQty: line.receivedQty,
+                        sourceUomId: line.uomId,
+                        sourceUom: line.uom,
+                        baseUomId: item.baseUomId,
+                        baseUom: item.baseUom,
+                    },
+                },
+            });
+            // Update stock level in memory
+            level.qtyOnHand += qtyInBaseUom;
+            level.avgCostBase = newAvgBase;
+            level.avgCostCCY = newAvgCCY;
+            level.lastCostBase = unitCostBase;
+            level.lastCostCCY = unitCostCCY;
+            level.postingSeq += 1;
+            level.version += 1;
+            level.totalMovements += 1;
+            level.maxBusinessDate = grn.receiptDate > oldMaxBusinessDate ? grn.receiptDate : oldMaxBusinessDate;
+            level.updatedAt = new Date();
+            level.lastMovementId = movement.id;
+            line.stockMovementId = movement.id;
+            line.unitCostBase = (0, PurchasePostingHelpers_1.roundMoney)(movement.unitCostBase || line.unitCostBase);
+            if (poLine) {
+                poLine.receivedQty = (0, PurchasePostingHelpers_1.roundMoney)(poLine.receivedQty + line.receivedQty);
+            }
+            inventoryMovements.set(line.lineId, { movement, updatedLevel: level });
+            // Pre-resolve inventory account ID for accounting
+            if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostGoodsReceiptAccounting(accountingMode)) {
+                const inventoryAccountId = item.inventoryAssetAccountId || (invSettings === null || invSettings === void 0 ? void 0 : invSettings.defaultInventoryAssetAccountId);
+                if (!inventoryAccountId) {
+                    throw new Error(`No inventory account configured for item ${item.code}`);
+                }
+                const resolvedInventoryId = await this.resolveAccountId(companyId, inventoryAccountId);
+                const current = receiptAccountingBucket.get(resolvedInventoryId) || 0;
+                receiptAccountingBucket.set(resolvedInventoryId, (0, PurchasePostingHelpers_1.roundMoney)(current + (movement.totalCostBase || (0, PurchasePostingHelpers_1.roundMoney)(qtyInBaseUom * line.unitCostBase))));
+            }
+        }
+        // Pre-resolve base currency and GRNI account
+        const resolvedBaseCurrency = (baseCurrency || 'USD').toUpperCase();
+        // PHASE 2: TRANSACTION CALLBACK — WRITES ONLY
+        await this.transactionManager.runTransaction(async (transaction) => {
+            // Write inventory movements and stock levels
+            for (const [, { movement, updatedLevel }] of inventoryMovements) {
+                await this.inventoryService.writeStockMovement(movement, transaction);
+                await this.inventoryService.writeStockLevel(updatedLevel, transaction);
+            }
+            // Create GRNI voucher if needed
             if (DocumentPolicyResolver_1.DocumentPolicyResolver.shouldPostGoodsReceiptAccounting(accountingMode) && receiptAccountingBucket.size > 0) {
                 if (!settings.defaultGRNIAccountId) {
                     throw new Error('Default GRNI account is required for perpetual goods receipt posting.');
                 }
+                const resolvedGRNIAccountId = await this.resolveAccountId(companyId, settings.defaultGRNIAccountId);
                 const voucherLines = [];
                 let totalBase = 0;
                 for (const [inventoryAccountId, amount] of Array.from(receiptAccountingBucket.entries())) {
@@ -287,12 +401,16 @@ class PostGoodsReceiptUseCase {
                         accountId: inventoryAccountId,
                         side: 'Debit',
                         amount,
+                        baseAmount: amount,
+                        docAmount: amount,
                     });
                 }
                 voucherLines.push({
-                    accountId: settings.defaultGRNIAccountId,
+                    accountId: resolvedGRNIAccountId,
                     side: 'Credit',
                     amount: totalBase,
+                    baseAmount: totalBase,
+                    docAmount: totalBase,
                 });
                 if (shouldPostAccounting) {
                     const voucher = await this.accountingPostingService.postInTransaction({
@@ -301,7 +419,7 @@ class PostGoodsReceiptUseCase {
                         voucherNo: `GRN-${grn.grnNumber}`,
                         date: grn.receiptDate,
                         description: `Goods Receipt ${grn.grnNumber}`,
-                        currency: baseCurrency,
+                        currency: resolvedBaseCurrency,
                         exchangeRate: 1,
                         lines: voucherLines,
                         metadata: {
@@ -312,6 +430,8 @@ class PostGoodsReceiptUseCase {
                         createdBy: grn.createdBy,
                         postingLockPolicy: VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED,
                         reference: grn.grnNumber,
+                        baseCurrencyOverride: resolvedBaseCurrency,
+                        skipAccountValidation: true,
                     }, transaction);
                     grn.voucherId = voucher.id;
                 }
@@ -337,17 +457,13 @@ class PostGoodsReceiptUseCase {
             throw new Error(`Goods receipt not found after posting: ${id}`);
         return posted;
     }
-    async convertToBaseUom(companyId, qty, uomId, uom, item) {
-        const conversions = await this.uomConversionRepo.getConversionsForItem(companyId, item.id, { active: true });
-        return (0, UomResolutionService_1.convertItemQtyToBaseUomDetailed)({
-            qty,
-            item,
-            conversions,
-            fromUomId: uomId,
-            fromUom: uom,
-            round: PurchasePostingHelpers_1.roundMoney,
-            itemCode: item.code,
-        });
+    async resolveAccountId(companyId, idOrCode) {
+        if (!idOrCode)
+            return '';
+        if (!this.accountRepo)
+            return idOrCode;
+        const acc = (await this.accountRepo.getById(companyId, idOrCode)) || (await this.accountRepo.getByUserCode(companyId, idOrCode));
+        return acc ? acc.id : idOrCode;
     }
     async isAccountingEnabled(companyId) {
         const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');

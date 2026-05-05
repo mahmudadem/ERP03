@@ -1072,7 +1072,7 @@ class InventoryController {
             const companyId = InventoryController.getCompanyId(req);
             const userId = InventoryController.getUserId(req);
             const movementUseCase = InventoryController.buildMovementUseCase();
-            const useCase = new StockTransferUseCases_1.CompleteStockTransferUseCase(bindRepositories_1.diContainer.stockTransferRepository, movementUseCase, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new StockTransferUseCases_1.CompleteStockTransferUseCase(bindRepositories_1.diContainer.stockTransferRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.stockLevelRepository, movementUseCase, bindRepositories_1.diContainer.transactionManager);
             const transfer = await useCase.execute(companyId, req.params.id, userId);
             res.json({
                 success: true,

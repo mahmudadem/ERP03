@@ -67,7 +67,7 @@ export interface DocumentRule {
 export interface AvailableField {
   id: string;
   label: string;
-  type?: 'text' | 'number' | 'amount' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector' | 'party-selector' | 'item-selector' | 'warehouse-selector' | 'currency-selector';
+  type?: 'text' | 'number' | 'amount' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector' | 'party-selector' | 'customer-account-selector' | 'vendor-account-selector' | 'item-selector' | 'warehouse-selector' | 'currency-selector';
   sectionHint?: SectionType;
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields
@@ -79,9 +79,17 @@ export interface AvailableField {
 // Table Column Configuration
 export interface TableColumnConfig {
   id: string;
+  fieldId?: string;
   labelOverride?: string;
   order?: number;
   width?: string; // e.g., '100px', '20%', 'auto'
+  type?: string;
+  required?: boolean;
+  mandatory?: boolean;
+  readOnly?: boolean;
+  calculated?: boolean;
+  autoManaged?: boolean;
+  options?: Array<{ value: string | number; label: string }>;
 }
 
 /**
@@ -126,7 +134,10 @@ export interface DocumentFormConfig {
   isDefault?: boolean;      // Is this a default form?
   isLocked?: boolean;        // Prevent editing core fields
   inUse?: boolean;          // Has transactions, can't delete
-  baseType?: string;         // Metadata for backend compatibility
+  formType?: string;          // Which form template (e.g., "sales_invoice_direct")
+  voucherType?: string;       // Which accounting type (e.g., "sales_invoice")
+  persona?: string;           // Which validation rules (e.g., "direct", "linked")
+  baseType?: string;          // @deprecated Use formType instead. Kept for backward compat.
   headerFields?: any[]; // For persistence mapping
   lineFields?: any[]; // For persistence mapping
   

@@ -99,6 +99,12 @@ const SalesInvoiceDetailPage: React.FC = () => {
   const [orderLineLoading, setOrderLineLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Settlement state
+  const [settlementMode, setSettlementMode] = useState<'DEFERRED' | 'CASH_FULL' | 'MULTI'>('DEFERRED');
+  const [arAccountId, setArAccountId] = useState('');
+  const [settlementRows, setSettlementRows] = useState<{ settlementAccountId: string; amountBase: number; paymentMethod: string; reference: string; notes: string; paymentDate: string }[]>([]);
+  const [showSettlement, setShowSettlement] = useState(false);
+
   const customerNameById = useMemo(
     () =>
       customers.reduce<Record<string, string>>((acc, customer) => {
@@ -413,6 +419,7 @@ const SalesInvoiceDetailPage: React.FC = () => {
       setError(null);
 
       const payload: CreateSalesInvoicePayload = {
+        source: 'native',
         salesOrderId: form.salesOrderId || undefined,
         customerId: form.customerId,
         customerInvoiceNumber: form.customerInvoiceNumber || undefined,
@@ -440,13 +447,85 @@ const SalesInvoiceDetailPage: React.FC = () => {
     }
   };
 
+  const createAndPostDraft = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    try {
+      setBusy(true);
+      setError(null);
+
+      const outstanding = roundMoney(totals.grandTotalBase);
+      const useSettlement = settlementMode !== 'DEFERRED' && outstanding > 0.005;
+
+      const settlementInput = useSettlement ? {
+        settlementMode,
+        receivablePayableAccountId: arAccountId,
+        settlements: settlementRows.map(r => ({
+          settlementAccountId: r.settlementAccountId,
+          amountBase: r.amountBase,
+          paymentMethod: r.paymentMethod as any,
+          reference: r.reference || undefined,
+          notes: r.notes || undefined,
+          paymentDate: r.paymentDate || undefined,
+        })),
+      } : undefined;
+
+      const payload: CreateSalesInvoicePayload = {
+        source: 'native',
+        salesOrderId: form.salesOrderId || undefined,
+        customerId: form.customerId,
+        customerInvoiceNumber: form.customerInvoiceNumber || undefined,
+        invoiceDate: form.invoiceDate,
+        dueDate: form.dueDate || undefined,
+        currency: form.currency.toUpperCase(),
+        exchangeRate: form.exchangeRate,
+        lines: form.lines.map((line, index) => buildLinePayload(line, index)),
+        notes: form.notes || undefined,
+        settlementInput,
+      };
+
+      const created = await salesApi.createAndPostSI(payload);
+      const dto = unwrap<SalesInvoiceDTO>(created);
+      navigate(`/sales/invoices/${dto.id}`, { replace: true });
+    } catch (err: any) {
+      console.error('Failed to create and post sales invoice', err);
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to create and post sales invoice.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const postDraft = async () => {
     if (!invoice?.id) return;
     try {
       setBusy(true);
       setError(null);
-      const posted = await salesApi.postSI(invoice.id);
+
+      const settlementInput = settlementMode !== 'DEFERRED' ? {
+        settlementMode,
+        receivablePayableAccountId: arAccountId,
+        settlements: settlementRows.map(r => ({
+          settlementAccountId: r.settlementAccountId,
+          amountBase: r.amountBase,
+          paymentMethod: r.paymentMethod as any,
+          reference: r.reference || undefined,
+          notes: r.notes || undefined,
+          paymentDate: r.paymentDate || undefined,
+        })),
+      } : undefined;
+
+      const posted = await salesApi.postSI(invoice.id, settlementInput);
       setInvoice(unwrap<SalesInvoiceDTO>(posted));
+      setShowSettlement(false);
     } catch (err: any) {
       console.error('Failed to post sales invoice', err);
       setError(
@@ -457,6 +536,17 @@ const SalesInvoiceDetailPage: React.FC = () => {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handlePostClick = () => {
+    if (!invoice) return;
+    const outstanding = roundMoney((invoice.grandTotalBase || 0) - (invoice.paidAmountBase || 0));
+    if (outstanding > 0.005) {
+      setShowSettlement(true);
+      setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+    } else {
+      postDraft();
     }
   };
 
@@ -765,14 +855,199 @@ const SalesInvoiceDetailPage: React.FC = () => {
           </div>
         </Card>
 
-        <button
-          type="button"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          onClick={createDraft}
-          disabled={busy || orderLineLoading}
-        >
-          {busy ? 'Creating...' : 'Create Draft Invoice'}
-        </button>
+        {showSettlement && (
+          <Card className="p-5 border-blue-200 bg-blue-50">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Save & Post</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Settlement Mode</label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  value={settlementMode}
+                  onChange={(e) => setSettlementMode(e.target.value as any)}
+                >
+                  <option value="DEFERRED">Deferred (No Payment)</option>
+                  <option value="CASH_FULL">Cash Full Payment</option>
+                  <option value="MULTI">Multiple Payments</option>
+                </select>
+              </div>
+
+              {settlementMode !== 'DEFERRED' && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">AR Account</label>
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      value={arAccountId}
+                      onChange={(e) => setArAccountId(e.target.value)}
+                      placeholder="Account ID or Code"
+                    />
+                  </div>
+
+                  {settlementRows.map((row, idx) => (
+                    <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                      <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Settlement Account</label>
+                          <input
+                            type="text"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.settlementAccountId}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].settlementAccountId = e.target.value;
+                              setSettlementRows(updated);
+                            }}
+                            placeholder="Account ID or Code"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Amount (Base)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.amountBase}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].amountBase = parseFloat(e.target.value) || 0;
+                              setSettlementRows(updated);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Payment Method</label>
+                          <select
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.paymentMethod}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].paymentMethod = e.target.value;
+                              setSettlementRows(updated);
+                            }}
+                          >
+                            <option value="CASH">Cash</option>
+                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                            <option value="CHECK">Check</option>
+                            <option value="CREDIT_CARD">Credit Card</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Payment Date</label>
+                          <input
+                            type="date"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.paymentDate}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].paymentDate = e.target.value;
+                              setSettlementRows(updated);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Reference</label>
+                          <input
+                            type="text"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.reference}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].reference = e.target.value;
+                              setSettlementRows(updated);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium">Notes</label>
+                          <input
+                            type="text"
+                            className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                            value={row.notes}
+                            onChange={(e) => {
+                              const updated = [...settlementRows];
+                              updated[idx].notes = e.target.value;
+                              setSettlementRows(updated);
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {settlementMode === 'MULTI' && (
+                        <button
+                          type="button"
+                          className="text-xs text-red-600 hover:text-red-800"
+                          onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
+                        >
+                          Remove Row
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {settlementMode === 'MULTI' && (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
+                      onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: roundMoney(totals.grandTotalBase / (settlementRows.length + 1)), paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
+                    >
+                      + Add Payment Row
+                    </button>
+                  )}
+                </>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  onClick={createAndPostDraft}
+                  disabled={busy || orderLineLoading}
+                >
+                  {busy ? 'Saving & Posting...' : 'Confirm Save & Post'}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                  onClick={() => setShowSettlement(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            onClick={createDraft}
+            disabled={busy || orderLineLoading}
+          >
+            {busy ? 'Creating...' : 'Save Draft'}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            onClick={() => {
+              const outstanding = roundMoney(totals.grandTotalBase);
+              if (outstanding > 0.005) {
+                setShowSettlement(true);
+                setSettlementRows([{ settlementAccountId: '', amountBase: outstanding, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }]);
+              } else {
+                setSettlementMode('DEFERRED');
+                createAndPostDraft();
+              }
+            }}
+            disabled={busy || orderLineLoading}
+          >
+            {busy ? 'Saving & Posting...' : 'Save & Post'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -894,6 +1169,172 @@ const SalesInvoiceDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      {showSettlement && invoice && (
+        <Card className="p-5 border-blue-200 bg-blue-50">
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Settlement on Post</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Settlement Mode</label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={settlementMode}
+                onChange={(e) => setSettlementMode(e.target.value as any)}
+              >
+                <option value="DEFERRED">Deferred (No Payment)</option>
+                <option value="CASH_FULL">Cash Full Payment</option>
+                <option value="MULTI">Multiple Payments</option>
+              </select>
+            </div>
+
+            {settlementMode !== 'DEFERRED' && (
+              <>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">AR/AP Account</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    value={arAccountId}
+                    onChange={(e) => setArAccountId(e.target.value)}
+                    placeholder="Account ID or Code"
+                  />
+                </div>
+
+                {settlementRows.map((row, idx) => (
+                  <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                    <div className="text-sm font-medium text-slate-700">Payment Row {idx + 1}</div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Settlement Account</label>
+                        <input
+                          type="text"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.settlementAccountId}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].settlementAccountId = e.target.value;
+                            setSettlementRows(updated);
+                          }}
+                          placeholder="Account ID or Code"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Amount (Base)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.amountBase}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].amountBase = parseFloat(e.target.value) || 0;
+                            setSettlementRows(updated);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Payment Method</label>
+                        <select
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.paymentMethod}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].paymentMethod = e.target.value;
+                            setSettlementRows(updated);
+                          }}
+                        >
+                          <option value="CASH">Cash</option>
+                          <option value="BANK_TRANSFER">Bank Transfer</option>
+                          <option value="CHECK">Check</option>
+                          <option value="CREDIT_CARD">Credit Card</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Payment Date</label>
+                        <input
+                          type="date"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.paymentDate}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].paymentDate = e.target.value;
+                            setSettlementRows(updated);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Reference</label>
+                        <input
+                          type="text"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.reference}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].reference = e.target.value;
+                            setSettlementRows(updated);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium">Notes</label>
+                        <input
+                          type="text"
+                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                          value={row.notes}
+                          onChange={(e) => {
+                            const updated = [...settlementRows];
+                            updated[idx].notes = e.target.value;
+                            setSettlementRows(updated);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {settlementMode === 'MULTI' && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:text-red-800"
+                        onClick={() => setSettlementRows(settlementRows.filter((_, i) => i !== idx))}
+                      >
+                        Remove Row
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {settlementMode === 'MULTI' && (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-blue-300 px-3 py-1 text-sm text-blue-700 hover:bg-blue-100"
+                    onClick={() => setSettlementRows([...settlementRows, { settlementAccountId: '', amountBase: 0, paymentMethod: 'CASH', reference: '', notes: '', paymentDate: todayIso() }])}
+                  >
+                    + Add Payment Row
+                  </button>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                onClick={postDraft}
+                disabled={busy}
+              >
+                {busy ? 'Posting...' : 'Confirm & Post'}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
+                onClick={() => setShowSettlement(false)}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -902,11 +1343,11 @@ const SalesInvoiceDetailPage: React.FC = () => {
         >
           Back to List
         </button>
-        {invoice.status === 'DRAFT' && (
+        {invoice.status === 'DRAFT' && !showSettlement && (
           <button
             type="button"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            onClick={postDraft}
+            onClick={handlePostClick}
             disabled={busy}
           >
             {busy ? 'Posting...' : 'Post Invoice'}

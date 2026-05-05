@@ -3,6 +3,7 @@ export interface VoucherFormLike {
   module?: string | null;
   typeId?: string | null;
   code?: string | null;
+  formType?: string | null;
   baseType?: string | null;
   name?: string | null;
   isDefault?: boolean;
@@ -32,7 +33,7 @@ export const isSystemDefaultVoucherForm = (form: VoucherFormLike): boolean =>
 
 export const getVoucherFormLogicalKey = (form: VoucherFormLike): string => {
   const module = normalizeModule(form.module) || 'ACCOUNTING';
-  const code = canonicalizeVoucherCode(form.baseType || form.code || form.typeId || form.id || form.name);
+  const code = canonicalizeVoucherCode(form.formType || form.baseType || form.code || form.typeId || form.id || form.name);
   return `${module}::${code}`;
 };
 
@@ -40,7 +41,7 @@ const rankDefaultForm = (form: VoucherFormLike): number => {
   const module = normalizeModule(form.module) || 'ACCOUNTING';
   const typeId = canonicalizeVoucherCode(form.typeId);
   const code = canonicalizeVoucherCode(form.code);
-  const baseType = canonicalizeVoucherCode(form.baseType);
+  const baseType = canonicalizeVoucherCode(form.formType || form.baseType);
   const id = canonicalizeVoucherCode(form.id);
 
   let score = 0;

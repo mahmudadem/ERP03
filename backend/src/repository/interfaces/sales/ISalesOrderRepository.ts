@@ -1,4 +1,4 @@
-﻿import { SOStatus, SalesOrder } from '../../../domain/sales/entities/SalesOrder';
+import { SOStatus, SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 
 export interface SalesOrderListOptions {
   status?: SOStatus;
@@ -13,5 +13,6 @@ export interface ISalesOrderRepository {
   getById(companyId: string, id: string): Promise<SalesOrder | null>;
   getByNumber(companyId: string, orderNumber: string): Promise<SalesOrder | null>;
   list(companyId: string, opts?: SalesOrderListOptions): Promise<SalesOrder[]>;
+  hasOpenOrders(companyId: string): Promise<boolean>;
   delete(companyId: string, id: string): Promise<void>;
 }

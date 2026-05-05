@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { GoodsReceipt } from '../../../domain/purchases/entities/GoodsReceipt';
 import { PurchaseInvoice } from '../../../domain/purchases/entities/PurchaseInvoice';
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
@@ -149,6 +150,9 @@ const makePostedPI = (): PurchaseInvoice =>
     id: 'pi-1',
     companyId: COMPANY_ID,
     invoiceNumber: 'PI-00001',
+    formType: 'purchase_invoice_linked',
+    voucherType: 'purchase_invoice',
+    persona: 'linked',
     purchaseOrderId: 'po-1',
     vendorId: 'ven-1',
     vendorName: 'Vendor One',
@@ -337,8 +341,37 @@ const makeTransactionManager = () => ({
   runTransaction: jest.fn(async (operation: (transaction: any) => Promise<any>) => operation({ id: 'txn-1' })),
 });
 
+const makeStockLevel = (unitCostBase = 10, qtyOnHand = 100) =>
+  new StockLevel({
+    id: 'sl-1',
+    companyId: COMPANY_ID,
+    itemId: 'stock-1',
+    warehouseId: 'wh-1',
+    qtyOnHand,
+    reservedQty: 0,
+    avgCostBase: unitCostBase,
+    avgCostCCY: unitCostBase,
+    lastCostBase: unitCostBase,
+    lastCostCCY: unitCostBase,
+    postingSeq: 1,
+    maxBusinessDate: '2026-01-01',
+    totalMovements: 1,
+    lastMovementId: '',
+    version: 1,
+    updatedAt: new Date(),
+  });
+
 const makeInventoryService = () => ({
   processOUT: jest.fn(async () => ({ id: 'mov-return-1' })),
+  preFetchStockLevel: jest.fn(async () => makeStockLevel()),
+  writeStockMovement: jest.fn(async () => {}),
+  writeStockLevel: jest.fn(async () => {}),
+  deleteMovement: jest.fn(async () => {}),
+});
+
+const makeAccountRepo = () => ({
+  getById: jest.fn(async (_companyId: string, id: string) => ({ id })),
+  getByUserCode: jest.fn(async (_companyId: string, code: string) => ({ id: code })),
 });
 
 const makeInventorySettingsRepository = (method: 'PERIODIC' | 'PERPETUAL' = 'PERIODIC') => ({
@@ -395,6 +428,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
@@ -404,15 +438,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processOUT).toHaveBeenCalledTimes(1);
-    const movementInput = (inventoryService.processOUT as any).mock.calls[0][0];
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
+    const movementInput = (inventoryService.writeStockMovement as any).mock.calls[0][0];
     expect(movementInput.movementType).toBe('RETURN_OUT');
-    expect(movementInput.refs.type).toBe('PURCHASE_RETURN');
+    expect(movementInput.referenceType).toBe('PURCHASE_RETURN');
 
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
     const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
@@ -457,6 +492,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
@@ -466,12 +502,13 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
     expect(posted.status).toBe('POSTED');
-    expect(inventoryService.processOUT).toHaveBeenCalledTimes(1);
+    expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(voucherRepo.save).not.toHaveBeenCalled();
     expect(ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
   });
@@ -499,6 +536,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
@@ -508,6 +546,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
@@ -543,6 +582,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => makeTaxCode()) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
@@ -552,11 +592,12 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
     await expect(useCase.execute(COMPANY_ID, purchaseReturn.id)).rejects.toThrow(/exceeds invoiced qty/i);
-    expect(inventoryService.processOUT).not.toHaveBeenCalled();
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
     expect(voucherRepo.save).not.toHaveBeenCalled();
   });
 
@@ -587,6 +628,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => null) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
@@ -596,11 +638,12 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
     await expect(useCase.execute(COMPANY_ID, purchaseReturn.id)).rejects.toThrow(/exceeds received qty/i);
-    expect(inventoryService.processOUT).not.toHaveBeenCalled();
+    expect(inventoryService.writeStockMovement).not.toHaveBeenCalled();
     expect(voucherRepo.save).not.toHaveBeenCalled();
   });
 
@@ -649,6 +692,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => makeTaxCode()) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
@@ -658,6 +702,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 
@@ -706,6 +751,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getById: jest.fn(async () => vendor) } as any,
       { getById: jest.fn(async () => taxCode) } as any,
       { getItem: jest.fn(async () => item) } as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
       { getConversionsForItem: jest.fn(async () => []) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
@@ -715,6 +761,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
       ),
+      makeAccountRepo() as any,
       makeTransactionManager() as any
     );
 

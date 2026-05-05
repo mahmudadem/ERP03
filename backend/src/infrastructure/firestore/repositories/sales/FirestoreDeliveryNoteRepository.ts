@@ -1,4 +1,4 @@
-﻿import { Firestore, Query, Transaction } from 'firebase-admin/firestore';
+import { Firestore, Query, Transaction } from 'firebase-admin/firestore';
 import { DeliveryNote } from '../../../../domain/sales/entities/DeliveryNote';
 import {
   DeliveryNoteListOptions,
@@ -62,5 +62,13 @@ export class FirestoreDeliveryNoteRepository implements IDeliveryNoteRepository 
 
     const snap = await query.get();
     return snap.docs.map((doc) => DeliveryNoteMapper.toDomain(doc.data()));
+  }
+
+  async hasUnpostedDeliveryNotes(companyId: string): Promise<boolean> {
+    const snap = await this.collection(companyId)
+      .where('status', 'in', ['DRAFT', 'POSTED'])
+      .limit(1)
+      .get();
+    return !snap.empty;
   }
 }

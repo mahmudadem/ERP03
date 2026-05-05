@@ -2,17 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { superAdminApi, Permission } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import { clsx } from 'clsx';
 import {
   SuperAdminEmptyState,
   SuperAdminHeader,
   SuperAdminLoading,
   SuperAdminModal,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export const PermissionsManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -25,6 +30,18 @@ export const PermissionsManagerPage: React.FC = () => {
   useEffect(() => {
     loadPermissions();
   }, []);
+
+  const {
+    data: filteredPermissions,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: permissions,
+    searchFields: ['name', 'id', 'description'],
+    initialSort: { field: 'id', direction: 'asc' },
+  });
 
   const loadPermissions = async () => {
     try {
@@ -111,39 +128,71 @@ export const PermissionsManagerPage: React.FC = () => {
         }
       />
 
-      <SuperAdminTable>
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.id')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.name')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.description')}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {permissions.length === 0 ? (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SuperAdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search permissions..."
+          />
+        </div>
+
+        <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={4}><SuperAdminEmptyState title={t('superAdmin.permissions.empty')} /></td>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('id')}
+                >
+                  {t('superAdmin.permissions.columns.id')}
+                  <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('name')}
+                >
+                  {t('superAdmin.permissions.columns.name')}
+                  <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('description')}
+                >
+                  {t('superAdmin.permissions.columns.description')}
+                  <SortIcon direction={sortConfig.field === 'description' ? sortConfig.direction : null} />
+                </th>
+                <th className={tableHeadCellClass}>{t('superAdmin.permissions.columns.actions')}</th>
               </tr>
-            ) : (
-              permissions.map((permission) => (
-                <tr key={permission.id} className={tableRowClass}>
-                  <td className={`${tableCellClass} font-mono text-xs`}>{permission.id}</td>
-                  <td className={`${tableCellClass} font-medium text-slate-950`}>{permission.name}</td>
-                  <td className={tableCellClass}>{permission.description}</td>
-                  <td className={tableCellClass}>
-                    <button onClick={() => handleEdit(permission)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
-                      {t('superAdmin.permissions.actions.edit')}
-                    </button>
-                    <button onClick={() => handleDelete(permission.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
-                      {t('superAdmin.permissions.actions.delete')}
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredPermissions.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <SuperAdminEmptyState 
+                      title={searchQuery ? "No permissions found matching search" : t('superAdmin.permissions.empty')} 
+                    />
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-      </SuperAdminTable>
+              ) : (
+                filteredPermissions.map((permission) => (
+                  <tr key={permission.id} className={tableRowClass}>
+                    <td className={`${tableCellClass} font-mono text-xs`}>{permission.id}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>{permission.name}</td>
+                    <td className={tableCellClass}>{permission.description}</td>
+                    <td className={tableCellClass}>
+                      <button onClick={() => handleEdit(permission)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
+                        {t('superAdmin.permissions.actions.edit')}
+                      </button>
+                      <button onClick={() => handleDelete(permission.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
+                        {t('superAdmin.permissions.actions.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+        </SuperAdminTable>
+      </div>
 
       {isModalOpen && (
         <SuperAdminModal

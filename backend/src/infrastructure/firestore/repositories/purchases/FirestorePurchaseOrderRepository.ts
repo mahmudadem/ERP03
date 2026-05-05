@@ -86,4 +86,12 @@ export class FirestorePurchaseOrderRepository implements IPurchaseOrderRepositor
     if (!ref) return;
     await ref.delete();
   }
+
+  async hasOpenOrders(companyId: string): Promise<boolean> {
+    const snap = await this.collection(companyId)
+      .where('status', 'not-in', ['CLOSED', 'CANCELLED'])
+      .limit(1)
+      .get();
+    return !snap.empty;
+  }
 }

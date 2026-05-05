@@ -49,6 +49,7 @@ describe('syncCompanyVoucherTemplatesFromSystem', () => {
       ]),
       getByTypeId: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
+      update: jest.fn(),
     };
 
     const result = await syncCompanyVoucherTemplatesFromSystem({
@@ -61,6 +62,7 @@ describe('syncCompanyVoucherTemplatesFromSystem', () => {
 
     expect(result.formsCreated).toBe(0);
     expect(voucherFormRepo.create).not.toHaveBeenCalled();
+    expect(voucherFormRepo.update).toHaveBeenCalledTimes(1);
   });
 
   it('dedupes legacy and canonical system templates by canonical code', async () => {
@@ -78,6 +80,7 @@ describe('syncCompanyVoucherTemplatesFromSystem', () => {
       getAllByCompany: jest.fn().mockResolvedValue([]),
       getByTypeId: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
+      update: jest.fn(),
     };
 
     const result = await syncCompanyVoucherTemplatesFromSystem({

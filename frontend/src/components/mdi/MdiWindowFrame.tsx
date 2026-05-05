@@ -136,9 +136,6 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
     };
   }, [isDragging, isResizing, dragOffset, resizeType, win.id, win.isMaximized, win.size, win.position, updateWindowPosition, updateWindowSize]);
 
-  if (win.isMinimized) return null;
-
-  // Use translate3d for GPU-accelerated dragging
   const style: React.CSSProperties = win.isMaximized
     ? {
         position: 'fixed',
@@ -148,7 +145,8 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
         bottom: '80px',
         width: 'auto',
         height: 'auto',
-        zIndex: win.isFocused ? 1000 : 999
+        zIndex: win.isFocused ? 1000 : 999,
+        display: win.isMinimized ? 'none' : 'flex'
       }
     : {
         position: 'fixed',
@@ -158,7 +156,8 @@ export const MdiWindowFrame: React.FC<MdiWindowFrameProps> = ({
         width: win.size.width,
         height: win.size.height,
         zIndex: win.isFocused ? 1000 : 999,
-        willChange: (isDragging || isResizing) ? 'transform' : 'auto'
+        willChange: (isDragging || isResizing) ? 'transform' : 'auto',
+        display: win.isMinimized ? 'none' : 'flex'
       };
 
   return (

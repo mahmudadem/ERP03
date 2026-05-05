@@ -13,6 +13,7 @@ interface PartySelectorProps {
   noBorder?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onBlur?: () => void;
+  role?: PartyRole;
 }
 
 interface CreatePartyFormState {
@@ -47,6 +48,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   noBorder = false,
   onKeyDown: externalKeyDown,
   onBlur: externalBlur,
+  role,
 }, ref) => {
   const { t } = useTranslation('shared');
   const { data: currencies = [] } = useCompanyCurrencies();
@@ -122,7 +124,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
     if (hasLoadedOnce && !force) return;
     setIsRefreshing(true);
     try {
-      const results = await sharedApi.listParties({ active: true });
+      const results = await sharedApi.listParties({ active: true, ...(role ? { role } : {}) });
       setAllParties(results);
       setHasLoadedOnce(true);
     } catch (error) {
@@ -133,8 +135,9 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   };
 
   useEffect(() => {
+    setHasLoadedOnce(false);
     loadAllParties();
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     if (showModal) {
@@ -257,7 +260,11 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
 
   const handleOpenCreateModal = () => {
     setCreateError('');
-    setCreateForm(buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD'));
+    const seed = buildCreateSeed(modalSearch || inputValue, currencyOptions[0]?.code || 'USD');
+    setCreateForm({
+      ...seed,
+      role: role ? role : seed.role,
+    });
     setShowModal(false);
     setShowCreateModal(true);
   };
@@ -274,7 +281,9 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
     setCreateError('');
 
     try {
-      const roles: PartyRole[] = createForm.role === 'BOTH' 
+      const roles: PartyRole[] = role
+        ? [role]
+        : createForm.role === 'BOTH'
         ? ['CUSTOMER', 'VENDOR'] 
         : [createForm.role as PartyRole];
 
@@ -310,7 +319,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          placeholder={placeholder || 'Select customer or vendor...'}
+          placeholder={placeholder || (role === 'CUSTOMER' ? 'Select customer...' : role === 'VENDOR' ? 'Select vendor...' : 'Select customer or vendor...')}
           disabled={disabled}
           className={`w-full text-xs transition-all duration-200
             ${noBorder ? 'border-none bg-transparent p-1 pl-8' : 'rounded-lg border border-slate-200 bg-white p-2 pl-8 pr-10 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}
@@ -483,24 +492,26 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500">Primary Role</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['CUSTOMER', 'VENDOR', 'BOTH'] as const).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setCreateForm(prev => ({ ...prev, role: r }))}
-                        className={`rounded-xl border py-2 text-[10px] font-black uppercase tracking-widest transition-all
-                          ${createForm.role === r 
-                            ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
-                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                      >
-                        {r}
-                      </button>
-                    ))}
+                {!role && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-500">Primary Role</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['CUSTOMER', 'VENDOR', 'BOTH'] as const).map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setCreateForm(prev => ({ ...prev, role: r }))}
+                          className={`rounded-xl border py-2 text-[10px] font-black uppercase tracking-widest transition-all
+                            ${createForm.role === r
+                              ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-500">Default Currency</label>

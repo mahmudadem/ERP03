@@ -59,6 +59,17 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
     const movementUseCase = {
       processIN: jest.fn(async () => undefined),
       processOUT: jest.fn(async () => undefined),
+      preFetchItemContext: jest.fn(async () => ({
+        item: {
+          id: 'item-1',
+          companyId: COMPANY_ID,
+          costCurrency: 'USD',
+          inventoryAssetAccountId: 'INV-100',
+          cogsAccountId: 'COGS-100',
+        },
+        baseCurrency: 'USD',
+      })),
+      preFetchStockLevel: jest.fn(async () => null),
     };
 
     const txn = { id: 'txn-1' };
@@ -126,6 +137,17 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
     const movementUseCase = {
       processIN: jest.fn(async () => undefined),
       processOUT: jest.fn(async () => undefined),
+      preFetchItemContext: jest.fn(async () => ({
+        item: {
+          id: 'item-1',
+          companyId: COMPANY_ID,
+          costCurrency: 'USD',
+          inventoryAssetAccountId: 'INV-100',
+          cogsAccountId: 'COGS-100',
+        },
+        baseCurrency: 'USD',
+      })),
+      preFetchStockLevel: jest.fn(async () => null),
     };
 
     const txn = { id: 'txn-2' };

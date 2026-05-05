@@ -28,7 +28,10 @@ export interface VoucherFormResponse {
   isMultiLine?: boolean;
   tableStyle?: 'web' | 'classic';
   defaultCurrency?: string;
-  baseType?: string; // Base voucher type for backend
+  formType?: string; // Form type (new field, replaces baseType)
+  voucherType?: string; // Canonical business document type (e.g., sales_invoice)
+  persona?: string; // Document persona (direct, linked, service)
+  baseType?: string; // Base voucher type for backend (legacy, kept for backward compat)
   module?: string; // Module this form belongs to (ACCOUNTING, SALES, PURCHASE)
   sidebarGroup?: string; // Sidebar submenu group (Vouchers, Documents, etc.)
   createdAt: string;

@@ -14,4 +14,5 @@ export interface IPurchaseOrderRepository {
   getByNumber(companyId: string, orderNumber: string): Promise<PurchaseOrder | null>;
   list(companyId: string, opts?: PurchaseOrderListOptions): Promise<PurchaseOrder[]>;
   delete(companyId: string, id: string): Promise<void>;
+  hasOpenOrders(companyId: string): Promise<boolean>;
 }

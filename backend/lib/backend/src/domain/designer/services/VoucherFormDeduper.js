@@ -24,7 +24,7 @@ const isSystemDefaultVoucherForm = (form) => form.isDefault === true || form.isS
 exports.isSystemDefaultVoucherForm = isSystemDefaultVoucherForm;
 const getVoucherFormLogicalKey = (form) => {
     const module = normalizeModule(form.module) || 'ACCOUNTING';
-    const code = (0, exports.canonicalizeVoucherCode)(form.baseType || form.code || form.typeId || form.id || form.name);
+    const code = (0, exports.canonicalizeVoucherCode)(form.formType || form.baseType || form.code || form.typeId || form.id || form.name);
     return `${module}::${code}`;
 };
 exports.getVoucherFormLogicalKey = getVoucherFormLogicalKey;
@@ -32,7 +32,7 @@ const rankDefaultForm = (form) => {
     const module = normalizeModule(form.module) || 'ACCOUNTING';
     const typeId = (0, exports.canonicalizeVoucherCode)(form.typeId);
     const code = (0, exports.canonicalizeVoucherCode)(form.code);
-    const baseType = (0, exports.canonicalizeVoucherCode)(form.baseType);
+    const baseType = (0, exports.canonicalizeVoucherCode)(form.formType || form.baseType);
     const id = (0, exports.canonicalizeVoucherCode)(form.id);
     let score = 0;
     if (baseType)

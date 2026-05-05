@@ -30,8 +30,10 @@ class PrismaStockTransferRepository {
             },
         });
     }
-    async updateTransfer(id, data) {
-        const existing = await this.prisma.stockTransfer.findUnique({
+    async updateTransfer(id, data, transaction) {
+        var _a;
+        const client = (_a = transaction) !== null && _a !== void 0 ? _a : this.prisma;
+        const existing = await client.stockTransfer.findUnique({
             where: { id },
             include: { lines: true },
         });
@@ -65,7 +67,7 @@ class PrismaStockTransferRepository {
                 }),
             };
         }
-        await this.prisma.stockTransfer.update({
+        await client.stockTransfer.update({
             where: { id },
             data: updateData,
         });

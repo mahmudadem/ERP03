@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi, Bundle, BusinessDomain, Module } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
+import { clsx } from 'clsx';
 import {
   SuperAdminBadge,
   SuperAdminEmptyState,
@@ -9,11 +10,15 @@ import {
   SuperAdminLoading,
   SuperAdminModal,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../components/SuperAdminPage';
+import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
 
 export const BundlesManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -35,6 +40,18 @@ export const BundlesManagerPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const {
+    data: filteredBundles,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: bundles,
+    searchFields: ['name', 'id', 'description'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const loadData = async () => {
     try {
@@ -153,64 +170,96 @@ export const BundlesManagerPage: React.FC = () => {
         }
       />
 
-      <SuperAdminTable>
-          <thead className="bg-slate-50">
-            <tr>
-              <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.id', { defaultValue: 'ID' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.name', { defaultValue: 'Name' })}</th>
-              <th className={tableHeadCellClass}>Lifecycle</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.businessDomains', { defaultValue: 'Business Domains' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.modules', { defaultValue: 'Modules' })}</th>
-              <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.actions', { defaultValue: 'Actions' })}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {bundles.length === 0 ? (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <SuperAdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search bundles..."
+          />
+        </div>
+
+        <SuperAdminTable>
+            <thead className="bg-slate-50">
               <tr>
-                <td colSpan={6}><SuperAdminEmptyState title={t('superAdmin.bundles.empty', { defaultValue: 'No bundles found. Create your first bundle to get started.' })} /></td>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('id')}
+                >
+                  {t('superAdmin.bundles.columns.id', { defaultValue: 'ID' })}
+                  <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('name')}
+                >
+                  {t('superAdmin.bundles.columns.name', { defaultValue: 'Name' })}
+                  <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                </th>
+                <th 
+                  className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                  onClick={() => handleSort('lifecycleStatus')}
+                >
+                  Lifecycle
+                  <SortIcon direction={sortConfig.field === 'lifecycleStatus' ? sortConfig.direction : null} />
+                </th>
+                <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.businessDomains', { defaultValue: 'Business Domains' })}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.modules', { defaultValue: 'Modules' })}</th>
+                <th className={tableHeadCellClass}>{t('superAdmin.bundles.columns.actions', { defaultValue: 'Actions' })}</th>
               </tr>
-            ) : (
-              bundles.map((bundle) => (
-                <tr key={bundle.id} className={tableRowClass}>
-                  <td className={`${tableCellClass} font-mono text-xs`}>{bundle.id}</td>
-                  <td className={`${tableCellClass} font-medium text-slate-950`}>{bundle.name}</td>
-                  <td className={tableCellClass}>
-                    <SuperAdminBadge tone={bundle.lifecycleStatus === 'ready' ? 'green' : 'amber'}>
-                      {bundle.lifecycleStatus || 'draft'}
-                    </SuperAdminBadge>
-                  </td>
-<td className={tableCellClass}>
-                    <div className="flex flex-wrap gap-1">
-                      {bundle.businessDomains?.map(domainId => {
-                        const domain = businessDomains.find(d => d.id === domainId);
-                        return (
-                          <SuperAdminBadge key={domainId} tone="slate">
-                            {domain?.name || domainId}
-                          </SuperAdminBadge>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td className={tableCellClass}>
-                    <div className="flex flex-wrap gap-1">
-                      {bundle.modulesIncluded?.map(m => (
-                        <SuperAdminBadge key={m} tone="blue">{m}</SuperAdminBadge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className={tableCellClass}>
-                    <button onClick={() => handleEdit(bundle)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
-                      {t('superAdmin.bundles.actions.edit', { defaultValue: 'Edit' })}
-                    </button>
-                    <button onClick={() => handleDelete(bundle.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
-                      {t('superAdmin.bundles.actions.delete', { defaultValue: 'Delete' })}
-                    </button>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredBundles.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <SuperAdminEmptyState 
+                      title={searchQuery ? "No bundles found matching search" : t('superAdmin.bundles.empty', { defaultValue: 'No bundles found. Create your first bundle to get started.' })} 
+                    />
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-      </SuperAdminTable>
+              ) : (
+                filteredBundles.map((bundle) => (
+                  <tr key={bundle.id} className={tableRowClass}>
+                    <td className={`${tableCellClass} font-mono text-xs`}>{bundle.id}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>{bundle.name}</td>
+                    <td className={tableCellClass}>
+                      <SuperAdminBadge tone={bundle.lifecycleStatus === 'ready' ? 'green' : 'amber'}>
+                        {bundle.lifecycleStatus || 'draft'}
+                      </SuperAdminBadge>
+                    </td>
+                    <td className={tableCellClass}>
+                      <div className="flex flex-wrap gap-1">
+                        {bundle.businessDomains?.map(domainId => {
+                          const domain = businessDomains.find(d => d.id === domainId);
+                          return (
+                            <SuperAdminBadge key={domainId} tone="slate">
+                              {domain?.name || domainId}
+                            </SuperAdminBadge>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td className={tableCellClass}>
+                      <div className="flex flex-wrap gap-1">
+                        {bundle.modulesIncluded?.map(m => (
+                          <SuperAdminBadge key={m} tone="blue">{m}</SuperAdminBadge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className={tableCellClass}>
+                      <button onClick={() => handleEdit(bundle)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
+                        {t('superAdmin.bundles.actions.edit', { defaultValue: 'Edit' })}
+                      </button>
+                      <button onClick={() => handleDelete(bundle.id)} className="text-sm font-medium text-red-600 hover:text-red-700">
+                        {t('superAdmin.bundles.actions.delete', { defaultValue: 'Delete' })}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+        </SuperAdminTable>
+      </div>
 
       {isModalOpen && (
         <SuperAdminModal

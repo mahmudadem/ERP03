@@ -24,6 +24,8 @@ const FIELD_TYPE_OPTIONS = [
   { value: 'CURRENCY_SELECT', i18nKey: 'currencySelect', label: 'Currency Select' },
   { value: 'account-selector', i18nKey: 'accountSelector', label: 'Account Selector' },
   { value: 'party-selector', i18nKey: 'partySelector', label: 'Party Selector' },
+  { value: 'customer-account-selector', i18nKey: 'customerAccountSelector', label: 'Customer + Account Selector' },
+  { value: 'vendor-account-selector', i18nKey: 'vendorAccountSelector', label: 'Vendor + Account Selector' },
   { value: 'item-selector', i18nKey: 'itemSelector', label: 'Item Selector' },
   { value: 'warehouse-selector', i18nKey: 'warehouseSelector', label: 'Warehouse Selector' },
   { value: 'currency-selector', i18nKey: 'currencySelector', label: 'Currency Selector' },
@@ -148,7 +150,7 @@ const SUPPORTED_FIELDS_BY_CODE: Record<string, { header: SuggestedField[]; line:
   sales_invoice: {
     header: [
       f('date', 'Invoice Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('customerId', 'Customer', 'party-selector', { required: true, fieldClass: 'system_core', relationTarget: 'customers' }),
+      f('customerId', 'Customer', 'customer-account-selector', { required: true, fieldClass: 'system_core', relationTarget: 'customers' }),
       f('salesOrderId', 'Sales Order', 'SELECT', { relationTarget: 'sales_orders' }),
       f('warehouseId', 'Default Warehouse', 'warehouse-selector', { relationTarget: 'warehouses' }),
       f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
@@ -224,7 +226,7 @@ const SUPPORTED_FIELDS_BY_CODE: Record<string, { header: SuggestedField[]; line:
   purchase_invoice: {
     header: [
       f('date', 'Invoice Date', 'DATE', { required: true, fieldClass: 'system_core' }),
-      f('supplierId', 'Supplier', 'party-selector', { required: true, fieldClass: 'system_core', relationTarget: 'vendors' }),
+      f('supplierId', 'Supplier', 'vendor-account-selector', { required: true, fieldClass: 'system_core', relationTarget: 'vendors' }),
       f('currency', 'Currency', 'CURRENCY_SELECT', { required: true, fieldClass: 'system_core' }),
       f('exchangeRate', 'Exchange Rate', 'NUMBER', { required: true, fieldClass: 'system_core', defaultValue: 1 }),
       f('totalAmount', 'Total Amount', 'NUMBER', { readOnly: true, computed: true, fieldClass: 'computed' }),

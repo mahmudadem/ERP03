@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalesSettings = void 0;
 class SalesSettings {
     constructor(props) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e;
         if (!((_a = props.companyId) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('SalesSettings companyId is required');
         if (!((_b = props.defaultRevenueAccountId) === null || _b === void 0 ? void 0 : _b.trim()))
@@ -21,7 +21,8 @@ class SalesSettings {
         this.overDeliveryTolerancePct = props.overDeliveryTolerancePct;
         this.overInvoiceTolerancePct = props.overInvoiceTolerancePct;
         this.defaultPaymentTermsDays = props.defaultPaymentTermsDays;
-        this.salesVoucherTypeId = props.salesVoucherTypeId;
+        this.governanceRules = (_d = props.governanceRules) !== null && _d !== void 0 ? _d : [];
+        this.defaultSalesInvoicePersona = (_e = props.defaultSalesInvoicePersona) !== null && _e !== void 0 ? _e : 'direct';
         this.defaultWarehouseId = props.defaultWarehouseId;
         this.soNumberPrefix = props.soNumberPrefix || 'SO';
         this.soNumberNextSeq = props.soNumberNextSeq || 1;
@@ -44,6 +45,8 @@ class SalesSettings {
             overDeliveryTolerancePct: 0,
             overInvoiceTolerancePct: 0,
             defaultPaymentTermsDays: 30,
+            governanceRules: [],
+            defaultSalesInvoicePersona: 'direct',
             soNumberPrefix: 'SO',
             soNumberNextSeq: 1,
             dnNumberPrefix: 'DN',
@@ -69,7 +72,8 @@ class SalesSettings {
             overDeliveryTolerancePct: this.overDeliveryTolerancePct,
             overInvoiceTolerancePct: this.overInvoiceTolerancePct,
             defaultPaymentTermsDays: this.defaultPaymentTermsDays,
-            salesVoucherTypeId: this.salesVoucherTypeId,
+            governanceRules: this.governanceRules,
+            defaultSalesInvoicePersona: this.defaultSalesInvoicePersona,
             defaultWarehouseId: this.defaultWarehouseId,
             soNumberPrefix: this.soNumberPrefix,
             soNumberNextSeq: this.soNumberNextSeq,
@@ -82,7 +86,7 @@ class SalesSettings {
         };
     }
     static fromJSON(data) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         return new SalesSettings({
             companyId: data.companyId,
             workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
@@ -97,16 +101,17 @@ class SalesSettings {
             overDeliveryTolerancePct: (_d = data.overDeliveryTolerancePct) !== null && _d !== void 0 ? _d : 0,
             overInvoiceTolerancePct: (_e = data.overInvoiceTolerancePct) !== null && _e !== void 0 ? _e : 0,
             defaultPaymentTermsDays: (_f = data.defaultPaymentTermsDays) !== null && _f !== void 0 ? _f : 30,
-            salesVoucherTypeId: data.salesVoucherTypeId,
+            governanceRules: (_g = data.governanceRules) !== null && _g !== void 0 ? _g : [],
+            defaultSalesInvoicePersona: (_h = data.defaultSalesInvoicePersona) !== null && _h !== void 0 ? _h : 'direct',
             defaultWarehouseId: data.defaultWarehouseId,
             soNumberPrefix: data.soNumberPrefix || 'SO',
-            soNumberNextSeq: (_g = data.soNumberNextSeq) !== null && _g !== void 0 ? _g : 1,
+            soNumberNextSeq: (_j = data.soNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
             dnNumberPrefix: data.dnNumberPrefix || 'DN',
-            dnNumberNextSeq: (_h = data.dnNumberNextSeq) !== null && _h !== void 0 ? _h : 1,
+            dnNumberNextSeq: (_k = data.dnNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
             siNumberPrefix: data.siNumberPrefix || 'SI',
-            siNumberNextSeq: (_j = data.siNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
+            siNumberNextSeq: (_l = data.siNumberNextSeq) !== null && _l !== void 0 ? _l : 1,
             srNumberPrefix: data.srNumberPrefix || 'SR',
-            srNumberNextSeq: (_k = data.srNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
+            srNumberNextSeq: (_m = data.srNumberNextSeq) !== null && _m !== void 0 ? _m : 1,
         });
     }
 }

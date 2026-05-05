@@ -32,10 +32,10 @@ export class ReceiptPaymentValidator extends DocumentValidator {
 
   private detectVoucherType(): 'receipt' | 'payment' {
     const code = (this.definition.code || '').toLowerCase();
-    const baseType = (this.definition.baseType || '').toLowerCase();
+    const formType = ((this.definition.formType || this.definition.baseType) || '').toLowerCase();
     const type = (this.formData?.type || '').toLowerCase();
     
-    if (code.includes('receipt') || baseType.includes('receipt') || type.includes('receipt')) {
+    if (code.includes('receipt') || formType.includes('receipt') || type.includes('receipt')) {
       return 'receipt';
     }
     return 'payment';

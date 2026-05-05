@@ -67,7 +67,7 @@ export interface VoucherRule {
 export interface AvailableField {
   id: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'cost-center-selector';
+  type?: 'text' | 'number' | 'date' | 'select' | 'table' | 'textarea' | 'system' | 'account-selector' | 'customer-account-selector' | 'vendor-account-selector' | 'cost-center-selector';
   sectionHint?: SectionType;
   category?: FieldCategory;  // core = mandatory, shared = optional, systemMetadata = auto-managed
   mandatory?: boolean;        // true for core fields
@@ -79,9 +79,17 @@ export interface AvailableField {
 // Table Column Configuration
 export interface TableColumnConfig {
   id: string;
+  fieldId?: string;
   labelOverride?: string;
   order?: number;
   width?: string; // e.g., '100px', '20%', 'auto'
+  type?: string;
+  required?: boolean;
+  mandatory?: boolean;
+  readOnly?: boolean;
+  calculated?: boolean;
+  autoManaged?: boolean;
+  options?: Array<{ value: string | number; label: string }>;
 }
 
 /**
@@ -126,7 +134,10 @@ export interface VoucherFormConfig {
   isDefault?: boolean;      // Is this a default form?
   isLocked?: boolean;        // Prevent editing core fields
   inUse?: boolean;          // Has transactions, can't delete
-  baseType?: string;         // Metadata for backend compatibility
+  formType?: string;          // Which form template was used (e.g., "sales_invoice_direct"). Replaces baseType.
+  voucherType?: string;       // Which accounting type processes this (e.g., "sales_invoice", "journal_entry")
+  persona?: string;           // Which validation rules apply (e.g., "direct", "linked", "service")
+  baseType?: string;          // @deprecated Use formType instead. Kept for backward compat.
   headerFields?: any[]; // For persistence mapping
   
   // Metadata for arbitrary storage

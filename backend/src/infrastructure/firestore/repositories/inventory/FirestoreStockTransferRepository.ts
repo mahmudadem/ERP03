@@ -31,9 +31,13 @@ export class FirestoreStockTransferRepository implements IStockTransferRepositor
     await this.collection(transfer.companyId).doc(transfer.id).set(StockTransferMapper.toPersistence(transfer));
   }
 
-  async updateTransfer(id: string, data: Partial<StockTransfer>): Promise<void> {
+  async updateTransfer(id: string, data: Partial<StockTransfer>, transaction?: unknown): Promise<void> {
     const ref = await this.resolveRefById(id);
     if (!ref) return;
+    if (transaction && typeof (transaction as any).update === 'function') {
+      (transaction as any).update(ref, data as any);
+      return;
+    }
     await ref.update(data as any);
   }
 

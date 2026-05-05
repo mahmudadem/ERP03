@@ -16,7 +16,8 @@ class SubledgerVoucherPostingService {
         this.validationService = validationService || new VoucherValidationService_1.VoucherValidationService();
     }
     async postInTransaction(input, transaction) {
-        const baseCurrency = ((await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
+        const baseCurrency = (input.baseCurrencyOverride
+            || (await this.companyCurrencyRepo.getBaseCurrency(input.companyId))
             || input.currency
             || 'USD').toUpperCase();
         const voucherCurrency = (input.currency || baseCurrency).toUpperCase();
@@ -39,7 +40,7 @@ class SubledgerVoucherPostingService {
         const draftApprovedVoucher = new VoucherEntity_1.VoucherEntity((0, crypto_1.randomUUID)(), input.companyId, input.voucherNo || `V-${Date.now()}`, input.voucherType, input.date, input.description || '', voucherCurrency, baseCurrency, effectiveExchangeRate, voucherLines, totalDebit, totalCredit, VoucherTypes_1.VoucherStatus.APPROVED, input.metadata || {}, input.createdBy, now, input.createdBy, now, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, input.reference || null);
         const postedVoucher = draftApprovedVoucher.post(input.createdBy, now, input.postingLockPolicy || VoucherTypes_1.PostingLockPolicy.FLEXIBLE_LOCKED);
         this.validationService.validateCore(postedVoucher);
-        if (this.accountRepo) {
+        if (!input.skipAccountValidation && this.accountRepo) {
             await this.validationService.validateAccounts(postedVoucher, this.accountRepo);
         }
         await this.ledgerRepo.recordForVoucher(postedVoucher, transaction);

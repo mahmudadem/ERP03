@@ -26,7 +26,7 @@ const makeExistingSettings = (): SalesSettings =>
     overDeliveryTolerancePct: 0,
     overInvoiceTolerancePct: 0,
     defaultPaymentTermsDays: 30,
-    salesVoucherTypeId: 'VT-SI',
+    governanceRules: [],
     defaultWarehouseId: 'wh-1',
     soNumberPrefix: 'SO',
     soNumberNextSeq: 1,
@@ -38,13 +38,13 @@ const makeExistingSettings = (): SalesSettings =>
     srNumberNextSeq: 1,
   });
 
-const makeSystemVoucherType = (code: 'sales_invoice' | 'sales_return'): VoucherTypeDefinition =>
+const makeSystemVoucherType = (code: string): VoucherTypeDefinition =>
   new VoucherTypeDefinition(
     code,
     'SYSTEM',
-    code === 'sales_invoice' ? 'Sales Invoice' : 'Sales Return',
+    code.includes('sales_invoice') ? 'Sales Invoice' : code === 'sales_order' ? 'Sales Order' : code === 'delivery_note' ? 'Delivery Note' : 'Sales Return',
     code,
-    'ACCOUNTING',
+    'SALES',
     [
       {
         id: 'date',
@@ -67,11 +67,11 @@ const makeSystemVoucherType = (code: 'sales_invoice' | 'sales_return'): VoucherT
     2
   );
 
-const makeSystemVoucherForm = (code: 'sales_invoice' | 'sales_return'): VoucherFormDefinition => ({
+const makeSystemVoucherForm = (code: string): VoucherFormDefinition => ({
   id: code,
   companyId: 'SYSTEM',
   typeId: code,
-  name: code === 'sales_invoice' ? 'Sales Invoice' : 'Sales Return',
+  name: code.includes('sales_invoice') ? 'Sales Invoice' : code === 'sales_order' ? 'Sales Order' : code === 'delivery_note' ? 'Delivery Note' : 'Sales Return',
   code,
   isDefault: true,
   isSystemGenerated: true,
@@ -106,11 +106,10 @@ const makeVoucherTypeRepo = (seed: VoucherTypeDefinition[] = []) => {
       getVoucherTypesForModule: jest.fn(),
       getByCompanyId: jest.fn(async (companyId: string) => store.filter((entry) => entry.companyId === companyId)),
       getByCode: jest.fn(async (companyId: string, code: string) => {
-        return (
-          store.find((entry) => entry.companyId === companyId && entry.code === code)
-          || store.find((entry) => entry.companyId === 'SYSTEM' && entry.code === code)
-          || null
-        );
+        if (companyId === 'SYSTEM') {
+          return store.find((entry) => entry.companyId === 'SYSTEM' && entry.code === code) || null;
+        }
+        return store.find((entry) => entry.companyId === companyId && entry.code === code) || null;
       }),
       updateLayout: jest.fn(),
       getSystemTemplates: jest.fn(async () => store.filter((entry) => entry.companyId === 'SYSTEM')),
@@ -151,13 +150,26 @@ describe('Sales settings use-cases', () => {
     const storedSettings: { current: SalesSettings | null } = { current: null };
     const moduleState: { current: any } = { current: null };
     const typeRepo = makeVoucherTypeRepo([
-      makeSystemVoucherType('sales_invoice'),
+      makeSystemVoucherType('sales_order'),
+      makeSystemVoucherType('sales_invoice_direct'),
+      makeSystemVoucherType('sales_invoice_linked'),
+      makeSystemVoucherType('sales_invoice_service'),
+      makeSystemVoucherType('delivery_note'),
       makeSystemVoucherType('sales_return'),
     ]);
     const formRepo = makeVoucherFormRepo([
-      makeSystemVoucherForm('sales_invoice'),
+      makeSystemVoucherForm('sales_order'),
+      makeSystemVoucherForm('sales_invoice_direct'),
+      makeSystemVoucherForm('sales_invoice_linked'),
+      makeSystemVoucherForm('sales_invoice_service'),
+      makeSystemVoucherForm('delivery_note'),
       makeSystemVoucherForm('sales_return'),
     ]);
+
+    // Verify system templates are seeded correctly
+    const systemTemplates = await typeRepo.repo.getSystemTemplates();
+    expect(systemTemplates).toHaveLength(6);
+    expect(systemTemplates.every(t => t.companyId === 'SYSTEM')).toBe(true);
 
     const useCase = new InitializeSalesUseCase(
       {
@@ -193,17 +205,21 @@ describe('Sales settings use-cases', () => {
     const companyTypes = typeRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
     const companyForms = formRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
 
-    expect(companyTypes).toHaveLength(4);
+    expect(companyTypes).toHaveLength(6);
     expect(companyTypes.map((entry) => entry.code).sort()).toEqual([
       'delivery_note',
-      'sales_invoice',
+      'sales_invoice_direct',
+      'sales_invoice_linked',
+      'sales_invoice_service',
       'sales_order',
       'sales_return',
     ]);
-    expect(companyForms).toHaveLength(4);
+    expect(companyForms).toHaveLength(6);
     expect(companyForms.map((entry) => entry.code).sort()).toEqual([
       'delivery_note',
-      'sales_invoice',
+      'sales_invoice_direct',
+      'sales_invoice_linked',
+      'sales_invoice_service',
       'sales_order',
       'sales_return',
     ]);
@@ -212,37 +228,19 @@ describe('Sales settings use-cases', () => {
     expect(storedSettings.current?.companyId).toBe(COMPANY_ID);
   });
 
-  it('get settings backfills sales voucher types and forms even when system templates are absent', async () => {
+  it('get settings returns existing settings without backfilling', async () => {
     const existingSettings = makeExistingSettings();
-    const typeRepo = makeVoucherTypeRepo();
-    const formRepo = makeVoucherFormRepo();
 
     const useCase = new GetSalesSettingsUseCase(
       {
         getSettings: jest.fn(async () => existingSettings),
       } as any,
-      typeRepo.repo as any,
-      formRepo.repo as any
+      {} as any,
+      {} as any
     );
 
     const result = await useCase.execute(COMPANY_ID);
-    const companyTypes = typeRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
-    const companyForms = formRepo.store.filter((entry) => entry.companyId === COMPANY_ID);
 
     expect(result).toBe(existingSettings);
-    expect(companyTypes).toHaveLength(4);
-    expect(companyForms).toHaveLength(4);
-    expect(companyTypes.map((entry) => entry.code).sort()).toEqual([
-      'delivery_note',
-      'sales_invoice',
-      'sales_order',
-      'sales_return',
-    ]);
-    expect(companyForms.map((entry) => entry.code).sort()).toEqual([
-      'delivery_note',
-      'sales_invoice',
-      'sales_order',
-      'sales_return',
-    ]);
   });
 });

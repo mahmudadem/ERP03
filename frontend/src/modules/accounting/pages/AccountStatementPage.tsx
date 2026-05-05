@@ -284,7 +284,7 @@ const AccountStatementReportContent: React.FC<{
 
     const getJournalFallbackForm = () =>
       voucherTypes.find((type) => {
-        const baseType = normalize((type as any)?.baseType);
+        const baseType = normalize((type as any)?.formType || (type as any)?.baseType);
         const code = normalize(type?.code);
         const id = normalize(type?.id);
         const name = normalize(type?.name);
@@ -308,7 +308,7 @@ const AccountStatementReportContent: React.FC<{
       formDefinition = voucherTypes.find((type) => {
         const code = normalize(type.code);
         const id = normalize(type.id);
-        const baseType = normalize((type as any)?.baseType);
+        const baseType = normalize((type as any)?.formType || (type as any)?.baseType);
         return candidateTypes.some((candidate) => candidate === code || candidate === id || candidate === baseType);
       });
 

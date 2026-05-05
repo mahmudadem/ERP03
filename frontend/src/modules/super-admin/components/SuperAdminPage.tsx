@@ -2,6 +2,8 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { AlertCircle, Database, Loader2 } from 'lucide-react';
 
+export type SortDirection = 'asc' | 'desc' | null;
+
 export const SuperAdminPage: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
   <div className={clsx('mx-auto flex w-full max-w-[1500px] flex-col gap-[var(--sa-page-gap)] px-[var(--sa-page-x)] py-[var(--sa-page-y)]', className)}>
     {children}
@@ -61,8 +63,41 @@ export const SuperAdminTable: React.FC<{ children: React.ReactNode; className?: 
 );
 
 export const tableHeadCellClass = 'px-4 py-[var(--sa-row-y)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]';
+export const tableSortHeaderClass = 'cursor-pointer select-none hover:text-[var(--sa-text)] hover:bg-[var(--sa-surface-muted)] transition-colors';
 export const tableCellClass = 'px-4 py-[var(--sa-row-y)] align-middle text-[var(--sa-text)]';
 export const tableRowClass = 'border-b border-[var(--sa-border)] last:border-0 hover:bg-[var(--sa-surface-muted)]';
+
+export const SuperAdminSearchInput: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}> = ({ value, onChange, placeholder, className }) => (
+  <div className={clsx('relative max-w-sm', className)}>
+    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+      <svg className="h-4 w-4 text-[var(--sa-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </div>
+    <input
+      type="text"
+      className="block w-full rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface)] py-2 pl-10 pr-3 text-sm placeholder:text-[var(--sa-muted)] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm transition-all"
+      placeholder={placeholder || 'Search...'}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+    {value && (
+      <button
+        onClick={() => onChange('')}
+        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--sa-muted)] hover:text-[var(--sa-text)]"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    )}
+  </div>
+);
 
 export const SuperAdminEmptyState: React.FC<{ title: React.ReactNode; description?: React.ReactNode }> = ({ title, description }) => (
   <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
@@ -98,6 +133,11 @@ export const SuperAdminBadge: React.FC<{ children: React.ReactNode; tone?: 'slat
       {children}
     </span>
   );
+};
+
+export const SortIcon: React.FC<{ direction: SortDirection }> = ({ direction }) => {
+  if (!direction) return <span className="ml-1 opacity-20">↕</span>;
+  return <span className="ml-1 text-indigo-600">{direction === 'asc' ? '↑' : '↓'}</span>;
 };
 
 export const SuperAdminModal: React.FC<{

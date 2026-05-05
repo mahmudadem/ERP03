@@ -2,7 +2,16 @@ import { GoodsReceipt, GoodsReceiptLine } from '../../domain/purchases/entities/
 import { PurchaseOrder, PurchaseOrderLine } from '../../domain/purchases/entities/PurchaseOrder';
 import { PurchaseInvoice, PurchaseInvoiceLine } from '../../domain/purchases/entities/PurchaseInvoice';
 import { PurchaseReturn, PurchaseReturnLine } from '../../domain/purchases/entities/PurchaseReturn';
-import { PurchaseSettings } from '../../domain/purchases/entities/PurchaseSettings';
+import { PurchaseSettings, GovernanceRule } from '../../domain/purchases/entities/PurchaseSettings';
+
+export interface GovernanceRuleDTO {
+  id: string;
+  scope: 'company' | 'branch' | 'form';
+  action: 'allow' | 'block';
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
+}
 
 export interface PurchaseSettingsDTO {
   companyId: string;
@@ -26,6 +35,9 @@ export interface PurchaseSettingsDTO {
   piNumberNextSeq: number;
   prNumberPrefix: string;
   prNumberNextSeq: number;
+  exchangeGainLossAccountId?: string;
+  governanceRules: GovernanceRuleDTO[];
+  defaultPurchaseInvoicePersona: 'direct' | 'linked' | 'service';
 }
 
 export interface PurchaseOrderLineDTO {
@@ -151,6 +163,10 @@ export interface PurchaseInvoiceDTO {
   companyId: string;
   invoiceNumber: string;
   vendorInvoiceNumber?: string;
+  formType: string;
+  voucherType: string;
+  persona: string;
+  source?: string;
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
@@ -274,6 +290,16 @@ export class PurchaseDTOMapper {
       piNumberNextSeq: settings.piNumberNextSeq,
       prNumberPrefix: settings.prNumberPrefix,
       prNumberNextSeq: settings.prNumberNextSeq,
+      exchangeGainLossAccountId: settings.exchangeGainLossAccountId,
+      governanceRules: (settings.governanceRules || []).map(rule => ({
+        id: rule.id,
+        scope: rule.scope,
+        action: rule.action,
+        persona: rule.persona,
+        branchId: rule.branchId,
+        formType: rule.formType,
+      })),
+      defaultPurchaseInvoicePersona: settings.defaultPurchaseInvoicePersona,
     };
   }
 
@@ -411,6 +437,10 @@ export class PurchaseDTOMapper {
       companyId: pi.companyId,
       invoiceNumber: pi.invoiceNumber,
       vendorInvoiceNumber: pi.vendorInvoiceNumber,
+      formType: pi.formType,
+      voucherType: pi.voucherType,
+      persona: pi.persona,
+      source: pi.source,
       purchaseOrderId: pi.purchaseOrderId,
       vendorId: pi.vendorId,
       vendorName: pi.vendorName,

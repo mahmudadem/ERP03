@@ -45,7 +45,10 @@ export interface VoucherFormDefinition {
   isMultiLine?: boolean;         // Does this voucher support line items?
   tableStyle?: 'web' | 'classic'; // Line items table style
   defaultCurrency?: string;      // Default currency
-  baseType?: string;             // Base voucher type for backend compatibility
+  formType?: string;             // Which form template (e.g., "sales_invoice_direct"). Falls back to baseType.
+  voucherType?: string;          // Which accounting type (e.g., "sales_invoice", "journal_entry")
+  persona?: string;              // Which validation rules (e.g., "direct", "linked", "service")
+  baseType?: string;             // @deprecated Use formType instead. Kept for backward compat.
   sidebarGroup?: string;         // Sidebar submenu group (e.g., "Vouchers", "Documents"). Null = top-level.
   
   // Timestamps
@@ -68,8 +71,14 @@ export interface FormField {
 export interface TableColumn {
   id: string;
   label: string;
-  type: 'account' | 'text' | 'number' | 'currency' | 'select';
+  fieldId?: string;
+  type: 'account' | 'text' | 'number' | 'currency' | 'select' | string;
   required?: boolean;
+  mandatory?: boolean;
+  readOnly?: boolean;
+  calculated?: boolean;
+  autoManaged?: boolean;
+  options?: { value: string | number; label: string }[];
   width?: string;
   order: number;
 }

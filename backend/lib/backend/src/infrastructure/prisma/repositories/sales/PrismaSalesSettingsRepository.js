@@ -14,8 +14,9 @@ class PrismaSalesSettingsRepository {
             return null;
         return SalesSettings_1.SalesSettings.fromJSON(record.settings);
     }
-    async saveSettings(settings) {
-        await this.prisma.salesSettings.upsert({
+    async saveSettings(settings, transaction) {
+        const tx = transaction || this.prisma;
+        await tx.salesSettings.upsert({
             where: { companyId: settings.companyId },
             create: {
                 companyId: settings.companyId,

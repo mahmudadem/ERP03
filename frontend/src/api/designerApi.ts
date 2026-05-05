@@ -14,6 +14,15 @@ export const designerApi = {
 
   listVoucherTypes: (): Promise<{id: string, code: string, name: string}[]> => {
     return client.get('/tenant/accounting/designer/voucher-types');
+  },
+
+  adoptTemplate: (companyId: string, userId: string, templateId: string, module: string): Promise<{ formId: string; voucherTypeId: string }> => {
+    return client.post('/tenant/accounting/designer/adopt-template', {
+      companyId,
+      userId,
+      templateId,
+      module
+    });
   }
 };
 

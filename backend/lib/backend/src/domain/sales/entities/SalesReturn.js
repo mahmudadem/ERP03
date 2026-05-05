@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SalesReturn = void 0;
 const SR_STATUSES = ['DRAFT', 'POSTED', 'CANCELLED'];
-const RETURN_CONTEXTS = ['AFTER_INVOICE', 'BEFORE_INVOICE'];
+const RETURN_CONTEXTS = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 const toDate = (value) => {
     if (!value)

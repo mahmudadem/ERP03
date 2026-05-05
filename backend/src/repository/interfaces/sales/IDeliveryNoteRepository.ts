@@ -1,4 +1,4 @@
-﻿import { DNStatus, DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
+import { DNStatus, DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
 
 export interface DeliveryNoteListOptions {
   salesOrderId?: string;
@@ -12,4 +12,5 @@ export interface IDeliveryNoteRepository {
   getById(companyId: string, id: string): Promise<DeliveryNote | null>;
   getByNumber(companyId: string, dnNumber: string): Promise<DeliveryNote | null>;
   list(companyId: string, opts?: DeliveryNoteListOptions): Promise<DeliveryNote[]>;
+  hasUnpostedDeliveryNotes(companyId: string): Promise<boolean>;
 }

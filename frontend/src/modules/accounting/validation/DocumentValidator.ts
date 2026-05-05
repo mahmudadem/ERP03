@@ -303,13 +303,20 @@ export abstract class DocumentValidator {
   protected calculateTotal(): number {
     const lines = this.getLines();
     return lines.reduce((sum, l) => {
-      const val =
+      const directVal =
         Number(l.amount) ||
         Number(l.total) ||
         Number(l.lineTotal) ||
         Number(l.lineTotalDoc) ||
         Number(l.rowTotal) ||
         0;
+      const computedVal =
+        directVal > 0
+          ? directVal
+          : (Number(l.quantity) > 0 && Number(l.unitPrice) > 0
+              ? Number(l.quantity) * Number(l.unitPrice)
+              : 0);
+      const val = computedVal;
       return sum + val;
     }, 0);
   }

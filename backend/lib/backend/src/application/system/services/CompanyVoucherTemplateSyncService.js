@@ -37,7 +37,7 @@ const toFormColumnType = (type) => {
 };
 const cloneVoucherTypeForCompany = (companyId, template) => {
     var _a;
-    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneValue(template.headerFields) || [], cloneValue(template.tableColumns) || [], cloneValue(template.layout) || {}, template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneValue(template.workflow), cloneValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneValue(template.rules) || [], cloneValue(template.actions) || [], template.defaultCurrency);
+    return new VoucherTypeDefinition_1.VoucherTypeDefinition((0, crypto_1.randomUUID)(), companyId, template.name, template.code, template.module, cloneValue(template.headerFields) || [], cloneValue(template.tableColumns) || [], cloneValue(template.layout) || {}, template.schemaVersion || 2, template.requiredPostingRoles ? [...template.requiredPostingRoles] : undefined, cloneValue(template.workflow), cloneValue(template.uiModeOverrides), (_a = template.isMultiLine) !== null && _a !== void 0 ? _a : true, cloneValue(template.rules) || [], cloneValue(template.actions) || [], template.defaultCurrency, template.voucherType || template.code, template.persona || undefined);
 };
 const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
     var _a, _b;
@@ -72,6 +72,24 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
         if (column.width !== undefined && column.width !== null && String(column.width).trim() !== '') {
             mapped.width = String(column.width);
         }
+        if (Array.isArray(column.options)) {
+            mapped.options = cloneValue(column.options);
+        }
+        if (column.readOnly !== undefined) {
+            mapped.readOnly = column.readOnly;
+        }
+        if (column.calculated !== undefined) {
+            mapped.calculated = column.calculated;
+        }
+        if (column.autoManaged !== undefined) {
+            mapped.autoManaged = column.autoManaged;
+        }
+        if (column.mandatory !== undefined) {
+            mapped.mandatory = column.mandatory;
+        }
+        if (column.fieldId || column.id) {
+            mapped.fieldId = column.fieldId || column.id;
+        }
         return mapped;
     });
     return {
@@ -96,6 +114,9 @@ const cloneVoucherFormForCompany = (companyId, typeId, createdBy, template) => {
         isMultiLine: (_b = template.isMultiLine) !== null && _b !== void 0 ? _b : true,
         tableStyle: 'web',
         defaultCurrency: template.defaultCurrency,
+        formType: template.code,
+        voucherType: template.voucherType || template.code,
+        persona: template.persona || undefined,
         baseType: template.code,
         createdAt: now,
         updatedAt: now,
@@ -110,7 +131,7 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
     var _a;
     const moduleSet = new Set((input.modules || []).map(normalizeModule).filter(Boolean));
     if (moduleSet.size === 0) {
-        return { templatesUpserted: 0, formsCreated: 0 };
+        return { templatesUpserted: 0, formsCreated: 0, formsUpdated: 0 };
     }
     const systemTemplates = await input.voucherTypeRepo.getSystemTemplates();
     const scopedTemplates = systemTemplates.filter((template) => moduleSet.has(normalizeModule(template.module)));
@@ -121,12 +142,17 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
     }
     let templatesUpserted = 0;
     let formsCreated = 0;
+    let formsUpdated = 0;
     const companyTypes = await input.voucherTypeRepo.getByCompanyId(input.companyId);
     const companyForms = await input.voucherFormRepo.getAllByCompany(input.companyId);
     const existingByKey = new Map();
-    const existingDefaultFormKeys = new Set(companyForms
-        .filter(VoucherFormDeduper_1.isSystemDefaultVoucherForm)
-        .map(VoucherFormDeduper_1.getVoucherFormLogicalKey));
+    const existingDefaultFormsByKey = new Map();
+    for (const form of companyForms.filter(VoucherFormDeduper_1.isSystemDefaultVoucherForm)) {
+        const key = (0, VoucherFormDeduper_1.getVoucherFormLogicalKey)(form);
+        if (!existingDefaultFormsByKey.has(key)) {
+            existingDefaultFormsByKey.set(key, form);
+        }
+    }
     for (const existingType of companyTypes) {
         if (existingType.companyId !== input.companyId)
             continue;
@@ -155,6 +181,8 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
                 rules: cloneValue(template.rules) || [],
                 actions: cloneValue(template.actions) || [],
                 defaultCurrency: template.defaultCurrency,
+                voucherType: template.voucherType || template.code,
+                persona: template.persona || null,
             });
             companyTypeId = existing.id;
         }
@@ -167,14 +195,20 @@ const syncCompanyVoucherTemplatesFromSystem = async (input) => {
         templatesUpserted++;
         const formKey = `${normalizeModule(template.module)}::${normalizeCode(template.code)}`;
         const existingForms = await input.voucherFormRepo.getByTypeId(input.companyId, companyTypeId);
-        if (existingForms.length === 0 && !existingDefaultFormKeys.has(formKey)) {
+        const existingDefaultForm = existingDefaultFormsByKey.get(formKey);
+        if (existingDefaultForm === null || existingDefaultForm === void 0 ? void 0 : existingDefaultForm.id) {
+            const refreshedForm = cloneVoucherFormForCompany(input.companyId, companyTypeId, existingDefaultForm.createdBy || input.createdBy || 'SYSTEM', template);
+            await input.voucherFormRepo.update(input.companyId, existingDefaultForm.id, Object.assign(Object.assign({}, refreshedForm), { id: existingDefaultForm.id, typeId: companyTypeId, createdAt: existingDefaultForm.createdAt, createdBy: existingDefaultForm.createdBy || refreshedForm.createdBy }));
+            formsUpdated++;
+        }
+        else if (existingForms.length === 0) {
             const defaultForm = cloneVoucherFormForCompany(input.companyId, companyTypeId, input.createdBy || 'SYSTEM', template);
             await input.voucherFormRepo.create(defaultForm);
-            existingDefaultFormKeys.add(formKey);
+            existingDefaultFormsByKey.set(formKey, defaultForm);
             formsCreated++;
         }
     }
-    return { templatesUpserted, formsCreated };
+    return { templatesUpserted, formsCreated, formsUpdated };
 };
 exports.syncCompanyVoucherTemplatesFromSystem = syncCompanyVoucherTemplatesFromSystem;
 //# sourceMappingURL=CompanyVoucherTemplateSyncService.js.map

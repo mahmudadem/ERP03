@@ -5,18 +5,23 @@ import { VoucherTypeDefinition } from '../../../designer-engine/types/VoucherTyp
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Edit3, Plus, Trash2 } from 'lucide-react';
+import { clsx } from 'clsx';
 import {
   SuperAdminBadge,
   SuperAdminEmptyState,
   SuperAdminHeader,
   SuperAdminLoading,
   SuperAdminPage,
+  SuperAdminSearchInput,
   SuperAdminStatCard,
   SuperAdminTable,
   tableCellClass,
   tableHeadCellClass,
   tableRowClass,
+  tableSortHeaderClass,
+  SortIcon,
 } from '../../../modules/super-admin/components/SuperAdminPage';
+import { useSuperAdminTable } from '../../../modules/super-admin/hooks/useSuperAdminTable';
 
 export const SuperAdminVoucherTemplatesPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -28,6 +33,18 @@ export const SuperAdminVoucherTemplatesPage: React.FC = () => {
   useEffect(() => {
     loadTemplates();
   }, []);
+
+  const {
+    data: filteredTemplates,
+    searchQuery,
+    setSearchQuery,
+    sortConfig,
+    handleSort,
+  } = useSuperAdminTable({
+    data: templates,
+    searchFields: ['name', 'code', 'module'],
+    initialSort: { field: 'name', direction: 'asc' },
+  });
 
   const loadTemplates = async () => {
     try {
@@ -87,51 +104,81 @@ export const SuperAdminVoucherTemplatesPage: React.FC = () => {
       {loading ? (
         <SuperAdminLoading label={t('superAdmin.voucherTemplates.loading')} />
       ) : (
-        <SuperAdminTable>
-            <thead className="bg-slate-50">
-              <tr>
-                <th className={tableHeadCellClass}>{t('superAdmin.voucherTemplates.columns.name')}</th>
-                <th className={tableHeadCellClass}>{t('superAdmin.voucherTemplates.columns.code')}</th>
-                <th className={tableHeadCellClass}>{t('superAdmin.voucherTemplates.columns.module')}</th>
-                <th className={`${tableHeadCellClass} text-right`}>{t('superAdmin.voucherTemplates.columns.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {templates.map((template) => (
-                <tr key={template.id} className={tableRowClass}>
-                  <td className={`${tableCellClass} font-medium text-slate-950`}>{template.name}</td>
-                  <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{template.code}</td>
-                  <td className={tableCellClass}><SuperAdminBadge tone="blue">{template.module}</SuperAdminBadge></td>
-                  <td className={`${tableCellClass} text-right`}>
-                    <button 
-                      onClick={() => template.id && navigate(template.id)}
-                      className="mr-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                      {t('superAdmin.voucherTemplates.actions.edit')}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template)}
-                      disabled={deletingId === template.id}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      {deletingId === template.id
-                        ? t('superAdmin.voucherTemplates.actions.deleting', { defaultValue: 'Deleting...' })
-                        : t('superAdmin.voucherTemplates.actions.delete', { defaultValue: 'Delete' })}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {templates.length === 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <SuperAdminSearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search templates..."
+            />
+          </div>
+
+          <SuperAdminTable>
+              <thead className="bg-slate-50">
                 <tr>
-                  <td colSpan={4}>
-                    <SuperAdminEmptyState title={t('superAdmin.voucherTemplates.empty')} />
-                  </td>
+                  <th 
+                    className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                    onClick={() => handleSort('name')}
+                  >
+                    {t('superAdmin.voucherTemplates.columns.name')}
+                    <SortIcon direction={sortConfig.field === 'name' ? sortConfig.direction : null} />
+                  </th>
+                  <th 
+                    className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                    onClick={() => handleSort('code')}
+                  >
+                    {t('superAdmin.voucherTemplates.columns.code')}
+                    <SortIcon direction={sortConfig.field === 'code' ? sortConfig.direction : null} />
+                  </th>
+                  <th 
+                    className={clsx(tableHeadCellClass, tableSortHeaderClass)}
+                    onClick={() => handleSort('module')}
+                  >
+                    {t('superAdmin.voucherTemplates.columns.module')}
+                    <SortIcon direction={sortConfig.field === 'module' ? sortConfig.direction : null} />
+                  </th>
+                  <th className={`${tableHeadCellClass} text-right`}>{t('superAdmin.voucherTemplates.columns.actions')}</th>
                 </tr>
-              )}
-            </tbody>
-        </SuperAdminTable>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {filteredTemplates.map((template) => (
+                  <tr key={template.id} className={tableRowClass}>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>{template.name}</td>
+                    <td className={`${tableCellClass} font-mono text-xs text-slate-600`}>{template.code}</td>
+                    <td className={tableCellClass}><SuperAdminBadge tone="blue">{template.module}</SuperAdminBadge></td>
+                    <td className={`${tableCellClass} text-right`}>
+                      <button 
+                        onClick={() => template.id && navigate(template.id)}
+                        className="mr-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        {t('superAdmin.voucherTemplates.actions.edit')}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template)}
+                        disabled={deletingId === template.id}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deletingId === template.id
+                          ? t('superAdmin.voucherTemplates.actions.deleting', { defaultValue: 'Deleting...' })
+                          : t('superAdmin.voucherTemplates.actions.delete', { defaultValue: 'Delete' })}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredTemplates.length === 0 && (
+                  <tr>
+                    <td colSpan={4}>
+                      <SuperAdminEmptyState 
+                        title={searchQuery ? "No templates found matching your search" : t('superAdmin.voucherTemplates.empty')} 
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+          </SuperAdminTable>
+        </div>
       )}
     </SuperAdminPage>
   );

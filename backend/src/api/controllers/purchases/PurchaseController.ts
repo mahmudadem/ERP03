@@ -18,11 +18,13 @@ import {
 } from '../../../application/purchases/use-cases/PurchaseOrderUseCases';
 import {
   CreatePurchaseInvoiceUseCase,
+  CreateAndPostPurchaseInvoiceUseCase,
   GetPurchaseInvoiceUseCase,
   ListPurchaseInvoicesUseCase,
   PostPurchaseInvoiceUseCase,
   UnpostPurchaseInvoiceUseCase,
   UpdatePurchaseInvoiceUseCase,
+  UpdateAndPostPurchaseInvoiceUseCase,
 } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import {
   CreatePurchaseReturnUseCase,
@@ -38,7 +40,10 @@ import {
   InitializePurchasesUseCase,
   UpdatePurchaseSettingsUseCase,
 } from '../../../application/purchases/use-cases/PurchaseSettingsUseCases';
-import { UpdateInvoicePaymentStatusUseCase } from '../../../application/purchases/use-cases/PaymentSyncUseCases';
+import {
+  RecordPurchaseInvoicePaymentUseCase,
+  UpdateInvoicePaymentStatusUseCase,
+} from '../../../application/purchases/use-cases/PaymentSyncUseCases';
 import { PurchasesInventoryService } from '../../../application/inventory/services/PurchasesInventoryService';
 import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { GRNStatus } from '../../../domain/purchases/entities/GoodsReceipt';
@@ -59,6 +64,7 @@ import {
   validateListPurchaseInvoicesQuery,
   validateListPurchaseOrdersQuery,
   validateListPurchaseReturnsQuery,
+  validateRecordPurchaseInvoicePaymentInput,
   validateUpdateInvoicePaymentStatusInput,
   validateUpdatePurchaseInvoiceInput,
   validateUpdatePurchaseOrderInput,
@@ -221,6 +227,8 @@ export class PurchaseController {
         diContainer.accountRepository,
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
+        diContainer.purchaseOrderRepository,
+        diContainer.goodsReceiptRepository,
         diContainer.inventorySettingsRepository
       );
 
@@ -490,6 +498,7 @@ export class PurchaseController {
         inventoryService,
         diContainer.companyModuleRepository,
         PurchaseController.buildAccountingPostingService(),
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 
@@ -648,10 +657,15 @@ export class PurchaseController {
         diContainer.companyModuleRepository,
         accountingPostingService,
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        diContainer.paymentHistoryRepository,
+        diContainer.voucherRepository,
+        diContainer.voucherSequenceRepository,
+        diContainer.ledgerRepository
       );
 
-      const pi = await useCase.execute(companyId, id);
+      const settlementInput = (req as any).body?.settlementInput;
+      const pi = await useCase.execute(companyId, id, true, settlementInput);
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
@@ -659,6 +673,108 @@ export class PurchaseController {
     } catch (error) {
       next(error);
     }
+  }
+
+  static async createAndPostPI(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateCreatePurchaseInvoiceInput((req as any).body);
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+
+      const createUseCase = new CreatePurchaseInvoiceUseCase(
+        diContainer.purchaseSettingsRepository,
+        diContainer.purchaseInvoiceRepository,
+        diContainer.purchaseOrderRepository,
+        diContainer.partyRepository,
+        diContainer.itemRepository,
+        diContainer.taxCodeRepository,
+        diContainer.companyCurrencyRepository
+      );
+
+      const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
+
+      const useCase = new CreateAndPostPurchaseInvoiceUseCase(
+        createUseCase,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const pi = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        createdBy: userId,
+      }, settlementInput);
+
+      (res as any).status(201).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateAndPostPI(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdatePurchaseInvoiceInput((req as any).body);
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const updateUseCase = new UpdatePurchaseInvoiceUseCase(
+        diContainer.purchaseInvoiceRepository,
+        diContainer.partyRepository
+      );
+
+      const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
+
+      const useCase = new UpdateAndPostPurchaseInvoiceUseCase(
+        updateUseCase,
+        postUseCase
+      );
+
+      const settlementInput = (req as any).body?.settlementInput;
+      const pi = await useCase.execute({
+        ...((req as any).body || {}),
+        id,
+        companyId,
+      }, settlementInput);
+
+      (res as any).json({
+        success: true,
+        data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  private static buildPostPurchaseInvoiceUseCase(): PostPurchaseInvoiceUseCase {
+    const inventoryService = PurchaseController.buildPurchasesInventoryService();
+    const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
+
+    return new PostPurchaseInvoiceUseCase(
+      diContainer.purchaseSettingsRepository,
+      diContainer.inventorySettingsRepository,
+      diContainer.purchaseInvoiceRepository,
+      diContainer.purchaseOrderRepository,
+      diContainer.partyRepository,
+      diContainer.taxCodeRepository,
+      diContainer.itemRepository,
+      diContainer.itemCategoryRepository,
+      diContainer.warehouseRepository,
+      diContainer.uomConversionRepository,
+      diContainer.companyCurrencyRepository,
+      diContainer.exchangeRateRepository,
+      inventoryService,
+      diContainer.companyModuleRepository,
+      accountingPostingService,
+      diContainer.accountRepository,
+      diContainer.transactionManager,
+      diContainer.paymentHistoryRepository,
+      diContainer.voucherRepository,
+      diContainer.voucherSequenceRepository,
+      diContainer.ledgerRepository
+    );
   }
 
   static async unpostPI(req: Request, res: Response, next: NextFunction) {
@@ -701,6 +817,71 @@ export class PurchaseController {
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toPurchaseInvoiceDTO(invoice),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async recordPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateRecordPurchaseInvoicePaymentInput((req as any).body);
+      const companyId = PurchaseController.getCompanyId(req);
+      const userId = PurchaseController.getUserId(req);
+      const id = String((req as any).params.id);
+      const body = (req as any).body || {};
+
+      const useCase = new RecordPurchaseInvoicePaymentUseCase(
+        diContainer.purchaseInvoiceRepository,
+        diContainer.paymentHistoryRepository,
+        diContainer.purchaseSettingsRepository,
+        diContainer.voucherRepository,
+        diContainer.voucherSequenceRepository,
+        diContainer.ledgerRepository,
+        diContainer.companyCurrencyRepository,
+        diContainer.transactionManager
+      );
+      const result = await useCase.execute(companyId, userId, id, {
+        settlementMode: body.settlementMode || 'CASH_FULL',
+        receivablePayableAccountId: body.receivablePayableAccountId || body.apAccountId,
+        settlements: [{
+          settlementAccountId: body.settlementAccountId || body.cashAccountId,
+          amountBase: Number(body.paymentAmountBase),
+          paymentMethod: body.paymentMethod,
+          reference: body.reference,
+          notes: body.notes,
+          paymentDate: body.paymentDate,
+        }],
+      });
+
+      (res as any).json({
+        success: true,
+        data: {
+          invoice: PurchaseDTOMapper.toPurchaseInvoiceDTO(result.invoice),
+          payments: result.payments.map(p => p.toJSON()),
+          voucherIds: result.voucherIds,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPaymentHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+
+      const invoice = await diContainer.purchaseInvoiceRepository.getById(companyId, id);
+      if (!invoice) {
+        return (res as any).status(404).json({ success: false, error: 'Purchase invoice not found' });
+      }
+
+      const payments = await diContainer.paymentHistoryRepository.getBySource(companyId, 'PURCHASE_INVOICE', id);
+
+      (res as any).json({
+        success: true,
+        data: payments.map((p) => p.toJSON()),
       });
     } catch (error) {
       next(error);
@@ -828,11 +1009,13 @@ export class PurchaseController {
         diContainer.partyRepository,
         diContainer.taxCodeRepository,
         diContainer.itemRepository,
+        diContainer.itemCategoryRepository,
         diContainer.uomConversionRepository,
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
+        PurchaseController.buildAccountingPostingService(),
+        diContainer.accountRepository,
         diContainer.transactionManager
       );
 

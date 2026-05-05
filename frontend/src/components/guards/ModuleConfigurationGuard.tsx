@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { ModuleSetupPromptModal } from './ModuleSetupPromptModal';
+import { useGlobalLoaderTask } from '../../context/GlobalLoaderContext';
 
 interface ModuleConfigurationGuardProps {
   moduleCode: string;
@@ -54,12 +55,10 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
   const moduleConfig = MODULE_CONFIG[moduleCode] || { isRequired: false };
 
   // While loading, show loading state
+  useGlobalLoaderTask(`module-${moduleCode}`, `Checking ${moduleCode} module status...`, loading);
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return null; // Global loader handles the spinner
   }
 
   // Find the module

@@ -1360,6 +1360,8 @@ export class InventoryController {
 
       const useCase = new CompleteStockTransferUseCase(
         diContainer.stockTransferRepository,
+        diContainer.itemRepository,
+        diContainer.stockLevelRepository,
         movementUseCase,
         diContainer.transactionManager
       );

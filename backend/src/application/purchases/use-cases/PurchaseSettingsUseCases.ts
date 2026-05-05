@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
-import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSettings';
+import { PurchaseSettings, GovernanceRule } from '../../../domain/purchases/entities/PurchaseSettings';
 import { PostingRole } from '../../../domain/designer/entities/PostingRole';
 import { VoucherTypeDefinition } from '../../../domain/designer/entities/VoucherTypeDefinition';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
@@ -9,6 +9,10 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { IVoucherFormRepository, VoucherFormDefinition } from '../../../repository/interfaces/designer/IVoucherFormRepository';
+import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchases/IPurchaseOrderRepository';
+import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchases/IGoodsReceiptRepository';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 
 // Note: Hardcoded templates are now deprecated and will be removed in a future PR
 // Source of truth is now system_metadata/voucher_types/items seeded by seedSystemVoucherTypes.ts
@@ -55,7 +59,9 @@ const cloneVoucherTypeForCompany = (
     template.isMultiLine ?? true,
     cloneTemplateValue(template.rules) || [],
     cloneTemplateValue(template.actions) || [],
-    template.defaultCurrency
+    template.defaultCurrency,
+    template.voucherType || template.code,
+    template.persona || undefined
   );
 };
 
@@ -90,6 +96,9 @@ const cloneVoucherFormForCompany = (
     isMultiLine: template.isMultiLine ?? true,
     tableStyle: template.tableStyle || 'web',
     defaultCurrency: template.defaultCurrency,
+    formType: template.formType || template.baseType || template.code,
+    voucherType: template.voucherType || template.code,
+    persona: template.persona || undefined,
     baseType: template.baseType || template.code,
     createdAt: now,
     updatedAt: now,
@@ -195,6 +204,8 @@ export interface UpdatePurchasesSettingsInput {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  governanceRules?: GovernanceRule[];
+  defaultPurchaseInvoicePersona?: 'direct' | 'linked' | 'service';
 }
 
 export class InitializePurchasesUseCase {
@@ -324,6 +335,8 @@ export class UpdatePurchaseSettingsUseCase {
     private readonly accountRepo: IAccountRepository,
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
+    private readonly purchaseOrderRepo: IPurchaseOrderRepository,
+    private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
@@ -331,6 +344,27 @@ export class UpdatePurchaseSettingsUseCase {
     const existing = await this.settingsRepo.getSettings(input.companyId);
     if (!existing) {
       throw new Error('Purchase settings are not initialized');
+    }
+
+    const oldWorkflowMode = existing.workflowMode || 'OPERATIONAL';
+    const newWorkflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode ?? existing.workflowMode);
+
+    if (input.workflowMode === 'SIMPLE' && oldWorkflowMode !== 'SIMPLE') {
+      const hasOpenPO = await this.purchaseOrderRepo.hasOpenOrders(input.companyId);
+      if (hasOpenPO) {
+        throw new BusinessError(
+          ErrorCode.PURCHASES_TRANSITION_BLOCKED,
+          'Cannot switch to Simple workflow while there are open Purchase Orders. Please close or cancel all open orders first.'
+        );
+      }
+
+      const hasUnpostedGRN = await this.goodsReceiptRepo.hasUnpostedGoodsReceipts(input.companyId);
+      if (hasUnpostedGRN) {
+        throw new BusinessError(
+          ErrorCode.PURCHASES_TRANSITION_BLOCKED,
+          'Cannot switch to Simple workflow while there are draft goods receipts. Please process or delete them first.'
+        );
+      }
     }
 
     await ensureVoucherTypeScope(
@@ -341,7 +375,7 @@ export class UpdatePurchaseSettingsUseCase {
       'purchaseVoucherTypeId'
     );
 
-    const workflowMode = DocumentPolicyResolver.normalizeWorkflowMode(input.workflowMode ?? existing.workflowMode);
+    const workflowMode = newWorkflowMode;
     const accountingMode = this.inventorySettingsRepo
       ? DocumentPolicyResolver.resolveAccountingMode(await this.inventorySettingsRepo.getSettings(input.companyId))
       : 'INVOICE_DRIVEN';
@@ -393,6 +427,8 @@ export class UpdatePurchaseSettingsUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? existing.piNumberNextSeq,
       prNumberPrefix: input.prNumberPrefix ?? existing.prNumberPrefix,
       prNumberNextSeq: input.prNumberNextSeq ?? existing.prNumberNextSeq,
+      governanceRules: input.governanceRules ?? existing.governanceRules,
+      defaultPurchaseInvoicePersona: input.defaultPurchaseInvoicePersona ?? existing.defaultPurchaseInvoicePersona,
     });
 
     await this.settingsRepo.saveSettings(updated);

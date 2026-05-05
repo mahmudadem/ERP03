@@ -3,6 +3,7 @@ import {
   ReferenceType,
   StockMovement,
 } from '../../../domain/inventory/entities/StockMovement';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 
 export interface InventoryMovementReferenceInput {
   type: ReferenceType;
@@ -31,6 +32,7 @@ export interface InventoryProcessINContractInput {
   notes?: string;
   metadata?: Record<string, any>;
   transaction?: unknown;
+  preFetchedStockLevel?: StockLevel;
 }
 
 export interface InventoryProcessOUTContractInput {
@@ -48,16 +50,25 @@ export interface InventoryProcessOUTContractInput {
   notes?: string;
   metadata?: Record<string, any>;
   transaction?: unknown;
+  preFetchedStockLevel?: StockLevel;
+  preFetchedItem?: import('../../../domain/inventory/entities/Item').Item;
+  skipWarehouseValidation?: boolean;
 }
 
 export interface ISalesInventoryService {
   processOUT(input: InventoryProcessOUTContractInput): Promise<StockMovement>;
   processIN(input: InventoryProcessINContractInput): Promise<StockMovement>;
   deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
+  preFetchStockLevel(companyId: string, itemId: string, warehouseId: string): Promise<StockLevel | null>;
+  writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void>;
+  writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void>;
 }
 
 export interface IPurchasesInventoryService {
   processIN(input: InventoryProcessINContractInput): Promise<StockMovement>;
   processOUT(input: InventoryProcessOUTContractInput): Promise<StockMovement>;
   deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void>;
+  preFetchStockLevel(companyId: string, itemId: string, warehouseId: string): Promise<StockLevel | null>;
+  writeStockMovement(movement: StockMovement, transaction?: unknown): Promise<void>;
+  writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void>;
 }

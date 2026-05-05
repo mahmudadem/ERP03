@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PurchaseSettings = void 0;
 class PurchaseSettings {
     constructor(props) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e;
         if (!((_a = props.companyId) === null || _a === void 0 ? void 0 : _a.trim()))
             throw new Error('PurchaseSettings companyId is required');
         this.companyId = props.companyId;
@@ -28,6 +28,8 @@ class PurchaseSettings {
         this.prNumberPrefix = props.prNumberPrefix || 'PR';
         this.prNumberNextSeq = props.prNumberNextSeq || 1;
         this.exchangeGainLossAccountId = props.exchangeGainLossAccountId;
+        this.governanceRules = (_d = props.governanceRules) !== null && _d !== void 0 ? _d : [];
+        this.defaultPurchaseInvoicePersona = (_e = props.defaultPurchaseInvoicePersona) !== null && _e !== void 0 ? _e : 'direct';
     }
     static createDefault(companyId, defaultAPAccountId) {
         return new PurchaseSettings({
@@ -74,10 +76,12 @@ class PurchaseSettings {
             prNumberPrefix: this.prNumberPrefix,
             prNumberNextSeq: this.prNumberNextSeq,
             exchangeGainLossAccountId: this.exchangeGainLossAccountId,
+            governanceRules: this.governanceRules,
+            defaultPurchaseInvoicePersona: this.defaultPurchaseInvoicePersona,
         };
     }
     static fromJSON(data) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
         return new PurchaseSettings({
             companyId: data.companyId,
             workflowMode: data.workflowMode === 'SIMPLE' ? 'SIMPLE' : 'OPERATIONAL',
@@ -100,6 +104,9 @@ class PurchaseSettings {
             piNumberNextSeq: (_j = data.piNumberNextSeq) !== null && _j !== void 0 ? _j : 1,
             prNumberPrefix: data.prNumberPrefix || 'PR',
             prNumberNextSeq: (_k = data.prNumberNextSeq) !== null && _k !== void 0 ? _k : 1,
+            exchangeGainLossAccountId: data.exchangeGainLossAccountId,
+            governanceRules: (_l = data.governanceRules) !== null && _l !== void 0 ? _l : [],
+            defaultPurchaseInvoicePersona: (_m = data.defaultPurchaseInvoicePersona) !== null && _m !== void 0 ? _m : 'direct',
         });
     }
 }

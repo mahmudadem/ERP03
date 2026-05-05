@@ -10,6 +10,7 @@ router.use(authMiddleware_1.authMiddleware);
 // Admin / Designer actions
 router.post('/forms', (0, permissionsMiddleware_1.permissionsMiddleware)('designer.forms.create'), DesignerController_1.DesignerController.createForm);
 router.post('/voucher-types', (0, permissionsMiddleware_1.permissionsMiddleware)('designer.vouchertypes.create'), DesignerController_1.DesignerController.createVoucherType);
+router.post('/adopt-template', (0, permissionsMiddleware_1.permissionsMiddleware)('designer.forms.create'), DesignerController_1.DesignerController.adoptTemplate);
 // Consumption endpoints (Used by the frontend engine)
 router.get('/voucher-types', (0, permissionsMiddleware_1.permissionsMiddleware)('designer.vouchertypes.view'), VoucherTypeController_1.VoucherTypeController.listVoucherTypes);
 router.get('/voucher-types/:code', (0, permissionsMiddleware_1.permissionsMiddleware)('designer.vouchertypes.view'), VoucherTypeController_1.VoucherTypeController.getVoucherTypeByCode);

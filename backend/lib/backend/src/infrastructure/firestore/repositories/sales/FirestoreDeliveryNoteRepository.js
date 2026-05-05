@@ -59,6 +59,13 @@ class FirestoreDeliveryNoteRepository {
         const snap = await query.get();
         return snap.docs.map((doc) => SalesMappers_1.DeliveryNoteMapper.toDomain(doc.data()));
     }
+    async hasUnpostedDeliveryNotes(companyId) {
+        const snap = await this.collection(companyId)
+            .where('status', 'in', ['DRAFT', 'POSTED'])
+            .limit(1)
+            .get();
+        return !snap.empty;
+    }
 }
 exports.FirestoreDeliveryNoteRepository = FirestoreDeliveryNoteRepository;
 //# sourceMappingURL=FirestoreDeliveryNoteRepository.js.map

@@ -417,14 +417,15 @@ export class PrismaVoucherRepository implements IVoucherRepository {
     return voucher;
   }
 
-  async delete(companyId: string, voucherId: string): Promise<boolean> {
-    const existing = await this.prisma.voucher.findFirst({
+  async delete(companyId: string, voucherId: string, transaction?: any): Promise<boolean> {
+    const tx = transaction || this.prisma;
+    const existing = await tx.voucher.findFirst({
       where: { id: voucherId, companyId }
     });
 
     if (!existing) return false;
 
-    await this.prisma.voucher.delete({
+    await tx.voucher.delete({
       where: { id: voucherId }
     });
 

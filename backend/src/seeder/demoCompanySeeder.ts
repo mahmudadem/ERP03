@@ -215,7 +215,7 @@ export async function seedDemoCompany(deps: SeedDependencies): Promise<SeedResul
                 fiscalYearStart: `${new Date().getFullYear()}-01-01`,
                 fiscalYearEnd: `${new Date().getFullYear()}-12-31`,
                 coaTemplate: 'standard', // Assuming this template exists from system seeder
-                selectedVoucherTypes: ['payment_voucher', 'receipt_voucher', 'journal_entry', 'sales_invoice', 'purchase_invoice'] // IDs from seedSystemVoucherTypes
+                selectedVoucherTypes: ['journal_entry', 'payment', 'receipt', 'opening_balance']
             }
         });
         console.log('✅ Accounting initialized with Vouchers and COA');

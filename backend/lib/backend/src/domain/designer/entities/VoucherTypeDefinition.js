@@ -8,10 +8,7 @@ exports.VoucherTypeDefinition = void 0;
  * Schema Version 2: All fields must be classified as posting or non-posting.
  */
 class VoucherTypeDefinition {
-    constructor(id, companyId, name, code, module, headerFields, tableColumns, layout, // JSON layout config
-    schemaVersion = 2, requiredPostingRoles, workflow, // Workflow metadata
-    uiModeOverrides, // For Schema V2 layout
-    isMultiLine, rules, actions, defaultCurrency) {
+    constructor(id, companyId, name, code, module, headerFields, tableColumns, layout, schemaVersion = 2, requiredPostingRoles, workflow, uiModeOverrides, isMultiLine, rules, actions, defaultCurrency, voucherType, persona) {
         this.id = id;
         this.companyId = companyId;
         this.name = name;
@@ -28,6 +25,8 @@ class VoucherTypeDefinition {
         this.rules = rules;
         this.actions = actions;
         this.defaultCurrency = defaultCurrency;
+        this.voucherType = voucherType;
+        this.persona = persona;
     }
 }
 exports.VoucherTypeDefinition = VoucherTypeDefinition;

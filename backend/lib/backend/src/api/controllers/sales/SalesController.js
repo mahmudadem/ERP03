@@ -94,6 +94,11 @@ class SalesController {
         }
         return new SubledgerVoucherPostingService_1.SubledgerVoucherPostingService(bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
     }
+    static buildPostSalesInvoiceUseCase() {
+        const inventoryService = SalesController.buildSalesInventoryService();
+        const accountingPostingService = SalesController.buildAccountingPostingService(true);
+        return new SalesInvoiceUseCases_1.PostSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository);
+    }
     static async initializeSales(req, res, next) {
         try {
             (0, sales_validators_1.validateInitializeSalesInput)(req.body);
@@ -129,7 +134,7 @@ class SalesController {
         try {
             (0, sales_validators_1.validateUpdateSalesSettingsInput)(req.body);
             const companyId = SalesController.getCompanyId(req);
-            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
+            const useCase = new SalesSettingsUseCases_1.UpdateSalesSettingsUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.voucherTypeDefinitionRepository, bindRepositories_1.diContainer.voucherFormRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.inventorySettingsRepository);
             const settings = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId }));
             res.json({
                 success: true,
@@ -311,7 +316,7 @@ class SalesController {
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
             const accountingPostingService = SalesController.buildAccountingPostingService();
-            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new DeliveryNoteUseCases_1.PostDeliveryNoteUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const dn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -330,6 +335,48 @@ class SalesController {
             const useCase = new SalesInvoiceUseCases_1.CreateSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
             const si = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId, createdBy: userId }));
             res.status(201).json({
+                success: true,
+                data: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(si),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async createAndPostSI(req, res, next) {
+        var _a;
+        try {
+            (0, sales_validators_1.validateCreateSalesInvoiceInput)(req.body);
+            const companyId = SalesController.getCompanyId(req);
+            const userId = SalesController.getUserId(req);
+            const createUseCase = new SalesInvoiceUseCases_1.CreateSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.companyCurrencyRepository);
+            const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+            const useCase = new SalesInvoiceUseCases_1.CreateAndPostSalesInvoiceUseCase(createUseCase, postUseCase);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const si = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { companyId, createdBy: userId }), settlementInput);
+            res.status(201).json({
+                success: true,
+                data: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(si),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async updateAndPostSI(req, res, next) {
+        var _a;
+        try {
+            (0, sales_validators_1.validateUpdateSalesInvoiceInput)(req.body);
+            const companyId = SalesController.getCompanyId(req);
+            const id = String(req.params.id);
+            const userId = SalesController.getUserId(req);
+            const updateUseCase = new SalesInvoiceUseCases_1.UpdateSalesInvoiceUseCase(bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.partyRepository);
+            const postUseCase = SalesController.buildPostSalesInvoiceUseCase();
+            const useCase = new SalesInvoiceUseCases_1.UpdateAndPostSalesInvoiceUseCase(updateUseCase, postUseCase);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const si = await useCase.execute(Object.assign(Object.assign({}, (req.body || {})), { id,
+                companyId }), settlementInput);
+            res.json({
                 success: true,
                 data: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(si),
             });
@@ -392,13 +439,15 @@ class SalesController {
         }
     }
     static async postSI(req, res, next) {
+        var _a;
         try {
             const companyId = SalesController.getCompanyId(req);
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
             const accountingPostingService = SalesController.buildAccountingPostingService(true);
-            const useCase = new SalesInvoiceUseCases_1.PostSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
-            const si = await useCase.execute(companyId, id, true);
+            const useCase = new SalesInvoiceUseCases_1.PostSalesInvoiceUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.warehouseRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository);
+            const settlementInput = (_a = req.body) === null || _a === void 0 ? void 0 : _a.settlementInput;
+            const si = await useCase.execute(companyId, id, true, undefined, settlementInput);
             res.json({
                 success: true,
                 data: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(si),
@@ -465,7 +514,7 @@ class SalesController {
             const id = String(req.params.id);
             const inventoryService = SalesController.buildSalesInventoryService();
             const accountingPostingService = SalesController.buildAccountingPostingService();
-            const useCase = new SalesReturnUseCases_1.PostSalesReturnUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesReturnRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.transactionManager);
+            const useCase = new SalesReturnUseCases_1.PostSalesReturnUseCase(bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.inventorySettingsRepository, bindRepositories_1.diContainer.salesReturnRepository, bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.deliveryNoteRepository, bindRepositories_1.diContainer.salesOrderRepository, bindRepositories_1.diContainer.partyRepository, bindRepositories_1.diContainer.taxCodeRepository, bindRepositories_1.diContainer.itemRepository, bindRepositories_1.diContainer.itemCategoryRepository, bindRepositories_1.diContainer.uomConversionRepository, bindRepositories_1.diContainer.companyCurrencyRepository, inventoryService, bindRepositories_1.diContainer.companyModuleRepository, accountingPostingService, bindRepositories_1.diContainer.accountRepository, bindRepositories_1.diContainer.transactionManager);
             const salesReturn = await useCase.execute(companyId, id);
             res.json({
                 success: true,
@@ -487,6 +536,57 @@ class SalesController {
             res.json({
                 success: true,
                 data: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(invoice),
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async recordPayment(req, res, next) {
+        try {
+            (0, sales_validators_1.validateRecordSalesInvoicePaymentInput)(req.body || {});
+            const companyId = SalesController.getCompanyId(req);
+            const userId = SalesController.getUserId(req);
+            const id = String(req.params.id);
+            const body = req.body || {};
+            const useCase = new PaymentSyncUseCases_1.RecordSalesInvoicePaymentUseCase(bindRepositories_1.diContainer.salesInvoiceRepository, bindRepositories_1.diContainer.paymentHistoryRepository, bindRepositories_1.diContainer.salesSettingsRepository, bindRepositories_1.diContainer.voucherRepository, bindRepositories_1.diContainer.voucherSequenceRepository, bindRepositories_1.diContainer.ledgerRepository, bindRepositories_1.diContainer.companyCurrencyRepository, bindRepositories_1.diContainer.transactionManager);
+            const result = await useCase.execute(companyId, userId, id, {
+                settlementMode: body.settlementMode || 'CASH_FULL',
+                receivablePayableAccountId: body.receivablePayableAccountId || body.arAccountId,
+                settlements: [{
+                        settlementAccountId: body.settlementAccountId || body.cashAccountId,
+                        amountBase: Number(body.paymentAmountBase),
+                        paymentMethod: body.paymentMethod,
+                        reference: body.reference,
+                        notes: body.notes,
+                        paymentDate: body.paymentDate,
+                    }],
+            });
+            res.json({
+                success: true,
+                data: {
+                    invoice: SalesDTOs_1.SalesDTOMapper.toSalesInvoiceDTO(result.invoice),
+                    payments: result.payments.map(p => p.toJSON()),
+                    voucherIds: result.voucherIds,
+                },
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getPaymentHistory(req, res, next) {
+        try {
+            const companyId = SalesController.getCompanyId(req);
+            const id = String(req.params.id);
+            const invoice = await bindRepositories_1.diContainer.salesInvoiceRepository.getById(companyId, id);
+            if (!invoice) {
+                return res.status(404).json({ success: false, error: 'Sales invoice not found' });
+            }
+            const payments = await bindRepositories_1.diContainer.paymentHistoryRepository.getBySource(companyId, 'SALES_INVOICE', id);
+            res.json({
+                success: true,
+                data: payments.map((p) => p.toJSON()),
             });
         }
         catch (error) {

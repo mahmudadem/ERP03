@@ -30,8 +30,9 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
     });
   }
 
-  async updateTransfer(id: string, data: Partial<StockTransfer>): Promise<void> {
-    const existing = await this.prisma.stockTransfer.findUnique({
+  async updateTransfer(id: string, data: Partial<StockTransfer>, transaction?: unknown): Promise<void> {
+    const client = (transaction as PrismaClient | undefined) ?? this.prisma;
+    const existing = await client.stockTransfer.findUnique({
       where: { id },
       include: { lines: true },
     });
@@ -55,7 +56,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
         })),
       };
     }
-    await this.prisma.stockTransfer.update({
+    await client.stockTransfer.update({
       where: { id },
       data: updateData,
     });

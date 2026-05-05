@@ -1,5 +1,17 @@
 export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 
+export type GovernanceRuleScope = 'company' | 'branch' | 'form';
+export type GovernanceAction = 'allow' | 'block';
+
+export interface GovernanceRule {
+  id: string;
+  scope: GovernanceRuleScope;
+  action: GovernanceAction;
+  persona: 'direct' | 'linked' | 'service';
+  branchId?: string;
+  formType?: string;
+}
+
 export interface PurchaseSettingsProps {
   companyId: string;
   workflowMode?: WorkflowMode;
@@ -23,6 +35,8 @@ export interface PurchaseSettingsProps {
   prNumberPrefix: string;
   prNumberNextSeq: number;
   exchangeGainLossAccountId?: string;
+  governanceRules?: GovernanceRule[];
+  defaultPurchaseInvoicePersona?: 'direct' | 'linked' | 'service';
 }
 
 export class PurchaseSettings {
@@ -48,6 +62,8 @@ export class PurchaseSettings {
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
   exchangeGainLossAccountId?: string;
+  governanceRules: GovernanceRule[];
+  defaultPurchaseInvoicePersona: 'direct' | 'linked' | 'service';
 
   constructor(props: PurchaseSettingsProps) {
     if (!props.companyId?.trim()) throw new Error('PurchaseSettings companyId is required');
@@ -74,6 +90,8 @@ export class PurchaseSettings {
     this.prNumberPrefix = props.prNumberPrefix || 'PR';
     this.prNumberNextSeq = props.prNumberNextSeq || 1;
     this.exchangeGainLossAccountId = props.exchangeGainLossAccountId;
+    this.governanceRules = props.governanceRules ?? [];
+    this.defaultPurchaseInvoicePersona = props.defaultPurchaseInvoicePersona ?? 'direct';
   }
 
   static createDefault(companyId: string, defaultAPAccountId?: string): PurchaseSettings {
@@ -122,6 +140,8 @@ export class PurchaseSettings {
       prNumberPrefix: this.prNumberPrefix,
       prNumberNextSeq: this.prNumberNextSeq,
       exchangeGainLossAccountId: this.exchangeGainLossAccountId,
+      governanceRules: this.governanceRules,
+      defaultPurchaseInvoicePersona: this.defaultPurchaseInvoicePersona,
     };
   }
 
@@ -148,6 +168,9 @@ export class PurchaseSettings {
       piNumberNextSeq: data.piNumberNextSeq ?? 1,
       prNumberPrefix: data.prNumberPrefix || 'PR',
       prNumberNextSeq: data.prNumberNextSeq ?? 1,
+      exchangeGainLossAccountId: data.exchangeGainLossAccountId,
+      governanceRules: data.governanceRules ?? [],
+      defaultPurchaseInvoicePersona: data.defaultPurchaseInvoicePersona ?? 'direct',
     });
   }
 }

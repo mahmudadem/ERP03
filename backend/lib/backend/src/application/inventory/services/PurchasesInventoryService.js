@@ -22,6 +22,7 @@ class PurchasesInventoryService {
             notes: input.notes,
             metadata: input.metadata,
             transaction: input.transaction,
+            preFetchedLevel: input.preFetchedStockLevel,
         });
     }
     processOUT(input) {
@@ -37,10 +38,22 @@ class PurchasesInventoryService {
             notes: input.notes,
             metadata: input.metadata,
             transaction: input.transaction,
+            preFetchedLevel: input.preFetchedStockLevel,
+            preFetchedItem: input.preFetchedItem,
+            skipWarehouseValidation: input.skipWarehouseValidation,
         });
     }
     async deleteMovement(companyId, id, transaction) {
         return this.movementUseCase.deleteMovement(companyId, id, transaction);
+    }
+    preFetchStockLevel(companyId, itemId, warehouseId) {
+        return this.movementUseCase.preFetchStockLevel(companyId, itemId, warehouseId);
+    }
+    writeStockMovement(movement, transaction) {
+        return this.movementUseCase.writeStockMovement(movement, transaction);
+    }
+    writeStockLevel(level, transaction) {
+        return this.movementUseCase.writeStockLevel(level, transaction);
     }
 }
 exports.PurchasesInventoryService = PurchasesInventoryService;

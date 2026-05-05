@@ -17,4 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./ITransactionManager"), exports);
 __exportStar(require("./IPartyRepository"), exports);
 __exportStar(require("./ITaxCodeRepository"), exports);
+__exportStar(require("./IPaymentHistoryRepository"), exports);
 //# sourceMappingURL=index.js.map
