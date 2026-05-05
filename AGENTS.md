@@ -111,7 +111,7 @@ As the CTO, you MUST add timing to all jobs and tasks to organize the work effec
 
 ## OpenCode Multi-Agent System
 
-This project uses an OpenCode multi-agent workflow defined in `opencode.jsonc`. The orchestrator is the primary agent and delegates to specialized subagents.
+This project uses an OpenCode multi-agent workflow defined in `opencode.json`. The orchestrator is the primary agent and delegates to specialized subagents.
 
 ### CRITICAL: Clarification-First Protocol
 
