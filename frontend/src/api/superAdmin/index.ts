@@ -235,6 +235,16 @@ export const superAdminApi = {
 
   deletePlan: (id: string): Promise<void> =>
     client.delete(`/super-admin/plans/${id}`),
+
+  // Company Entitlements
+  getCompanyEntitlements: (companyId: string): Promise<{ modules: string[]; entitlements: any[] }> =>
+    client.get(`/super-admin/companies/${companyId}/entitlements`),
+
+  grantModuleToCompany: (companyId: string, moduleKey: string): Promise<void> =>
+    client.post(`/super-admin/companies/${companyId}/entitlements/modules`, { moduleKey }),
+
+  revokeModuleFromCompany: (companyId: string, moduleKey: string): Promise<void> =>
+    client.delete(`/super-admin/companies/${companyId}/entitlements/modules/${moduleKey}`),
 };
 
 export * from './voucherTypes';

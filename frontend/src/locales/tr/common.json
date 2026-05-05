@@ -1,4 +1,4 @@
-{
+﻿{
   "appName": "ERP03",
   "language": {
     "label": "Dil",
@@ -118,7 +118,9 @@
     "aging": "Ya?land?rma",
     "bankReconciliation": "Banka Mutabakat?",
     "costCenterSummary": "Maliyet Merkezi ?zeti",
-    "budgetVsActual": "B?t?e ve Ger?ekle?en"
+    "budgetVsActual": "B?t?e ve Ger?ekle?en",
+    "aiAssistant": "AI Asistani",
+    "chat": "Sohbet"
   },
   "reportContainer": {
     "refresh": "Yenile",
@@ -852,10 +854,51 @@
         "actions": "Islemler"
       },
       "actions": {
-        "impersonate": "Taklit Et"
+        "impersonate": "Taklit Et",
+        "manageModules": "Modüller"
       },
       "messages": {
         "impersonationStarted": "Taklit baslatildi. Yonlendiriliyor..."
+      }
+    },
+    "companyEntitlements": {
+      "title": "Şirket Modülleri",
+      "description": "{{name}} için modül erişimini yönet",
+      "loading": "Şirket yükleniyor...",
+      "grantedModules": "Verilen Modüller",
+      "noModules": "Henüz modül verilmemiş",
+      "grantModule": "+ Modül Ver",
+      "revoke": "İptal Et",
+      "revoking": "İptal ediliyor...",
+      "grant": "Ver",
+      "granting": "Veriliyor...",
+      "confirmRevoke": "{{moduleKey}} modülüne erişimi iptal etmek istediğinize emin misiniz? Şirket kullanıcılarını etkileyebilir.",
+      "backToCompanies": "← Şirketlere Dön",
+      "sourceTypes": {
+        "bundle": "Paket",
+        "superadmin": "Süper Yönetici",
+        "trial": "Deneme",
+        "promotion": "Promosyon"
+      },
+      "columns": {
+        "module": "Modül",
+        "key": "Anahtar",
+        "source": "Kaynak",
+        "actions": "İşlemler"
+      },
+      "messages": {
+        "granted": "Modül '{{moduleKey}}' başarıyla verildi",
+        "revoked": "Modül '{{moduleKey}}' başarıyla iptal edildi"
+      },
+      "grantModal": {
+        "title": "Modül Erişimi Ver",
+        "description": "Şirkete erişim verilecek modülü seçin. Modül Süper Yönetici geçersiz kılması olarak eklenecektir.",
+        "searchPlaceholder": "Modülleri ara...",
+        "noModules": "Verilebilecek modül yok",
+        "moduleName": "Modül",
+        "moduleKey": "Anahtar",
+        "status": "Durum",
+        "close": "Kapat"
       }
     },
     "users": {

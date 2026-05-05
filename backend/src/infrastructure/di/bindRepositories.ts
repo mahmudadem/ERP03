@@ -94,8 +94,25 @@ import { PrismaCompanyAdminRepository } from '../prisma/company-admin/PrismaComp
 import { ICompanyModuleRepository } from '../../repository/interfaces/company/ICompanyModuleRepository';
 import { FirestoreCompanyModuleRepository } from '../firestore/repositories/company/FirestoreCompanyModuleRepository';
 import { FirestoreCapabilityRegistryRepository } from '../firestore/repositories/company/FirestoreCapabilityRegistryRepository';
+
+// AI ASSISTANT
+import * as AiAsstRepo from '../../repository/interfaces/ai-assistant';
+import { IEncryptionService } from '../crypto/IEncryptionService';
+import { AesEncryptionService } from '../crypto/AesEncryptionService';
+import { IHttpClient } from '../http/IHttpClient';
+import { AxiosHttpClient } from '../http/AxiosHttpClient';
+import { FirestoreAiChatRepository } from '../firestore/repositories/ai-assistant/FirestoreAiChatRepository';
+import { FirestoreAiSettingsRepository } from '../firestore/repositories/ai-assistant/FirestoreAiSettingsRepository';
+import { FirestoreAiUsageLogRepository } from '../firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository';
+import { PrismaAiChatRepository } from '../prisma/repositories/ai-assistant/PrismaAiChatRepository';
+import { PrismaAiSettingsRepository } from '../prisma/repositories/ai-assistant/PrismaAiSettingsRepository';
+import { PrismaAiUsageLogRepository } from '../prisma/repositories/ai-assistant/PrismaAiUsageLogRepository';
 import { SettingsResolver } from '../../application/common/services/SettingsResolver';
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
+import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
+import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
+import { GetTrialBalanceSummaryTool } from '../../application/ai-assistant/tools/GetTrialBalanceSummaryTool';
+import { PermissionChecker } from '../../application/rbac/PermissionChecker';
 
 // SUPER ADMIN
 import { IBusinessDomainRepository } from '../../repository/interfaces/super-admin/IBusinessDomainRepository';
@@ -247,6 +264,7 @@ const settingsResolverSQL = new SettingsResolverSQL();
 const moduleActivationService = DB_TYPE === 'SQL'
   ? new ModuleActivationService(new PrismaCompanyModuleRepository(getPrismaClient()))
   : new ModuleActivationService(new FirestoreCompanyModuleRepository(getDb()));
+let _httpClient: AxiosHttpClient | undefined;
 
 export const diContainer = {
   // CORE
@@ -692,6 +710,58 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaTransactionManager(getPrismaClient())
       : new FirestoreTransactionManager(getDb());
+  },
+
+  // POLICY SYSTEM
+  get aiChatRepository(): AiAsstRepo.IAiChatRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaAiChatRepository(getPrismaClient())
+      : new FirestoreAiChatRepository(getDb());
+  },
+  get aiSettingsRepository(): AiAsstRepo.IAiSettingsRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaAiSettingsRepository(getPrismaClient())
+      : new FirestoreAiSettingsRepository(getDb());
+  },
+  get aiUsageLogRepository(): AiAsstRepo.IAiUsageLogRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaAiUsageLogRepository(getPrismaClient())
+      : new FirestoreAiUsageLogRepository(getDb());
+  },
+
+  // AI ASSISTANT SERVICES
+  get encryptionService(): IEncryptionService {
+    return new AesEncryptionService();
+  },
+  get httpClient(): IHttpClient {
+    return _httpClient ??= new AxiosHttpClient();
+  },
+  get aiToolRegistry(): AiToolRegistry {
+    // Register all AI tools here with their dependencies
+    return new AiToolRegistry([
+      new GetTrialBalanceSummaryTool(
+        this.ledgerRepository,
+        this.accountRepository,
+        this.permissionChecker,
+      ),
+    ]);
+  },
+  get aiToolCallingOrchestrator(): AiToolCallingOrchestrator {
+    return new AiToolCallingOrchestrator(
+      this.aiToolRegistry,
+      this.permissionChecker,
+    );
+  },
+
+  // AI ASSISTANT - Permission Checker for tool access
+  get permissionChecker(): PermissionChecker {
+    const { GetCurrentUserPermissionsForCompanyUseCase } = require('../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase');
+    const getPermsUC = new GetCurrentUserPermissionsForCompanyUseCase(
+      this.userRepository,
+      this.companyUserRepository,
+      this.companyRoleRepository,
+    );
+    return new PermissionChecker(getPermsUC);
   },
 
   // POLICY SYSTEM

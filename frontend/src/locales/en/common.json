@@ -118,7 +118,9 @@
     "aging": "Aging",
     "bankReconciliation": "Bank Reconciliation",
     "costCenterSummary": "Cost Center Summary",
-    "budgetVsActual": "Budget vs Actual"
+    "budgetVsActual": "Budget vs Actual",
+    "aiAssistant": "AI Assistant",
+    "chat": "Chat"
   },
   "reportContainer": {
     "refresh": "Refresh",
@@ -852,10 +854,51 @@
         "actions": "Actions"
       },
       "actions": {
-        "impersonate": "Impersonate"
+        "impersonate": "Impersonate",
+        "manageModules": "Modules"
       },
       "messages": {
         "impersonationStarted": "Impersonation started. Redirecting..."
+      }
+    },
+    "companyEntitlements": {
+      "title": "Company Modules",
+      "description": "Manage module access for {{name}}",
+      "loading": "Loading company...",
+      "grantedModules": "Granted Modules",
+      "noModules": "No modules granted yet",
+      "grantModule": "+ Grant Module",
+      "revoke": "Revoke",
+      "revoking": "Revoking...",
+      "grant": "Grant",
+      "granting": "Granting...",
+      "confirmRevoke": "Revoke access to module '{{moduleKey}}'? This may affect company users.",
+      "backToCompanies": "← Back to Companies",
+      "sourceTypes": {
+        "bundle": "Bundle",
+        "superadmin": "SuperAdmin",
+        "trial": "Trial",
+        "promotion": "Promotion"
+      },
+      "columns": {
+        "module": "Module",
+        "key": "Key",
+        "source": "Source",
+        "actions": "Actions"
+      },
+      "messages": {
+        "granted": "Module '{{moduleKey}}' granted successfully",
+        "revoked": "Module '{{moduleKey}}' revoked successfully"
+      },
+      "grantModal": {
+        "title": "Grant Module Access",
+        "description": "Select a module to grant access to this company. The module will be added as a SuperAdmin override.",
+        "searchPlaceholder": "Search modules...",
+        "noModules": "No modules available to grant",
+        "moduleName": "Module",
+        "moduleKey": "Key",
+        "status": "Status",
+        "close": "Close"
       }
     },
     "users": {

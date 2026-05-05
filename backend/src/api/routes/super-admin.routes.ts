@@ -9,6 +9,7 @@ import { BusinessDomainRegistryController } from '../controllers/super-admin/Bus
 import { BundleRegistryController } from '../controllers/super-admin/BundleRegistryController';
 import { PlanRegistryController } from '../controllers/super-admin/PlanRegistryController';
 import { RoleTemplateRegistryController } from '../controllers/super-admin/RoleTemplateRegistryController';
+import { SuperAdminEntitlementsController } from '../controllers/super-admin/SuperAdminEntitlementsController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -24,6 +25,11 @@ router.patch('/users/:userId/demote', SuperAdminController.demoteUser);
 
 // Company management
 router.get('/companies', SuperAdminController.listAllCompanies);
+
+// Company Entitlements (module access management)
+router.get('/companies/:companyId/entitlements', SuperAdminEntitlementsController.listModules);
+router.post('/companies/:companyId/entitlements/modules', SuperAdminEntitlementsController.grantModule);
+router.delete('/companies/:companyId/entitlements/modules/:moduleKey', SuperAdminEntitlementsController.revokeModule);
 
 // System overview
 router.get('/overview', SuperAdminController.getSystemOverview);

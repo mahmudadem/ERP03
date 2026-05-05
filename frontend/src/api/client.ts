@@ -16,7 +16,7 @@ export const setCompanyIdGetter = (getter: () => string | null) => {
 // Axios Instance
 export const client = axios.create({
   baseURL: env.apiBaseUrl,
-  timeout: 10000,
+  timeout: 30000, // 30s — AI provider calls can take 15-30s for large models
   headers: {
     'Content-Type': 'application/json',
   },

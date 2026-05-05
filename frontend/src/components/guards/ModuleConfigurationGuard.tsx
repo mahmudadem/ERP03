@@ -9,8 +9,9 @@ interface ModuleConfigurationGuardProps {
   children: React.ReactNode;
 }
 
-// Configuration map to determine which modules are required
-const MODULE_CONFIG: Record<string, { isRequired: boolean }> = {
+// Configuration map to determine which modules are required and which auto-initialize
+// autoInit: true means the module works immediately after install, no setup wizard needed.
+const MODULE_CONFIG: Record<string, { isRequired: boolean; autoInit?: boolean }> = {
   accounting: { isRequired: true },
   companyAdmin: { isRequired: false },
   inventory: { isRequired: false },
@@ -18,6 +19,7 @@ const MODULE_CONFIG: Record<string, { isRequired: boolean }> = {
   pos: { isRequired: false },
   crm: { isRequired: false },
   invoicing: { isRequired: false },
+  'ai-assistant': { isRequired: false, autoInit: true },
 };
 
 // Modules that have dedicated setup/entry routes that should remain reachable
@@ -85,6 +87,11 @@ export const ModuleConfigurationGuard: React.FC<ModuleConfigurationGuardProps> =
 
   // If module is initialized, show content
   if (module.initialized) {
+    return <>{children}</>;
+  }
+
+  // If module doesn't require initialization (autoInit), show content immediately
+  if (moduleConfig.autoInit) {
     return <>{children}</>;
   }
 

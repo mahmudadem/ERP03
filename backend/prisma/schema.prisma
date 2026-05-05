@@ -87,6 +87,9 @@ model Company {
   salesSettings   SalesSettings[]
   uomConversions  UomConversion[]
   paymentHistories PaymentHistory[]
+  aiChatMessages   AiChatMessage[]
+  aiProviderConfig AiProviderConfig?
+  aiUsageLogs      AiUsageLog[]
 
   @@index([ownerId])
   @@map("companies")
@@ -2124,4 +2127,70 @@ model PaymentHistory {
   @@index([companyId, sourceType, sourceId])
   @@index([companyId, paymentDate])
   @@map("payment_history")
+}
+
+// ============================================
+// AI ASSISTANT MODULE
+// ============================================
+
+model AiChatMessage {
+  id             String   @id
+  companyId      String
+  userId         String
+  conversationId String
+  role           String   // 'user' | 'assistant' | 'system'
+  content        String
+  provider       String   // 'mock' | 'openai_compatible' | 'ollama'
+  model          String?
+  tokenCount     Int?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, userId, conversationId])
+  @@index([companyId, userId, conversationId, createdAt])
+  @@map("ai_chat_messages")
+}
+
+model AiProviderConfig {
+  companyId           String   @id
+  provider            String   @default("mock") // 'mock' | 'openai_compatible' | 'ollama'
+  model               String?
+  apiKey              String?
+  apiEndpoint         String?
+  maxTokensPerRequest Int?
+  maxRequestsPerDay   Int?
+  dailyRequestCount   Int      @default(0) // Number of AI requests made today (UTC)
+  dailyRequestDate    String?            // UTC date string for the current count (e.g., '2026-05-05')
+  isEnabled           Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("ai_provider_configs")
+}
+
+model AiUsageLog {
+  id                String   @id
+  companyId         String
+  userId            String
+  providerType      String   // 'mock' | 'openai_compatible' | 'ollama'
+  model             String   // Provider-specific model identifier
+  messageCount      Int      @default(0)  // Number of messages in request context
+  promptTokens      Int?     // Tokens in the prompt (if reported by provider)
+  completionTokens  Int?     // Tokens in the completion (if reported by provider)
+  totalTokens       Int?     // Total tokens used (if reported by provider)
+  status            String   @default("success") // 'success' | 'failure'
+  errorCode         String?  // Normalized error code (e.g., 'AI_PROVIDER_AUTH_ERROR')
+  latencyMs         Int?     // Response latency in milliseconds
+  createdAt         DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, userId])
+  @@index([companyId, createdAt])
+  @@map("ai_usage_logs")
 }

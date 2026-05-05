@@ -1,7 +1,513 @@
 # Development Journal
 
 > Append new entries at the top. One entry per work session.
-> This log is used by all AI agents to understand recent project history.
+
+---
+
+## 2026-05-06 (Wed) — 2h
+**Task:** AI Assistant — Chat-Integrated Tool Calling + Health Check Cooldown
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+1. **AiToolCallingOrchestrator** — Created the service that bridges the chat flow with read-only tools:
+   - Intent detection: Simple keyword matching supporting English (`trial balance`, `balance summary`), Arabic (`ميزان المراجعة`, `ميزانية`), and Turkish (`mizan`, `deneme bilançosu`)
+   - Tool execution: Delegates to `AiToolRegistry.executeTool()` with full permission checks
+   - Formats tool results for AI context with strict safety instructions
+   - Falls back gracefully if no intent matches (normal chat continues)
+
+2. **SendChatMessageUseCase Integration** — Modified the use case to:
+   - Accept optional `AiToolCallingOrchestrator` parameter
+   - Call `detectAndExecute()` before building the provider request
+   - Inject tool results into the system prompt via `buildSystemPrompt(toolContextMessage)`
+   - Tool failure does NOT block the chat flow
+
+3. **Health Check Cooldown** — Added 60-second cooldown per company to `CheckProviderHealthUseCase`:
+   - Prevents abuse of the inference check endpoint (costs real tokens for external providers)
+   - Returns 429 with `HEALTH_CHECK_COOLDOWN` code if called too frequently
+   - `CheckProviderHealthUseCase.resetCooldown()` method for testing
+
+4. **System Prompt Enhancement** — The system prompt now includes:
+   - Tool descriptions (what tools are available)
+   - Tool result data (when a tool is invoked, with safety instructions)
+   - Explicit rules: "Use ONLY the provided data. Do NOT invent balances."
+
+5. **Tests** — 15 new tests for intent detection, tool execution formatting, cooldown, and read-only enforcement. Total: 118 tests pass.
+
+**Backend Files Created (1):**
+- `application/ai-assistant/services/AiToolCallingOrchestrator.ts` — Intent detection + tool execution orchestrator
+
+**Backend Files Modified (5):**
+- `application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — Added `toolOrchestrator` param, tool detection/injection
+- `application/ai-assistant/use-cases/CheckProviderHealthUseCase.ts` — Added 60s cooldown per company
+- `api/controllers/ai-assistant/AiAssistantController.ts` — Pass `toolOrchestrator` from DI
+- `infrastructure/di/bindRepositories.ts` — Added `aiToolCallingOrchestrator` DI binding
+- `tests/application/ai-assistant/AiAssistantNewFeatures.test.ts` — Added cooldown resets in beforeEach
+
+**Tests Created (1):**
+- `tests/application/ai-assistant/AiToolCalling.test.ts` — 15 new tests
+
+**Key Decisions:**
+- Tool calling is **deterministic** (keyword matching), NOT free-form AI function calling. The orchestrator decides which tool to invoke based on the user's message, not the AI model.
+- Tool results are formatted with strict safety instructions: "Use ONLY the provided data", "Do NOT invent balances", "No financial action has been performed"
+- If tool execution fails, the chat continues without tool data. The AI responds based on its training, not hallucinated data.
+- Health check now has a 60-second cooldown per company to prevent abuse and token cost.
+- Intent detection supports English, Arabic, and Turkish keywords for `accounting.getTrialBalanceSummary`.
+
+**Verification:**
+- ✅ 118 AI assistant tests pass (was 103, +15 new)
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+
+**Result:** ✅ Done — AI chat now detects user intents and invokes read-only tools
+**Next:** More accounting tools (P&L, balance sheet), frontend tool result display, usage analytics
+
+---
+
+## 2026-05-06 (Wed) — 3h
+**Task:** AI Assistant — Usage Tracking + Health Check + Tool Architecture + Accounting Tool
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+1. **AI Usage Logging** — Created `AiUsageLog` domain entity, `IAiUsageLogRepository` interface, Firestore and Prisma implementations, wired into `SendChatMessageUseCase`. Every request (success or failure) is logged with token counts, latency, error codes. Logging failure is non-blocking (caught and warned, never masks original error). Rate limiting remains config-based — usage logs are analytics-only.
+
+2. **Provider Health Check** — Created `CheckProviderHealthUseCase` that performs two checks: network connectivity (`isAvailable()`) and inference readiness (safe prompt "Reply with only: provider-ok"). Added `POST /ai-assistant/settings/health` endpoint with `ai-assistant.settings.manage` permission. Response includes `ready`, `networkOk`, `inferenceOk`, sanitized error messages. Never exposes API key or ERP data.
+
+3. **Rate Limiting Documentation** — Added comprehensive JSDoc to `AiRateLimiterService` clarifying that rate limiting uses config-based counting (NOT usage logs). This prevents a repeat of the rate limit integrity bug.
+
+4. **AI Tool Architecture** — Created `AiTool` interface (domain layer) with `AiToolRegistry` (application service), `ExecuteAiToolUseCase` (use case), and permission-based access control. Each tool requires a specific permission, is company-scoped, and returns sanitized DTOs (never raw entities). The registry provides `executeTool()` that checks permissions before executing.
+
+5. **Accounting Trial Balance Summary Tool** — First read-only tool: `accounting.getTrialBalanceSummary`. Reuses existing `GetTrialBalanceUseCase`. Returns top 20 accounts by balance, totals, and balance status. Requires `accounting.reports.trialBalance.view` permission. Company-scoped. READ-ONLY — cannot modify any data.
+
+6. **Tests** — 21 new tests covering: AiUsageLog entity (5), CheckProviderHealthUseCase (3), AiToolRegistry (11), Read-only enforcement (2). Total: 103 tests pass.
+
+**Backend Files Created (10):**
+- `domain/ai-assistant/entities/AiUsageLog.ts` — Usage log entity
+- `domain/ai-assistant/tools/AiTool.ts` — AiTool interface, ToolExecutionContext, AiToolResult
+- `domain/ai-assistant/tools/index.ts` — Barrel export
+- `repository/interfaces/ai-assistant/IAiUsageLogRepository.ts` — Usage log repo interface
+- `application/ai-assistant/use-cases/CheckProviderHealthUseCase.ts` — Provider health check
+- `application/ai-assistant/use-cases/ExecuteAiToolUseCase.ts` — Tool execution with permissions
+- `application/ai-assistant/services/AiToolRegistry.ts` — Tool registry with permission gating
+- `application/ai-assistant/tools/GetTrialBalanceSummaryTool.ts` — Read-only trial balance tool
+- `infrastructure/firestore/repositories/ai-assistant/FirestoreAiUsageLogRepository.ts` — Firestore impl
+- `infrastructure/prisma/repositories/ai-assistant/PrismaAiUsageLogRepository.ts` — Prisma impl
+- `tests/application/ai-assistant/AiAssistantNewFeatures.test.ts` — 21 tests
+
+**Backend Files Modified (9):**
+- `application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — Added `usageLogRepository` param, logs success/failure after every request
+- `application/ai-assistant/services/AiRateLimiterService.ts` — Added JSDoc clarifying analytics-only vs rate-limiting
+- `api/controllers/ai-assistant/AiAssistantController.ts` — Added `checkProviderHealth` and `executeTool` handlers; import ApiError and ExecuteAiToolUseCase
+- `api/routes/ai-assistant.routes.ts` — Added health check and tool execution routes
+- `modules/ai-assistant/AiAssistantModule.ts` — Added 2 permissions: `ai-assistant.settings.health`, `ai-assistant.tools.accounting.trial-balance`
+- `infrastructure/di/bindRepositories.ts` — Added aiUsageLogRepository, aiToolRegistry (with GetTrialBalanceSummaryTool), permissionChecker
+- `repository/interfaces/ai-assistant/index.ts` — Added IAiUsageLogRepository export
+- `seeder/seedOnboardingData.ts` — Added 2 new permissions
+- `prisma/schema.prisma` — Added AiUsageLog model with Company relation and indexes
+
+**Key Decisions:**
+- Usage logging is analytics-only, NOT for rate limiting (preserves config-based integrity)
+- Health check sends safe prompt only — no ERP data, no API key exposure
+- Tools are permission-gated through AiToolRegistry — each tool declares its required permission
+- GetTrialBalanceSummaryTool reuses existing GetTrialBalanceUseCase — no business logic duplication
+- Tool results are sanitized DTOs (top 20 accounts, totals) — never raw entities
+- ExecuteAiToolUseCase fetches permissions via PermissionChecker for access control
+
+**Verification:**
+- ✅ 103 AI assistant tests pass (was 82, +21 new)
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+- ✅ Prisma schema updated and client regenerated
+
+**Result:** ✅ Done — Usage logging, health check, tool architecture, and trial balance tool
+**Next:** Tool-calling integration in chat flow, usage analytics dashboard This log is used by all AI agents to understand recent project history.
+
+---
+
+## 2026-05-06 (Tue) — 2.5h
+**Task:** AI Assistant — HTTP Client + Provider Presets + Timeout Fix
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+
+1. **OpenAI-Compatible HTTP Client** — Replaced placeholder `OpenAICompatibleProvider` with real HTTP calls via `IHttpClient`/`AxiosHttpClient` infrastructure. Provider now calls `POST /v1/chat/completions`, `GET /v1/models` for health check, handles all error types (401/403/429/5xx/timeout/DNS), supports Ollama (skips Authorization for `local-no-key`).
+
+2. **Provider Errors** — Created `ProviderError` hierarchy extending `AppError` with proper HTTP status mapping in global error handler. 401→auth error, 429→rate limit, 503→unavailable, 502→generic provider error. Added 4 error codes to `ErrorCodes.ts`.
+
+3. **Provider Presets UI** — Replaced 3 radio buttons with `<select>` dropdown offering 6 presets: Mock, OpenAI, OpenRouter, Groq, Ollama, Custom. Each preset auto-fills endpoint URL, default model, and shows API key requirement. Endpoint field locked for presets (editable in Custom mode). Applied React best practices: hoisted statics, useMemo, useCallback, early returns, accessibility labels.
+
+4. **Frontend Timeout Fix** — Increased frontend axios timeout from 10s → 30s. AI providers (especially OpenRouter) can take 15-30s to generate responses. The 10s timeout was killing requests before they completed.
+
+**Backend Files Created (4):**
+- `infrastructure/http/IHttpClient.ts` — HTTP client interface
+- `infrastructure/http/AxiosHttpClient.ts` — Axios implementation with error classification
+- `infrastructure/http/index.ts` — Barrel export
+- `errors/ProviderErrors.ts` — ProviderError, ProviderUnavailableError, ProviderAuthError, ProviderRateLimitError
+
+**Backend Files Modified/Rewritten (10):**
+- `OpenAICompatibleProvider.ts` — Complete rewrite with real HTTP calls
+- `ProviderFactory.ts` — Added httpClient parameter
+- `SendChatMessageUseCase.ts` — Added httpClient constructor param
+- `AiAssistantController.ts` — Passes httpClient from DI
+- `bindRepositories.ts` — Registered AxiosHttpClient
+- `errorHandler.ts` — ProviderError handler with status mapping
+- `ErrorCodes.ts` — Added 4 AI provider error codes
+- `OpenAICompatibleProvider.test.ts` — 29 tests with MockHttpClient
+- `SendChatMessageUseCase.test.ts` — Added httpClient mock
+- `package.json` — Added axios dependency
+
+**Frontend Files Modified (5):**
+- `AiAssistantSettingsPage.tsx` — Dropdown with 6 presets, auto-fill, React best practices
+- `en/aiAssistant.json` — Added 12 i18n keys for presets
+- `ar/aiAssistant.json` — Arabic translations
+- `tr/aiAssistant.json` — Turkish translations
+- `api/client.ts` — Timeout 10000 → 30000
+
+**Key Decisions:**
+- `ProviderError` extends `AppError` (not `Error`) so the global error handler catches it and returns correct HTTP status codes
+- Provider presets are frontend-only UX — backend `AiProviderType` stays `mock | openai_compatible | ollama`
+- Ollama uses sentinel `local-no-key` for apiKey — Authorization header omitted
+- Frontend timeout 30s matches backend OpenAICompatibleProvider default timeout
+
+**Verification:**
+- ✅ 82 AI assistant tests pass (was 67)
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+- ✅ Code review passed (2 medium issues fixed: error handler integration + architecture layer)
+
+**Result:** ✅ Done — Provider presets + real HTTP client + timeout fix
+**Next:** Browser testing with real API key, then business module integration
+
+## 2026-05-06 (Tue) — 1.5h
+**Task:** AI Assistant — OpenAI-Compatible HTTP Client Implementation
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+Replaced the `OpenAICompatibleProvider` placeholder with a real HTTP client that makes actual API calls to OpenAI, Ollama, and other OpenAI-compatible providers.
+
+**Architecture Decisions:**
+1. **`IHttpClient` interface** in `infrastructure/http/` — follows the existing pattern (like `IEncryptionService` / `AesEncryptionService`). Application layer depends on the interface, not on axios directly.
+2. **`ProviderError` extends `AppError`** — Initially `ProviderError` extended `Error` with a `toApiError()` method, but the reviewer flagged that the Express error handler only catches `instanceof AppError`. Fixed by making `ProviderError` extend `AppError` with dedicated `ErrorCode`s, and adding a status mapper in `errorHandler.ts`. This ensures correct HTTP status codes: 401 for auth failures, 429 for rate limits, 503 for unavailability, 502 for general provider errors.
+3. **Error codes in `ErrorCodes.ts`** — Added `AI_PROVIDER_ERROR`, `AI_PROVIDER_UNAVAILABLE`, `AI_PROVIDER_AUTH_ERROR`, `AI_PROVIDER_RATE_LIMIT`.
+4. **No streaming** — The entire stack (interface, controller, frontend) expects single JSON. Streaming is a v2 enhancement.
+
+**Changes:**
+- `IHttpClient.ts` (NEW): HTTP client abstraction with `request<T>()`, `HttpRequestConfig`, `HttpResponse`
+- `AxiosHttpClient.ts` (NEW): axios implementation with timeout, error classification, URL sanitization
+- `ProviderErrors.ts` (NEW in `errors/`): `ProviderError` → `ProviderUnavailableError`, `ProviderAuthError`, `ProviderRateLimitError` all extending `AppError`
+- `infrastructure/http/index.ts` (NEW): Barrel export
+- `OpenAICompatibleProvider.ts` (REWRITE): Real HTTP calls to `/v1/chat/completions`, health check via `/v1/models`, Ollama support (no Authorization for `local-no-key`), full error handling, response mapping
+- `ProviderFactory.ts`: Added `IHttpClient` parameter to `getProvider()` and provider creation methods
+- `SendChatMessageUseCase.ts`: Added `IHttpClient` as 4th constructor parameter
+- `AiAssistantController.ts`: Passes `diContainer.httpClient` to use case
+- `bindRepositories.ts`: Registered `AxiosHttpClient` as `httpClient` singleton
+- `errorHandler.ts`: Added `ProviderError` handler with correct HTTP status mapping (401, 429, 503, 502)
+- `ErrorCodes.ts`: Added 4 AI provider error codes
+- `OpenAICompatibleProvider.test.ts` (REWRITE): 29 tests with `MockHttpClient`, covering requests, responses, errors, Ollama, timeouts, headers
+- `SendChatMessageUseCase.test.ts`: Added `IHttpClient` mock to all constructor calls
+- `backend/package.json`: Added `axios` dependency
+
+**Key Design:**
+- `chat()` sends `POST {apiEndpoint}/chat/completions` with proper OpenAI format
+- `isAvailable()` sends `GET {apiEndpoint}/models` for health check (5s timeout)
+- Ollama: skips `Authorization` header when apiKey is `local-no-key`
+- API keys NEVER leak in errors, logs, or responses
+- `timeoutMs` from config is respected (default: 30s for chat, 5s for health check)
+
+**Verification:**
+- ✅ All 82 AI assistant tests pass (was 67)
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+- ✅ Code review passed (2 medium issues fixed: error handler integration + architecture layer)
+
+**Result:** ✅ Done — OpenAI-compatible provider makes real HTTP calls
+**Next:** Browser testing with real API key, then business module integration
+
+---
+
+## 2026-05-06 (Tue) — 1.5h
+**Task:** AI Assistant — OpenAI-Compatible HTTP Client Implementation
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+Replaced the `OpenAICompatibleProvider` placeholder with a real HTTP client that makes actual API calls to OpenAI, Ollama, and other OpenAI-compatible providers. Then added provider presets to the settings page.
+
+**HTTP Client Implementation:**
+- `IHttpClient` interface in `infrastructure/http/` — Clean Architecture boundary, follows same pattern as `IEncryptionService`
+- `AxiosHttpClient` implementation — axios with timeout, error classification, URL sanitization, proper header management
+- `ProviderErrors` extending `AppError` — `ProviderError` (502), `ProviderUnavailableError` (503), `ProviderAuthError` (401), `ProviderRateLimitError` (429) integrated into global error handler
+- `OpenAICompatibleProvider` complete rewrite — `POST /v1/chat/completions`, `GET /v1/models` health check, Ollama support (no Authorization for `local-no-key`), full error handling
+- DI wiring: `IHttpClient` → `ProviderFactory` → `SendChatMessageUseCase` → `AiAssistantController`
+
+**Provider Presets UI:**
+- Replaced 3 radio buttons with 6 preset cards in settings page
+- Presets: Mock, OpenAI, OpenRouter, Groq, Ollama, Custom
+- Auto-fill endpoint/model when selecting a preset
+- Endpoint locked for presets (editable only in Custom mode)
+- API key badge indicators on each card
+- Resolves loaded settings back to matching preset on page load
+- Full i18n support (en, ar, tr)
+
+**Key Design Decisions:**
+- Provider presets are frontend-only UX — backend `AiProviderType` stays `mock | openai_compatible | ollama`
+- OpenAI, OpenRouter, and Groq all map to `openai_compatible` with different endpoints
+- `ProviderError` extends `AppError` (not `Error`) so the global error handler catches them and returns correct HTTP status codes
+- Error codes added to `ErrorCodes.ts`: `AI_PROVIDER_ERROR`, `AI_PROVIDER_UNAVAILABLE`, `AI_PROVIDER_AUTH_ERROR`, `AI_PROVIDER_RATE_LIMIT`
+
+**Files Created (4):**
+- `backend/src/infrastructure/http/IHttpClient.ts`
+- `backend/src/infrastructure/http/AxiosHttpClient.ts`
+- `backend/src/infrastructure/http/index.ts`
+- `backend/src/errors/ProviderErrors.ts`
+
+**Files Modified (10):**
+- `backend/src/application/ai-assistant/providers/OpenAICompatibleProvider.ts` — Complete rewrite with real HTTP calls
+- `backend/src/application/ai-assistant/providers/ProviderFactory.ts` — Added httpClient parameter
+- `backend/src/application/ai-assistant/use-cases/SendChatMessageUseCase.ts` — Added httpClient constructor param
+- `backend/src/api/controllers/ai-assistant/AiAssistantController.ts` — Passes httpClient from DI
+- `backend/src/infrastructure/di/bindRepositories.ts` — Registered AxiosHttpClient
+- `backend/src/infrastructure/http/ProviderErrors.ts` — Re-export shim from errors/
+- `backend/src/errors/errorHandler.ts` — Provider error handler with status mapping
+- `backend/src/errors/ErrorCodes.ts` — Added 4 AI provider error codes
+- `frontend/src/modules/ai-assistant/pages/AiAssistantSettingsPage.tsx` — Provider presets UI
+- `frontend/src/locales/{en,ar,tr}/aiAssistant.json` — Added preset i18n keys
+
+**Files Rewritten (2):**
+- `backend/src/tests/application/ai-assistant/OpenAICompatibleProvider.test.ts` — 29 tests with MockHttpClient
+- `backend/src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts` — Added httpClient mock
+
+**Verification:**
+- ✅ All 82 AI assistant tests pass
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+- ✅ Code review passed (2 medium issues fixed: error handler integration + architecture layer)
+
+**Result:** ✅ Done — Provider presets + real HTTP client working
+**Next:** Browser testing with real API key
+
+---
+
+## 2026-05-05 (Mon) — 0.75h
+**Task:** AI Assistant — Rate Limit Integrity Fix (Config-Based Counting)
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+Fixed a critical integrity flaw: deleting chat conversations reset the daily rate limit because the limit was calculated by querying stored messages via `countToday()`. Moved the daily counter into `AiProviderConfig` so it's independent of message storage.
+
+**Changes:**
+- `AiProviderConfig.ts`: Added `dailyRequestCount` (number) and `dailyRequestDate` (UTC `YYYY-MM-DD` string) fields. Added `getTodaysRequestCount()`, `incrementDailyRequestCount()`, `getTodayDateString()` methods. `updateConfig()` intentionally does NOT touch these fields — they're managed exclusively by `AiRateLimiterService`.
+- `AiRateLimiterService.ts`: Complete rewrite. Now depends only on `IAiSettingsRepository` (no more `IAiChatRepository` dependency). `checkAndIncrement()` reads config, checks limit, increments count, and saves — all atomic. Auto-resets when UTC day changes.
+- `SendChatMessageUseCase.ts`: Constructor changed from `new AiRateLimiterService(chatRepository, settingsRepository)` to `new AiRateLimiterService(settingsRepository)`. Calls `checkAndIncrement()` instead of `checkLimit()`.
+- `PrismaAiSettingsRepository.ts`: Persists `dailyRequestCount` and `dailyRequestDate` in upsert.
+- `prisma/schema.prisma`: Added `dailyRequestCount Int @default(0)` and `dailyRequestDate String?` to `AiProviderConfig` model.
+- `IAiChatRepository.ts`: Updated JSDoc noting `countToday()` is retained for analytics, not rate limiting.
+- 3 test files updated for new `AiProviderConfig` constructor signature and rate limiter approach. 5 new tests added.
+
+**Key Decision:** Rate limit count lives in the config document (not in message queries). This means:
+- ✅ Deleting conversations does NOT reset the rate limit
+- ✅ Count persists across server restarts (stored in Firestore/Prisma)
+- ✅ Count auto-resets when UTC day changes
+- ✅ No extra DB query needed for rate checking (config is already loaded)
+- ⚠️ Count is incremented before the AI request, so even if the provider fails, the count still goes up (prevents retry abuse)
+
+**Verification:**
+- ✅ All 67 AI assistant tests pass (was 55)
+- ✅ Backend TypeScript compiles clean
+- ✅ Frontend TypeScript compiles clean
+- ✅ Prisma client regenerated
+
+**Result:** ✅ Done — Rate limit integrity is now enforced correctly
+**Next:** Browser testing of chat + settings, then OpenAI HTTP client or business module integration
+
+---
+
+## 2026-05-05 (Mon) — 1.5h
+**Task:** AI Assistant Module — Stabilization Phase 2 (Encryption, Rate Limiting, Provider Hardening, Tests)
+**Agent:** OpenCode (CTO Mode)
+
+**What I Did:**
+Implemented 6 deliverables for AI Assistant stabilization before expanding into business modules.
+
+1. **State Document** — Created `docs/AI_ASSISTANT_STATE.md` with full architecture map, file listing, API endpoints, security model, rate limiting, encryption, known TODOs, and design decisions.
+
+2. **Secure API Key Storage (AES-256-GCM)** — Created `IEncryptionService` interface + `AesEncryptionService` implementation. Keys encrypted before DB storage, decrypted on load. Dev passthrough mode if no key. Production fails closed. `AiSettingsUseCase` is the encryption boundary. Removed duplicate `toSafeJSON()` — `toJSON()` is always safe now.
+
+3. **Hardened OpenAICompatibleProvider** — Added constructor validation (apiKey, URL format, model), safe error messages (no key leaks), `ProviderFactory` try/catch with `MockProvider` fallback, separate factory methods for OpenAI and Ollama.
+
+4. **Company-Level Rate Limiting** — Created `AiRateLimiterService` that checks `countToday()` against `maxRequestsPerDay`. Added `countToday()` to `IAiChatRepository` and both Firestore/Prisma implementations. Returns 429 when limit exceeded. Integrated into `SendChatMessageUseCase`.
+
+5. **55 Minimum Tests** — 5 test files covering entity serialization, provider validation, use case logic, rate limiting, settings encryption.
+
+6. **Verification** — Both builds pass clean, all 55 tests pass.
+
+**Files Created (10):**
+- `docs/AI_ASSISTANT_STATE.md`
+- `backend/src/infrastructure/crypto/IEncryptionService.ts`
+- `backend/src/infrastructure/crypto/AesEncryptionService.ts`
+- `backend/src/infrastructure/crypto/index.ts`
+- `backend/src/application/ai-assistant/services/AiRateLimiterService.ts`
+- `backend/src/tests/domain/ai-assistant/AiProviderConfig.test.ts`
+- `backend/src/tests/application/ai-assistant/OpenAICompatibleProvider.test.ts`
+- `backend/src/tests/application/ai-assistant/SendChatMessageUseCase.test.ts`
+- `backend/src/tests/application/ai-assistant/AiRateLimiterService.test.ts`
+- `backend/src/tests/application/ai-assistant/AiSettingsUseCase.test.ts`
+
+**Files Modified (11):**
+- `AiProviderConfig.ts` — Removed `toSafeJSON()`, cleaned TODOs, encryption notes
+- `OpenAICompatibleProvider.ts` — Config validation, safe errors
+- `ProviderFactory.ts` — Factory methods, try/catch fallback
+- `AiSettingsUseCase.ts` — Encryption boundary, `ApiError`
+- `SendChatMessageUseCase.ts` — Rate limiter, decryption, `ApiError`
+- `IAiChatRepository.ts` — Added `countToday()`
+- `FirestoreAiChatRepository.ts` — Implemented `countToday()`
+- `PrismaAiChatRepository.ts` — Implemented `countToday()`
+- `bindRepositories.ts` — Registered `AesEncryptionService`
+- `AiAssistantController.ts` — Pass `encryptionService` to use cases
+- `.env.example` — Added `AI_ENCRYPTION_KEY`
+
+**Result:** ✅ Done — All 6 deliverables complete, builds pass, 55 tests pass
+**Next:** Test in browser with running backend (settings, chat, rate limiting)
+
+## 2026-05-05 (Mon) — 2hr
+**Task:** SuperAdmin Company Entitlements — Module Grant/Revoke
+**Agent:** OpenCode (CTO Mode)
+**What I Did:**
+Implemented SuperAdmin entitlement management: the ability for a SuperAdmin to view, grant, and revoke individual modules for any company. Previously, companies could only get modules through bundle selection during onboarding — there was no UI to add modules (like CRM) to an existing company.
+
+**Architecture Analysis:** Investigated the full entitlement flow and discovered that entitlements use a **snapshot model** (not live reference) — editing a bundle does NOT propagate changes to existing companies. This is a foundational design decision for future Phase 2/3 work.
+
+**Backend Changes:**
+- `GrantModuleToCompanyUseCase.ts` (NEW): Validates module exists, checks not already entitled, creates `superadmin_override` entitlement
+- `RevokeModuleFromCompanyUseCase.ts` (NEW): Validates company has module, removes entitlement item
+- `SuperAdminEntitlementsController.ts` (NEW): REST controller with 3 endpoints (GET/POST/DELETE)
+- `super-admin.routes.ts` (EDIT): Added 3 entitlement routes
+
+**Frontend Changes:**
+- `CompanyEntitlementsPage.tsx` (NEW): Full page with granted modules table, source type badges (Bundle/SuperAdmin/Trial/Promotion), grant modal with search, revoke with confirmation
+- `superAdmin/index.ts` (EDIT): Added 3 API methods
+- `CompaniesListPage.tsx` (EDIT): Added "Modules" button per company row with useNavigate
+- `routes.config.ts` (EDIT): Added `/super-admin/companies/:companyId/entitlements` route
+- `common.json` (en, ar, tr): Added `companyEntitlements` i18n namespace with all strings
+
+**Key Design Decisions:**
+1. Source type `superadmin_override` for directly granted modules (distinct from bundle, trial, promotion)
+2. No new DI bindings needed — uses existing `entitlementService` and `moduleRegistryRepository`
+3. Modular i18n with `{{moduleKey}}` interpolation for success/confirmation messages
+4. Lazy-loaded route with `hideInMenu: true` (accessed via Companies page, not sidebar)
+
+**Technical Developer View:**
+- Clean Architecture: Use cases → services → repositories, no layer violations
+- Controller is thin: instantiates use cases, delegates all logic
+- Uses existing `EntitlementService.grantModule()` / `.revokeModule()`
+- Frontend follows SuperAdmin page component patterns exactly
+- Review found 0 blockers, 2 actionable issues fixed (unused import, i18n interpolation)
+
+**End-User View:**
+- SuperAdmin goes to /super-admin/companies → clicks "Modules" on any company
+- Sees all currently granted modules with their source (Bundle, SuperAdmin, Trial, Promotion)
+- Can grant new modules by searching and clicking "Grant"
+- Can revoke existing modules with a confirmation dialog
+- All feedback messages show the specific module name (e.g., "Module 'crm' granted")
+
+**Verification:**
+- ✅ `npm run build` in `backend/` — zero errors
+- ✅ `npm run build` in `frontend/` — zero errors
+- ✅ Code review passed (0 blockers)
+
+**Result:** ✅ Done — SuperAdmin can now manage company modules
+**Next:** Test in browser. Future work: Subscription Plan module lists (Phase 2), bundle→company sync (Phase 3)
+
+---
+
+## 2026-05-05 (Mon) — 15min
+**Task:** Fix AI Assistant "Cannot read properties of undefined (reading 'data')" error
+**Agent:** OpenCode (CTO Mode)
+**What I Did:**
+Developer tested sending "hi" to AI assistant and got the error. Root cause: the axios response interceptor in `errorInterceptor.ts` already unwraps the `{ success, data }` envelope (returns `response.data.data` directly). But `aiAssistantApi.ts` was unwrapping AGAIN with `response.data.data`, causing `undefined.data` crash.
+
+**Fix:** Changed all 5 methods in `aiAssistantApi.ts` from `return response.data.data` to `return response as unknown as T`. The interceptor already does the unwrapping — the API layer just needs to cast the result to the expected type.
+
+**Files Changed:**
+- `frontend/src/api/aiAssistantApi.ts` — removed double-unwrapping on all 6 API methods
+
+**Verification:**
+- ✅ `npm run build` in `frontend/` — zero errors
+- ✅ `npm run build` in `backend/` — zero errors (no changes)
+
+**Result:** ✅ Done — API double-unwrapping fixed
+**Next:** Developer to restart frontend dev server and re-test chat
+
+---
+
+## 2026-05-05 (Mon) — 1h
+**Task:** AI Assistant Module — Audit & Stabilization + Init-Guard Fix
+**Agent:** OpenCode (CTO Mode)
+**What I Did:**
+Conducted a systematic post-implementation audit of the AI Assistant module across 28+ files. Then when the developer tested the module, it returned `"Module 'ai-assistant' is not initialized"`. Root cause: `moduleInitializedGuard` on backend routes and `ModuleConfigurationGuard` on frontend both block access when `initialized === false` — but AI Assistant has no setup wizard and works immediately after install.
+
+**Issues Found & Fixed:**
+1. **Security**: `AiProviderConfig.toJSON()` included raw `apiKey` field — changed `toJSON()` to strip key (returning `hasApiKey: boolean`), added `toPersistenceJSON()` for DB storage. Updated `FirestoreAiSettingsRepository`.
+2. **i18n**: Added `sidebar.aiAssistant` and `sidebar.chat` translation keys to `useSidebarConfig.ts` labelKeyMap and all 3 locale files (en, ar, tr).
+3. **Init-guard blocker (backend)**: Removed `moduleInitializedGuard('ai-assistant')` from `ai-assistant.routes.ts`. AI Assistant has no setup wizard — usable immediately after install.
+4. **Init-guard blocker (frontend)**: Updated `ModuleConfigurationGuard.tsx` — added `autoInit: true` flag for `ai-assistant`, early-return renders children when `moduleConfig.autoInit` is true, removed `ai-assistant` from `MODULE_INIT_ROUTES`, removed duplicate `const moduleConfig` declaration (TypeScript error).
+
+**Verification:**
+- ✅ `npm run build` in `backend/` — zero errors
+- ✅ `npm run build` in `frontend/` — zero errors
+
+**Result:** ✅ Done — audit clean, init-guard fix applied, both builds pass
+**Next:** Restart backend, test chat and settings pages in browser
+
+---
+
+## 2026-05-05 (Mon) — 2.5h
+**Task:** AI Assistant Module — Foundation Implementation
+**Agent:** OpenCode (CTO Mode)
+**What I Did:**
+Designed and implemented the AI Assistant as an optional installable ERP module following existing patterns (module registry, company-module enablement, DI, repository pattern, permission guards, sidebar wiring, i18n). The module is advisory-only — it cannot create, update, delete, approve, post, or modify business records.
+
+**Backend (20 new files, 4 edits):**
+- Domain entities: AiChatMessage (chat messages) and AiProviderConfig (per-company provider settings)
+- Provider abstraction: IAiProvider interface → MockProvider (contextual echo responses) + OpenAICompatibleProvider (shape-only, ready for real HTTP client)
+- Use cases: SendChatMessageUseCase (with enforced safety rules via system prompt) and AiSettingsUseCase (get/update config, safe JSON output)
+- Repository layer: IAiChatRepository + IAiSettingsRepository interfaces, Firestore + Prisma implementations, Prisma schema models
+- API: AiAssistantController with 6 endpoints (POST /chat, GET /conversations, GET /conversations/:id/messages, DELETE /conversations/:id, GET /settings, PUT /settings)
+- Module registration: AiAssistantModule implementing IModule, registered in modules/index.ts
+- Seeder: Added ai-assistant module with 4 permissions to seedOnboardingData.ts
+- DI: Both repos registered in bindRepositories.ts with DB_TYPE switch
+
+**Frontend (6 new files, 4 edits):**
+- API client: aiAssistantApi.ts with full TypeScript types
+- AiAssistantHomePage: Chat interface with message bubbles, conversation continuity, mock label, safety disclaimer, permission check
+- AiAssistantSettingsPage: Provider selection (mock/openai/ollama), API key config, model/endpoint, rate limits, enable toggle, security info
+- Sidebar: Added ai-assistant entry with Chat + Settings items
+- Routes: /ai-assistant and /ai-assistant/settings with module + permission guards
+- ModuleConfigurationGuard: Added ai-assistant config + init routes
+- i18n: Full en/ar/tr translations
+
+**Technical Developer View:**
+- DB-agnostic: Both Firestore and Prisma implementations exist, switched via DB_TYPE env var
+- Clean Architecture: Domain entities in domain/, use cases in application/, repos in infrastructure/, controllers/api in api/ — no cross-layer violations
+- Provider Factory with per-company caching and invalidation on config update
+- MockProvider returns contextual responses (detects invoice/accounting/inventory/purchase keywords)
+- System prompt in SendChatMessageUseCase enforces advisory-only AI safety rules
+- API keys never exposed to frontend — AiProviderConfig.toSafeJSON() returns `hasApiKey: boolean` instead
+
+**End-User View:**
+- Companies can install the AI Assistant module from the Module Manager
+- Permitted users see "AI Assistant" in the sidebar with a chat interface
+- The assistant provides helpful responses about ERP features and processes
+- Company admins can configure the AI provider (mock for development, OpenAI-compatible or Ollama for production)
+- The assistant explicitly cannot make any changes to business data — it only advises
+
+**Verification:**
+- ✅ `npm run build` in `backend/` — zero errors
+- ✅ `npm run build` in `frontend/` — zero errors
+- ✅ Prisma schema valid, client regenerated
+
+**Result:** ✅ Done — Foundation complete
+**Next:** Seed database, enable module for a test company, test chat and settings in browser
 
 ---
 

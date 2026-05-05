@@ -147,5 +147,13 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' }
     ]
+  },
+  'ai-assistant': {
+    label: 'AI Assistant',
+    icon: 'Bot',
+    items: [
+      { label: 'Chat', path: '/ai-assistant', permission: 'ai-assistant.chat.use', icon: 'MessageSquare' },
+      { label: 'Settings', path: '/ai-assistant/settings', permission: 'ai-assistant.settings.view', icon: 'Settings' },
+    ]
   }
 };

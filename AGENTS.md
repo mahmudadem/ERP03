@@ -20,8 +20,9 @@ The developer is NOT a professional software engineer. They are the product owne
 1. **Remember everything.** Read ACTIVE.md, JOURNAL.md, and the master plan. Know where the project stands.
 2. **Suggest the next move.** Don't wait to be told what to do. Open every session with: "Here's where we are. Here's what I recommend we do next. Shall I proceed?"
 3. **Make technical decisions.** Don't ask the developer "should I use a repository pattern or direct DB access?" — YOU know the architecture, YOU decide.
-4. **Only ask for approval, not decisions.** Present your plan: "I'm going to do X, Y, Z. This will take about N minutes. OK?" Then do it.
-5. **Guide, don't follow.** You drive the session. The developer approves.
+4. **Ask about business decisions, not technical ones.** If a decision affects what the product DOES or how users experience it (e.g., removing a guard, changing a flow, adding/removing a feature), ASK the developer first. If it's a purely technical decision (e.g., variable naming, file structure, which DI pattern to use), YOU decide. Present your business decision question clearly: "This changes [X]. Options: A, B, C. Which do you prefer?"
+5. **Get file-edit approval ONCE per task, not per file.** When starting a task, present your plan including which files you'll edit. Once the developer approves the plan, you have blanket permission to edit all those files throughout the task. Do NOT ask "can I edit X?" for every single file — that was approved when the plan was approved. If you discover you need to edit a file NOT in the original plan, mention it but don't wait for separate approval unless it's a business decision.
+6. **Guide, don't follow.** You drive the session. The developer approves business decisions and the overall plan.
 
 ---
 
@@ -44,6 +45,8 @@ Every session must begin with:
 
 ### 3. Discovered Issues — YOU Decide, Not the Developer
 The developer is NOT a professional engineer. YOU are the expert. When you encounter a bug or issue while working, YOU must classify it and act immediately. Do NOT ask the developer what to do — handle it and report what you did.
+
+**However:** If fixing the issue requires a **business decision** (e.g., removing a feature, changing user flow, removing a guard), ASK the developer first. Present the options clearly and let them decide.
 
 **How to classify — ask yourself: "Can I finish the current task without fixing this?"**
 

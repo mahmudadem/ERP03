@@ -118,7 +118,9 @@
     "aging": "????? ?????",
     "bankReconciliation": "?????? ?????",
     "costCenterSummary": "???? ???? ???????",
-    "budgetVsActual": "???????? ????? ??????"
+    "budgetVsActual": "???????? ????? ??????",
+    "aiAssistant": "????? ????????? ??????",
+    "chat": "?????"
   },
   "reportContainer": {
     "refresh": "تحديث",
@@ -852,10 +854,51 @@
         "actions": "الإجراءات"
       },
       "actions": {
-        "impersonate": "انتحال شخصية"
+        "impersonate": "انتحال شخصية",
+        "manageModules": "الوحدات"
       },
       "messages": {
         "impersonationStarted": "بدأ انتحال الشخصية. إعادة التوجيه..."
+      }
+    },
+    "companyEntitlements": {
+      "title": "وحدات الشركة",
+      "description": "إدارة وصول الوحدات لـ {{name}}",
+      "loading": "جارٍ تحميل الشركة...",
+      "grantedModules": "الوحدات الممنوحة",
+      "noModules": "لم يتم منح وحدات بعد",
+      "grantModule": "+ منح وحدة",
+      "revoke": "إلغاء",
+      "revoking": "جارٍ الإلغاء...",
+      "grant": "منح",
+      "granting": "جارٍ المنح...",
+      "confirmRevoke": "إلغاء الوصول إلى الوحدة '{{moduleKey}}'؟ قد يؤثر على مستخدمي الشركة.",
+      "backToCompanies": "← العودة إلى الشركات",
+      "sourceTypes": {
+        "bundle": "الحزمة",
+        "superadmin": "المدير الأعلى",
+        "trial": "تجريبي",
+        "promotion": "ترويجي"
+      },
+      "columns": {
+        "module": "الوحدة",
+        "key": "المفتاح",
+        "source": "المصدر",
+        "actions": "الإجراءات"
+      },
+      "messages": {
+        "granted": "تم منح الوحدة '{{moduleKey}}' بنجاح",
+        "revoked": "تم إلغاء الوحدة '{{moduleKey}}' بنجاح"
+      },
+      "grantModal": {
+        "title": "منح وصول الوحدة",
+        "description": "اختر وحدة لمنح وصول الشركة إليها. ستتم إضافتها كتجاوز من المدير الأعلى.",
+        "searchPlaceholder": "البحث في الوحدات...",
+        "noModules": "لا توجد وحدات متاحة للمنح",
+        "moduleName": "الوحدة",
+        "moduleKey": "المفتاح",
+        "status": "الحالة",
+        "close": "إغلاق"
       }
     },
     "users": {

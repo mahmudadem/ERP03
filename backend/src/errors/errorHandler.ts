@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './AppError';
 import { ErrorCode, ErrorSeverity, ApiErrorResponse } from './ErrorCodes';
+import { ProviderError } from './ProviderErrors';
 
 function isFirestoreTransactionError(err: Error): boolean {
   const msg = err.message || '';
@@ -27,6 +28,18 @@ export function errorHandler(
   });
 
   if (err instanceof AppError) {
+    // Provider errors have specific HTTP status codes that don't follow the
+    // severity mapping (e.g., 503 for unavailable, 429 for rate limit).
+    // Handle them with their own status mapping.
+    if (err instanceof ProviderError) {
+      const statusCode = getProviderErrorStatus(err);
+      const response: ApiErrorResponse = {
+        success: false,
+        error: err.toJSON(),
+      };
+      return res.status(statusCode).json(response);
+    }
+
     const response: ApiErrorResponse = {
       success: false,
       error: err.toJSON(),
@@ -83,6 +96,24 @@ function getStatusCode(severity: ErrorSeverity): number {
       return 500;
     default:
       return 500;
+  }
+}
+
+/**
+ * Map ProviderError subclasses to correct HTTP status codes.
+ * These don't follow the generic severity mapping — each type has a specific status.
+ */
+function getProviderErrorStatus(err: ProviderError): number {
+  switch (err.code) {
+    case ErrorCode.AI_PROVIDER_UNAVAILABLE:
+      return 503;
+    case ErrorCode.AI_PROVIDER_AUTH_ERROR:
+      return 401;
+    case ErrorCode.AI_PROVIDER_RATE_LIMIT:
+      return 429;
+    case ErrorCode.AI_PROVIDER_ERROR:
+    default:
+      return 502;
   }
 }
 

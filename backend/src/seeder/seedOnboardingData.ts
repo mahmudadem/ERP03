@@ -178,6 +178,18 @@ const MODULE_DEFINITIONS = [
       { id: 'system.audit.view', label: 'View Audit Logs', enabled: true },
     ],
     autoAttachToRoles: ['owner', 'admin']
+  },
+  {
+    moduleId: 'ai-assistant',
+    permissions: [
+      { id: 'ai-assistant.chat.use', label: 'Use AI Assistant Chat', enabled: true },
+      { id: 'ai-assistant.chat.view', label: 'View AI Chat History', enabled: true },
+      { id: 'ai-assistant.settings.view', label: 'View AI Settings', enabled: true },
+      { id: 'ai-assistant.settings.manage', label: 'Manage AI Settings', enabled: true },
+      { id: 'ai-assistant.settings.health', label: 'Test Provider Connectivity', enabled: true },
+      { id: 'ai-assistant.tools.accounting.trial-balance', label: 'AI Accounting: Trial Balance Summary', enabled: true },
+    ],
+    autoAttachToRoles: ['owner', 'admin']
   }
 ];
 
